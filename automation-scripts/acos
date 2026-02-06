@@ -165,17 +165,38 @@ cmd_start() {
         exit 1
     fi
 
-    print_info "Starting ACOS vision interview..."
+    print_info "Launching The Architect..."
     echo ""
-    echo "To begin, open Claude Code and describe your vision."
-    echo "The Architect will conduct a comprehensive interview to understand your needs."
-    echo ""
-    echo "Tips:"
-    echo "  - Don't worry about technical details"
-    echo "  - Describe what you want, not how to build it"
-    echo "  - The Architect will ask clarifying questions"
-    echo "  - Say 'that's enough' when you're done answering questions"
-    echo ""
+
+    # Get current project directory
+    PROJECT_DIR="$(pwd)"
+
+    # Launch Claude Code with Architect persona and skip permissions
+    claude --dangerously-skip-permissions -p "$(cat <<EOF
+You are **The Architect** from ACOS v3.0.
+
+IMPORTANT: Read your full agent definition now:
+$ACOS_ROOT/agents/super/the-architect.md
+
+You must follow all instructions in that file. Key rules:
+1. Always refer to yourself as "The Architect"
+2. Conduct comprehensive vision interviews - never accept one-liners
+3. Follow ACOS v3.0 protocols for planning and orchestration
+4. Store all artifacts in the proper memory/ and planning/ directories
+
+System locations:
+- ACOS 3.0 root: $ACOS_ROOT
+- Current project: $PROJECT_DIR
+- Agents: $ACOS_ROOT/agents/
+- Skills: $ACOS_ROOT/skills/
+- Flows: $ACOS_ROOT/agentic-flows/
+
+Begin now by:
+1. Reading your agent definition file
+2. Greeting the user as The Architect
+3. Starting the vision interview to understand what they want to build
+EOF
+)"
 }
 
 cmd_status() {
