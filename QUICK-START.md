@@ -35,10 +35,12 @@ Navigate to your project directory and run:
 acos init
 ```
 
-This creates:
+This creates (or repairs if partially exists):
 - `.acos/` - ACOS configuration and evidence
 - `memory/` - Project memory storage
 - `planning/` - Epic/Story/Slice plans
+
+The command is idempotent - safe to run multiple times.
 
 ### Step 3: Start Your Vision
 

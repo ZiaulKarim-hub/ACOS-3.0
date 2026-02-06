@@ -891,7 +891,7 @@ ACOS 3.0/
 | Command | Description |
 |---------|-------------|
 | `acos vision` | Start new project with vision interview |
-| `acos init` | Initialize ACOS in current folder |
+| `acos init` | Initialize ACOS in current folder (idempotent, safe to re-run) |
 | `acos start` | Launch Claude Code with The Architect (auto-skips permissions) |
 | `acos pause` | Pause after current work completes |
 | `acos resume` | Resume from paused state |

@@ -164,6 +164,8 @@ You should see:
 ✓ ACOS initialized successfully!
 ```
 
+> **Note:** `acos init` is idempotent - safe to run multiple times. If some directories already exist, it will skip them and create any missing pieces. This means you can use it to repair a partial initialization.
+
 ### Step 5: Start Your Vision
 
 ```bash
