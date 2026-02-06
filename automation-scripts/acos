@@ -86,14 +86,15 @@ cmd_init() {
     print_header
     print_info "Initializing ACOS in current project..."
 
-    # Create .acos directory
+    # Create .acos directory and subdirectories
     if [ -d ".acos" ]; then
         print_warning ".acos directory already exists"
     else
-        mkdir -p .acos/evidence
-        mkdir -p .acos/config
         print_success "Created .acos directory"
     fi
+    # Always ensure subdirectories exist (mkdir -p is idempotent)
+    mkdir -p .acos/evidence
+    mkdir -p .acos/config
 
     # Create local memory structure
     if [ -d "memory" ]; then
