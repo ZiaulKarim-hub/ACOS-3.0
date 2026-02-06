@@ -892,7 +892,7 @@ ACOS 3.0/
 |---------|-------------|
 | `acos vision` | Start new project with vision interview |
 | `acos init` | Initialize ACOS in current folder |
-| `acos start` | Start the perpetual loop |
+| `acos start` | Launch Claude Code with The Architect (auto-skips permissions) |
 | `acos pause` | Pause after current work completes |
 | `acos resume` | Resume from paused state |
 | `acos stop` | Stop immediately |

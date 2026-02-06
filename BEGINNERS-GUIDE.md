@@ -170,7 +170,9 @@ You should see:
 acos start
 ```
 
-This tells you to open Claude Code. Now you're ready for the most important part - telling ACOS what you want to build!
+This automatically launches Claude Code and The Architect greets you immediately. You're now ready for the most important part - telling The Architect what you want to build!
+
+> **Note:** ACOS runs with `--dangerously-skip-permissions` which means Claude can edit files and run commands without asking for confirmation each time. This makes the workflow seamless but means you should only use ACOS in trusted project directories.
 
 ---
 

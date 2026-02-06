@@ -46,7 +46,7 @@ This creates:
 acos start
 ```
 
-Then open Claude Code and describe what you want to build. The Architect will:
+This automatically launches Claude Code with The Architect ready to talk. The Architect will:
 1. Ask comprehensive questions about your vision
 2. Create detailed requirements
 3. Break it down into Epics → Stories → Slices
