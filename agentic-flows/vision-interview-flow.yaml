@@ -1,0 +1,397 @@
+---
+name: vision-interview-flow
+description: Flow for conducting comprehensive vision interviews with users
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: circular
+rating: UNRATED
+
+stages:
+  - name: initial-understanding
+    agent: the-architect
+    input:
+      - user's initial vision statement
+    output:
+      - preliminary understanding
+      - initial questions
+    success_criteria:
+      - core concept understood
+      - question categories identified
+    on_failure: retry
+    max_retries: 2
+
+  - name: questioning-round
+    depends_on: initial-understanding
+    agent: the-architect
+    input:
+      - current understanding
+      - remaining question categories
+    output:
+      - questions for user
+    success_criteria:
+      - questions are specific
+      - questions cover gaps
+    on_failure: retry
+    max_retries: 1
+
+  - name: user-response
+    depends_on: questioning-round
+    agent: user
+    input:
+      - architect's questions
+    output:
+      - user answers
+      - "that's enough" signal (optional)
+    success_criteria:
+      - responses received
+    on_failure: escalate
+    max_retries: 0
+
+  - name: understanding-update
+    depends_on: user-response
+    agent: the-architect
+    input:
+      - user responses
+      - current understanding
+    output:
+      - updated understanding
+      - remaining gaps
+    success_criteria:
+      - understanding improved
+      - gaps identified or closed
+    on_failure: retry
+    max_retries: 1
+
+  - name: completeness-check
+    depends_on: understanding-update
+    agent: the-architect
+    input:
+      - current understanding
+      - remaining gaps
+      - user satisfaction signal
+    output:
+      - decision: continue or finalize
+    success_criteria:
+      - clear decision made
+    on_failure: retry
+    max_retries: 1
+
+  - name: document-creation
+    depends_on: completeness-check
+    condition: decision == finalize
+    agent: the-architect
+    input:
+      - complete understanding
+      - all Q&A
+    output:
+      - vision-interview.md
+      - vision-document.md
+    success_criteria:
+      - both documents created
+      - saved to source-of-truth
+    on_failure: retry
+    max_retries: 2
+
+iteration:
+  max_iterations: 10
+  loop_stages: [questioning-round, user-response, understanding-update, completeness-check]
+  exit_condition: decision == finalize OR user says "that's enough"
+
+error_handling:
+  default: retry
+  on_user_unresponsive: wait
+  on_max_retries: escalate_to_human
+  notification: user
+
+metadata:
+  typical_duration: varies
+  complexity: medium
+  use_cases:
+    - new project kickoff
+    - major feature addition
+    - project pivot
+---
+
+# Vision Interview Flow
+
+## Overview
+
+This flow conducts a comprehensive interview with the user to fully understand their vision before any planning or implementation begins. It iterates through questioning rounds until The Architect has sufficient understanding or the user signals completion.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    VISION INTERVIEW FLOW                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Initial          │ ← User provides vision statement           │
+│  │ Understanding    │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────────────────────────────┐                     │
+│  │         INTERVIEW LOOP (max 10x)         │                     │
+│  │                                          │                     │
+│  │  ┌──────────────────┐                    │                     │
+│  │  │ Questioning      │ ← Architect asks   │                     │
+│  │  │ Round            │   targeted Qs      │                     │
+│  │  └────────┬─────────┘                    │                     │
+│  │           │                              │                     │
+│  │           ▼                              │                     │
+│  │  ┌──────────────────┐                    │                     │
+│  │  │ User             │ ← User provides    │                     │
+│  │  │ Response         │   answers          │                     │
+│  │  └────────┬─────────┘                    │                     │
+│  │           │                              │                     │
+│  │           ▼                              │                     │
+│  │  ┌──────────────────┐                    │                     │
+│  │  │ Understanding    │ ← Update mental    │                     │
+│  │  │ Update           │   model            │                     │
+│  │  └────────┬─────────┘                    │                     │
+│  │           │                              │                     │
+│  │           ▼                              │                     │
+│  │  ┌──────────────────┐                    │                     │
+│  │  │ Completeness     │                    │                     │
+│  │  │ Check            │                    │                     │
+│  │  └────────┬─────────┘                    │                     │
+│  │           │                              │                     │
+│  │     ┌─────┴─────┐                        │                     │
+│  │     │           │                        │                     │
+│  │   More Qs    Complete                    │                     │
+│  │     │           │                        │                     │
+│  │     └───────────┼────────────────────────┘                     │
+│  │         ▲       │                                              │
+│  │         │       ▼                                              │
+│  │    (loop back)                                                │
+│  └─────────────────────────────────────────┘                     │
+│                    │                                              │
+│                    ▼                                              │
+│  ┌──────────────────┐                                            │
+│  │ Document         │ ← Create source of truth                   │
+│  │ Creation         │                                            │
+│  └──────────────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐      ┌──────────────────┐                  │
+│  │ vision-          │      │ vision-          │                  │
+│  │ interview.md     │      │ document.md      │                  │
+│  └──────────────────┘      └──────────────────┘                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Question Categories
+
+The Architect must cover these areas:
+
+### 1. Users & Audience
+- Who will use this?
+- Technical level?
+- Primary vs secondary users?
+- User personas?
+
+### 2. Platforms & Devices
+- Web? Mobile? Desktop?
+- Responsive requirements?
+- Offline support needed?
+
+### 3. Features & Scope
+- Must-have features?
+- Nice-to-have features?
+- Explicitly excluded features?
+- MVP vs full vision?
+
+### 4. Scale & Performance
+- Expected users?
+- Data volume?
+- Growth expectations?
+- Performance requirements?
+
+### 5. Integrations
+- External services?
+- Third-party APIs?
+- Existing systems?
+
+### 6. Security & Compliance
+- Sensitive data?
+- Compliance requirements (HIPAA, GDPR, etc.)?
+- Authentication needs?
+
+### 7. Design & UX
+- Visual style?
+- Brand guidelines?
+- Accessibility requirements?
+- UX preferences?
+
+### 8. Technology Preferences
+- Preferred languages?
+- Framework preferences?
+- Hosting preferences?
+- Existing infrastructure?
+
+### 9. Success Criteria
+- How do we know it's done?
+- Key metrics?
+- Launch criteria?
+
+## Exit Conditions
+
+The interview ends when:
+
+1. **Architect Satisfied:** All question categories covered with sufficient depth
+2. **User Signal:** User says "that's enough" or equivalent
+3. **Max Iterations:** 10 rounds reached (rare)
+
+## Output Documents
+
+### vision-interview.md
+
+```markdown
+# Vision Interview - [Project Name]
+
+**Date:** [YYYY-MM-DD]
+**Interviewer:** The Architect
+
+## Initial Vision Statement
+
+[User's original statement]
+
+---
+
+## Round 1
+
+### Questions Asked:
+
+1. [Question 1]
+2. [Question 2]
+
+### User Responses:
+
+1. [Response 1]
+2. [Response 2]
+
+---
+
+## Round 2
+
+[Same format]
+
+---
+
+## Round N
+
+[Same format]
+
+---
+
+## Interview Summary
+
+[Key insights from the interview]
+```
+
+### vision-document.md
+
+```markdown
+# Vision Document - [Project Name]
+
+**Created:** [YYYY-MM-DD]
+**Based on:** vision-interview.md
+
+## Executive Summary
+
+[2-3 sentence summary of what we're building]
+
+## Target Users
+
+### Primary Users
+[Description]
+
+### Secondary Users
+[Description]
+
+## Platform Requirements
+
+- [Platform 1]: [Requirements]
+- [Platform 2]: [Requirements]
+
+## Features
+
+### Must Have (MVP)
+1. [Feature]
+2. [Feature]
+
+### Should Have (Phase 2)
+1. [Feature]
+
+### Could Have (Future)
+1. [Feature]
+
+### Won't Have (Excluded)
+1. [Feature]
+
+## Technical Requirements
+
+### Scale
+- Expected Users: [N]
+- Data Volume: [Size]
+- Growth: [Rate]
+
+### Performance
+- [Requirement]
+
+### Security
+- [Requirement]
+
+### Compliance
+- [Requirement if any]
+
+## Integrations
+
+- [Integration 1]: [Purpose]
+- [Integration 2]: [Purpose]
+
+## Design Requirements
+
+- Visual Style: [Description]
+- Accessibility: [Requirements]
+
+## Technology Stack
+
+- Frontend: [Preference or constraint]
+- Backend: [Preference or constraint]
+- Database: [Preference or constraint]
+- Hosting: [Preference or constraint]
+
+## Success Criteria
+
+1. [Criterion]
+2. [Criterion]
+3. [Criterion]
+
+---
+
+*This document is the source of truth for the project.*
+```
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Initial Understanding | Can't parse vision | Ask for clarification |
+| Questioning | User confused | Rephrase questions |
+| Response | User unresponsive | Wait patiently |
+| Completeness | Gaps remain | Continue questioning |
+
+## Success Metrics
+
+- **Interview Completion Rate:** Target 100%
+- **Average Rounds:** Target 3-5
+- **User Satisfaction:** Target high
+
+---
+
+*Vision Interview Flow - Understanding before building.*

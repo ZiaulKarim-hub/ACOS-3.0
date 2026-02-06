@@ -1,0 +1,335 @@
+---
+name: feedback-resolution-flow
+description: Flow for resolving reviewer feedback and re-executing work
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: linear
+rating: UNRATED
+
+stages:
+  - name: feedback-receipt
+    agent: the-architect
+    input:
+      - all reviewer feedback (consolidated)
+      - original slice specification
+      - evidence bundle
+    output:
+      - acknowledged feedback
+      - issue list
+    success_criteria:
+      - all issues catalogued
+      - severity understood
+    on_failure: retry
+    max_retries: 1
+
+  - name: feedback-analysis
+    depends_on: feedback-receipt
+    agent: the-architect
+    input:
+      - all issues from all reviewers
+      - original requirements
+    output:
+      - analysis of conflicts (if any)
+      - unified fix plan
+    success_criteria:
+      - no conflicting fixes
+      - all issues addressed in plan
+    on_failure: retry
+    max_retries: 2
+
+  - name: fix-planning
+    depends_on: feedback-analysis
+    agent: the-architect
+    input:
+      - unified fix plan
+      - original slice specification
+    output:
+      - updated slice specification
+      - new handoff to developer
+    success_criteria:
+      - all fixes incorporated
+      - clear guidance for developer
+    on_failure: retry
+    max_retries: 2
+
+  - name: fix-implementation
+    depends_on: fix-planning
+    flow: slice-execution-flow
+    input:
+      - updated slice specification
+      - previous evidence (for reference)
+    output:
+      - fixed implementation
+      - new evidence bundle
+    success_criteria:
+      - all issues addressed
+      - new evidence complete
+    on_failure: retry
+    max_retries: 3
+
+  - name: re-review
+    depends_on: fix-implementation
+    type: parallel
+    agents:
+      - same reviewers as original
+    input:
+      - new evidence bundle
+      - original feedback (for comparison)
+    output:
+      - new review reports
+    success_criteria:
+      - all original issues resolved
+      - no new issues introduced
+    on_failure: retry
+    max_retries: 2
+
+  - name: resolution-check
+    depends_on: re-review
+    agent: system
+    input:
+      - new review verdicts
+    output:
+      - resolution status
+    success_criteria:
+      - clear verdict
+    on_failure: escalate
+    max_retries: 0
+
+iteration:
+  max_iterations: 3
+  loop_stages: [feedback-analysis, fix-planning, fix-implementation, re-review, resolution-check]
+  exit_condition: all reviewers pass OR max iterations reached
+
+error_handling:
+  default: retry
+  on_persistent_failure: escalate_to_human
+  on_max_iterations: escalate_to_human
+  notification: [architect, user]
+
+metadata:
+  typical_duration: varies
+  complexity: high
+  use_cases:
+    - rejected slice resolution
+    - rejected story resolution
+    - quality improvement
+---
+
+# Feedback Resolution Flow
+
+## Overview
+
+This flow handles the resolution of reviewer feedback when work is rejected. It ensures The Architect creates a unified solution that addresses ALL reviewer concerns in a coherent manner, avoiding conflicting fixes.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  FEEDBACK RESOLUTION FLOW                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────┐               │
+│  │           REVIEWER FEEDBACK                   │               │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐          │               │
+│  │  │ QA     │  │Security│  │ Perf   │  ...     │               │
+│  │  │Feedback│  │Feedback│  │Feedback│          │               │
+│  │  └────┬───┘  └────┬───┘  └───┬────┘          │               │
+│  │       └───────────┼──────────┘                │               │
+│  └───────────────────┼──────────────────────────┘               │
+│                      │                                           │
+│                      ▼                                           │
+│  ┌──────────────────┐                                            │
+│  │ Feedback         │ ← Architect receives all feedback          │
+│  │ Receipt          │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Feedback         │ ← Identify conflicts, create unified plan  │
+│  │ Analysis         │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ├─────────────────────┐                                │
+│           │                     │                                │
+│         Conflicts?           No Conflicts                        │
+│           │                     │                                │
+│           ▼                     │                                │
+│  ┌──────────────────┐           │                                │
+│  │ Conflict         │           │                                │
+│  │ Resolution       │           │                                │
+│  └────────┬─────────┘           │                                │
+│           │                     │                                │
+│           └─────────┬───────────┘                                │
+│                     │                                            │
+│                     ▼                                            │
+│  ┌──────────────────┐                                            │
+│  │ Fix              │ ← Create updated specification             │
+│  │ Planning         │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Fix              │ ← Developer implements fixes               │
+│  │ Implementation   │   (uses slice-execution-flow)              │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────────────────────────────────┐                │
+│  │              RE-REVIEW (PARALLEL)             │                │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐          │                │
+│  │  │ QA     │  │Security│  │ Perf   │  ...     │                │
+│  │  └────┬───┘  └────┬───┘  └───┬────┘          │                │
+│  │       └───────────┼──────────┘                │                │
+│  └───────────────────┼──────────────────────────┘                │
+│                      │                                           │
+│                      ▼                                           │
+│             ┌─────────────────┐                                  │
+│             │ ALL PASS?       │                                  │
+│             └────────┬────────┘                                  │
+│                      │                                           │
+│       ┌──────────────┴──────────────┐                            │
+│       │ YES                         │ NO                         │
+│       ▼                             ▼                            │
+│  ┌──────────────┐          ┌──────────────┐                      │
+│  │ Resolution   │          │ Loop Back    │                      │
+│  │ Complete     │          │ (max 3x)     │◄─────────────────┐   │
+│  └──────────────┘          └──────┬───────┘                  │   │
+│                                   │                          │   │
+│                                   └──────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Critical Principle: Unified Resolution
+
+**The Architect sees ALL feedback at once and creates ONE unified solution.**
+
+This prevents:
+- Conflicting fixes
+- Oscillating between reviewer preferences
+- Infinite loops of rejection
+
+Example:
+```
+Security Reviewer: "Add input validation before database query"
+Performance Reviewer: "Reduce processing steps in query path"
+
+WRONG approach:
+- Fix security → breaks performance
+- Fix performance → breaks security
+- Loop forever
+
+RIGHT approach (Architect's unified solution):
+- Add efficient input validation that adds minimal overhead
+- Restructure query path to incorporate both concerns
+- Single fix addresses both reviewers
+```
+
+## Stages Detail
+
+### Stage 1: Feedback Receipt
+
+**Agent:** The Architect
+**Purpose:** Acknowledge and catalogue all feedback
+
+The Architect:
+1. Receives consolidated feedback from all reviewers
+2. Lists all issues by reviewer
+3. Categorizes by severity
+4. Identifies overlapping concerns
+
+### Stage 2: Feedback Analysis
+
+**Agent:** The Architect
+**Purpose:** Identify conflicts and create unified plan
+
+The Architect:
+1. Analyzes all issues for conflicts
+2. Identifies issues that affect same code areas
+3. Determines if fixes might contradict
+4. Plans unified approach
+
+### Stage 3: Fix Planning
+
+**Agent:** The Architect
+**Purpose:** Create updated specification
+
+Creates new handoff with:
+- All issues to address
+- Unified approach for each
+- Clear guidance on trade-offs
+- Updated acceptance criteria
+
+### Stage 4: Fix Implementation
+
+**Flow:** slice-execution-flow
+**Purpose:** Implement the fixes
+
+Developer:
+1. Receives updated specification
+2. Implements fixes according to unified plan
+3. Creates new evidence bundle
+4. Submits for re-review
+
+### Stage 5: Re-Review
+
+**Agents:** Same reviewers as original
+**Purpose:** Verify fixes address concerns
+
+Each reviewer:
+1. Compares to original feedback
+2. Verifies their issues are addressed
+3. Checks for new issues
+4. Submits verdict
+
+### Stage 6: Resolution Check
+
+**Agent:** System
+**Purpose:** Determine next action
+
+- If ALL PASS: Mark resolved, complete
+- If ANY REJECT: Loop back to analysis (max 3 times)
+- If max iterations: Escalate to human
+
+## Conflict Resolution Strategies
+
+| Conflict Type | Resolution Strategy |
+|---------------|---------------------|
+| Security vs Performance | Security wins, optimize within constraints |
+| Feature vs Simplicity | Check source of truth for priority |
+| Style vs Convention | Follow project conventions |
+| Competing approaches | Choose one, document rationale |
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Analysis | Can't reconcile feedback | Document conflict, escalate |
+| Planning | Fixes too complex | Break into smaller fixes |
+| Implementation | Can't satisfy all | Prioritize, escalate remainder |
+| Re-Review | New issues found | Include in next iteration |
+| Max Iterations | Still failing | Escalate to human |
+
+## Max Iteration Escalation
+
+After 3 failed iterations:
+
+1. Summarize all attempts
+2. Document persistent issues
+3. Notify user
+4. Request human decision:
+   - Modify requirements?
+   - Accept with known issues?
+   - Reassign to different approach?
+
+## Success Metrics
+
+- **First Re-Review Pass Rate:** Target 70%+
+- **Average Iterations:** Target <2
+- **Human Escalation Rate:** Target <5%
+
+---
+
+*Feedback Resolution Flow - Unified solutions for comprehensive feedback.*

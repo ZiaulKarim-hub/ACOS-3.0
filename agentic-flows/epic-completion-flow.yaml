@@ -1,0 +1,275 @@
+---
+name: epic-completion-flow
+description: Flow for completing an epic by executing all its stories and epic-level review
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: hierarchical
+rating: UNRATED
+
+stages:
+  - name: epic-initialization
+    agent: the-architect
+    input:
+      - epic specification
+      - vision context
+    output:
+      - story breakdown
+      - dependency graph
+      - execution order
+    success_criteria:
+      - all stories defined
+      - dependencies mapped
+      - no circular dependencies
+    on_failure: retry
+    max_retries: 2
+
+  - name: story-execution
+    depends_on: epic-initialization
+    type: orchestrated
+    flow: story-completion-flow
+    iteration: for each story in order
+    input:
+      - individual story specifications
+    output:
+      - completed stories
+    success_criteria:
+      - all stories pass review
+    on_failure: retry-story
+    max_retries: 3
+
+  - name: epic-integration
+    depends_on: story-execution
+    agent: ACOS-developer
+    input:
+      - all completed stories
+      - epic specification
+    output:
+      - integrated capability
+      - integration evidence
+    success_criteria:
+      - stories work together as capability
+      - epic acceptance criteria met
+    on_failure: retry
+    max_retries: 2
+
+  - name: epic-review
+    depends_on: epic-integration
+    type: parallel
+    agents:
+      - ACOS-qa-reviewer
+      - ACOS-integration-reviewer
+      - ACOS-performance-reviewer
+      - (inherited from stories)
+    input:
+      - integrated capability
+      - all story evidence
+      - epic specification
+    output:
+      - epic review reports
+    success_criteria:
+      - all reviewers pass
+    on_failure: retry
+    max_retries: 2
+
+  - name: epic-completion
+    depends_on: epic-review
+    condition: all reviews passed
+    agent: system
+    input:
+      - passed review confirmation
+    output:
+      - epic marked complete
+      - vision notified
+    success_criteria:
+      - status updated
+      - parent vision notified
+    on_failure: retry
+    max_retries: 1
+
+hierarchy:
+  coordinator: the-architect
+  delegation_strategy: story-by-story with dependency respect
+  aggregation_strategy: integration after all stories complete
+
+error_handling:
+  default: retry
+  on_story_failure: architect-intervention
+  on_max_retries: escalate_to_human
+  notification: architect
+
+metadata:
+  typical_duration: varies
+  complexity: very-high
+  use_cases:
+    - major capability implementation
+    - system module completion
+    - feature set delivery
+---
+
+# Epic Completion Flow
+
+## Overview
+
+This flow orchestrates the completion of an epic by executing all its constituent stories in dependency order, then performing integration testing and epic-level review. An epic represents a major capability of the system.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    EPIC COMPLETION FLOW                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Epic             │                                            │
+│  │ Initialization   │ ← Architect breaks down epic               │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌───────────────────────────────────────────┐                   │
+│  │         STORY EXECUTION (ORDERED)          │                   │
+│  │                                            │                   │
+│  │  ┌─────────┐                               │                   │
+│  │  │ Story 1 │ ──────────────────┐           │                   │
+│  │  └────┬────┘                   │           │                   │
+│  │       │ (dependency)           │           │                   │
+│  │       ▼                        │           │                   │
+│  │  ┌─────────┐  ┌─────────┐     │           │                   │
+│  │  │ Story 2 │  │ Story 3 │ (parallel if    │                   │
+│  │  └────┬────┘  └────┬────┘  no dependency) │                   │
+│  │       │            │                       │                   │
+│  │       └─────┬──────┘                       │                   │
+│  │             ▼                              │                   │
+│  │        ┌─────────┐                         │                   │
+│  │        │ Story N │                         │                   │
+│  │        └─────────┘                         │                   │
+│  │                                            │                   │
+│  │  Each story uses: story-completion-flow   │                   │
+│  └───────────────────────────────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Epic             │ ← Verify stories integrate as capability   │
+│  │ Integration      │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────────────────────────────────┐                │
+│  │              EPIC REVIEW (PARALLEL)           │                │
+│  │                                               │                │
+│  │  ┌──────────┐  ┌─────────────┐  ┌──────────┐ │                │
+│  │  │ QA       │  │ Integration │  │ Perf     │ │                │
+│  │  │ Reviewer │  │ Reviewer    │  │ Reviewer │ │                │
+│  │  └────┬─────┘  └──────┬──────┘  └────┬─────┘ │                │
+│  │       │               │              │       │                │
+│  │       │    ┌──────────┴──────────┐   │       │                │
+│  │       │    │ + Inherited from    │   │       │                │
+│  │       │    │   all stories       │   │       │                │
+│  │       └────┴─────────────────────┴───┘       │                │
+│  └──────────────────────┬───────────────────────┘                │
+│                         │                                        │
+│                         ▼                                        │
+│                ┌─────────────────┐                               │
+│                │ ALL PASS?       │                               │
+│                └────────┬────────┘                               │
+│                         │                                        │
+│          ┌──────────────┴──────────────┐                         │
+│          │ YES                         │ NO                      │
+│          ▼                             ▼                         │
+│  ┌──────────────────┐          ┌──────────────────┐              │
+│  │ Epic             │          │ Feedback to      │              │
+│  │ Completion       │          │ Architect        │              │
+│  └──────────────────┘          └──────────────────┘              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Stages Detail
+
+### Stage 1: Epic Initialization
+
+**Agent:** The Architect
+**Purpose:** Break epic into executable stories
+
+The Architect:
+1. Analyzes epic requirements
+2. Identifies user-facing features (stories)
+3. Maps dependencies between stories
+4. Determines execution order
+
+Output: Story specifications with dependency graph
+
+### Stage 2: Story Execution
+
+**Agent:** Orchestrated (via story-completion-flow)
+**Purpose:** Execute each story in dependency order
+
+For each story:
+1. Wait for dependencies to complete
+2. Execute using `story-completion-flow`
+3. Track completion status
+
+Each story internally executes its slices.
+
+### Stage 3: Epic Integration
+
+**Agent:** ACOS-developer
+**Purpose:** Ensure all stories work together as a capability
+
+Actions:
+1. Verify cross-story integration
+2. Run capability-level tests
+3. Test epic-level acceptance criteria
+4. Create integration evidence
+
+### Stage 4: Epic Review
+
+**Agents:** QA + Integration + Performance + Inherited
+**Purpose:** Review the complete capability
+
+Reviews include:
+- QA Reviewer (mandatory)
+- Integration Reviewer (mandatory for epics)
+- Performance Reviewer (mandatory for epics)
+- All reviewers inherited from constituent stories
+
+All reviewers work in parallel, independently.
+
+### Stage 5: Epic Completion
+
+**Agent:** System
+**Purpose:** Finalize epic
+
+Actions:
+1. Update epic status to complete
+2. Notify parent vision
+3. Enable dependent epics (if any)
+
+## Review Scope at Epic Level
+
+Epic review focuses on:
+- **Capability Coherence:** Do all stories deliver the promised capability?
+- **Cross-Story Integration:** Do stories work together seamlessly?
+- **Performance at Scale:** Does the capability perform under load?
+- **User Journey:** Can users accomplish the epic's goal?
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Initialization | Can't break down | Retry with more context |
+| Story Execution | Story fails review | Retry story up to 3x |
+| Integration | Stories don't integrate | Architect intervention |
+| Epic Review | Rejection | Feedback to Architect |
+| Max Iterations | Still failing | Escalate to human |
+
+## Success Metrics
+
+- **Epic Completion Rate:** Target 85%+
+- **Average Story Iterations:** Target <2
+- **Integration Success Rate:** Target 90%+
+
+---
+
+*Epic Completion Flow - Delivering complete capabilities.*

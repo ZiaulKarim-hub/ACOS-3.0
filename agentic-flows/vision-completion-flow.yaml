@@ -1,0 +1,370 @@
+---
+name: vision-completion-flow
+description: Final flow for completing the entire vision - all epics plus final review
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: hierarchical
+rating: UNRATED
+
+stages:
+  - name: vision-planning
+    agent: the-architect
+    input:
+      - vision document (source of truth)
+      - vision interview
+    output:
+      - epic breakdown
+      - dependency graph
+      - execution order
+      - project roadmap
+    success_criteria:
+      - all epics defined
+      - dependencies mapped
+      - roadmap approved by user
+    on_failure: retry
+    max_retries: 2
+
+  - name: epic-execution
+    depends_on: vision-planning
+    type: orchestrated
+    flow: epic-completion-flow
+    iteration: for each epic in order
+    input:
+      - individual epic specifications
+    output:
+      - completed epics
+    success_criteria:
+      - all epics pass review
+    on_failure: retry-epic
+    max_retries: 3
+
+  - name: system-integration
+    depends_on: epic-execution
+    agent: ACOS-developer
+    input:
+      - all completed epics
+      - vision document
+    output:
+      - integrated system
+      - system-level evidence
+    success_criteria:
+      - all epics work together
+      - system functions as a whole
+      - vision acceptance criteria met
+    on_failure: retry
+    max_retries: 2
+
+  - name: vision-review
+    depends_on: system-integration
+    type: parallel
+    agents:
+      - ACOS-qa-reviewer
+      - ACOS-integration-reviewer
+      - ACOS-performance-reviewer
+      - ACOS-security-reviewer
+    input:
+      - complete system
+      - all epic evidence
+      - vision document (source of truth)
+    output:
+      - vision review reports
+    success_criteria:
+      - all reviewers pass
+      - vision fulfillment verified
+    on_failure: retry
+    max_retries: 2
+    special_checks:
+      - check_vision_fulfillment: true
+
+  - name: user-acceptance
+    depends_on: vision-review
+    condition: all reviews passed
+    agent: user
+    input:
+      - completed system
+      - review reports
+      - vision document
+    output:
+      - user approval or feedback
+    success_criteria:
+      - user accepts the system
+    on_failure: feedback-to-architect
+    max_retries: 0
+
+  - name: learning-extraction
+    depends_on: user-acceptance
+    condition: user approved
+    flow: learning-extraction-flow
+    input:
+      - complete project memory
+      - all decisions
+      - all reviews
+      - all feedback
+    output:
+      - extracted learnings
+      - project retrospective
+    success_criteria:
+      - learnings documented
+      - retrospective complete
+    on_failure: retry
+    max_retries: 1
+
+  - name: project-completion
+    depends_on: learning-extraction
+    agent: system
+    input:
+      - user approval
+      - learning extraction complete
+    output:
+      - project marked complete
+      - memory archived
+      - celebration message
+    success_criteria:
+      - status finalized
+      - memory preserved
+    on_failure: retry
+    max_retries: 1
+
+hierarchy:
+  coordinator: the-architect
+  delegation_strategy: epic-by-epic with dependency respect
+  aggregation_strategy: system integration after all epics complete
+
+error_handling:
+  default: retry
+  on_epic_failure: architect-intervention
+  on_user_rejection: feedback-resolution-flow
+  on_max_retries: escalate_to_human
+  notification: [architect, user]
+
+metadata:
+  typical_duration: varies (days to weeks)
+  complexity: maximum
+  use_cases:
+    - complete project delivery
+    - full system implementation
+    - vision realization
+---
+
+# Vision Completion Flow
+
+## Overview
+
+This is the master flow for completing an entire project - from planned vision to delivered system. It orchestrates all epics, performs final system integration, conducts comprehensive vision-level review, and extracts learnings for future projects.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   VISION COMPLETION FLOW                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Vision           │ ← Architect creates epic breakdown         │
+│  │ Planning         │   from source of truth                     │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌───────────────────────────────────────────┐                   │
+│  │          EPIC EXECUTION (ORDERED)          │                   │
+│  │                                            │                   │
+│  │  ┌─────────┐                               │                   │
+│  │  │ Epic 1  │ (Foundation)                  │                   │
+│  │  └────┬────┘                               │                   │
+│  │       │                                    │                   │
+│  │       ▼                                    │                   │
+│  │  ┌─────────┐  ┌─────────┐                  │                   │
+│  │  │ Epic 2  │  │ Epic 3  │ (parallel if    │                   │
+│  │  └────┬────┘  └────┬────┘  independent)   │                   │
+│  │       │            │                       │                   │
+│  │       └─────┬──────┘                       │                   │
+│  │             ▼                              │                   │
+│  │        ┌─────────┐                         │                   │
+│  │        │ Epic N  │                         │                   │
+│  │        └─────────┘                         │                   │
+│  │                                            │                   │
+│  │  Each epic uses: epic-completion-flow     │                   │
+│  └───────────────────────────────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ System           │ ← Full system integration                  │
+│  │ Integration      │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────────────────────────────────┐                │
+│  │           VISION REVIEW (PARALLEL)            │                │
+│  │                                               │                │
+│  │  ┌────────┐ ┌───────────┐ ┌────────┐ ┌─────┐ │                │
+│  │  │ QA     │ │Integration│ │ Perf   │ │Sec  │ │                │
+│  │  │Reviewer│ │ Reviewer  │ │Reviewer│ │Rev  │ │                │
+│  │  └───┬────┘ └─────┬─────┘ └───┬────┘ └──┬──┘ │                │
+│  │      └────────────┼───────────┴─────────┘    │                │
+│  │                   │                          │                │
+│  │    ┌──────────────┴──────────────┐           │                │
+│  │    │ + Vision Fulfillment Check  │           │                │
+│  │    │   (vs Source of Truth)      │           │                │
+│  │    └─────────────────────────────┘           │                │
+│  └──────────────────────┬───────────────────────┘                │
+│                         │                                        │
+│                         ▼                                        │
+│                ┌─────────────────┐                               │
+│                │ ALL PASS?       │                               │
+│                └────────┬────────┘                               │
+│                         │                                        │
+│          ┌──────────────┴──────────────┐                         │
+│          │ YES                         │ NO                      │
+│          ▼                             ▼                         │
+│  ┌──────────────────┐          ┌──────────────────┐              │
+│  │ User             │          │ Feedback to      │              │
+│  │ Acceptance       │          │ Architect        │              │
+│  └────────┬─────────┘          └──────────────────┘              │
+│           │                                                      │
+│     ┌─────┴─────┐                                                │
+│     │           │                                                │
+│  Approved    Feedback                                            │
+│     │           │                                                │
+│     │           └──► Back to Architect                           │
+│     ▼                                                            │
+│  ┌──────────────────┐                                            │
+│  │ Learning         │ ← Extract learnings for future             │
+│  │ Extraction       │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Project          │ ← Archive memory, finalize                 │
+│  │ Completion       │                                            │
+│  └──────────────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│       ┌───────┐                                                  │
+│       │ DONE! │                                                  │
+│       └───────┘                                                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Stages Detail
+
+### Stage 1: Vision Planning
+
+**Agent:** The Architect
+**Purpose:** Create the complete project plan
+
+The Architect:
+1. Reviews vision document (source of truth)
+2. Breaks vision into major capabilities (epics)
+3. Maps dependencies between epics
+4. Creates project roadmap
+5. Gets user approval on the plan
+
+### Stage 2: Epic Execution
+
+**Agent:** Orchestrated (via epic-completion-flow)
+**Purpose:** Execute each epic in dependency order
+
+For each epic:
+1. Wait for dependencies to complete
+2. Execute using `epic-completion-flow`
+3. Track completion status
+
+Each epic internally executes its stories and slices.
+
+### Stage 3: System Integration
+
+**Agent:** ACOS-developer
+**Purpose:** Ensure all epics work together as a complete system
+
+Actions:
+1. Verify cross-epic integration
+2. Run system-level tests
+3. Test vision-level acceptance criteria
+4. Create system evidence
+
+### Stage 4: Vision Review
+
+**Agents:** ALL reviewers
+**Purpose:** Final, comprehensive review
+
+This is the most thorough review:
+- **QA Reviewer:** Complete system correctness
+- **Integration Reviewer:** All components work together
+- **Performance Reviewer:** System performs at scale
+- **Security Reviewer:** System is secure
+
+**Special Check:** Vision Fulfillment
+- Compare delivered system against original vision document
+- Verify ALL user requirements are met
+- Confirm nothing was missed or changed without approval
+
+### Stage 5: User Acceptance
+
+**Agent:** User (human)
+**Purpose:** Final approval from the user
+
+User reviews:
+1. Complete system demonstration
+2. Review reports from all reviewers
+3. Compare against their original vision
+4. Approve or provide feedback
+
+### Stage 6: Learning Extraction
+
+**Flow:** learning-extraction-flow
+**Purpose:** Capture learnings for future projects
+
+Extracts:
+- Patterns that worked well
+- Anti-patterns to avoid
+- Domain knowledge gained
+- Flow effectiveness data
+- Agent performance data
+
+### Stage 7: Project Completion
+
+**Agent:** System
+**Purpose:** Finalize everything
+
+Actions:
+1. Mark project as complete
+2. Archive project memory
+3. Update learning curve with new learnings
+4. Generate final project summary
+
+## Vision Fulfillment Check
+
+The most critical check in the entire system:
+
+```
+For each requirement in vision-document.md:
+  1. Is it implemented? [Yes/No]
+  2. Does it work as specified? [Yes/No]
+  3. Was any deviation approved by user? [Yes/No/N/A]
+
+If ANY requirement fails: REJECT
+```
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Planning | Can't break down | Clarify with user |
+| Epic Execution | Epic fails | Retry epic up to 3x |
+| Integration | Epics don't integrate | Architect intervention |
+| Vision Review | Rejection | Feedback to Architect |
+| User Acceptance | User not satisfied | feedback-resolution-flow |
+| Max Iterations | Still failing | Escalate to human |
+
+## Success Metrics
+
+- **Vision Fulfillment:** 100% (non-negotiable)
+- **User Acceptance Rate:** Target 95%+
+- **Learning Extraction:** All significant learnings captured
+
+---
+
+*Vision Completion Flow - From idea to reality.*

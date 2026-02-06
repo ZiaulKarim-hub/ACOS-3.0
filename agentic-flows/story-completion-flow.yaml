@@ -1,0 +1,277 @@
+---
+name: story-completion-flow
+description: Flow for completing a story by executing all its slices and integration review
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: hierarchical
+rating: UNRATED
+
+stages:
+  - name: story-initialization
+    agent: the-architect
+    input:
+      - story specification
+      - epic context
+    output:
+      - slice breakdown
+      - dependency graph
+      - execution order
+    success_criteria:
+      - all slices defined
+      - dependencies mapped
+      - no circular dependencies
+    on_failure: retry
+    max_retries: 2
+
+  - name: slice-execution
+    depends_on: story-initialization
+    type: orchestrated
+    flow: slice-execution-flow
+    iteration: for each slice in order
+    input:
+      - individual slice specifications
+    output:
+      - completed slices
+    success_criteria:
+      - all slices pass review
+    on_failure: retry-slice
+    max_retries: 3
+
+  - name: story-integration
+    depends_on: slice-execution
+    agent: ACOS-developer
+    input:
+      - all completed slices
+      - story specification
+    output:
+      - integrated feature
+      - integration evidence
+    success_criteria:
+      - slices work together
+      - story acceptance criteria met
+    on_failure: retry
+    max_retries: 2
+
+  - name: story-review
+    depends_on: story-integration
+    type: parallel
+    agents:
+      - ACOS-qa-reviewer
+      - ACOS-integration-reviewer
+      - (inherited from slices)
+    input:
+      - integrated feature
+      - all slice evidence
+      - story specification
+    output:
+      - story review reports
+    success_criteria:
+      - all reviewers pass
+    on_failure: retry
+    max_retries: 2
+
+  - name: story-completion
+    depends_on: story-review
+    condition: all reviews passed
+    agent: system
+    input:
+      - passed review confirmation
+    output:
+      - story marked complete
+      - epic notified
+    success_criteria:
+      - status updated
+      - parent epic notified
+    on_failure: retry
+    max_retries: 1
+
+hierarchy:
+  coordinator: the-architect
+  delegation_strategy: slice-by-slice with dependency respect
+  aggregation_strategy: integration after all slices complete
+
+error_handling:
+  default: retry
+  on_slice_failure: architect-intervention
+  on_max_retries: escalate_to_human
+  notification: architect
+
+metadata:
+  typical_duration: varies
+  complexity: high
+  use_cases:
+    - feature implementation
+    - multi-component changes
+    - user-facing features
+---
+
+# Story Completion Flow
+
+## Overview
+
+This flow orchestrates the completion of a user story by executing all its constituent slices in dependency order, then performing integration testing and story-level review.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    STORY COMPLETION FLOW                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Story            │                                            │
+│  │ Initialization   │ ← Architect breaks down story              │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌───────────────────────────────────────────┐                   │
+│  │         SLICE EXECUTION (ORDERED)          │                   │
+│  │                                            │                   │
+│  │  ┌─────────┐                               │                   │
+│  │  │ Slice 1 │ ──────────────────┐           │                   │
+│  │  └────┬────┘                   │           │                   │
+│  │       │ (dependency)           │           │                   │
+│  │       ▼                        │           │                   │
+│  │  ┌─────────┐  ┌─────────┐     │           │                   │
+│  │  │ Slice 2 │  │ Slice 3 │ (parallel if    │                   │
+│  │  └────┬────┘  └────┬────┘  no dependency) │                   │
+│  │       │            │                       │                   │
+│  │       └─────┬──────┘                       │                   │
+│  │             ▼                              │                   │
+│  │        ┌─────────┐                         │                   │
+│  │        │ Slice N │                         │                   │
+│  │        └─────────┘                         │                   │
+│  │                                            │                   │
+│  │  Each slice uses: slice-execution-flow    │                   │
+│  └───────────────────────────────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Story            │ ← Verify slices integrate                  │
+│  │ Integration      │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────────────────────────────────┐                │
+│  │              STORY REVIEW (PARALLEL)          │                │
+│  │                                               │                │
+│  │  ┌──────────┐  ┌─────────────┐  ┌──────────┐ │                │
+│  │  │ QA       │  │ Integration │  │ Inherited│ │                │
+│  │  │ Reviewer │  │ Reviewer    │  │ Reviewers│ │                │
+│  │  └────┬─────┘  └──────┬──────┘  └────┬─────┘ │                │
+│  │       └───────────────┼──────────────┘       │                │
+│  └───────────────────────┼──────────────────────┘                │
+│                          │                                        │
+│                          ▼                                        │
+│                 ┌─────────────────┐                               │
+│                 │ ALL PASS?       │                               │
+│                 └────────┬────────┘                               │
+│                          │                                        │
+│           ┌──────────────┴──────────────┐                        │
+│           │ YES                         │ NO                      │
+│           ▼                             ▼                        │
+│  ┌──────────────────┐          ┌──────────────────┐              │
+│  │ Story            │          │ Feedback to      │              │
+│  │ Completion       │          │ Architect        │              │
+│  └──────────────────┘          └──────────────────┘              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Stages Detail
+
+### Stage 1: Story Initialization
+
+**Agent:** The Architect
+**Purpose:** Break story into executable slices
+
+The Architect:
+1. Analyzes story requirements
+2. Identifies natural boundaries for slices
+3. Maps dependencies between slices
+4. Determines execution order
+
+Output: Slice specifications with dependency graph
+
+### Stage 2: Slice Execution
+
+**Agent:** Orchestrated (Developer per slice)
+**Purpose:** Execute each slice in dependency order
+
+For each slice:
+1. Wait for dependencies to complete
+2. Execute using `slice-execution-flow`
+3. Track completion status
+
+Parallel execution allowed for independent slices.
+
+### Stage 3: Story Integration
+
+**Agent:** ACOS-developer
+**Purpose:** Ensure all slices work together
+
+Actions:
+1. Verify component integration
+2. Run integration tests
+3. Test story-level acceptance criteria
+4. Create integration evidence
+
+### Stage 4: Story Review
+
+**Agents:** QA + Integration + Inherited
+**Purpose:** Review the complete story
+
+Reviews include:
+- All slice reviewers (inherited)
+- Integration reviewer (mandatory)
+- QA reviewer (mandatory)
+
+All reviewers work in parallel, independently.
+
+### Stage 5: Story Completion
+
+**Agent:** System
+**Purpose:** Finalize story
+
+Actions:
+1. Update story status to complete
+2. Notify parent epic
+3. Enable dependent stories (if any)
+
+## Dependency Handling
+
+```
+Example Dependency Graph:
+
+Slice 1 ──┐
+          ├──► Slice 3 ──┐
+Slice 2 ──┘              ├──► Slice 5
+               Slice 4 ──┘
+
+Execution Order:
+1. [Slice 1, Slice 2] (parallel)
+2. [Slice 3, Slice 4] (parallel, after 1&2 complete)
+3. [Slice 5] (after 3&4 complete)
+```
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Initialization | Can't break down | Retry with more context |
+| Slice Execution | Slice fails review | Retry slice up to 3x |
+| Integration | Slices don't work together | Architect intervention |
+| Story Review | Rejection | Feedback to Architect |
+| Any | Max retries exceeded | Escalate to human |
+
+## Success Metrics
+
+- **Story Completion Rate:** Target 90%+
+- **Average Slice Iterations:** Target <2
+- **Integration Success Rate:** Target 95%+
+
+---
+
+*Story Completion Flow - Features delivered through coordinated slices.*

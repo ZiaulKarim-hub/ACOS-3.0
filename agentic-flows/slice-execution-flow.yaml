@@ -1,0 +1,348 @@
+---
+name: slice-execution-flow
+description: Standard flow for executing a single slice from assignment through review
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: linear
+rating: UNRATED
+
+stages:
+  - name: assignment-receipt
+    agent: ACOS-developer
+    input:
+      - handoff from architect
+      - slice specification
+      - allowed files list
+    output:
+      - acknowledged assignment
+      - clarification requests (if any)
+    success_criteria:
+      - assignment understood
+      - all dependencies verified complete
+      - no blocking questions
+    on_failure: escalate
+    max_retries: 0
+
+  - name: implementation
+    depends_on: assignment-receipt
+    agent: ACOS-developer
+    input:
+      - slice specification
+      - allowed files
+      - applicable skills
+    output:
+      - implemented code
+      - code rationale documentation
+    success_criteria:
+      - all acceptance criteria addressed
+      - only allowed files modified
+      - code compiles/builds
+    on_failure: retry
+    max_retries: 3
+
+  - name: evidence-creation
+    depends_on: implementation
+    agent: ACOS-developer
+    input:
+      - implemented code
+      - acceptance criteria
+    output:
+      - evidence bundle
+      - summary document
+    success_criteria:
+      - all evidence files created
+      - verification steps documented
+      - ready for review
+    on_failure: retry
+    max_retries: 2
+
+  - name: handoff-to-review
+    depends_on: evidence-creation
+    agent: ACOS-developer
+    input:
+      - evidence bundle
+      - implementation summary
+    output:
+      - handoff document in memory/handoffs/developer-to-reviewer/
+    success_criteria:
+      - handoff document created
+      - evidence path specified
+      - ready_for_review: true
+    on_failure: retry
+    max_retries: 1
+
+  - name: review-assignment
+    depends_on: handoff-to-review
+    agent: system
+    input:
+      - handoff document
+      - review-rules.yaml
+    output:
+      - list of assigned reviewers
+    success_criteria:
+      - reviewers assigned per rules
+      - all matching rules applied
+    on_failure: escalate
+    max_retries: 0
+
+  - name: parallel-review
+    depends_on: review-assignment
+    type: parallel
+    agents:
+      - dynamic (based on review-rules.yaml)
+    input:
+      - evidence bundle
+      - source of truth
+      - slice specification
+    output:
+      - individual review reports
+    success_criteria:
+      - each reviewer submits independently
+      - no cross-contamination
+    on_failure: retry
+    max_retries: 1
+
+  - name: review-aggregation
+    depends_on: parallel-review
+    agent: system
+    input:
+      - all review reports
+    output:
+      - aggregated verdict
+      - combined feedback (if rejected)
+    success_criteria:
+      - all verdicts collected
+      - final verdict determined
+    on_failure: escalate
+    max_retries: 0
+
+  - name: feedback-to-architect
+    depends_on: review-aggregation
+    condition: verdict == REJECTED
+    agent: system
+    input:
+      - all review feedback
+    output:
+      - feedback handoff to architect
+    success_criteria:
+      - all feedback consolidated
+      - handoff created
+    on_failure: escalate
+    max_retries: 0
+
+  - name: completion
+    depends_on: review-aggregation
+    condition: verdict == PASSED
+    agent: system
+    input:
+      - passed review confirmation
+    output:
+      - slice marked complete
+      - next slice ready
+    success_criteria:
+      - status updated
+      - parent story notified
+    on_failure: retry
+    max_retries: 1
+
+error_handling:
+  default: retry
+  on_max_retries: escalate_to_human
+  notification: architect
+
+metadata:
+  typical_duration: varies
+  complexity: medium
+  use_cases:
+    - standard slice implementation
+    - bug fixes
+    - feature additions
+---
+
+# Slice Execution Flow
+
+## Overview
+
+This flow orchestrates the execution of a single slice from initial assignment through implementation, evidence creation, and review. It's the fundamental work unit flow in ACOS.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SLICE EXECUTION FLOW                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Assignment       │                                            │
+│  │ Receipt          │ ← Handoff from Architect                   │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Implementation   │ ← Developer writes code                    │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Evidence         │ ← Developer creates evidence bundle        │
+│  │ Creation         │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Handoff to       │ ← Handoff document created                 │
+│  │ Review           │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Review           │ ← System assigns reviewers per rules       │
+│  │ Assignment       │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────────────────────────────────┐                │
+│  │              PARALLEL REVIEW                  │                │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐          │                │
+│  │  │ QA     │  │Security│  │ Perf   │  ...     │                │
+│  │  │Reviewer│  │Reviewer│  │Reviewer│          │                │
+│  │  └────┬───┘  └────┬───┘  └───┬────┘          │                │
+│  │       └───────────┼──────────┘                │                │
+│  └───────────────────┼──────────────────────────┘                │
+│                      │                                            │
+│                      ▼                                            │
+│  ┌──────────────────┐                                            │
+│  │ Review           │                                            │
+│  │ Aggregation      │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ├──────────────────────────────┐                       │
+│           │ REJECTED                     │ PASSED                │
+│           ▼                              ▼                       │
+│  ┌──────────────────┐           ┌──────────────────┐             │
+│  │ Feedback to      │           │ Completion       │             │
+│  │ Architect        │           │                  │             │
+│  └──────────────────┘           └──────────────────┘             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Stages Detail
+
+### Stage 1: Assignment Receipt
+
+**Agent:** ACOS-developer
+**Purpose:** Receive and understand the work assignment
+
+The developer:
+1. Reads handoff from `memory/handoffs/architect-to-developer/`
+2. Verifies understanding of objective
+3. Checks dependencies are complete
+4. Raises clarification requests if needed
+
+### Stage 2: Implementation
+
+**Agent:** ACOS-developer
+**Purpose:** Write the code to fulfill the slice requirements
+
+The developer:
+1. Applies relevant skills
+2. Implements code within allowed files only
+3. Addresses all acceptance criteria
+4. Documents rationale in `memory/code-rationale/`
+
+### Stage 3: Evidence Creation
+
+**Agent:** ACOS-developer
+**Purpose:** Create proof of completion
+
+Creates evidence bundle in `.acos/evidence/[DATE]/[SLICE-ID]/`:
+- `before/baseline-status.log`
+- `after/modified-files.txt`
+- `after/git-diff.patch`
+- `verify.log`
+- `Summary.md`
+
+### Stage 4: Handoff to Review
+
+**Agent:** ACOS-developer
+**Purpose:** Signal completion and request review
+
+Creates handoff in `memory/handoffs/developer-to-reviewer/`:
+- Specifies evidence bundle path
+- Lists acceptance criteria addressed
+- Sets `ready_for_review: true`
+
+### Stage 5: Review Assignment
+
+**Agent:** System (automatic)
+**Purpose:** Determine which reviewers should review
+
+Based on `review-rules.yaml`:
+1. Analyzes file paths
+2. Analyzes code content
+3. Assigns matching reviewers
+4. QA Reviewer always included
+
+### Stage 6: Parallel Review
+
+**Agents:** Dynamic based on rules
+**Purpose:** Independent review by multiple specialists
+
+Each reviewer:
+1. Reviews against source of truth
+2. Cannot see other reviewers' feedback
+3. Cannot see Architect decisions
+4. Submits independent verdict
+
+### Stage 7: Review Aggregation
+
+**Agent:** System (automatic)
+**Purpose:** Combine all review verdicts
+
+Rules:
+- ALL reviewers must PASS for slice to pass
+- ANY REJECT means slice is rejected
+- Feedback is consolidated for architect
+
+### Stage 8: Feedback to Architect (if rejected)
+
+**Agent:** System (automatic)
+**Purpose:** Provide consolidated feedback
+
+Creates handoff in `memory/handoffs/reviewer-to-architect/`:
+- All issues from all reviewers
+- Severity classifications
+- Required fixes
+
+### Stage 9: Completion (if passed)
+
+**Agent:** System (automatic)
+**Purpose:** Mark slice complete and progress
+
+Actions:
+- Update slice status
+- Notify parent story
+- Enable dependent slices
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Assignment | Unclear requirements | Escalate to Architect |
+| Implementation | Build fails | Retry up to 3 times |
+| Evidence | Missing files | Retry up to 2 times |
+| Review | Reviewer unavailable | Retry once |
+| Any | Max retries exceeded | Escalate to human |
+
+## Success Metrics
+
+- **Completion Rate:** Target 95%+
+- **First-Pass Review Rate:** Target 70%+
+- **Average Iterations:** Target <2
+
+---
+
+*Slice Execution Flow - The fundamental unit of ACOS work.*

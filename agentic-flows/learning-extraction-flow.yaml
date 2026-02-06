@@ -1,0 +1,325 @@
+---
+name: learning-extraction-flow
+description: Flow for extracting learnings at project completion
+version: 1.0.0
+created_by: human
+created_date: 2026-01-31
+
+type: linear
+rating: UNRATED
+
+stages:
+  - name: memory-collection
+    agent: ACOS-memory-agent
+    input:
+      - complete project memory
+    output:
+      - all decisions
+      - all reviews
+      - all feedback
+      - all handoffs
+    success_criteria:
+      - all relevant memory collected
+    on_failure: retry
+    max_retries: 2
+
+  - name: decision-analysis
+    depends_on: memory-collection
+    agent: ACOS-learning-curve-agent
+    input:
+      - all decisions from memory
+    output:
+      - decision outcomes
+      - successful patterns
+      - failed approaches
+    success_criteria:
+      - each decision analyzed
+      - outcomes documented
+    on_failure: retry
+    max_retries: 2
+
+  - name: review-pattern-analysis
+    depends_on: memory-collection
+    agent: ACOS-learning-curve-agent
+    input:
+      - all reviews from memory
+    output:
+      - common issues found
+      - recurring problems
+      - effective solutions
+    success_criteria:
+      - patterns identified
+      - frequencies calculated
+    on_failure: retry
+    max_retries: 2
+
+  - name: flow-effectiveness-analysis
+    depends_on: memory-collection
+    agent: ACOS-learning-curve-agent
+    input:
+      - all flow executions
+      - success/failure data
+    output:
+      - flow ratings
+      - bottleneck identification
+      - improvement suggestions
+    success_criteria:
+      - each flow rated
+      - metrics calculated
+    on_failure: retry
+    max_retries: 2
+
+  - name: agent-effectiveness-analysis
+    depends_on: memory-collection
+    agent: ACOS-learning-curve-agent
+    input:
+      - agent performance data
+      - task completion rates
+    output:
+      - agent ratings
+      - skill effectiveness
+    success_criteria:
+      - agents rated
+      - skills evaluated
+    on_failure: retry
+    max_retries: 2
+
+  - name: learning-synthesis
+    depends_on:
+      - decision-analysis
+      - review-pattern-analysis
+      - flow-effectiveness-analysis
+      - agent-effectiveness-analysis
+    agent: ACOS-learning-curve-agent
+    input:
+      - all analysis outputs
+    output:
+      - synthesized learnings
+      - categorized by type
+    success_criteria:
+      - learnings extracted
+      - properly categorized
+    on_failure: retry
+    max_retries: 2
+
+  - name: learning-documentation
+    depends_on: learning-synthesis
+    agent: ACOS-learning-curve-agent
+    input:
+      - synthesized learnings
+    output:
+      - learning entries in learning-curve/
+      - updated index.yaml
+    success_criteria:
+      - all learnings documented
+      - index updated
+    on_failure: retry
+    max_retries: 2
+
+  - name: retrospective-creation
+    depends_on: learning-documentation
+    agent: ACOS-learning-curve-agent
+    input:
+      - all learnings
+      - project metrics
+    output:
+      - project retrospective document
+    success_criteria:
+      - retrospective complete
+      - saved to learning-curve/project-retrospectives/
+    on_failure: retry
+    max_retries: 2
+
+error_handling:
+  default: retry
+  on_max_retries: complete_with_partial
+  notification: architect
+
+metadata:
+  typical_duration: varies
+  complexity: medium
+  use_cases:
+    - project completion
+    - knowledge extraction
+    - continuous improvement
+---
+
+# Learning Extraction Flow
+
+## Overview
+
+This flow is executed at project completion to extract valuable learnings that will improve future projects. It analyzes all project decisions, reviews, and outcomes to identify patterns, anti-patterns, and domain knowledge.
+
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  LEARNING EXTRACTION FLOW                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐                                            │
+│  │ Memory           │ ← Collect all project memory               │
+│  │ Collection       │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌───────────────────────────────────────────────────────────┐   │
+│  │              PARALLEL ANALYSIS                             │   │
+│  │                                                            │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │   │
+│  │  │ Decision    │  │ Review      │  │ Flow        │        │   │
+│  │  │ Analysis    │  │ Pattern     │  │ Effective-  │        │   │
+│  │  │             │  │ Analysis    │  │ ness        │        │   │
+│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │   │
+│  │         │                │                │               │   │
+│  │  ┌──────┴────────────────┴────────────────┴──────┐        │   │
+│  │  │                                               │        │   │
+│  │  │  ┌─────────────┐                              │        │   │
+│  │  │  │ Agent       │                              │        │   │
+│  │  │  │ Effective-  │                              │        │   │
+│  │  │  │ ness        │                              │        │   │
+│  │  │  └──────┬──────┘                              │        │   │
+│  │  │         │                                     │        │   │
+│  │  └─────────┴─────────────────────────────────────┘        │   │
+│  └───────────────────────────────────────────────────────────┘   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Learning         │ ← Combine all analyses                     │
+│  │ Synthesis        │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Learning         │ ← Write to learning-curve/                 │
+│  │ Documentation    │                                            │
+│  └────────┬─────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                            │
+│  │ Retrospective    │ ← Create project retrospective             │
+│  │ Creation         │                                            │
+│  └──────────────────┘                                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Stages Detail
+
+### Stage 1: Memory Collection
+
+**Agent:** ACOS-memory-agent
+**Purpose:** Gather all relevant project data
+
+Collects:
+- All decisions from `memory/decisions/`
+- All reviews from `memory/reviews/`
+- All feedback from `memory/feedback-history/`
+- All handoffs from `memory/handoffs/`
+
+### Stage 2-5: Parallel Analysis
+
+Four types of analysis run (can be parallel):
+
+#### Decision Analysis
+- Which decisions worked?
+- Which decisions failed?
+- Why did they succeed/fail?
+- What patterns emerge?
+
+#### Review Pattern Analysis
+- What issues were found most often?
+- By which reviewers?
+- What fixes were common?
+- What problems kept recurring?
+
+#### Flow Effectiveness Analysis
+- Which flows succeeded most?
+- Which flows had problems?
+- Where were bottlenecks?
+- What improvements are needed?
+
+#### Agent Effectiveness Analysis
+- Which agents performed well?
+- Which skills were most useful?
+- Were there capability gaps?
+
+### Stage 6: Learning Synthesis
+
+**Agent:** ACOS-learning-curve-agent
+**Purpose:** Combine all analyses into coherent learnings
+
+Categories:
+- **Patterns** (what to do)
+- **Anti-patterns** (what not to do)
+- **Domain knowledge** (technical insights)
+- **Process improvements** (workflow insights)
+
+### Stage 7: Learning Documentation
+
+**Agent:** ACOS-learning-curve-agent
+**Purpose:** Persist learnings to the learning curve
+
+Creates:
+- Individual learning entries in appropriate directories
+- Updates `learning-curve/index.yaml`
+- Sets initial confidence levels
+
+### Stage 8: Retrospective Creation
+
+**Agent:** ACOS-learning-curve-agent
+**Purpose:** Create comprehensive project retrospective
+
+Uses template from `learning-curve/project-retrospectives/.template.md`
+
+Includes:
+- Project summary and metrics
+- What went well
+- What could be improved
+- All learnings extracted
+- Recommendations for future
+
+## Learning Categories
+
+| Category | Location | Examples |
+|----------|----------|----------|
+| Architectural Patterns | `patterns/architectural/` | Effective system designs |
+| Implementation Patterns | `patterns/implementation/` | Code patterns that worked |
+| Review Patterns | `patterns/review/` | Effective review practices |
+| Workflow Patterns | `patterns/workflow/` | Process improvements |
+| Common Mistakes | `anti-patterns/common-mistakes/` | Frequent errors to avoid |
+| Failed Approaches | `anti-patterns/failed-approaches/` | Strategies that don't work |
+| Domain Knowledge | `domain-knowledge/[domain]/` | Technical insights by area |
+
+## Confidence Assignment
+
+New learnings start with confidence based on evidence:
+
+| Evidence | Initial Confidence |
+|----------|-------------------|
+| Single occurrence, clear outcome | LOW |
+| Multiple occurrences, consistent outcome | MEDIUM |
+| Strong evidence, clear causation | HIGH |
+
+Confidence increases as learnings are successfully applied in future projects.
+
+## Error Handling
+
+| Stage | Error | Response |
+|-------|-------|----------|
+| Memory Collection | Missing data | Continue with available |
+| Analysis | Analysis fails | Retry up to 2x |
+| Documentation | Write fails | Retry |
+| Any | Max retries | Complete with partial learnings |
+
+This flow should never block project completion - partial learnings are better than none.
+
+## Success Metrics
+
+- **Learnings Extracted:** Target 5+ per project
+- **Categories Covered:** Target 3+ categories
+- **Retrospective Completeness:** All sections filled
+
+---
+
+*Learning Extraction Flow - Every project makes ACOS smarter.*
