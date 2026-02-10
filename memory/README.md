@@ -77,6 +77,16 @@ Different agents have access to different directories based on their role:
 
 Any agent can request information from any memory file through the Memory Agent's RAG retrieval system.
 
+**Vector Search Infrastructure:** The memory system includes a local vector database
+(LanceDB) with Ollama embeddings (`nomic-embed-text`) for semantic search. This enables
+finding relevant documents even when query terms don't match exactly (e.g., searching
+"authentication" finds documents about "login security").
+
+- **Index:** `bash .claude/scripts/rag-index.sh --full` (indexes `memory/` and `learning-curve/`)
+- **Query:** `bash .claude/scripts/rag-query.sh --query "search text"`
+- **Setup:** `bash .claude/scripts/rag/setup.sh` (one-time, requires Ollama)
+- **Fallback:** If vector search is unavailable, the Memory Agent falls back to keyword search via Grep
+
 ## File Templates
 
 Templates for each type of memory file are in the corresponding `.template.md` files.

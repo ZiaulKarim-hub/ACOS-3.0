@@ -13,42 +13,26 @@ ACOS is a sophisticated, self-evolving coding system that:
 
 ## Getting Started
 
-### Step 1: Setup
+### Step 1: Open Claude Code
 
-Add ACOS to your PATH:
+Navigate to your project directory and open Claude Code. ACOS uses native Claude Code primitives — `CLAUDE.md` auto-loads at session start, agents are in `.claude/agents/`, and skills are in `.claude/skills/`.
 
-```bash
-export PATH="$PATH:/path/to/ACOS 3.0/automation-scripts"
+### Step 2: Start Your Project
+
+In Claude Code, type:
+
+```
+/acos-start
 ```
 
-Or create a symlink:
+This will:
+- Initialize directories if needed (`.acos/`, `memory/`, `planning/`)
+- Check for existing vision documents
+- Route you to the appropriate next step
 
-```bash
-ln -s "/path/to/ACOS 3.0/automation-scripts/acos" /usr/local/bin/acos
-```
+### Step 3: Conduct Vision Interview
 
-### Step 2: Initialize Your Project
-
-Navigate to your project directory and run:
-
-```bash
-acos init
-```
-
-This creates (or repairs if partially exists):
-- `.acos/` - ACOS configuration and evidence
-- `memory/` - Project memory storage
-- `planning/` - Epic/Story/Slice plans
-
-The command is idempotent - safe to run multiple times.
-
-### Step 3: Start Your Vision
-
-```bash
-acos start
-```
-
-This automatically launches Claude Code with The Architect ready to talk. The Architect will:
+If starting fresh, ACOS will begin a comprehensive vision interview. The Architect will:
 1. Ask comprehensive questions about your vision
 2. Create detailed requirements
 3. Break it down into Epics → Stories → Slices
@@ -70,10 +54,10 @@ This automatically launches Claude Code with The Architect ready to talk. The Ar
    - Testing
    - Security audits
 
-3. **Flows** (the "how")
-   - Vision Interview Flow
-   - Slice Execution Flow
-   - Feedback Resolution Flow
+3. **Orchestration Skills** (the "how")
+   - Vision Interview (`/acos-interview`)
+   - Slice Execution (`/acos-execute-slice`)
+   - Feedback Resolution (internal)
 
 4. **Memory** (the "context")
    - Source of Truth: Your original vision
@@ -136,16 +120,22 @@ Review rules are human-editable only (in `review-rules.yaml`).
 
 ## Commands Reference
 
-| Command | Description |
-|---------|-------------|
-| `acos init` | Initialize ACOS in current project |
-| `acos start` | Begin vision interview |
-| `acos status` | Show project status |
-| `acos agents list` | List all agents |
-| `acos skills list` | List all skills |
-| `acos flows list` | List all flows |
-| `acos memory search <term>` | Search project memory |
-| `acos review rules` | Show review rules |
+All commands are native Claude Code skills, invocable from the `/` menu:
+
+| Skill | Description |
+|-------|-------------|
+| `/acos-start` | Start or resume project |
+| `/acos-plan` | Create planning documents |
+| `/acos-execute-slice` | Execute a slice end-to-end |
+| `/acos-execute-story` | Execute a full story |
+| `/acos-execute-epic` | Execute a full epic |
+| `/acos-complete-vision` | Complete entire vision |
+| `/acos-review` | Trigger reviews |
+| `/acos-status` | Show project status |
+| `/acos-decide` | Create Architecture Decision Record |
+| `/acos-handoff` | Create session handoff |
+| `/acos-learn` | Extract learnings |
+| `/acos-interview` | Conduct vision interview |
 
 ## Tips for Success
 
@@ -159,7 +149,7 @@ Review rules are human-editable only (in `review-rules.yaml`).
 
 3. **Check the learning curve**
    - Before starting similar work, see what ACOS learned
-   - `acos learn search <topic>`
+   - Use `/acos-learn` in Claude Code to review learnings
 
 4. **Stay in the loop**
    - You can always provide commands
@@ -188,10 +178,10 @@ Your Project/
 
 ## Getting Help
 
-- Run `acos help` for command reference
-- Check `agents/` for agent documentation
-- Check `skills/` for skill guides
-- Check `agentic-flows/` for flow details
+- Type `/` in Claude Code to see all available ACOS skills
+- Agents are in `.claude/agents/` (auto-discovered)
+- Skills are in `.claude/skills/` (auto-discovered)
+- Run `acos help` from the terminal for a reference
 
 ---
 

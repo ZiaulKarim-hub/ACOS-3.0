@@ -1,0 +1,70 @@
+# Quality Gates Configuration
+# Copy this file to .acos/config/quality-gates.yaml and customize for your project.
+#
+# Each gate defines a shell command that ACOS runs during slice execution.
+# ACOS is toolchain-agnostic — define whatever commands your project uses.
+#
+# Fields:
+#   command:  Shell command to execute (must exit 0 on success)
+#   required: true = failure blocks the workflow; false = advisory only
+#   stage:    "pre-review" = runs after dev, before reviewers
+#             "post-review" = runs after reviewers approve
+
+gates:
+  # --- JavaScript/TypeScript example ---
+  # lint:
+  #   command: "npx eslint . --max-warnings 0"
+  #   required: true
+  #   stage: pre-review
+  #
+  # typecheck:
+  #   command: "npx tsc --noEmit"
+  #   required: true
+  #   stage: pre-review
+  #
+  # unit-tests:
+  #   command: "npx vitest run"
+  #   required: true
+  #   stage: pre-review
+  #
+  # integration-tests:
+  #   command: "npx vitest run --config vitest.integration.config.ts"
+  #   required: false
+  #   stage: post-review
+
+  # --- Python example ---
+  # lint:
+  #   command: "ruff check ."
+  #   required: true
+  #   stage: pre-review
+  #
+  # typecheck:
+  #   command: "mypy src/"
+  #   required: true
+  #   stage: pre-review
+  #
+  # unit-tests:
+  #   command: "pytest tests/unit"
+  #   required: true
+  #   stage: pre-review
+  #
+  # integration-tests:
+  #   command: "pytest tests/integration"
+  #   required: false
+  #   stage: post-review
+
+  # --- Rust example ---
+  # lint:
+  #   command: "cargo clippy -- -D warnings"
+  #   required: true
+  #   stage: pre-review
+  #
+  # build:
+  #   command: "cargo build"
+  #   required: true
+  #   stage: pre-review
+  #
+  # unit-tests:
+  #   command: "cargo test"
+  #   required: true
+  #   stage: pre-review

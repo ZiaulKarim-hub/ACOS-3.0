@@ -1,0 +1,72 @@
+# GitHub Actions CI Workflow — Annotated Example
+# This is a reference template. The ci-cd-generation skill generates a
+# project-specific version based on your quality-gates.yaml and toolchain.
+#
+# Copy and customize, or use /ci-cd-generation to auto-generate.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Pre-review quality gates — these must pass for PRs to merge
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Toolchain setup (generated based on project) ---
+      # Node.js example:
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'           # or 'pnpm', 'yarn', 'bun'
+      # - run: npm ci              # or pnpm install, bun install
+      #
+      # Python example:
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      # - run: pip install -r requirements.txt
+      #
+      # Rust example:
+      # - uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: stable
+
+      # --- Quality gates (one step per gate from quality-gates.yaml) ---
+
+      # Required gate: lint
+      # Maps to: gates.lint.command
+      # - name: Lint
+      #   run: npx eslint . --max-warnings 0
+
+      # Required gate: typecheck
+      # Maps to: gates.typecheck.command
+      # - name: Type Check
+      #   run: npx tsc --noEmit
+
+      # Required gate: unit-tests
+      # Maps to: gates.unit-tests.command
+      # - name: Unit Tests
+      #   run: npx vitest run
+
+  # Post-review gates — optional, run on merge to main
+  post-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Same toolchain setup as above ---
+
+      # Optional gate: integration-tests
+      # Maps to: gates.integration-tests.command
+      # continue-on-error because required: false
+      # - name: Integration Tests
+      #   run: npx vitest run --config vitest.integration.config.ts
+      #   continue-on-error: true
