@@ -144,37 +144,31 @@ cd my-project
 > - `mkdir` = "make directory" (create a folder)
 > - `my-project` = The name of your folder (you can change this)
 
-### Step 4: Initialize ACOS
+### Step 4: Open Claude Code
 
-```bash
-acos init
-```
+You have two ways to open Claude Code with ACOS:
 
-You should see:
-```
-═══════════════════════════════════════════════════════════════
-  ACOS v3.0 - Agentic Coding Orchestration System
-═══════════════════════════════════════════════════════════════
-
-✓ Created .acos directory
-✓ Created memory structure
-✓ Created planning structure
-✓ Created project config
-
-✓ ACOS initialized successfully!
-```
-
-> **Note:** `acos init` is idempotent - safe to run multiple times. If some directories already exist, it will skip them and create any missing pieces. This means you can use it to repair a partial initialization.
-
-### Step 5: Start Your Vision
+**Option A: Use the ACOS CLI** (recommended)
 
 ```bash
 acos start
 ```
 
-This automatically launches Claude Code and The Architect greets you immediately. You're now ready for the most important part - telling The Architect what you want to build!
+This always opens a **fresh new session**. ACOS context loads automatically.
 
-> **Note:** ACOS runs with `--dangerously-skip-permissions` which means Claude can edit files and run commands without asking for confirmation each time. This makes the workflow seamless but means you should only use ACOS in trusted project directories.
+**Option B: Open Claude Code directly**
+
+```bash
+claude
+```
+
+Then type `/acos-start` inside Claude Code to initialize your project.
+
+> **Tip:** If you closed your terminal mid-project and want to pick up where you left off, use `acos resume` instead. This reopens your previous session with all the conversation history intact.
+
+### Step 5: Start Your Vision
+
+Once inside Claude Code, the `/acos-start` skill initializes your project structure (if needed) and begins the vision interview. The Architect greets you immediately. You're now ready for the most important part - telling The Architect what you want to build!
 
 ---
 
@@ -360,13 +354,19 @@ At any time, you can tell ACOS:
 | "Show me the status" | See project progress |
 | "I want to focus on X first" | Prioritize certain features |
 
-### Checking Progress
+### Resuming a Previous Session
 
-Run this command to see how your project is going:
+If you close your terminal and want to continue where you left off:
 
 ```bash
-acos status
+acos resume
 ```
+
+This reopens the last conversation you had in that project directory, with all the history and context preserved.
+
+### Checking Progress
+
+In Claude Code, type `/acos-status` to see how your project is going.
 
 ---
 
@@ -403,7 +403,7 @@ ACOS has safeguards:
 - You can always intervene
 
 If something seems stuck, you can:
-1. Check the status: `acos status`
+1. Check the status: type `/acos-status` in Claude Code
 2. Ask what's happening
 3. Provide guidance
 
@@ -419,31 +419,17 @@ Yes! All decisions, reviews, and communications are saved in the `memory/` folde
 
 ## Troubleshooting
 
-### "Command not found: acos"
+### "I don't see ACOS skills in the menu"
 
-ACOS isn't set up in your system's PATH. You need to tell your computer where to find it.
-
-**Option 1: Use the full path**
-```bash
-/path/to/ACOS\ 3.0/automation-scripts/acos init
-```
-
-**Option 2: Add to PATH (one-time setup)**
-
-On Mac, add this to your `~/.zshrc` file:
-```bash
-export PATH="$PATH:/path/to/ACOS 3.0/automation-scripts"
-```
-
-Then restart your terminal.
+Make sure you're running Claude Code from a directory that contains the `.claude/` folder with ACOS agents and skills. The CLAUDE.md file at the project root auto-loads at session start.
 
 ### "ACOS not initialized"
 
-You need to run `acos init` in your project folder first.
+Type `/acos-start` in Claude Code — it will create the necessary directories automatically.
 
 ### "I'm confused about what's happening"
 
-Run `acos status` to see the current state. If still confused, just ask in Claude Code: "What's the current status of my project?"
+Type `/acos-status` in Claude Code to see the current state. If still confused, just ask: "What's the current status of my project?"
 
 ### "The interview is taking forever"
 
@@ -469,11 +455,11 @@ Here are common terms you might encounter:
 | **Database** | Where information is stored |
 | **Endpoint** | A URL where your app can receive or send data |
 | **Evidence Bundle** | Proof that work was completed |
-| **Flow** | A defined sequence of steps |
+| **Orchestration Skill** | A workflow that coordinates multiple agents in a sequence |
 | **Frontend** | The part of an app you see and interact with |
 | **Git** | A system for tracking changes to code |
 | **Handoff** | When one agent passes work to another |
-| **Initialize** | Set up for the first time |
+| **Initialize** | Set up for the first time (handled by `/acos-start`) |
 | **Memory** | Where ACOS stores information about your project |
 | **Path** | The location of a file or folder |
 | **Repository** | A project folder tracked by Git |
@@ -487,8 +473,8 @@ Here are common terms you might encounter:
 
 ## Summary
 
-1. **Initialize:** `acos init` in your project folder
-2. **Start:** `acos start` and open Claude Code
+1. **Start a session:** Run `acos start` (fresh) or `acos resume` (continue previous)
+2. **Initialize:** Type `/acos-start` if not auto-prompted
 3. **Describe:** Tell The Architect what you want to build
 4. **Answer:** Respond to clarifying questions
 5. **Wait:** ACOS builds and reviews each piece
@@ -507,7 +493,7 @@ Remember:
 
 ## Need More Help?
 
-- Run `acos help` for command reference
+- Type `/` in Claude Code to see all available ACOS commands
 - Check the `QUICK-START.md` for a shorter guide
 - Look at `PRD.md` for technical details (if curious)
 - Ask questions directly in Claude Code

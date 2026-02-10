@@ -1,482 +1,76 @@
 #!/bin/bash
 
 # ═══════════════════════════════════════════════════════════════════════════
-# ACOS v3.0 - Command Line Interface
+# ACOS v3.0 - Command Line Interface (Native Claude Code Edition)
 # ═══════════════════════════════════════════════════════════════════════════
 #
-# Usage: acos <command> [options]
+# ACOS commands are now native Claude Code skills, discoverable in the /menu.
+# This CLI is a thin wrapper for convenience.
 #
 # ═══════════════════════════════════════════════════════════════════════════
 
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Get ACOS root directory (parent of automation-scripts)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ACOS_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Helper Functions
-# ═══════════════════════════════════════════════════════════════════════════
+NC='\033[0m'
 
 print_header() {
     echo -e "${PURPLE}"
     echo "═══════════════════════════════════════════════════════════════"
     echo "  ACOS v3.0 - Agentic Coding Orchestration System"
+    echo "  Native Claude Code Edition"
     echo "═══════════════════════════════════════════════════════════════"
     echo -e "${NC}"
 }
 
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
-
-print_info() {
-    echo -e "${CYAN}ℹ $1${NC}"
-}
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Commands
-# ═══════════════════════════════════════════════════════════════════════════
-
-cmd_help() {
-    print_header
-    echo "Usage: acos <command> [options]"
-    echo ""
-    echo "Commands:"
-    echo ""
-    echo -e "  ${CYAN}init${NC}              Initialize ACOS in the current project"
-    echo -e "  ${CYAN}start${NC}             Start a new vision interview"
-    echo -e "  ${CYAN}status${NC}            Show current project status"
-    echo -e "  ${CYAN}agents${NC}            List available agents"
-    echo -e "  ${CYAN}skills${NC}            List available skills"
-    echo -e "  ${CYAN}flows${NC}             List available flows"
-    echo -e "  ${CYAN}memory${NC}            Memory management commands"
-    echo -e "  ${CYAN}learn${NC}             Learning curve commands"
-    echo -e "  ${CYAN}review${NC}            Review management commands"
-    echo -e "  ${CYAN}help${NC}              Show this help message"
-    echo ""
-    echo "Examples:"
-    echo ""
-    echo "  acos init                  # Initialize ACOS in current directory"
-    echo "  acos start                 # Start new vision interview"
-    echo "  acos status                # Show project status"
-    echo "  acos agents list           # List all agents"
-    echo "  acos memory search 'auth'  # Search memory for 'auth'"
-    echo ""
-}
-
-cmd_init() {
-    print_header
-    print_info "Initializing ACOS in current project..."
-
-    # Create .acos directory and subdirectories
-    if [ -d ".acos" ]; then
-        print_warning ".acos directory already exists"
-    else
-        print_success "Created .acos directory"
-    fi
-    # Always ensure subdirectories exist (mkdir -p is idempotent)
-    mkdir -p .acos/evidence
-    mkdir -p .acos/config
-
-    # Create local memory structure
-    if [ -d "memory" ]; then
-        print_warning "memory directory already exists"
-    else
-        mkdir -p memory/source-of-truth
-        mkdir -p memory/decisions
-        mkdir -p memory/reviews/slice-reviews
-        mkdir -p memory/reviews/story-reviews
-        mkdir -p memory/reviews/epic-reviews
-        mkdir -p memory/reviews/vision-reviews
-        mkdir -p memory/handoffs/architect-to-developer
-        mkdir -p memory/handoffs/developer-to-reviewer
-        mkdir -p memory/handoffs/reviewer-to-architect
-        mkdir -p memory/handoffs/developer-to-architect
-        mkdir -p memory/code-rationale
-        mkdir -p memory/feedback-history
-        print_success "Created memory structure"
-    fi
-
-    # Create planning directory
-    if [ -d "planning" ]; then
-        print_warning "planning directory already exists"
-    else
-        mkdir -p planning/epics
-        mkdir -p planning/stories
-        mkdir -p planning/slices
-        print_success "Created planning structure"
-    fi
-
-    # Create config file
-    if [ -f ".acos/config/project.yaml" ]; then
-        print_warning "Project config already exists"
-    else
-        cat > .acos/config/project.yaml << 'EOF'
-# ACOS Project Configuration
-project:
-  name: ""  # Set your project name
-  initialized: true
-  acos_version: "3.0.0"
-
-settings:
-  review_depth: maximum  # Cannot be changed - human-editable only in review-rules.yaml
-  auto_evidence: true
-
-status:
-  phase: not_started  # not_started | interview | planning | execution | complete
-  current_epic: null
-  current_story: null
-  current_slice: null
-EOF
-        print_success "Created project config"
-    fi
-
-    echo ""
-    print_success "ACOS initialized successfully!"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Run 'acos start' to begin vision interview"
-    echo "  2. Or open Claude Code and describe your vision"
-    echo ""
-}
-
-cmd_start() {
-    print_header
-
-    if [ ! -d ".acos" ]; then
-        print_error "ACOS not initialized. Run 'acos init' first."
-        exit 1
-    fi
-
-    print_info "Launching The Architect..."
-    echo ""
-
-    # Get current project directory
-    PROJECT_DIR="$(pwd)"
-
-    # Launch Claude Code with Architect persona and skip permissions
-    claude --dangerously-skip-permissions -p "$(cat <<EOF
-You are **The Architect** from ACOS v3.0.
-
-IMPORTANT: Read your full agent definition now:
-$ACOS_ROOT/agents/super/the-architect.md
-
-You must follow all instructions in that file. Key rules:
-1. Always refer to yourself as "The Architect"
-2. Conduct comprehensive vision interviews - never accept one-liners
-3. Follow ACOS v3.0 protocols for planning and orchestration
-4. Store all artifacts in the proper memory/ and planning/ directories
-
-System locations:
-- ACOS 3.0 root: $ACOS_ROOT
-- Current project: $PROJECT_DIR
-- Agents: $ACOS_ROOT/agents/
-- Skills: $ACOS_ROOT/skills/
-- Flows: $ACOS_ROOT/agentic-flows/
-
-Begin now by:
-1. Reading your agent definition file
-2. Greeting the user as The Architect
-3. Starting the vision interview to understand what they want to build
-EOF
-)"
-}
-
-cmd_status() {
-    print_header
-
-    if [ ! -d ".acos" ]; then
-        print_error "ACOS not initialized. Run 'acos init' first."
-        exit 1
-    fi
-
-    echo "Project Status"
-    echo "──────────────────────────────────────────────────"
-
-    # Check for vision document
-    if [ -f "memory/source-of-truth/vision-document.md" ]; then
-        print_success "Vision document: Created"
-    else
-        print_warning "Vision document: Not created"
-    fi
-
-    # Count slices
-    SLICE_COUNT=$(find planning/slices -name "*.yaml" 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "Slices defined: ${CYAN}${SLICE_COUNT}${NC}"
-
-    # Count completed reviews
-    REVIEW_COUNT=$(find memory/reviews -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "Reviews completed: ${CYAN}${REVIEW_COUNT}${NC}"
-
-    # Count decisions
-    DECISION_COUNT=$(find memory/decisions -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "Decisions recorded: ${CYAN}${DECISION_COUNT}${NC}"
-
-    echo ""
-}
-
-cmd_agents() {
-    print_header
-
-    case "${1:-list}" in
-        list)
-            echo "Available Agents"
-            echo "──────────────────────────────────────────────────"
-            echo ""
-            echo -e "${PURPLE}Super Agents:${NC}"
-            for f in "$ACOS_ROOT/agents/super"/*.md; do
-                if [ -f "$f" ]; then
-                    name=$(basename "$f" .md)
-                    desc=$(grep "^description:" "$f" | cut -d':' -f2- | xargs)
-                    echo -e "  ${CYAN}$name${NC}"
-                    echo "    $desc"
-                fi
-            done
-            echo ""
-            echo -e "${PURPLE}Execution Agents:${NC}"
-            for f in "$ACOS_ROOT/agents/execution"/*.md; do
-                if [ -f "$f" ]; then
-                    name=$(basename "$f" .md)
-                    desc=$(grep "^description:" "$f" | cut -d':' -f2- | xargs)
-                    echo -e "  ${CYAN}$name${NC}"
-                    echo "    $desc"
-                fi
-            done
-            echo ""
-            echo -e "${PURPLE}Reviewer Agents:${NC}"
-            for f in "$ACOS_ROOT/agents/reviewers"/*.md; do
-                if [ -f "$f" ]; then
-                    name=$(basename "$f" .md)
-                    desc=$(grep "^description:" "$f" | cut -d':' -f2- | xargs)
-                    echo -e "  ${CYAN}$name${NC}"
-                    echo "    $desc"
-                fi
-            done
-            echo ""
-            echo -e "${PURPLE}Support Agents:${NC}"
-            for f in "$ACOS_ROOT/agents/support"/*.md; do
-                if [ -f "$f" ]; then
-                    name=$(basename "$f" .md)
-                    desc=$(grep "^description:" "$f" | cut -d':' -f2- | xargs)
-                    echo -e "  ${CYAN}$name${NC}"
-                    echo "    $desc"
-                fi
-            done
-            ;;
-        show)
-            if [ -z "$2" ]; then
-                print_error "Usage: acos agents show <agent-name>"
-                exit 1
-            fi
-            agent_file=$(find "$ACOS_ROOT/agents" -name "$2.md" | head -1)
-            if [ -f "$agent_file" ]; then
-                cat "$agent_file"
-            else
-                print_error "Agent '$2' not found"
-            fi
-            ;;
-        *)
-            print_error "Unknown agents command: $1"
-            echo "Usage: acos agents [list|show <name>]"
-            ;;
-    esac
-}
-
-cmd_skills() {
-    print_header
-
-    case "${1:-list}" in
-        list)
-            echo "Available Skills"
-            echo "──────────────────────────────────────────────────"
-
-            for category in "$ACOS_ROOT/skills"/*; do
-                if [ -d "$category" ]; then
-                    cat_name=$(basename "$category")
-                    echo ""
-                    echo -e "${PURPLE}${cat_name^}:${NC}"
-                    for f in "$category"/*.md; do
-                        if [ -f "$f" ]; then
-                            name=$(basename "$f" .md)
-                            desc=$(grep "^description:" "$f" 2>/dev/null | cut -d':' -f2- | xargs)
-                            echo -e "  ${CYAN}$name${NC}"
-                            [ -n "$desc" ] && echo "    $desc"
-                        fi
-                    done
-                fi
-            done
-            ;;
-        *)
-            print_error "Unknown skills command: $1"
-            echo "Usage: acos skills [list]"
-            ;;
-    esac
-}
-
-cmd_flows() {
-    print_header
-
-    case "${1:-list}" in
-        list)
-            echo "Available Agentic Flows"
-            echo "──────────────────────────────────────────────────"
-            echo ""
-            for f in "$ACOS_ROOT/agentic-flows"/*.yaml; do
-                if [ -f "$f" ]; then
-                    name=$(basename "$f" .yaml)
-                    desc=$(grep "^description:" "$f" | cut -d':' -f2- | xargs)
-                    rating=$(grep "^rating:" "$f" | cut -d':' -f2- | xargs)
-                    type=$(grep "^type:" "$f" | cut -d':' -f2- | xargs)
-                    echo -e "${CYAN}$name${NC} [${type}] (${rating})"
-                    echo "  $desc"
-                    echo ""
-                fi
-            done
-            ;;
-        *)
-            print_error "Unknown flows command: $1"
-            echo "Usage: acos flows [list]"
-            ;;
-    esac
-}
-
-cmd_memory() {
-    print_header
-
-    case "${1:-help}" in
-        search)
-            if [ -z "$2" ]; then
-                print_error "Usage: acos memory search <query>"
-                exit 1
-            fi
-            echo "Searching memory for: $2"
-            echo "──────────────────────────────────────────────────"
-            grep -r "$2" memory/ 2>/dev/null || echo "No results found"
-            ;;
-        list)
-            echo "Memory Contents"
-            echo "──────────────────────────────────────────────────"
-            find memory -type f -name "*.md" -o -name "*.yaml" 2>/dev/null | head -50
-            ;;
-        *)
-            echo "Memory Commands"
-            echo "──────────────────────────────────────────────────"
-            echo ""
-            echo "  acos memory search <query>  - Search memory for a term"
-            echo "  acos memory list            - List memory files"
-            ;;
-    esac
-}
-
-cmd_learn() {
-    print_header
-
-    case "${1:-help}" in
-        list)
-            echo "Learning Curve Contents"
-            echo "──────────────────────────────────────────────────"
-            find "$ACOS_ROOT/learning-curve" -name "*.md" -type f 2>/dev/null | grep -v template | head -50
-            ;;
-        search)
-            if [ -z "$2" ]; then
-                print_error "Usage: acos learn search <query>"
-                exit 1
-            fi
-            echo "Searching learnings for: $2"
-            echo "──────────────────────────────────────────────────"
-            grep -r "$2" "$ACOS_ROOT/learning-curve/" 2>/dev/null || echo "No results found"
-            ;;
-        *)
-            echo "Learning Curve Commands"
-            echo "──────────────────────────────────────────────────"
-            echo ""
-            echo "  acos learn list            - List all learnings"
-            echo "  acos learn search <query>  - Search learnings"
-            ;;
-    esac
-}
-
-cmd_review() {
-    print_header
-
-    case "${1:-help}" in
-        rules)
-            echo "Review Rules"
-            echo "──────────────────────────────────────────────────"
-            cat "$ACOS_ROOT/review-rules.yaml"
-            ;;
-        pending)
-            echo "Pending Reviews"
-            echo "──────────────────────────────────────────────────"
-            find memory/handoffs/developer-to-reviewer -name "*.yaml" 2>/dev/null || echo "No pending reviews"
-            ;;
-        *)
-            echo "Review Commands"
-            echo "──────────────────────────────────────────────────"
-            echo ""
-            echo "  acos review rules    - Show review rules"
-            echo "  acos review pending  - Show pending reviews"
-            ;;
-    esac
-}
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Main Entry Point
-# ═══════════════════════════════════════════════════════════════════════════
-
 case "${1:-help}" in
-    init)
-        cmd_init "${@:2}"
-        ;;
     start)
-        cmd_start "${@:2}"
+        print_header
+        echo "Starting new ACOS session..."
+        echo ""
+        # Fresh session — CLAUDE.md auto-loads at session start
+        claude
         ;;
-    status)
-        cmd_status "${@:2}"
-        ;;
-    agents)
-        cmd_agents "${@:2}"
-        ;;
-    skills)
-        cmd_skills "${@:2}"
-        ;;
-    flows)
-        cmd_flows "${@:2}"
-        ;;
-    memory)
-        cmd_memory "${@:2}"
-        ;;
-    learn)
-        cmd_learn "${@:2}"
-        ;;
-    review)
-        cmd_review "${@:2}"
+    resume)
+        print_header
+        echo "Resuming previous ACOS session..."
+        echo ""
+        # Resume the most recent conversation for this directory
+        claude --resume
         ;;
     help|--help|-h)
-        cmd_help
+        print_header
+        echo -e "Usage: ${CYAN}acos <command>${NC}"
+        echo ""
+        echo "Commands:"
+        echo -e "  ${CYAN}start${NC}                  Start a new ACOS session"
+        echo -e "  ${CYAN}resume${NC}                 Resume the previous session"
+        echo -e "  ${CYAN}help${NC}                   Show this help message"
+        echo ""
+        echo "Once inside Claude Code, use these skills:"
+        echo ""
+        echo -e "  ${CYAN}/acos-start${NC}            Initialize and route project"
+        echo -e "  ${CYAN}/acos-plan${NC}             Create planning documents"
+        echo -e "  ${CYAN}/acos-execute-slice${NC}    Execute a slice"
+        echo -e "  ${CYAN}/acos-execute-story${NC}    Execute a story"
+        echo -e "  ${CYAN}/acos-execute-epic${NC}     Execute an epic"
+        echo -e "  ${CYAN}/acos-complete-vision${NC}  Complete entire vision"
+        echo -e "  ${CYAN}/acos-review${NC}           Trigger reviews"
+        echo -e "  ${CYAN}/acos-status${NC}           View project status"
+        echo -e "  ${CYAN}/acos-decide${NC}           Create ADR"
+        echo -e "  ${CYAN}/acos-handoff${NC}          Create session handoff"
+        echo -e "  ${CYAN}/acos-learn${NC}            Extract learnings"
+        echo -e "  ${CYAN}/acos-interview${NC}        Conduct vision interview"
+        echo ""
+        echo "Agents are in .claude/agents/ (auto-discovered)"
+        echo "Skills are in .claude/skills/ (auto-discovered)"
+        echo ""
         ;;
     *)
-        print_error "Unknown command: $1"
+        echo "Unknown command: $1"
+        echo "Run 'acos help' for available commands."
         echo ""
-        cmd_help
+        echo "Most commands have moved to native Claude Code skills."
+        echo "Start Claude Code and use /acos-* commands instead."
         exit 1
         ;;
 esac

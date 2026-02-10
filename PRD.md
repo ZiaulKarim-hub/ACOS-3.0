@@ -2,9 +2,9 @@
 
 ## Agentic Coding Orchestration System
 
-**Version:** 3.0
-**Date:** 2026-01-31
-**Status:** Final Architecture
+**Version:** 3.0 (Native Claude Code Edition)
+**Date:** 2026-02-07
+**Status:** Final Architecture - Fully Migrated
 
 ---
 
@@ -16,14 +16,14 @@
 4. [The Five Pillars](#4-the-five-pillars)
 5. [Agents](#5-agents)
 6. [Skills](#6-skills)
-7. [Agentic Flows](#7-agentic-flows)
+7. [Orchestration Skills](#7-orchestration-skills)
 8. [Memory System](#8-memory-system)
 9. [Learning Curve System](#9-learning-curve-system)
 10. [Review System](#10-review-system)
 11. [Vision Interview Process](#11-vision-interview-process)
 12. [User Interaction Model](#12-user-interaction-model)
-13. [Folder Structure](#13-folder-structure)
-14. [CLI Commands](#14-cli-commands)
+13. [Mechanical Enforcement](#13-mechanical-enforcement)
+14. [Folder Structure](#14-folder-structure)
 15. [Safeguards & Constraints](#15-safeguards--constraints)
 16. [Glossary](#16-glossary)
 
@@ -31,7 +31,7 @@
 
 ## 1. Executive Summary
 
-ACOS v3.0 (Agentic Coding Orchestration System) is a self-evolving, perpetual coding engine that transforms user visions into production-ready software through autonomous agent collaboration.
+ACOS v3.0 (Agentic Coding Orchestration System) is a multi-agent orchestration system for software development built entirely on **native Claude Code primitives** — agents, skills, hooks, and scripts. It transforms user visions into production-ready software through autonomous agent collaboration with mechanically enforced quality gates.
 
 ### Core Value Proposition
 
@@ -39,22 +39,24 @@ ACOS v3.0 (Agentic Coding Orchestration System) is a self-evolving, perpetual co
 
 The user provides a vision in plain English. ACOS:
 1. Interviews the user to fully understand requirements
-2. Creates a comprehensive plan (Epics → Stories → Slices)
+2. Creates a comprehensive plan (Epics > Stories > Slices)
 3. Executes the plan through specialized agents
 4. Verifies all work through independent, rigorous review
 5. Learns from each project to improve future performance
 
-### What's New in v3.0
+### Native Claude Code Implementation
 
-| Feature | v2.0 | v3.0 |
-|---------|------|------|
-| Agent Creation | Fixed set | Dynamic (Architect creates new agents) |
-| Skills | Embedded in agents | Separate, granular, reusable |
-| Flows | Implicit | Explicit, rated, evolvable |
-| Memory | Session-based | Persistent, RAG-based, tiered |
-| Learning | None | Cross-project learning curve |
-| Review Control | Architect decides | Rules-based, human-controlled |
-| Vision Input | One-liner accepted | Comprehensive interview required |
+ACOS v3.0 uses zero custom infrastructure. Everything is built on native Claude Code features:
+
+| Concept | Implementation |
+|---------|----------------|
+| Agents | `.claude/agents/*.md` with YAML frontmatter |
+| Skills | `.claude/skills/*/SKILL.md` with auto-discovery |
+| Orchestration | Skills with `context: fork` + `agent: architect` |
+| Enforcement | PreToolUse/PostToolUse/SubagentStop hooks in `.claude/settings.local.json` |
+| Scope control | Shell scripts in `.claude/scripts/` |
+| Project context | `CLAUDE.md` at project root (auto-loads) |
+| Memory | Native `memory: project` and `memory: user` fields |
 
 ---
 
@@ -62,30 +64,31 @@ The user provides a vision in plain English. ACOS:
 
 ### Core Principles
 
-1. **Modularity**: Agents, skills, and flows are interchangeable building blocks
+1. **Modularity**: Agents, skills, and orchestration skills are interchangeable building blocks
 2. **Adaptability**: The system creates new components when needed
 3. **Quality Obsession**: Maximum rigor at every level, no shortcuts
 4. **Independence**: Reviewers operate outside the Architect's influence
 5. **Transparency**: Full memory, audit trails, nothing hidden
 6. **Evolution**: System learns and improves over time
 7. **Human Control**: User controls critical safeguards
+8. **Mechanical Enforcement**: Trust boundaries are enforced by tool restrictions and hooks, not by instructions alone
 
 ### The Adversarial Model
 
 ACOS operates on a trust-but-verify model:
 
-- **The Architect** plans and orchestrates
-- **Execution Agents** implement the plan
-- **Review Agents** verify independently (they don't trust the Architect)
-- **The Loop** continues until reviewers are satisfied
+- **The Architect** plans and orchestrates (via `Task()`)
+- **The Developer** implements the plan (scoped by `check-scope.sh`)
+- **Reviewers** verify independently (read-only, isolated, parallel)
+- **The Loop** continues until reviewers are satisfied (max 3 iterations)
 
-This adversarial approach catches errors before they propagate.
+This adversarial approach catches errors before they propagate. The **Independence Wall** between the Architect and the review system is mechanically enforced — the Architect literally cannot read `review-rules.yaml` (blocked by a PreToolUse hook), and reviewers literally cannot write files (blocked by `disallowedTools` and `permissionMode: plan`).
 
 ### Memory Philosophy
 
 **"Nothing is lost. Nothing is summarized."**
 
-Every interaction, decision, review, and handoff is stored in full. Agents access relevant context through RAG (Retrieval-Augmented Generation), ensuring they have the information they need without context limits.
+Every interaction, decision, review, and handoff is stored in full. Agents access relevant context through the Memory Agent, ensuring they have the information they need without context limits.
 
 ---
 
@@ -94,68 +97,98 @@ Every interaction, decision, review, and handoff is stored in full. Agents acces
 ### High-Level Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              ACOS v3.0                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                        USER (Vibe Coder)                             │    │
-│  │  • Provides vision via interview                                     │    │
-│  │  • Edits review-rules.yaml (only human can)                          │    │
-│  │  • Approves Architect evolution                                      │    │
-│  │  • Intervenes when needed                                            │    │
-│  └──────────────────────────────┬──────────────────────────────────────┘    │
-│                                 │                                            │
-│                                 ▼                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                      THE ARCHITECT (Super Agent)                     │    │
-│  │                                                                      │    │
-│  │  • Conducts vision interview                                         │    │
-│  │  • Creates plans (Vision → Epic → Story → Slice)                     │    │
-│  │  • Selects/creates agents, skills, flows                             │    │
-│  │  • Responds to review feedback                                       │    │
-│  │  • CANNOT influence review process                                   │    │
-│  └──────────────────────────────┬──────────────────────────────────────┘    │
-│                                 │                                            │
-│           ┌─────────────────────┼─────────────────────┐                      │
-│           │                     │                     │                      │
-│           ▼                     ▼                     ▼                      │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐              │
-│  │   EXECUTION     │  │    SUPPORT      │  │    REVIEWERS    │              │
-│  │   AGENTS        │  │    AGENTS       │  │   (Independent) │              │
-│  │                 │  │                 │  │                 │              │
-│  │  • Developer    │  │  • Memory Agent │  │  • QA Reviewer  │              │
-│  │  • Data         │  │    (RAG-based)  │  │  • Security     │              │
-│  │    Collector    │  │                 │  │  • Performance  │              │
-│  │  • Analyzer     │  │  • Learning     │  │  • Integration  │              │
-│  │  • Writer       │  │    Curve Agent  │  │                 │              │
-│  │  • [Custom]     │  │                 │  │  Assigned by    │              │
-│  │                 │  │                 │  │  RULES only     │              │
-│  └────────┬────────┘  └─────────────────┘  └────────┬────────┘              │
-│           │                     │                   │                        │
-│           └─────────────────────┼───────────────────┘                        │
-│                                 │                                            │
-│                                 ▼                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         MEMORY SYSTEM                                │    │
-│  │                                                                      │    │
-│  │  • Tier 1: Source of Truth (always loaded)                           │    │
-│  │  • Tier 2: Role-based access                                         │    │
-│  │  • Tier 3: On-demand via RAG                                         │    │
-│  │  • Full history, nothing summarized                                  │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                      LEARNING CURVE (Global)                         │    │
-│  │                                                                      │    │
-│  │  • Cross-project knowledge                                           │    │
-│  │  • Technical + Process learnings                                     │    │
-│  │  • Flow effectiveness ratings                                        │    │
-│  │  • Extracted at project end                                          │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------+
+|                           ACOS v3.0                                    |
+|                   (Native Claude Code Primitives)                      |
++-----------------------------------------------------------------------+
+|                                                                        |
+|  +------------------------------------------------------------------+ |
+|  |                    USER (Vibe Coder)                               | |
+|  |  - Provides vision via interview                                   | |
+|  |  - Edits review-rules.yaml (only human can)                        | |
+|  |  - Approves agent changes                                          | |
+|  +-------------------------------+----------------------------------+ |
+|                                  |                                     |
+|                                  v                                     |
+|  +------------------------------------------------------------------+ |
+|  |               ARCHITECT (architect.md)                             | |
+|  |  model: opus | permissionMode: default | maxTurns: 100            | |
+|  |                                                                    | |
+|  |  - Conducts vision interviews                                      | |
+|  |  - Plans: Vision > Epic > Story > Slice                            | |
+|  |  - Delegates via Task(developer), Task(reviewer)                   | |
+|  |  - Responds to review feedback                                     | |
+|  |  - BLOCKED from reading review-rules.yaml (hook enforced)          | |
+|  |                                                                    | |
+|  |  Skills: acos-plan, acos-interview, acos-feedback-resolution,      | |
+|  |          agent-creation, skill-creation                            | |
+|  +------+----------+----------+----------+--------------------------+ |
+|         |          |          |          |                              |
+|    Task(dev)  Task(qa)  Task(sec)  Task(perf)  Task(intg)              |
+|         |          |          |          |          |                   |
+|         v          v          v          v          v                   |
+|  +-----------+ +--------------------------------------------------+   |
+|  | DEVELOPER | |              REVIEWERS (Independent)              |   |
+|  | opus      | |  qa-reviewer     | permissionMode: plan           |  |
+|  | acceptEdit| |  security-reviewer| disallowedTools: Write,Edit,  |  |
+|  | maxT: 50  | |  performance-rev  |   Task,WebSearch,WebFetch     |  |
+|  |           | |  integration-rev  | maxTurns: 30                  |  |
+|  | check-    | |                   |                               |  |
+|  | scope.sh  | |  Assigned by review-rules.yaml (script-mediated)  |  |
+|  | enforced  | |  Run in parallel, isolated contexts               |  |
+|  +-----------+ +--------------------------------------------------+   |
+|                                                                        |
+|  +------------------------------------------------------------------+ |
+|  |                    SUPPORT AGENTS                                  | |
+|  |  memory-agent (sonnet, memory: project) - RAG retrieval           | |
+|  |  learning-agent (opus, memory: user) - Cross-project learning     | |
+|  +------------------------------------------------------------------+ |
+|                                                                        |
+|  +------------------------------------------------------------------+ |
+|  |               ENFORCEMENT LAYER (.claude/scripts/)                 | |
+|  |  check-scope.sh        - Blocks writes outside active slice        | |
+|  |  block-review-rules.sh - Blocks Architect from review-rules.yaml   | |
+|  |  post-write-evidence.sh - Logs all file modifications              | |
+|  |  assign-reviewers.sh   - Programmatic reviewer assignment          | |
+|  |  create-evidence-bundle.sh - Initializes evidence structure        | |
+|  |  validate-evidence.sh  - Verifies evidence completeness            | |
+|  |  log-agent-completion.sh - Tracks agent completions                | |
+|  |  archive-project.sh    - Archives completed projects               | |
+|  +------------------------------------------------------------------+ |
+|                                                                        |
+|  +------------------------------------------------------------------+ |
+|  |               HOOKS (.claude/settings.local.json)                  | |
+|  |  PreToolUse[Write|Edit]  -> check-scope.sh                        | |
+|  |  PostToolUse[Write|Edit] -> post-write-evidence.sh                | |
+|  |  SubagentStop            -> log-agent-completion.sh               | |
+|  +------------------------------------------------------------------+ |
+|                                                                        |
++-----------------------------------------------------------------------+
 ```
+
+### How Delegation Works
+
+The Architect orchestrates all work through Claude Code's native `Task()` primitive:
+
+```
+Architect
+    |
+    +-- Task(developer) -----> Developer works in isolated context
+    |                          - Receives: slice spec, acceptance criteria, files_allowed
+    |                          - Returns: structured YAML with status, files_modified, evidence_path
+    |
+    +-- Task(qa-reviewer) ---> QA works in isolated context (parallel)
+    |                          - Receives: evidence bundle, source of truth, slice spec
+    |                          - Returns: structured YAML with verdict, scores, issues
+    |
+    +-- Task(security-reviewer) -> Security works in isolated context (parallel)
+    |
+    +-- Task(memory-agent) ---> Memory retrieval
+    |
+    +-- Task(learning-agent) -> Learning extraction
+```
+
+Each `Task()` call creates an **isolated subprocess**. The sub-agent cannot see the parent's conversation, other sub-agents' output, or anything outside its own context. This is the mechanical basis of the Independence Wall.
 
 ---
 
@@ -165,127 +198,122 @@ ACOS v3.0 is built on five foundational pillars:
 
 ### Pillar 1: Agents (Who)
 
-Specialized workers that execute atomic tasks. Can be created dynamically by the Architect.
+8 specialized agents defined in `.claude/agents/*.md`. Each has tool restrictions, permission modes, and hooks that mechanically enforce their boundaries. The Architect spawns all others via `Task()`.
 
 ### Pillar 2: Skills (What)
 
-Granular task definitions that describe objectives, requirements, and success criteria. Agents use skills as blueprints.
+27 skills defined in `.claude/skills/*/SKILL.md`. Auto-discovered by Claude Code. Cover methodology (backend-coding, testing, security-audit) and orchestration (slice execution, review, learning extraction).
 
-### Pillar 3: Flows (How)
+### Pillar 3: Orchestration Skills (How)
 
-Execution patterns that define how work moves between agents. Rated based on success/failure history.
+13 orchestration skills replace the old YAML flow system. They use `context: fork` to run in isolated contexts and `agent: architect` to run as the Architect persona. They orchestrate multi-agent workflows by calling `Task()` to delegate work.
 
 ### Pillar 4: Memory (Context)
 
-Tiered storage system with RAG-based retrieval. Nothing is lost or summarized. Full audit trail.
+Project memory stored in `memory/` with structured directories. Agents access memory through the Memory Agent or directly via file reads. Source-of-truth documents are always accessible. Cross-project persistence via `memory: user` field.
 
 ### Pillar 5: Learning (Evolution)
 
-Cross-project knowledge accumulation. System improves over time by learning from successes and failures.
+Cross-project knowledge accumulation in `learning-curve/`. The Learning Agent (`memory: user`) extracts patterns from completed work and applies them to new projects. Knowledge persists across projects via Claude Code's native user-scoped memory.
 
 ---
 
 ## 5. Agents
 
-### 5.1 Agent Categories
+### 5.1 Agent Roster
 
-#### Super Agents
+All agents are defined in `.claude/agents/` and auto-discovered by Claude Code.
 
-| Agent | Description | Special Status |
-|-------|-------------|----------------|
-| The Architect | Strategic brain of the system | Evolution requires HUMAN approval |
+| Agent | Model | Mode | Max Turns | Role |
+|-------|-------|------|-----------|------|
+| `architect` | opus | default | 100 | Strategic orchestrator. Plans, delegates, responds to feedback. |
+| `developer` | opus | acceptEdits | 50 | Implements code within scope boundaries. Creates evidence. |
+| `qa-reviewer` | opus | plan (read-only) | 30 | Adversarial quality verification. |
+| `security-reviewer` | opus | plan (read-only) | 30 | OWASP-focused security analysis. |
+| `performance-reviewer` | opus | plan (read-only) | 30 | Algorithmic/resource efficiency. |
+| `integration-reviewer` | opus | plan (read-only) | 30 | Cross-component coherence. |
+| `memory-agent` | sonnet | default | 20 | RAG retrieval and memory organization. |
+| `learning-agent` | opus | default | 30 | Cross-project knowledge extraction. |
 
-#### Execution Agents
+### 5.2 Agent Categories
 
-| Agent | Description |
-|-------|-------------|
-| ACOS-developer | Implements code following plans |
-| ACOS-data-collector | Gathers data from sources/internet |
-| ACOS-data-analyzer | Processes and analyzes data |
-| ACOS-report-writer | Creates reports and documentation |
-| [Custom] | Created by Architect as needed |
+**Orchestration (Architect)**
+- Has `Task()` access to spawn ALL other agents
+- Has PreToolUse hook blocking `review-rules.yaml` reads
+- Has 5 preloaded skills (acos-plan, acos-interview, acos-feedback-resolution, agent-creation, skill-creation)
+- Uses `memory: project` for project-scoped persistence
 
-#### Review Agents
+**Execution (Developer)**
+- Has Write/Edit tools but scoped by `check-scope.sh` hook
+- Has `disallowedTools: WebSearch, WebFetch, Task` (cannot browse or delegate)
+- Has 4 preloaded skills (backend-coding, frontend-coding, database-design, testing)
+- Returns structured evidence on completion
 
-| Agent | Description |
-|-------|-------------|
-| ACOS-qa-reviewer | General quality assurance (ALWAYS required) |
-| ACOS-security-reviewer | Security vulnerabilities and best practices |
-| ACOS-performance-reviewer | Speed, efficiency, scalability |
-| ACOS-integration-reviewer | How components work together |
-| [Custom] | Created by Architect as needed |
+**Review (4 reviewers)**
+- **Mechanically read-only**: `disallowedTools: Write, Edit, Task, WebSearch, WebFetch`
+- **Mechanically isolated**: `permissionMode: plan` prevents any modifications at runtime
+- Each runs in isolated `Task()` context — cannot see Architect decisions, other reviewers, or each other
+- Each returns structured YAML verdict with scores, issues, and required fixes
 
-#### Support Agents
+**Support (memory-agent, learning-agent)**
+- Have Write/Edit for their own domains
+- `disallowedTools: Task, WebSearch, WebFetch` (cannot delegate or browse)
+- memory-agent uses `memory: project`, learning-agent uses `memory: user` (cross-project)
 
-| Agent | Description |
-|-------|-------------|
-| ACOS-memory-agent | Neutral retrieval of relevant memory via RAG |
-| ACOS-learning-curve-agent | Manages cross-project learnings |
+### 5.3 Agent Definition Format (Native)
 
-### 5.2 Agent Creation
-
-The Architect can create new agents when needed:
-
-1. Architect identifies need ("I need a Security Expert Agent")
-2. Architect uses agent-creation skill
-3. Draft agent definition created
-4. QA Reviewer reviews the agent definition
-5. If approved → saved to agents/ folder
-6. If rejected → Architect adjusts and resubmits
-
-### 5.3 Agent Definition Format
-
-```yaml
+```markdown
 ---
-name: ACOS-agent-name
-description: What this agent does
-version: 1.0.0
-created_by: architect | human
-created_date: YYYY-MM-DD
-reviewed_by: qa-reviewer
-review_date: YYYY-MM-DD
-
-category: execution | reviewer | support
-
-tools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Bash
-  - WebSearch
-  - WebFetch
-
-model: opus | sonnet | haiku
-
-memory_access:
-  tier_1: true  # Source of truth
-  tier_2:       # Role-based
-    - decisions/
-    - handoffs/
-  tier_3: true  # On-demand via Memory Agent
+name: agent-name
+description: One-line description for auto-discovery
+tools: Read, Write, Edit, Glob, Grep, Bash
+disallowedTools: Task, WebSearch, WebFetch
+model: opus
+permissionMode: default | acceptEdits | plan
+maxTurns: 30
+skills:
+  - skill-name
+memory: project | user
+hooks:
+  PreToolUse:
+    - matcher: "Read"
+      hooks:
+        - type: command
+          command: ".claude/scripts/block-review-rules-read.sh"
 ---
 
 # Agent Name
 
 ## Role
+[Description of the agent's role and purpose]
 
-[Description of the agent's role]
+## Core Responsibilities
+### 1. [Responsibility]
+[Details and instructions]
 
-## Responsibilities
+## Critical Constraints
+### You CANNOT:
+- [Mechanically enforced constraint]
 
-- [Responsibility 1]
-- [Responsibility 2]
+### You MUST:
+- [Required behavior]
 
-## Constraints
+## Return Value
+[Structured YAML format the agent returns via Task()]
 
-- [What this agent cannot do]
-
-## Protocols
-
-[Detailed instructions for the agent]
+---
+*[Agent Name] - [Tagline]*
 ```
+
+### 5.4 Agent Creation
+
+The Architect can create new agents when needed:
+
+1. Architect identifies need ("I need a specialized agent")
+2. Architect uses the `agent-creation` skill
+3. Agent definition drafted following the native format
+4. **Human approval required** before the agent is deployed
+5. Definition saved to `.claude/agents/`
 
 ---
 
@@ -293,169 +321,137 @@ memory_access:
 
 ### 6.1 Skill Philosophy
 
-Skills are **task definitions**, not execution instructions. They describe:
-- What the task is
-- What the objective is
-- What success looks like
-- What agents might be needed
+Skills are **methodology guides** — they describe how to approach a type of work. There are two categories:
 
-The Architect interprets skills and decides how to execute them.
+- **Methodology Skills** (14): Describe how to do a type of work (coding, testing, security auditing)
+- **Orchestration Skills** (13): Orchestrate multi-agent workflows (slice execution, review, learning)
 
-### 6.2 Skill Categories
+### 6.2 Methodology Skills
 
-```
-skills/
-├── coding/
-│   ├── frontend-coding.md
-│   ├── backend-coding.md
-│   ├── database-design.md
-│   ├── api-design.md
-│   ├── testing-unit.md
-│   ├── testing-integration.md
-│   └── testing-e2e.md
-│
-├── research/
-│   ├── data-collection.md
-│   ├── data-analysis.md
-│   ├── report-writing.md
-│   └── literature-review.md
-│
-├── security/
-│   ├── penetration-testing.md
-│   ├── vulnerability-assessment.md
-│   └── compliance-checking.md
-│
-├── documentation/
-│   ├── technical-writing.md
-│   ├── api-documentation.md
-│   └── user-guide-creation.md
-│
-└── meta/
-    ├── agent-creation.md
-    ├── flow-creation.md
-    ├── skill-creation.md
-    └── vision-interview.md
-```
+All skills live in `.claude/skills/*/SKILL.md` and are auto-discovered by Claude Code.
 
-### 6.3 Skill Definition Format
+| Skill | Description |
+|-------|-------------|
+| `backend-coding` | Server-side logic, APIs, services (Express, Django, FastAPI, etc.) |
+| `frontend-coding` | UI components, client-side logic (React, Vue, Svelte, etc.) |
+| `database-design` | Schema design, migrations, data access (PostgreSQL, MongoDB, etc.) |
+| `testing` | Unit, integration, E2E tests (Jest, Playwright, pytest, etc.) |
+| `bug-investigation` | Systematic bug investigation and root cause analysis |
+| `codebase-analysis` | Analyzing existing codebases and mapping architecture |
+| `technology-research` | Evaluating libraries, comparing approaches |
+| `api-documentation` | API docs, OpenAPI specs, usage examples |
+| `user-guide-writing` | User documentation and getting-started guides |
+| `deployment` | Deploying to production (Vercel, AWS, Docker, K8s, etc.) |
+| `security-audit` | OWASP Top 10 security auditing |
+| `agent-creation` | Creating new ACOS agent definitions (requires human approval) |
+| `skill-creation` | Creating new ACOS skill definitions |
+| `orchestration-creation` | Creating new orchestration skills |
+
+### 6.3 Skill Definition Format (Native)
 
 ```markdown
-# Skill: [Name]
+---
+name: skill-name
+description: Enhanced description for auto-discovery
+disable-model-invocation: true | false
+user-invocable: true | false
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+context: fork                          # Optional: isolated execution
+agent: architect                       # Optional: which agent persona
+---
 
-## Objective
+# Skill Name
 
-[What this skill accomplishes]
+## Purpose
+[What this skill teaches/guides]
 
-## Scope
+## When to Use
+Apply this skill when:
+- [Condition 1]
+- [Condition 2]
 
-### In Scope
-- [What's included]
+## Skill Protocol
+### Phase 1: [Name]
+[Step-by-step instructions]
 
-### Out of Scope
-- [What's not included]
-
-## Success Criteria
-
+## Quality Checklist
 - [ ] [Criterion 1]
-- [ ] [Criterion 2]
 
-## Typical Agents Involved
-
-- [Agent 1]: [Role in this skill]
-- [Agent 2]: [Role in this skill]
-
-## Quality Gates
-
-- [Gate 1]
-- [Gate 2]
-
-## Notes for the Architect
-
-[Guidance on how to use this skill]
+---
+*[Skill Name] - [Tagline]*
 ```
 
-### 6.4 Skill Creation
-
-The Architect can create new skills:
-
-1. Architect identifies need
-2. Creates skill definition
-3. Skill is saved immediately (no review required)
-4. If skill proves ineffective in practice → discarded
+Skills can include supporting files:
+- `templates/` — Template files referenced via `!cat templates/file.md`
+- `examples/` — Code examples for reference
 
 ---
 
-## 7. Agentic Flows
+## 7. Orchestration Skills
 
-### 7.1 Flow Philosophy
+### 7.1 What Are Orchestration Skills?
 
-Flows define **execution patterns** - how work moves between agents. They are:
-- Reusable across projects
-- Rated based on success/failure
-- Can be created by the Architect
-- Discarded if ineffective
+Orchestration skills replace the old YAML flow system. They are skills that use `context: fork` (isolated execution) and `agent: architect` (Architect persona) to orchestrate multi-agent workflows through `Task()` delegation.
 
-### 7.2 Base Flows
+Unlike methodology skills (which are guidance documents), orchestration skills **actively execute** — they spawn sub-agents, collect results, make decisions, and handle failures.
 
-| Flow | Pattern | Best For |
-|------|---------|----------|
-| Linear | A → B → C → D | Sequential dependencies |
-| Parallel | A,B,C simultaneously → D | Independent tasks |
-| Circular | A → B → C → A (until done) | Quality-critical, iterative |
-| Hierarchical | Manager → Workers → Aggregator | Complex decomposition |
+### 7.2 Orchestration Skill Roster
 
-### 7.3 Flow Definition Format
+| Skill | User-Invocable | Description |
+|-------|:---:|-------------|
+| `/acos-start` | Yes | Initialize project and route to next step based on current state. |
+| `/acos-interview` | Yes | Comprehensive vision interview (9 question categories, max 10 rounds). |
+| `/acos-plan` | Yes | Create planning documents at any level (vision/epic/story/slice). |
+| `/acos-execute-slice` | Yes | **Core workflow.** Developer -> Evidence -> Reviewer Assignment -> Parallel Review -> Pass/Reject loop. |
+| `/acos-execute-story` | Yes | Execute all slices in dependency order, then story-level integration review. |
+| `/acos-execute-epic` | Yes | Execute all stories, then epic-level review with all 4 reviewers. |
+| `/acos-complete-vision` | Yes | Execute all epics, vision-level review, user acceptance, learning extraction, archival. |
+| `/acos-review` | Yes | Trigger reviews for completed work at any level. |
+| `/acos-decide` | Yes | Create Architecture Decision Records (ADRs). |
+| `/acos-handoff` | Yes | Create session handoff documents for continuity. |
+| `/acos-status` | Yes | Display comprehensive project dashboard. |
+| `/acos-learn` | Yes | Extract learnings from completed work. |
+| `acos-feedback-resolution` | No (internal) | Resolve reviewer feedback. Max 3 iterations before human escalation. |
 
-```yaml
----
-name: flow-name
-description: What this flow does
-created_by: architect | human
-created_date: YYYY-MM-DD
-last_updated: YYYY-MM-DD
+### 7.3 The Core Execution Flow
 
-stats:
-  total_uses: 0
-  successes: 0
-  failures: 0
-  rating: UNRATED  # Shows percentage after minimum_threshold uses
-  minimum_threshold: 10
+The most important orchestration skill is `acos-execute-slice`. Here's how it works:
 
-best_for:
-  - [Use case 1]
-  - [Use case 2]
-
-not_recommended_for:
-  - [Anti-pattern 1]
----
-
-# Flow: [Name]
-
-## Pattern
-
-[Visual representation]
-
-## Stages
-
-1. [Stage 1]: [Description]
-2. [Stage 2]: [Description]
-
-## Transitions
-
-- [Stage 1] → [Stage 2]: [Condition]
-
-## Termination
-
-- Success: [Condition]
-- Failure: [Condition]
 ```
-
-### 7.4 Flow Rating System
-
-- **Rating Calculation**: successes / total_uses
-- **Minimum Threshold**: 10 uses before rating is shown
-- **Selection**: Architect prefers higher-rated flows for similar tasks
-- **Deletion**: Flows that consistently fail are discarded
+1. Read Slice Spec (planning/slices/SLICE-XXX.yaml)
+   |
+2. Set Active Slice (.acos/config/active-slice.yaml)
+   |  - Enables check-scope.sh hook enforcement
+   |
+3. Create Evidence Bundle (.acos/evidence/[DATE]/[SLICE-ID]/)
+   |
+4. Task(developer) --> Developer implements in isolated context
+   |                    Returns: files_modified, evidence_bundle_path
+   |
+5. Run assign-reviewers.sh with file/code manifest
+   |  - Script reads review-rules.yaml (Architect cannot)
+   |  - Returns JSON array of reviewer names
+   |
+6. Task(qa-reviewer) + Task(security-reviewer) + ... (in parallel)
+   |  Each receives: evidence bundle, source of truth, slice spec
+   |  Each returns: verdict (PASS/REJECT), scores, issues
+   |
+7. Aggregate Verdicts
+   |  ALL PASS --> Step 9 (Completion)
+   |  ANY REJECT --> Step 8 (Feedback Resolution)
+   |
+8. acos-feedback-resolution (max 3 iterations)
+   |  - Consolidate all feedback
+   |  - Create unified fix plan
+   |  - Task(developer) implements fixes
+   |  - Re-review with same reviewers
+   |  - If still failing after 3: escalate to human
+   |
+9. Completion
+   - Update slice status to completed
+   - Clear active-slice.yaml
+   - Write handoff summary
+```
 
 ---
 
@@ -465,73 +461,52 @@ not_recommended_for:
 
 **"Nothing is lost. Nothing is summarized."**
 
-All interactions, decisions, reviews, and handoffs are stored in full. Agents access context through RAG-based retrieval.
+All interactions, decisions, reviews, and handoffs are stored in full. The Memory Agent provides retrieval services across all memory directories.
 
 ### 8.2 Memory Structure
 
 ```
 memory/
-├── source-of-truth/                    # Tier 1: Always loaded
-│   ├── vision-interview.md             # Complete Q&A transcript
-│   ├── vision-document.md              # Synthesized requirements
-│   └── user-commands.md                # Additional user instructions
-│
-├── interviews/                         # Interview history
-│   ├── initial-vision-interview.md
-│   └── clarification-interviews/
-│
-├── decisions/                          # Architectural decisions
-│   ├── architectural-decisions.md
-│   ├── flow-selections.md
-│   └── agent-assignments.md
-│
-├── reviews/                            # Review audit trail
-│   ├── slice-reviews/
-│   ├── story-reviews/
-│   ├── epic-reviews/
-│   └── vision-reviews/
-│
-├── handoffs/                           # Agent-to-agent communication
-│   ├── architect-to-developer/
-│   ├── developer-to-reviewer/
-│   └── reviewer-to-architect/
-│
-├── agent-communications/               # All inter-agent messages
-│
-├── code-rationale/                     # Why code decisions were made
-│
-└── feedback-history/                   # All feedback and resolutions
++-- source-of-truth/              # Core project documents
+|   +-- vision-interview.md       # Complete Q&A transcript
+|   +-- vision-document.md        # Synthesized requirements
+|
++-- decisions/                    # Architecture Decision Records
+|   +-- ADR-001-[title].md
+|   +-- ADR-002-[title].md
+|
++-- reviews/                      # Review audit trail
+|   +-- slice-reviews/
+|   +-- story-reviews/
+|   +-- epic-reviews/
+|   +-- vision-reviews/
+|
++-- handoffs/                     # Session continuity
+|   +-- [timestamp]-session-handoff.yaml
+|
++-- code-rationale/               # Why code decisions were made
+|
++-- feedback-history/             # All feedback and resolutions
 ```
 
-### 8.3 Tiered Access Model
+### 8.3 Memory Access Model
 
-| Tier | Access | Description |
-|------|--------|-------------|
-| Tier 1 | Always loaded | Source of truth - every agent always has this |
-| Tier 2 | Role-based | Automatic access based on agent category |
-| Tier 3 | On-demand | Retrieved via Memory Agent using RAG |
+Memory access is controlled by agent-level tool restrictions and isolated `Task()` contexts:
 
-### 8.4 Role-Based Access (Tier 2)
+| Agent | Access Mechanism | Scope |
+|-------|-----------------|-------|
+| Architect | Direct file reads + `Task(memory-agent)` | All memory except review-rules.yaml |
+| Developer | Receives relevant context in `Task()` prompt | Slice-specific context only |
+| Reviewers | Receives evidence bundle in `Task()` prompt | Evidence + source of truth + spec only |
+| Memory Agent | `memory: project` + direct file access | All memory (for retrieval) |
+| Learning Agent | `memory: user` + direct file access | Learning curve + reviews + feedback |
 
-| Agent | Automatic Access |
-|-------|------------------|
-| The Architect | source-of-truth/, decisions/, handoffs/, feedback-history/, learning-curve/ |
-| Developer | source-of-truth/, decisions/, handoffs/, code-rationale/ |
-| Reviewers | source-of-truth/, reviews/, feedback-history/ (NOT decisions/) |
-| Memory Agent | ALL (for retrieval purposes) |
-| Learning Curve Agent | learning-curve/, reviews/, feedback-history/ |
+### 8.4 Cross-Project Persistence
 
-### 8.5 RAG Implementation
+Two levels of memory persistence via native Claude Code primitives:
 
-The Memory Agent uses Retrieval-Augmented Generation:
-
-1. All memory files are chunked and embedded
-2. Stored in a vector database
-3. When an agent needs context, Memory Agent:
-   - Receives the query
-   - Searches for semantically similar chunks
-   - Returns relevant content
-4. Original files remain untouched
+- **`memory: project`** — Persists within the current project across sessions. Used by the Architect and Memory Agent.
+- **`memory: user`** — Persists across ALL projects for the user. Used by the Learning Agent, enabling cross-project knowledge transfer.
 
 ---
 
@@ -539,68 +514,61 @@ The Memory Agent uses Retrieval-Augmented Generation:
 
 ### 9.1 Purpose
 
-Cross-project knowledge accumulation. The system improves over time by learning from both successes and failures.
+Cross-project knowledge accumulation. The system improves over time by learning from both successes and failures. The Learning Agent uses `memory: user` for TRUE cross-project persistence.
 
 ### 9.2 Structure
 
 ```
 learning-curve/
-├── technical-learnings.md      # Technical patterns, libraries, approaches
-├── process-learnings.md        # Workflow patterns, agent combinations
-├── flow-effectiveness.md       # Which flows work for which tasks
-└── user-preference-patterns.md # User interaction patterns
++-- patterns/                     # What works
+|   +-- architectural/
+|   +-- implementation/
+|   +-- review/
+|   +-- workflow/
+|
++-- anti-patterns/                # What doesn't work
+|   +-- common-mistakes/
+|   +-- failed-approaches/
+|   +-- pitfalls/
+|
++-- domain-knowledge/             # Domain-specific insights
+|
++-- agent-effectiveness/          # How well agents performed
+|
++-- project-retrospectives/       # Post-project analysis
+|
++-- index.yaml                    # Master index
 ```
 
 ### 9.3 What Gets Learned
 
-- **Successful outcomes**: What worked and why
-- **Failures to avoid**: What didn't work and why
-- **Technical learnings**: Architectural patterns, library choices
-- **Process learnings**: Effective agent combinations, flow selections
+- **Patterns**: Successful architectural decisions, implementation approaches, effective agent configurations
+- **Anti-patterns**: Failed approaches, common mistakes, pitfalls to avoid
+- **Domain knowledge**: Technology-specific insights
+- **Agent effectiveness**: Which agent configurations work best for which tasks
+- **Process insights**: Effective workflows, review patterns, feedback resolution strategies
 
 ### 9.4 Learning Extraction
 
-**Trigger**: Project end (success OR failure)
+**Trigger**: Project completion (via `/acos-learn` skill)
 
 **Process**:
-1. Learning Curve Agent analyzes the project
-2. Identifies key patterns (successes and failures)
-3. Extracts learnings with full context
-4. Adds to learning-curve/ files
+1. Architect invokes `acos-learn` skill
+2. `Task(memory-agent)` collects all project memory artifacts
+3. `Task(learning-agent)` analyzes decisions, reviews, and workflow
+4. Learning Agent extracts patterns and anti-patterns with evidence
+5. Entries saved to `learning-curve/` with confidence levels
+6. Index updated
 
-### 9.5 Learning Entry Format
+### 9.5 Confidence Levels
 
-```markdown
-## Learning: [Title]
+| Level | Criteria |
+|-------|----------|
+| **HIGH** | 3+ successful applications, >80% success rate |
+| **MEDIUM** | 1-2 applications, >50% success rate |
+| **LOW** | New/unvalidated, <50% success rate |
 
-**Date:** YYYY-MM-DD
-**Project:** [Project name]
-**Context:** [Situation where this applies]
-**Type:** SUCCESS | FAILURE | PATTERN
-
-### What Happened
-
-[Description of the situation]
-
-### Key Takeaway
-
-[Actionable insight]
-
-### Applicability
-
-[When to apply this learning]
-```
-
-### 9.6 Conflict Resolution
-
-When learnings conflict:
-- Keep BOTH with full context
-- If contexts are similar → most recent wins
-- If contexts differ → both remain (context-dependent)
-
-### 9.7 Scope
-
-Learnings are **GLOBAL** - they apply to all future projects.
+Learnings with <30% success rate are deprecated. Conflicting learnings are kept with full context.
 
 ---
 
@@ -608,86 +576,113 @@ Learnings are **GLOBAL** - they apply to all future projects.
 
 ### 10.1 Core Principles
 
-1. **Maximum rigor at ALL levels** - No shortcuts, ever
-2. **Rules-based assignment** - Architect has ZERO control
-3. **Human-editable rules only** - No agent can modify review-rules.yaml
-4. **Parallel and independent** - Reviewers don't see each other's feedback
-5. **All must pass** - Single failure = rejection
+1. **Maximum rigor at ALL levels** — No shortcuts, ever
+2. **Rules-based assignment** — Architect has ZERO control
+3. **Human-editable rules only** — No agent can read or modify `review-rules.yaml`
+4. **Parallel and independent** — Reviewers don't see each other's feedback
+5. **All must pass** — Single failure = rejection
+6. **Mechanically enforced** — Not just instructions, but `disallowedTools` + `permissionMode: plan` + hooks
 
 ### 10.2 The Independence Wall
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ARCHITECT'S DOMAIN                            │
-│                                                                  │
-│  • Vision interview                                              │
-│  • Planning (epics/stories/slices)                               │
-│  • Selecting execution agents                                    │
-│  • Selecting flows                                               │
-│  • Creating new agents/skills/flows                              │
-│  • Responding to feedback                                        │
-│                                                                  │
-├──────────────────────────────────────────────────────────────────┤
-│  ════════════════ INDEPENDENCE WALL ════════════════════════════ │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│                    REVIEW SYSTEM (Architect cannot touch)        │
-│                                                                  │
-│  • Which reviewers are assigned (determined by RULES)            │
-│  • Review depth (ALWAYS maximum)                                 │
-│  • Review process (fixed protocol)                               │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
++=================================================================+
+|                  ARCHITECT'S DOMAIN                              |
+|                                                                  |
+|  - Vision interview                                              |
+|  - Planning (epics/stories/slices)                               |
+|  - Selecting execution agents                                    |
+|  - Creating new agents/skills                                    |
+|  - Responding to feedback                                        |
+|                                                                  |
+|  MECHANICALLY BLOCKED FROM:                                      |
+|  - Reading review-rules.yaml (PreToolUse hook)                   |
+|  - Influencing reviewer assignment (script-mediated)             |
+|  - Seeing review process internals                               |
++==================================================================+
+|  ================ INDEPENDENCE WALL ============================  |
+|  Enforced by: hooks + disallowedTools + permissionMode + Task()   |
++==================================================================+
+|                                                                  |
+|                  REVIEW SYSTEM (Architect cannot touch)           |
+|                                                                  |
+|  - Which reviewers assigned (determined by review-rules.yaml)    |
+|  - Review depth (ALWAYS maximum)                                 |
+|  - Review process (fixed protocol)                               |
+|  - Reviewer isolation (permissionMode: plan, no Write/Edit/Task) |
+|  - Review verdicts (structured YAML, not prose)                  |
+|                                                                  |
++=================================================================+
 ```
 
 ### 10.3 Review Rules File
 
-Location: `ACOS 3.0/review-rules.yaml`
+**Location**: `review-rules.yaml` at project root
 
-**Only humans can edit this file.** No agent can read, modify, or influence it.
+**Only humans can edit this file.** The Architect is mechanically blocked from reading it by `.claude/scripts/block-review-rules-read.sh` (configured as a PreToolUse hook on the Architect agent).
 
-### 10.4 Reviewer Assignment Rules
+### 10.4 Reviewer Assignment
 
-```yaml
-slice_level_rules:
-  - Security-sensitive code → QA + Security Reviewer
-  - Database code → QA + Performance Reviewer
-  - API endpoints → QA + Security + Performance Reviewer
-  - Payment code → QA + Security + Performance Reviewer
-  - Multi-component → QA + Integration Reviewer
-  - Default → QA Reviewer (minimum)
+The `assign-reviewers.sh` script reads `review-rules.yaml` and determines reviewers based on 7 trigger types:
 
-story_level_rules:
-  - Always: QA + Integration + all reviewers from slices
+| Trigger Type | Example |
+|-------------|---------|
+| `file_path_contains` | `["auth", "login", "password"]` |
+| `code_contains` | `["SELECT", "encrypt", "express"]` |
+| `files_modified_count_greater_than` | `3` |
+| `imports_from_multiple_modules` | `true` |
+| `always` | `true` (fallback) |
 
-epic_level_rules:
-  - Always: QA + Integration + Performance + all reviewers from stories
+Rules are additive — all matching rules apply. The file contains 9 slice-level rules covering: security-sensitive code, database code, API endpoints, payment code, file operations, external integrations, multi-component changes, performance-critical code, and a default fallback.
 
-vision_level_rules:
-  - Always: QA + Integration + Performance + Security (maximum scrutiny)
-```
+Higher-level reviews (story/epic/vision) aggregate reviewers from lower levels plus additional mandatory reviewers.
 
 ### 10.5 Review Process
 
-1. Work is completed by execution agent
-2. System reads review-rules.yaml
+1. Developer completes work and creates evidence bundle
+2. `assign-reviewers.sh` reads `review-rules.yaml` (script-mediated, Architect cannot see)
 3. Matching rules determine which reviewers are assigned
-4. All assigned reviewers work in PARALLEL
-5. Reviewers work INDEPENDENTLY (can't see each other's feedback)
-6. All reviewers submit verdicts
-7. If ALL pass → work approved
-8. If ANY fail → all feedback sent to Architect
-9. Architect creates ONE coherent fix addressing ALL concerns
-10. Repeat until all pass
+4. All assigned reviewers run via `Task()` in PARALLEL, ISOLATED contexts
+5. Each reviewer returns structured YAML verdict (PASS/REJECT with scores and issues)
+6. If ALL pass -> work approved
+7. If ANY reject -> `acos-feedback-resolution` consolidates feedback
+8. Architect creates ONE coherent fix addressing ALL concerns
+9. Developer implements fix, re-review runs
+10. Max 3 iterations before human escalation
 
-### 10.6 Permissions Matrix
+### 10.6 Reviewer Verdicts
+
+Each reviewer returns a structured YAML verdict:
+
+```yaml
+verdict: PASS | REJECT
+reviewer: qa-reviewer
+slice_id: SLICE-XXX
+scores:
+  evidence_authenticity: PASS
+  acceptance_criteria: PASS
+  scope_compliance: PASS
+  code_quality: PASS
+  total: PASS
+issues:
+  - severity: CRITICAL | HIGH | MEDIUM | LOW
+    description: "..."
+    location: "file:line"
+    fix_required: "..."
+required_before_resubmission:
+  - "Fix description"
+overall_feedback: "..."
+```
+
+### 10.7 Permissions Matrix
 
 | Entity | Read Rules | Edit Rules | Influence Review | Bypass Review |
-|--------|------------|------------|------------------|---------------|
+|--------|:---:|:---:|:---:|:---:|
 | Human User | Yes | Yes | No | No |
-| The Architect | No | No | No | No |
+| Architect | **Blocked (hook)** | No | No | No |
 | Reviewers | No | No | No | No |
-| Other Agents | No | No | No | No |
+| Developer | No | No | No | No |
+| Support Agents | No | No | No | No |
 
 ---
 
@@ -695,46 +690,33 @@ vision_level_rules:
 
 ### 11.1 Philosophy
 
-ACOS does NOT accept one-line visions. Every project begins with a comprehensive interview.
+ACOS does NOT accept one-line visions. Every project begins with a comprehensive interview conducted by the Architect using the `acos-interview` skill.
 
-### 11.2 Interview Flow
+### 11.2 Interview Protocol
 
-```
-User: "I want to build a todo app"
+The interview covers 9 question categories:
 
-ACOS: "Let me understand your vision fully..."
+1. **Users & Audience** — Who will use this? Technical level? Primary vs secondary users?
+2. **Platforms & Devices** — Web? Mobile? Desktop? Responsive? Offline support?
+3. **Features & Scope** — Must-have? Nice-to-have? Explicitly excluded? MVP vs full vision?
+4. **Scale & Performance** — Expected users? Data volume? Growth? Performance requirements?
+5. **Integrations** — External services? Third-party APIs? Existing systems?
+6. **Security & Compliance** — Sensitive data? Compliance (HIPAA, GDPR)? Auth needs?
+7. **Design & UX** — Visual style? Brand guidelines? Accessibility?
+8. **Technology Preferences** — Preferred languages? Frameworks? Hosting? Existing infrastructure?
+9. **Success Criteria** — How do we know it's done? Key metrics? Launch criteria?
 
-ACOS asks about:
-• Users: Who will use this?
-• Devices: Web? Mobile? Desktop?
-• Features: Must-have vs nice-to-have?
-• Scale: Expected users/data volume?
-• Integrations: External services?
-• Security: Sensitive data?
-• Performance: Speed requirements?
-• Design: Visual preferences?
-• Tech: Preferred stack?
-• Constraints: Budget/timeline?
-• Success: How do we know it's done?
-• ... continues until satisfied ...
+### 11.3 Interview Loop
 
-User can say: "That's enough, start building"
-
-Output:
-• vision-interview.md (complete transcript)
-• vision-document.md (synthesized requirements)
-```
-
-### 11.3 Interview Completion
-
-- **Default**: Architect decides when interview is complete
-- **Override**: User can say "that's enough, start building"
+- Max 10 rounds of 3-5 questions each
+- Each round targets remaining gaps in the 9 categories
+- Interview ends when: Architect is satisfied, user says "that's enough", or max iterations reached
 
 ### 11.4 Output Documents
 
-**vision-interview.md**: Complete Q&A transcript (nothing omitted)
+**`memory/source-of-truth/vision-interview.md`** — Complete Q&A transcript organized by round (template at `.claude/skills/acos-interview/templates/vision-interview.md`)
 
-**vision-document.md**: Synthesized, structured requirements document
+**`memory/source-of-truth/vision-document.md`** — Synthesized requirements with users, platforms, features (prioritized), technical requirements, integrations, design, tech stack, success criteria (template at `.claude/skills/acos-interview/templates/vision-document.md`)
 
 Both become the **Source of Truth** for the entire project.
 
@@ -747,193 +729,214 @@ Both become the **Source of Truth** for the entire project.
 | Responsibility | Description |
 |----------------|-------------|
 | Provide vision | Describe what you want to build |
-| Answer interview | Respond to Architect's questions |
-| Edit review rules | Customize review-rules.yaml if needed |
+| Answer interview | Respond to the Architect's questions |
+| Edit review rules | Customize `review-rules.yaml` if needed |
 | Resolve escalations | Help when things fail 3+ times |
-| Approve Architect evolution | Required for Architect changes |
+| Approve agent changes | Required for new agent definitions |
 
-### 12.2 User Commands
+### 12.2 CLI Commands
+
+The `acos` CLI is a thin wrapper for launching Claude Code sessions:
 
 | Command | Description |
 |---------|-------------|
-| `acos vision` | Start a new project with interview |
-| `acos status` | Check current state |
-| `acos progress` | See completion percentage |
-| `acos list` | List all work items |
-| `acos logs` | View activity logs |
-| `acos memory` | Browse memory files |
-| `acos intervene` | Pause and provide guidance |
-| `acos rules` | View/edit review rules |
+| `acos start` | Start a **new** Claude Code session (fresh conversation) |
+| `acos resume` | Resume the **previous** session (restores conversation history) |
+| `acos help` | Show available commands |
 
-### 12.3 Automatic Escalation
+### 12.3 User Commands (Native Skills)
+
+All commands are native Claude Code skills, invoked from the `/` menu inside a session:
+
+| Skill | Description |
+|-------|-------------|
+| `/acos-start` | Initialize project and route to next step |
+| `/acos-interview` | Conduct vision interview |
+| `/acos-plan [level]` | Create planning documents |
+| `/acos-execute-slice [ID]` | Execute a single slice |
+| `/acos-execute-story [ID]` | Execute a full story |
+| `/acos-execute-epic [ID]` | Execute a full epic |
+| `/acos-complete-vision` | Complete entire vision |
+| `/acos-review` | Trigger reviews |
+| `/acos-status` | Show project dashboard |
+| `/acos-decide` | Create Architecture Decision Record |
+| `/acos-handoff` | Create session handoff |
+| `/acos-learn` | Extract learnings |
+
+### 12.4 Automatic Escalation
 
 User is automatically notified when:
 - Slice/Story/Epic fails review 3+ times
 - Architect cannot find/create suitable agent
-- Architect cannot find/create suitable flow
 - Critical ambiguity in requirements
-- Architect evolution is proposed
+- Agent modification is proposed
 
-### 12.4 User Can Always
+### 12.5 User Can Always
 
-- Check progress at any time
+- Check progress at any time (`/acos-status`)
 - Intervene at any time
-- Add instructions (saved to user-commands.md)
-- Edit review-rules.yaml
+- Provide additional instructions
+- Edit `review-rules.yaml`
 
 ---
 
-## 13. Folder Structure
+## 13. Mechanical Enforcement
 
-```
-ACOS 3.0/
-│
-├── PRD.md                               # This document
-├── review-rules.yaml                    # HUMAN-EDITABLE ONLY
-│
-├── agents/                              # Agent definitions
-│   ├── super/
-│   │   └── the-architect.md
-│   ├── execution/
-│   │   ├── ACOS-developer.md
-│   │   ├── ACOS-data-collector.md
-│   │   ├── ACOS-data-analyzer.md
-│   │   └── ACOS-report-writer.md
-│   ├── reviewers/
-│   │   ├── ACOS-qa-reviewer.md
-│   │   ├── ACOS-security-reviewer.md
-│   │   ├── ACOS-performance-reviewer.md
-│   │   └── ACOS-integration-reviewer.md
-│   └── support/
-│       ├── ACOS-memory-agent.md
-│       └── ACOS-learning-curve-agent.md
-│
-├── skills/                              # Skill definitions
-│   ├── coding/
-│   │   ├── frontend-coding.md
-│   │   ├── backend-coding.md
-│   │   ├── database-design.md
-│   │   ├── api-design.md
-│   │   ├── testing-unit.md
-│   │   ├── testing-integration.md
-│   │   └── testing-e2e.md
-│   ├── research/
-│   │   ├── data-collection.md
-│   │   ├── data-analysis.md
-│   │   ├── report-writing.md
-│   │   └── literature-review.md
-│   ├── security/
-│   │   ├── penetration-testing.md
-│   │   ├── vulnerability-assessment.md
-│   │   └── compliance-checking.md
-│   ├── documentation/
-│   │   ├── technical-writing.md
-│   │   ├── api-documentation.md
-│   │   └── user-guide-creation.md
-│   └── meta/
-│       ├── agent-creation.md
-│       ├── flow-creation.md
-│       ├── skill-creation.md
-│       └── vision-interview.md
-│
-├── agentic-flows/                       # Flow definitions
-│   ├── linear-flow.md
-│   ├── parallel-flow.md
-│   ├── circular-review-flow.md
-│   └── hierarchical-flow.md
-│
-├── memory/                              # Project memory
-│   ├── source-of-truth/
-│   │   ├── vision-interview.md
-│   │   ├── vision-document.md
-│   │   └── user-commands.md
-│   ├── interviews/
-│   ├── decisions/
-│   ├── reviews/
-│   │   ├── slice-reviews/
-│   │   ├── story-reviews/
-│   │   ├── epic-reviews/
-│   │   └── vision-reviews/
-│   ├── handoffs/
-│   ├── agent-communications/
-│   ├── code-rationale/
-│   └── feedback-history/
-│
-├── learning-curve/                      # Cross-project learnings
-│   ├── technical-learnings.md
-│   ├── process-learnings.md
-│   ├── flow-effectiveness.md
-│   └── user-preference-patterns.md
-│
-├── planning/                            # Project planning
-│   ├── vision/
-│   ├── epics/
-│   ├── stories/
-│   └── slices/
-│
-├── automation-scripts/                  # CLI tools
-│   ├── acos                             # Main CLI
-│   ├── orchestrator.sh
-│   └── hooks/
-│
-└── .acos/                               # Runtime state
-    ├── queue.yaml
-    ├── current-state.yaml
-    └── project-config.yaml
-```
+### 13.1 Why Mechanical Enforcement?
+
+Instructions alone are not sufficient for adversarial trust. ACOS uses Claude Code's native enforcement mechanisms to make trust violations **mechanically impossible**, not just forbidden.
+
+### 13.2 Enforcement Mechanisms
+
+| Mechanism | What It Does | Where Configured |
+|-----------|-------------|-----------------|
+| `disallowedTools` | Prevents agent from using specific tools | Agent `.md` frontmatter |
+| `permissionMode: plan` | Makes agent read-only at runtime | Agent `.md` frontmatter |
+| PreToolUse hooks | Runs script before tool execution, can block | `.claude/settings.local.json` + agent hooks |
+| PostToolUse hooks | Runs script after tool execution, logs evidence | `.claude/settings.local.json` |
+| SubagentStop hooks | Runs script when sub-agent completes | `.claude/settings.local.json` |
+| `Task()` isolation | Each sub-agent runs in isolated context | Native Claude Code primitive |
+| Scope scripts | Block writes outside allowed files | `.claude/scripts/check-scope.sh` |
+
+### 13.3 Scripts
+
+| Script | Trigger | Purpose |
+|--------|---------|---------|
+| `check-scope.sh` | PreToolUse (Write/Edit) | Reads `.acos/config/active-slice.yaml`, blocks writes to files not in `files_allowed` |
+| `block-review-rules-read.sh` | PreToolUse (Read) on Architect | Blocks any read of `review-rules.yaml` |
+| `post-write-evidence.sh` | PostToolUse (Write/Edit) | Logs every file modification to evidence bundle |
+| `assign-reviewers.sh` | Called by orchestration skills | Reads `review-rules.yaml`, returns JSON array of reviewer names |
+| `create-evidence-bundle.sh` | Called by orchestration skills | Creates evidence directory structure for a slice |
+| `validate-evidence.sh` | Called by orchestration skills | Verifies evidence bundle completeness |
+| `log-agent-completion.sh` | SubagentStop | Logs agent completion to `.acos/metrics/agent-completions.log` |
+| `archive-project.sh` | Called by orchestration skills | Archives completed project artifacts |
 
 ---
 
-## 14. CLI Commands
+## 14. Folder Structure
 
-### Project Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos vision` | Start new project with vision interview |
-| `acos init` | Initialize ACOS in current folder (idempotent, safe to re-run) |
-| `acos start` | Launch Claude Code with The Architect (auto-skips permissions) |
-| `acos pause` | Pause after current work completes |
-| `acos resume` | Resume from paused state |
-| `acos stop` | Stop immediately |
-
-### Status Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos status` | Show current state |
-| `acos progress` | Show completion percentage |
-| `acos list` | List all work items by status |
-| `acos logs` | View activity logs |
-
-### Memory Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos memory` | Browse memory files |
-| `acos memory search <query>` | Search memory via RAG |
-| `acos truth` | View source of truth files |
-
-### Review Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos rules` | View current review rules |
-| `acos rules edit` | Open review-rules.yaml for editing |
-
-### Intervention Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos intervene` | Pause and provide guidance |
-| `acos command <instruction>` | Add instruction to user-commands.md |
-
-### Learning Commands
-
-| Command | Description |
-|---------|-------------|
-| `acos learnings` | View learning curve |
-| `acos learnings extract` | Manually trigger learning extraction |
+```
+Project Root/
+|
++-- CLAUDE.md                        # Project context (auto-loads at session start)
++-- review-rules.yaml                # HUMAN-EDITABLE ONLY
++-- PRD.md                           # This document
++-- QUICK-START.md                   # Quick start guide
++-- BEGINNERS-GUIDE.md               # Beginner's guide
+|
++-- .claude/                         # Native Claude Code configuration
+|   +-- agents/                      # Agent definitions (auto-discovered)
+|   |   +-- architect.md
+|   |   +-- developer.md
+|   |   +-- qa-reviewer.md
+|   |   +-- security-reviewer.md
+|   |   +-- performance-reviewer.md
+|   |   +-- integration-reviewer.md
+|   |   +-- memory-agent.md
+|   |   +-- learning-agent.md
+|   |
+|   +-- skills/                      # Skill definitions (auto-discovered)
+|   |   +-- acos-start/SKILL.md
+|   |   +-- acos-interview/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- vision-interview.md
+|   |   |       +-- vision-document.md
+|   |   +-- acos-plan/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- vision.yaml, epic.yaml, story.yaml, slice.yaml
+|   |   +-- acos-execute-slice/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- developer-assignment.yaml
+|   |   +-- acos-execute-story/SKILL.md
+|   |   +-- acos-execute-epic/SKILL.md
+|   |   +-- acos-complete-vision/SKILL.md
+|   |   +-- acos-review/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- slice-review.md, story-review.md, epic-review.md, vision-review.md
+|   |   +-- acos-decide/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- adr.md
+|   |   +-- acos-handoff/SKILL.md
+|   |   +-- acos-status/SKILL.md
+|   |   +-- acos-learn/
+|   |   |   +-- SKILL.md
+|   |   |   +-- templates/
+|   |   |       +-- pattern.md, anti-pattern.md, retrospective.md
+|   |   +-- acos-feedback-resolution/SKILL.md
+|   |   +-- backend-coding/SKILL.md
+|   |   +-- frontend-coding/SKILL.md
+|   |   +-- database-design/SKILL.md
+|   |   +-- testing/SKILL.md
+|   |   +-- bug-investigation/SKILL.md
+|   |   +-- codebase-analysis/SKILL.md
+|   |   +-- technology-research/SKILL.md
+|   |   +-- api-documentation/SKILL.md
+|   |   +-- user-guide-writing/SKILL.md
+|   |   +-- deployment/SKILL.md
+|   |   +-- security-audit/SKILL.md
+|   |   +-- agent-creation/SKILL.md
+|   |   +-- skill-creation/SKILL.md
+|   |   +-- orchestration-creation/SKILL.md
+|   |
+|   +-- scripts/                     # Enforcement scripts
+|   |   +-- check-scope.sh
+|   |   +-- block-review-rules-read.sh
+|   |   +-- post-write-evidence.sh
+|   |   +-- assign-reviewers.sh
+|   |   +-- create-evidence-bundle.sh
+|   |   +-- validate-evidence.sh
+|   |   +-- log-agent-completion.sh
+|   |   +-- archive-project.sh
+|   |
+|   +-- settings.local.json          # Hooks configuration
+|
++-- .acos/                           # Runtime state
+|   +-- config/
+|   |   +-- project.yaml
+|   |   +-- active-slice.yaml        # Current scope (read by check-scope.sh)
+|   +-- evidence/                    # Evidence bundles
+|   |   +-- [DATE]/[SLICE-ID]/
+|   |       +-- before/
+|   |       +-- after/
+|   |       +-- verify.log
+|   |       +-- Summary.md
+|   +-- metrics/
+|       +-- agent-completions.log
+|
++-- memory/                          # Project memory
+|   +-- source-of-truth/
+|   +-- decisions/
+|   +-- reviews/
+|   |   +-- slice-reviews/
+|   |   +-- story-reviews/
+|   |   +-- epic-reviews/
+|   |   +-- vision-reviews/
+|   +-- handoffs/
+|   +-- code-rationale/
+|   +-- feedback-history/
+|
++-- planning/                        # Planning hierarchy
+|   +-- vision/
+|   +-- epics/
+|   +-- stories/
+|   +-- slices/
+|
++-- learning-curve/                  # Cross-project learnings
+|   +-- patterns/
+|   +-- anti-patterns/
+|   +-- domain-knowledge/
+|   +-- agent-effectiveness/
+|   +-- project-retrospectives/
+|   +-- index.yaml
+|
++-- automation-scripts/              # Thin CLI wrapper
+    +-- acos                         # CLI: `acos start` (new session), `acos resume` (continue previous)
+```
 
 ---
 
@@ -941,29 +944,36 @@ ACOS 3.0/
 
 ### 15.1 Critical Safeguards
 
-| Safeguard | Implementation |
-|-----------|----------------|
-| Architect evolution | Requires HUMAN approval |
-| Review rules | HUMAN-EDITABLE ONLY |
-| Review depth | ALWAYS maximum (no discretion) |
-| Reviewer assignment | Rules-based only |
-| Reviewer independence | Cannot see each other's feedback |
+| Safeguard | Enforcement Mechanism |
+|-----------|----------------------|
+| Architect cannot read review rules | PreToolUse hook -> `block-review-rules-read.sh` |
+| Architect cannot modify review rules | No Write access to that file (script blocks it) |
+| Reviewers are read-only | `disallowedTools: Write, Edit, Task` + `permissionMode: plan` |
+| Reviewers are isolated | Each runs in separate `Task()` context |
+| Reviewers cannot communicate | `disallowedTools: Task` prevents spawning sub-agents |
+| Developer stays in scope | PreToolUse hook -> `check-scope.sh` |
+| All writes create evidence | PostToolUse hook -> `post-write-evidence.sh` |
+| Agent changes need human approval | Stated in CLAUDE.md restricted files |
+| Review depth is always maximum | Global setting in `review-rules.yaml` |
 
 ### 15.2 What Architect CANNOT Do
 
-- Read review-rules.yaml
-- Modify review-rules.yaml
-- Influence which reviewers are assigned
+- Read `review-rules.yaml` (mechanically blocked by hook)
+- Modify `review-rules.yaml`
+- Influence which reviewers are assigned (script-mediated)
 - Reduce review depth
 - Bypass review process
-- Evolve without human approval
+- See reviewer feedback before submission
+- Evolve agent definitions without human approval
 
 ### 15.3 What Reviewers CANNOT Do
 
-- See Architect's decisions/reasoning
-- See other reviewers' feedback (until submitted)
+- Write or edit any files (`disallowedTools: Write, Edit`)
+- Spawn sub-agents (`disallowedTools: Task`)
+- Browse the web (`disallowedTools: WebSearch, WebFetch`)
+- See Architect's decisions (isolated `Task()` context)
+- See other reviewers' feedback (isolated `Task()` context)
 - Modify review rules
-- Be influenced by Architect
 
 ### 15.4 What Humans CANNOT Do
 
@@ -972,10 +982,11 @@ ACOS 3.0/
 
 ### 15.5 System Constraints
 
-- Maximum 3 retry attempts before escalation
-- Minimum 10 uses before flow rating is shown
+- Maximum 3 feedback resolution iterations before human escalation
 - All memory stored in full (no summarization)
 - Source of truth always accessible to all agents
+- QA reviewer always assigned (global rule)
+- All reviewers must pass for work to proceed
 
 ---
 
@@ -983,20 +994,25 @@ ACOS 3.0/
 
 | Term | Definition |
 |------|------------|
-| **Agent** | Specialized AI worker that executes atomic tasks |
-| **Architect** | Super agent that plans and orchestrates the system |
-| **Skill** | Task definition describing objectives and requirements |
-| **Flow** | Execution pattern defining how work moves between agents |
-| **Memory** | Persistent storage of all project context |
-| **Learning Curve** | Cross-project knowledge accumulation |
-| **Slice** | Atomic unit of work (hours of effort) |
-| **Story** | User-facing feature (days of effort) |
-| **Epic** | Major capability (weeks of effort) |
-| **Vision** | User's description of what they want to build |
-| **Source of Truth** | Core documents (interview + vision + commands) |
-| **RAG** | Retrieval-Augmented Generation for memory access |
-| **Review Rules** | Human-defined rules for reviewer assignment |
-| **Independence Wall** | Separation between Architect and review system |
+| **Agent** | Specialized AI worker defined in `.claude/agents/` with tool restrictions and permissions |
+| **Architect** | The orchestrating agent that plans and delegates via `Task()` |
+| **Developer** | Execution agent that implements code within scope boundaries |
+| **Reviewer** | Read-only agent that independently verifies work quality |
+| **Skill** | Methodology guide defined in `.claude/skills/*/SKILL.md` |
+| **Orchestration Skill** | Skill with `context: fork` + `agent: architect` that orchestrates multi-agent workflows |
+| **Memory** | Persistent storage of all project context in `memory/` |
+| **Learning Curve** | Cross-project knowledge accumulation in `learning-curve/` |
+| **Slice** | Atomic unit of work — small enough for one session, independently reviewable |
+| **Story** | User-facing feature composed of multiple slices |
+| **Epic** | Major capability composed of multiple stories |
+| **Vision** | User's complete project description (captured via interview) |
+| **Source of Truth** | Core documents (vision-interview.md + vision-document.md) in `memory/source-of-truth/` |
+| **Evidence Bundle** | Proof of completed work (before/after snapshots, diffs, test results) in `.acos/evidence/` |
+| **Independence Wall** | Mechanical separation between Architect and review system |
+| **Review Rules** | Human-defined rules for reviewer assignment in `review-rules.yaml` |
+| **Task()** | Claude Code primitive that spawns an agent in an isolated subprocess |
+| **Hook** | Script that runs before/after tool execution for enforcement |
+| **Scope** | The set of files a developer is allowed to modify for a given slice |
 | **Vibe Coder** | The human user of ACOS |
 
 ---
@@ -1006,6 +1022,8 @@ ACOS 3.0/
 | Version | Date | Changes |
 |---------|------|---------|
 | 3.0 | 2026-01-31 | Initial v3.0 architecture |
+| 3.0.1 | 2026-02-07 | Updated to reflect native Claude Code primitives migration. Replaced old agent/skill/flow formats with native `.claude/agents/` and `.claude/skills/` formats. Added Mechanical Enforcement section. Updated folder structure, commands, and glossary. |
+| 3.0.2 | 2026-02-10 | Split CLI: `acos start` now always starts a fresh session, `acos resume` continues previous session. Added CLI commands section (12.2). Updated `/acos-start` descriptions to clarify it handles project routing, not session management. |
 
 ---
 
