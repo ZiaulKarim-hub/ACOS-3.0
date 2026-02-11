@@ -38,13 +38,14 @@ Collect information about the current session:
 
 ```yaml
 timestamp: "[ISO timestamp]"
+status: "active"
 session_summary: "[Brief description of what was done]"
 
 current_work:
   slice_id: "[SLICE-XXX]"
   story_id: "[STORY-XXX]"
   epic_id: "[EPIC-XXX]"
-  status: "[in_progress | blocked | ready_for_review]"
+  status: "[in_progress | blocked | ready_for_review | completed]"
 
 completed_this_session:
   - "[Specific accomplishment 1]"

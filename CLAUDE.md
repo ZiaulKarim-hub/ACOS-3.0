@@ -14,6 +14,21 @@ review system, and cross-project learning.
 - Planning artifacts live in planning/ (vision, epics, stories, slices)
 - Memory artifacts live in memory/ (source-of-truth, decisions, reviews, handoffs)
 
+## Auto-Handoff System
+- Stop hook estimates token usage from transcript content (~4 chars/token), fires once
+  per session at ~130k tokens (~65%). Creates a semantic handoff via /acos-handoff.
+- Context compaction triggers at 69% (~138k tokens) via CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69.
+  This fires ~8k tokens after the Stop hook, just after the handoff is saved.
+- PreCompact hook creates a mechanical handoff (`status: mechanical`) before compaction.
+- SessionStart hook auto-loads ALL **active** handoffs (newest first) + accepted ADRs
+  from memory/decisions/, within a 25k token budget. Falls back to mechanical handoffs
+  if no active ones exist. Skips `status: completed`.
+- Handoff lifecycle: handoffs stay `status: active` until user runs `/acos-complete`.
+  `/acos-complete` marks all active handoffs as completed and moves them to
+  `memory/handoffs/archive/`. Next session starts with clean context.
+- No time-based expiry — status lifecycle handles staleness.
+- Handoff files: memory/handoffs/ | Archive: memory/handoffs/archive/ | Runtime: .acos/state/
+
 ## Planning Hierarchy
 Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomic work)
 

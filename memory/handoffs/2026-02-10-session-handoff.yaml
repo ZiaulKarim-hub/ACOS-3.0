@@ -1,0 +1,70 @@
+timestamp: "2026-02-10T23:10:00Z"
+session_summary: "Implemented the automatic handoff system — 3 new hook scripts, settings.local.json updates, CLAUDE.md docs, .gitignore update, and env var configuration. All smoke-tested."
+
+current_work:
+  slice_id: "N/A"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "completed"
+
+completed_this_session:
+  - "Created auto-load-handoff.sh — SessionStart hook that injects most recent handoff into context on startup/resume/compact"
+  - "Created context-watchdog.sh — PreCompact hook that mechanically extracts session state from JSONL transcript before compaction"
+  - "Created context-monitor.sh — Stop hook safety net that uses transcript size as context proxy, triggers semantic handoff at ~80%"
+  - "Updated .claude/settings.local.json with SessionStart, PreCompact, and Stop hook sections (preserved existing hooks)"
+  - "Added Auto-Handoff System section to CLAUDE.md under Key Principles"
+  - "Added .acos/state/ to .gitignore for runtime marker files"
+  - "Added CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85 to ~/.zshrc"
+  - "Created .acos/state/ directory with .gitkeep"
+  - "Smoke-tested all 3 scripts: auto-load correctly outputs JSON additionalContext, context-monitor correctly exits 0/2 based on conditions"
+  - "Updated MEMORY.md with auto-handoff system documentation"
+
+files_modified:
+  - path: ".claude/scripts/auto-load-handoff.sh"
+    changes: "New file — SessionStart hook, finds latest handoff YAML, returns JSON hookSpecificOutput with additionalContext"
+  - path: ".claude/scripts/context-watchdog.sh"
+    changes: "New file — PreCompact hook, parses JSONL transcript with python3, writes mechanical handoff YAML"
+  - path: ".claude/scripts/context-monitor.sh"
+    changes: "New file — Stop hook, measures transcript size, loop prevention via stop_hook_active, 10-min cooldown, exits 2 with stderr message"
+  - path: ".claude/settings.local.json"
+    changes: "Added 3 new hook sections: SessionStart (auto-load-handoff.sh), PreCompact (context-watchdog.sh), Stop (context-monitor.sh)"
+  - path: "CLAUDE.md"
+    changes: "Added Auto-Handoff System section between Key Principles and Planning Hierarchy"
+  - path: ".gitignore"
+    changes: "Added .acos/state/ to gitignored runtime directories"
+  - path: "~/.zshrc"
+    changes: "Added export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85"
+  - path: ".acos/state/.gitkeep"
+    changes: "New file — placeholder for runtime state directory"
+
+decisions_made:
+  - "Used defense-in-depth: Stop hook (semantic, best-effort at ~80%) → PreCompact hook (mechanical, guaranteed at 85%) → SessionStart (auto-load on new sessions)"
+  - "Stop hook uses transcript file size (500KB) and line count (120 lines) as dual threshold proxies for ~80% context"
+  - "PreCompact hook extracts file_path from Write/Edit tool inputs in JSONL transcript for the files_modified list"
+  - "All scripts fail-open (exit 0) on errors — never crash the session for a handoff failure"
+  - "10-minute cooldown on Stop hook prevents repeated nagging after a handoff is created"
+  - "Handoffs older than 7 days are skipped by auto-load to avoid stale context injection"
+
+blockers: []
+
+next_actions:
+  - "Commit all auto-handoff system changes"
+  - "Test end-to-end: start a new session and verify auto-load-handoff.sh injects this handoff into initial context"
+  - "Test PreCompact flow by running a long session until compaction triggers at 85%"
+  - "Consider tuning Stop hook thresholds (500KB/120 lines) based on real-world usage patterns"
+  - "The Stop hook just fired during this session at 284KB/198 lines — the line threshold (120) triggered correctly"
+
+context_for_next_session: |
+  The auto-handoff system is fully implemented and the Stop hook has been verified
+  working in production (it triggered this very handoff at 284KB/198 lines).
+
+  The system has 3 layers:
+  1. Stop hook (context-monitor.sh) — fires at ~80% context, asks Claude to run /acos-handoff
+  2. PreCompact hook (context-watchdog.sh) — fires at 85% compaction threshold, creates mechanical handoff
+  3. SessionStart hook (auto-load-handoff.sh) — loads latest handoff on every new/resumed session
+
+  All changes are uncommitted. The ~/.zshrc now has CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85
+  which will take effect in new terminal sessions.
+
+  The settings.local.json now has 6 hook types: PreToolUse, PostToolUse, SubagentStop,
+  SessionStart, PreCompact, Stop. Script count is now 14 (was 11).

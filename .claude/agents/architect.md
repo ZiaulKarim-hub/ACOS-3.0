@@ -10,7 +10,7 @@ skills:
   - acos-interview
   - acos-feedback-resolution
   - agent-creation
-  - skill-creation
+  - acos-create-skill
 memory: project
 hooks:
   PreToolUse:
