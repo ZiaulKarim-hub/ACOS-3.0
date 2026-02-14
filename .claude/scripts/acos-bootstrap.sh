@@ -201,6 +201,7 @@ CORE_SKILLS=(
   "acos-execute-slice"
   "acos-execute-story"
   "acos-execute-epic"
+  "acos-complete"
   "acos-complete-vision"
   "acos-review"
   "acos-status"
@@ -208,7 +209,9 @@ CORE_SKILLS=(
   "acos-handoff"
   "acos-learn"
   "acos-feedback-resolution"
+  "acos-add-skills"
   "acos-embed-skills"
+  "acos-oracle-protocol"
 )
 
 # Tier 2: Universal methodology — ALWAYS linked (useful for any project)
@@ -400,6 +403,15 @@ log_ok "${#SYMLINKED_SKILLS_LIST[@]} skills linked, ${#SKIPPED_SKILLS[@]} skippe
 if [[ ${#SKIPPED_SKILLS[@]} -gt 0 ]]; then
   log "  ${DIM}Skipped: ${SKIPPED_SKILLS[*]}${NC}"
   log "  ${DIM}Use --all-skills to link everything${NC}"
+
+  # Write skipped skills manifest for interactive menu (CLI reads this)
+  SKIPPED_MANIFEST="$PROJECT_DIR/.acos/state/skipped-skills.txt"
+  mkdir -p "$PROJECT_DIR/.acos/state"
+  > "$SKIPPED_MANIFEST"
+  for sk in "${SKIPPED_SKILLS[@]}"; do
+    sk_desc=$(sed -n 's/^description: *//p' "$ACOS_ROOT/.claude/skills/$sk/SKILL.md" 2>/dev/null | head -1)
+    echo "$sk|$sk_desc" >> "$SKIPPED_MANIFEST"
+  done
 fi
 log ""
 
@@ -460,10 +472,71 @@ else
   if grep -q "check-scope.sh" "$SETTINGS_FILE" 2>/dev/null; then
     log_skip "ACOS hooks already present in settings.local.json"
   else
-    log_warn "Existing settings.local.json found"
-    log_step "Creating .claude/settings.acos-hooks.json as reference"
-    cp "$ACOS_SETTINGS" "$PROJECT_DIR/.claude/settings.acos-hooks.json"
-    log_warn "Manual merge may be needed — check settings.acos-hooks.json"
+    log_step "Merging ACOS hooks into existing settings.local.json..."
+    # Deep merge: preserve existing permissions/settings, add all ACOS hooks
+    MERGE_RESULT=$(python3 - "$SETTINGS_FILE" "$ACOS_SETTINGS" <<'PYEOF'
+import json, sys
+
+existing_path, acos_path = sys.argv[1], sys.argv[2]
+
+try:
+    with open(existing_path) as f:
+        existing = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    existing = {}
+
+try:
+    with open(acos_path) as f:
+        acos = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    print('ERROR: Cannot read ACOS settings', file=sys.stderr)
+    sys.exit(1)
+
+# Merge permissions: combine allow lists, preserve deny/ask
+if 'permissions' in acos:
+    if 'permissions' not in existing:
+        existing['permissions'] = {}
+    for key in ('allow', 'deny', 'ask'):
+        if key in acos['permissions']:
+            if key not in existing['permissions']:
+                existing['permissions'][key] = []
+            for perm in acos['permissions'][key]:
+                if perm not in existing['permissions'][key]:
+                    existing['permissions'][key].append(perm)
+
+# Merge hooks: add ACOS hook types, preserving existing non-ACOS hooks
+if 'hooks' in acos:
+    if 'hooks' not in existing:
+        existing['hooks'] = {}
+    for hook_type, hook_entries in acos['hooks'].items():
+        if hook_type not in existing['hooks']:
+            existing['hooks'][hook_type] = hook_entries
+        else:
+            existing_cmds = set()
+            for entry in existing['hooks'][hook_type]:
+                for h in entry.get('hooks', []):
+                    existing_cmds.add(h.get('command', ''))
+            for entry in hook_entries:
+                for h in entry.get('hooks', []):
+                    if h.get('command', '') not in existing_cmds:
+                        existing['hooks'][hook_type].append(entry)
+                        break
+
+if 'outputStyle' in acos and 'outputStyle' not in existing:
+    existing['outputStyle'] = acos['outputStyle']
+
+print(json.dumps(existing, indent=2))
+PYEOF
+2>&1)
+
+    if [[ $? -eq 0 && -n "$MERGE_RESULT" ]]; then
+      echo "$MERGE_RESULT" > "$SETTINGS_FILE"
+      log_ok "Merged ACOS hooks into existing settings.local.json"
+    else
+      log_warn "Merge failed — copying ACOS settings as reference"
+      cp "$ACOS_SETTINGS" "$PROJECT_DIR/.claude/settings.acos-hooks.json"
+      log_warn "Manual merge may be needed — check settings.acos-hooks.json"
+    fi
   fi
 fi
 log_ok "Hooks configured"
@@ -546,6 +619,13 @@ domain_knowledge: []
 agent_effectiveness: []
 EOF
   log_step "Generated learning-curve/index.yaml"
+fi
+
+# Generate Oracle config (permission governance)
+if [[ ! -f "$PROJECT_DIR/.acos/config/oracle.yaml" ]]; then
+  cp "$ACOS_ROOT/.claude/skills/acos-oracle-protocol/templates/oracle-default.yaml" \
+     "$PROJECT_DIR/.acos/config/oracle.yaml"
+  log_step "Generated .acos/config/oracle.yaml (The Oracle)"
 fi
 
 log_ok "Project configuration ready"

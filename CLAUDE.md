@@ -29,6 +29,18 @@ review system, and cross-project learning.
 - No time-based expiry — status lifecycle handles staleness.
 - Handoff files: memory/handoffs/ | Archive: memory/handoffs/archive/ | Runtime: .acos/state/
 
+## The Oracle (Permission Governance)
+- PreToolUse hook that scores every tool call on a temperature scale (0=safe, 10=dangerous).
+- Actions at or below the threshold are auto-approved silently. Above threshold → user prompt.
+- Hard-blocked patterns (git push, rm -rf /, DROP TABLE, etc.) are always denied.
+- Config: `.acos/config/oracle.yaml` (per-project, user-editable).
+- Session override: `.acos/state/oracle-session-threshold` or `ORACLE_THRESHOLD` env var.
+- Audit trail: `.acos/state/oracle-audit.log` (escalations and denials only).
+- Default threshold: 5 (balanced). Range: 0 (ask everything) to 10 (approve everything).
+- Fail-open: missing config or errors default to allow. The Oracle is a convenience layer.
+- Configure with `/acos-oracle-protocol`. Supports custom modifiers and learned patterns.
+- Hook ordering: Oracle (all tools) → check-scope.sh (Write|Edit only) → execute.
+
 ## Planning Hierarchy
 Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomic work)
 
@@ -69,6 +81,7 @@ Preference categories projects should define:
 - CI/CD provider (GitHub Actions/GitLab CI/CircleCI)
 - Quality gates: `.acos/config/quality-gates.yaml` (see `/quality-gates` skill)
 - Domain security profile: `.acos/config/security-profile.md` (see `/domain-security-profile` skill)
+- Permission governance: `.acos/config/oracle.yaml` (see `/acos-oracle-protocol` skill)
 - MCP servers: `.claude/settings.local.json` under `mcpServers` (see `/mcp-setup` skill)
 
 ## Restricted Files

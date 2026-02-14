@@ -68,6 +68,12 @@ Synthesized requirements document. Use the template at `!cat templates/vision-do
 
 Present a summary of the vision document to the user for confirmation. Make any requested adjustments.
 
+### Step 5: Suggest Additional Skills
+
+After the vision is confirmed, check if the planned technology stack requires skills that aren't currently linked. Run `/acos-add-skills` to present available skills based on what the vision revealed.
+
+For example, if the interview established a React + PostgreSQL + REST API stack, the user likely needs `frontend-coding`, `database-design`, and `api-documentation` — which may not have been auto-linked at bootstrap (especially for new projects with no code yet).
+
 ## Exit Conditions
 
 The interview ends when:

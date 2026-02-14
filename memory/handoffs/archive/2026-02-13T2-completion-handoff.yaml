@@ -1,0 +1,58 @@
+timestamp: "2026-02-13T15:10:00Z"
+status: "completed"
+session_summary: "Fixed Warp's broken skill selection implementation and reimplemented interactive skill menu for acos start, add-skills utility, and auto-upgrade propagation"
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Reviewed and diagnosed 9 architectural issues in Warp's implementation"
+  - "Reverted auto-load-handoff.sh — removed unnecessary loaded-handoff.txt state file"
+  - "Restored acos-start/SKILL.md — fixed step ordering back to Step 0/1/2 (bootstrap before everything else)"
+  - "Rewrote CLI (automation-scripts/acos) — clean interactive skill menu with .gitignore updates, --force bootstrap on start and resume"
+  - "Rewrote add-skills.sh — pure bash, no gum dependency, supports interactive/direct/list/all modes"
+  - "Created acos-upgrade-projects.sh — dynamic path resolution, scoped to Vibe Coding by default, accepts custom path"
+  - "Deleted Warp's two broken upgrade scripts (acos-upgrade-all-projects.sh, acos-upgrade-vibe-projects.sh)"
+  - "Fixed settings merge in bootstrap — Python receives file paths via sys.argv instead of shell interpolation"
+  - "Created .git/hooks/post-commit — auto-upgrades all projects in background after every ACOS commit"
+  - "Verified upgrade script runs correctly (0 projects found — none bootstrapped yet, which is expected)"
+
+files_modified:
+  - path: ".claude/scripts/auto-load-handoff.sh"
+    changes: "Reverted — removed loaded-handoff.txt state file writing (6 lines removed)"
+  - path: ".claude/skills/acos-start/SKILL.md"
+    changes: "Reverted — restored original Step 0/1/2 ordering, removed broken banner step"
+  - path: "automation-scripts/acos"
+    changes: "Rewritten — added show_skill_menu(), --force bootstrap on start/resume, .gitignore updates for linked skills"
+  - path: ".claude/scripts/add-skills.sh"
+    changes: "Rewritten — pure bash, supports --list/--all/interactive/named arguments, resolves ACOS root via symlink"
+  - path: ".claude/scripts/acos-bootstrap.sh"
+    changes: "Fixed settings merge — Python uses sys.argv for file paths instead of shell variable interpolation"
+  - path: "automation-scripts/acos-upgrade-projects.sh"
+    changes: "Created — replaces two hardcoded scripts, derives ACOS_ROOT dynamically, uses glob instead of find"
+  - path: ".git/hooks/post-commit"
+    changes: "Created — runs acos-upgrade-projects.sh in background after every commit"
+
+decisions_made:
+  - "Skill selection belongs in CLI layer (bash), not agent layer (skill) — it's a mechanical filesystem operation"
+  - "Bootstrap always --force on start/resume — ensures latest ACOS changes propagate to every project automatically"
+  - "No external dependencies — removed gum requirement, pure bash only"
+  - "Dynamic path resolution everywhere — no hardcoded paths, derive ACOS_ROOT from script location"
+  - "Dual propagation: --force on start/resume (current project) + post-commit hook (all projects)"
+
+blockers: []
+
+next_actions:
+  - "Commit all changes (Oracle + skill selection + cleanup) to ACOS 3.0"
+  - "Test acos start in a real project to verify skill menu appears correctly"
+  - "Consider adding acos-upgrade-projects.sh path to user's shell aliases for manual runs"
+
+context_for_next_session: |
+  All changes from two sessions are uncommitted: the Oracle permission governance
+  system (from the 2026-02-13 morning session) and the skill selection / upgrade
+  system (this session). Both are complete and tested. The git post-commit hook
+  is in .git/hooks/ (not tracked by git). No ACOS projects are currently
+  bootstrapped in ~/Documents/Vibe Coding besides ACOS 3.0 itself.

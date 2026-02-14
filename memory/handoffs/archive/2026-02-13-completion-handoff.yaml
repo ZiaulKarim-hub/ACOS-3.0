@@ -1,0 +1,57 @@
+timestamp: "2026-02-13T09:05:00Z"
+status: "completed"
+session_summary: "Implemented The Oracle permission governance system and updated /acos-complete to guarantee session documentation"
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Created oracle-evaluate.py — core PreToolUse hook with temperature scoring (0-10), hard blocks, additive modifiers, audit logging, fail-open design"
+  - "Created oracle-configure skill — user-invocable skill for managing Oracle config, threshold, hard blocks, learned patterns, audit log"
+  - "Created oracle-default.yaml — default config template with full documentation, deployed to .acos/config/oracle.yaml"
+  - "Updated settings.local.json — added Oracle hook at PreToolUse position 0 (no matcher, fires for ALL tools)"
+  - "Updated acos-bootstrap.sh — added oracle-configure to CORE_SKILLS, added oracle.yaml creation in project setup"
+  - "Updated CLAUDE.md — added Oracle documentation section and config reference"
+  - "Ran 14 verification tests (all passing) + performance test (19.4ms avg, well under 50ms target)"
+  - "Updated /acos-complete skill — expanded from 4 to 7 steps, added session documentation guarantee with semantic matching"
+  - "Updated MEMORY.md with Oracle documentation"
+
+files_modified:
+  - path: ".claude/scripts/oracle-evaluate.py"
+    changes: "Created — core temperature-scoring evaluation engine (~275 lines, Python 3 stdlib only)"
+  - path: ".claude/skills/oracle-configure/SKILL.md"
+    changes: "Created — configuration skill with 8 management options"
+  - path: ".claude/skills/oracle-configure/templates/oracle-default.yaml"
+    changes: "Created — heavily commented default config template"
+  - path: ".claude/settings.local.json"
+    changes: "Added Oracle PreToolUse hook at position 0 (before check-scope.sh)"
+  - path: ".claude/scripts/acos-bootstrap.sh"
+    changes: "Added oracle-configure to CORE_SKILLS array + oracle.yaml creation after learning-curve/index.yaml"
+  - path: "CLAUDE.md"
+    changes: "Added 'The Oracle (Permission Governance)' section + oracle.yaml in Project-Level Configuration"
+  - path: ".claude/skills/acos-complete/SKILL.md"
+    changes: "Expanded protocol from 4 to 7 steps, added Write to allowed-tools, added session documentation guarantee"
+  - path: ".acos/config/oracle.yaml"
+    changes: "Created — local copy of default config for ACOS project itself"
+
+decisions_made:
+  - "Temperature matrix: Read/Glob/Grep/LSP=0, WebSearch/WebFetch/Task=2, Edit=3, Write=4, Bash=5 — balances autonomy with safety"
+  - "Fail-open design: Oracle is a convenience layer, not a security boundary — errors default to allow"
+  - "Semantic matching for session detection in /acos-complete instead of file-system heuristics — more reliable across sessions"
+  - "Hook ordering: Oracle at position 0 (all tools) before check-scope.sh (Write|Edit only) — layered enforcement"
+
+blockers: []
+
+next_actions:
+  - "Test Oracle in a live ACOS session on a target project (bootstrap + session)"
+  - "Consider v2 learning: PostToolUse hook to auto-track user approve/deny decisions"
+  - "Consider adding Oracle to acos-embed-skills portable skill list if desired"
+
+context_for_next_session: |
+  The Oracle is fully implemented and tested. Project skill count is now 33
+  (32 + oracle-configure). The /acos-complete skill was also updated to guarantee
+  session documentation via semantic matching. All changes are in the working
+  tree (not yet committed).

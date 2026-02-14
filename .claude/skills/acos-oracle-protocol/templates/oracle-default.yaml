@@ -1,0 +1,108 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# The Oracle — Permission Governance Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This file controls The Oracle's temperature-based permission system.
+# Location: .acos/config/oracle.yaml (per-project, user-editable)
+#
+# How it works:
+#   1. Every tool call gets a "temperature" score (0=safe, 10=dangerous)
+#   2. Score = base_temperature[tool] + sum(applicable modifiers)
+#   3. If score <= threshold → auto-approved silently
+#   4. If score > threshold → escalated to user for approval
+#   5. Hard-blocked patterns → always denied regardless of threshold
+#
+# Configure with: /acos-oracle-protocol
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Master switch — set to false to disable The Oracle entirely (all tools allowed)
+enabled: true
+
+# Decision threshold (0-10). Actions with temperature <= threshold are auto-approved.
+# Lower = more prompts (safer). Higher = fewer prompts (more autonomous).
+#   0  = ask about everything (equivalent to no Oracle)
+#   5  = balanced (default — approves reads, basic edits, tests; asks about risky ops)
+#   8  = aggressive autonomy (only asks about destructive/sensitive actions)
+#   10 = approve everything except hard blocks
+threshold: 5
+
+# ── Base Temperatures ─────────────────────────────────────────────────────────
+# Starting score for each tool type before modifiers are applied.
+# Lower = safer tool. Higher = riskier tool.
+base_temperatures:
+  Read: 0           # Pure read-only, always safe
+  Glob: 0           # File pattern search, read-only
+  Grep: 0           # Content search, read-only
+  LSP: 0            # Language server queries, read-only
+  WebSearch: 2      # External network but read-only
+  WebFetch: 2       # External network but read-only
+  Task: 2           # Subagent spawning, isolated contexts
+  Edit: 3           # Modifies existing files (bounded changes)
+  NotebookEdit: 3   # Modifies existing notebooks
+  Write: 4          # Creates/overwrites files (broader impact)
+  Bash: 5           # Shell execution (widest risk range)
+
+# ── Hard Blocks ───────────────────────────────────────────────────────────────
+# Regex patterns that are ALWAYS denied, regardless of threshold.
+# These match against Bash command text only.
+# Add project-specific patterns below the defaults.
+hard_blocks:
+  - "git\\s+push"
+  - "rm\\s+-rf\\s+/\\s*$"
+  - "rm\\s+-rf\\s+~/?\\s*$"
+  - "rm\\s+-rf\\s+\\.\\s*$"
+  - "git\\s+reset\\s+--hard\\s+(origin/)?(main|master)"
+  - "DROP\\s+(TABLE|DATABASE)"
+  - "git\\s+branch\\s+-D\\s+(main|master)"
+
+# ── Modifier Rules ────────────────────────────────────────────────────────────
+# Built-in modifiers (applied automatically):
+#
+#   Sensitive paths (.env, credentials, .pem, .key):      +4
+#   Restricted paths (node_modules, .git/):                +3
+#   Destructive bash (rm -r, git checkout ., git clean):   +3
+#   Install operations (npm install, pip install):         +2
+#   Framework paths (.acos/, memory/, planning/):          -2
+#   In-scope files (matches active-slice files_allowed):   -2
+#   Test commands (npm test, pytest, vitest):              -2
+#   Lint commands (eslint, biome, ruff):                   -2
+#   Info commands (git status, git log, ls, pwd):          -3
+#
+# Add custom modifiers here to extend or override:
+modifiers:
+  custom: []
+  # Example custom modifiers:
+  # custom:
+  #   - tool: Bash
+  #     pattern: "docker compose up"
+  #     modifier: -2
+  #   - tool: Write
+  #     pattern: "src/generated/"
+  #     modifier: -1
+  #   - tool: Bash
+  #     pattern: "kubectl delete"
+  #     modifier: 3
+
+# ── Learning Patterns ─────────────────────────────────────────────────────────
+# Manually curated patterns based on observed escalation history.
+# Use /acos-oracle-protocol to manage these, or edit directly.
+#
+# Each pattern adjusts the temperature when matched:
+#   - tool: which tool type this applies to
+#   - pattern: regex to match against (command for Bash, path for file tools)
+#   - modifier: temperature adjustment (negative = safer, positive = riskier)
+#   - confidence: how confident we are in this rule (0.0-1.0, informational)
+learning:
+  enabled: true
+  confidence_threshold: 0.8
+  patterns: []
+  # Example learned patterns:
+  # patterns:
+  #   - tool: Bash
+  #     pattern: "npm run build"
+  #     modifier: -3
+  #     confidence: 0.95
+  #   - tool: Bash
+  #     pattern: "npx prisma migrate"
+  #     modifier: 2
+  #     confidence: 0.85
