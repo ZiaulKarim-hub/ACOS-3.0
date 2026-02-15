@@ -121,18 +121,27 @@ WARN_THRESHOLD=$(( CONTEXT_WINDOW * 55 / 100 ))     # 110,000
 BLOCK_THRESHOLD=$(( CONTEXT_WINDOW * 65 / 100 ))     # 130,000
 EMERGENCY_THRESHOLD=$(( CONTEXT_WINDOW * 70 / 100 )) # 140,000
 
-# Check if a handoff already exists for today
+# Check if a handoff from THIS session already exists.
+# Only bypass the gate if the handoff was created by the current session.
+# Previous sessions' handoffs must NOT suppress the gate for new sessions.
 TODAY=$(date -u +%Y-%m-%d)
-HANDOFF_EXISTS=false
-for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
-  if [ -f "$f" ]; then
-    HANDOFF_EXISTS=true
-    break
-  fi
-done
+THIS_SESSION_HANDOFF=false
+if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
+  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
+    if [ -f "$f" ]; then
+      # Extract session_id from the handoff YAML and compare.
+      # Uses grep+sed for robustness — avoids bash/python quote-escaping issues.
+      HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
+      if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
+        THIS_SESSION_HANDOFF=true
+        break
+      fi
+    fi
+  done
+fi
 
-# If handoff already exists, allow everything — mission accomplished
-if [ "$HANDOFF_EXISTS" = "true" ]; then
+# If THIS session already created a handoff, allow everything — mission accomplished
+if [ "$THIS_SESSION_HANDOFF" = "true" ]; then
   exit 0
 fi
 
