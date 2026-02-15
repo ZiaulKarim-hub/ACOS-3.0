@@ -18,65 +18,78 @@ Session override: `.acos/state/oracle-session-threshold`
 
 ## Skill Protocol
 
-### Phase 1: Display Current Configuration
+### Phase 1: Health Check (Always Runs First)
 
-1. Read `.acos/config/oracle.yaml`
-   - If missing, inform user The Oracle is not configured and offer to create from defaults
-2. Display a summary:
-   - Enabled status
-   - Current threshold (and session override if present)
-   - Number of hard blocks
-   - Number of custom modifiers
-   - Number of learned patterns
-   - Whether learning is enabled
-
-### Phase 2: Present Options
-
-Present the user with these options:
-
-1. **Set threshold** — Change the decision threshold (0-10)
-   - 0 = ask about everything
-   - 5 = balanced (default)
-   - 8 = aggressive autonomy
-   - 10 = approve everything except hard blocks
-2. **Session override** — Set a temporary threshold for the current session only
-   - Writes to `.acos/state/oracle-session-threshold`
-   - Does not modify oracle.yaml
-   - Cleared on next session start
-3. **Manage hard blocks** — Add or remove hard-block patterns
-   - Show current list, let user add/remove
-   - Warn: hard blocks ALWAYS deny, regardless of threshold
-4. **Manage custom modifiers** — Add or remove custom modifier rules
-   - Each rule: tool (optional), pattern (regex), modifier (integer)
-   - Positive modifier = riskier, negative = safer
-5. **Manage learned patterns** — Add or remove learned patterns
-   - Each pattern: tool, pattern (regex), modifier, confidence (0.0-1.0)
-   - Toggle learning enabled/disabled
-6. **View audit log** — Show recent escalations and denials
-   - Read `.acos/state/oracle-audit.log`
-   - Show last 20 entries by default
-7. **Reset to defaults** — Restore oracle.yaml from the default template
-   - Copy from `.claude/skills/acos-oracle-protocol/templates/oracle-default.yaml`
-   - Requires explicit user confirmation
-8. **Enable/Disable** — Toggle The Oracle on or off
-   - Sets `enabled: true` or `enabled: false` in oracle.yaml
-
-### Phase 3: Apply Changes
-
-Based on user selection:
-- Edit `.acos/config/oracle.yaml` with the requested changes
-- For session overrides, write to `.acos/state/oracle-session-threshold`
-- For resets, copy the default template
-
-### Phase 4: Validate
-
-After making changes:
-1. Run a quick test to verify the config is parseable:
+1. Run the diagnostic:
    ```bash
-   echo '{"tool_name":"Read","tool_input":{"file_path":"test.ts"},"cwd":"."}' | python3 .claude/scripts/oracle-evaluate.py
+   python3 .claude/scripts/oracle-evaluate.py --diagnose
    ```
-2. Confirm the expected output (`{"permissionDecision": "allow"}` for a Read)
-3. Report success or any issues
+2. Report results to the user:
+   - Is Oracle enabled?
+   - Is the config parseable?
+   - Do sample tool calls produce expected decisions?
+   - Are there permission conflicts in `settings.local.json`?
+3. If issues are detected, explain them and offer to auto-fix before proceeding.
+
+### Phase 2: Smart Options
+
+Present the user with these options using AskUserQuestion:
+
+1. **Quick Presets** — One-word profiles that set the threshold:
+   - `strict` (threshold 3): Asks about edits, writes, and most bash commands. Only reads and info commands are auto-approved.
+   - `balanced` (threshold 5): Approves reads, basic edits, tests, lints. Asks about installs, destructive ops, sensitive files.
+   - `autonomous` (threshold 8): Minimal prompts. Only sensitive writes and destructive bash escalate.
+   - `default` (threshold 9): Default. Auto-approves everything except destructive bash and hard blocks.
+   - `permissive` (threshold 10): Approves everything except hard blocks.
+   - `YOLO` (threshold 11): No guardrails. Even hard blocks are bypassed. Use with extreme caution.
+
+2. **Tune threshold** — Set a specific threshold value (0-11). Show what each level means:
+   - 0 = ask about everything
+   - 3 = strict (preset equivalent)
+   - 5 = balanced (preset equivalent)
+   - 8 = autonomous (preset equivalent)
+   - 9 = default
+   - 10 = permissive (everything except hard blocks)
+   - 11 = YOLO (everything, hard blocks bypassed)
+
+3. **Audit analysis** — Read the audit log, show:
+   - Top 5 most-escalated tool patterns
+   - Breakdown by tool type (Bash, Write, Edit, etc.)
+   - Suggested learned rules based on frequency (e.g., "npm run build was asked 12 times → suggest -3 modifier")
+
+4. **Advanced** — Granular configuration:
+   - Manage hard blocks (add/remove patterns)
+   - Manage custom modifiers (add/remove rules)
+   - Manage learned patterns (add/remove, toggle learning)
+   - Enable/Disable Oracle entirely
+   - Reset to defaults (copy from template)
+
+### Phase 3: Apply + Validate + Test
+
+After making any changes:
+1. **If YOLO (threshold 11) was selected**, display this warning and require explicit confirmation before applying:
+   > **WARNING: YOLO mode disables ALL safety guardrails.**
+   > Hard-blocked commands (git push, rm -rf /, DROP TABLE, git reset --hard main)
+   > will be auto-approved without any prompt. This is irreversible once executed.
+   > Are you sure you want to enable YOLO mode?
+   - Do NOT apply threshold 11 without the user typing explicit confirmation.
+2. Apply changes to `.acos/config/oracle.yaml`
+3. For session overrides, write to `.acos/state/oracle-session-threshold`
+4. For resets, copy from `.claude/skills/acos-oracle-protocol/templates/oracle-default.yaml`
+5. Run `python3 .claude/scripts/oracle-evaluate.py --diagnose` to verify
+6. Show before/after comparison of the affected setting
+
+## Quick Preset Details
+
+When a preset is selected, set the threshold AND inform the user what it means:
+
+| Preset | Threshold | Auto-approved (examples) | Escalated (examples) |
+|--------|-----------|--------------------------|----------------------|
+| strict | 3 | Read, Glob, Grep, LSP, WebSearch, Task | Edit, Write, Bash (all) |
+| balanced | 5 | + Edit, Write (normal), Bash (tests, lints, info) | Bash (install, destructive), Write/Edit (sensitive) |
+| autonomous | 8 | + installs, Edit sensitive, restricted paths | Write sensitive (.env, creds), Bash destructive (rm -r) |
+| permissive | 10 | + Write sensitive, Bash destructive | Nothing (only hard blocks deny) |
+| YOLO | 11 | Everything including hard blocks | Nothing at all |
 
 ## Temperature Reference
 
@@ -90,15 +103,27 @@ After making changes:
 | Bash | 5 | Shell execution, wide risk range |
 
 **Built-in modifiers:**
-- Sensitive paths (.env, credentials, .pem, .key): +4
+- Sensitive paths (.env, credentials, .pem, .key): +5
+- Destructive bash (rm -r, git checkout .): +5
 - Restricted paths (node_modules, .git/): +3
-- Destructive bash (rm -r, git checkout .): +3
-- Install operations (npm install, pip install): +2
+- Install operations (npm install, pip install): +3
 - Framework paths (.acos/, memory/): -2
 - In-scope files (active slice): -2
 - Test commands (npm test, pytest): -2
 - Lint commands (eslint, biome, ruff): -2
 - Info commands (git status, ls, pwd): -3
+
+## Diagnostic Command
+
+Run anytime to check Oracle health:
+```bash
+python3 .claude/scripts/oracle-evaluate.py --diagnose
+```
+
+With a custom config path:
+```bash
+python3 .claude/scripts/oracle-evaluate.py --diagnose --config path/to/oracle.yaml
+```
 
 ---
 

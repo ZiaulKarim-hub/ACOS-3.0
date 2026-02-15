@@ -4,11 +4,16 @@ The Oracle — Permission Governance Agent for ACOS v3.0
 
 PreToolUse hook that evaluates tool calls on a temperature scale (0-10).
 Low-temperature actions are auto-approved; high-temperature ones escalate to user.
+Threshold 11 (YOLO) bypasses everything including hard blocks.
 
 Reads JSON from stdin (tool_name, tool_input, cwd).
-Outputs JSON permission decision to stdout.
+Outputs JSON permission decision to stdout wrapped in hookSpecificOutput envelope.
 
-Fail-open: any error defaults to {"permissionDecision": "allow"}.
+Fail-open: any error defaults to allow.
+
+Usage:
+  Normal (hook):   stdin JSON → stdout decision
+  Diagnose:        python3 oracle-evaluate.py --diagnose [--config path/to/oracle.yaml]
 """
 
 import json
@@ -120,7 +125,7 @@ def _parse_value(s):
 
 DEFAULTS = {
     "enabled": True,
-    "threshold": 5,
+    "threshold": 9,
     "base_temperatures": {
         "Read": 0, "Glob": 0, "Grep": 0, "LSP": 0,
         "WebSearch": 2, "WebFetch": 2,
@@ -199,7 +204,7 @@ def load_config(project_root):
     if session_threshold_path.is_file():
         try:
             val = int(session_threshold_path.read_text().strip())
-            config["threshold"] = max(0, min(10, val))
+            config["threshold"] = max(0, min(11, val))
         except (ValueError, OSError):
             pass
 
@@ -207,7 +212,7 @@ def load_config(project_root):
     env_threshold = os.environ.get("ORACLE_THRESHOLD")
     if env_threshold is not None:
         try:
-            config["threshold"] = max(0, min(10, int(env_threshold)))
+            config["threshold"] = max(0, min(11, int(env_threshold)))
         except ValueError:
             pass
 
@@ -297,8 +302,8 @@ def compute_temperature(tool_name, tool_input, config, project_root):
     # ── Path-based modifiers ───────────────────────────────────────────────
     if path:
         if SENSITIVE_PATH_PATTERNS.search(path):
-            modifier += 4
-            reasons.append("sensitive_path +4")
+            modifier += 5
+            reasons.append("sensitive_path +5")
         if RESTRICTED_PATH_PATTERNS.search(path):
             modifier += 3
             reasons.append("restricted_path +3")
@@ -309,11 +314,11 @@ def compute_temperature(tool_name, tool_input, config, project_root):
     # ── Bash command modifiers ────────────────────────────────────────────
     if tool_name == "Bash" and command:
         if DESTRUCTIVE_BASH.search(command):
-            modifier += 3
-            reasons.append("destructive_cmd +3")
+            modifier += 5
+            reasons.append("destructive_cmd +5")
         if INSTALL_BASH.search(command):
-            modifier += 2
-            reasons.append("install_cmd +2")
+            modifier += 3
+            reasons.append("install_cmd +3")
         if TEST_BASH.search(command):
             modifier -= 2
             reasons.append("test_cmd -2")
@@ -400,9 +405,9 @@ def compute_temperature(tool_name, tool_input, config, project_root):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def audit_log(project_root, tool_name, decision, temperature, reasons, detail=""):
-    """Append to oracle-audit.log for escalations and denials."""
+    """Append to oracle-audit.log for escalations, denials, and YOLO bypasses."""
     if decision == "allow":
-        return  # Only log escalations and denials to keep log manageable
+        return  # Only log escalations, denials, and YOLO bypasses
     log_path = project_root / ".acos" / "state" / "oracle-audit.log"
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -418,15 +423,241 @@ def audit_log(project_root, tool_name, decision, temperature, reasons, detail=""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Output Helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def emit_decision(decision, reason=None):
+    """Emit a PreToolUse hook decision in the required hookSpecificOutput envelope."""
+    inner = {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": decision,
+    }
+    if reason:
+        inner["permissionDecisionReason"] = reason
+    json.dump({"hookSpecificOutput": inner}, sys.stdout)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Evaluate a Single Tool Call
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def evaluate(tool_name, tool_input, cwd):
+    """Evaluate a tool call. Returns (decision, reason, temperature, threshold, reasons)."""
+    project_root = find_project_root(cwd)
+    config = load_config(project_root)
+
+    # Oracle disabled — allow everything
+    if not config.get("enabled", True):
+        return "allow", None, 0, config["threshold"], []
+
+    threshold = config["threshold"]
+
+    # Check hard blocks (deny unless YOLO mode — threshold 11)
+    if check_hard_blocks(tool_name, tool_input, config):
+        command = tool_input.get("command", "")
+        if threshold >= 11:
+            # YOLO mode: bypass hard blocks, warn on stderr, log the override
+            print(
+                f"⚠ YOLO MODE: hard block bypassed for '{command[:80]}'. "
+                "All safety guardrails are off. Set threshold <= 10 to re-enable.",
+                file=sys.stderr,
+            )
+            audit_log(project_root, tool_name, "yolo", 10, ["hard_block_bypassed"], command)
+            return "allow", None, 10, threshold, ["hard_block_bypassed"]
+        audit_log(project_root, tool_name, "deny", 10, ["hard_block"], command)
+        return "deny", "Hard-blocked by The Oracle: pattern matched in command", 10, threshold, ["hard_block"]
+
+    # Compute temperature
+    temperature, base, modifier, reasons = compute_temperature(
+        tool_name, tool_input, config, project_root
+    )
+
+    if temperature <= threshold:
+        return "allow", None, temperature, threshold, reasons
+    else:
+        detail = tool_input.get("command", "") or extract_path(tool_name, tool_input)
+        audit_log(project_root, tool_name, "ask", temperature, reasons, detail)
+        reason_str = ", ".join(reasons) if reasons else "base"
+        reason = f"Oracle temp={temperature} > threshold={threshold}: {reason_str}"
+        return "ask", reason, temperature, threshold, reasons
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Diagnose Mode
+# ═══════════════════════════════════════════════════════════════════════════════
+
+DIAGNOSE_CASES = [
+    ("Read safe file",          "Read",  {"file_path": "src/index.ts"},                      "allow"),
+    ("Edit source file",        "Edit",  {"file_path": "src/app.ts", "old_string": "a", "new_string": "b"}, "allow"),
+    ("Write new file",          "Write", {"file_path": "src/new.ts", "content": "x"},        "allow"),
+    ("Bash safe (git status)",  "Bash",  {"command": "git status"},                          "allow"),
+    ("Bash install (npm i)",    "Bash",  {"command": "npm install express"},                 "allow"),
+    ("Bash destructive (rm)",   "Bash",  {"command": "rm -rf ./build"},                      "ask"),
+    ("Task spawn",              "Task",  {"prompt": "do something", "subagent_type": "Explore"}, "allow"),
+    ("Edit sensitive (.env)",   "Edit",  {"file_path": ".env", "old_string": "a", "new_string": "b"}, "allow"),
+    ("Bash hard-block (push)",  "Bash",  {"command": "git push origin main"},                "deny"),
+]
+
+
+def run_diagnose(config_path=None):
+    """Run diagnostic checks and print a health report."""
+    cwd = os.getcwd()
+    project_root = find_project_root(cwd)
+    yaml_path = config_path or (project_root / ".acos" / "config" / "oracle.yaml")
+
+    print("=" * 60)
+    print("  The Oracle — Diagnostic Report")
+    print("=" * 60)
+    print()
+
+    # ── Config check ─────────────────────────────────────────────────────
+    print("[Config]")
+    if Path(yaml_path).is_file():
+        print(f"  oracle.yaml: {yaml_path} ✓")
+        try:
+            raw = Path(yaml_path).read_text(encoding="utf-8")
+            parsed = parse_yaml(raw)
+            print(f"  Parseable:   yes ✓")
+            print(f"  Enabled:     {parsed.get('enabled', True)}")
+            print(f"  Threshold:   {parsed.get('threshold', 5)}")
+        except Exception as e:
+            print(f"  Parseable:   FAILED — {e}")
+    else:
+        print(f"  oracle.yaml: NOT FOUND at {yaml_path}")
+        print("  Using built-in defaults.")
+    print()
+
+    config = load_config(project_root)
+    threshold = config["threshold"]
+
+    # ── Session override check ───────────────────────────────────────────
+    session_path = project_root / ".acos" / "state" / "oracle-session-threshold"
+    env_override = os.environ.get("ORACLE_THRESHOLD")
+    if session_path.is_file():
+        print(f"  Session override: {session_path.read_text().strip()} (from file)")
+    elif env_override:
+        print(f"  Session override: {env_override} (from ORACLE_THRESHOLD env)")
+    else:
+        print(f"  Session override: none")
+    print(f"  Effective threshold: {threshold}")
+
+    yolo_active = threshold >= 11
+    if yolo_active:
+        print()
+        print("  ┌─────────────────────────────────────────────────────────┐")
+        print("  │  ⚠  YOLO MODE ACTIVE (threshold=11)                    │")
+        print("  │                                                         │")
+        print("  │  ALL guardrails are disabled, including hard blocks.     │")
+        print("  │  Commands like git push, rm -rf /, and DROP TABLE       │")
+        print("  │  will be auto-approved without any prompt.              │")
+        print("  │                                                         │")
+        print("  │  To restore safety: set threshold to 10 or lower.       │")
+        print("  └─────────────────────────────────────────────────────────┘")
+    print()
+
+    # ── Sample tool calls ────────────────────────────────────────────────
+    print("[Sample Tool Calls]")
+    print(f"  {'Test Case':<28s} {'Tool':<6s} {'Temp':>4s} {'Decision':<6s} {'Expected':<8s} {'Status'}")
+    print(f"  {'-'*28} {'-'*6} {'-'*4} {'-'*6} {'-'*8} {'-'*6}")
+
+    passed = 0
+    failed = 0
+    results = []
+
+    for label, tool_name, tool_input, expected in DIAGNOSE_CASES:
+        decision, reason, temperature, _, reasons = evaluate(tool_name, tool_input, cwd)
+        # Adjust expectations for current threshold
+        effective_expected = expected
+        if yolo_active:
+            effective_expected = "allow"  # YOLO auto-approves everything
+        # For expected "ask", also accept "deny" (threshold might be very low)
+        # For expected "deny", only accept "deny"
+        if effective_expected == "deny":
+            ok = decision == "deny"
+        elif effective_expected == "ask":
+            ok = decision in ("ask", "deny")
+        else:
+            ok = decision == effective_expected
+
+        status = "✓" if ok else "FAIL"
+        if ok:
+            passed += 1
+        else:
+            failed += 1
+        print(f"  {label:<28s} {tool_name:<6s} {temperature:>4d} {decision:<6s} {expected:<8s} {status}")
+        results.append((label, tool_name, decision, expected, ok, reasons))
+
+    print()
+
+    # ── Permissions.allow conflict check ─────────────────────────────────
+    print("[Permission Conflicts]")
+    settings_path = project_root / ".claude" / "settings.local.json"
+    conflicts = []
+    if settings_path.is_file():
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            allow_list = settings.get("permissions", {}).get("allow", [])
+            for entry in allow_list:
+                if entry == "Bash(git:*)" or entry == "Bash(bash:*)":
+                    conflicts.append(f"  ⚠ '{entry}' bypasses Oracle hard blocks (git push, rm -rf, etc.)")
+                elif entry.startswith("Bash") and "*" in entry and ":" not in entry:
+                    conflicts.append(f"  ⚠ '{entry}' is overly broad — may bypass Oracle")
+        except Exception:
+            pass
+
+    if conflicts:
+        for c in conflicts:
+            print(c)
+    else:
+        print("  No conflicts detected ✓")
+    print()
+
+    # ── Summary ──────────────────────────────────────────────────────────
+    print(f"[Summary]")
+    print(f"  Passed: {passed}/{passed + failed}")
+    if failed > 0:
+        print(f"  Failed: {failed}/{passed + failed}")
+        for label, tool_name, decision, expected, ok, reasons in results:
+            if not ok:
+                print(f"    → {label}: got '{decision}' expected '{expected}'")
+    if conflicts:
+        print(f"  Warnings: {len(conflicts)} permission conflict(s)")
+    if yolo_active:
+        print(f"  ⚠ YOLO mode is active — all hard blocks are bypassed")
+    print()
+
+    if failed > 0 or conflicts:
+        overall = "ISSUES DETECTED"
+    elif yolo_active:
+        overall = "HEALTHY (⚠ YOLO — no guardrails)"
+    else:
+        overall = "HEALTHY"
+    print(f"  Overall: {overall}")
+    print()
+
+    return failed == 0 and not conflicts
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main Entry Point
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    # Handle --diagnose mode
+    if "--diagnose" in sys.argv:
+        config_path = None
+        if "--config" in sys.argv:
+            idx = sys.argv.index("--config")
+            if idx + 1 < len(sys.argv):
+                config_path = sys.argv[idx + 1]
+        success = run_diagnose(config_path)
+        sys.exit(0 if success else 1)
+
+    # Normal hook mode: read from stdin, emit decision
     try:
         raw = sys.stdin.read()
         if not raw.strip():
-            # No input — allow by default
-            json.dump({"permissionDecision": "allow"}, sys.stdout)
+            emit_decision("allow")
             return
 
         data = json.loads(raw)
@@ -434,40 +665,12 @@ def main():
         tool_input = data.get("tool_input", {})
         cwd = data.get("cwd", os.getcwd())
 
-        project_root = find_project_root(cwd)
-        config = load_config(project_root)
-
-        # Oracle disabled — allow everything
-        if not config.get("enabled", True):
-            json.dump({"permissionDecision": "allow"}, sys.stdout)
-            return
-
-        # Check hard blocks first (always deny, regardless of threshold)
-        if check_hard_blocks(tool_name, tool_input, config):
-            command = tool_input.get("command", "")
-            audit_log(project_root, tool_name, "deny", 10, ["hard_block"], command)
-            json.dump({
-                "permissionDecision": "deny",
-                "reason": f"Hard-blocked by The Oracle: pattern matched in command"
-            }, sys.stdout)
-            return
-
-        # Compute temperature
-        temperature, base, modifier, reasons = compute_temperature(
-            tool_name, tool_input, config, project_root
-        )
-        threshold = config["threshold"]
-
-        if temperature <= threshold:
-            json.dump({"permissionDecision": "allow"}, sys.stdout)
-        else:
-            detail = tool_input.get("command", "") or extract_path(tool_name, tool_input)
-            audit_log(project_root, tool_name, "ask", temperature, reasons, detail)
-            json.dump({"permissionDecision": "ask"}, sys.stdout)
+        decision, reason, _, _, _ = evaluate(tool_name, tool_input, cwd)
+        emit_decision(decision, reason)
 
     except Exception:
         # Fail-open: any error allows the action
-        json.dump({"permissionDecision": "allow"}, sys.stdout)
+        emit_decision("allow")
 
 
 if __name__ == "__main__":

@@ -10,9 +10,10 @@
 #   2. Score = base_temperature[tool] + sum(applicable modifiers)
 #   3. If score <= threshold → auto-approved silently
 #   4. If score > threshold → escalated to user for approval
-#   5. Hard-blocked patterns → always denied regardless of threshold
+#   5. Hard-blocked patterns → always denied (unless YOLO mode, threshold 11)
 #
 # Configure with: /acos-oracle-protocol
+# Diagnose with:  python3 .claude/scripts/oracle-evaluate.py --diagnose
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Master switch — set to false to disable The Oracle entirely (all tools allowed)
@@ -20,11 +21,24 @@ enabled: true
 
 # Decision threshold (0-10). Actions with temperature <= threshold are auto-approved.
 # Lower = more prompts (safer). Higher = fewer prompts (more autonomous).
-#   0  = ask about everything (equivalent to no Oracle)
-#   5  = balanced (default — approves reads, basic edits, tests; asks about risky ops)
-#   8  = aggressive autonomy (only asks about destructive/sensitive actions)
-#   10 = approve everything except hard blocks
-threshold: 5
+#
+# ── Quick Presets ──────────────────────────────────────────────────────────────
+#   3  = strict     — asks about edits, writes, and most bash
+#   5  = balanced   — approves reads, edits, tests; asks about risky ops
+#   8  = autonomous — minimal prompts; only sensitive writes + destructive bash ask
+#   9  = default    — auto-approves everything except destructive bash + hard blocks
+#   10 = permissive — approves everything except hard blocks
+#   11 = YOLO       — no guardrails; even hard blocks are bypassed
+#
+# ── Full Scale ─────────────────────────────────────────────────────────────────
+#   0    = ask about everything (equivalent to no Oracle)
+#   1-2  = very conservative
+#   3-4  = strict (most writes/edits escalate)
+#   5-6  = balanced (default range)
+#   7-8  = autonomous (only risky ops escalate)
+#   9-10 = permissive (nearly everything auto-approved)
+#   11   = YOLO (everything auto-approved, hard blocks bypassed)
+threshold: 9
 
 # ── Base Temperatures ─────────────────────────────────────────────────────────
 # Starting score for each tool type before modifiers are applied.
@@ -43,7 +57,7 @@ base_temperatures:
   Bash: 5           # Shell execution (widest risk range)
 
 # ── Hard Blocks ───────────────────────────────────────────────────────────────
-# Regex patterns that are ALWAYS denied, regardless of threshold.
+# Regex patterns that are ALWAYS denied, regardless of threshold (except YOLO).
 # These match against Bash command text only.
 # Add project-specific patterns below the defaults.
 hard_blocks:
@@ -58,10 +72,10 @@ hard_blocks:
 # ── Modifier Rules ────────────────────────────────────────────────────────────
 # Built-in modifiers (applied automatically):
 #
-#   Sensitive paths (.env, credentials, .pem, .key):      +4
+#   Sensitive paths (.env, credentials, .pem, .key):      +5
+#   Destructive bash (rm -r, git checkout ., git clean):   +5
 #   Restricted paths (node_modules, .git/):                +3
-#   Destructive bash (rm -r, git checkout ., git clean):   +3
-#   Install operations (npm install, pip install):         +2
+#   Install operations (npm install, pip install):         +3
 #   Framework paths (.acos/, memory/, planning/):          -2
 #   In-scope files (matches active-slice files_allowed):   -2
 #   Test commands (npm test, pytest, vitest):              -2

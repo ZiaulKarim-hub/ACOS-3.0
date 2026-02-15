@@ -36,7 +36,7 @@ review system, and cross-project learning.
 - Config: `.acos/config/oracle.yaml` (per-project, user-editable).
 - Session override: `.acos/state/oracle-session-threshold` or `ORACLE_THRESHOLD` env var.
 - Audit trail: `.acos/state/oracle-audit.log` (escalations and denials only).
-- Default threshold: 5 (balanced). Range: 0 (ask everything) to 10 (approve everything).
+- Default threshold: 9. Range: 0 (ask everything) to 10 (permissive) to 11 (YOLO — bypasses hard blocks).
 - Fail-open: missing config or errors default to allow. The Oracle is a convenience layer.
 - Configure with `/acos-oracle-protocol`. Supports custom modifiers and learned patterns.
 - Hook ordering: Oracle (all tools) → check-scope.sh (Write|Edit only) → execute.
