@@ -16,7 +16,7 @@ review system, and cross-project learning.
 
 ## Auto-Handoff System
 - Stop hook estimates token usage from transcript content (~4 chars/token), fires once
-  per session at ~130k tokens (~65%). Creates a semantic handoff via /acos-handoff.
+  per session at ~130k tokens (~65%). Creates a semantic handoff via /acos-handoff-protocol.
 - Context compaction triggers at 69% (~138k tokens) via CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69.
   This fires ~8k tokens after the Stop hook, just after the handoff is saved.
 - PreCompact hook creates a mechanical handoff (`status: mechanical`) before compaction.

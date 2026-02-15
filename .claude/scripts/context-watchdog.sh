@@ -130,7 +130,7 @@ tool_frequency: \"{top_yaml}\"
 context_for_next_session: |
   This is a mechanical handoff auto-generated before context compaction.
   {tool_count} tool calls were made. {len(files_modified)} files were modified.
-  A semantic handoff (created by Claude via /acos-handoff) may also exist with
+  A semantic handoff (created by Claude via /acos-handoff-protocol) may also exist with
   richer context about decisions, blockers, and next actions.
 '''
 

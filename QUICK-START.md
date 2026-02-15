@@ -133,7 +133,7 @@ All commands are native Claude Code skills, invocable from the `/` menu:
 | `/acos-review` | Trigger reviews |
 | `/acos-status` | Show project status |
 | `/acos-decide` | Create Architecture Decision Record |
-| `/acos-handoff` | Create session handoff |
+| `/acos-handoff-protocol` | Create session handoff |
 | `/acos-learn` | Extract learnings |
 | `/acos-interview` | Conduct vision interview |
 

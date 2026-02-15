@@ -25,7 +25,7 @@
 ║  │   /acos-start                   │  │   codebase-analysis                  │  ║
 ║  │   /acos-learn                   │  │   technology-research                │  ║
 ║  │   /acos-decide                  │  │   api-documentation                  │  ║
-║  │   /acos-handoff                 │  │   user-guide-writing                 │  ║
+║  │   /acos-handoff-protocol        │  │   user-guide-writing                 │  ║
 ║  │   /acos-status                  │  │   agent-creation                     │  ║
 ║  │   /acos-feedback-resolution     │  │   skill-creation                     │  ║
 ║  │                                 │  │   orchestration-creation             │  ║

@@ -408,7 +408,7 @@ Unlike methodology skills (which are guidance documents), orchestration skills *
 | `/acos-complete-vision` | Yes | Execute all epics, vision-level review, user acceptance, learning extraction, archival. |
 | `/acos-review` | Yes | Trigger reviews for completed work at any level. |
 | `/acos-decide` | Yes | Create Architecture Decision Records (ADRs). |
-| `/acos-handoff` | Yes | Create session handoff documents for continuity. |
+| `/acos-handoff-protocol` | Yes | Create session handoff documents for continuity. |
 | `/acos-status` | Yes | Display comprehensive project dashboard. |
 | `/acos-learn` | Yes | Extract learnings from completed work. |
 | `acos-feedback-resolution` | No (internal) | Resolve reviewer feedback. Max 3 iterations before human escalation. |
@@ -760,7 +760,7 @@ All commands are native Claude Code skills, invoked from the `/` menu inside a s
 | `/acos-review` | Trigger reviews |
 | `/acos-status` | Show project dashboard |
 | `/acos-decide` | Create Architecture Decision Record |
-| `/acos-handoff` | Create session handoff |
+| `/acos-handoff-protocol` | Create session handoff |
 | `/acos-learn` | Extract learnings |
 
 ### 12.4 Automatic Escalation
@@ -861,7 +861,7 @@ Project Root/
 |   |   |   +-- SKILL.md
 |   |   |   +-- templates/
 |   |   |       +-- adr.md
-|   |   +-- acos-handoff/SKILL.md
+|   |   +-- acos-handoff-protocol/SKILL.md
 |   |   +-- acos-status/SKILL.md
 |   |   +-- acos-learn/
 |   |   |   +-- SKILL.md

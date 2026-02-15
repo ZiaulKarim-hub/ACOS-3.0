@@ -1,12 +1,12 @@
 ---
-name: acos-handoff
+name: acos-handoff-protocol
 description: Creates a session handoff document capturing current state for future sessions. Partially automated by agent memory persistence.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
-# ACOS Handoff
+# ACOS Handoff Protocol
 
 ## Overview
 

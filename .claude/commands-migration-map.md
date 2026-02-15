@@ -11,6 +11,6 @@ The old `.claude/commands/` slash commands were migrated to native Claude Code s
 | `acos-execute.md` | `.claude/skills/acos-execute-slice/SKILL.md` (also acos-execute-story, acos-execute-epic) |
 | `acos-review.md` | `.claude/skills/acos-review/SKILL.md` |
 | `acos-decide.md` | `.claude/skills/acos-decide/SKILL.md` |
-| `acos-handoff.md` | `.claude/skills/acos-handoff/SKILL.md` |
+| `acos-handoff.md` | `.claude/skills/acos-handoff-protocol/SKILL.md` |
 | `acos-learn.md` | `.claude/skills/acos-learn/SKILL.md` |
 | `acos-status.md` | `.claude/skills/acos-status/SKILL.md` |
