@@ -24,6 +24,11 @@ CWD="$(pwd)"
 LOG_FILE="$STATE_DIR/continue.log"
 PARENT_PID="$PPID"
 
+# Capture the controlling TTY before nohup detaches us from it.
+# The TTY device (e.g. /dev/ttys003) persists after the parent exits —
+# it's owned by the terminal emulator, not the Claude process.
+PARENT_TTY=$(tty 2>/dev/null || echo "")
+
 mkdir -p "$STATE_DIR"
 
 # Write a marker so other hooks know a continuation is pending
@@ -39,6 +44,7 @@ nohup bash -c "
   PROMPT='$PROMPT'
   STATE_DIR='$STATE_DIR'
   PARENT_PID='$PARENT_PID'
+  PARENT_TTY='$PARENT_TTY'
 
   log() {
     echo \"\$(date -u +%Y-%m-%dT%H:%M:%SZ) \$1\" >> \"\$LOG_FILE\"
@@ -65,8 +71,15 @@ nohup bash -c "
   # Clean up the pending marker
   rm -f \"\$STATE_DIR/continue-pending\"
 
-  # Check if we're in a terminal (if not, we can't launch interactive claude)
-  if [ ! -t 0 ] && [ -z \"\$PROMPT\" ]; then
+  # Check if the original TTY is still available for interactive launch.
+  # nohup detaches stdin, so [ ! -t 0 ] is always true here.
+  # Instead, check the captured PARENT_TTY device.
+  HAS_TTY=false
+  if [ -n \"\$PARENT_TTY\" ] && [ -e \"\$PARENT_TTY\" ] && [ -w \"\$PARENT_TTY\" ]; then
+    HAS_TTY=true
+  fi
+
+  if [ \"\$HAS_TTY\" = \"false\" ] && [ -z \"\$PROMPT\" ]; then
     log 'No terminal attached and no prompt provided. Writing resume hint instead.'
     echo ''
     echo '=== ACOS Continue ==='
@@ -77,14 +90,22 @@ nohup bash -c "
     exit 0
   fi
 
-  log \"Launching fresh Claude session in \$CWD\"
+  log \"Launching fresh Claude session in \$CWD (TTY: \$PARENT_TTY)\"
 
   cd \"\$CWD\"
 
   if [ -n \"\$PROMPT\" ]; then
-    exec claude \"\$PROMPT\"
+    if [ \"\$HAS_TTY\" = \"true\" ]; then
+      exec claude \"\$PROMPT\" < \"\$PARENT_TTY\" > \"\$PARENT_TTY\" 2>&1
+    else
+      exec claude \"\$PROMPT\"
+    fi
   else
-    exec claude
+    if [ \"\$HAS_TTY\" = \"true\" ]; then
+      exec claude < \"\$PARENT_TTY\" > \"\$PARENT_TTY\" 2>&1
+    else
+      exec claude
+    fi
   fi
 " >> "$LOG_FILE" 2>&1 &
 
