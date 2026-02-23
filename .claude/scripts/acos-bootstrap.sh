@@ -20,7 +20,19 @@ set -e
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks to find the REAL script location (in ACOS source tree).
+# When bootstrap is symlinked into a child project, BASH_SOURCE[0] is the
+# symlink path. We follow it to find the actual ACOS root.
+REAL_SCRIPT="${BASH_SOURCE[0]}"
+while [[ -L "$REAL_SCRIPT" ]]; do
+  LINK_TARGET="$(readlink "$REAL_SCRIPT")"
+  # Handle relative symlinks
+  if [[ "$LINK_TARGET" != /* ]]; then
+    LINK_TARGET="$(dirname "$REAL_SCRIPT")/$LINK_TARGET"
+  fi
+  REAL_SCRIPT="$LINK_TARGET"
+done
+SCRIPT_DIR="$(cd "$(dirname "$REAL_SCRIPT")" && pwd)"
 ACOS_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PROJECT_DIR="$(pwd)"
 
@@ -129,7 +141,7 @@ if [[ -f "$PROJECT_DIR/package.json" ]]; then
   # Package manager
   if [[ -f "$PROJECT_DIR/pnpm-lock.yaml" ]]; then PACKAGE_MANAGER="pnpm"
   elif [[ -f "$PROJECT_DIR/yarn.lock" ]]; then PACKAGE_MANAGER="yarn"
-  elif [[ -f "$PROJECT_DIR/bun.lockb" ]]; then PACKAGE_MANAGER="bun"
+  elif [[ -f "$PROJECT_DIR/bun.lock" || -f "$PROJECT_DIR/bun.lockb" ]]; then PACKAGE_MANAGER="bun"
   fi
 
   # Test runner
@@ -256,7 +268,6 @@ ONDEMAND_SKILLS=(
 # Tier 5: Meta/ACOS-internal — only linked with --all-skills flag
 META_SKILLS=(
   "agent-creation"
-  "skill-creation"
   "orchestration-creation"
 )
 
@@ -470,12 +481,11 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   cp "$ACOS_SETTINGS" "$SETTINGS_FILE"
   log_step "Created settings.local.json with ACOS hooks"
 else
-  if grep -q "check-scope.sh" "$SETTINGS_FILE" 2>/dev/null; then
-    log_skip "ACOS hooks already present in settings.local.json"
-  else
-    log_step "Merging ACOS hooks into existing settings.local.json..."
-    # Deep merge: preserve existing permissions/settings, add all ACOS hooks
-    MERGE_RESULT=$(python3 - "$SETTINGS_FILE" "$ACOS_SETTINGS" <<'PYEOF'
+  # Always run idempotent merge — adds missing hooks without duplicating existing ones.
+  # Previous versions used a sentinel guard (grep check-scope.sh) that skipped the entire
+  # merge when ANY ACOS hook was present, preventing new hooks from being propagated.
+  log_step "Merging ACOS hooks into existing settings.local.json..."
+  MERGE_RESULT=$(python3 - "$SETTINGS_FILE" "$ACOS_SETTINGS" <<'PYEOF'
 import json, sys
 
 existing_path, acos_path = sys.argv[1], sys.argv[2]
@@ -492,6 +502,8 @@ try:
 except (json.JSONDecodeError, FileNotFoundError):
     print('ERROR: Cannot read ACOS settings', file=sys.stderr)
     sys.exit(1)
+
+hooks_added = 0
 
 # Merge permissions: combine allow lists, preserve deny/ask
 if 'permissions' in acos:
@@ -512,6 +524,7 @@ if 'hooks' in acos:
     for hook_type, hook_entries in acos['hooks'].items():
         if hook_type not in existing['hooks']:
             existing['hooks'][hook_type] = hook_entries
+            hooks_added += len(hook_entries)
         else:
             existing_cmds = set()
             for entry in existing['hooks'][hook_type]:
@@ -521,24 +534,50 @@ if 'hooks' in acos:
                 for h in entry.get('hooks', []):
                     if h.get('command', '') not in existing_cmds:
                         existing['hooks'][hook_type].append(entry)
+                        hooks_added += 1
                         break
+
+# Enforce ordering: token-gate.sh must be FIRST in PreToolUse
+# (it must run before Oracle to gate tool execution on context budget)
+if 'PreToolUse' in existing.get('hooks', {}):
+    pre_hooks = existing['hooks']['PreToolUse']
+    gate_idx = None
+    for i, entry in enumerate(pre_hooks):
+        for h in entry.get('hooks', []):
+            if 'token-gate.sh' in h.get('command', ''):
+                gate_idx = i
+                break
+        if gate_idx is not None:
+            break
+    if gate_idx is not None and gate_idx != 0:
+        gate_entry = pre_hooks.pop(gate_idx)
+        pre_hooks.insert(0, gate_entry)
 
 if 'outputStyle' in acos and 'outputStyle' not in existing:
     existing['outputStyle'] = acos['outputStyle']
 
+# Output the count as first line of stdout, then the JSON
+print(f'HOOKS_ADDED:{hooks_added}')
 print(json.dumps(existing, indent=2))
 PYEOF
-2>&1)
+)
 
-    if [[ $? -eq 0 && -n "$MERGE_RESULT" ]]; then
-      echo "$MERGE_RESULT" > "$SETTINGS_FILE"
-      log_ok "Merged ACOS hooks into existing settings.local.json"
+    # Parse hooks_added count from first line, JSON from remaining lines
+    HOOKS_ADDED=$(echo "$MERGE_RESULT" | head -1 | cut -d: -f2)
+    MERGE_JSON=$(echo "$MERGE_RESULT" | tail -n +2)
+
+    if [[ -n "$MERGE_JSON" && "$MERGE_JSON" == "{"* ]]; then
+      echo "$MERGE_JSON" > "$SETTINGS_FILE"
+      if [[ "${HOOKS_ADDED:-0}" -eq 0 ]]; then
+        log_ok "ACOS hooks already up to date (0 added)"
+      else
+        log_ok "Merged $HOOKS_ADDED new hook(s) into settings.local.json"
+      fi
     else
       log_warn "Merge failed — copying ACOS settings as reference"
       cp "$ACOS_SETTINGS" "$PROJECT_DIR/.claude/settings.acos-hooks.json"
       log_warn "Manual merge may be needed — check settings.acos-hooks.json"
     fi
-  fi
 fi
 log_ok "Hooks configured"
 log ""

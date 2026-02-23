@@ -11,6 +11,7 @@ skills:
   - acos-feedback-resolution
   - agent-creation
   - acos-create-skill
+  - acos-embed-skills
 memory: project
 hooks:
   PreToolUse:
@@ -109,7 +110,7 @@ When you need an agent that doesn't exist:
 #### Creating Skills
 
 When you need a skill that doesn't exist:
-1. Use the `skill-creation` skill
+1. Use the `acos-create-skill` skill
 2. Create the skill definition following native `.claude/skills/` format
 3. Skills are validated through use
 

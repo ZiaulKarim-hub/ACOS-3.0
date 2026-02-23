@@ -20,6 +20,9 @@ CACHE_TTL=30  # seconds
 
 mkdir -p "$STATE_DIR" "$HANDOFF_DIR"
 
+# Cross-platform file modification time (macOS → Linux fallback)
+get_mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
+
 # Read hook input from stdin
 INPUT=$(cat)
 
@@ -43,7 +46,7 @@ ESTIMATED_TOKENS=0
 USE_CACHE=false
 
 if [ -f "$CACHE_FILE" ]; then
-  CACHE_AGE=$(( $(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null || echo 0) ))
+  CACHE_AGE=$(( $(date +%s) - $(get_mtime "$CACHE_FILE") ))
   if [ "$CACHE_AGE" -lt "$CACHE_TTL" ]; then
     ESTIMATED_TOKENS=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
     USE_CACHE=true
