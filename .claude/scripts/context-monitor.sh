@@ -187,7 +187,7 @@ except Exception:
     print('0')
     sys.exit(0)
 
-print(total_chars // 3)
+print(int(total_chars / 2.5))
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
 fi
 
@@ -195,9 +195,10 @@ if [ -z "$ESTIMATED_TOKENS" ]; then
   ESTIMATED_TOKENS=0
 fi
 
-# Add system context overhead (CLAUDE.md, MEMORY.md, handoffs, system prompt)
-# These tokens are NOT in the JSONL transcript but consume context window.
-ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + 25000 ))
+# Add system context overhead (system prompt, CLAUDE.md, MEMORY.md, handoffs,
+# skill definitions, system reminders). NOT in JSONL transcript.
+# Calibrated Feb 2026: 25k undercounted by ~5k for ACOS projects.
+ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + 30000 ))
 
 # Threshold: 100,000 tokens (~50% of 200k context window)
 # Aligned with token-gate.sh WARN_PCT=50 (lowered Feb 2026)

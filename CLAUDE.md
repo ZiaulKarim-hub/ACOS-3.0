@@ -15,8 +15,9 @@ review system, and cross-project learning.
 - Memory artifacts live in memory/ (source-of-truth, decisions, reviews, handoffs)
 
 ## Auto-Handoff System
-- Stop hook estimates token usage from transcript content (~4 chars/token), fires once
-  per session at ~100k tokens (~50%). Creates a semantic handoff via /acos-handoff-protocol.
+- Stop hook estimates token usage from transcript content (~2.5 chars/token + 30k
+  system overhead), fires once per session at ~100k tokens (~50%). Creates a
+  semantic handoff via /acos-handoff-protocol.
 - Token-gate (PreToolUse) enforces handoff with staleness detection: if tokens grew
   >20k since the last handoff was created, it demands a FRESH handoff. Hard ceiling at 130k.
 - Context compaction triggers at 69% (~138k tokens) via CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69.

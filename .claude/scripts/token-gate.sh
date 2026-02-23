@@ -44,13 +44,17 @@ CACHE_FILE="$STATE_DIR/.token-gate-cache"
 ENFORCEMENT_FILE="$STATE_DIR/.handoff-enforcement"
 CACHE_TTL=30  # seconds
 
-# System context overhead: CLAUDE.md, MEMORY.md, system prompt, auto-loaded
-# handoffs, skill definitions, and system reminders injected mid-conversation.
-# These tokens are NOT in the JSONL transcript but consume context window.
-SYSTEM_OVERHEAD=25000
+# System context overhead: system prompt (tool definitions, agent descriptions),
+# CLAUDE.md, MEMORY.md, auto-loaded handoffs, skill definitions, and system
+# reminders injected mid-conversation. These tokens are NOT in the JSONL
+# transcript but consume context window.
+# Calibrated Feb 2026: 25k was undercounting by ~5k for ACOS projects.
+SYSTEM_OVERHEAD=30000
 
-# Characters per token ratio for estimation (~3 for mixed code/text/JSON)
-CHARS_PER_TOKEN=3
+# Characters per token ratio for estimation.
+# Calibrated Feb 2026: 3.0 undercounted ~16% vs actual. Claude's tokenizer
+# averages ~2.5 chars/token for mixed code/text/JSON content.
+CHARS_PER_TOKEN=2.5
 
 CONTEXT_WINDOW=200000
 WARN_PCT=50
@@ -368,7 +372,7 @@ except Exception:
     print('0')
     sys.exit(0)
 
-print(total_chars // $CHARS_PER_TOKEN)
+print(int(total_chars / $CHARS_PER_TOKEN))
 " "$TRANSCRIPT_PATH" 2>/dev/null)
 
   if [ -z "$ESTIMATED_TOKENS" ]; then
