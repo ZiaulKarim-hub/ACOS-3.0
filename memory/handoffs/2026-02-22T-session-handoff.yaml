@@ -1,0 +1,118 @@
+timestamp: "2026-02-22T22:50:00Z"
+status: "active"
+session_id: "2026-02-22-update-session"
+session_summary: >
+  Major session: Built handoff enforcement loop, fixed session-continue.sh auto-launch,
+  created /acos-update self-evolution skill, ran first /acos-update cycle, and began
+  implementing 6 approved improvements. CRITICAL: Handoff enforcement has a design bug
+  that must be fixed FIRST in next session before any other work.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "in_progress"
+
+completed_this_session:
+  - "Rewrote token-gate.sh with 4-phase enforcement loop (NUDGE/PRESS/FORCE/FALLBACK)"
+  - "Fixed context-monitor.sh Stop hook: exit 2 for actual blocking + stop retry tracking"
+  - "Fixed session-continue.sh: TTY detection via process tree walk + osascript launch + retry loop with verification"
+  - "Created /acos-update skill with 7-phase self-evolution protocol and plain-English Change Cards"
+  - "Ran first /acos-update: researched vibe coding + Claude Code developments, identified 8 improvements"
+  - "User approved all 8 (6 now, 2 deferred). Began implementing changes #1-#6"
+  - "PARTIALLY IMPLEMENTED: settings.local.json updated with async hooks, SubagentStart, SessionEnd, TaskCompleted"
+  - "PARTIALLY IMPLEMENTED: log-agent-spawn.sh created"
+  - "NOT YET CREATED: session-cleanup.sh, enforce-quality-gate.sh, inject-agent-context.sh"
+  - "NOT YET DONE: Add isolation:worktree to 4 reviewer agent files"
+
+files_modified:
+  - path: ".claude/scripts/token-gate.sh"
+    changes: "Complete rewrite with enforcement loop, health check, 4-phase escalation"
+  - path: ".claude/scripts/context-monitor.sh"
+    changes: "Fixed: exit 2 blocking, stop retry tracking, session_id matching"
+  - path: ".claude/scripts/session-continue.sh"
+    changes: "Fixed: TTY detection via ps process tree walk, osascript macOS launch, retry loop with pgrep verification"
+  - path: ".claude/scripts/log-agent-spawn.sh"
+    changes: "NEW: SubagentStart hook script for agent lifecycle logging"
+  - path: ".claude/scripts/acos-bootstrap.sh"
+    changes: "Added acos-update to CORE_SKILLS, added memory/handoffs/archive to DATA_DIRS"
+  - path: ".claude/settings.local.json"
+    changes: "Added async:true to PostToolUse+SubagentStop, added SubagentStart/SessionEnd/TaskCompleted hooks"
+  - path: ".claude/skills/acos-update/SKILL.md"
+    changes: "NEW: Self-evolution skill with 7 phases and plain-English Change Cards"
+  - path: "memory/decisions/acos-update-2026-02-22.md"
+    changes: "NEW: First /acos-update report with 8 Change Cards"
+
+decisions_made:
+  - "Enforcement phases are retry-count based, not token-percentage based"
+  - "Stop hook uses exit 2 (was exit 0 + JSON which was silently ignored)"
+  - "session-continue.sh uses osascript for macOS Terminal/iTerm2 launch (most reliable)"
+  - "acos-update Change Cards must be noob-readable with no jargon"
+  - "User approved changes #1-#6 for immediate implementation, #7-#8 deferred"
+
+blockers:
+  - "CRITICAL BUG: token-gate.sh handoff detection treats ONE handoff as permanent satisfaction"
+  - "Once a handoff exists for the session, enforcement never re-activates even if 30k+ more tokens are used"
+  - "This is why we reached 160k tokens without the handoff protocol firing again"
+
+next_actions:
+  - "PRIORITY 1 — FIX HANDOFF ENFORCEMENT BUG (do this FIRST before anything else)"
+  - "  Bug: token-gate.sh line 'THIS_SESSION_HANDOFF=true' → reset_enforcement → exit 0"
+  - "  It finds the handoff created at 150k and allows everything forever after"
+  - "  Fix: Compare handoff creation time vs current token count"
+  - "  If tokens have grown >20k since handoff was written, re-activate enforcement"
+  - "  OR: Track token count AT TIME of handoff creation in the enforcement state"
+  - "  OR: Store the token count in the handoff YAML itself and compare"
+  - "  USER REQUIREMENT: Handoff MUST fire at 130k tokens. No exceptions. No way to exceed."
+  - "  USER REQUIREMENT: Initial warning level should be even lower (consider 100k-110k)"
+  - "  USER REQUIREMENT: Strict implementation — this must never fail again"
+  - "PRIORITY 2 — Complete /acos-update implementation (changes #1-#6)"
+  - "  Create session-cleanup.sh (Change #3: SessionEnd hook)"
+  - "  Create enforce-quality-gate.sh (Change #5: TaskCompleted hook)"
+  - "  Create inject-agent-context.sh (Change #6: SubagentStart context injection)"
+  - "  Add isolation:worktree to 4 reviewer agents (Change #4)"
+  - "  Run health check to verify all changes"
+  - "PRIORITY 3 — Plan Big Moves (#7 split rules, #8 parallel agents) for future session"
+  - "PRIORITY 4 — Commit all changes and push"
+  - "Also: 6 previously uncommitted files from prior session (PyYAML removal, independence wall hardening)"
+
+context_for_next_session: |
+  CRITICAL HANDOFF — READ THIS FIRST:
+
+  The handoff enforcement system has a bug that lets sessions run to 160k+ tokens.
+  The bug: once ANY handoff file exists for the current session, the token-gate
+  permanently disables enforcement. Even if 30k more tokens are used after the
+  handoff, the system stays silent.
+
+  THE FIX MUST:
+  1. Fire the handoff protocol at 130k tokens MAXIMUM (user requirement)
+  2. Start warnings even earlier (100k-110k suggested)
+  3. If a handoff already exists but tokens grew >20k since it was written,
+     demand a FRESH handoff (the old one is stale)
+  4. Never allow the session to exceed 130k without a handoff being created
+  5. Be strict — no way around it, no silent bypass
+
+  The fix is in token-gate.sh. The key section is the "Handoff Detection" block
+  (~line 200+). Currently it finds any file with matching session_id and exits.
+  It needs to ALSO check: "was this handoff created recently enough relative to
+  current token usage?"
+
+  Approach: Store the token count when the handoff was created (either in the
+  handoff YAML as `tokens_at_creation:` or in the enforcement state file).
+  On subsequent checks, compare current tokens vs tokens_at_creation.
+  If delta > threshold (e.g., 20k), re-activate enforcement.
+
+  ALSO: Lower all thresholds:
+  - WARN: 50% (100k) instead of 55% (110k)
+  - BLOCK: 60% (120k) instead of 65% (130k)
+  - EMERGENCY: 65% (130k) instead of 70% (140k)
+  - Hard ceiling at 130k — enforcement should be impossible to bypass after this
+
+  AFTER fixing the handoff bug, continue the /acos-update implementation:
+  - 3 scripts still need creating (session-cleanup.sh, enforce-quality-gate.sh, inject-agent-context.sh)
+  - 4 reviewer agents need isolation:worktree added
+  - Run health check, verify, commit everything
+
+  The update report is at memory/decisions/acos-update-2026-02-22.md
+  The full research findings (Claude Code 17 hooks, Agent Teams, SDK, etc.) were
+  gathered earlier in this session — check the handoff for the full list of findings.

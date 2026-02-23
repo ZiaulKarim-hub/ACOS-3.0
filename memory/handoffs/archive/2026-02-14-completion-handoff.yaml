@@ -1,0 +1,56 @@
+timestamp: "2026-02-14T22:00:00Z"
+status: "completed"
+session_summary: "Fixed Oracle permission governance system — was a complete no-op due to wrong JSON output format. Rescaled temperature modifiers, added YOLO mode, --diagnose CLI, tightened permissions, and set default threshold to 9."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Fixed hookSpecificOutput envelope in oracle-evaluate.py (critical bug — Oracle decisions were silently ignored)"
+  - "Added permissionDecisionReason to ask/deny outputs for user visibility"
+  - "Extracted evaluate() function for reuse between hook mode and diagnose mode"
+  - "Added --diagnose CLI mode with 9 sample tool calls, config check, and permission conflict detection"
+  - "Tightened permissions.allow: replaced Bash(git:*) with specific safe git subcommands, removed Bash(bash:*), added Read/Glob/Grep/LSP"
+  - "Rescaled modifiers: sensitive_path +4→+5, destructive_cmd +3→+5, install_cmd +2→+3 to fill full 0-10 range"
+  - "Added YOLO mode (threshold 11) that bypasses hard blocks with three-layer warnings (stderr, diagnose box, skill confirmation gate)"
+  - "Changed default threshold from 5 to 9 (auto-approves everything except destructive bash and hard blocks)"
+  - "Redesigned /acos-oracle-protocol skill with health check phase, quick presets, and audit analysis"
+  - "Updated oracle-default.yaml template with preset docs and diagnostic command reference"
+  - "Updated CLAUDE.md with new default threshold and range documentation"
+  - "Committed and pushed: ea65bd6"
+
+files_modified:
+  - path: ".claude/scripts/oracle-evaluate.py"
+    changes: "Fixed hookSpecificOutput format, added emit_decision(), evaluate(), --diagnose mode, YOLO bypass with warnings, rescaled modifiers, default threshold 5→9"
+  - path: ".claude/settings.local.json"
+    changes: "Replaced Bash(git:*) with specific safe subcommands, removed Bash(bash:*), added Read/Glob/Grep/LSP and info commands"
+  - path: ".claude/skills/acos-oracle-protocol/SKILL.md"
+    changes: "Redesigned with health check phase, quick presets (strict/balanced/autonomous/default/permissive/YOLO), YOLO confirmation gate"
+  - path: ".claude/skills/acos-oracle-protocol/templates/oracle-default.yaml"
+    changes: "Added preset docs, diagnostic command, rescaled modifier comments, YOLO documentation"
+  - path: ".acos/config/oracle.yaml"
+    changes: "Threshold 5→9, added preset scale docs, rescaled modifier comments, YOLO documentation"
+  - path: "CLAUDE.md"
+    changes: "Updated default threshold to 9 and range to include YOLO (11)"
+
+decisions_made:
+  - "Default threshold 9 instead of 5: auto-approve everything except destructive bash, matching user preference for minimal prompts"
+  - "YOLO at threshold 11 (beyond 0-10 scale) to signal it's an extraordinary choice"
+  - "Rescale only positive modifiers (not base temps or negative modifiers) to preserve low-end behavior while filling top of scale"
+  - "Three-layer YOLO warnings: stderr on each bypass, diagnose box, skill confirmation gate"
+  - "Renamed old T=10 'yolo' to 'permissive' since YOLO now means something stronger"
+
+blockers: []
+
+next_actions:
+  - "Update MEMORY.md with new Oracle defaults (threshold 9, YOLO at 11, rescaled modifiers)"
+  - "Consider adding sudo/chmod 777 patterns to reach temp 9-10 for more granular coverage"
+
+context_for_next_session: |
+  The Oracle is now fully functional. The hookSpecificOutput fix was the critical change —
+  without it, all Oracle decisions were silently ignored by Claude Code. The permissions.allow
+  whitelist and Oracle now work as two complementary layers: whitelist for fast-path safe ops,
+  Oracle for temperature-scored governance of everything else.

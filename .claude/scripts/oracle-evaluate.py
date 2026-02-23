@@ -331,7 +331,7 @@ def compute_temperature(tool_name, tool_input, config, project_root):
 
     # ── In-scope file modifier ────────────────────────────────────────────
     if path:
-        active_slice = project_root / ".acos" / "state" / "active-slice.yaml"
+        active_slice = project_root / ".acos" / "config" / "active-slice.yaml"
         if active_slice.is_file():
             try:
                 slice_text = active_slice.read_text(encoding="utf-8")

@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ACOS v3.0 - INTEGRATION REVIEWER TRIGGER RULES
+# ═══════════════════════════════════════════════════════════════════════════
+# HUMAN-EDITABLE ONLY — No agent may read or modify.
+#
+# This reviewer is included at slice level when ANY path or code pattern
+# matches, OR when file count exceeds the threshold.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: ACOS-integration-reviewer
+description: "How components work together"
+always_required: false
+
+# ── Slice-level triggers (all OR'd) ─────────────────────────────────────
+# Covers: external service integration, multi-component changes
+
+trigger_code_patterns:
+  - "fetch("
+  - "axios"
+  - "http."
+  - "https."
+  - "request("
+  - "webhook"
+  - "callback"
+  - "api_key"
+  - "client_id"
+  - "client_secret"
+
+# Include when more than this many files are modified in a single slice
+trigger_file_count_gt: 3
+
+# ── Higher-level rules ──────────────────────────────────────────────────
+story_always: true
+epic_always: true
+vision_always: true

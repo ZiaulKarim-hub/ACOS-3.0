@@ -1,70 +1,140 @@
 #!/bin/bash
 # Stop hook — blocks Claude from stopping until a handoff exists
+#
 # Works with token-gate.sh (PreToolUse) as a two-layer defense:
 #   Layer 1 (token-gate): proactively monitors every tool call, warns/blocks at thresholds
 #   Layer 2 (this script): catches the stop event, ensures handoff exists before allowing exit
 #
 # Behavior:
 #   - If stop_hook_active=true (second trigger): allow stop unconditionally
-#   - If a handoff exists for today: allow stop
+#   - If a handoff exists for this session: allow stop
 #   - If tokens < threshold: allow stop (normal low-usage session)
-#   - If tokens >= threshold AND no handoff: block stop, write mechanical handoff, demand semantic one
+#   - If tokens >= threshold AND no handoff: block stop, write mechanical, demand semantic
 #
-# Output: JSON with decision/reason/additionalContext (not stderr like v1)
-# Exit 0 always — uses JSON decision:"block" instead of exit 2
+# BLOCKING MECHANISM: Uses BOTH exit 2 AND JSON decision:block for maximum
+# compatibility. Exit 2 is the standard Claude Code hook denial mechanism.
+# The JSON output provides context to the agent about what happened.
+#
+# RETRY TRACKING: Tracks stop attempts in state file. Each blocked stop
+# increments the counter. After MAX_STOP_RETRIES, allows stop but ensures
+# at least a mechanical handoff exists.
 
 set -euo pipefail
 
 STATE_DIR=".acos/state"
 HANDOFF_DIR="memory/handoffs"
+STOP_RETRY_FILE="$STATE_DIR/.stop-retry-count"
+MAX_STOP_RETRIES=3
+
 mkdir -p "$STATE_DIR" "$HANDOFF_DIR"
 
 # Read hook input from stdin
 INPUT=$(cat)
 
-# --- Loop prevention ---
+# ── Loop Prevention ────────────────────────────────────────────────────
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 print(str(data.get('stop_hook_active', False)).lower())
-" 2>/dev/null)
+" 2>/dev/null || echo "false")
 
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-  # Second trigger — allow stop. If token-gate wrote an emergency handoff, that's our safety net.
+  # Second trigger — allow stop unconditionally
+  rm -f "$STOP_RETRY_FILE"
   exit 0
 fi
 
-# --- Extract transcript path and session ID ---
+# ── Extract transcript path and session ID ─────────────────────────────
 read -r TRANSCRIPT_PATH SESSION_ID <<< $(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 tp = data.get('transcript_path', '')
 sid = data.get('session_id', '')
 print(tp, sid)
-" 2>/dev/null)
+" 2>/dev/null || echo "")
 
 # If no transcript path available, can't measure — allow stop
 if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
-# --- Check if handoff already exists for today ---
-TODAY=$(date -u +%Y-%m-%d)
+# ── Check if a FRESH handoff exists for this session ───────────────────
+# Staleness-aware: if tokens grew >20k since the handoff was created,
+# it's stale and doesn't count. Matches token-gate.sh logic.
+HANDOFF_STALE_DELTA=20000
 HANDOFF_EXISTS=false
-for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
-  if [ -f "$f" ]; then
-    HANDOFF_EXISTS=true
-    break
-  fi
-done
+HANDOFF_TOKENS_AT_CREATION=0
 
-if [ "$HANDOFF_EXISTS" = "true" ]; then
-  # Handoff exists — allow stop
-  exit 0
+if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
+  NEWEST_HANDOFF=""
+  NEWEST_MTIME=0
+  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml; do
+    if [ -f "$f" ]; then
+      HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
+      if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
+        HANDOFF_EXISTS=true
+        FILE_MTIME=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
+        if [ "$FILE_MTIME" -gt "$NEWEST_MTIME" ]; then
+          NEWEST_MTIME=$FILE_MTIME
+          NEWEST_HANDOFF="$f"
+        fi
+      fi
+    fi
+  done
+
+  # Check staleness
+  if [ "$HANDOFF_EXISTS" = "true" ] && [ -n "$NEWEST_HANDOFF" ]; then
+    HANDOFF_TOKENS_AT_CREATION=$(grep -m1 '^estimated_tokens:' "$NEWEST_HANDOFF" 2>/dev/null | sed 's/^estimated_tokens:[[:space:]]*//' | tr -d '"' || echo 0)
+    if [ -z "$HANDOFF_TOKENS_AT_CREATION" ] || ! [[ "$HANDOFF_TOKENS_AT_CREATION" =~ ^[0-9]+$ ]]; then
+      HANDOFF_TOKENS_AT_CREATION=0
+    fi
+  fi
 fi
 
-# --- Token estimation ---
-ESTIMATED_TOKENS=$(python3 -c "
+# Also check by date (fallback for handoffs without session_id)
+if [ "$HANDOFF_EXISTS" = "false" ]; then
+  TODAY=$(date -u +%Y-%m-%d)
+  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
+    if [ -f "$f" ]; then
+      HANDOFF_EXISTS=true
+      break
+    fi
+  done
+fi
+
+if [ "$HANDOFF_EXISTS" = "true" ]; then
+  # Check freshness — if we have token data, compare
+  if [ "$HANDOFF_TOKENS_AT_CREATION" -gt 0 ] && [ "$ESTIMATED_TOKENS" -gt 0 ]; then
+    TOKEN_DELTA=$(( ESTIMATED_TOKENS - HANDOFF_TOKENS_AT_CREATION ))
+    if [ "$TOKEN_DELTA" -ge "$HANDOFF_STALE_DELTA" ]; then
+      # Handoff is stale — proceed as if no handoff exists
+      echo "STOP HOOK: Handoff stale — created at ~${HANDOFF_TOKENS_AT_CREATION}, now ~${ESTIMATED_TOKENS} (delta: ${TOKEN_DELTA})" >&2
+      HANDOFF_EXISTS=false
+    fi
+  fi
+
+  if [ "$HANDOFF_EXISTS" = "true" ]; then
+    # Fresh handoff exists — allow stop, clean up retry counter
+    rm -f "$STOP_RETRY_FILE"
+    exit 0
+  fi
+fi
+
+# ── Token Estimation ───────────────────────────────────────────────────
+# Use cached value from token-gate if fresh, otherwise re-estimate
+ESTIMATED_TOKENS=0
+CACHE_FILE="$STATE_DIR/.token-gate-cache"
+
+if [ -f "$CACHE_FILE" ]; then
+  CACHE_AGE=$(( $(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null || stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
+  if [ "$CACHE_AGE" -lt 60 ]; then
+    ESTIMATED_TOKENS=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+  fi
+fi
+
+# If no cached value, estimate from transcript
+if [ "$ESTIMATED_TOKENS" -eq 0 ]; then
+  ESTIMATED_TOKENS=$(python3 -c "
 import json, sys
 
 transcript_path = sys.argv[1]
@@ -118,24 +188,31 @@ except Exception:
     sys.exit(0)
 
 print(total_chars // 4)
-" "$TRANSCRIPT_PATH" 2>/dev/null)
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
+fi
 
 if [ -z "$ESTIMATED_TOKENS" ]; then
   ESTIMATED_TOKENS=0
 fi
 
-# Threshold: 110,000 tokens (~55% of 200k context window)
-# Lower than before because token-gate.sh handles the 65%+ case proactively
-TOKEN_THRESHOLD=110000
+# Threshold: 100,000 tokens (~50% of 200k context window)
+# Aligned with token-gate.sh WARN_PCT=50 (lowered Feb 2026)
+TOKEN_THRESHOLD=100000
 
 if [ "$ESTIMATED_TOKENS" -lt "$TOKEN_THRESHOLD" ]; then
   # Low usage session — allow stop normally
+  rm -f "$STOP_RETRY_FILE"
   exit 0
 fi
 
-# --- High usage session with no handoff: write mechanical + block stop ---
+# ── High usage session with no handoff ─────────────────────────────────
+# Track stop retry count
+STOP_RETRIES=$(cat "$STOP_RETRY_FILE" 2>/dev/null || echo 0)
+STOP_RETRIES=$((STOP_RETRIES + 1))
+echo "$STOP_RETRIES" > "$STOP_RETRY_FILE"
 
-# Write a rich mechanical handoff as safety net
+# Write mechanical handoff as safety net
+TODAY=$(date -u +%Y-%m-%d)
 MECHANICAL_FILE="$HANDOFF_DIR/${TODAY}-mechanical-stop-handoff.yaml"
 
 python3 -c "
@@ -185,7 +262,6 @@ try:
                         tool_names.append(name)
                         inp = block.get('input', {})
 
-                        # Track file modifications
                         for key in ('file_path', 'path', 'filePath'):
                             fp = inp.get(key, '')
                             if fp:
@@ -194,35 +270,26 @@ try:
                                 elif name == 'Read':
                                     files_read.add(fp)
 
-                        # Track skill invocations
                         if name == 'Skill':
                             skill_invocations.append(inp.get('skill', 'unknown'))
-
-                        # Track Task agent descriptions
-                        if name == 'Task':
-                            desc = inp.get('description', '')
-                            if desc:
-                                last_texts.append(f'[Agent: {desc}]')
 
 except Exception:
     pass
 
-# Build YAML
 now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-files_mod_yaml = '\\n'.join(f'  - \"{fp}\"' for fp in sorted(files_modified)) if files_modified else '  []'
-files_read_yaml = '\\n'.join(f'  - \"{fp}\"' for fp in sorted(files_read)[:20]) if files_read else '  []'
+files_mod_yaml = chr(10).join(f'  - \"{fp}\"' for fp in sorted(files_modified)) if files_modified else '  []'
+files_read_yaml = chr(10).join(f'  - \"{fp}\"' for fp in sorted(files_read)[:20]) if files_read else '  []'
 
 freq = Counter(tool_names)
 top_tools = ', '.join(f'{n}({c})' for n, c in freq.most_common(8))
 skills_yaml = ', '.join(skill_invocations) if skill_invocations else 'none'
 
-# Extract last 8 meaningful assistant texts as context breadcrumbs
 breadcrumbs = []
 for t in last_texts[-8:]:
-    clean = t.replace('\"', \"'\").replace('\\n', ' ')[:200]
+    clean = t.replace('\"', \"'\").replace(chr(10), ' ')[:200]
     breadcrumbs.append(f'  - \"{clean}\"')
-breadcrumbs_yaml = '\\n'.join(breadcrumbs) if breadcrumbs else '  - \"No context captured\"'
+breadcrumbs_yaml = chr(10).join(breadcrumbs) if breadcrumbs else '  - \"No context captured\"'
 
 yaml = f'''timestamp: \"{now}\"
 status: \"active\"
@@ -270,16 +337,38 @@ with open(output_file, 'w') as f:
 
 " "$TRANSCRIPT_PATH" "${SESSION_ID:-unknown}" "$ESTIMATED_TOKENS" "$MECHANICAL_FILE" 2>/dev/null
 
-# Mark as fired
-date +%s > "$STATE_DIR/handoff-triggered-${SESSION_ID:-$(echo "$TRANSCRIPT_PATH" | md5 -q 2>/dev/null || echo "$TRANSCRIPT_PATH" | md5sum 2>/dev/null | cut -d' ' -f1)}"
+# Mark stop hook as fired
+date +%s > "$STATE_DIR/handoff-triggered-${SESSION_ID:-unknown}"
 
-# Block stop with structured JSON — demand semantic handoff
+# ── Decide: block or allow after max retries ───────────────────────────
+if [ "$STOP_RETRIES" -ge "$MAX_STOP_RETRIES" ]; then
+  # After MAX_STOP_RETRIES, allow the stop — we have a mechanical handoff at least
+  echo "STOP HOOK: Allowing stop after ${STOP_RETRIES} blocked attempts. Mechanical handoff at ${MECHANICAL_FILE}." >&2
+  rm -f "$STOP_RETRY_FILE"
+  # Output context but allow (exit 0)
+  cat <<EOF
+{
+  "decision": "allow",
+  "reason": "Allowing stop after ${STOP_RETRIES} blocked attempts. Mechanical handoff saved to ${MECHANICAL_FILE}.",
+  "additionalContext": "Stop was blocked ${STOP_RETRIES} times requesting /acos-handoff-protocol. A mechanical handoff has been saved as a fallback. The session is ending now."
+}
+EOF
+  exit 0
+fi
+
+# ── Block the stop — demand semantic handoff ───────────────────────────
+REMAINING=$((MAX_STOP_RETRIES - STOP_RETRIES))
+
+echo "STOP HOOK: Blocking stop attempt ${STOP_RETRIES}/${MAX_STOP_RETRIES}. No handoff exists. Mechanical saved to ${MECHANICAL_FILE}." >&2
+
+# Output context for the agent
 cat <<EOF
 {
   "decision": "block",
-  "reason": "Context at ${ESTIMATED_TOKENS} tokens with no handoff. A mechanical handoff was saved to ${MECHANICAL_FILE}. Please create a proper semantic handoff using /acos-handoff-protocol (or /acos-continue) for richer context preservation.",
-  "additionalContext": "IMPORTANT: You are about to stop but no session handoff exists. A mechanical handoff has been auto-saved to ${MECHANICAL_FILE}, but it lacks decisions, blockers, and detailed next-actions. Please invoke /acos-handoff-protocol NOW to create a semantic handoff (or /acos-continue to handoff and auto-start a new session), then you may stop. If you cannot create one (context too low), the mechanical handoff will serve as the safety net."
+  "reason": "Stop blocked [${STOP_RETRIES}/${MAX_STOP_RETRIES}]: Context at ${ESTIMATED_TOKENS} tokens with no handoff. Mechanical handoff saved to ${MECHANICAL_FILE}. Run /acos-handoff-protocol for a proper semantic handoff.",
+  "additionalContext": "STOP BLOCKED [${STOP_RETRIES}/${MAX_STOP_RETRIES}]: You tried to stop but no session handoff exists. A mechanical handoff was auto-saved to ${MECHANICAL_FILE}, but it lacks decisions, blockers, and next-actions. Run /acos-handoff-protocol NOW to create a semantic handoff (or /acos-continue to handoff + auto-restart). After ${REMAINING} more stop attempt(s), stop will be FORCED with only the mechanical handoff."
 }
 EOF
 
-exit 0
+# EXIT 2 = BLOCK the stop (Claude Code hook convention)
+exit 2

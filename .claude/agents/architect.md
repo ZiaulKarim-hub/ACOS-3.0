@@ -15,7 +15,7 @@ skills:
 memory: project
 hooks:
   PreToolUse:
-    - matcher: "Read"
+    - matcher: "Read|Bash"
       hooks:
         - type: command
           command: ".claude/scripts/block-review-rules-read.sh"

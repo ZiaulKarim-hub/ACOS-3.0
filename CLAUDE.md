@@ -8,17 +8,21 @@ review system, and cross-project learning.
 ## Key Principles
 - The Architect plans and orchestrates. Reviewers verify independently.
 - The Independence Wall: Reviewers NEVER see Architect decisions. The Architect
-  NEVER sees review-rules.yaml. This is mechanically enforced by agent tool
-  restrictions and hook guards.
+  NEVER sees review rules (review-rules/ directory). This is mechanically enforced
+  by agent tool restrictions and hook guards.
 - All work produces evidence bundles in .acos/evidence/
 - Planning artifacts live in planning/ (vision, epics, stories, slices)
 - Memory artifacts live in memory/ (source-of-truth, decisions, reviews, handoffs)
 
 ## Auto-Handoff System
 - Stop hook estimates token usage from transcript content (~4 chars/token), fires once
-  per session at ~130k tokens (~65%). Creates a semantic handoff via /acos-handoff-protocol.
+  per session at ~100k tokens (~50%). Creates a semantic handoff via /acos-handoff-protocol.
+- Token-gate (PreToolUse) enforces handoff with staleness detection: if tokens grew
+  >20k since the last handoff was created, it demands a FRESH handoff. Hard ceiling at 130k.
 - Context compaction triggers at 69% (~138k tokens) via CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69.
   This fires ~8k tokens after the Stop hook, just after the handoff is saved.
+- SessionEnd hook (session-cleanup.sh) removes ephemeral state files (.token-gate-cache,
+  .handoff-enforcement, .stop-retry-count, continue markers) to prevent stale state.
 - PreCompact hook creates a mechanical handoff (`status: mechanical`) before compaction.
 - SessionStart hook auto-loads ALL **active** handoffs (newest first) + accepted ADRs
   from memory/decisions/, within a 25k token budget. Falls back to mechanical handoffs
@@ -56,9 +60,12 @@ Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomi
 
 ## Review Process
 Reviews are assigned programmatically by .claude/scripts/assign-reviewers.sh
-based on review-rules.yaml triggers (file paths, code patterns). ALL assigned
-reviewers must PASS for work to proceed. Reviewers run in parallel, in isolated
-contexts, and cannot see each other's output.
+based on per-reviewer trigger files in review-rules/ (file paths, code patterns).
+Each reviewer has its own YAML file declaring when it should be included.
+ALL assigned reviewers must PASS for work to proceed. Reviewers are spawned
+simultaneously via background Task() calls in isolated worktrees, and cannot
+see each other's output. Failed or crashed reviewers are marked INCONCLUSIVE
+(blocks approval like a REJECT).
 
 ## File Conventions
 - Planning templates: .claude/skills/acos-plan/templates/
@@ -85,5 +92,6 @@ Preference categories projects should define:
 - MCP servers: `.claude/settings.local.json` under `mcpServers` (see `/mcp-setup` skill)
 
 ## Restricted Files
-- review-rules.yaml — HUMAN EDITABLE ONLY. No agent may read or modify.
+- review-rules/ — Per-reviewer trigger rules. HUMAN EDITABLE ONLY. No agent may read or modify.
+- review-rules.yaml — Legacy pointer to review-rules/ directory (kept for reference).
 - .claude/agents/ — Agent definitions are infrastructure. Modification requires human approval.

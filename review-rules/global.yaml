@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ACOS v3.0 - REVIEW RULES: GLOBAL SETTINGS
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# HUMAN-EDITABLE ONLY
+# No agent can read, modify, or influence files in this directory.
+# The Architect has ZERO control over the review process.
+#
+# This file contains global review settings. Per-reviewer trigger rules
+# live in separate files: qa-reviewer.yaml, security-reviewer.yaml, etc.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: "2.0.0"
+last_modified_by: "human"
+last_modified_date: "2026-02-23"
+
+# Review depth is ALWAYS maximum - this cannot be changed
+review_depth: maximum
+
+# All assigned reviewers must pass for approval
+all_reviewers_must_pass: true
+
+# Reviewers work simultaneously
+parallel_execution: true
+
+# Reviewers cannot see each other's feedback until submitted
+reviewer_independence: true
+
+# Maximum retry attempts before escalation to human
+max_retry_attempts: 3
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CUSTOM RULES
+# ═══════════════════════════════════════════════════════════════════════════
+# Human can add project-specific rules here that assign multiple reviewers
+# at once. These are evaluated alongside per-reviewer triggers.
+#
+# Example:
+#
+# custom_rules:
+#   - name: "HIPAA compliance code"
+#     triggers:
+#       file_path_contains: [patient, medical, health]
+#       code_contains: [phi, hipaa, medical_record]
+#     assign_reviewers:
+#       - ACOS-qa-reviewer
+#       - ACOS-security-reviewer
+
+custom_rules: []
+
+# ═══════════════════════════════════════════════════════════════════════════
+# END OF GLOBAL SETTINGS
+# ═══════════════════════════════════════════════════════════════════════════

@@ -225,6 +225,7 @@ CORE_SKILLS=(
   "acos-add-skills"
   "acos-embed-skills"
   "acos-oracle-protocol"
+  "acos-update"
 )
 
 # Tier 2: Universal methodology — ALWAYS linked (useful for any project)
@@ -306,6 +307,7 @@ DATA_DIRS=(
   "memory/reviews/epic-reviews"
   "memory/reviews/vision-reviews"
   "memory/handoffs"
+  "memory/handoffs/archive"
   "memory/code-rationale"
   "memory/feedback-history"
   "planning/vision"

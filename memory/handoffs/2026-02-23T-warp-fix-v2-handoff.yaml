@@ -1,0 +1,61 @@
+timestamp: "2026-02-23T06:55:00Z"
+status: "active"
+session_id: "2026-02-23-warp-fix-v2"
+session_summary: >
+  Fixed three bugs in session-continue.sh preventing Warp terminal detection and
+  causing script crashes. All three fixes are in a single file.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+estimated_tokens: 35000
+
+completed_this_session:
+  - "FIX 1: Warp detection — pgrep -q Warp → pgrep -qf Warp.app (binary named stable)"
+  - "FIX 2: AppleScript quoting — paths with spaces broke osascript; now uses single quotes via printf 047"
+  - "FIX 3: Heredoc crash — apostrophe in comment (Warps) closed the bash -c heredoc"
+  - "Verified: pgrep -qf Warp.app detects Warp correctly"
+  - "Verified: bash -n syntax check passes"
+
+files_modified:
+  - path: ".claude/scripts/session-continue.sh"
+    changes: >
+      Line 152: pgrep -q Warp → pgrep -qf "Warp.app" (detect by app bundle path).
+      Lines 131-137: CLAUDE_CMD uses single quotes around CWD via printf \047.
+      Line 153-155: Removed apostrophe from comment that broke bash -c heredoc.
+
+decisions_made:
+  - "pgrep -qf matches full command line (/Applications/Warp.app/Contents/MacOS/stable)"
+  - "printf 047 = octal for single quote, avoids all three quoting layers"
+  - "No apostrophes allowed in comments inside bash -c single-quoted heredocs"
+
+blockers: []
+
+next_actions:
+  - "VERIFY: This /acos-continue should now launch in Warp — confirm it works"
+  - "COMMIT: All accumulated changes from 3 sessions are ready"
+  - "  session-continue.sh (3 Warp fixes), token-gate.sh (staleness), context-monitor.sh,"
+  - "  3 new scripts, 4 reviewer agents, settings, CLAUDE.md, memory files"
+  - "DEFERRED: Change #7 (split review-rules.yaml) and #8 (parallel agents)"
+
+context_for_next_session: |
+  THREE BUGS FIXED IN session-continue.sh (all Warp-related):
+
+  1. Warp detection: pgrep -q Warp failed because binary is "stable" not "Warp".
+     Fixed: pgrep -qf "Warp.app" matches the full process command line.
+
+  2. AppleScript quoting: CLAUDE_CMD had double quotes around path with spaces
+     ("Vibe Coding"), which broke osascript do script and keystroke commands.
+     Fixed: Use single quotes via SQ=$(printf "\047"), producing cd '/path' && claude.
+
+  3. Heredoc crash: Comment said "Warp's binary" — the apostrophe closed the
+     bash -c '...' single-quoted heredoc, causing "unexpected end of file" at line 89.
+     Fixed: Rewrote comment without apostrophes.
+
+  ALL PRIOR SESSION WORK STILL UNCOMMITTED:
+  See memory/handoffs/2026-02-23T-session-handoff.yaml for the full list.
+  12+ modified files, 4 new files from /acos-update implementation.
+  Everything passes health check and syntax validation.

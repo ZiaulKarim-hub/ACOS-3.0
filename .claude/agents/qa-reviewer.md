@@ -6,6 +6,7 @@ disallowedTools: Write, Edit, Task, WebSearch, WebFetch
 model: opus
 permissionMode: plan
 maxTurns: 30
+isolation: worktree
 ---
 
 # ACOS QA Reviewer Agent

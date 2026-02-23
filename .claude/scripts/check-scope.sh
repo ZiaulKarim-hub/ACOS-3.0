@@ -27,18 +27,29 @@ if [[ "$FILE_PATH" == .acos/* ]] || [[ "$FILE_PATH" == memory/* ]]; then
   exit 0
 fi
 
-# Extract allowed files list from active slice YAML
+# Extract allowed files list from active slice YAML (stdlib only — no PyYAML)
+# The files_allowed section is a simple YAML list:
+#   files_allowed:
+#     - "src/foo.ts"
+#     - "src/bar.ts"
 ALLOWED=$(python3 -c "
-import yaml, sys
+import sys, re
 try:
-    with open('$ACTIVE_SLICE') as f:
-        data = yaml.safe_load(f)
-    allowed = data.get('files_allowed', [])
-    for f in allowed:
-        print(f)
+    with open(sys.argv[1]) as f:
+        text = f.read()
+    # Find the files_allowed block and extract list items
+    m = re.search(r'files_allowed:\s*\n((?:\s+-\s+.*\n?)*)', text)
+    if not m:
+        sys.exit(1)
+    for line in m.group(1).strip().split('\n'):
+        line = line.strip()
+        if line.startswith('- '):
+            val = line[2:].strip().strip('\"').strip(\"'\")
+            if val:
+                print(val)
 except Exception:
     sys.exit(1)
-" 2>/dev/null)
+" "$ACTIVE_SLICE" 2>/dev/null)
 
 # If YAML parsing fails, fail open
 if [ $? -ne 0 ]; then
