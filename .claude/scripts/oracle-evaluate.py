@@ -182,11 +182,13 @@ def load_config(project_root):
                 for tool, temp in parsed["base_temperatures"].items():
                     config["base_temperatures"][tool] = int(temp)
 
-            # Hard blocks — extend defaults
-            if "hard_blocks" in parsed and isinstance(parsed["hard_blocks"], list):
-                for block in parsed["hard_blocks"]:
-                    if isinstance(block, str) and block not in config["hard_blocks"]:
-                        config["hard_blocks"].append(block)
+            # Hard blocks — replace defaults when explicitly set in config
+            if "hard_blocks" in parsed:
+                if isinstance(parsed["hard_blocks"], list):
+                    config["hard_blocks"] = [b for b in parsed["hard_blocks"] if isinstance(b, str)]
+                else:
+                    # Explicit empty value (e.g. hard_blocks: []) clears all blocks
+                    config["hard_blocks"] = []
 
             # Modifiers
             if "modifiers" in parsed and isinstance(parsed["modifiers"], dict):
@@ -495,7 +497,7 @@ DIAGNOSE_CASES = [
     ("Bash destructive (rm)",   "Bash",  {"command": "rm -rf ./build"},                      "ask"),
     ("Task spawn",              "Task",  {"prompt": "do something", "subagent_type": "Explore"}, "allow"),
     ("Edit sensitive (.env)",   "Edit",  {"file_path": ".env", "old_string": "a", "new_string": "b"}, "allow"),
-    ("Bash hard-block (push)",  "Bash",  {"command": "git push origin main"},                "deny"),
+    ("Bash risky (git push)",   "Bash",  {"command": "git push origin main"},                "allow"),
 ]
 
 

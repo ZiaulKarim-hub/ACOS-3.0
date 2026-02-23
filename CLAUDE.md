@@ -36,7 +36,8 @@ review system, and cross-project learning.
 ## The Oracle (Permission Governance)
 - PreToolUse hook that scores every tool call on a temperature scale (0=safe, 10=dangerous).
 - Actions at or below the threshold are auto-approved silently. Above threshold → user prompt.
-- Hard-blocked patterns (git push, rm -rf /, DROP TABLE, etc.) are always denied.
+- No hard blocks — all operations go through temperature scoring. Destructive commands
+  (rm -rf, git reset --hard) score high (+5) and escalate to user at most thresholds.
 - Config: `.acos/config/oracle.yaml` (per-project, user-editable).
 - Session override: `.acos/state/oracle-session-threshold` or `ORACLE_THRESHOLD` env var.
 - Audit trail: `.acos/state/oracle-audit.log` (escalations and denials only).
