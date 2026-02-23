@@ -111,6 +111,16 @@ Report to the user:
 - The filenames that were moved
 - Confirm that the next session will start with clean context
 
+### Step 8: Exit Session
+
+After confirmation, automatically exit the session. The completion is the final action — there is no reason to continue after archiving.
+
+```
+/exit
+```
+
+This ensures a clean boundary: `/acos-complete` means "we are done, close everything."
+
 ---
 
 *ACOS Complete — Close a milestone and start fresh.*

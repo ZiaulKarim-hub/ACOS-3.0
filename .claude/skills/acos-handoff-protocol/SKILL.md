@@ -74,6 +74,14 @@ context_for_next_session: |
 Write to `memory/handoffs/[timestamp]-session-handoff.yaml`
 Confirm save to user.
 
+### Step 4: Auto-Continue at High Context
+
+After saving the handoff, check the current token usage. If context is at or above **60%** (~120k tokens), automatically invoke `/acos-continue` to seamlessly launch a fresh session with the handoff pre-loaded.
+
+This ensures the handoff protocol doesn't just save state — it acts on it. At 60%+ context, there's no reason to stay in a degraded session.
+
+If context is below 60%, simply confirm the handoff was saved and continue working in the current session.
+
 ---
 
 *ACOS Handoff - Continuity across sessions.*

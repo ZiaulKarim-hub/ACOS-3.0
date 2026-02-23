@@ -1,0 +1,107 @@
+timestamp: "2026-02-23T08:30:00Z"
+status: "active"
+session_id: "2026-02-23-final-update-session"
+session_summary: >
+  Completed all 8 /acos-update improvements (including 2 previously deferred),
+  ran full end-to-end system verification (32/32 checks pass), removed Oracle
+  hard blocks, and fixed token estimation calibration bug. All committed and pushed.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+estimated_tokens: 130000
+
+completed_this_session:
+  - "CHANGE #7: Split review-rules.yaml into per-reviewer files in review-rules/ directory"
+  - "  - Created review-rules/global.yaml, qa-reviewer.yaml, security-reviewer.yaml,"
+  - "    performance-reviewer.yaml, integration-reviewer.yaml"
+  - "  - Rewrote assign-reviewers.sh with flat YAML parser + env var stdin fix"
+  - "  - Updated block-review-rules-read.sh to block entire review-rules/ directory"
+  - "  - Legacy review-rules.yaml replaced with migration pointer"
+  - "CHANGE #8: Parallel agent execution improvements in acos-review skill"
+  - "  - All reviewers spawned simultaneously with run_in_background: true"
+  - "  - Failed/crashed reviewers marked INCONCLUSIVE (blocks like REJECT)"
+  - "  - No partial result aggregation — all reviewers must report"
+  - "END-TO-END VERIFICATION: 4 parallel agents checked 32 items, all PASS"
+  - "  - Scripts & hooks: 12/12 pass (executability, syntax, registration, cross-refs)"
+  - "  - Agent definitions: 5/5 pass (frontmatter, isolation, restrictions, skills, tools)"
+  - "  - Skills & review rules: 9/9 pass (completeness, content, assignment tests)"
+  - "  - Cross-references: 6/6 pass (CLAUDE.md paths, hooks, agents, directories)"
+  - "ORACLE FIX: Removed all hard blocks per user request"
+  - "  - hard_blocks: [] in oracle.yaml now genuinely clears blocks"
+  - "  - Changed load_config() from extend to replace semantics"
+  - "  - git push, rm -rf etc. now use temperature scoring (still escalate via +5 modifier)"
+  - "TOKEN ESTIMATION FIX: Was undercounting by ~2x"
+  - "  - Changed chars/token ratio from 4 to 3"
+  - "  - Added 25k system context overhead (CLAUDE.md, MEMORY.md, handoffs, system prompt)"
+  - "  - Fixed in both token-gate.sh and context-monitor.sh"
+  - "MINOR FIXES from verification:"
+  - "  - token-gate.sh health check array: added 4 missing scripts"
+  - "  - oracle-evaluate.py: added execute bit"
+  - "  - MEMORY.md: updated skill count from 33 to 41"
+
+files_modified:
+  - path: "review-rules/"
+    changes: "NEW directory: 5 per-reviewer YAML files (global, qa, security, performance, integration)"
+  - path: "review-rules.yaml"
+    changes: "Replaced 405-line monolith with 24-line migration pointer"
+  - path: ".claude/scripts/assign-reviewers.sh"
+    changes: "Complete rewrite: reads per-reviewer files, flat YAML parser, env var stdin fix"
+  - path: ".claude/scripts/block-review-rules-read.sh"
+    changes: "Updated error message to reference review-rules/ directory"
+  - path: ".claude/skills/acos-review/SKILL.md"
+    changes: "Added structured parallel execution with failure handling and INCONCLUSIVE verdict"
+  - path: ".acos/config/oracle.yaml"
+    changes: "hard_blocks: [] — all blocks removed, former defaults preserved as comments"
+  - path: ".claude/scripts/oracle-evaluate.py"
+    changes: "hard_blocks loading changed from extend to replace; diagnose test updated"
+  - path: ".claude/scripts/token-gate.sh"
+    changes: "CHARS_PER_TOKEN=3, SYSTEM_OVERHEAD=25000, health check array +4 scripts"
+  - path: ".claude/scripts/context-monitor.sh"
+    changes: "Same calibration fix: chars//3 + 25000 overhead"
+  - path: "CLAUDE.md"
+    changes: "Updated review process, restricted files, Oracle description"
+
+decisions_made:
+  - "Per-reviewer files use flat YAML (one level of list nesting) to work with the stdlib parser"
+  - "All triggers within a reviewer file are OR'd — any match includes the reviewer"
+  - "assign-reviewers.sh heredoc/stdin bug fixed via environment variable (MANIFEST)"
+  - "Oracle hard_blocks in YAML now REPLACES defaults (not extends) — empty list means no blocks"
+  - "Token estimation: 3 chars/token + 25k overhead is more accurate than 4 chars/token + 0 overhead"
+  - "System overhead of 25k accounts for CLAUDE.md, MEMORY.md, system prompt, auto-loaded handoffs"
+
+blockers: []
+
+next_actions:
+  - "ALL /acos-update CHANGES ARE COMPLETE — no remaining deferred work"
+  - "Monitor token estimation accuracy over next few sessions — may need further tuning"
+  - "Consider running /acos-complete to archive the 5 active handoffs and start clean"
+  - "The 41 skills vs 33 in MEMORY.md suggests skill inventory needs a full audit"
+
+context_for_next_session: |
+  ALL 8 /acos-update IMPROVEMENTS ARE COMPLETE AND PUSHED.
+
+  Three commits pushed this session:
+  - 21ee06e: feat: Complete /acos-update — all 8 improvements
+  - c8c3996: fix: Remove Oracle hard blocks
+  - 30b5435: fix: Token estimation calibration (3 chars/token + 25k overhead)
+
+  KEY BUG FOUND AND FIXED:
+  assign-reviewers.sh had a heredoc/stdin conflict — the Python heredoc
+  captured stdin, so json.load(sys.stdin) always failed and the except block
+  returned ["qa-reviewer"]. This means reviewer assignment was NEVER actually
+  working. Fixed by reading stdin into MANIFEST env var before the heredoc.
+
+  TOKEN ESTIMATION was undercounting by ~2x because:
+  1. Used 4 chars/token ratio (should be ~3 for mixed content)
+  2. Had no overhead for system context (~25k tokens of CLAUDE.md, MEMORY.md,
+     auto-loaded handoffs, system prompt are invisible to the JSONL transcript)
+
+  ORACLE hard blocks removed per user request. All operations now use
+  temperature scoring. Destructive commands still score +5 and escalate
+  at most threshold levels — just not unconditionally denied.
+
+  5 active handoffs exist. Consider /acos-complete to archive them.
