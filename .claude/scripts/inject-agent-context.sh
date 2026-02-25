@@ -31,12 +31,12 @@ try:
     data = json.load(sys.stdin)
     agent_name = data.get('agent_name', '')
     agent_type = data.get('agent_type', '')
-    print(f'{agent_name}|||{agent_type}')
+    print(f'{agent_name}\t{agent_type}')
 except Exception:
-    print('|||')
-" <<< "$INPUT" 2>/dev/null || echo "|||")
+    print('\t')
+" <<< "$INPUT" 2>/dev/null || echo "")
 
-IFS='|||' read -r AGENT_NAME _ AGENT_TYPE <<< "$AGENT_INFO"
+IFS=$'\t' read -r AGENT_NAME AGENT_TYPE <<< "$AGENT_INFO"
 
 # Only inject context for agents that benefit from it
 # Skip for memory-agent, learning-agent (they have their own context)
@@ -49,10 +49,18 @@ esac
 # ── Gather context ────────────────────────────────────────────────────
 CONTEXT_PARTS=()
 
-# 1. Active slice (from scope state if check-scope.sh has set it)
-SCOPE_FILE="$STATE_DIR/.active-scope"
+# 1. Active slice (from active-slice.yaml config)
+SCOPE_FILE=".acos/config/active-slice.yaml"
 if [ -f "$SCOPE_FILE" ]; then
-  ACTIVE_SCOPE=$(cat "$SCOPE_FILE" 2>/dev/null || true)
+  ACTIVE_SCOPE=$(python3 -c "
+import sys, re
+try:
+    with open(sys.argv[1]) as f:
+        text = f.read()
+    m = re.search(r'slice_id:\s*[\"'\''']?([^\"'\'''\n]+)', text)
+    if m: print(m.group(1).strip())
+except Exception: pass
+" "$SCOPE_FILE" 2>/dev/null || true)
   if [ -n "$ACTIVE_SCOPE" ]; then
     CONTEXT_PARTS+=("Active slice: $ACTIVE_SCOPE")
   fi
@@ -84,8 +92,8 @@ except Exception:
   fi
 fi
 
-# 3. Source of truth (vision document)
-for vdoc in "$PLANNING_DIR/vision-document.md" "$PLANNING_DIR/vision.md"; do
+# 3. Source of truth (vision document — check both locations)
+for vdoc in "memory/source-of-truth/vision-document.md" "$PLANNING_DIR/vision-document.md" "$PLANNING_DIR/vision.md"; do
   if [ -f "$vdoc" ]; then
     CONTEXT_PARTS+=("Vision document: $vdoc")
     break

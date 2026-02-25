@@ -56,23 +56,44 @@ The script reads per-reviewer rule files from `review-rules/` mechanically and r
 
 ### Step 4: Spawn Reviewers in Parallel
 
-**CRITICAL: All assigned reviewers MUST be spawned simultaneously in a SINGLE message with multiple `Task()` calls.** Do not spawn them sequentially.
+**CRITICAL: All assigned reviewers MUST be spawned simultaneously in a SINGLE message.** Do not spawn them sequentially.
 
-For each assigned reviewer, use `Task([reviewer-name])` with these settings:
+**Model Resolution & Dispatch:** Before spawning each reviewer, resolve its model:
+```bash
+RESOLVED=$(bash .claude/scripts/resolve-agent-model.sh [reviewer-name])
+```
 
+The output determines the dispatch path:
+
+**Path A — Claude model** (output is `opus`, `sonnet`, or `haiku` — no `:` in the string):
 ```
 Task([reviewer-name])
   - run_in_background: true    (non-blocking, true parallelism)
   - isolation: worktree        (each reviewer gets its own codebase copy)
-  - model: opus                (maximum review quality)
+  - model: $RESOLVED           (from resolve-agent-model.sh)
+  - prompt: evidence path, source of truth path, work spec path
 ```
 
-**Prompt structure for each reviewer:**
-- Evidence bundle path
-- Source of truth path: `memory/source-of-truth/vision-document.md`
+**Path B — External model** (output contains `:`, e.g., `openai:gpt-4o`):
+```
+Bash(run_in_background: true):
+  python3 .claude/scripts/run-external-agent.py \
+    --agent [reviewer-name] \
+    --model "$RESOLVED" \
+    --task "[full review prompt with evidence content]" \
+    --context [list of modified files from evidence bundle]
+```
+
+For external models, you MUST pre-read evidence files and pass them via `--context` because external models cannot use Read/Grep tools. Include all files from `after/modified-files.txt` in the evidence bundle as `--context` arguments.
+
+If resolution fails for any reviewer, fall back to `model: opus` via Task().
+
+**Prompt structure for each reviewer (both paths):**
+- Evidence bundle path (or content, for external)
+- Source of truth: `memory/source-of-truth/vision-document.md`
 - Work specification path (slice/story/epic spec)
 
-**Domain Security Profile Injection:** When spawning the `security-reviewer`, check for `.acos/config/security-profile.md`. If present, read its contents and include them in the `Task(security-reviewer)` prompt as an additional "Domain Security Context" section. This gives the security reviewer domain-specific threat awareness without modifying its core agent definition. If no profile file exists, spawn the security-reviewer with standard context only.
+**Domain Security Profile Injection:** When spawning the `security-reviewer`, check for `.acos/config/security-profile.md`. If present, read its contents and include them in the prompt as an additional "Domain Security Context" section. This gives the security reviewer domain-specific threat awareness without modifying its core agent definition. If no profile file exists, spawn the security-reviewer with standard context only.
 
 ### Step 5: Collect Results with Failure Handling
 

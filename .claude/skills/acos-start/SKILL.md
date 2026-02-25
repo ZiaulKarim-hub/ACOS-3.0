@@ -35,7 +35,7 @@ The bootstrap script is **idempotent** — it safely skips if ACOS is already in
 - Symlinking agents, skills, and scripts from ACOS 3.0 source
 - Auto-detecting project tech stack from `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod`
 - Generating `.acos/config/project.yaml` with project metadata
-- Copying `review-rules.yaml` (project-editable)
+- Copying `review-rules/` directory (per-reviewer trigger rules, project-editable)
 - Updating `.gitignore` to exclude ACOS symlinks and data directories
 
 ### Step 1: Check Project State
@@ -46,6 +46,28 @@ After bootstrap completes, check the project state:
 2. Check if `memory/source-of-truth/vision-document.md` exists (has a vision?)
 3. Check if `planning/slices/` has any files (has planning?)
 4. Check if `.acos/config/active-slice.yaml` exists (work in progress?)
+
+### Step 1.5: Model Profile Selection (Optional)
+
+If `.acos/state/model-session.yaml` does NOT already exist (no profile set this session):
+
+1. Read the default profile from `.acos/config/model-profile.yaml` (key: `default_profile`)
+2. Present the user with a model profile choice using AskUserQuestion:
+   - **Budget** — Haiku for implementation, Sonnet for critical review. Lowest cost.
+   - **Standard** — Sonnet across the board. Good balance of cost and quality.
+   - **Premium** — Opus everywhere. Maximum quality. (Current default)
+   - **Auto** — Opus for critical decisions, Sonnet for implementation, Haiku for support.
+   - **Keep default** — Use whatever is configured in `model-profile.yaml` (show which profile)
+3. If the user selects a profile, write to `.acos/state/model-session.yaml`:
+   ```yaml
+   active_profile: [selected]
+   changed_at: "[timestamp]"
+   changed_by: "acos-start"
+   ```
+4. If the selected profile's `main` model differs from the current conversation model, advise:
+   > "This profile recommends **[model]** for the main conversation. Run `/model` and select **[model]** to match."
+
+If `.acos/state/model-session.yaml` already exists, skip this step (profile already set for this session).
 
 ### Step 2: Route Based on State
 

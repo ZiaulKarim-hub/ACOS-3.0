@@ -1,0 +1,43 @@
+timestamp: "2026-02-23T00:45:00Z"
+status: "completed"
+session_summary: "Pushed pending skill updates, recalibrated token estimation to fix 16% undercount"
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Committed and pushed acos-complete Step 8 (auto-exit) and acos-handoff-protocol Step 4 (auto-continue at 60%+)"
+  - "Recalibrated token estimation: CHARS_PER_TOKEN 3.0 -> 2.5, SYSTEM_OVERHEAD 25k -> 30k"
+  - "Verified calibration: estimated 57.1k vs actual 58.5k (2.3% delta, down from 16%)"
+  - "Updated CLAUDE.md and MEMORY.md to reflect new calibration values"
+
+files_modified:
+  - path: ".claude/scripts/token-gate.sh"
+    changes: "SYSTEM_OVERHEAD 25000->30000, CHARS_PER_TOKEN 3->2.5, float division"
+  - path: ".claude/scripts/context-monitor.sh"
+    changes: "Same ratio and overhead fixes as token-gate.sh"
+  - path: "CLAUDE.md"
+    changes: "Updated auto-handoff docs to reflect ~2.5 chars/token + 30k overhead"
+  - path: ".claude/skills/acos-complete/SKILL.md"
+    changes: "Added Step 8: auto-exit after completion"
+  - path: ".claude/skills/acos-handoff-protocol/SKILL.md"
+    changes: "Added Step 4: auto-continue at 60%+ context"
+
+decisions_made:
+  - "Used 2.5 chars/token based on empirical calibration against actual Claude token counts"
+  - "Set system overhead to 30k to account for ACOS-heavy system context (tool defs, CLAUDE.md, MEMORY.md, reminders)"
+
+blockers: []
+
+next_actions:
+  - "Monitor token estimation accuracy across more sessions to validate calibration"
+  - "Consider dynamic system overhead calculation based on actual loaded files"
+
+context_for_next_session: |
+  Token estimation was recalibrated this session. Two commits were pushed:
+  1. cf8918a — Skill updates (acos-complete auto-exit, acos-handoff-protocol auto-continue)
+  2. 6cd3ee1 — Token recalibration (2.5 chars/token, 30k overhead)
+  All work is committed and pushed to origin/main. No active slices or stories.

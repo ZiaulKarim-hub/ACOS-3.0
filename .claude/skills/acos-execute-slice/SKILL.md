@@ -54,6 +54,12 @@ Run `.claude/scripts/create-evidence-bundle.sh $ARGUMENTS` to create the evidenc
 
 ### Step 4: Delegate to Developer
 
+**Model Resolution:** Before spawning the developer, resolve its model:
+```bash
+bash .claude/scripts/resolve-agent-model.sh developer
+```
+Then pass: `Task(developer, model: $RESOLVED_MODEL)`. If resolution fails, use the agent's default model.
+
 Use `Task(developer)` to delegate implementation. Pass in the prompt:
 - Slice ID and objective
 - All acceptance criteria
@@ -91,16 +97,37 @@ Programmatically assign reviewers by piping a JSON manifest to `.claude/scripts/
 }
 ```
 
-The script reads `review-rules.yaml` (which the Architect cannot read directly — the script does it mechanically) and outputs a JSON array of reviewer names.
+The script reads per-reviewer files from `review-rules/` (which the Architect cannot read directly — the script does it mechanically) and outputs a JSON array of reviewer names.
 
 ### Step 7: Spawn Reviewers in Parallel
 
-For each assigned reviewer, use `Task([reviewer-name])` simultaneously. Pass to each:
+**Model Resolution & Dispatch:** Before spawning each reviewer, resolve its model:
+```bash
+RESOLVED=$(bash .claude/scripts/resolve-agent-model.sh [reviewer-name])
+```
+
+**If the resolved model is a bare Claude name** (`opus`, `sonnet`, `haiku` — no `:` in string):
+Use `Task([reviewer-name])` with `model: $RESOLVED`, `run_in_background: true`, `isolation: worktree`.
+
+**If the resolved model contains `:`** (e.g., `openai:gpt-4o`, `openrouter:google/gemini-2.5-pro`):
+Use `Bash(run_in_background: true)` to call the external agent runner:
+```bash
+python3 .claude/scripts/run-external-agent.py \
+  --agent [reviewer-name] \
+  --model "$RESOLVED" \
+  --task "[review prompt with evidence content]" \
+  --context [modified files from evidence bundle]
+```
+For external models, pass all modified files (from `after/modified-files.txt`) as `--context` arguments since external models cannot access the file system.
+
+If resolution fails for any reviewer, fall back to `model: opus` via Task().
+
+For each assigned reviewer, spawn simultaneously. Pass to each:
 - Evidence bundle path: `.acos/evidence/[DATE]/$ARGUMENTS/`
 - Source of truth path: `memory/source-of-truth/vision-document.md`
 - Slice spec path: `planning/slices/$ARGUMENTS.yaml`
 
-Each reviewer runs in its own isolated context and returns a structured verdict:
+Each reviewer returns a structured verdict:
 - verdict: PASS or REJECT
 - scores per category
 - issues list (if any)

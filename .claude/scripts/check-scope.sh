@@ -17,13 +17,19 @@ fi
 # Extract file_path from stdin JSON
 FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 
-# If we can't parse the input, fail open
+# If we can't parse the input, fail open (log for diagnostics)
 if [ -z "$FILE_PATH" ]; then
+  echo "check-scope: FAIL-OPEN — could not parse file_path from hook input" >&2
   exit 0
 fi
 
-# Always allow writes to .acos/ (evidence, config) and memory/ (handoff logs)
-if [[ "$FILE_PATH" == .acos/* ]] || [[ "$FILE_PATH" == memory/* ]]; then
+# Always allow writes to .acos/evidence/ and .acos/state/ (runtime data)
+# Block .acos/config/ (requires explicit scope allowance like any other file)
+if [[ "$FILE_PATH" == .acos/evidence/* ]] || [[ "$FILE_PATH" == .acos/state/* ]]; then
+  exit 0
+fi
+# Allow memory/ writes (handoff logs, decisions)
+if [[ "$FILE_PATH" == memory/* ]]; then
   exit 0
 fi
 
@@ -51,8 +57,9 @@ except Exception:
     sys.exit(1)
 " "$ACTIVE_SLICE" 2>/dev/null)
 
-# If YAML parsing fails, fail open
+# If YAML parsing fails, fail open (log for diagnostics)
 if [ $? -ne 0 ]; then
+  echo "check-scope: FAIL-OPEN — could not parse files_allowed from $ACTIVE_SLICE" >&2
   exit 0
 fi
 

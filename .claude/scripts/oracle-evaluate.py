@@ -210,13 +210,8 @@ def load_config(project_root):
         except (ValueError, OSError):
             pass
 
-    # Environment variable override
-    env_threshold = os.environ.get("ORACLE_THRESHOLD")
-    if env_threshold is not None:
-        try:
-            config["threshold"] = max(0, min(11, int(env_threshold)))
-        except ValueError:
-            pass
+    # Note: ORACLE_THRESHOLD env var intentionally removed (security: H3).
+    # Use .acos/state/oracle-session-threshold or .acos/config/oracle.yaml only.
 
     return config
 

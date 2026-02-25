@@ -138,7 +138,7 @@ For each gap (categories 2 and 3), assess:
 - Removes or reduces adversarial review capabilities
 - Breaks backward compatibility with existing planning artifacts
 - Requires removing existing skills or agents (only adding/enhancing)
-- Modifies `review-rules.yaml` (human-editable only)
+- Modifies `review-rules/` directory (human-editable only)
 - Requires untested experimental features without stable documentation
 
 ### Step 3.4: Prioritize
@@ -408,13 +408,13 @@ They're preserved in the plan document at `memory/decisions/acos-update-[DATE].m
 
 These must NEVER be violated by any update:
 
-1. **Independence Wall** — Reviewers never see Architect decisions. Architect never sees review-rules.yaml.
+1. **Independence Wall** — Reviewers never see Architect decisions. Architect never sees `review-rules/` directory.
 2. **Adversarial Review** — All assigned reviewers must PASS. Reviews are parallel and isolated.
 3. **Evidence-Based** — All work produces evidence bundles.
 4. **Planning Hierarchy** — Vision > Epic > Story > Slice structure is preserved.
 5. **Fail-Open Philosophy** — Missing config or errors default to allow, not crash.
 6. **No PyYAML** — All scripts use Python stdlib only.
-7. **Human-Editable Only** — `review-rules.yaml` and `.claude/agents/` require human approval.
+7. **Human-Editable Only** — `review-rules/` directory and `.claude/agents/` require human approval.
 
 ---
 

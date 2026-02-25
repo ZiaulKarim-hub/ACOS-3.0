@@ -15,21 +15,61 @@ if [ ! -f "$CONFIG" ]; then
 fi
 
 # Parse config and run gates
+# Uses stdlib-only YAML parsing (no PyYAML dependency)
+# Uses shlex.split + shell=False to prevent command injection via config
 export CONFIG STAGE
 python3 << 'PYTHON'
-import yaml, json, subprocess, sys, os
+import json, subprocess, sys, os, re, shlex
 
 config_path = os.environ.get("CONFIG", ".acos/config/quality-gates.yaml")
 stage_filter = os.environ.get("STAGE", "")
 
-try:
-    with open(config_path) as f:
-        data = yaml.safe_load(f)
-except Exception as e:
-    print(json.dumps({"passed": True, "results": [], "error": str(e)}))
+# ── Minimal stdlib YAML parser ─────────────────────────────────────────
+# Handles the simple structure of quality-gates.yaml:
+#   gates:
+#     lint:
+#       command: "npm run lint"
+#       required: true
+#       stage: "pre-review"
+def parse_quality_gates_yaml(filepath):
+    """Parse quality-gates.yaml using regex (no PyYAML dependency)."""
+    try:
+        with open(filepath, "r") as f:
+            text = f.read()
+    except Exception as e:
+        return None, str(e)
+
+    gates = {}
+    # Find each gate block: indented name followed by properties
+    # Pattern: 2-space indented key (gate name), then 4-space indented properties
+    gate_pattern = re.compile(r'^  (\w[\w-]*):\s*$', re.MULTILINE)
+    prop_pattern = re.compile(r'^    (\w+):\s*(.+)$', re.MULTILINE)
+
+    gate_positions = [(m.group(1), m.start()) for m in gate_pattern.finditer(text)]
+
+    for i, (gate_name, start_pos) in enumerate(gate_positions):
+        end_pos = gate_positions[i + 1][1] if i + 1 < len(gate_positions) else len(text)
+        block = text[start_pos:end_pos]
+
+        gate_config = {}
+        for prop_match in prop_pattern.finditer(block):
+            key = prop_match.group(1)
+            val = prop_match.group(2).strip().strip('"').strip("'")
+            if key == "required":
+                gate_config[key] = val.lower() in ("true", "yes", "1")
+            else:
+                gate_config[key] = val
+
+        gates[gate_name] = gate_config
+
+    return gates, None
+
+# ── Parse config ────────────────────────────────────────────────────────
+gates, parse_error = parse_quality_gates_yaml(config_path)
+if gates is None:
+    print(json.dumps({"passed": True, "results": [], "error": parse_error}))
     sys.exit(0)
 
-gates = data.get("gates", {})
 results = []
 all_required_passed = True
 
@@ -46,9 +86,11 @@ for name, gate in gates.items():
         continue
 
     try:
+        # Use shlex.split + shell=False to prevent command injection
+        cmd_parts = shlex.split(command)
         result = subprocess.run(
-            command,
-            shell=True,
+            cmd_parts,
+            shell=False,
             capture_output=True,
             text=True,
             timeout=300

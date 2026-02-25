@@ -43,11 +43,18 @@ For each story in the epic:
 
 ### Step 3: Epic-Level Review
 
-After all stories are complete, trigger epic-level review:
-1. Use `Task(qa-reviewer)` — verify epic-level acceptance criteria
-2. Use `Task(security-reviewer)` — verify security across the capability
-3. Use `Task(performance-reviewer)` — verify performance at epic scale
-4. Use `Task(integration-reviewer)` — verify all stories integrate correctly
+**Model Resolution & Dispatch:** Before spawning any reviewer, resolve its model:
+```bash
+RESOLVED=$(bash .claude/scripts/resolve-agent-model.sh <reviewer-name>)
+```
+
+**Dispatch rule:** If the resolved model is a bare Claude name (no `:`) → use `Task()`. If it contains `:` (e.g., `openai:gpt-4o`) → use `Bash` with `run-external-agent.py` (see acos-review skill for full dispatch pattern). For external models, pre-read relevant code files and pass them via `--context`.
+
+After all stories are complete, trigger epic-level review (all spawned simultaneously):
+1. qa-reviewer — verify epic-level acceptance criteria
+2. security-reviewer — verify security across the capability
+3. performance-reviewer — verify performance at epic scale
+4. integration-reviewer — verify all stories integrate correctly
 
 Pass to each reviewer:
 - All evidence bundles from constituent stories

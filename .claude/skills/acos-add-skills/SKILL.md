@@ -61,7 +61,7 @@ Show the user the available skills organized by category:
 
 **Meta (ACOS internals):**
 - `agent-creation` — Create new agents
-- `skill-creation` — Create new skills
+- `acos-create-skill` — Create new skills (global skill)
 - `orchestration-creation` — Create new orchestration skills
 
 Only show skills that are actually available (not already linked). If a category has no available skills, skip it.

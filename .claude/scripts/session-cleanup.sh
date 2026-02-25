@@ -46,4 +46,7 @@ rm -f "$STATE_DIR"/.continue-launcher.sh
 # Session-specific handoff trigger markers (handoff-triggered-*)
 rm -f "$STATE_DIR"/handoff-triggered-*
 
+# Model profile session state (ephemeral — profile reverts to config default)
+rm -f "$STATE_DIR/model-session.yaml"
+
 exit 0

@@ -47,10 +47,17 @@ For each slice in dependency order:
 
 ### Step 4: Story-Level Integration Verification
 
+**Model Resolution & Dispatch:** Before spawning any subagent, resolve its model:
+```bash
+RESOLVED=$(bash .claude/scripts/resolve-agent-model.sh <agent-name>)
+```
+
+**Dispatch rule:** If the resolved model is a bare Claude name (no `:`) → use `Task()`. If it contains `:` (e.g., `openai:gpt-4o`) → use `Bash` with `run-external-agent.py` (see acos-review skill for full dispatch pattern). For external models, pre-read relevant code files and pass them via `--context`. Developer always resolves to Claude (safety gate enforced).
+
 After all slices are complete, delegate integration verification:
-1. Use `Task(developer)` to run integration tests across all slice boundaries
-2. Use `Task(qa-reviewer)` to verify story-level acceptance criteria
-3. Use `Task(integration-reviewer)` to verify cross-slice coherence
+1. Use developer (always Claude via Task) to run integration tests across all slice boundaries
+2. Use qa-reviewer via the dispatch rule above to verify story-level acceptance criteria
+3. Use integration-reviewer via the dispatch rule above to verify cross-slice coherence
 
 ### Step 5: Aggregate Story Verdicts
 

@@ -1,0 +1,170 @@
+timestamp: "2026-02-25T14:00:00Z"
+status: "active"
+session_summary: >
+  Ran comprehensive adversarial review of entire ACOS system using 5 parallel
+  specialized reviewers (security, QA cross-refs, integration, performance,
+  structural integrity). All 5 returned REJECT verdicts. Found 4 CRITICAL,
+  11 HIGH, 19 MEDIUM findings. Also fixed 2 code improvements from previous
+  session (context-monitor.sh token estimation ordering, bootstrap hook dedup).
+  Started creating fix tasks but hit token gate at ~60% before completing fixes.
+
+current_work:
+  task: "Adversarial system review + remediation"
+  status: "review complete, fixes NOT started"
+  epic_id: null
+  story_id: null
+  slice_id: null
+
+completed_this_session:
+  - "Fixed context-monitor.sh: moved token estimation BEFORE handoff staleness check (was dead code)"
+  - "Fixed acos-bootstrap.sh: script-name-based hook dedup (prevents duplicates on re-bootstrap)"
+  - "Launched 5 parallel adversarial reviewers covering security, QA, integration, performance, structural"
+  - "Synthesized all findings into consolidated report with 4C/11H/19M severity matrix"
+
+files_modified:
+  - path: ".claude/scripts/context-monitor.sh"
+    changes: "Moved token estimation block (lines 61-141) before handoff staleness check. Removed duplicate estimation block and ESTIMATED_TOKENS=0 workaround."
+  - path: ".claude/scripts/acos-bootstrap.sh"
+    changes: "Hook merge dedup now uses script filename extraction (regex) instead of exact command string matching."
+
+decisions_made:
+  - "Token estimation must run before staleness check — the old ESTIMATED_TOKENS=0 init made staleness detection dead code"
+  - "Hook dedup by script name (e.g., token-gate.sh) not full command string — prevents duplicates after git rev-parse migration"
+
+blockers: []
+
+# ══════════════════════════════════════════════════════════════════════
+# FULL REVIEW FINDINGS — Next session must fix these
+# ══════════════════════════════════════════════════════════════════════
+
+review_findings:
+  critical:
+    C1:
+      title: "Bootstrap doesn't copy review-rules/ directory"
+      file: ".claude/scripts/acos-bootstrap.sh lines 599-610"
+      impact: "Every bootstrapped project gets qa-reviewer ONLY. Security/performance/integration reviewers never assigned."
+      fix: "Add cp -r of review-rules/ directory in bootstrap Step 6, alongside review-rules.yaml copy"
+    C2:
+      title: "run-quality-gates.sh uses shell=True with config commands"
+      file: ".claude/scripts/run-quality-gates.sh lines 48-55"
+      impact: "Arbitrary command execution via quality-gates.yaml command field"
+      fix: "Use shlex.split() with shell=False. Also replace PyYAML import with stdlib YAML parser."
+    C3:
+      title: "claude-loop.sh uses eval on user-supplied prompt"
+      file: ".claude/scripts/claude-loop.sh line 165"
+      impact: "Shell injection via --prompt argument"
+      fix: "Replace eval with array-based command execution: CLAUDE_ARGS=(); claude \"${CLAUDE_ARGS[@]}\""
+    C4:
+      title: "claude-loop.sh unescaped osascript interpolation"
+      file: ".claude/scripts/claude-loop.sh lines 89-91"
+      impact: "AppleScript injection via unescaped string in notify() function"
+      fix: "Escape inputs before passing to osascript or use stdin-based approach"
+
+  high:
+    H1:
+      title: "context-watchdog.sh interpolates $TRANSCRIPT_PATH into Python string"
+      file: ".claude/scripts/context-watchdog.sh line 53"
+      fix: "Use sys.argv[1] pattern like other scripts"
+    H2:
+      title: "check-scope.sh .acos/* whitelist too broad"
+      file: ".claude/scripts/check-scope.sh lines 26-28"
+      fix: "Restrict to .acos/evidence/* and .acos/state/*, block .acos/config/*"
+    H3:
+      title: "Oracle bypass via ORACLE_THRESHOLD env var"
+      file: ".claude/scripts/oracle-evaluate.py lines 213-219"
+      fix: "Remove env var override, rely only on session state file"
+    H4:
+      title: "SSL verification disabled via substring match"
+      file: ".claude/scripts/run-external-agent.py lines 263-265"
+      fix: "Use urlparse to check hostname only, not substring"
+    H5:
+      title: "No sensitive file filtering for external API bundling"
+      file: ".claude/scripts/run-external-agent.py lines 148-194"
+      fix: "Add blocklist for .env*, *.key, *.pem, credentials*, providers.yaml"
+    H6:
+      title: "acos-add-skills references deleted skill-creation"
+      file: ".claude/skills/acos-add-skills/SKILL.md line 64"
+      fix: "Replace skill-creation with acos-create-skill (global skill)"
+    H7:
+      title: "Systematic stale review-rules.yaml references in 6+ files"
+      files: "acos-execute-slice/SKILL.md:100, acos-update/SKILL.md:141,411,417, acos-start/SKILL.md:38, architect.md:121-122"
+      fix: "Update all to reference review-rules/ directory"
+    H8:
+      title: "Unquoted command substitution in read commands"
+      files: "token-gate.sh:295, context-monitor.sh:48"
+      fix: "Quote: <<< \"$(echo ...)\""
+    H9:
+      title: "run-quality-gates.sh imports PyYAML (not stdlib)"
+      file: ".claude/scripts/run-quality-gates.sh line 20"
+      fix: "Replace with minimal stdlib YAML parser (same as oracle-evaluate.py)"
+    H10:
+      title: "IFS parsing bug — IFS='|||' treated as IFS='|'"
+      files: "enforce-quality-gate.sh:38, inject-agent-context.sh:39"
+      fix: "Use tab delimiter: IFS=$'\\t' and print with \\t from Python"
+    H11:
+      title: "chars/token ratio three-way mismatch"
+      details: "code=3, MEMORY.md=2.5, auto-load-handoff.sh=4"
+      fix: "Align all to 3 chars/token. Update MEMORY.md and auto-load-handoff.sh"
+
+  medium:
+    M1: "inject-agent-context.sh reads nonexistent .acos/state/.active-scope → fix to .acos/config/active-slice.yaml"
+    M2: "inject-agent-context.sh searches wrong dir for vision → fix to memory/source-of-truth/"
+    M3: "CLAUDE.md hook ordering omits token-gate.sh → add it"
+    M4: "acos-execute-slice references old review-rules.yaml → update"
+    M5: "architect.md references old review-rules.yaml → update"
+    M6: "Bootstrap doesn't generate providers.yaml → add template"
+    M7: "MEMORY.md script count says 15, actual 26 → update"
+    M8: "Race conditions in state file read/write → use atomic mv pattern"
+    M9: "Independence wall bypassable via string splitting → improve matching"
+    M10: "Token gate cache poisonable via .acos/state/ writes → restrict"
+    M11: "ReDoS possible via Oracle custom regex patterns → add timeout/validation"
+    M12: "Log injection in Oracle audit trail → escape newlines"
+    M13: "Fail-open design in all security hooks → log fail-open events"
+    M14: "context-watchdog.sh missing set -euo pipefail → add"
+    M15: "Non-atomic state file writes → use tmp+mv pattern"
+    M16: "context-watchdog.sh doesn't add estimated_tokens to handoffs → add"
+    M17: "Stop hook JSON doesn't use hookSpecificOutput envelope → align"
+    M18: "No automatic handoff file cleanup/pruning → add age-based cleanup"
+    M19: "Handoff dir scanned on every tool call → cache session handoff path"
+
+  performance_notes: >
+    Architectural issues (not blocking, future optimization):
+    - 2-3 Python cold starts per tool call (~120-350ms overhead)
+    - Full transcript re-parse on every 30s cache miss (O(T))
+    - Duplicated parsing across 4 scripts
+    - Synchronous inject-agent-context.sh blocks agent spawns
+    - Recommended: merge PreToolUse hooks into single Python script,
+      implement incremental transcript parsing, cache handoff detection
+
+next_actions:
+  - "Fix C1 FIRST: Add review-rules/ directory copy to acos-bootstrap.sh"
+  - "Fix C2: Replace shell=True with shlex.split() in run-quality-gates.sh + replace PyYAML with stdlib parser"
+  - "Fix C3+C4: Remove eval from claude-loop.sh, escape osascript inputs"
+  - "Fix H1: context-watchdog.sh sys.argv instead of shell interpolation"
+  - "Fix H2: Restrict check-scope.sh whitelist (exclude .acos/config/)"
+  - "Fix H3: Remove ORACLE_THRESHOLD env var from oracle-evaluate.py"
+  - "Fix H4+H5: SSL hostname fix + sensitive file blocklist in run-external-agent.py"
+  - "Fix H6+H7: Update all stale references (skill-creation, review-rules.yaml)"
+  - "Fix H8: Quote command substitutions in token-gate.sh:295 and context-monitor.sh:48"
+  - "Fix H9: Replace PyYAML in run-quality-gates.sh"
+  - "Fix H10: IFS bug in enforce-quality-gate.sh and inject-agent-context.sh"
+  - "Fix H11: Align chars/token to 3 everywhere (auto-load-handoff.sh, MEMORY.md)"
+  - "Fix M1-M19 in priority order after all CRITICAL and HIGH are done"
+
+context_for_next_session: |
+  ADVERSARIAL REVIEW COMPLETE — FIXES NOT YET STARTED.
+
+  The review found 4 CRITICAL, 11 HIGH, 19 MEDIUM issues across the entire ACOS system.
+  Two pre-review code fixes were completed (context-monitor.sh token estimation ordering,
+  bootstrap hook dedup). But the actual remediation of review findings has NOT started.
+
+  The most urgent fix is C1: acos-bootstrap.sh must copy the review-rules/ directory
+  (not just review-rules.yaml) so bootstrapped projects get all 4 reviewers assigned.
+
+  All findings are documented in detail in the review_findings section above.
+  The next session should work through fixes in priority order: C1→C2→C3/C4→H1-H11→M1-M19.
+
+  Task list was partially created (tasks #2, #3, #4) before token gate blocked.
+  Remaining tasks need to be created for H and M findings.
+
+  Performance findings are architectural and should be deferred to a separate optimization pass.

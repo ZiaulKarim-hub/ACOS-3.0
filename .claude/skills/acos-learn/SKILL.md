@@ -37,7 +37,15 @@ Read the current project state:
 
 ### Step 2: Delegate Memory Collection
 
-Use `Task(memory-agent)` to:
+**Model Resolution & Dispatch:** Before spawning subagents, resolve their models:
+```bash
+MEMORY_MODEL=$(bash .claude/scripts/resolve-agent-model.sh memory-agent)
+LEARNING_MODEL=$(bash .claude/scripts/resolve-agent-model.sh learning-agent)
+```
+
+**Dispatch rule:** If the resolved model is a bare Claude name (no `:`) → use `Task()`. If it contains `:` (e.g., `openai:gpt-4o`) → use `Bash` with `run-external-agent.py`. For external models, pre-read relevant files and pass them via `--context`.
+
+Use memory-agent (via appropriate dispatch path) to:
 - Collect all project memory artifacts
 - Organize by category (decisions, reviews, feedback)
 - Identify key events and turning points
@@ -45,7 +53,7 @@ Use `Task(memory-agent)` to:
 
 ### Step 3: Delegate Learning Analysis
 
-Use `Task(learning-agent)` with the memory summary to:
+Use learning-agent (via appropriate dispatch path) with the memory summary to:
 - Analyze decisions: which worked, which failed, why
 - Analyze review patterns: common issues, effective solutions
 - Analyze workflow: what was efficient, what was slow

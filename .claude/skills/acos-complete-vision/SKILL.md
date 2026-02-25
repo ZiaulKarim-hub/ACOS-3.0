@@ -43,11 +43,18 @@ For each epic in the vision:
 
 ### Step 3: Vision-Level Review
 
-After all epics are complete, trigger vision-level review:
-1. Use `Task(qa-reviewer)` — verify all vision success criteria are met
-2. Use `Task(security-reviewer)` — verify security across entire project
-3. Use `Task(performance-reviewer)` — verify performance at project scale
-4. Use `Task(integration-reviewer)` — verify all epics integrate correctly
+**Model Resolution & Dispatch:** Before spawning any reviewer, resolve its model:
+```bash
+RESOLVED=$(bash .claude/scripts/resolve-agent-model.sh <reviewer-name>)
+```
+
+**Dispatch rule:** If the resolved model is a bare Claude name (no `:`) → use `Task()`. If it contains `:` (e.g., `openai:gpt-4o`) → use `Bash` with `run-external-agent.py` (see acos-review skill for full dispatch pattern). For external models, pre-read relevant code files and pass them via `--context`.
+
+After all epics are complete, trigger vision-level review (all spawned simultaneously):
+1. qa-reviewer — verify all vision success criteria are met
+2. security-reviewer — verify security across entire project
+3. performance-reviewer — verify performance at project scale
+4. integration-reviewer — verify all epics integrate correctly
 
 Pass to each reviewer:
 - Complete project evidence

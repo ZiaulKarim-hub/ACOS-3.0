@@ -15,7 +15,7 @@ review system, and cross-project learning.
 - Memory artifacts live in memory/ (source-of-truth, decisions, reviews, handoffs)
 
 ## Auto-Handoff System
-- Stop hook estimates token usage from transcript content (~2.5 chars/token + 30k
+- Stop hook estimates token usage from transcript content (~3 chars/token + 30k
   system overhead), fires once per session at ~100k tokens (~50%). Creates a
   semantic handoff via /acos-handoff-protocol.
 - Token-gate (PreToolUse) enforces handoff with staleness detection: if tokens grew
@@ -40,12 +40,32 @@ review system, and cross-project learning.
 - No hard blocks — all operations go through temperature scoring. Destructive commands
   (rm -rf, git reset --hard) score high (+5) and escalate to user at most thresholds.
 - Config: `.acos/config/oracle.yaml` (per-project, user-editable).
-- Session override: `.acos/state/oracle-session-threshold` or `ORACLE_THRESHOLD` env var.
+- Session override: `.acos/state/oracle-session-threshold` file.
 - Audit trail: `.acos/state/oracle-audit.log` (escalations and denials only).
 - Default threshold: 9. Range: 0 (ask everything) to 10 (permissive) to 11 (YOLO — bypasses hard blocks).
 - Fail-open: missing config or errors default to allow. The Oracle is a convenience layer.
 - Configure with `/acos-oracle-protocol`. Supports custom modifiers and learned patterns.
-- Hook ordering: Oracle (all tools) → check-scope.sh (Write|Edit only) → execute.
+- Hook ordering: Oracle (all tools) → token-gate.sh (all tools) → check-scope.sh (Write|Edit only) → execute.
+
+## Model Profile System
+- Controls which model each agent uses when spawned — supports Claude AND external models.
+- Claude-only presets: Budget (haiku-heavy), Standard (sonnet), Premium (opus, default), Auto (smart mix).
+- Multi-provider presets: Hybrid-Review, Free-Tier, OpenAI-Review, Gemini-Review.
+- Config: `.acos/config/model-profile.yaml` (per-project, persistent defaults).
+- Provider registry: `.acos/config/providers.yaml` (OpenAI, Google, OpenRouter, Custom endpoints).
+- Session state: `.acos/state/model-session.yaml` (ephemeral, cleaned by SessionEnd).
+- Resolution: `resolve-agent-model.sh <agent-name>` → outputs model spec.
+  - Claude models: bare name (`opus`, `sonnet`, `haiku`) → dispatched via Task().
+  - External models: `provider:model` (e.g., `openai:gpt-4o`) → dispatched via run-external-agent.py.
+- Safety gate: architect and developer MUST use Claude (tool access required). External models
+  silently fall back to Claude defaults.
+- External agent runner: `.claude/scripts/run-external-agent.py` — calls OpenAI-compatible APIs
+  with agent system prompts and pre-bundled code context. Python 3 stdlib only.
+- Resolution order: session custom override → session profile → config default profile → hardcoded fallback.
+- Main conversation model is advisory only — requires user to run `/model` to change.
+- Configure with `/acos-model-change`. Profile selection also offered during `/acos-start`.
+- Orchestration skills call `resolve-agent-model.sh` before every agent spawn, then dispatch
+  to Task() (Claude) or Bash+run-external-agent.py (external) based on the result.
 
 ## Planning Hierarchy
 Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomic work)
@@ -91,6 +111,8 @@ Preference categories projects should define:
 - Quality gates: `.acos/config/quality-gates.yaml` (see `/quality-gates` skill)
 - Domain security profile: `.acos/config/security-profile.md` (see `/domain-security-profile` skill)
 - Permission governance: `.acos/config/oracle.yaml` (see `/acos-oracle-protocol` skill)
+- Model profiles: `.acos/config/model-profile.yaml` (see `/acos-model-change` skill)
+- Provider registry: `.acos/config/providers.yaml` (external model API endpoints and keys)
 - MCP servers: `.claude/settings.local.json` under `mcpServers` (see `/mcp-setup` skill)
 
 ## Restricted Files

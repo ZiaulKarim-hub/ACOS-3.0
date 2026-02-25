@@ -116,7 +116,7 @@ Reviewers cannot:
 - See other reviewers' feedback (before submitting)
 - Be influenced to reduce rigor
 
-Review rules are human-editable only (in `review-rules.yaml`).
+Review rules are human-editable only (in `review-rules/` directory, with per-reviewer YAML files).
 
 ## Commands Reference
 

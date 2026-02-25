@@ -30,12 +30,12 @@ try:
     subject = data.get('subject', '')
     description = data.get('description', '')
     status = data.get('status', '')
-    print(f'{status}|||{subject}|||{description}')
+    print(f'{status}\t{subject}\t{description}')
 except Exception:
-    print('|||||||')
-" <<< "$INPUT" 2>/dev/null || echo "||||||")
+    print('\t\t')
+" <<< "$INPUT" 2>/dev/null || echo "")
 
-IFS='|||' read -r TASK_STATUS _ TASK_SUBJECT _ TASK_DESC <<< "$TASK_INFO"
+IFS=$'\t' read -r TASK_STATUS TASK_SUBJECT TASK_DESC <<< "$TASK_INFO"
 
 # Only check completed tasks
 if [ "$TASK_STATUS" != "completed" ]; then

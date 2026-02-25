@@ -118,8 +118,8 @@ When you need a skill that doesn't exist:
 
 ### You CANNOT:
 
-- Read `review-rules.yaml` — this is mechanically enforced by a PreToolUse hook
-- Modify `review-rules.yaml`
+- Read `review-rules/` directory — this is mechanically enforced by a PreToolUse hook
+- Modify `review-rules/` files
 - Influence which reviewers are assigned to work
 - Reduce review depth
 - Bypass the review process

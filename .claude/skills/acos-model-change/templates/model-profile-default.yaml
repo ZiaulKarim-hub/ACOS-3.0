@@ -1,0 +1,81 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Model Profile System — Agent Model Assignments
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Controls which Claude model each ACOS agent uses when spawned via Task().
+# Location: .acos/config/model-profile.yaml (per-project, user-editable)
+#
+# How it works:
+#   1. Orchestration skills call resolve-agent-model.sh <agent-name>
+#   2. The script checks session state first (.acos/state/model-session.yaml)
+#   3. Then falls back to this config file's active profile
+#   4. Then falls back to the agent's frontmatter default
+#
+# Session state is ephemeral — cleared by session-cleanup.sh at SessionEnd.
+# To change profile mid-session: /acos-model-change
+# To set profile at startup:     /acos-start includes a model selection step
+#
+# Available models: opus, sonnet, haiku
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Which profile to use by default when no session override exists
+default_profile: premium
+
+# ── Profile Definitions ─────────────────────────────────────────────────────
+#
+# Each profile maps agent names to models.
+# "main" is advisory only — Claude Code's main model requires /model to change.
+#
+# Cost guidance (approximate, relative):
+#   opus   = 1.0x (baseline — highest quality, highest cost)
+#   sonnet = 0.2x (good balance of quality and cost)
+#   haiku  = 0.05x (fastest, cheapest, good for simple tasks)
+
+profiles:
+  budget:
+    description: "Minimize token spend. Haiku for implementation, Sonnet for critical review."
+    main: haiku
+    architect: sonnet
+    developer: haiku
+    qa-reviewer: sonnet
+    security-reviewer: sonnet
+    performance-reviewer: haiku
+    integration-reviewer: haiku
+    memory-agent: haiku
+    learning-agent: haiku
+
+  standard:
+    description: "Balanced cost and quality. Sonnet across the board, Haiku for memory."
+    main: sonnet
+    architect: sonnet
+    developer: sonnet
+    qa-reviewer: sonnet
+    security-reviewer: sonnet
+    performance-reviewer: sonnet
+    integration-reviewer: sonnet
+    memory-agent: haiku
+    learning-agent: sonnet
+
+  premium:
+    description: "Maximum quality. Opus everywhere, Sonnet for memory. Current default."
+    main: opus
+    architect: opus
+    developer: opus
+    qa-reviewer: opus
+    security-reviewer: opus
+    performance-reviewer: opus
+    integration-reviewer: opus
+    memory-agent: sonnet
+    learning-agent: opus
+
+  auto:
+    description: "Smart allocation. Opus for critical decisions, Sonnet for implementation, Haiku for support."
+    main: sonnet
+    architect: opus
+    developer: sonnet
+    qa-reviewer: opus
+    security-reviewer: opus
+    performance-reviewer: sonnet
+    integration-reviewer: sonnet
+    memory-agent: haiku
+    learning-agent: sonnet

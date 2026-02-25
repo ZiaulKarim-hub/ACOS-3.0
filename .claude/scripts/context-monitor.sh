@@ -45,83 +45,23 @@ if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
 fi
 
 # ── Extract transcript path and session ID ─────────────────────────────
-read -r TRANSCRIPT_PATH SESSION_ID <<< $(echo "$INPUT" | python3 -c "
+read -r TRANSCRIPT_PATH SESSION_ID <<< "$(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 tp = data.get('transcript_path', '')
 sid = data.get('session_id', '')
 print(tp, sid)
-" 2>/dev/null || echo "")
+" 2>/dev/null || echo "")"
 
 # If no transcript path available, can't measure — allow stop
 if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
-# ── Check if a FRESH handoff exists for this session ───────────────────
-# Staleness-aware: if tokens grew >20k since the handoff was created,
-# it's stale and doesn't count. Matches token-gate.sh logic.
-HANDOFF_STALE_DELTA=20000
-HANDOFF_EXISTS=false
-HANDOFF_TOKENS_AT_CREATION=0
-
-if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
-  NEWEST_HANDOFF=""
-  NEWEST_MTIME=0
-  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml; do
-    if [ -f "$f" ]; then
-      HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
-      if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
-        HANDOFF_EXISTS=true
-        FILE_MTIME=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
-        if [ "$FILE_MTIME" -gt "$NEWEST_MTIME" ]; then
-          NEWEST_MTIME=$FILE_MTIME
-          NEWEST_HANDOFF="$f"
-        fi
-      fi
-    fi
-  done
-
-  # Check staleness
-  if [ "$HANDOFF_EXISTS" = "true" ] && [ -n "$NEWEST_HANDOFF" ]; then
-    HANDOFF_TOKENS_AT_CREATION=$(grep -m1 '^estimated_tokens:' "$NEWEST_HANDOFF" 2>/dev/null | sed 's/^estimated_tokens:[[:space:]]*//' | tr -d '"' || echo 0)
-    if [ -z "$HANDOFF_TOKENS_AT_CREATION" ] || ! [[ "$HANDOFF_TOKENS_AT_CREATION" =~ ^[0-9]+$ ]]; then
-      HANDOFF_TOKENS_AT_CREATION=0
-    fi
-  fi
-fi
-
-# Also check by date (fallback for handoffs without session_id)
-if [ "$HANDOFF_EXISTS" = "false" ]; then
-  TODAY=$(date -u +%Y-%m-%d)
-  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
-    if [ -f "$f" ]; then
-      HANDOFF_EXISTS=true
-      break
-    fi
-  done
-fi
-
-if [ "$HANDOFF_EXISTS" = "true" ]; then
-  # Check freshness — if we have token data, compare
-  if [ "$HANDOFF_TOKENS_AT_CREATION" -gt 0 ] && [ "$ESTIMATED_TOKENS" -gt 0 ]; then
-    TOKEN_DELTA=$(( ESTIMATED_TOKENS - HANDOFF_TOKENS_AT_CREATION ))
-    if [ "$TOKEN_DELTA" -ge "$HANDOFF_STALE_DELTA" ]; then
-      # Handoff is stale — proceed as if no handoff exists
-      echo "STOP HOOK: Handoff stale — created at ~${HANDOFF_TOKENS_AT_CREATION}, now ~${ESTIMATED_TOKENS} (delta: ${TOKEN_DELTA})" >&2
-      HANDOFF_EXISTS=false
-    fi
-  fi
-
-  if [ "$HANDOFF_EXISTS" = "true" ]; then
-    # Fresh handoff exists — allow stop, clean up retry counter
-    rm -f "$STOP_RETRY_FILE"
-    exit 0
-  fi
-fi
-
 # ── Token Estimation ───────────────────────────────────────────────────
-# Use cached value from token-gate if fresh, otherwise re-estimate
+# Moved BEFORE handoff staleness check so ESTIMATED_TOKENS is populated
+# when the freshness comparison runs. Uses cached value from token-gate
+# if fresh, otherwise re-estimates from transcript.
 ESTIMATED_TOKENS=0
 CACHE_FILE="$STATE_DIR/.token-gate-cache"
 
@@ -187,7 +127,7 @@ except Exception:
     print('0')
     sys.exit(0)
 
-print(int(total_chars / 2.5))
+print(int(total_chars / 3))
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
 fi
 
@@ -199,6 +139,68 @@ fi
 # skill definitions, system reminders). NOT in JSONL transcript.
 # Calibrated Feb 2026: 25k undercounted by ~5k for ACOS projects.
 ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + 30000 ))
+
+# ── Check if a FRESH handoff exists for this session ───────────────────
+# Staleness-aware: if tokens grew >20k since the handoff was created,
+# it's stale and doesn't count. Matches token-gate.sh logic.
+HANDOFF_STALE_DELTA=20000
+HANDOFF_EXISTS=false
+HANDOFF_TOKENS_AT_CREATION=0
+
+if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
+  NEWEST_HANDOFF=""
+  NEWEST_MTIME=0
+  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml; do
+    if [ -f "$f" ]; then
+      HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
+      if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
+        HANDOFF_EXISTS=true
+        FILE_MTIME=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
+        if [ "$FILE_MTIME" -gt "$NEWEST_MTIME" ]; then
+          NEWEST_MTIME=$FILE_MTIME
+          NEWEST_HANDOFF="$f"
+        fi
+      fi
+    fi
+  done
+
+  # Check staleness
+  if [ "$HANDOFF_EXISTS" = "true" ] && [ -n "$NEWEST_HANDOFF" ]; then
+    HANDOFF_TOKENS_AT_CREATION=$(grep -m1 '^estimated_tokens:' "$NEWEST_HANDOFF" 2>/dev/null | sed 's/^estimated_tokens:[[:space:]]*//' | tr -d '"' || echo 0)
+    if [ -z "$HANDOFF_TOKENS_AT_CREATION" ] || ! [[ "$HANDOFF_TOKENS_AT_CREATION" =~ ^[0-9]+$ ]]; then
+      HANDOFF_TOKENS_AT_CREATION=0
+    fi
+  fi
+fi
+
+# Also check by date (fallback for handoffs without session_id)
+if [ "$HANDOFF_EXISTS" = "false" ]; then
+  TODAY=$(date -u +%Y-%m-%d)
+  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
+    if [ -f "$f" ]; then
+      HANDOFF_EXISTS=true
+      break
+    fi
+  done
+fi
+
+if [ "$HANDOFF_EXISTS" = "true" ]; then
+  # Check freshness — if we have token data, compare
+  if [ "$HANDOFF_TOKENS_AT_CREATION" -gt 0 ] && [ "$ESTIMATED_TOKENS" -gt 0 ]; then
+    TOKEN_DELTA=$(( ESTIMATED_TOKENS - HANDOFF_TOKENS_AT_CREATION ))
+    if [ "$TOKEN_DELTA" -ge "$HANDOFF_STALE_DELTA" ]; then
+      # Handoff is stale — proceed as if no handoff exists
+      echo "STOP HOOK: Handoff stale — created at ~${HANDOFF_TOKENS_AT_CREATION}, now ~${ESTIMATED_TOKENS} (delta: ${TOKEN_DELTA})" >&2
+      HANDOFF_EXISTS=false
+    fi
+  fi
+
+  if [ "$HANDOFF_EXISTS" = "true" ]; then
+    # Fresh handoff exists — allow stop, clean up retry counter
+    rm -f "$STOP_RETRY_FILE"
+    exit 0
+  fi
+fi
 
 # Threshold: 100,000 tokens (~50% of 200k context window)
 # Aligned with token-gate.sh WARN_PCT=50 (lowered Feb 2026)
@@ -371,7 +373,7 @@ cat <<EOF
 {
   "decision": "block",
   "reason": "Stop blocked [${STOP_RETRIES}/${MAX_STOP_RETRIES}]: Context at ${ESTIMATED_TOKENS} tokens with no handoff. Mechanical handoff saved to ${MECHANICAL_FILE}. Run /acos-handoff-protocol for a proper semantic handoff.",
-  "additionalContext": "STOP BLOCKED [${STOP_RETRIES}/${MAX_STOP_RETRIES}]: You tried to stop but no session handoff exists. A mechanical handoff was auto-saved to ${MECHANICAL_FILE}, but it lacks decisions, blockers, and next-actions. Run /acos-handoff-protocol NOW to create a semantic handoff (or /acos-continue to handoff + auto-restart). After ${REMAINING} more stop attempt(s), stop will be FORCED with only the mechanical handoff."
+  "additionalContext": "STOP BLOCKED [${STOP_RETRIES}/${MAX_STOP_RETRIES}]: You tried to stop but no session handoff exists. A mechanical handoff was auto-saved to ${MECHANICAL_FILE}, but it lacks decisions, blockers, and next-actions. Run /acos-handoff-protocol NOW to create a semantic handoff. After ${REMAINING} more stop attempt(s), stop will be FORCED with only the mechanical handoff."
 }
 EOF
 

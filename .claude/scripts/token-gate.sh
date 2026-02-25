@@ -52,9 +52,9 @@ CACHE_TTL=30  # seconds
 SYSTEM_OVERHEAD=30000
 
 # Characters per token ratio for estimation.
-# Calibrated Feb 2026: 3.0 undercounted ~16% vs actual. Claude's tokenizer
-# averages ~2.5 chars/token for mixed code/text/JSON content.
-CHARS_PER_TOKEN=2.5
+# Calibrated Feb 2026: started at 4.0 (way too high), tried 2.5 (overcounted),
+# settled on 3.0 as a balanced middle ground for mixed code/text/JSON content.
+CHARS_PER_TOKEN=3
 
 CONTEXT_WINDOW=200000
 WARN_PCT=50
@@ -141,7 +141,10 @@ set_enforcement() {
   local retries="$1"
   local active="$2"
   local tokens="${3:-0}"
-  echo "{\"retries\":$retries,\"active\":$active,\"tokens\":$tokens,\"updated\":$(date +%s)}" > "$ENFORCEMENT_FILE"
+  # Atomic write: tmp file + mv prevents partial reads from concurrent hooks
+  local tmpfile="${ENFORCEMENT_FILE}.tmp.$$"
+  echo "{\"retries\":$retries,\"active\":$active,\"tokens\":$tokens,\"updated\":$(date +%s)}" > "$tmpfile"
+  mv -f "$tmpfile" "$ENFORCEMENT_FILE"
 }
 
 # Reset enforcement (handoff found or auto-fallback completed)
@@ -292,14 +295,14 @@ fi
 INPUT=$(cat)
 
 # Extract tool name, transcript path, and session ID
-read -r TOOL_NAME TRANSCRIPT_PATH SESSION_ID <<< $(echo "$INPUT" | python3 -c "
+read -r TOOL_NAME TRANSCRIPT_PATH SESSION_ID <<< "$(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 tool = data.get('tool_name', '')
 tp = data.get('transcript_path', '')
 sid = data.get('session_id', '')
 print(tool, tp, sid)
-" 2>/dev/null)
+" 2>/dev/null)"
 
 # If no transcript, can't measure — allow silently
 if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
@@ -382,8 +385,10 @@ print(int(total_chars / $CHARS_PER_TOKEN))
   # Add system context overhead (CLAUDE.md, MEMORY.md, handoffs, system prompt)
   ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + SYSTEM_OVERHEAD ))
 
-  # Cache the result
-  echo "$ESTIMATED_TOKENS" > "$CACHE_FILE"
+  # Cache the result (atomic write)
+  local cache_tmp="${CACHE_FILE}.tmp.$$"
+  echo "$ESTIMATED_TOKENS" > "$cache_tmp"
+  mv -f "$cache_tmp" "$CACHE_FILE"
 fi
 
 # ── Handoff Detection (Staleness-Aware) ───────────────────────────────
@@ -483,12 +488,12 @@ PCT=$(( ESTIMATED_TOKENS * 100 / CONTEXT_WINDOW ))
 
 # ── PHASE 1: NUDGE (retries 1-3) — Allow all tools, gentle warning ───
 if [ "$RETRIES" -le "$NUDGE_MAX" ]; then
-  emit_allow "HANDOFF REMINDER [${RETRIES}/${NUDGE_MAX}]: Context at ${ESTIMATED_TOKENS}/${CONTEXT_WINDOW} tokens (~${PCT}%). Please create a session handoff using /acos-handoff-protocol (or /acos-continue) when your current task unit completes. After ${NUDGE_MAX} more tool calls, non-handoff tools will be BLOCKED."
+  emit_allow "HANDOFF REMINDER [${RETRIES}/${NUDGE_MAX}]: Context at ${ESTIMATED_TOKENS}/${CONTEXT_WINDOW} tokens (~${PCT}%). Please create a session handoff using /acos-handoff-protocol when your current task unit completes. After ${NUDGE_MAX} more tool calls, non-handoff tools will be BLOCKED."
 
 # ── PHASE 2: PRESS (retries 4-8) — Block non-handoff tools ───────────
 elif [ "$RETRIES" -le "$PRESS_MAX" ]; then
   if is_handoff_tool "$TOOL_NAME"; then
-    emit_allow "HANDOFF ENFORCEMENT [${RETRIES}/${FORCE_MAX}]: Context at ~${PCT}%. You are in HANDOFF MODE. Complete your handoff NOW using /acos-handoff-protocol or /acos-continue. Non-handoff tools are BLOCKED until a handoff is created."
+    emit_allow "HANDOFF ENFORCEMENT [${RETRIES}/${FORCE_MAX}]: Context at ~${PCT}%. You are in HANDOFF MODE. Complete your handoff NOW using /acos-handoff-protocol. Non-handoff tools are BLOCKED until a handoff is created."
   else
     emit_deny \
       "Handoff enforcement active [attempt ${RETRIES}/${FORCE_MAX}]. Tool '${TOOL_NAME}' blocked — only handoff tools (Read, Write, Edit, Glob, Grep, Skill, LSP) are allowed." \
@@ -503,7 +508,7 @@ elif [ "$RETRIES" -le "$FORCE_MAX" ]; then
   else
     emit_deny \
       "Handoff enforcement FINAL PHASE [${RETRIES}/${FORCE_MAX}]. Auto-fallback in ${REMAINING} tool call(s)." \
-      "CRITICAL [${RETRIES}/${FORCE_MAX}]: Context at ${ESTIMATED_TOKENS} tokens (~${PCT}%). AUTO-FALLBACK in ${REMAINING} tool call(s). You have been asked ${RETRIES} times to create a handoff. Run /acos-handoff-protocol or /acos-continue IMMEDIATELY. After ${REMAINING} more tool calls, a mechanical handoff will be auto-created and your session should end."
+      "CRITICAL [${RETRIES}/${FORCE_MAX}]: Context at ${ESTIMATED_TOKENS} tokens (~${PCT}%). AUTO-FALLBACK in ${REMAINING} tool call(s). You have been asked ${RETRIES} times to create a handoff. Run /acos-handoff-protocol IMMEDIATELY. After ${REMAINING} more tool calls, a mechanical handoff will be auto-created and your session should end."
   fi
 
 # ── PHASE 4: AUTO-FALLBACK (retries 15+) — Create mechanical handoff ─
@@ -637,5 +642,5 @@ print(f'Enforced handoff written to {output_file}', file=sys.stderr)
   # Reset enforcement — we've done what we can
   reset_enforcement
 
-  emit_allow "AUTO-FALLBACK COMPLETE: After ${RETRIES} enforcement attempts, a mechanical handoff was auto-created. The /acos-handoff-protocol skill was never executed despite ${RETRIES} requests. Session should end soon — run /acos-continue to start a fresh session, or simply stop."
+  emit_allow "AUTO-FALLBACK COMPLETE: After ${RETRIES} enforcement attempts, a mechanical handoff was auto-created. The /acos-handoff-protocol skill was never executed despite ${RETRIES} requests. Session should end soon."
 fi

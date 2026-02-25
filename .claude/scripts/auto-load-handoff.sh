@@ -4,12 +4,12 @@
 # Returns JSON with hookSpecificOutput.additionalContext
 # Loads ALL active handoffs (newest first), falls back to mechanical if none active
 # Also loads recent ADRs from memory/decisions/
-# Token budget: 25,000 estimated tokens (~100k chars at 4 chars/token)
+# Token budget: 25,000 estimated tokens (~75k chars at 3 chars/token)
 
 HANDOFF_DIR="memory/handoffs"
 DECISIONS_DIR="memory/decisions"
 TOKEN_BUDGET=25000
-CHARS_BUDGET=$(( TOKEN_BUDGET * 4 ))  # ~100,000 chars
+CHARS_BUDGET=$(( TOKEN_BUDGET * 3 ))  # ~75,000 chars
 
 # If no handoff directory, nothing to load
 if [ ! -d "$HANDOFF_DIR" ]; then

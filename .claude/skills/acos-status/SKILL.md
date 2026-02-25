@@ -53,6 +53,11 @@ Collect data from all project directories:
 **Evidence Status:**
 - Check `.acos/evidence/` for evidence bundles
 
+**Model Profile:**
+- Check `.acos/state/model-session.yaml` for active session profile
+- If no session state, check `.acos/config/model-profile.yaml` for default profile
+- Resolve models for all 8 agents using `bash .claude/scripts/resolve-agent-model.sh <agent-name>`
+
 **Agent Metrics:**
 - Check `.acos/metrics/agent-completions.log` for recent agent activity
 
@@ -78,6 +83,12 @@ Memory:
   Decisions: [X] recorded
   Reviews:   [Y] completed
   Handoffs:  [Z] documented
+
+Model Profile:
+  Active: [premium/standard/budget/auto] ([session override / project default])
+  Main:   [opus/sonnet/haiku] (advisory)
+  Agents: architect→[model] developer→[model] qa→[model] sec→[model]
+          perf→[model] integ→[model] memory→[model] learn→[model]
 
 Evidence:
   Bundles: [N] total

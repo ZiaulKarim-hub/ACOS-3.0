@@ -1,0 +1,86 @@
+timestamp: "2026-02-25T08:00:00Z"
+status: "active"
+session_summary: >
+  Implemented the Model Profile System — /acos-model-change skill + /acos-start
+  model selection + resolve-agent-model.sh. Three-tier cost control (Budget/Standard/
+  Premium) plus Auto mode for ACOS subagent model selection. Also verified all three
+  models (opus/sonnet/haiku) are available via Task(). User also made external edits
+  removing acos-continue skill and session-continue.sh.
+
+current_work:
+  feature: "Model Profile System"
+  status: "completed"
+  epic_id: null
+  story_id: null
+  slice_id: null
+
+completed_this_session:
+  - "Created .claude/skills/acos-model-change/templates/model-profile-default.yaml (4 profiles)"
+  - "Created .claude/scripts/resolve-agent-model.sh (Bash+Python, 17ms, 4-level resolution chain)"
+  - "Created .claude/skills/acos-model-change/SKILL.md (management skill)"
+  - "Updated session-cleanup.sh — added model-session.yaml cleanup"
+  - "Updated acos-bootstrap.sh — added acos-model-change to CORE_SKILLS + config generation"
+  - "Updated 6 orchestration skills with model resolution preamble (execute-slice, review, execute-story, execute-epic, complete-vision, learn)"
+  - "Updated acos-start — added Step 1.5 model selection prompt"
+  - "Updated acos-status — added Model Profile section to dashboard"
+  - "Updated CLAUDE.md — new Model Profile System section + config reference"
+  - "Updated MEMORY.md — new section with system details"
+  - "Verified all 8 test scenarios pass (premium default, budget, custom override, auto, edge cases, performance)"
+  - "Verified all 3 models (opus/sonnet/haiku) available via Task() subagent spawning"
+  - "Live-tested /acos-model-change skill — Phase 1+2 working, user explored Main Model Guidance"
+
+files_modified:
+  - path: ".claude/skills/acos-model-change/templates/model-profile-default.yaml"
+    changes: "NEW — 4 profile definitions (budget/standard/premium/auto) with per-agent model mappings"
+  - path: ".claude/scripts/resolve-agent-model.sh"
+    changes: "NEW — model resolution script, Python stdlib YAML parser, 4-level priority chain"
+  - path: ".claude/skills/acos-model-change/SKILL.md"
+    changes: "NEW — management skill (display state → options → apply → validate)"
+  - path: ".claude/scripts/session-cleanup.sh"
+    changes: "Added model-session.yaml to ephemeral cleanup list"
+  - path: ".claude/scripts/acos-bootstrap.sh"
+    changes: "Added acos-model-change to CORE_SKILLS + model-profile.yaml generation after Oracle"
+  - path: ".claude/skills/acos-execute-slice/SKILL.md"
+    changes: "Model resolution preamble before developer (Step 4) and reviewers (Step 7)"
+  - path: ".claude/skills/acos-review/SKILL.md"
+    changes: "Replaced hardcoded model:opus with $RESOLVED_MODEL from resolve-agent-model.sh"
+  - path: ".claude/skills/acos-execute-story/SKILL.md"
+    changes: "Model resolution preamble before Step 4 subagents"
+  - path: ".claude/skills/acos-execute-epic/SKILL.md"
+    changes: "Model resolution preamble before Step 3 reviewers"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Model resolution preamble before Step 3 reviewers"
+  - path: ".claude/skills/acos-learn/SKILL.md"
+    changes: "Model resolution before memory-agent and learning-agent"
+  - path: ".claude/skills/acos-start/SKILL.md"
+    changes: "Added Step 1.5 model selection prompt (skips if session state exists)"
+  - path: ".claude/skills/acos-status/SKILL.md"
+    changes: "Added Model Profile section to dashboard display"
+  - path: "CLAUDE.md"
+    changes: "New Model Profile System section + model-profile.yaml in config reference"
+
+external_changes_by_user:
+  - "Removed .claude/skills/acos-continue/SKILL.md (skill deleted)"
+  - "Removed .claude/scripts/session-continue.sh (script deleted)"
+  - "Updated MEMORY.md — acos-continue removal noted, skill count adjusted to 41, script count to 14"
+
+decisions_made:
+  - "Session-only persistence for model profiles (no cross-session stickiness by default)"
+  - "Main model is advisory-only — cannot be changed programmatically, user runs /model"
+  - "Python stdlib YAML parser (matching Oracle pattern) instead of external dependency"
+  - "Hardcoded fallback chain ends at opus for all agents except memory-agent (sonnet)"
+  - "Auto profile: opus for architect+qa+security, sonnet for developer+perf+integ+learning, haiku for memory"
+
+blockers: []
+
+next_actions:
+  - "Commit all changes (3 new files + 10 modified files + documentation)"
+  - "Consider running /acos-model-change to switch to Auto or Budget profile for cost savings"
+  - "Phase 2 (future): external model support via MCP (Gemini, etc.)"
+
+context_for_next_session: |
+  The Model Profile System is fully implemented and verified. All tests pass.
+  The user also removed acos-continue and session-continue.sh externally.
+  Nothing is uncommitted or blocked. Ready for commit if desired.
+  Current model counts: 41 project skills, 14 scripts, 15 including resolve-agent-model.sh.
+  Note: MEMORY.md was updated by user to reflect acos-continue removal (skill count 41, script count 14).

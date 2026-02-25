@@ -219,12 +219,12 @@ CORE_SKILLS=(
   "acos-status"
   "acos-decide"
   "acos-handoff-protocol"
-  "acos-continue"
   "acos-learn"
   "acos-feedback-resolution"
   "acos-add-skills"
   "acos-embed-skills"
   "acos-oracle-protocol"
+  "acos-model-change"
   "acos-update"
 )
 
@@ -528,13 +528,24 @@ if 'hooks' in acos:
             existing['hooks'][hook_type] = hook_entries
             hooks_added += len(hook_entries)
         else:
-            existing_cmds = set()
+            # Extract script names from existing hook commands for fuzzy dedup.
+            # This prevents duplicates when commands are reformatted (e.g.,
+            # bare "bash .claude/scripts/foo.sh" vs prefixed with git rev-parse).
+            import re
+            def extract_script_id(cmd):
+                """Extract the core script filename from a hook command."""
+                m = re.search(r'[\w/.-]*\.(?:sh|py)\b', cmd)
+                if m:
+                    return m.group(0).rsplit('/', 1)[-1]  # just the filename
+                return cmd  # fallback to full command
+
+            existing_scripts = set()
             for entry in existing['hooks'][hook_type]:
                 for h in entry.get('hooks', []):
-                    existing_cmds.add(h.get('command', ''))
+                    existing_scripts.add(extract_script_id(h.get('command', '')))
             for entry in hook_entries:
                 for h in entry.get('hooks', []):
-                    if h.get('command', '') not in existing_cmds:
+                    if extract_script_id(h.get('command', '')) not in existing_scripts:
                         existing['hooks'][hook_type].append(entry)
                         hooks_added += 1
                         break
@@ -590,10 +601,20 @@ log ""
 
 log "${BOLD}[6/6] Generating project configuration...${NC}"
 
-# Copy review-rules.yaml (editable per-project)
+# Copy review-rules/ directory (per-reviewer trigger rules, editable per-project)
+if [[ ! -d "$PROJECT_DIR/review-rules" ]]; then
+  cp -r "$ACOS_ROOT/review-rules" "$PROJECT_DIR/review-rules"
+  log_step "Copied review-rules/ directory (4 reviewers + global config)"
+else
+  log_skip "review-rules/ directory (already exists)"
+fi
+
+# Copy review-rules.yaml legacy pointer (for reference only)
 if [[ ! -f "$PROJECT_DIR/review-rules.yaml" ]]; then
-  cp "$ACOS_ROOT/review-rules.yaml" "$PROJECT_DIR/review-rules.yaml"
-  log_step "Copied review-rules.yaml (project-editable)"
+  if [[ -f "$ACOS_ROOT/review-rules.yaml" ]]; then
+    cp "$ACOS_ROOT/review-rules.yaml" "$PROJECT_DIR/review-rules.yaml"
+    log_step "Copied review-rules.yaml (legacy pointer)"
+  fi
 else
   log_skip "review-rules.yaml (already exists)"
 fi
@@ -668,6 +689,50 @@ if [[ ! -f "$PROJECT_DIR/.acos/config/oracle.yaml" ]]; then
   cp "$ACOS_ROOT/.claude/skills/acos-oracle-protocol/templates/oracle-default.yaml" \
      "$PROJECT_DIR/.acos/config/oracle.yaml"
   log_step "Generated .acos/config/oracle.yaml (The Oracle)"
+fi
+
+# Generate model-profile config (agent model assignments)
+if [[ ! -f "$PROJECT_DIR/.acos/config/model-profile.yaml" ]]; then
+  cp "$ACOS_ROOT/.claude/skills/acos-model-change/templates/model-profile-default.yaml" \
+     "$PROJECT_DIR/.acos/config/model-profile.yaml"
+  log_step "Generated .acos/config/model-profile.yaml (Model Profiles)"
+fi
+
+# Generate providers.yaml template (external model API endpoints)
+if [[ ! -f "$PROJECT_DIR/.acos/config/providers.yaml" ]]; then
+  cat > "$PROJECT_DIR/.acos/config/providers.yaml" << 'PROVIDERS_EOF'
+# External Model Provider Registry
+# Configure API endpoints for non-Claude models used by ACOS agents.
+# See /acos-model-change for provider profiles (hybrid-review, free-tier, etc.)
+
+providers:
+  openai:
+    type: openai-compatible
+    api_base: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+    default_max_tokens: 4096
+
+  google:
+    type: openai-compatible
+    api_base: "https://generativelanguage.googleapis.com/v1beta/openai"
+    api_key_env: "GOOGLE_API_KEY"
+    default_max_tokens: 4096
+
+  openrouter:
+    type: openai-compatible
+    api_base: "https://openrouter.ai/api/v1"
+    api_key_env: "OPENROUTER_API_KEY"
+    default_max_tokens: 4096
+    extra_headers:
+      HTTP-Referer: "https://github.com/acos"
+
+  # custom:
+  #   type: openai-compatible
+  #   api_base: "http://localhost:11434/v1"  # Ollama
+  #   api_key_env: ""
+  #   default_max_tokens: 4096
+PROVIDERS_EOF
+  log_step "Generated .acos/config/providers.yaml (External Providers)"
 fi
 
 log_ok "Project configuration ready"

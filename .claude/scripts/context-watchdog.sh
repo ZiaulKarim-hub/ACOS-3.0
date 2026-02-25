@@ -4,6 +4,8 @@
 # Parses the JSONL transcript to extract session state, saves to memory/handoffs/
 # Exit 0 always (cannot block compaction)
 
+set -euo pipefail
+
 STATE_DIR=".acos/state"
 HANDOFF_DIR="memory/handoffs"
 mkdir -p "$STATE_DIR" "$HANDOFF_DIR"
@@ -47,10 +49,10 @@ DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 FILENAME="$(date -u +%Y-%m-%d)-auto-compact-handoff.yaml"
 
 python3 -c "
-import json, sys
+import json, sys, os
 from collections import Counter
 
-transcript_path = '$TRANSCRIPT_PATH'
+transcript_path = sys.argv[1]
 files_modified = set()
 tool_names = []
 tool_count = 0
@@ -115,11 +117,19 @@ freq = Counter(tool_names)
 top_tools = freq.most_common(5)
 top_yaml = ', '.join(f'{name}({count})' for name, count in top_tools) if top_tools else 'none'
 
+# Estimate tokens from transcript size (~3 chars/token + 30k system overhead)
+try:
+    transcript_size = os.path.getsize(transcript_path)
+    estimated_tokens = (transcript_size // 3) + 30000
+except Exception:
+    estimated_tokens = 0
+
 yaml_out = f'''timestamp: \"$DATE\"
 status: \"mechanical\"
 type: mechanical-compact
 trigger: pre-compact
 session_summary: \"Auto-generated mechanical handoff before context compaction.\"
+estimated_tokens: {estimated_tokens}
 
 files_modified:
 {files_yaml}
@@ -130,15 +140,19 @@ tool_frequency: \"{top_yaml}\"
 context_for_next_session: |
   This is a mechanical handoff auto-generated before context compaction.
   {tool_count} tool calls were made. {len(files_modified)} files were modified.
+  Estimated context: ~{estimated_tokens} tokens at time of compaction.
   A semantic handoff (created by Claude via /acos-handoff-protocol) may also exist with
   richer context about decisions, blockers, and next actions.
 '''
 
 print(yaml_out)
-" > "$HANDOFF_DIR/$FILENAME" 2>/dev/null
+" "$TRANSCRIPT_PATH" > "$HANDOFF_DIR/$FILENAME.tmp" 2>/dev/null
+mv -f "$HANDOFF_DIR/$FILENAME.tmp" "$HANDOFF_DIR/$FILENAME"
 
-# Write markers
-echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff"
-date +%s > "$STATE_DIR/last-auto-handoff-time"
+# Write markers (atomic)
+echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff.tmp"
+mv -f "$STATE_DIR/last-compact-handoff.tmp" "$STATE_DIR/last-compact-handoff"
+date +%s > "$STATE_DIR/last-auto-handoff-time.tmp"
+mv -f "$STATE_DIR/last-auto-handoff-time.tmp" "$STATE_DIR/last-auto-handoff-time"
 
 exit 0

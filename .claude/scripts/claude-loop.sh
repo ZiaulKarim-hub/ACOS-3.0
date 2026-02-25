@@ -87,7 +87,10 @@ notify() {
   local title="$1"
   local message="$2"
   if [ "$NOTIFY" = "1" ] && command -v osascript &>/dev/null; then
-    osascript -e "display notification \"$message\" with title \"$title\"" 2>/dev/null || true
+    # Use stdin to avoid AppleScript injection via string interpolation
+    osascript <<APPLESCRIPT 2>/dev/null || true
+display notification "$(/usr/bin/sed 's/["\]/\\&/g' <<< "$message")" with title "$(/usr/bin/sed 's/["\]/\\&/g' <<< "$title")"
+APPLESCRIPT
   fi
 }
 
@@ -145,24 +148,24 @@ while true; do
   echo "=== Session #${SESSION_COUNT} starting at $(date) ==="
   notify "Claude Loop" "Session #${SESSION_COUNT} starting"
 
-  # Build claude command
-  CLAUDE_CMD="claude"
+  # Build claude command as an array (no eval — prevents shell injection)
+  CLAUDE_ARGS=()
 
   if [ "$SESSION_COUNT" -eq 1 ] && [ -n "$RESUME_ID" ]; then
     # First session: resume specific session
-    CLAUDE_CMD="$CLAUDE_CMD --resume $RESUME_ID"
+    CLAUDE_ARGS+=(--resume "$RESUME_ID")
   elif [ "$SESSION_COUNT" -gt 1 ]; then
     # Subsequent sessions: continue most recent
-    CLAUDE_CMD="$CLAUDE_CMD --continue"
+    CLAUDE_ARGS+=(--continue)
   fi
 
   if [ "$SESSION_COUNT" -eq 1 ] && [ -n "$INITIAL_PROMPT" ]; then
-    CLAUDE_CMD="$CLAUDE_CMD \"$INITIAL_PROMPT\""
+    CLAUDE_ARGS+=("$INITIAL_PROMPT")
   fi
 
   # Run Claude
   set +e
-  eval $CLAUDE_CMD
+  claude "${CLAUDE_ARGS[@]}"
   EXIT_CODE=$?
   set -e
 
