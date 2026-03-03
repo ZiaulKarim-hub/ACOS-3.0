@@ -45,7 +45,11 @@ review system, and cross-project learning.
 - Default threshold: 9. Range: 0 (ask everything) to 10 (permissive) to 11 (YOLO — bypasses hard blocks).
 - Fail-open: missing config or errors default to allow. The Oracle is a convenience layer.
 - Configure with `/acos-oracle-protocol`. Supports custom modifiers and learned patterns.
-- Hook ordering: Oracle (all tools) → token-gate.sh (all tools) → check-scope.sh (Write|Edit only) → execute.
+- Risk-tiered: Oracle only evaluates Bash, Write, Edit, NotebookEdit, Task. Read-only tools exempt.
+- Fail-safe: shell-level `|| printf 'allow'` fallback prevents tool lockout if script errors.
+- No git dependency: hooks resolve paths via CWD and `__file__`, not `git rev-parse`.
+- Health check: `python3 .claude/scripts/oracle-evaluate.py --health` verifies all dependencies.
+- Hook ordering: Oracle (Bash|Write|Edit|NotebookEdit|Task) → check-scope.sh (Write|Edit only) → execute.
 
 ## Model Profile System
 - Controls which model each agent uses when spawned — supports Claude AND external models.

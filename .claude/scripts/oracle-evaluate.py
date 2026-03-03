@@ -14,6 +14,7 @@ Fail-open: any error defaults to allow.
 Usage:
   Normal (hook):   stdin JSON → stdout decision
   Diagnose:        python3 oracle-evaluate.py --diagnose [--config path/to/oracle.yaml]
+  Health check:    python3 oracle-evaluate.py --health
 """
 
 import json
@@ -151,11 +152,30 @@ DEFAULTS = {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def find_project_root(cwd):
-    """Walk up from cwd to find directory containing .acos/."""
+    """Walk up from cwd to find directory containing .acos/.
+
+    Uses multiple fallback strategies:
+      1. Walk up from CWD (provided by hook or os.getcwd())
+      2. Walk up from this script's own location (__file__)
+      3. Fall back to CWD as last resort
+    """
+    # Strategy 1: Walk up from CWD
     path = Path(cwd).resolve()
     for parent in [path] + list(path.parents):
         if (parent / ".acos").is_dir():
             return parent
+
+    # Strategy 2: Walk up from script's own location
+    # oracle-evaluate.py lives at <project>/.claude/scripts/oracle-evaluate.py
+    # so walking up from __file__ should find <project>/.acos/
+    try:
+        script_dir = Path(__file__).resolve().parent
+        for parent in [script_dir] + list(script_dir.parents):
+            if (parent / ".acos").is_dir():
+                return parent
+    except (NameError, OSError):
+        pass  # __file__ might not be defined in some execution contexts
+
     return Path(cwd).resolve()
 
 
@@ -636,10 +656,86 @@ def run_diagnose(config_path=None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Health Check Mode
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def run_health():
+    """Quick health check — verifies all Oracle dependencies are available."""
+    cwd = os.getcwd()
+    root = find_project_root(cwd)
+    checks = []
+
+    # Check 1: Project root found
+    acos_dir = root / ".acos"
+    checks.append(("Project root (.acos/)", acos_dir.is_dir(), str(root)))
+
+    # Check 2: Oracle config
+    config_path = root / ".acos" / "config" / "oracle.yaml"
+    checks.append(("Oracle config", config_path.is_file(), str(config_path)))
+
+    # Check 3: State directory writable
+    state_dir = root / ".acos" / "state"
+    writable = False
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+        writable = os.access(str(state_dir), os.W_OK)
+    except OSError:
+        pass
+    checks.append(("State dir writable", writable, str(state_dir)))
+
+    # Check 4: Config parseable
+    config_ok = True
+    config_detail = "N/A (no config file)"
+    if config_path.is_file():
+        try:
+            raw = config_path.read_text(encoding="utf-8")
+            parsed = parse_yaml(raw)
+            config_detail = f"threshold={parsed.get('threshold', '?')}, enabled={parsed.get('enabled', '?')}"
+        except Exception as e:
+            config_ok = False
+            config_detail = f"parse error: {e}"
+    checks.append(("Config parseable", config_ok, config_detail))
+
+    # Check 5: Hook command will work (no git dependency)
+    settings_path = root / ".claude" / "settings.local.json"
+    hook_ok = True
+    hook_detail = "settings.local.json not found"
+    if settings_path.is_file():
+        try:
+            content = settings_path.read_text(encoding="utf-8")
+            if "git rev-parse" in content:
+                hook_ok = False
+                hook_detail = "STILL has git rev-parse dependency — hooks will fail outside git repos"
+            else:
+                hook_detail = "no git dependency (good)"
+        except OSError as e:
+            hook_ok = False
+            hook_detail = f"read error: {e}"
+    checks.append(("Hook resilience", hook_ok, hook_detail))
+
+    all_ok = all(ok for _, ok, _ in checks)
+
+    print("Oracle Health Check")
+    print("=" * 40)
+    for name, ok, detail in checks:
+        status = "OK" if ok else "FAIL"
+        print(f"  [{status:4s}] {name}: {detail}")
+    print()
+    print(f"Status: {'HEALTHY' if all_ok else 'ISSUES DETECTED'}")
+
+    return all_ok
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main Entry Point
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    # Handle --health mode (quick dependency check)
+    if "--health" in sys.argv:
+        success = run_health()
+        sys.exit(0 if success else 1)
+
     # Handle --diagnose mode
     if "--diagnose" in sys.argv:
         config_path = None
