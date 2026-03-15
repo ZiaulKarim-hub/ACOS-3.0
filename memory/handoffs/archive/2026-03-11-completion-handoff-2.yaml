@@ -1,0 +1,63 @@
+timestamp: "2026-03-11T23:00:00Z"
+status: "completed"
+session_summary: |
+  Two-part session: (1) Integrated OpenCode + Doppler + GLM-5 into ACOS — model profiles,
+  fallback script, skill-level model chooser, security fix. (2) Explained ACOS startup
+  architecture and fixed `acos start` CLI to auto-invoke `/acos-start` inside Claude Code.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "OpenCode + Doppler + GLM-5 integration (4 suggestions implemented)"
+  - "Added glm-review and glm-heavy model profiles"
+  - "Created fallback-to-opencode.sh and set-skill-model.sh scripts"
+  - "Added Step 0.0 Model Selection to 6 token-heavy skills"
+  - "Fixed security: removed hardcoded API key from ~/.zshrc, replaced with Doppler-sourced key"
+  - "Added oc and ocfallback shell aliases"
+  - "Fixed acos CLI: acos start now auto-invokes /acos-start via --prompt flag"
+
+files_modified:
+  - path: ".acos/config/model-profile.yaml"
+    changes: "Added glm-review and glm-heavy profiles"
+  - path: ".acos/config/providers.yaml"
+    changes: "Added GLM models to OpenRouter provider"
+  - path: ".claude/scripts/fallback-to-opencode.sh"
+    changes: "Created — OpenCode fallback with directory-agnostic handoff detection"
+  - path: ".claude/scripts/set-skill-model.sh"
+    changes: "Created — session model profile switcher"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-credit-memo-generator/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-loan-doc-finder/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-data-extractor/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-loan-doc-mapper/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Added Step 0 Model Selection"
+  - path: "~/.zshrc"
+    changes: "Security fix + Doppler key + oc/ocfallback aliases"
+  - path: "automation-scripts/acos"
+    changes: "Line 202: claude → claude --prompt /acos-start"
+
+decisions_made:
+  - "OpenRouter API key managed via Doppler, never hardcoded"
+  - "acos start CLI now auto-invokes /acos-start — single step for users"
+
+blockers: []
+
+next_actions:
+  - "Test acos start in a new Warp window to verify --prompt flag works"
+  - "Create Claude-style OpenCode theme (user expressed interest)"
+  - "Implement numerical accuracy improvement for loan-doc-generator (Approach C: user choice)"
+
+context_for_next_session: |
+  User is non-technical. OpenCode+GLM-5 fully integrated. Shell aliases require new terminal.
+  User raised concern about numerical accuracy in generated credit memos — discussed 3 approaches
+  (Tell Me First / Find Then Verify / Your Choice) but didn't pick one yet. Resume that discussion.

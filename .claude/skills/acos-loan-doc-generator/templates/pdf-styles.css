@@ -1,0 +1,227 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACOS Loan Document Generator — PDF Print Stylesheet
+   ═══════════════════════════════════════════════════════════════════════════════
+   Embedded by the Phase 3 Assembler into the document YAML frontmatter or
+   <style> block. Targets WeasyPrint / Puppeteer / any CSS Paged Media engine.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page Setup ───────────────────────────────────────────────────────────── */
+
+@page {
+  size: letter;
+  margin: 1in 1in 1.25in 1in;
+
+  @bottom-center {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 8pt;
+    color: #999;
+    font-family: Calibri, Helvetica, Arial, sans-serif;
+  }
+}
+
+@page :first {
+  margin-top: 1.5in;
+  @bottom-center { content: none; }
+}
+
+@page landscape {
+  size: letter landscape;
+  margin: 0.75in;
+}
+
+/* ── Heading Protection (Layer 1 — most critical) ─────────────────────────── */
+/* Prevents orphaned headings at page bottom                                    */
+
+h1, h2, h3, h4, h5, h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Major section headings start on new pages */
+h1 {
+  break-before: page;
+  page-break-before: always;
+}
+
+/* First h1 (document title) should NOT force a page break */
+h1:first-of-type {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+/* ── Paragraph Orphan/Widow Control (Layer 2) ─────────────────────────────── */
+
+p, li {
+  orphans: 3;
+  widows: 3;
+}
+
+/* ── Keep-Together Elements (Layer 3) ─────────────────────────────────────── */
+
+table, figure, blockquote, .deal-summary, .callout, .summary-box, .risk-box {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Wrapper class for stubborn engines (Puppeteer break-inside bug workaround) */
+.keep-together {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow: visible;
+}
+
+/* Heading + following content group */
+.heading-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── Table Behavior ───────────────────────────────────────────────────────── */
+
+thead {
+  display: table-header-group;
+}
+
+tfoot {
+  display: table-footer-group;
+}
+
+tbody tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── Section-Level Breaks ─────────────────────────────────────────────────── */
+
+.toc {
+  break-after: page;
+  page-break-after: always;
+}
+
+.footer-block {
+  break-before: page;
+  page-break-before: always;
+}
+
+.appendix-section {
+  break-before: page;
+  page-break-before: always;
+}
+
+.wide-table {
+  page: landscape;
+}
+
+/* ── Image and Figure Styling ─────────────────────────────────────────────── */
+
+figure {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 18pt 0;
+  text-align: center;
+}
+
+figure img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+figcaption {
+  font-size: 9pt;
+  font-style: italic;
+  color: #555;
+  margin-top: 6pt;
+  text-align: left;
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+
+body {
+  font-family: Garamond, Georgia, Cambria, "Times New Roman", serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  color: #1a1a1a;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  color: #003366;
+}
+
+h1 { font-size: 18pt; }
+h2 { font-size: 14pt; }
+h3 { font-size: 12pt; }
+
+table {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-size: 9.5pt;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  background-color: #003366;
+  color: white;
+  font-weight: 600;
+  padding: 6pt 8pt;
+  text-align: left;
+}
+
+td {
+  padding: 5pt 8pt;
+  border-bottom: 0.5pt solid #ddd;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f5f5f5;
+}
+
+/* ── Deal Summary Box ─────────────────────────────────────────────────────── */
+
+.deal-summary {
+  border: 2pt solid #003366;
+  background: #f8f9fa;
+  padding: 12pt 16pt;
+  margin: 12pt 0;
+}
+
+.deal-summary td:first-child {
+  font-weight: 600;
+  color: #003366;
+  width: 35%;
+}
+
+/* ── Risk Callouts ────────────────────────────────────────────────────────── */
+
+.risk-box {
+  border-left: 4pt solid #CC0000;
+  background: #fff5f5;
+  padding: 8pt 12pt;
+  margin: 12pt 0;
+}
+
+.risk-box.mitigant {
+  border-left-color: #006600;
+  background: #f5fff5;
+}
+
+/* ── Provenance Table ─────────────────────────────────────────────────────── */
+
+.provenance-table {
+  font-size: 8.5pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.provenance-table th {
+  background-color: #555;
+  font-size: 8pt;
+  padding: 4pt 6pt;
+}
+
+.provenance-table td {
+  padding: 3pt 6pt;
+  font-size: 8pt;
+}

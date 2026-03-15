@@ -1,0 +1,79 @@
+timestamp: "2026-02-27T00:00:00Z"
+status: "completed"
+session_summary: "Implemented multi-provider model support for ACOS — external models (OpenAI, Google, OpenRouter, custom) can now be used for reviewer and analysis agents alongside Claude."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Created .acos/config/providers.yaml — provider registry with 5 providers (claude, openai, google, openrouter, custom)"
+  - "Extended .acos/config/model-profile.yaml — added 4 multi-provider profiles (hybrid-review, free-tier, openai-review, gemini-review) alongside existing 4 Claude-only profiles"
+  - "Built .claude/scripts/run-external-agent.py — external agent runner that calls OpenAI-compatible APIs with agent system prompts and pre-bundled code context (Python 3 stdlib only)"
+  - "Extended .claude/scripts/resolve-agent-model.sh — now outputs provider:model format for external models, includes safety gate forcing architect/developer to Claude"
+  - "Updated 6 orchestration skills with conditional dispatch pattern (Task() for Claude, Bash+run-external-agent.py for external)"
+  - "Updated acos-model-change skill to present both Claude-only and multi-provider profiles"
+  - "Updated CLAUDE.md Model Profile System section with multi-provider documentation"
+  - "Set up OpenRouter API key in ~/.zshrc for the user"
+  - "Tested model resolution with premium, hybrid-review, and free-tier profiles — all resolve correctly"
+  - "Safety gate verified: architect with external model silently falls back to Claude opus"
+
+files_modified:
+  - path: ".acos/config/providers.yaml"
+    changes: "NEW — provider registry defining OpenAI, Google, OpenRouter, Custom endpoints with API config"
+  - path: ".acos/config/model-profile.yaml"
+    changes: "Added 4 multi-provider profiles, updated header docs with provider:model syntax"
+  - path: ".claude/scripts/run-external-agent.py"
+    changes: "NEW — external agent runner: parses agent .md, adapts system prompt, bundles code context, calls OpenAI-compatible API. Includes sensitive file filtering (added by user/linter)."
+  - path: ".claude/scripts/resolve-agent-model.sh"
+    changes: "Extended to support provider:model format, added safety gate for Claude-only agents, normalize_model() for backward compat"
+  - path: ".claude/skills/acos-review/SKILL.md"
+    changes: "Step 4 updated with Path A (Claude/Task) vs Path B (External/Bash) dispatch pattern"
+  - path: ".claude/skills/acos-execute-slice/SKILL.md"
+    changes: "Step 7 updated with conditional dispatch pattern"
+  - path: ".claude/skills/acos-execute-story/SKILL.md"
+    changes: "Step 4 updated with dispatch rule referencing acos-review for full pattern"
+  - path: ".claude/skills/acos-execute-epic/SKILL.md"
+    changes: "Step 3 updated with dispatch rule"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Step 3 updated with dispatch rule"
+  - path: ".claude/skills/acos-learn/SKILL.md"
+    changes: "Step 2 updated with dispatch rule for memory-agent and learning-agent"
+  - path: ".claude/skills/acos-model-change/SKILL.md"
+    changes: "Overview and Phase 2 updated to present multi-provider profiles and external model overrides"
+  - path: "CLAUDE.md"
+    changes: "Model Profile System section rewritten for multi-provider support, added providers.yaml to Project-Level Configuration"
+
+decisions_made:
+  - "OpenRouter as the universal gateway — single API key covers 300+ models including free tier"
+  - "Safety gate approach: external models silently fall back to Claude for architect/developer rather than erroring"
+  - "Dispatch pattern: resolve model → check for colon → Claude=Task(), External=Bash+run-external-agent.py"
+  - "External models get pre-bundled code context since they can't use Claude Code tools"
+  - "Provider config stores env var NAMES not actual keys — safe to commit to git"
+
+blockers: []
+
+next_actions:
+  - "End-to-end test: run a real review with free-tier profile to verify external model dispatch works in practice"
+  - "Consider adding streaming support to run-external-agent.py for long responses"
+  - "User expressed interest in exploring more providers later — system is ready for it"
+  - "User was also exploring shell/env var concepts — educational session"
+
+context_for_next_session: |
+  Multi-provider model support is fully implemented but not yet tested end-to-end
+  with a real review cycle. The infrastructure is in place:
+  - providers.yaml defines 5 providers
+  - model-profile.yaml has 8 profiles (4 Claude + 4 multi-provider)
+  - run-external-agent.py handles API calls to any OpenAI-compatible endpoint
+  - resolve-agent-model.sh returns provider:model format
+  - All 6 orchestration skills have conditional dispatch
+  - OpenRouter API key is set in ~/.zshrc
+
+  The user's current session profile is premium (all Claude Opus).
+  They tested switching to free-tier and back to premium successfully.
+
+  Note: run-external-agent.py was enhanced externally with sensitive file
+  filtering and improved hostname parsing for SSL — these changes are in
+  the working tree.

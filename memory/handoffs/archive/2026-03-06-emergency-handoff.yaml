@@ -1,0 +1,195 @@
+timestamp: "2026-03-06T19:05:32Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Current session (fe17d541, architect type, spawned 2026-03-06T18:47Z) focused on
+  real-world loan document data extraction using the acos-data-extractor skill against
+  three Okoa Capital paid-off loan folders from the Dropbox source directory. The session
+  extracted full provenance-backed data from all three loans: Wolfgramm_Ascent_Bridge
+  (10M bridge, Park City UT), Phoenix_Rising_Corpus_Christi (5.5M construction bridge,
+  TX), and Qelo/Wolfgramm_Ascent_Senior (20M construction, Park City UT). The user also
+  asked about the distinction between inception date and closing date. No new git commits
+  were made — HEAD remains at 04165e8 (Oracle hardening, Mar 3 2026). All four skill
+  directories and the handoff-agent agent remain untracked.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - >
+    LOAN DATA EXTRACTION — Wolfgramm_Ascent_Bridge (10M):
+    Property: 2100 W Frostwood Blvd & 4080 N Cooper Ln, Park City, UT 84098.
+    Type: Bridge loan.
+    Inception/Closing: October 23, 2023.
+    End of Investment Life: ~February 28, 2024.
+    Holding Period: ~128 days (~0.35 years).
+    Principal: $10,000,000.
+    Source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+  - >
+    LOAN DATA EXTRACTION — Phoenix_Rising_Corpus_Christi (5.5M):
+    Property: 6402 Weber Rd, Corpus Christi, TX 78413 (Parcel: 1724-0006-0020).
+    Type: Short-term construction bridge loan.
+    Inception/Closing: October 2, 2024.
+    End of Investment Life: May 3, 2025.
+    Holding Period: 214 days (~0.59 years).
+    Principal: $5,500,000.
+    Source: same Dropbox folder.
+    Skill invoked: /acos-data-extractor.
+  - >
+    LOAN DATA EXTRACTION — Qelo/Wolfgramm_Ascent_Senior (20M):
+    Property: 4080 N Cooper Ln, Park City, UT 84098.
+    Type: Construction loan (senior).
+    Inception/Closing: October 1, 2021.
+    End of Investment Life: January 29, 2024.
+    Holding Period: 851 days (~2.33 years).
+    Principal: $20,000,000.
+    Source: same Dropbox folder.
+    Skill invoked: /acos-data-extractor.
+  - >
+    CONCEPTUAL DISCUSSION — Inception date vs. closing date distinction explained.
+    Inception date = when investment clock starts (typically loan closing/funding date).
+    Closing date = settlement date when documents are signed and funds disbursed.
+    For these loans the two dates are the same (the closing IS the inception).
+  - "No new git commits made this session. HEAD remains at 04165e8."
+
+files_modified:
+  - path: "No ACOS framework files modified this session."
+    changes: >
+      Session was focused on data extraction work against external Dropbox loan folders.
+      No writes to project source files were made.
+
+decisions_made:
+  - >
+    All three Okoa loan extractions used provenance-backed sourcing from: Loan Agreements,
+    Settlement Statements, Escrow Instructions, Payoff Letters, Distribution Spreadsheets,
+    and Deeds of Reconveyance. Data integrity rules (no fabrication, exact numerical/name/date
+    preservation, provenance required) were applied.
+  - >
+    Inception date and closing date are treated as synonymous for Okoa bridge/construction
+    loans — the closing date IS the inception (investment start) date.
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT (inherited, not fixed this session):
+    ~/.claude/settings.json hooks section is empty. The 5 global context-defense hooks
+    are missing: auto-load-handoff.sh (SessionStart), context-monitor.sh (Stop),
+    context-watchdog.sh (PreCompact), token-gate.sh (PreToolUse), session-cleanup.sh
+    (SessionEnd). This is the root cause of all repeated manual handoff-agent invocations
+    across sessions (Mar 3: 5 invocations, Mar 5: 1 invocation, Mar 6: this invocation).
+  - >
+    UNCOMMITTED SKILLS AND AGENTS (5 items, all untracked, would be lost on working-tree reset):
+    1. .claude/skills/acos-data-extractor/ (SKILL.md 24KB + 8 templates, created Mar 5)
+    2. .claude/skills/acos-credit-memo-generator/ (SKILL.md 28KB + 6 templates, Mar 3)
+    3. .claude/skills/acos-loan-doc-finder/ (SKILL.md 22KB + 4 templates, Mar 3)
+    4. .claude/skills/acos-loan-doc-mapper/ (SKILL.md 15KB + 7 templates, Mar 3)
+    5. .claude/agents/handoff-agent.md (Mar 3)
+    Also untracked: starter-templates/ directory.
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json. The hooks section
+    must contain these 5 entries (use absolute paths):
+    SessionStart: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/auto-load-handoff.sh
+    Stop: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-monitor.sh
+    PreCompact: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-watchdog.sh
+    PreToolUse (matcher Bash|Write|Edit|NotebookEdit|Task): /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/token-gate.sh
+    SessionEnd: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/session-cleanup.sh
+  - >
+    PRIORITY 2 — Commit all untracked new skills and agents:
+    git add .claude/agents/handoff-agent.md
+    git add .claude/skills/acos-data-extractor/
+    git add .claude/skills/acos-credit-memo-generator/
+    git add .claude/skills/acos-loan-doc-finder/
+    git add .claude/skills/acos-loan-doc-mapper/
+    git add starter-templates/
+    git commit -m "feat: Add data-extractor, SEOS loan skills, handoff-agent, and starter templates"
+  - >
+    PRIORITY 3 — Update MEMORY.md to reflect this session's work:
+    - SEOS Credit Memo Skill entry already exists (correct as of Mar 3).
+    - Loan Doc Finder Skill entry already exists (correct as of Mar 3).
+    - Data Extractor Skill entry already exists (correct as of Mar 5).
+    - Add note: acos-data-extractor tested against 3 Okoa Capital paid-off loans (Mar 6).
+    - Add note: Okoa Loans source directory confirmed:
+      /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+  - >
+    PRIORITY 4 — Continue loan extraction work if needed. Three paid-off loans extracted
+    this session. If the user wants to extract data from active loans, source directory is:
+    /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/
+    (this directory was mentioned in the Mar 3 handoffs as the loan-doc-finder test target).
+  - >
+    PRIORITY 5 — Test acos-loan-doc-finder against the active loans directory.
+    Listed as PRIORITY 4 in Mar 5 handoff, still not run:
+    /acos-loan-doc-finder "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/"
+    --output <output-folder>
+
+context_for_next_session: |
+  THE SESSION (2026-03-06, fe17d541) WAS A REAL-WORLD DATA EXTRACTION RUN.
+
+  The acos-data-extractor skill (written Mar 5, still untracked) was used to extract
+  structured loan data from three Okoa Capital paid-off loans stored in Dropbox. All
+  three extractions are complete with full provenance.
+
+  EXTRACTED LOAN SUMMARY (all loans from same source directory):
+  Source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+
+  1. Wolfgramm_Ascent_Bridge (10M) — Bridge loan, Park City UT
+     Property: 2100 W Frostwood Blvd & 4080 N Cooper Ln, Park City, UT 84098
+     Closing: October 23, 2023 | Payoff: ~February 28, 2024 | Days: ~128 (~0.35 yrs)
+     Principal: $10,000,000
+
+  2. Phoenix_Rising_Corpus_Christi (5.5M) — Construction bridge, Corpus Christi TX
+     Property: 6402 Weber Rd, Corpus Christi, TX 78413 (Parcel: 1724-0006-0020)
+     Closing: October 2, 2024 | Payoff: May 3, 2025 | Days: 214 (~0.59 yrs)
+     Principal: $5,500,000
+
+  3. Qelo/Wolfgramm_Ascent_Senior (20M) — Construction loan, Park City UT
+     Property: 4080 N Cooper Ln, Park City, UT 84098
+     Closing: October 1, 2021 | Payoff: January 29, 2024 | Days: 851 (~2.33 yrs)
+     Principal: $20,000,000
+
+  SOURCE DOCUMENTS used for extraction (with full provenance):
+  Loan Agreements, Settlement Statements, Escrow Instructions, Payoff Letters,
+  Distribution Spreadsheets, Deeds of Reconveyance.
+
+  FRAMEWORK STATE is unchanged from Mar 3 HEAD (04165e8, Oracle hardening). No
+  new commits. All four skill directories (data-extractor, credit-memo-generator,
+  loan-doc-finder, loan-doc-mapper) and handoff-agent.md remain untracked git files.
+  Committing them is the most urgent infrastructure action.
+
+  ROOT CAUSE OF REPEATED MANUAL HANDOFFS (unchanged from Mar 5):
+  ~/.claude/settings.json has an empty hooks section. Restoring the 5 global hooks
+  (PRIORITY 1 in next_actions) will end this pattern permanently.
+
+  KEY FILE PATHS FOR NEXT SESSION:
+  - Data extractor skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-data-extractor/SKILL.md
+  - Loan doc finder skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-finder/SKILL.md
+  - Credit memo skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-credit-memo-generator/SKILL.md
+  - Loan doc mapper skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-mapper/SKILL.md
+  - Handoff agent: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md
+  - Global hooks config: ~/.claude/settings.json
+  - Active loans source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/
+  - Paid-off loans source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-05-emergency-handoff.yaml (full read — primary prior reference)"
+  - "git status --short (working tree state)"
+  - "git log --oneline -20 (commit history)"
+  - "git diff --stat HEAD~5..HEAD (file change summary)"
+  - "ls -lt .claude/skills/acos-data-extractor/ (skill file timestamps)"
+  - "ls -lt .claude/skills/acos-data-extractor/templates/ (template file timestamps)"
+  - "ls -lt .claude/skills/acos-loan-doc-finder/ (skill file timestamps)"
+  - "ls -lt .claude/skills/acos-credit-memo-generator/ (skill file timestamps)"
+  - "ls -lt .claude/skills/acos-loan-doc-mapper/ (skill file timestamps)"
+  - "ls -lt .acos/state/ (runtime state files)"
+  - "tail -20 .acos/state/agent-lifecycle.log (session ID and spawn times)"
+  - "ls -lt memory/handoffs/ (handoff file timestamps)"
+  - "ls -lt memory/decisions/ (decision files)"
+  - "ls -lt .acos/evidence/ (evidence directory)"
+  - "ls -lt planning/ (planning artifacts)"
+  - "date -u (current timestamp)"
+  - "User-provided context: 3 loan extractions completed this session with specific data values"

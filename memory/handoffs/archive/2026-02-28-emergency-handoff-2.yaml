@@ -1,0 +1,147 @@
+timestamp: "2026-02-28T10:21:41Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  The Feb 28 session (session ID ef100402, then f3e61a30) was primarily focused on
+  operational work outside ACOS planning slices: running and debugging the new
+  /acos-loan-doc-sorter skill against 31 Okoa Capital loan folders in Dropbox, and
+  creating a new /acos-sort-fixer global skill to audit and correct sorter output.
+  The ACOS 3.0 framework itself has no active planning slices — the repo's last commit
+  (fa37403, Feb 25) archived all handoffs after completing adversarial review remediation.
+  The current session spawned the handoff-agent (this agent) at 10:20Z, which is the most
+  recent lifecycle log entry.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - "Feb 27 08:13Z: Created .claude/agents/handoff-agent.md — emergency handoff agent (untracked in git)"
+  - "Feb 27 08:23Z: Created ~/.claude/skills/acos-handoff/SKILL.md — global emergency handoff launcher skill"
+  - "Feb 27 21:15Z: Created memory/handoffs/2026-02-27-multi-provider-handoff.yaml (active)"
+  - "Feb 27 21:21Z: Created memory/handoffs/2026-02-27-handoff-agent-session-handoff.yaml (active)"
+  - "Feb 28 06:09Z: Wrote ~/.claude/plans/fancy-churning-phoenix.md — planning doc for acos-loan-doc-sorter"
+  - "Feb 28 06:15Z–07:10Z: Created and iterated ~/.claude/skills/acos-loan-doc-sorter/SKILL.md (17 revisions)"
+  - "Feb 28 07:20Z–07:43Z: Created Python sorter scripts in /tmp/ (loan_doc_sorter.py, v2, v3, sort_wolfgramm2.py)"
+  - "Feb 28 07:47Z: Mechanical stop handoff created (2026-02-28-mechanical-stop-handoff.yaml) at 123k tokens — 30 of 31 folders sorted"
+  - "Feb 28 08:12Z: Created /tmp/rename_loan_categories.sh — category renaming script"
+  - "Feb 28 08:18Z: Previous handoff-agent run produced 2026-02-28-emergency-handoff.yaml (earlier this morning)"
+  - "Feb 28 08:31Z: Created ~/.claude/skills/acos-sort-fixer/SKILL.md — new global skill for auditing sorter output"
+  - "Feb 28 08:54Z–10:05Z: Multiple agent spawns (session ef100402) — likely running the sort-fixer or sorter"
+  - "Feb 28 10:20Z: Current handoff-agent invocation (session f3e61a30)"
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md"
+    changes: "NEW FILE (untracked) — emergency handoff agent: sonnet model, Read/Write/Glob/Grep/Bash tools, Edit disallowed, 20 maxTurns, 5-step protocol"
+  - path: "/Users/zee/.claude/skills/acos-handoff/SKILL.md"
+    changes: "NEW GLOBAL SKILL — ultra-minimal launcher that spawns handoff-agent via Task()"
+  - path: "/Users/zee/.claude/skills/acos-loan-doc-sorter/SKILL.md"
+    changes: "NEW GLOBAL SKILL — 3-tier agent swarm for loan document sorting. 20-category OKOA DD framework. 6-phase protocol. Iterated 17 times during build session."
+  - path: "/Users/zee/.claude/skills/acos-sort-fixer/SKILL.md"
+    changes: "NEW GLOBAL SKILL — 4-tier sorter audit/correction skill. Audits folder names, completeness, classification. Uses sonnet for all chunk reviewers (50 files/chunk). Created Feb 28 08:31Z."
+  - path: "/Users/zee/.claude/plans/fancy-churning-phoenix.md"
+    changes: "Planning document for acos-loan-doc-sorter build — architecture, classification categories, verification steps"
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Updated: agent count 8→9 (handoff-agent added), global skill inventory updated"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-27-multi-provider-handoff.yaml"
+    changes: "Active handoff documenting multi-provider model system (Feb 27 session)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-27-handoff-agent-session-handoff.yaml"
+    changes: "Active handoff documenting handoff-agent creation session (Feb 27)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff.yaml"
+    changes: "Earlier emergency handoff from this morning (01:18Z) — already covers sessions up to that point"
+
+decisions_made:
+  - "handoff-agent uses sonnet model — cost-effective for structured data gathering"
+  - "Global /acos-handoff skill is minimal launcher (~50 words) — invokable even near context limits"
+  - "Agent has Edit in disallowedTools — can only create new handoffs, never modify project files"
+  - "acos-loan-doc-sorter: copies only (never moves), originals untouched, sorted folder existence = SKIP safeguard"
+  - "acos-sort-fixer: uses sonnet (not haiku) for chunk reviewers — reclassification needs stronger reasoning"
+  - "acos-sort-fixer: 50 files per chunk — handles even 1,300-doc folders with ~26 parallel chunk reviewers"
+  - "Replaced broken ~/.claude/skills/acos-handoff symlink with real directory (source: 2026-02-27-handoff-agent-session-handoff.yaml)"
+
+blockers:
+  - "INCOMPLETE LOAN SORT: Mechanical stop handoff shows 30 of 31 Okoa Capital folders sorted at 123k tokens. One folder remains unprocessed. Path: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/ — scan for any subfolder without a '1. <Name> - Sorted' child directory."
+  - "UNTRACKED GIT FILE: .claude/agents/handoff-agent.md has been created but never committed to the ACOS 3.0 repo (shows as ?? in git status). This should be committed."
+  - "UNTRACKED STARTER-TEMPLATES: starter-templates/ directory (4 files + subdirectories) is untracked. Contains generate-*.md templates and agents/skills subdirs. Created Feb 25 during adversarial review remediation — may need to be committed or added to .gitignore."
+  - "SYMLINKED GLOBAL SKILLS: Most global skills in ~/.claude/skills/ (~25 of them) are symlinks pointing to /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/. Will break if the ACOS 3.0 project directory is moved."
+  - "UNKNOWN STATUS of agent spawns: 25+ agent spawns occurred between 08:54Z and 10:05Z in session ef100402. These were likely running the sorter or sort-fixer against Okoa Capital folders, but the details are not in any handoff — the session ended without a semantic handoff."
+
+next_actions:
+  - "IMMEDIATE: Check Okoa Capital Dropbox for the 1 unsorted folder — scan /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/ for any folder without a '1. <Name> - Sorted' subdirectory"
+  - "Run /acos-sort-fixer against all 31 Okoa Capital loan folders to audit and correct sorter output — this is what the Feb 28 session was building toward"
+  - "Commit .claude/agents/handoff-agent.md to the ACOS 3.0 git repo (currently untracked)"
+  - "Decide whether starter-templates/ should be committed or gitignored — it's been untracked since Feb 25"
+  - "Add handoff-agent.md to the acos-embed-skills portable agent list so new ACOS projects get it automatically"
+  - "Migrate remaining symlinked global skills to real directories to prevent future breakage"
+  - "End-to-end test: run a real review with free-tier model profile to verify external model dispatch (flagged in multi-provider handoff)"
+
+context_for_next_session: |
+  The ACOS 3.0 framework itself is in a STABLE, CLEAN state. The last git commit
+  (fa37403, Feb 25 13:43Z) archived all handoffs after the adversarial review
+  remediation sprint. No planning slices are active. The framework has been fully
+  upgraded with the Oracle, model profiles, multi-provider support, and the new
+  emergency handoff system.
+
+  The active work is OUTSIDE the ACOS framework — it's operational use of ACOS
+  skills against Okoa Capital loan documents:
+
+  LOAN DOCUMENT SORTING (primary thread):
+  The acos-loan-doc-sorter skill was built and used in the Feb 28 sessions to
+  sort 31 loan folders. At 123k tokens, 30 of 31 folders were complete. The
+  mechanical stop handoff (2026-02-28-mechanical-stop-handoff.yaml) captured
+  breadcrumbs showing folders like Warburton_Motel 6 Flip, Free_Legation,
+  Darwin_Provo Airpark, Wolfgramm_Ascent_LKCAP, Thurston Lux 2, Kohan_Golden East
+  (1,305 files — the largest) were all marked Done by folder #30.
+
+  The sort fixer skill (/acos-sort-fixer) was built AFTER the sorter run, suggesting
+  quality issues were found and this skill was created to audit/correct them. The
+  acos-sort-fixer SKILL.md was last modified at 08:31Z. Then 25+ more agent spawns
+  happened between 08:54Z and 10:05Z — these were likely /acos-sort-fixer runs,
+  but no semantic handoff captured what was fixed.
+
+  KEY FILES FOR NEXT SESSION:
+  - /Users/zee/.claude/skills/acos-sort-fixer/SKILL.md — the sort fixer skill
+  - /Users/zee/.claude/skills/acos-loan-doc-sorter/SKILL.md — the original sorter
+  - /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/ — target directory with 31 loan folders
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-mechanical-stop-handoff.yaml — breadcrumbs of the sorter run
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff.yaml — earlier handoff from 01:18Z (more detailed on the sort run)
+
+  ACOS FRAMEWORK UNTRACKED FILES:
+  Two items in git status show as untracked (??):
+  1. .claude/agents/handoff-agent.md — the agent you are now operating as. Should be committed.
+  2. starter-templates/ — a directory with 4 generate-*.md files + agents/skills subdirs.
+     Unclear if this is intentional output or scaffolding. Needs a decision: commit or gitignore.
+
+  ORACLE AUDIT LOG:
+  The oracle-audit.log shows many rm -rf escalations from the loan sorting sessions —
+  all at temp=10 (user-approved). This is normal behavior for the sorter re-creating
+  sorted folders after corrections. The log is large (51,800 bytes) and can be reviewed
+  if there are questions about what was approved during sorting.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-mechanical-stop-handoff.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-27-handoff-agent-session-handoff.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/evidence/current/modifications.log (last 50 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/oracle-audit.log (last 30 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (last 30 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md (first 30 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/acos-update-2026-02-22.md (first 30 lines)"
+  - "/Users/zee/.claude/skills/acos-sort-fixer/SKILL.md (first 60 lines)"
+  - "/Users/zee/.claude/skills/ (directory listing)"
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "git show --stat HEAD"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/*.yaml"
+  - "ls -la .acos/state/"
+  - "ls /Users/zee/.claude/skills/"
+  - "ls /Users/zee/Documents/Vibe Coding/ACOS 3.0/starter-templates/"

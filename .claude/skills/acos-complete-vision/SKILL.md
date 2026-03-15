@@ -26,6 +26,29 @@ This is idempotent — it exits immediately if ACOS is already initialized. If n
 
 ## Protocol
 
+### Step 0: Model Selection (Token Savings)
+
+Before starting, present this choice to the user:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  Model Selection — This skill uses many tokens              ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  [1] Claude (current profile) — Higher quality               ║
+║  [2] GLM-5 via OpenRouter    — Saves Claude tokens           ║
+║  [3] GLM-5 Heavy             — Maximum Claude token savings  ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+Based on user choice:
+- **Choice 1**: No change. Continue with current model profile.
+- **Choice 2**: Run `bash .claude/scripts/set-skill-model.sh glm-review`
+- **Choice 3**: Run `bash .claude/scripts/set-skill-model.sh glm-heavy`
+
+Then continue to Step 1.
+
 ### Step 1: Read Vision Document
 
 Read `memory/source-of-truth/vision-document.md`. Extract:

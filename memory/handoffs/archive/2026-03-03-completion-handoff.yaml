@@ -1,0 +1,50 @@
+timestamp: "2026-03-03T00:00:00Z"
+status: "completed"
+session_summary: "Created the acos-loan-doc-mapper skill — a three-phase financial document mapping pipeline with adversarial QA gates, 7 YAML templates, and full provenance tracking."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Created acos-loan-doc-mapper skill (SKILL.md — 320 lines, 4 phases, 3 QA gates, error handling table)"
+  - "Created 7 YAML templates: field-registry, answer-map, provenance-record, 3 QA checklists (phase1/2/3), mapping-session manifest"
+  - "Renamed skill from loan-doc-mapper to acos-loan-doc-mapper to follow ACOS naming convention"
+  - "Corrected frontmatter: removed Task from allowed-tools (Task availability comes from agent context, not skill whitelist)"
+
+files_modified:
+  - path: ".claude/skills/acos-loan-doc-mapper/SKILL.md"
+    changes: "New file — main skill protocol with 4 phases, 3 adversarial QA gates, data integrity rules, error handling"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/field-registry.yaml"
+    changes: "New file — Phase 1 output template for target form field extraction"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/answer-map.yaml"
+    changes: "New file — Phase 2 output template for answer extraction with provenance"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/provenance-record.yaml"
+    changes: "New file — full audit trail template (field -> answer -> source doc chain)"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/qa-checklist-phase1.yaml"
+    changes: "New file — 12 binary criteria for field registry validation"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/qa-checklist-phase2.yaml"
+    changes: "New file — 12 binary criteria for answer map validation"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/qa-checklist-phase3.yaml"
+    changes: "New file — 10 binary criteria for final output validation"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/mapping-session.yaml"
+    changes: "New file — master session manifest tracking all phases"
+
+decisions_made:
+  - "Removed Task from allowed-tools — per ACOS convention, Task() comes from agent context not skill whitelist"
+  - "Used Phase-based naming (not Step-based) despite being an orchestration skill — pipeline semantics are clearer"
+  - "Introduced NOT_IN_ASSIGNED_DOCS vs NOT_FOUND distinction for parallel extraction correctness"
+  - "Asymmetric QA spot-check percentages: 100% for currency/names (legal liability), 30% for page citations, 50% for NOT_FOUND"
+
+blockers: []
+
+next_actions:
+  - "Test the skill with a real loan folder and target form"
+  - "Consider adding the skill to acos-embed-skills portable skill list if it should be embeddable"
+
+context_for_next_session: |
+  The acos-loan-doc-mapper skill is fully implemented and live. It appears in the
+  skill list and can be invoked with /acos-loan-doc-mapper <target-form> <loan-folder>.
+  No test run has been performed yet.

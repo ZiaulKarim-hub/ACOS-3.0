@@ -1,0 +1,70 @@
+timestamp: "2026-03-11T12:00:00Z"
+status: "completed"
+session_summary: |
+  Integrated OpenCode + Doppler + GLM-5 into the ACOS system. Set up OpenRouter API key
+  in Doppler, configured project folder, implemented 4 integration features: GLM-5 model
+  profiles, OpenCode fallback script, skill-level model chooser (6 skills), and Doppler
+  security fix with shell aliases. Also researched OpenCode theming options.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Set up OpenCode with GLM-5 via Doppler (OPENROUTER_API_KEY added to acos-3-0 project)"
+  - "Configured Doppler for project folder (doppler setup --project acos-3-0 --config dev)"
+  - "Added glm-review and glm-heavy model profiles to .acos/config/model-profile.yaml"
+  - "Added GLM-5, GLM-4.7, GLM-4.5-air:free to OpenRouter models in providers.yaml"
+  - "Created .claude/scripts/fallback-to-opencode.sh — seamless Claude→OpenCode fallback"
+  - "Created .claude/scripts/set-skill-model.sh — session model profile switcher"
+  - "Added Step 0.0 Model Selection to 6 token-heavy skills (loan-doc-generator, credit-memo-generator, loan-doc-finder, data-extractor, loan-doc-mapper, complete-vision)"
+  - "Fixed security issue: removed hardcoded API key from ~/.zshrc, replaced with Doppler-sourced key"
+  - "Added shell aliases: oc (launch OpenCode+GLM-5) and ocfallback (continue from handoff)"
+  - "Made fallback script directory-agnostic (works from any project, not just ACOS 3.0)"
+  - "Researched OpenCode theming (11+ built-in themes, custom JSON themes supported)"
+
+files_modified:
+  - path: ".acos/config/model-profile.yaml"
+    changes: "Added glm-review and glm-heavy profiles"
+  - path: ".acos/config/providers.yaml"
+    changes: "Added z-ai/glm-5, z-ai/glm-4.7, z-ai/glm-4.5-air:free to OpenRouter models"
+  - path: ".claude/scripts/fallback-to-opencode.sh"
+    changes: "Created — OpenCode fallback with handoff auto-detection"
+  - path: ".claude/scripts/set-skill-model.sh"
+    changes: "Created — session model profile switcher for skill-level model choice"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-credit-memo-generator/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-loan-doc-finder/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-data-extractor/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-loan-doc-mapper/SKILL.md"
+    changes: "Added Step 0.0 Model Selection"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Added Step 0 Model Selection"
+  - path: "~/.zshrc"
+    changes: "Removed hardcoded API key, added Doppler-sourced key + oc/ocfallback aliases"
+
+decisions_made:
+  - "OpenRouter API key managed via Doppler (project acos-3-0, config dev) — never hardcoded"
+  - "Two GLM-5 profiles: glm-review (balanced) and glm-heavy (maximum savings) — architect/developer always stay on Claude"
+  - "Fallback script uses CWD-first resolution — works from any project directory"
+  - "Model selection added only to token-heavy swarm skills (6 of 43) — lightweight skills don't need it"
+
+blockers: []
+
+next_actions:
+  - "Create a Claude-style custom theme for OpenCode (user expressed interest)"
+  - "Test GLM-5 model profiles in a real skill run (/acos-loan-doc-generator with choice 2)"
+  - "Test ocfallback in a real session-limit scenario"
+  - "Consider updating MEMORY.md with OpenCode integration notes"
+
+context_for_next_session: |
+  OpenCode + GLM-5 is fully integrated into ACOS. User is non-technical — explain everything
+  simply. Shell aliases (oc, ocfallback) require `source ~/.zshrc` or new terminal to activate.
+  The user's boss provided the OpenRouter API key. Doppler project: acos-3-0, config: dev.
+  OpenCode theming was researched but not implemented — user may want a Claude-style theme.

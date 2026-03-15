@@ -1,0 +1,85 @@
+# QA Checklist — Phase 2: Answer Map Validation
+# Binary YES/NO evaluation. ALL criteria must be YES for PASS.
+# Reviewer: qa-reviewer agent (adversarial posture)
+# Input: source documents (originals) + answer-map.yaml + provenance-record.yaml
+
+session_id: "[LDM-YYYY-MM-DD-HH-MM]"
+phase: 2
+iteration: 1
+reviewer: "qa-reviewer"
+review_date: "[YYYY-MM-DD HH:MM:SS]"
+
+verdict: "[PASS | REJECT]"
+
+criteria:
+  - id: "P2-C01"
+    description: "Every field in registry has an entry in answer map"
+    result: "[YES | NO]"
+    evidence: "[Count comparison: registry fields vs answer map entries — list any missing]"
+
+  - id: "P2-C02"
+    description: "No fabricated values (every answer traces to source document)"
+    result: "[YES | NO]"
+    evidence: "[Verify provenance chain for 30%+ of FOUND entries — list any without valid source]"
+
+  - id: "P2-C03"
+    description: "All numerical values are EXACT transcriptions (100% spot-check for currency/percentages)"
+    result: "[YES | NO]"
+    evidence: "[Check EVERY currency and percentage value against source — list any discrepancies character-by-character]"
+
+  - id: "P2-C04"
+    description: "All names letter-perfect"
+    result: "[YES | NO]"
+    evidence: "[Check EVERY name against source — list any spelling, capitalization, or suffix errors]"
+
+  - id: "P2-C05"
+    description: "All dates exact transcriptions"
+    result: "[YES | NO]"
+    evidence: "[Check EVERY date against source — list any format changes or errors]"
+
+  - id: "P2-C06"
+    description: "Source page numbers accurate (30% spot-check)"
+    result: "[YES | NO]"
+    evidence: "[Verify 30%+ of page citations by checking original documents — list errors]"
+
+  - id: "P2-C07"
+    description: "NOT_FOUND used correctly (data genuinely absent)"
+    result: "[YES | NO]"
+    evidence: "[Verify 50%+ of NOT_FOUND entries — search source docs to confirm absence. List any false NOT_FOUND]"
+
+  - id: "P2-C08"
+    description: "Multi-source fields have consistent values"
+    result: "[YES | NO]"
+    evidence: "[Check all multi-source fields — list any undetected inconsistencies]"
+
+  - id: "P2-C09"
+    description: "Conflicts flagged with resolution rationale"
+    result: "[YES | NO]"
+    evidence: "[Verify each conflict has documented rationale — list any missing or weak rationale]"
+
+  - id: "P2-C10"
+    description: "Source quotes are verbatim"
+    result: "[YES | NO]"
+    evidence: "[Spot-check 30%+ of verbatim_quote fields against source docs — list any paraphrased or truncated quotes]"
+
+  - id: "P2-C11"
+    description: "Confidence levels appropriate"
+    result: "[YES | NO]"
+    evidence: "[Review confidence ratings — list any inflated or deflated ratings with rationale]"
+
+  - id: "P2-C12"
+    description: "No extractable data missed (50% NOT_FOUND verification)"
+    result: "[YES | NO]"
+    evidence: "[For 50%+ of NOT_FOUND, actively search ALL source docs — list any data that was actually present]"
+
+# Summary (filled by reviewer)
+pass_count: 0
+fail_count: 0
+failed_criteria: []
+# failed_criteria:
+#   - id: "P2-C03"
+#     finding: "[Specific values that don't match, with source vs extracted comparison]"
+#     affected_fields: ["F-XXX-001", "F-XXX-002"]
+#     remediation: "[Re-extract these specific fields from the named source documents]"
+
+notes: null

@@ -1,0 +1,159 @@
+timestamp: "2026-03-14T22:45:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  The session was focused on two concurrent workstreams: (1) building and refining the
+  ACOS Loan Document Generator skill suite (acos-loan-doc-generator, acos-loan-doc-mapper,
+  loan-doc-phase1/2/34 agents) and its supporting infrastructure, and (2) adding framework
+  capabilities including acos-software-swarm-review, starter-templates for portable agent
+  definitions, fallback-to-opencode.sh for Claude Code fallback to GLM-5 via OpenRouter,
+  and set-skill-model.sh for per-skill model switching. None of these new items are
+  committed yet — they all appear as untracked files in git. The last commit (04165e8)
+  was Oracle hardening (remove git dependency, risk tiering, fail-open), which was already
+  complete in the prior session.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+completed_this_session:
+  - "Created acos-loan-doc-generator skill: full interactive wizard (Quick/Detailed modes), 10-category doc type catalog, design library, Phase 2 cache, delegated phase orchestration, data provenance reporting"
+  - "Created loan-doc-phase1.md agent: Phase 1 (design extraction) orchestrator"
+  - "Created loan-doc-phase2.md agent: Phase 2 (loan folder analysis) orchestrator"
+  - "Created loan-doc-phase34.md agent: Phase 3+4 (document design + validation + Wigum loop) orchestrator"
+  - "Created acos-loan-doc-mapper skill: zero-fabrication financial document mapping with 3-phase pipeline and adversarial QA gates"
+  - "Created acos-software-swarm-review skill: production-grade multi-swarm review with 5 core specialists, up to 9 dynamic lenses, cross-file integration agent, and independent verification group (deep mode)"
+  - "Created handoff-agent.md: dedicated agent for emergency context preservation"
+  - "Created starter-templates/ directory with 4 portable agent generation prompts (developer, qa-reviewer, project-manager, handoff)"
+  - "Created fallback-to-opencode.sh: seamless Claude Code → OpenCode fallback using latest handoff + GLM-5 via OpenRouter"
+  - "Created set-skill-model.sh: per-skill model switcher (writes to .acos/state/model-session.yaml)"
+  - "Created docs/prd-loan-doc-generator.md: full PRD for loan document generator"
+  - "Modified .claude/skills/acos-complete-vision/SKILL.md: added Step 0 model selection prompt (GLM-5 options), added pre-flight bootstrap"
+  - "Modified CLAUDE.md: updated agent roster to include 3 loan-doc phase orchestrators"
+  - "Modified automation-scripts/acos: minor update (tracked, unstaged)"
+
+files_modified:
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "New file — dedicated handoff agent definition with Read/Write/Glob/Grep/Bash tools, disallowedTools: Task/WebSearch/WebFetch/Edit, maxTurns: 20, full protocol for disk-based state reconstruction"
+  - path: ".claude/agents/loan-doc-phase1.md"
+    changes: "New file — Phase 1 orchestrator agent for design pattern extraction from example documents"
+  - path: ".claude/agents/loan-doc-phase2.md"
+    changes: "New file — Phase 2 orchestrator agent for loan folder analysis and data extraction"
+  - path: ".claude/agents/loan-doc-phase34.md"
+    changes: "New file — Phase 3+4 orchestrator agent for document design, CSS pagination, validation, and Wigum loop"
+  - path: ".claude/scripts/fallback-to-opencode.sh"
+    changes: "New file — finds latest active handoff, formats as OpenCode prompt, launches via 'doppler run -- opencode -m openrouter/z-ai/glm-5 --prompt'. Supports --dry-run, --model, explicit handoff file path."
+  - path: ".claude/scripts/set-skill-model.sh"
+    changes: "New file — writes active_profile to .acos/state/model-session.yaml. Used by skills that offer model selection UI. Supports --reset flag. Validates profile exists in model-profile.yaml."
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Added Step 0 model selection (GLM-5 via OpenRouter options), added pre-flight auto-bootstrap block"
+  - path: ".claude/skills/acos-credit-memo-generator/"
+    changes: "New directory — SEOS credit memo generator skill (untracked, pre-existing from prior session per MEMORY.md)"
+  - path: ".claude/skills/acos-data-extractor/"
+    changes: "New directory — data extractor skill (untracked, pre-existing from prior session per MEMORY.md)"
+  - path: ".claude/skills/acos-loan-doc-finder/"
+    changes: "New directory — loan doc finder skill (untracked, pre-existing from prior session per MEMORY.md)"
+  - path: ".claude/skills/acos-loan-doc-generator/"
+    changes: "New directory — full loan doc generator skill with SKILL.md (thin router), phases/phase1-4.md, and 9 templates including doc-type-catalog.yaml and pdf-styles.css"
+  - path: ".claude/skills/acos-loan-doc-mapper/"
+    changes: "New skill — 3-phase zero-fabrication document mapping pipeline (field discovery, answer extraction, document population). Uses adversarial QA gates with binary checklists. Model selection UI with GLM-5 options."
+  - path: ".claude/skills/acos-software-swarm-review/"
+    changes: "New skill — acos-software-swarm-review with 5 core specialists (Security, Input Validation, QA/Logic, Performance, Secrets), 9 dynamic trigger-selected lenses, cross-file integration agent, independent verification group (deep mode only)"
+  - path: ".claude/skills/acos-loan-doc-mapper/templates/"
+    changes: "Templates directory with mapping-session.yaml, field-registry.yaml, answer-map.yaml, provenance-record.yaml, and QA checklists for all 3 phases"
+  - path: "docs/prd-loan-doc-generator.md"
+    changes: "New file — full PRD for loan document generator skill (v1.0, March 2026)"
+  - path: "starter-templates/"
+    changes: "New directory with 4 portable agent generation prompts: generate-developer.md, generate-qa-reviewer.md, generate-project-manager.md, generate-handoff.md"
+  - path: "CLAUDE.md"
+    changes: "Updated Agent Roster section to include loan-doc-phase1, loan-doc-phase2, loan-doc-phase34 orchestrators; minor wording updates"
+  - path: "automation-scripts/acos"
+    changes: "Minor modification (unstaged)"
+
+decisions_made:
+  - "Loan document generator uses delegated phase orchestration — primary context handles only interview + dispatch, all heavy work goes to loan-doc-phase1/2/34 agents in their own context windows (~25K primary vs ~300K+ monolithic)"
+  - "acos-loan-doc-mapper uses agent:architect + context:fork to keep model resolution and agent spawning consistent with existing ACOS patterns"
+  - "acos-software-swarm-review differentiates from acos-swarm-review via: three-pass line-by-line methodology, cross-file integration agent, and independent verification group (deep mode)"
+  - "Model selection UI pattern (GLM-5 options) added to token-heavy skills (acos-complete-vision, acos-loan-doc-mapper) — uses set-skill-model.sh to write to model-session.yaml"
+  - "fallback-to-opencode.sh uses 'doppler run --' for secret injection (requires doppler configured for project)"
+  - "starter-templates/ provides portable agent generation prompts that users copy into Claude to generate project-specific agent definitions"
+  - "From prior session (2026-03-12): removed agent:architect from data-extractor skill to prevent acos-plan confusion; added file:// clickable links to output"
+
+blockers:
+  - "None of the new untracked files have been committed yet — git shows everything as untracked"
+  - "loan-doc-phase1.md, loan-doc-phase2.md, loan-doc-phase34.md agent files exist but their full phase instruction files (phases/phase1-extract.md etc.) were built into the loan-doc-generator skill structure — the phase agents need to read those from .claude/skills/acos-loan-doc-generator/phases/"
+  - "set-skill-model.sh references 'glm-review' and 'glm-heavy' profiles that must exist in .acos/config/model-profile.yaml — if those profiles don't exist the skill selection will fail with an error"
+  - "fallback-to-opencode.sh requires 'opencode' CLI installed and 'doppler' configured — not guaranteed to exist on all machines"
+
+next_actions:
+  - "Commit all untracked files: agent definitions (handoff-agent, loan-doc-phase1/2/34), new scripts (fallback-to-opencode, set-skill-model), new skills (acos-loan-doc-generator, acos-loan-doc-mapper, acos-software-swarm-review), starter-templates, docs/prd-loan-doc-generator.md, modified CLAUDE.md and acos-complete-vision/SKILL.md"
+  - "Verify that glm-review and glm-heavy profiles are defined in .acos/config/model-profile.yaml; add them if missing"
+  - "Test acos-loan-doc-mapper on a real loan folder to validate the 3-phase QA gate pipeline"
+  - "Test acos-loan-doc-generator interview wizard (Quick mode) end-to-end"
+  - "Verify loan-doc-phase1/2/34 agents can read their phase instructions from .claude/skills/acos-loan-doc-generator/phases/"
+  - "Consider adding acos-software-swarm-review to the global ~/.claude/skills/ alongside acos-swarm-review (currently project-local only)"
+  - "Update MEMORY.md to document the new skills, agents, and scripts added this session"
+  - "Calculate remaining Ward/Coslin Ave Form 1098 Box 1 interest from Payoff Statememt_Ward Coslin Ave.xlsx (from prior session)"
+
+context_for_next_session: |
+  The session added a substantial body of new work — primarily the loan document generator
+  ecosystem. The core pattern is that acos-loan-doc-generator is a thin interactive router
+  (SKILL.md ~8KB) that delegates all heavy processing to three dedicated phase agents
+  (loan-doc-phase1, loan-doc-phase2, loan-doc-phase34), each running in their own context
+  window. This keeps the primary context at ~25K tokens instead of 300K+. The phase agents
+  read their detailed instructions from .claude/skills/acos-loan-doc-generator/phases/
+  (phase1-extract.md, phase2-analyze.md, phase3-design.md, phase4-validate.md) — these
+  files were created as part of the skill structure and are also untracked.
+
+  The acos-loan-doc-mapper is a separate, simpler skill for filling existing loan forms
+  (rather than generating new documents from scratch). It uses strict zero-fabrication
+  rules and binary QA checklists at each phase boundary. Both loan document skills include
+  a model selection UI offering GLM-5 via OpenRouter as a token-saving option, backed by
+  the new set-skill-model.sh script.
+
+  The acos-software-swarm-review is a hardened version of the existing acos-swarm-review
+  with three differentiating capabilities: a three-pass line-by-line review methodology
+  (structure scan → risk identification → deep review), a cross-file integration agent
+  that connects multi-file vulnerability chains, and an independent verification group
+  (deep mode only) that reviews code blind before challenging the coordinator's findings.
+  This skill currently lives only at the project level; consider promoting it to global.
+
+  The fallback-to-opencode.sh script fills an important operational gap: when Claude Code
+  runs out of context and the handoff system can't save the session, this script finds the
+  latest active handoff and launches OpenCode with GLM-5 via OpenRouter, pre-loaded with
+  the handoff content. This requires both `opencode` CLI and `doppler` to be installed.
+
+  The starter-templates/ directory provides copy-paste prompts for generating project-
+  specific agent definitions. These are not ACOS-specific — they work in any Claude Code
+  project. The generate-developer.md template is the most complete and illustrative.
+
+  Priority for next session: (1) commit everything untracked, (2) verify the glm-review
+  and glm-heavy model profiles exist in .acos/config/model-profile.yaml, (3) do an
+  end-to-end test of acos-loan-doc-generator in Quick mode.
+
+reconstruction_sources:
+  - "git status --short (untracked file list)"
+  - "git log --oneline -20 (commit history)"
+  - "git diff --stat HEAD~5..HEAD (changed files across last 5 commits)"
+  - "git diff --name-only HEAD~3..HEAD (file list for recently committed changes)"
+  - "memory/handoffs/archive/2026-03-12-completion-handoff.yaml (most recent prior session)"
+  - ".acos/state/agent-lifecycle.log (tail -30, session activity through 2026-03-14)"
+  - ".claude/skills/acos-loan-doc-generator/SKILL.md (full skill — 714 lines)"
+  - ".claude/skills/acos-software-swarm-review/SKILL.md (full skill — 793 lines)"
+  - ".claude/skills/acos-loan-doc-mapper/SKILL.md (full skill — 344 lines)"
+  - ".claude/skills/acos-complete-vision/SKILL.md (modified skill — verified model selection addition)"
+  - ".claude/agents/handoff-agent.md (new agent definition)"
+  - ".claude/scripts/set-skill-model.sh (new script)"
+  - ".claude/scripts/fallback-to-opencode.sh (new script)"
+  - "starter-templates/generate-developer.md (representative sample)"
+  - "docs/prd-loan-doc-generator.md (full PRD — 699 lines)"
+  - "planning/ directory (confirmed empty — no active planning artifacts)"
+  - ".acos/evidence/current/ (present but empty)"
+  - "memory/decisions/acos-update-2026-02-22.md (only decision file, pre-existing)"
+  - "memory/handoffs/ (no active handoffs; all in archive)"
+  - ".acos/state/ (no scope markers or active slice indicators)"
+  - "CLAUDE.md (verified agent roster update)"

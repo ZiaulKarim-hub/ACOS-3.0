@@ -1,0 +1,60 @@
+# ACOS Loan Document Finder — Session Manifest
+# Created by /acos-loan-doc-finder Phase 0
+
+session_id: "{session-id}"
+created: "YYYY-MM-DD HH:MM:SS"
+status: "in-progress"  # in-progress | completed | escalated
+
+# Input Configuration
+source_directories:
+  - path: ""
+    file_count: 0
+    # Breakdown by type
+    pdf: 0
+    docx: 0
+    xlsx: 0
+    other: 0
+
+output_folder: ""
+
+# Category Schema
+category_schema:
+  - group: ""
+    documents:
+      - name: ""
+        ccii_hint: ""       # PRISM CCII code hint (optional)
+        keywords: []         # Classification keywords
+
+# Agent Configuration
+agents:
+  classifier_count: 0       # 5-10 based on file count
+  classifier_model: ""      # Resolved via resolve-agent-model.sh
+  qa_model: ""              # Resolved via resolve-agent-model.sh
+  coordinator_model: ""     # Resolved via resolve-agent-model.sh
+
+# PRISM Integration
+prism:
+  available: false           # Whether PRISM KG was found
+  kg_path: ""               # Path to knowledge graph vault
+  ccii_codes_loaded: 0      # Number of CCII codes injected
+
+# Wigum Loop Tracking
+wigum:
+  max_iterations: 5
+  current_iteration: 0
+  history:
+    # - iteration: 1
+    #   flag_count: 4
+    #   reclassified: 2
+    #   new_finds: 1
+    #   verdict: "FAIL"
+
+# Results (updated as pipeline progresses)
+results:
+  total_scanned: 0
+  total_matched: 0
+  total_copied: 0
+  categories_found: 0
+  categories_total: 0
+  categories_missing: []
+  final_verdict: ""         # PASS | PASS_WITH_WARNINGS | ESCALATED

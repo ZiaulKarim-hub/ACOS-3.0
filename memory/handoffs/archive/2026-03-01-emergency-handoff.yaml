@@ -1,0 +1,135 @@
+timestamp: "2026-03-01T06:40:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  The March 1-2, 2026 session (session ID 895a91f1-d610-48e9-914e-5966d2fed3ad) was
+  focused on iterating and running the /acos-sort-fixer global skill against the Okoa
+  Capital loan document folders. The skill was revised ~10 times between 23:48Z and
+  23:50Z on March 1 (updating category counts and disambiguation rules to 22 categories),
+  then many agent spawns (50+) ran from 23:53Z through 05:22Z on March 2 — these were
+  almost certainly /acos-sort-fixer runs against the 31 Okoa Capital sorted folders.
+  The handoff-agent was invoked at 06:40Z (March 2), indicating context exhaustion after
+  the sort-fixer runs.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - "2026-02-28T22:05Z: settings.local.json and ~/.claude/settings.json modified — likely a hook or permission tweak"
+  - "2026-03-01T23:48Z–23:50Z: Revised /acos-sort-fixer SKILL.md ~10 times — updated to 22 categories with Foreclosure (21) and Payoff (22), added disambiguation rules table, expanded chunk reviewer guidance"
+  - "2026-03-01T23:53Z–2026-03-02T05:22Z: 50+ agent spawns (session 895a91f1) — strongly consistent with /acos-sort-fixer running across multiple Okoa Capital loan folders in parallel batches"
+  - "2026-03-02T06:40Z: Handoff-agent spawned, indicating context exhaustion"
+
+files_modified:
+  - path: "/Users/zee/.claude/skills/acos-sort-fixer/SKILL.md"
+    changes: "Revised ~10 times on 2026-03-01T23:48Z–23:50Z. Final state: 4-tier agent swarm (main → folder reviewers → chunk reviewers → corrections). 22 categories including 21-Foreclosure Documents and 22-Payoff Documents. Disambiguation rules table with 11 conflict-resolution rules. Sonnet for all chunk reviewers (50 files/chunk). Safety rules section (no rm, no mv on originals, only cp -p). Full report format with consolidated fix table."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/settings.local.json"
+    changes: "Modified 2026-02-28T22:05Z — hooks section reviewed; current state has PreToolUse (oracle-evaluate.py, check-scope.sh), PostToolUse (post-write-evidence.sh async), SubagentStart (inject-agent-context.sh, log-agent-spawn.sh async), SubagentStop (log-agent-completion.sh async), TaskCompleted (enforce-quality-gate.sh). Note: token-gate.sh is absent from settings.local.json — it may have been moved to ~/.claude/settings.json or removed."
+  - path: "/Users/zee/.claude/settings.json"
+    changes: "Modified 2026-02-28T22:05Z — current state has only permissions (defaultMode: acceptEdits, additionalDirectories) and enabledPlugins. hooks section is empty. The auto-load-handoff.sh SessionStart hook appears to have been removed from global settings."
+
+decisions_made:
+  - "acos-sort-fixer uses 22 categories (20 original + 21-Foreclosure Documents + 22-Payoff Documents)"
+  - "Disambiguation rules table added: 11 rules resolving conflicts between categories 01/12/14 and 21/22"
+  - "Foreclosure and payoff category checks happen BEFORE general category matching (priority override)"
+  - "Chunk reviewers use sonnet (not haiku) — reclassification needs stronger reasoning than original classification"
+  - "50 files per chunk — a 1,300-doc folder spawns ~26 parallel chunk reviewers"
+  - "Chunk reviewers READ only and return KEEP|MOVE results; parent folder reviewer applies all corrections"
+
+blockers:
+  - "UNKNOWN SORT-FIXER STATUS: 50+ agent spawns ran between 23:53Z and 05:22Z but no semantic handoff captured what was fixed. Unknown which folders were reviewed, what corrections were made, or whether all 31 folders passed. Need to inspect the Okoa Capital Dropbox to assess current state."
+  - "MISSING AUTO-LOAD-HANDOFF: The ~/.claude/settings.json hooks section is empty — the global SessionStart hook (auto-load-handoff.sh) appears to have been removed. This means next session will NOT auto-load handoffs. Manual /acos-start or re-registration needed."
+  - "TOKEN-GATE MISSING: token-gate.sh does not appear in settings.local.json (only oracle-evaluate.py is in PreToolUse). This may be intentional (Oracle subsumes token-gate) or a regression from the Feb 28 settings edit."
+  - "UNTRACKED GIT FILES: .claude/agents/handoff-agent.md and starter-templates/ directory are still untracked (per git status). These have not been committed since Feb 27 and Feb 25 respectively."
+  - "SYMLINKED GLOBAL SKILLS: Most global skills in ~/.claude/skills/ (~25 of them) remain as symlinks to the ACOS 3.0 project path. Will break if the project directory is moved."
+  - "UNVERIFIED SORT RESULTS: Unknown if any loan folders still have errors, missing files, or classification issues after the sort-fixer runs."
+
+next_actions:
+  - "IMMEDIATE: Check ~/.claude/settings.json and settings.local.json — verify auto-load-handoff.sh and token-gate.sh are present or confirm they were intentionally removed"
+  - "Inspect Okoa Capital Dropbox to assess sort-fixer results: ls /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa\\ Loans\\ -\\ 2.\\ Active/1.\\ In\\ HyperCore/ to see all 31 folders and check each for '1. <Name> - Sorted' subfolders"
+  - "Run /acos-sort-fixer on any remaining unsorted folders or re-run on folders where classification issues remain"
+  - "Commit .claude/agents/handoff-agent.md to ACOS 3.0 git repo (untracked since Feb 27)"
+  - "Decide: commit or gitignore starter-templates/ directory (untracked since Feb 25)"
+  - "Re-register auto-load-handoff.sh as a global SessionStart hook if it was accidentally removed"
+  - "End-to-end test: run a real review with free-tier model profile to verify external model dispatch (outstanding from multi-provider handoff)"
+
+context_for_next_session: |
+  The ACOS 3.0 framework itself is in a STABLE, CLEAN state — no planning slices are
+  active. The last git commit (fa37403, Feb 25) archived all handoffs after the adversarial
+  review remediation sprint. All subsequent work has been operational (running ACOS skills
+  against real data), not framework development.
+
+  ACTIVE WORK THREAD — LOAN DOCUMENT SORT-FIXING:
+  The March 1-2 session was running /acos-sort-fixer against the 31 Okoa Capital loan
+  folders at:
+    /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/
+
+  The skill was significantly improved before running: the original sorter used 20 categories,
+  but /acos-sort-fixer operates with 22 categories by adding:
+    21-Foreclosure Documents — covers NOD, lis pendens, trustee sale, deed in lieu, etc.
+    22-Payoff Documents — covers payoff statements, reconveyance, satisfaction of mortgage, etc.
+
+  The key insight that triggered the revision: many foreclosure and payoff documents were
+  being misclassified into categories 01 (Loan Agreements), 12 (Title Documents), and
+  14 (Legal Documents) because the original sorter never had these specialized categories.
+  The sort-fixer now checks for 21/22 FIRST before any other category match.
+
+  The skill is at: /Users/zee/.claude/skills/acos-sort-fixer/SKILL.md (748 lines)
+  The original sorter is at: /Users/zee/.claude/skills/acos-loan-doc-sorter/SKILL.md
+
+  50+ agent spawns over ~5.5 hours (23:53Z–05:22Z) strongly suggests the sort-fixer was
+  running. The agent-lifecycle.log shows these as "general-purpose" type spawns (the
+  inject-agent-context.sh hook doesn't know the skill name). No evidence of what was
+  actually corrected — the next session should check the Dropbox to see the current state.
+
+  SETTINGS REGRESSION WARNING:
+  The ~/.claude/settings.json hooks section is EMPTY as of March 2. The auto-load-handoff.sh
+  SessionStart hook was registered globally (per MEMORY.md: "removed from project
+  settings.local.json"). If it's now gone from global settings too, handoffs will NOT
+  auto-load at session start. Check and re-register if needed.
+
+  The project settings.local.json also appears to be missing token-gate.sh from PreToolUse
+  (only oracle-evaluate.py is present). This may be intentional post-Oracle redesign.
+
+  GLOBAL SKILLS AVAILABLE:
+  ~/.claude/skills/ contains 33 entries including:
+  - acos-sort-fixer — the sort auditor/corrector (updated this session)
+  - acos-loan-doc-sorter — the original sorter (unchanged)
+  - acos-handoff — emergency handoff launcher (created Feb 27)
+  - acos-swarm-review, acos-swarm-research — multi-agent swarms
+  - Full ACOS framework skills (start, complete, review, execute-slice, etc.)
+
+  KEY FILE PATHS FOR NEXT SESSION:
+  - /Users/zee/.claude/skills/acos-sort-fixer/SKILL.md — the sort fixer (748 lines, 22 categories)
+  - /Users/zee/.claude/skills/acos-loan-doc-sorter/SKILL.md — original sorter
+  - /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/ — 31 loan folders
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/settings.local.json — project hooks
+  - /Users/zee/.claude/settings.json — global settings (hooks section currently empty)
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff-2.yaml — previous handoff (most detailed prior context)
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff-2.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-emergency-handoff.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-02-28-mechanical-stop-handoff.yaml (full read)"
+  - "/Users/zee/.claude/skills/acos-sort-fixer/SKILL.md (full read — 748 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/settings.local.json (full read)"
+  - "/Users/zee/.claude/settings.json (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/evidence/current/modifications.log (tail -80)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (tail -60)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/oracle-audit.log (tail -50)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/starter-templates/ (directory listing + find)"
+  - "/Users/zee/.claude/skills/ (directory listing)"
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/ (directory listing)"
+  - "ls -la .acos/state/"

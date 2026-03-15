@@ -1,0 +1,244 @@
+timestamp: "2026-03-11T21:10:35Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session (77d870f5, Mar 11) completed the full /acos-loan-doc-generator pipeline for
+  the Monarch Townhomes External Credit Memo. Phases 3 and 4 were run to completion: 9 section
+  designers + assembler (2 iterations), 8 validators (structural + 4 quality + 4 global) with
+  a Wigum loop, and 13 post-validation fixes applied directly to the document draft. The final
+  PDF (409KB) was generated via md-to-pdf and delivered to the Monarch Townhomes Dropbox loan
+  folder. The session also integrated OpenCode + GLM-5 via Doppler and added model selection
+  to 6 token-heavy skills.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "completed"
+
+completed_this_session:
+
+  - >
+    MONARCH TOWNHOMES EXTERNAL CREDIT MEMO — PIPELINE COMPLETE (session 20260310-115334):
+    Document: "Monarch Townhomes — Credit Memo (External).pdf"
+    Session: 20260310-115334 (carried over from Mar 10; resumed and completed Mar 11)
+    Final PDF delivered: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf
+    Session manifest status: complete (phase 4, iteration 2)
+
+  - >
+    PHASE 3 — DOCUMENT DESIGN (complete, 2 iterations):
+    Iteration 1: 9 section designers + assembler spawned (Mar 11 ~11:30)
+    Iteration 2: 9 section designers + assembler re-run with validator feedback (Mar 11 ~11:54)
+    Final draft: .acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-draft.md (26,214 bytes)
+    Assembler notes: .acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/assembler-notes.yaml
+
+  - >
+    PHASE 4 — VALIDATION + WIGUM LOOP (complete, 2 iterations):
+    8 validators in total: 1 structural + 4 quality (section-scoped) + 3 global content + 1 global financial
+    Iteration 1: 22 raw failures
+    Iteration 2: 22 raw failures → deduplicated to 13 unique issues → all 13 fixed directly
+    Verdict: CONDITIONAL PASS — post-fix
+    Key improvements iteration 1→2: entity errors resolved (RNMM), 100% financial accuracy (80/80), footnote system added (15 footnotes), percentage formatting cleaned (was 18 violations)
+    Validation report: .acos/loan-doc-generator/sessions/20260310-115334/phase4-validation/iteration-2/synthesis/validation-report.yaml
+
+  - >
+    13 POST-VALIDATION FIXES APPLIED TO document-draft.md:
+    Mechanical fixes: banned terms eliminated ("fully entitled"→qualified, "approximately"→removed, "exposure"→removed, "extraordinary"→removed)
+    Content additions: Default Preparedness paragraph (S&P), Footnote 15 (deferred fees in pro forma), cover value proposition headline, expanded entitlement qualification footnote (Footnote 2 + Entitlement Lock)
+    Structural: assertive sub-headlines (Collateral Overview, Loan Terms), paragraph trimming (lead + continuation), percentage formatting (X.X% format), 15-footnote system on all derived values
+    Tone: pricing language changed from passive to assertive
+    Data gaps preserved as-is (unfixable pre-LOI — see below)
+
+  - >
+    PDF GENERATION:
+    PDF-ready MD prepared: .acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-pdf-ready.md (27,700 bytes)
+    PDF generated via md-to-pdf: document-final.pdf (409,264 bytes)
+    Delivered to loan folder at path noted above (confirmed present via ls)
+    Output format: PDF (matches input format convention — Lux 2 example was PDF)
+
+  - >
+    OPENCODE + GLM-5 INTEGRATION (earlier this session, documented in 2026-03-11-completion-handoff.yaml):
+    OpenRouter API key in Doppler (project acos-3-0, config dev)
+    2 new model profiles: glm-review + glm-heavy
+    New scripts: fallback-to-opencode.sh, set-skill-model.sh
+    Step 0.0 Model Selection added to 6 token-heavy skills
+    Shell aliases added: oc (launch OpenCode+GLM-5), ocfallback (continue from handoff)
+    Security fix: removed hardcoded API key from ~/.zshrc
+
+files_modified:
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/session-manifest.yaml"
+    changes: "Updated status: complete, current_phase: 4, current_iteration: 2, final_document_source, final_document_pdf, output_path, output_format"
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-1/"
+    changes: "Created — agent-01 through agent-08 sections + synthesis/document-draft.md + synthesis/assembler-notes.yaml (iteration 1)"
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-draft.md"
+    changes: "Created — final document draft after iteration 2 design + 13 post-validation fixes applied. 26,214 bytes."
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-pdf-ready.md"
+    changes: "Created — PDF-optimized version of document-draft.md. 27,700 bytes."
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-final.pdf"
+    changes: "Created — final PDF output. 409,264 bytes."
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/assembler-notes.yaml"
+    changes: "Created — assembler notes for iteration 2. 8,254 bytes."
+  - path: ".acos/loan-doc-generator/sessions/20260310-115334/phase4-validation/iteration-2/synthesis/validation-report.yaml"
+    changes: "Created — full validation aggregation report. CONDITIONAL PASS post-fix. 4,637 bytes."
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf"
+    changes: "CREATED — final deliverable copied to loan folder. 409,264 bytes. (Mar 11 14:34)"
+  - path: ".acos/config/model-profile.yaml"
+    changes: "Added glm-review and glm-heavy profiles (earlier this session)"
+  - path: ".acos/config/providers.yaml"
+    changes: "Added z-ai/glm-5, z-ai/glm-4.7, z-ai/glm-4.5-air:free to OpenRouter models (earlier this session)"
+  - path: ".claude/scripts/fallback-to-opencode.sh"
+    changes: "Created — OpenCode fallback with handoff auto-detection (untracked, earlier this session)"
+  - path: ".claude/scripts/set-skill-model.sh"
+    changes: "Created — session model profile switcher (untracked, earlier this session)"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Added Step 0.0 Model Selection (earlier this session)"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Added Step 0 Model Selection (modified, tracked in git)"
+
+decisions_made:
+  - "Output format convention: PDF in → PDF out. When the design example is a PDF, the generated document is delivered as PDF (not MD). MD source preserved in session workspace as document-draft.md."
+  - "CONDITIONAL PASS verdict accepted: 13 fixes applied post-validation. Remaining 4 issues are data gaps (IRR, Rate/Term/Fee/Guarantee, Default Interest/Extension Terms, Contact info) — all TBD until LOI is negotiated."
+  - "GE-008 project naming (cook group comma) accepted as style variation — not a bug."
+  - "Deferred fees and default preparedness are now standard items to include in all future credit memos — they were missing from the draft and added as validation fixes."
+  - "OpenRouter API key managed via Doppler (project acos-3-0, config dev) — never hardcoded."
+  - "Fallback script uses CWD-first resolution — works from any project directory."
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT (persistent since at least Mar 3, now confirmed Mar 11 21:10Z):
+    ~/.claude/settings.json has an empty hooks section (hooks keys=[], count=0).
+    This is the direct cause of all manual handoff-agent invocations. Auto-handoff, token-gate,
+    session-cleanup, and PreCompact mechanical handoffs are ALL non-functional.
+    Restoring 5 hooks is the highest-impact fix available:
+      SessionStart → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/auto-load-handoff.sh
+      Stop         → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/context-monitor.sh
+      PreCompact   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/context-watchdog.sh
+      PreToolUse   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/token-gate.sh
+                     (matcher: Bash|Write|Edit|NotebookEdit|Task)
+      SessionEnd   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/session-cleanup.sh
+
+  - >
+    UNCOMMITTED SKILLS AND AGENTS (all untracked — persistent since Mar 3/9/10):
+    .claude/agents/handoff-agent.md
+    .claude/scripts/fallback-to-opencode.sh (new this session)
+    .claude/scripts/set-skill-model.sh (new this session)
+    .claude/skills/acos-credit-memo-generator/
+    .claude/skills/acos-loan-doc-finder/
+    .claude/skills/acos-loan-doc-mapper/
+    .claude/skills/acos-data-extractor/
+    .claude/skills/acos-loan-doc-generator/
+    .claude/skills/acos-software-swarm-review/
+    docs/prd-loan-doc-generator.md
+    starter-templates/
+    A single commit would capture all of this.
+
+  - >
+    INCOMPLETE LOAN EXTRACTIONS (pre-existing, lower priority):
+    ETNA Washington Blvd (DDE-20260309-113312): schema only, pipeline never ran. Needs clean re-run.
+    USA_Narbeck (DDE-20260308-185830, DDE-20260308-193647): two attempts, both stalled after Phase 1. Possible large/unusual corpus. Needs investigation.
+
+  - >
+    MEMORY.md OVER LINE LIMIT (234 lines, limit 200):
+    Needs topic file split. Move SEOS/loan-doc sections to separate files.
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json.
+    Run: python3 to read the file, update the hooks array with the 5 entries above, write back.
+    Or use the bootstrap script: bash "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/acos-bootstrap.sh"
+    then manually verify ~/.claude/settings.json was updated (project settings.local.json is not the same).
+
+  - >
+    PRIORITY 2 — Commit all untracked files:
+    git add .claude/agents/handoff-agent.md .claude/scripts/fallback-to-opencode.sh .claude/scripts/set-skill-model.sh
+    git add .claude/skills/acos-credit-memo-generator/ .claude/skills/acos-data-extractor/
+    git add .claude/skills/acos-loan-doc-finder/ .claude/skills/acos-loan-doc-generator/
+    git add .claude/skills/acos-loan-doc-mapper/ .claude/skills/acos-software-swarm-review/
+    git add docs/prd-loan-doc-generator.md starter-templates/
+    git commit -m "feat: Add loan-doc-generator, data-extractor, SEOS loan skills, handoff-agent, scripts, PRD, and starter templates"
+
+  - >
+    PRIORITY 3 — Update MEMORY.md / create topic files:
+    Document /acos-loan-doc-generator skill (replaces /acos-credit-memo-generator).
+    Add output format convention (PDF in → PDF out).
+    Move SEOS credit memo and loan-doc detailed content to separate topic files.
+    Add OpenCode + GLM-5 integration notes.
+
+  - >
+    PRIORITY 4 — Complete Monarch Townhomes memo for distribution:
+    Before sending, fill in the 3 contact placeholders (Name, Phone, Email on CTA page).
+    Fill in LOI-dependent fields once LOI is negotiated (Rate, Term, Origination Fee, Guarantee,
+    Default Interest Rate, Extension Terms, Projected Return / IRR).
+    The PDF is ready for internal review now; contact info must be added before external distribution.
+
+  - >
+    PRIORITY 5 — Re-run incomplete loan extractions:
+    ETNA Washington Blvd: /acos-data-extractor with reuse of existing schema at
+      .acos/sessions/data-extractor/DDE-20260309-113312/extraction-schema.yaml
+    USA_Narbeck: check folder size first, then re-run /acos-data-extractor from source at
+      /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/USA_Narbeck
+
+  - >
+    PRIORITY 6 — Create a Claude-style custom theme for OpenCode (user expressed interest in prior session).
+
+context_for_next_session: |
+  THE MONARCH TOWNHOMES CREDIT MEMO IS DONE. The full /acos-loan-doc-generator pipeline completed
+  on Mar 11: Phase 3 (2 design iterations, 9 section designers + assembler), Phase 4 (2 validation
+  iterations, 8 validators, Wigum loop), 13 post-validation fixes, PDF generation, and delivery to
+  Dropbox. The PDF is at:
+    /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf
+
+  DATA GAPS REMAINING IN THE PDF (not fixable until LOI):
+  - Rate, Term, Origination Fee, Guarantee — shown as "[TBD — See LOI]" in Loan Terms table
+  - Default Interest Rate, Extension Terms — added as required rows with TBD values
+  - Projected IRR / Return — shown as "TBD" in the CTA section
+  - Contact Name, Phone, Email — shown as "[Contact Name]" etc. in CTA footer
+  These are documented in the validation report as intentional data gaps, not errors.
+
+  LOAN DETAILS (for context when updating the memo or generating follow-on documents):
+  - Loan: $2,100,000 land acquisition (100% LTC equity deal, 61% LTV on as-is)
+  - Property: 222 West Moody Road, Rexburg, Idaho (11.18 acres)
+  - Developer: Jarom Brizzee / RNMM Holdings LLC / Toro Construction
+  - Seller: John Shepherd
+  - As-is appraised: $3,460,000 | As-complete (bulk): $36,720,000 | Aggregate retail: $46,920,000
+  - 127 townhome units across 3 phases (44/43/40)
+  - Exit: vertical construction loan (~$32.4M), target close March 31, 2026
+  - Design source: lux-Brad-design (Lux 2 Portfolio Credit Memo)
+
+  SESSION 20260310-115334 IS COMPLETE. All 4 phases done. session-manifest.yaml status=complete.
+  No need to resume this session; it is finished.
+
+  OPENCODE + GLM-5 IS INTEGRATED (from earlier this session):
+  - Shell aliases oc + ocfallback require `source ~/.zshrc` or new terminal to activate
+  - Doppler project: acos-3-0, config: dev (manages OpenRouter API key)
+  - Model profiles glm-review and glm-heavy are available via /acos-model-change
+  - Step 0.0 Model Selection is in 6 token-heavy skills (loan-doc-generator, credit-memo-generator,
+    loan-doc-finder, data-extractor, loan-doc-mapper, complete-vision)
+
+  INFRASTRUCTURE ALERT — GLOBAL HOOKS STILL ABSENT:
+  ~/.claude/settings.json hooks section is empty. This is the single biggest operational risk.
+  Every session without hooks is a session where context can be silently lost. Fix this first
+  in the next session before running any long skill.
+
+  KEY FILE PATHS:
+  - Final PDF (delivered): /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf
+  - Document draft (MD source): /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-draft.md
+  - PDF-ready MD: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-pdf-ready.md
+  - Validation report: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase4-validation/iteration-2/synthesis/validation-report.yaml
+  - Session manifest: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/session-manifest.yaml
+  - Global hooks config: ~/.claude/settings.json
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/session-manifest.yaml (full read — confirmed status: complete, phase 4, iter 2)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase4-validation/iteration-2/synthesis/validation-report.yaml (full read — confirmed CONDITIONAL PASS, 13 fixes, data gaps)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/ (ls — document-draft.md 26214B, document-pdf-ready.md 27700B, document-final.pdf 409264B confirmed)"
+  - "ls Monarch Townhomes Dropbox folder (confirmed Monarch Townhomes — Credit Memo (External).pdf present, 409264B, Mar 11 14:34)"
+  - "git status --short (confirmed untracked files list)"
+  - "git log --oneline -20 (confirmed HEAD: 04165e8, no new commits this session)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-03-11-emergency-handoff.yaml (full read — prior state: Phase 3 not started)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-03-11-completion-handoff.yaml (full read — OpenCode/GLM-5 integration details)"
+  - ".acos/state/agent-lifecycle.log tail -20 (confirmed session 77d870f5 active today, handoff-agent spawned 21:09Z)"
+  - "python3 parse ~/.claude/settings.json (confirmed hooks keys=[], count=0)"
+  - "user-provided context: full pipeline status, file paths, fixes applied, data gaps (highest confidence source)"

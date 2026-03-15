@@ -1,0 +1,75 @@
+# QA Checklist — Phase 3: Output Validation
+# Binary YES/NO evaluation. ALL criteria must be YES for PASS.
+# Reviewer: qa-reviewer agent (adversarial posture)
+# Input: completed document + answer-map.yaml + source documents + population-log.yaml
+
+session_id: "[LDM-YYYY-MM-DD-HH-MM]"
+phase: 3
+iteration: 1
+reviewer: "qa-reviewer"
+review_date: "[YYYY-MM-DD HH:MM:SS]"
+
+verdict: "[PASS | REJECT]"
+
+criteria:
+  - id: "P3-C01"
+    description: "Every populated field matches answer map exactly"
+    result: "[YES | NO]"
+    evidence: "[Check every populated field in output against answer map value — list any mismatches]"
+
+  - id: "P3-C02"
+    description: "No NOT_FOUND fields incorrectly populated"
+    result: "[YES | NO]"
+    evidence: "[Check every NOT_FOUND field in answer map — verify it is annotated, not populated, in output]"
+
+  - id: "P3-C03"
+    description: "No data introduced outside the answer map"
+    result: "[YES | NO]"
+    evidence: "[Verify every value in output traces to an answer map entry — list any injected values]"
+
+  - id: "P3-C04"
+    description: "Formatting matches form requirements"
+    result: "[YES | NO]"
+    evidence: "[Check date formats, currency formats, number formats against form hints — list violations]"
+
+  - id: "P3-C05"
+    description: "NOT_FOUND fields annotated"
+    result: "[YES | NO]"
+    evidence: "[Verify all NOT_FOUND fields have visible annotations in output — list any unmarked]"
+
+  - id: "P3-C06"
+    description: "Conflict fields annotated if unresolved"
+    result: "[YES | NO]"
+    evidence: "[Verify UNRESOLVED_CONFLICT fields have visible annotations — list any unmarked]"
+
+  - id: "P3-C07"
+    description: "Population log accounts for every field"
+    result: "[YES | NO]"
+    evidence: "[Count comparison: field registry vs population log entries — list any missing]"
+
+  - id: "P3-C08"
+    description: "Numerical values match end-to-end (output <-> answer map <-> source doc)"
+    result: "[YES | NO]"
+    evidence: "[Trace EVERY numerical value through all three: output -> answer map -> source doc. List any break in chain]"
+
+  - id: "P3-C09"
+    description: "Summary report statistics accurate"
+    result: "[YES | NO]"
+    evidence: "[Verify totals, percentages, counts in summary report against actual data — list errors]"
+
+  - id: "P3-C10"
+    description: "Form structure/layout preserved"
+    result: "[YES | NO]"
+    evidence: "[Verify output maintains original form structure — list any layout damage or missing sections]"
+
+# Summary (filled by reviewer)
+pass_count: 0
+fail_count: 0
+failed_criteria: []
+# failed_criteria:
+#   - id: "P3-C08"
+#     finding: "[Specific numerical values that break the chain, with all three values shown]"
+#     affected_fields: ["F-XXX-001"]
+#     remediation: "[Re-populate these specific fields using the correct answer map values]"
+
+notes: null

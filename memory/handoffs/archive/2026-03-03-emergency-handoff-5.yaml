@@ -1,0 +1,205 @@
+timestamp: "2026-03-03T23:19:06Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This is the fifth emergency handoff of March 3, 2026. The session that produced
+  handoff-4 (session 9e1b65bc, concluded ~22:05Z) committed the Oracle hardening
+  fix as 04165e8 and has since continued with no new commits. The current invocation
+  (session ebbd65bf, spawned 23:18Z) shows no code changes since the last handoff —
+  the repository state is identical to handoff-4. The framework is stable at HEAD
+  04165e8. All five previous handoffs today are due to the same root cause: the global
+  ~/.claude/settings.json hooks section is empty, disabling the auto-handoff system.
+  Restoring those global hooks remains the single highest-priority action.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - "No new commits since handoff-4 (04165e8 remains HEAD). Repository state unchanged."
+  - "Oracle --health check confirmed HEALTHY (all 5 checks pass): project root resolved, oracle.yaml readable, state dir writable, config parseable at threshold=9, no git dependency in hooks."
+  - "Confirmed: ~/.claude/settings.json hooks section is empty ({}) — global context defense hooks still absent."
+  - "Confirmed: All untracked new skills and agents remain intact in working tree (no deletions, no new modifications)."
+
+files_modified:
+  - path: ".claude/scripts/oracle-evaluate.py"
+    changes: >
+      COMMITTED (HEAD 04165e8, Mar 3 13:54Z). Two key additions vs previous HEAD:
+      (1) find_project_root() Strategy 2 fallback — walks up from Path(__file__).parent
+      if CWD-based walk fails. Fixes Oracle in non-CWD subagent contexts.
+      (2) run_health() function — 5-check verifier invoked via --health flag.
+      All checks currently pass (verified this session).
+  - path: "CLAUDE.md"
+    changes: >
+      COMMITTED (HEAD 04165e8). Oracle section expanded: risk-tiered evaluation
+      (Bash|Write|Edit|NotebookEdit|Task only), fail-safe || printf fallback,
+      no git dependency, --health diagnostic command, updated hook ordering.
+  - path: ".claude/skills/acos-credit-memo-generator/SKILL.md"
+    changes: >
+      UNTRACKED new file (28,043 bytes, created Mar 3). 4-phase swarm pipeline:
+      extract design patterns from example memos, analyze loan folder, section-based
+      designer swarm, benchmark validation + Wigum loop. 6 templates in templates/
+      (benchmark-criterion.yaml, credit-memo-outline.md, design-pattern.yaml,
+      loan-data-extract.yaml, seos-config.yaml, validation-result.yaml).
+      Modes: extract, generate, full run, status. Not yet committed.
+  - path: ".claude/skills/acos-loan-doc-mapper/SKILL.md"
+    changes: >
+      UNTRACKED new file (15,618 bytes, created Mar 3 11:34Z). 4-phase pipeline
+      for mapping loan documents to structured field registries. 7 templates:
+      answer-map.yaml, field-registry.yaml, mapping-session.yaml,
+      provenance-record.yaml, qa-checklist-phase1/2/3.yaml. Not yet committed.
+  - path: ".claude/skills/acos-loan-doc-finder/SKILL.md"
+    changes: >
+      UNTRACKED new file (22,044 bytes, created Mar 3 12:59Z). 3-tier swarm:
+      Coordinator -> Classifiers (5-10) -> Adversarial QA (3). Phases 0-4.
+      Wigum loop max 5 rounds. PRISM 252-item DD framework integration.
+      4 templates: classification-manifest.yaml, qa-review.yaml,
+      session-manifest.yaml, final-report.md.
+      Invocation: /acos-loan-doc-finder <source-dir-1> [source-dir-2] --output <folder> [--schema <file>]
+      Not yet committed.
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "UNTRACKED new file. Native agent definition for the handoff-agent. Not yet committed."
+  - path: "starter-templates/"
+    changes: >
+      UNTRACKED new directory (4 files, all from Feb 25 15:47Z):
+      generate-handoff.md, generate-qa-reviewer.md, generate-developer.md,
+      generate-project-manager.md. Not yet committed.
+
+decisions_made:
+  - "Oracle evaluates only risky tools (Bash, Write, Edit, NotebookEdit, Task) — read-only tools (Read, Glob, Grep, LSP) are exempt. Enforced in settings.local.json PreToolUse matcher."
+  - "find_project_root() uses __file__-based fallback so Oracle works in subagent/hook CWD contexts. Committed in 04165e8."
+  - "Oracle --health flag is the canonical first diagnostic step when Oracle behavior seems wrong."
+  - "Hook fail-safe: all PreToolUse hook commands use '|| printf allow' to prevent Python errors from causing tool lockout."
+  - "ADR on file: memory/decisions/acos-update-2026-02-22.md (Feb 22, covers all /acos-update improvements)"
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT: ~/.claude/settings.json has an empty hooks
+    section (verified this session: hooks keys = [], count = 0). The 5 global
+    hooks are missing — auto-load-handoff.sh (SessionStart), context-monitor.sh (Stop),
+    context-watchdog.sh (PreCompact), token-gate.sh (PreToolUse),
+    session-cleanup.sh (SessionEnd). This is the root cause of 5 manual handoff-agent
+    invocations today. Fixing this is the single highest-impact action available.
+  - >
+    UNCOMMITTED NEW SKILLS AND AGENTS: Three SEOS/loan skills and one agent definition
+    are untracked. Full list:
+    .claude/skills/acos-credit-memo-generator/ (SKILL.md + 6 templates),
+    .claude/skills/acos-loan-doc-mapper/ (SKILL.md + 7 templates),
+    .claude/skills/acos-loan-doc-finder/ (SKILL.md + 4 templates),
+    .claude/agents/handoff-agent.md,
+    starter-templates/ (4 files).
+    These represent weeks of work that would be lost if the working tree were reset.
+  - >
+    MEMORY.md STALE: The auto-memory at
+    ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md
+    documents acos-loan-doc-finder and acos-credit-memo-generator but does not
+    reflect Oracle hardening improvements (--health, __file__ fallback, risk-tiering)
+    from commit 04165e8.
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json. Add these 5 entries:
+    SessionStart: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/auto-load-handoff.sh
+    Stop: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-monitor.sh
+    PreCompact: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-watchdog.sh
+    PreToolUse: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/token-gate.sh (matcher: Bash|Write|Edit|NotebookEdit|Task)
+    SessionEnd: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/session-cleanup.sh
+  - >
+    PRIORITY 2 — Commit all untracked new skills and agents in a single commit:
+    git add .claude/agents/handoff-agent.md
+    git add .claude/skills/acos-credit-memo-generator/
+    git add .claude/skills/acos-loan-doc-mapper/
+    git add .claude/skills/acos-loan-doc-finder/
+    git add starter-templates/
+    git commit -m "feat: Add SEOS loan skills, handoff-agent, and starter templates"
+  - >
+    PRIORITY 3 — Verify Oracle health after any hook changes:
+    python3 /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/oracle-evaluate.py --health
+    (currently HEALTHY — all 5 checks pass)
+  - >
+    PRIORITY 4 — Test acos-loan-doc-finder against a real loan folder:
+    /acos-loan-doc-finder "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/"
+    --output <output-folder>
+  - >
+    PRIORITY 5 — Update MEMORY.md to document:
+    Oracle risk-tiering (Bash|Write|Edit|NotebookEdit|Task only),
+    --health diagnostic mode, __file__ fallback in find_project_root(),
+    handoff-agent native agent addition.
+  - >
+    PRIORITY 6 — Decide whether to symlink the 3 SEOS skills to ~/.claude/skills/
+    for global availability across all projects.
+
+context_for_next_session: |
+  THE ACOS 3.0 FRAMEWORK IS STABLE. HEAD is 04165e8 (Mar 3 2026, committed 13:54Z).
+  No changes have been made since the last handoff (handoff-4, written 22:06Z).
+
+  CURRENT COMMITTED STATE (04165e8):
+  - oracle-evaluate.py: find_project_root() has __file__ fallback; run_health() 5-check
+    diagnostic at --health flag; risk-tiered eval (Bash|Write|Edit|NotebookEdit|Task only);
+    fail-open via || printf 'allow'. HEALTH CHECK CURRENTLY PASSES (verified 23:19Z).
+  - CLAUDE.md: Oracle section documents risk-tiered eval, fail-safe, no-git-dependency,
+    --health command, hook ordering.
+  - settings.local.json: PreToolUse Oracle matcher = 'Bash|Write|Edit|NotebookEdit|Task'
+
+  UNCOMMITTED NEW SKILLS (untracked, intact in working tree, NOT committed):
+
+  1. acos-credit-memo-generator
+     /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-credit-memo-generator/SKILL.md
+     28,043 bytes, Mar 3. 4-phase swarm + Wigum validation. 6 templates.
+
+  2. acos-loan-doc-mapper
+     /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-mapper/SKILL.md
+     15,618 bytes, Mar 3 11:34Z. 4-phase pipeline. 7 templates. COMPLETE.
+
+  3. acos-loan-doc-finder
+     /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-finder/SKILL.md
+     22,044 bytes, Mar 3 12:59Z. 3-tier swarm (Coordinator -> Classifiers -> Adversarial QA).
+     Phases 0-4. Wigum loop (max 5 rounds). PRISM 252-item DD framework integration.
+     4 templates: classification-manifest, qa-review, session-manifest, final-report.
+     Invocation: /acos-loan-doc-finder <source-dir-1> [source-dir-2] ... --output <folder> [--schema <file>]
+
+  4. handoff-agent.md
+     /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md
+     Native agent definition for the handoff-agent. Untracked.
+
+  5. starter-templates/
+     /Users/zee/Documents/Vibe Coding/ACOS 3.0/starter-templates/
+     4 files from Feb 25: generate-handoff.md, generate-qa-reviewer.md,
+     generate-developer.md, generate-project-manager.md.
+
+  ROOT CAUSE OF TODAY'S 5 MANUAL HANDOFFS:
+  ~/.claude/settings.json hooks section is completely empty ({}).
+  The project settings.local.json is intact (Oracle + check-scope in PreToolUse),
+  but the 5 global hooks enabling the auto-handoff system are absent.
+  Fix by editing ~/.claude/settings.json to add the 5 hooks listed under
+  next_actions PRIORITY 1 above.
+
+  AGENT LIFECYCLE LOG confirms current session is ebbd65bf (spawned 23:18Z Mar 3 2026).
+  Session 9e1b65bc (the prior session) made commit 04165e8 at 13:54Z and was the
+  last to make any commits. No commits made between 04165e8 and now.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-03-emergency-handoff-4.yaml (full read — primary reference)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-03-emergency-handoff-3.yaml (full read — cross-check)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (tail -20)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/oracle-audit.log (tail -10)"
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git show --stat HEAD"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD (modified vs HEAD — only .DS_Store)"
+  - "git ls-files --others --exclude-standard (full untracked file list)"
+  - "python3 .claude/scripts/oracle-evaluate.py --health (result: HEALTHY)"
+  - "python3 -c ... (parse ~/.claude/settings.json hooks section — result: empty {})"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/current/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/"
+  - "ls -la .acos/state/"
+  - "ls -lt .claude/skills/acos-loan-doc-mapper/"
+  - "ls -lt starter-templates/"
+  - "date -u (timestamp)"

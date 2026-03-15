@@ -1,0 +1,172 @@
+timestamp: "2026-03-05T19:14:55Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Current session (a5b312d8, spawned 2026-03-05T19:14Z) is the first session of
+  March 5, 2026. The repository HEAD remains at 04165e8 — the Oracle hardening
+  commit from March 3, unchanged across all subsequent sessions. The primary work
+  in progress is a new skill, acos-data-extractor, created this session
+  (SKILL.md 24,373 bytes + 8 templates, all dated Mar 5). This is the only new
+  work since the last handoff cluster (2026-03-03-emergency-handoff-5.yaml,
+  written 2026-03-03T23:19Z). Three other skills from March 3 and the
+  handoff-agent agent definition remain untracked and uncommitted. The global
+  auto-handoff hooks in ~/.claude/settings.json remain empty, which is why this
+  manual handoff is required again.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - "Created .claude/skills/acos-data-extractor/SKILL.md (24,373 bytes, Mar 5 12:10Z) — domain-agnostic data extraction skill with 4-phase pipeline."
+  - "Created 8 templates under .claude/skills/acos-data-extractor/templates/: session-manifest.yaml, extraction-schema.yaml, triage-manifest.yaml, provenance-record.yaml, extraction-map.yaml, qa-checklist-triage.yaml, qa-checklist-extraction.yaml, final-report.md."
+  - "No new git commits made this session. HEAD remains at 04165e8."
+
+files_modified:
+  - path: ".claude/skills/acos-data-extractor/SKILL.md"
+    changes: >
+      NEW UNTRACKED FILE (24,373 bytes, Mar 5 12:10Z).
+      Domain-agnostic extraction skill: schema-driven triage (Phase 1),
+      parallel deep extraction with full provenance (Phase 2), adversarial
+      3-QA-agent validation + Wigum loop (max 5 rounds), consolidated final
+      report (Phase 3). 8 data integrity rules injected into every agent prompt
+      (no fabrication, exact numerical/name/date preservation, provenance
+      required, NOT_FOUND/conflict/confidence protocols). Argument hint:
+      "<folder-path-1> [folder-path-2] ... --schema <schema.yaml> [--output <output-folder>]"
+  - path: ".claude/skills/acos-data-extractor/templates/session-manifest.yaml"
+    changes: "NEW UNTRACKED FILE (2,117 bytes). Session tracking manifest template."
+  - path: ".claude/skills/acos-data-extractor/templates/extraction-schema.yaml"
+    changes: "NEW UNTRACKED FILE (2,854 bytes). Schema template defining fields to extract."
+  - path: ".claude/skills/acos-data-extractor/templates/triage-manifest.yaml"
+    changes: "NEW UNTRACKED FILE (1,724 bytes). Phase 1 triage output manifest."
+  - path: ".claude/skills/acos-data-extractor/templates/provenance-record.yaml"
+    changes: "NEW UNTRACKED FILE (1,883 bytes). Per-value provenance citation template."
+  - path: ".claude/skills/acos-data-extractor/templates/extraction-map.yaml"
+    changes: "NEW UNTRACKED FILE (3,037 bytes). Phase 2 extraction output template."
+  - path: ".claude/skills/acos-data-extractor/templates/qa-checklist-triage.yaml"
+    changes: "NEW UNTRACKED FILE (2,358 bytes). QA Gate 1 (post-triage) checklist template."
+  - path: ".claude/skills/acos-data-extractor/templates/qa-checklist-extraction.yaml"
+    changes: "NEW UNTRACKED FILE (3,908 bytes). QA Gate 2 (post-extraction) checklist template."
+  - path: ".claude/skills/acos-data-extractor/templates/final-report.md"
+    changes: "NEW UNTRACKED FILE (4,178 bytes). Final consolidated report template."
+
+decisions_made:
+  - "acos-data-extractor designed as domain-agnostic — all domain knowledge lives in the user-supplied schema file, not the skill itself."
+  - "Data integrity rules (no fabrication, exact preservation, provenance) are non-negotiable and injected into every agent prompt in every phase."
+  - "ADR on file: memory/decisions/acos-update-2026-02-22.md (Feb 22, covers /acos-update improvements — still the only decision file)."
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT: ~/.claude/settings.json hooks section is
+    completely empty (verified this session: hooks keys = [], count = 0).
+    The 5 global context-defense hooks are missing:
+    auto-load-handoff.sh (SessionStart), context-monitor.sh (Stop),
+    context-watchdog.sh (PreCompact), token-gate.sh (PreToolUse),
+    session-cleanup.sh (SessionEnd). This is the root cause of repeated manual
+    handoff-agent invocations across multiple sessions (Mar 3: 5 invocations;
+    Mar 5: this invocation). Fixing this is the single highest-impact action.
+  - >
+    UNCOMMITTED SKILLS AND AGENTS (5 items, all untracked, would be lost on
+    working-tree reset):
+    1. .claude/skills/acos-data-extractor/ (SKILL.md + 8 templates, Mar 5) — NEW THIS SESSION
+    2. .claude/skills/acos-credit-memo-generator/ (SKILL.md + 6 templates, Mar 3)
+    3. .claude/skills/acos-loan-doc-mapper/ (SKILL.md + 7 templates, Mar 3)
+    4. .claude/skills/acos-loan-doc-finder/ (SKILL.md + 4 templates, Mar 3)
+    5. .claude/agents/handoff-agent.md (Mar 3)
+    Also untracked: starter-templates/ (4 files, Feb 25).
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json. The hooks
+    section must contain these 5 entries:
+    SessionStart: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/auto-load-handoff.sh
+    Stop: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-monitor.sh
+    PreCompact: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-watchdog.sh
+    PreToolUse (matcher Bash|Write|Edit|NotebookEdit|Task): /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/token-gate.sh
+    SessionEnd: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/session-cleanup.sh
+  - >
+    PRIORITY 2 — Commit all untracked new skills and agents:
+    git add .claude/agents/handoff-agent.md
+    git add .claude/skills/acos-data-extractor/
+    git add .claude/skills/acos-credit-memo-generator/
+    git add .claude/skills/acos-loan-doc-mapper/
+    git add .claude/skills/acos-loan-doc-finder/
+    git add starter-templates/
+    git commit -m "feat: Add data-extractor, SEOS loan skills, handoff-agent, and starter templates"
+  - >
+    PRIORITY 3 — Verify Oracle health after any hook changes:
+    python3 "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/oracle-evaluate.py" --health
+    (was HEALTHY as of Mar 3 23:19Z — verify again after hook changes)
+  - >
+    PRIORITY 4 — Complete or test acos-data-extractor. The skill and all 8
+    templates are written but have not been tested against a real document
+    collection. Next step is a live invocation:
+    /acos-data-extractor <folder> --schema <schema.yaml> --output <output-folder>
+  - >
+    PRIORITY 5 — Consider whether acos-data-extractor should be promoted to
+    a global skill (~/.claude/skills/) alongside the 4 already-global skills
+    (acos-create-skill, acos-swarm-review, acos-swarm-research, acos-handoff).
+  - >
+    PRIORITY 6 — Update MEMORY.md to reflect:
+    acos-data-extractor addition (domain-agnostic extraction skill),
+    Oracle hardening details from commit 04165e8 still not documented
+    (--health flag, __file__ fallback, risk-tiering, fail-open),
+    handoff-agent as 9th native agent.
+
+context_for_next_session: |
+  THE ACOS 3.0 FRAMEWORK IS STABLE at HEAD 04165e8 (Oracle hardening, Mar 3 2026).
+
+  THE NEW WORK THIS SESSION is acos-data-extractor — a domain-agnostic extraction
+  skill for large document collections. It is COMPLETE but UNTRACKED. The full
+  skill lives at:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-data-extractor/SKILL.md
+
+  The skill architecture: schema-driven triage (Phase 1, fast parallel scan) →
+  QA Gate 1 → deep extraction with provenance per value (Phase 2) → 3-agent
+  adversarial QA + Wigum loop (max 5 rounds) → Phase 3 final report. 8 data
+  integrity rules are non-negotiable and injected into every agent prompt. The
+  user-supplied schema YAML defines what fields to find; all domain knowledge
+  lives there.
+
+  INHERITED UNTRACKED WORK FROM MARCH 3 (still uncommitted, still intact):
+  - acos-credit-memo-generator: 4-phase swarm for SEOS credit memos (28KB SKILL.md + 6 templates)
+  - acos-loan-doc-mapper: 4-phase pipeline for mapping loan docs to field registries (15KB + 7 templates)
+  - acos-loan-doc-finder: 3-tier swarm for classifying and finding loan documents (22KB + 4 templates),
+    with PRISM 252-item DD framework integration
+  - handoff-agent.md: native agent definition for the handoff-agent
+
+  LOAN DOC FINDER real-world test was listed as PRIORITY 4 in the Mar 3 handoffs but
+  has not yet been run. The test command was:
+    /acos-loan-doc-finder "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/"
+    --output <output-folder>
+
+  ROOT CAUSE OF REPEATED MANUAL HANDOFFS:
+  ~/.claude/settings.json has an empty hooks section ({}). The 5 global hooks
+  that form the auto-handoff defense system are absent. Restoring them (PRIORITY 1
+  in next_actions) will prevent this pattern from repeating. The project-level
+  .claude/settings.local.json is intact (Oracle + check-scope).
+
+  AGENT LIFECYCLE LOG confirms current session is a5b312d8 (spawned 2026-03-05T19:14Z).
+  Last commit was 04165e8 by session 9e1b65bc on 2026-03-03. No commits since then.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-03-emergency-handoff-5.yaml (full read — primary prior reference)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (tail -30)"
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "ls -lt .claude/skills/acos-data-extractor/"
+  - "ls -lt .claude/skills/acos-data-extractor/templates/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-data-extractor/SKILL.md (first 60 lines)"
+  - "python3 -c ... (parse ~/.claude/settings.json hooks — result: empty [])"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/*.yaml"
+  - "ls -la .acos/state/"
+  - "date -u (timestamp)"

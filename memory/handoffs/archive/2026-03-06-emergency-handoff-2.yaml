@@ -1,0 +1,218 @@
+timestamp: "2026-03-06T19:52:32Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Current session (fc12201c, spawned 2026-03-06T19:14Z) is the second session of
+  March 6, 2026. After the first handoff of the day (2026-03-06-emergency-handoff.yaml,
+  written at ~12:06 local / 19:05Z UTC by session fe17d541), this session picked up
+  and ran a brand-new /acos-data-extractor invocation against the Lorian_LOC folder
+  (28 documents, 5 fields). That extraction completed fully — session DDE-20260306-121817,
+  status: completed, QA PASSED in one iteration, 5/5 fields found. The ACOS framework
+  HEAD remains at 04165e8 (Oracle hardening, Mar 3). No new git commits. All previously
+  untracked skills and agents remain untracked. Global hooks in ~/.claude/settings.json
+  remain absent (empty hooks section confirmed again this session).
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - >
+    LOAN DATA EXTRACTION — Lorian_LOC (Line of Credit, LOC):
+    Session ID: DDE-20260306-121817
+    Source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/Lorian_LOC/
+    Corpus: 28 files scanned, 16 deep-read, 8 contributed data.
+    Schema: 5 fields (lien/collateral address, inception date, closing date, holding period, end of investment life).
+    Result: 5/5 fields found (4 high confidence, 1 medium), 0 not found, 2 conflicts resolved.
+    QA: PASSED in 1 iteration (no Wigum loop needed). 3 QA agents all returned PASS.
+    Agents spawned: 5 triage agents (Phase 1) + 3 extraction agents (Phase 2) + 3 QA agents.
+    All used model: opus.
+    Output: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121817/EXTRACTION_REPORT.md
+  - >
+    LORIAN LOC EXTRACTED DATA (all fields with high fidelity):
+    1. Lien/Collateral Property Address: NO real property. All-assets personal property lien
+       (20 categories: inventory, equipment, accounts, etc.). Business addr:
+       6783 S. Redwood Rd, Ste 103, West Jordan, UT 84084.
+       (Billing addr: 4117 W Otter Brook Drive, South Jordan, UT 84009)
+    2. Inception Date: November 3, 2021 (first disbursement / Note Date — capital first at risk).
+       Conflict resolved: 3 candidates (Oct 27=execution, Nov 3=funding, Nov 21=Mandarin model).
+    3. Closing Date: January 18, 2023.
+       Primary source: MP_Lorian (Vetted).xlsx — Sheet1 row 61 (Deposit, Final payoff, $35,717.55).
+       Minor discrepancy: Mandarin Cash Flow shows Jan 19 (T+1 settlement). Jan 18 wins.
+    4. Holding Period: 441 days (~1.21 years). Calculated from Nov 3, 2021 to Jan 18, 2023.
+       No document explicitly states this; Okoa Loan Builder cell F17 is blank.
+       (Contractual maturity was 24 months; loan paid off early at ~14.5 months.)
+    5. End of Investment Life: January 18, 2023 (same as closing date).
+       Final payoff breakdown: $35,717.55 + $41,928.50 = $77,646.05 total actual payout.
+  - >
+    PRIOR SESSION EXTRACTIONS (from session fe17d541, still accurate from Mar 6 first handoff):
+    - Wolfgramm_Ascent_Bridge: $10M bridge, Park City UT, Oct 23 2023 → Feb 28 2024, 128 days.
+    - Phoenix_Rising_Corpus_Christi: $5.5M construction bridge, Corpus Christi TX, Oct 2 2024 → May 3 2025, 214 days.
+    - Qelo/Wolfgramm_Ascent_Senior: $20M construction, Park City UT, Oct 1 2021 → Jan 29 2024, 851 days.
+  - >
+    SETUP SESSION (DDE-20260306-121442): An earlier session at 12:14Z created a
+    schema file but was superseded by DDE-20260306-121817 which ran the full pipeline.
+    The schema used was the same 5-field real-estate lending schema.
+
+files_modified:
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/EXTRACTION_REPORT.md"
+    changes: "NEW. Complete extraction report for Lorian LOC — 5/5 fields found, QA PASSED."
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/session-manifest.yaml"
+    changes: "NEW. Session manifest showing all phases completed, status: completed."
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/extraction-results.yaml"
+    changes: "NEW. Machine-readable extraction results YAML."
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/phase1/"
+    changes: "NEW. 5 triage agent outputs + triage-manifest.yaml + file-inventory.yaml."
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/phase2/"
+    changes: "NEW. 3 extractor outputs + extraction-map.yaml + conflict-resolutions.yaml."
+  - path: ".acos/sessions/data-extractor/DDE-20260306-121817/qa-gates/"
+    changes: "NEW. 2 QA agent reports (Value Verifier + Provenance Auditor, all PASS)."
+  - path: ".acos/state/agent-lifecycle.log"
+    changes: "UPDATED. 10 new SPAWN entries for session fc12201c (architect + developer agents)."
+  - path: ".acos/metrics/agent-completions.log"
+    changes: "UPDATED. 8 new COMPLETED entries for session fc12201c (19:21–19:28Z)."
+
+decisions_made:
+  - >
+    Lorian LOC collateral distinction: The loan is NOT secured by real property.
+    The lien covers all business assets (personal property) — no deed of trust exists.
+    When reporting "lien/collateral property address", the correct answer is that
+    no real property exists; the business address is provided as context only.
+  - >
+    Inception date conflict resolution rule applied: Capital-first-at-risk wins over
+    contract execution date. For Lorian: Nov 3, 2021 (first disbursement) beats
+    Oct 27, 2021 (DocuSign execution) and Nov 21, 2021 (Mandarin model entry).
+  - >
+    All prior decisions from Mar 6 first handoff and Mar 5 handoff remain in force.
+    Key standing decision: closing date and inception date are treated as synonymous
+    for Okoa bridge/construction loans where a single disbursement occurs.
+    LOC loans (Lorian) have a separate inception (first advance) and closing (payoff) date.
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT (persistent, not fixed across any session):
+    ~/.claude/settings.json hooks section is completely empty (verified: hooks keys=[],
+    count=0). The 5 global context-defense hooks are missing across all sessions since
+    at least Mar 3. This is the root cause of all repeated manual handoff-agent
+    invocations (Mar 3: 5x, Mar 5: 1x, Mar 6: 2x = 8 total invocations).
+    Restoring the hooks is the single highest-impact action.
+  - >
+    UNCOMMITTED SKILLS AND AGENTS (5 items untracked, would be lost on working-tree reset):
+    1. .claude/skills/acos-data-extractor/ (SKILL.md + 8 templates, created Mar 5) — TESTED Mar 6 against 4 loans.
+    2. .claude/skills/acos-credit-memo-generator/ (SKILL.md + 6 templates, Mar 3)
+    3. .claude/skills/acos-loan-doc-finder/ (SKILL.md + 4 templates, Mar 3)
+    4. .claude/skills/acos-loan-doc-mapper/ (SKILL.md + 7 templates, Mar 3)
+    5. .claude/agents/handoff-agent.md (Mar 3)
+    Also untracked: starter-templates/ (4 files, Feb 25).
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json. The hooks
+    section must contain these 5 entries (use absolute paths):
+    SessionStart: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/auto-load-handoff.sh
+    Stop: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-monitor.sh
+    PreCompact: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/context-watchdog.sh
+    PreToolUse (matcher Bash|Write|Edit|NotebookEdit|Task): /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/token-gate.sh
+    SessionEnd: /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/scripts/session-cleanup.sh
+  - >
+    PRIORITY 2 — Commit all untracked new skills and agents:
+    git add .claude/agents/handoff-agent.md
+    git add .claude/skills/acos-data-extractor/
+    git add .claude/skills/acos-credit-memo-generator/
+    git add .claude/skills/acos-loan-doc-finder/
+    git add .claude/skills/acos-loan-doc-mapper/
+    git add starter-templates/
+    git commit -m "feat: Add data-extractor, SEOS loan skills, handoff-agent, and starter templates"
+  - >
+    PRIORITY 3 — Consider extracting remaining paid-off loans from the source directory.
+    So far extracted: Wolfgramm_Ascent_Bridge, Phoenix_Rising_Corpus_Christi, Qelo/Wolfgramm_Ascent_Senior, Lorian_LOC.
+    Other loans in the paid-off folder may still be unextracted. Check:
+    ls "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/"
+  - >
+    PRIORITY 4 — Test acos-loan-doc-finder against active loans directory (still pending from Mar 3):
+    /acos-loan-doc-finder "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/"
+    --output <output-folder>
+  - >
+    PRIORITY 5 — Update MEMORY.md:
+    - Add note: acos-data-extractor tested against 4 Okoa Capital paid-off loans (Mar 6).
+    - Add Lorian LOC extraction note with key finding (all-assets lien, no real property).
+    - Oracle hardening details from 04165e8 still undocumented in MEMORY.md.
+
+context_for_next_session: |
+  THIS SESSION (2026-03-06, fc12201c) WAS A LOAN DATA EXTRACTION RUN — LORIAN LOC.
+
+  The acos-data-extractor skill was invoked against the Lorian_LOC folder (28 docs)
+  from the same paid-off loans Dropbox source used in the previous session. This is
+  the 4th loan extraction across the Mar 6 sessions. The extraction is complete and
+  saved to disk at:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121817/
+
+  LORIAN LOC — KEY DISTINCTIVE FEATURE:
+  Unlike the three prior loans (bridge/construction), Lorian is a line of credit
+  secured by ALL BUSINESS ASSETS (personal property lien), not real estate. There
+  is no collateral property address in the traditional sense — just borrower business
+  addresses. This distinction matters for any downstream aggregation or credit memo
+  work.
+
+  ALL 4 PAID-OFF LOAN EXTRACTIONS COMPLETE (same source Dropbox dir):
+  Source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+
+  Loan 1 — Wolfgramm_Ascent_Bridge ($10M, bridge, Park City UT)
+    Closing: Oct 23, 2023 | Payoff: Feb 28, 2024 | Days: 128 (~0.35 yrs) | Principal: $10,000,000
+
+  Loan 2 — Phoenix_Rising_Corpus_Christi ($5.5M, construction bridge, Corpus Christi TX)
+    Closing: Oct 2, 2024 | Payoff: May 3, 2025 | Days: 214 (~0.59 yrs) | Principal: $5,500,000
+
+  Loan 3 — Qelo/Wolfgramm_Ascent_Senior ($20M, construction, Park City UT)
+    Closing: Oct 1, 2021 | Payoff: Jan 29, 2024 | Days: 851 (~2.33 yrs) | Principal: $20,000,000
+
+  Loan 4 — Lorian_LOC (LOC, all-assets lien, West Jordan UT / South Jordan UT)
+    Inception (first disbursement): Nov 3, 2021 | Payoff: Jan 18, 2023 | Days: 441 (~1.21 yrs)
+    Total Actual Payout: $77,646.05 ($35,717.55 + $41,928.50)
+    Note: No real property collateral — business assets only.
+
+  FRAMEWORK STATE is unchanged from Mar 3 HEAD (04165e8, Oracle hardening). No new
+  commits. All 5 new untracked files (4 skills + handoff-agent) remain uncommitted.
+  Committing them is the most urgent infrastructure action (PRIORITY 2).
+
+  ROOT CAUSE OF REPEATED MANUAL HANDOFFS (unchanged across all sessions since Mar 3):
+  ~/.claude/settings.json has an empty hooks section ({}). Restoring the 5 global
+  hooks (PRIORITY 1) will end this pattern permanently.
+
+  KEY FILE PATHS FOR NEXT SESSION:
+  - Lorian extraction report: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121817/EXTRACTION_REPORT.md
+  - Data extractor skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-data-extractor/SKILL.md
+  - Loan doc finder skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-finder/SKILL.md
+  - Credit memo skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-credit-memo-generator/SKILL.md
+  - Loan doc mapper skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-mapper/SKILL.md
+  - Handoff agent: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md
+  - Global hooks config: ~/.claude/settings.json
+  - Paid-off loans source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/
+  - Active loans source: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-06-emergency-handoff.yaml (full read — primary prior reference, session fe17d541)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-05-emergency-handoff.yaml (full read — secondary reference)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (tail -30 — confirmed session fc12201c, developer spawns 19:20–19:25Z)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/metrics/agent-completions.log (tail -20 — confirmed 8 completions 19:21–19:28Z)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121817/EXTRACTION_REPORT.md (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121817/session-manifest.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260306-121442/extraction-schema.yaml (first 40 lines — confirmed 5-field schema)"
+  - "find /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/ -newer memory/handoffs/2026-03-06-emergency-handoff.yaml (new files after first handoff)"
+  - "git status --short (working tree state — same 5 untracked skill/agent items)"
+  - "git log --oneline -20 (HEAD still 04165e8, no new commits)"
+  - "git diff --stat HEAD~5..HEAD (recent commit file changes)"
+  - "git diff --name-only HEAD~3..HEAD (files touched in last 3 commits)"
+  - "python3 -c ... (parse ~/.claude/settings.json — hooks keys=[], count=0)"
+  - "ls -lt .claude/skills/ (skill directory timestamps)"
+  - "ls -lt .acos/sessions/data-extractor/ (two sessions: DDE-20260306-121442, DDE-20260306-121817)"
+  - "ls -lt memory/handoffs/ (handoff file timestamps)"
+  - "ls -lt .acos/state/ (runtime state — agent-lifecycle.log, oracle-audit.log)"
+  - "ls -lt planning/ (no active slices)"
+  - "ls -lt memory/decisions/ (single ADR from Feb 22)"
+  - "ls -lt .acos/evidence/ (current/ directory only)"
+  - "date -u (timestamp: 2026-03-06T19:52:32Z)"

@@ -1,0 +1,59 @@
+# ACOS Loan Document Finder — Classification Manifest
+# Written by classifier agent-{NN} during Phase 1
+
+agent_id: "agent-{NN}"
+session_id: "{session-id}"
+iteration: 1
+files_assigned: 0
+files_classified: 0
+timestamp: "YYYY-MM-DD HH:MM:SS"
+
+classifications:
+  - file_path: ""
+    filename: ""
+    source_dir: ""
+    file_type: ""            # pdf, docx, xlsx, etc.
+    file_size: ""            # Human-readable (e.g., "2.4 MB")
+
+    # Classification Result
+    assigned_category:
+      group: ""              # e.g., "Ascent" or "Waldorf"
+      document_type: ""      # e.g., "Third party inspector reports"
+      ccii_code: ""          # PRISM CCII code if available (e.g., "0612")
+    # Set assigned_category to null if UNMATCHED
+
+    confidence: ""           # high | medium | low
+    # high:   Exact match — document clearly IS this category
+    # medium: Likely match — strong indicators but some ambiguity
+    # low:    Possible match — weak indicators, needs QA verification
+
+    rationale: ""
+    # 2-3 sentences explaining WHY this classification was chosen.
+    # Reference specific content: page numbers, headings, key phrases,
+    # dates, parties mentioned, document structure.
+
+    content_summary: ""
+    # 2-3 sentence summary of the document's actual content.
+    # Key dates, parties, amounts, purpose.
+
+    alternate_categories: []
+    # If the document could match multiple categories, list alternatives:
+    # - group: ""
+    #   document_type: ""
+    #   confidence: ""
+    #   reason: ""
+
+    # Reclassification context (populated in Wigum iterations > 1)
+    previous_classification: null
+    # If reclassifying after QA feedback:
+    #   group: ""
+    #   document_type: ""
+    #   qa_feedback: "Reason for reclassification"
+
+# Summary
+summary:
+  matched: 0                 # Documents matching a category
+  unmatched: 0               # Documents matching no category
+  high_confidence: 0
+  medium_confidence: 0
+  low_confidence: 0

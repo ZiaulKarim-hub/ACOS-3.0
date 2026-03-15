@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACOS Loan Document Generator — Validation Result Schema
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Output schema for Phase 4 (Benchmark Validation).
+# Used by all three validator tiers:
+#   - Structural validators (Haiku)
+#   - Quality validators (Sonnet, section-scoped)
+#   - Global validators (Sonnet, full-document)
+#
+# The aggregator merges all findings into validation-report.yaml.
+#
+# This file is a TEMPLATE showing the expected structure.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Which benchmark dimension or scope was validated
+dimension: ""
+validator_tier: "structural|quality|global"
+agent_id: ""
+iteration: 0
+date_validated: ""
+
+# Per-criterion results
+results:
+  - criterion_id: ""
+    criterion_name: ""
+    severity: "required|recommended|nice-to-have"
+    verdict: "PASS|FAIL|N/A"
+    # Specific evidence supporting the verdict (quote the draft where possible)
+    evidence: ""
+    # For FAIL: what exactly is wrong
+    failure_detail: ""
+    # For FAIL: actionable fix instruction scoped to a specific section
+    fix_instruction: ""
+    # Which document section(s) are affected
+    affected_sections: []
+
+# Validator-level summary
+summary:
+  total_criteria: 0
+  passed: 0
+  failed: 0
+  not_applicable: 0
+  verdict: "PASS|FAIL"
+  key_issues:
+    - issue: ""
+      severity: "required|recommended|nice-to-have"
+      section: ""
+
+# Feedback for designers (section-scoped)
+# Only populated for FAIL results — consumed by Phase 3 on next iteration
+feedback_by_section:
+  # "[Section Name]":
+  #   - criterion_id: ""
+  #     instruction: ""
+  #     severity: "required|recommended|nice-to-have"

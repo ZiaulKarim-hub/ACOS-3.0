@@ -1,0 +1,84 @@
+# ACOS Loan Document Finder — QA Review Template
+# Written by adversarial QA agent during Phase 3
+
+agent_id: ""                 # qa-content | qa-completeness | qa-domain
+agent_role: ""               # Content Verifier | Completeness Auditor | Domain Expert
+session_id: "{session-id}"
+iteration: 1
+timestamp: "YYYY-MM-DD HH:MM:SS"
+
+# Per-Document Review (Content Verifier and Domain Expert)
+document_reviews:
+  - file_path: ""
+    filename: ""
+    assigned_category:
+      group: ""
+      document_type: ""
+
+    verdict: ""              # CONFIRMED | MISMATCH | QUESTIONABLE
+    # CONFIRMED:    Content clearly matches the assigned category
+    # MISMATCH:     Content does NOT match — wrong classification
+    # QUESTIONABLE: Content is ambiguous — needs human review or reclassification
+
+    evidence: ""
+    # Specific content that supports or contradicts the classification.
+    # Quote relevant text, reference page numbers, note key discrepancies.
+
+    suggested_correction: null
+    # If MISMATCH or QUESTIONABLE:
+    #   correct_category:
+    #     group: ""
+    #     document_type: ""
+    #   or: "NONE" if it matches no category
+    #   reasoning: ""
+
+    domain_flags: []
+    # Domain Expert only — institutional quality concerns:
+    # - flag: "Document is outdated (2019 Phase I for 2026 loan)"
+    #   severity: "warning"
+    # - flag: "Missing qualified professional signature"
+    #   severity: "critical"
+
+# Completeness Review (Completeness Auditor)
+completeness:
+  missing_categories_reviewed:
+    - group: ""
+      document_type: ""
+      search_exhaustive: true   # Did the auditor check ALL unmatched files?
+      candidates_found: []
+      # If candidates found:
+      # - file_path: ""
+      #   filename: ""
+      #   rationale: "Contains deposit entries with dates..."
+      #   confidence: "medium"
+      verdict: ""               # TRULY_MISSING | CANDIDATE_FOUND
+
+  additional_matches:
+    # Documents that should ALSO be included in existing categories:
+    # - file_path: ""
+    #   filename: ""
+    #   suggested_category:
+    #     group: ""
+    #     document_type: ""
+    #   rationale: ""
+
+  version_checks:
+    # Newer versions of already-matched documents:
+    # - current_file: ""
+    #   newer_file: ""
+    #   evidence: "Date on newer file is 2026-01 vs 2025-06"
+
+# Overall Agent Verdict
+overall:
+  verdict: ""                # PASS | FAIL
+  total_reviewed: 0
+  confirmed: 0
+  mismatches: 0
+  questionable: 0
+  new_candidates: 0
+  flags: []
+  # Summary list of all actionable flags:
+  # - type: "misclassification" | "new_candidate" | "domain_concern" | "version_update"
+  #   file: ""
+  #   detail: ""
+  #   action_required: ""    # "reclassify" | "add_to_output" | "replace_version" | "user_review"

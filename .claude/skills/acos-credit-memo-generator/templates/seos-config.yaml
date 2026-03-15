@@ -1,0 +1,79 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# SEOS Credit Memo — Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This file controls the credit memo generation pipeline.
+# Location: .acos/seos/config.yaml (per-project, user-editable)
+# Template: .claude/skills/seos-credit-memo/templates/seos-config.yaml
+#
+# First-run: the skill copies this template to .acos/seos/config.yaml
+# and prompts you to configure the paths below.
+#
+# Configure with: /seos-credit-memo status
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Paths ────────────────────────────────────────────────────────────────────
+# Path to directory containing example credit memos for extraction
+examples_path: ""
+
+# Base path for loan folders (each subfolder = one loan)
+loan_folder_base: ""
+
+# ── Extraction Settings ──────────────────────────────────────────────────────
+extraction:
+  # Maximum example documents to process (each gets its own design extractor)
+  max_design_agents: 10
+
+  # Benchmark dimensions — each gets its own extractor agent analyzing ALL examples
+  benchmark_dimensions:
+    - "Required Sections"
+    - "Data Completeness"
+    - "Financial Analysis Standards"
+    - "Risk Assessment Standards"
+    - "Compliance"
+    - "Language & Tone"
+    - "Formatting"
+
+# ── Generation Settings ──────────────────────────────────────────────────────
+generation:
+  # Maximum Wigum loop iterations before escalating to user
+  max_iterations: 3
+
+  # Minimum analyzer agents per loan folder
+  min_analyzers: 3
+
+  # Maximum analyzer agents per loan folder
+  max_analyzers: 15
+
+  # How to group documents for analysis: "per-doc" or "by-type"
+  # per-doc: 1 agent per document (better for small folders)
+  # by-type: group documents by type (better for large folders)
+  analyzer_strategy: "auto"
+
+  # Threshold for auto strategy: folders with more than this many docs use by-type
+  auto_strategy_threshold: 10
+
+# ── Memo Sections ────────────────────────────────────────────────────────────
+# Default sections for the credit memo. Phase 1 extraction may refine these
+# based on example documents. Each section gets its own designer agent.
+memo_sections:
+  - "Executive Summary"
+  - "Borrower Overview"
+  - "Transaction Summary"
+  - "Financial Analysis"
+  - "Collateral Analysis"
+  - "Risk Assessment"
+  - "Mitigants & Strengths"
+  - "Conditions & Covenants"
+  - "Recommendation"
+
+# ── Output Settings ──────────────────────────────────────────────────────────
+output:
+  # Format of the final credit memo
+  format: "markdown"
+
+  # Include validation report alongside final memo
+  include_validation_report: true
+
+  # Include data completeness assessment
+  include_data_gaps: true

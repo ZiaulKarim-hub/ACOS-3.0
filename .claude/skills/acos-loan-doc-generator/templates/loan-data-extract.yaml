@@ -1,0 +1,82 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACOS Loan Document Generator — Loan Data Extraction Schema
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Output schema for Phase 2 (Loan Folder Analysis).
+# Each analyzer agent produces one of these per document or document group.
+# The synthesizer merges all findings into loan-data.yaml (full) and
+# loan-data-brief.yaml (compact per-section).
+#
+# data_by_section keys should match the canonical section names from
+# the design-patterns.yaml for the current session — not hardcoded values.
+# Use the actual section names from the doc-type catalog for this run.
+#
+# This file is a TEMPLATE showing the expected structure.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Metadata about the analyzed document(s)
+source_documents:
+  - filename: ""
+    path: ""
+    document_type: ""
+    # financial-statement|appraisal|tax-return|legal-doc|insurance|
+    # environmental|borrower-application|third-party-report|other
+    page_count: 0
+    date_of_document: ""
+
+# Agent that produced this extraction
+agent_id: ""
+date_analyzed: ""
+
+# Extracted data points — mapped to document sections
+# Use the actual canonical section names for the current doc type
+# (e.g., "Executive Summary", "Risk Assessment", "Loan Terms & Conditions")
+data_by_section:
+  "[Section Name]":
+    - fact: ""
+      value: ""
+      source_document: ""
+      source_page: ""
+      confidence: 0.0
+
+# Entity directory — all entities mentioned in analyzed documents
+entities:
+  - name: ""
+    type: "person|organization|property|loan|other"
+    role: ""
+    details: ""
+
+# Key financial figures extracted (exact values, no rounding)
+financial_figures:
+  - metric: ""
+    value: ""
+    unit: ""
+    period: ""
+    source_document: ""
+    source_page: ""
+
+# Risk factors identified
+risk_factors:
+  - risk: ""
+    severity: "high|medium|low"
+    source_document: ""
+    details: ""
+
+# Conditions or requirements found
+conditions:
+  - condition: ""
+    type: "precedent|subsequent|ongoing"
+    source_document: ""
+    details: ""
+
+# Cross-reference issues (contradictions or inconsistencies found)
+cross_reference_issues:
+  - issue: ""
+    documents_involved: []
+    details: ""
+
+# Data completeness — what's present and what's missing
+data_completeness:
+  present: []
+  missing: []
+  notes: ""

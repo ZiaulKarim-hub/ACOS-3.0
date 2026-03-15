@@ -1,0 +1,131 @@
+timestamp: "2026-03-03T20:17:13Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  The March 3 2026 session (session ID 8600f487-b314-4c33-9798-66132b4b2ee2) was focused
+  on creating the acos-loan-doc-finder skill — the third in a suite of SEOS/financial
+  document processing skills built across the last two days. The skill is fully written
+  (SKILL.md at 22,044 bytes with 4 templates) but has not been committed to git and has
+  not been tested against a real loan folder. The handoff-agent was invoked twice in this
+  session (20:01Z and 20:16Z), indicating significant context pressure. The ACOS framework
+  itself has been stable since the last git commit (fa37403, Feb 25 2026).
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  - "Created .claude/skills/acos-loan-doc-finder/SKILL.md (22,044 bytes, Mar 3 12:59Z) — multi-agent loan document finder"
+  - "Created 4 templates under .claude/skills/acos-loan-doc-finder/templates/: classification-manifest.yaml (1,964 bytes), qa-review.yaml (2,751 bytes), session-manifest.yaml (1,508 bytes), final-report.md (2,409 bytes) — all created Mar 3 12:59–13:00Z"
+  - "Skill uses 3-tier swarm: Coordinator → parallel Document Classifier Agents → parallel Adversarial QA Agents with Wigum feedback loop (max 5 iterations)"
+  - "Skill leverages PRISM 252-item Due Diligence framework (CCII codes) for institutional-grade classification when available in knowledge graph"
+  - "Invocation signature: /acos-loan-doc-finder <source-dir-1> [source-dir-2] ... --output <output-folder> [--schema <schema-file>]"
+  - "Prior session (same day, earlier): Created acos-loan-doc-mapper with 7 templates — marked completed in archive/2026-03-03-completion-handoff.yaml"
+
+files_modified:
+  - path: ".claude/skills/acos-loan-doc-finder/SKILL.md"
+    changes: "New file (22,044 bytes). Phases 0-4: init/arg-parsing, parallel document classification, copy to output, adversarial QA review, final report. Wigum feedback loop for reclassification. PRISM CCII code integration. Safety rule: copies only, never modifies originals."
+  - path: ".claude/skills/acos-loan-doc-finder/templates/classification-manifest.yaml"
+    changes: "New file (1,964 bytes). Template for tracking per-document classification results."
+  - path: ".claude/skills/acos-loan-doc-finder/templates/qa-review.yaml"
+    changes: "New file (2,751 bytes). Template for adversarial QA agent output."
+  - path: ".claude/skills/acos-loan-doc-finder/templates/session-manifest.yaml"
+    changes: "New file (1,508 bytes). Master session tracking template."
+  - path: ".claude/skills/acos-loan-doc-finder/templates/final-report.md"
+    changes: "New file (2,409 bytes). Human-readable final report template."
+
+decisions_made:
+  - "acos-loan-doc-finder uses 3-tier swarm (not 4-phase like credit-memo-generator) — Coordinator + parallel Classifiers + parallel Adversarial QA"
+  - "Supports multiple source directories as positional varargs plus --output flag and optional --schema for custom categories"
+  - "Default schema uses PRISM 252-item DD framework CCII codes when available in knowledge graph"
+  - "Wigum loop capped at 5 iterations to prevent infinite reclassification cycles"
+  - "Copies documents to output — never moves or modifies originals (same safety rule as acos-loan-doc-sorter)"
+  - "If --output missing: prompt user. If no source dirs provided: prompt user."
+
+blockers:
+  - "GLOBAL SETTINGS HOOKS MISSING: ~/.claude/settings.json has an empty hooks section. auto-load-handoff.sh (SessionStart), context-monitor.sh (Stop), context-watchdog.sh (PreCompact), token-gate.sh (PreToolUse), and session-cleanup.sh (SessionEnd) are ALL absent. Only oracle-evaluate.py and check-scope.sh are present (in project settings.local.json). Context defense system is partially down — this is why handoff-agent is being invoked manually."
+  - "NEW SKILLS NOT COMMITTED: .claude/skills/acos-loan-doc-finder/, .claude/skills/acos-loan-doc-mapper/, .claude/skills/acos-credit-memo-generator/, and .claude/agents/handoff-agent.md are all untracked (confirmed via git status). No commits since fa37403 on Feb 25 2026."
+  - "NEW SKILLS NOT SYMLINKED GLOBALLY: acos-loan-doc-finder, acos-loan-doc-mapper, and acos-credit-memo-generator exist only in the project's .claude/skills/. They are NOT in ~/.claude/skills/. acos-loan-doc-sorter is at ~/.claude/skills/ as a direct directory (not a symlink) — created Mar 2 2026."
+  - "STARTER-TEMPLATES UNTRACKED: starter-templates/ directory remains untracked in git (last modified Feb 25)."
+
+next_actions:
+  - "IMMEDIATE: Verify acos-loan-doc-finder SKILL.md is complete — check Phase 3 QA and Phase 4 report sections are fully written (only first 80 lines were read in this handoff)"
+  - "Test acos-loan-doc-finder against a real loan folder, likely at /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/"
+  - "Commit untracked files to ACOS 3.0 git repo: .claude/skills/acos-loan-doc-finder/, .claude/skills/acos-loan-doc-mapper/, .claude/skills/acos-credit-memo-generator/, .claude/agents/handoff-agent.md, starter-templates/"
+  - "Fix global hooks: re-register auto-load-handoff.sh as SessionStart hook in ~/.claude/settings.json — this is the most critical fix to restore context defense"
+  - "Decide whether to symlink the 3 new SEOS skills to ~/.claude/skills/ for global availability"
+  - "Update MEMORY.md to add acos-loan-doc-finder to the skill inventory (currently documents only acos-loan-doc-mapper and acos-credit-memo-generator)"
+
+context_for_next_session: |
+  THE ACOS 3.0 FRAMEWORK IS STABLE. The last git commit (fa37403) was Feb 25 2026
+  and archived all handoffs after the adversarial review remediation sprint. No framework
+  commits have been made since. All subsequent work is operational skill creation.
+
+  ACTIVE WORK — SEOS/FINANCIAL DOCUMENT SKILL SUITE (3 skills, none committed):
+
+  1. acos-credit-memo-generator
+     Path: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-credit-memo-generator/SKILL.md
+     Size: 28,043 bytes, created Mar 2 2026
+     4-phase swarm: Extract design patterns → Analyze loan folder → Design memo sections → Validate
+     6 templates in templates/ directory
+     Wigum validation loop until benchmarks pass
+     Config: .acos/seos/config.yaml | Sessions: .acos/seos/sessions/
+
+  2. acos-loan-doc-mapper
+     Path: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-mapper/SKILL.md
+     Size: 15,618 bytes, created Mar 3 morning
+     4-phase pipeline: Extract form fields → Extract answers → Build provenance → QA
+     7 templates in templates/ directory
+     Status: COMPLETED (per archive/2026-03-03-completion-handoff.yaml)
+
+  3. acos-loan-doc-finder  ← TODAY'S WORK (IN PROGRESS — not yet tested)
+     Path: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-finder/SKILL.md
+     Size: 22,044 bytes, created Mar 3 afternoon (12:59Z)
+     3-tier swarm: Coordinator → parallel Document Classifiers → parallel Adversarial QA
+     Phases 0-4: init → classify → copy → QA/Wigum → report
+     4 templates: classification-manifest, qa-review, session-manifest, final-report
+     Invocation: /acos-loan-doc-finder <source-dir-1> [source-dir-2] ... --output <folder> [--schema <file>]
+
+  RELATIONSHIP TO EXISTING SKILL:
+  - acos-loan-doc-sorter is at ~/.claude/skills/acos-loan-doc-sorter/ (58,261 bytes, OKOA-specific 22-category sorter)
+  - acos-loan-doc-finder is DIFFERENT — it finds and copies documents matching user-specified categories
+  - acos-sort-fixer (global skill) audits/corrects acos-loan-doc-sorter output
+
+  CONTEXT DEFENSE IS PARTIALLY DOWN:
+  ~/.claude/settings.json hooks section is empty. The project settings.local.json is intact
+  (oracle-evaluate.py + check-scope.sh) but the 5 global hooks are missing. This explains
+  why handoff-agent is being invoked manually — the auto-handoff system is not firing.
+  Priority fix: re-register auto-load-handoff.sh as SessionStart hook in ~/.claude/settings.json.
+
+  SECOND HANDOFF IN SAME SESSION:
+  This is the second handoff-agent invocation in session 8600f487 (first at 20:01Z, second
+  at 20:16Z per agent-lifecycle.log). The first handoff (2026-03-03-emergency-handoff.yaml)
+  captured identical state. This second handoff is a fresh independent verification of the
+  same facts, confirming the first handoff was accurate.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-03-emergency-handoff.yaml (full read — prior handoff from same session)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-03-03-completion-handoff.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-finder/SKILL.md (first 80 lines)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (tail -30)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/oracle-audit.log (tail -5)"
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/"
+  - "ls -lt memory/handoffs/archive/ (head -10)"
+  - "ls -la .acos/state/"
+  - "ls -lt .claude/skills/"
+  - "ls -lt .claude/agents/"
+  - "ls -lt .claude/skills/acos-loan-doc-finder/"
+  - "ls -lt .claude/skills/acos-loan-doc-finder/templates/"
+  - "ls -lt .claude/skills/acos-loan-doc-mapper/ and acos-credit-memo-generator/"
+  - "ls -lt ~/.claude/skills/ (head -20)"

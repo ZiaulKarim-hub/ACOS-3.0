@@ -1,0 +1,48 @@
+timestamp: "2026-03-12T22:00:00Z"
+status: "completed"
+session_summary: |
+  Extracted Form 1098 data from the Ward/Coslin Ave loan folder (9 documents analyzed).
+  Found all key fields including lender EIN (87-1011507) from Okoa W-9. Then updated the
+  acos-data-extractor skill: removed bloat causing acos-plan confusion (agent: architect,
+  preflight bootstrap, model selection), added clickable document links to all output formats.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Extracted all IRS Form 1098 fields for Ward/Coslin Ave loan from 9 source documents"
+  - "Created extraction schema at .acos/sessions/data-extractor/ward-coslin-1098-20260312/extraction-schema.yaml"
+  - "Created extraction results at .acos/sessions/data-extractor/ward-coslin-1098-20260312/extraction-results.yaml"
+  - "Found Okoa Capital LLC EIN (87-1011507) from W-9 in Okoa Taxes directory"
+  - "Identified remaining gap: Box 1 interest requires exact calculation from payoff spreadsheets"
+  - "Updated acos-data-extractor skill: removed agent:architect (root cause of acos-plan confusion)"
+  - "Updated acos-data-extractor skill: removed preflight bootstrap, model selection, external model dispatch"
+  - "Updated acos-data-extractor skill: added clickable file:// document links throughout output format"
+
+files_modified:
+  - path: ".claude/skills/acos-data-extractor/SKILL.md"
+    changes: "Removed agent:architect, preflight, model selection, external dispatch. Added Agent to allowed-tools. Added clickable link format to Phase 3 output."
+  - path: ".acos/sessions/data-extractor/ward-coslin-1098-20260312/extraction-schema.yaml"
+    changes: "New file - Form 1098 schema with 19 fields"
+  - path: ".acos/sessions/data-extractor/ward-coslin-1098-20260312/extraction-results.yaml"
+    changes: "New file - complete extraction results with provenance"
+
+decisions_made:
+  - "Removed agent:architect from data-extractor skill because it loaded architect's skills (acos-plan, acos-interview) into the forked context, causing confusion"
+  - "Added Agent to allowed-tools so the skill can spawn parallel agents directly without architect"
+  - "Chose file:// URI format for clickable links with percent-encoded spaces"
+
+blockers: []
+
+next_actions:
+  - "Calculate exact Box 1 interest from payoff spreadsheets (Payoff Statememt_Ward Coslin Ave.xlsx)"
+  - "Test the updated acos-data-extractor skill by running /acos-data-extractor on a new loan folder"
+  - "Consider similar cleanup for acos-loan-doc-mapper and other skills that use agent:architect"
+
+context_for_next_session: |
+  The Ward/Coslin Ave Form 1098 extraction is complete except for Box 1 (exact interest per tax year).
+  The payoff spreadsheets in the loan folder have the payment history needed for this calculation.
+  The acos-data-extractor skill was streamlined but has not been tested post-changes.

@@ -1,0 +1,196 @@
+# QA Checklist — Phase 2: Extraction Verification (per QA agent)
+# Used by all QA agents (3 standard + 1 Domain Expert if PRISM enabled).
+# ALL standard agents (Value, Completeness, Provenance) must PASS for overall PASS.
+# Domain Expert crash is INCONCLUSIVE but non-blocking — standard agents govern pass/fail.
+
+session_id: "{session-id}"
+phase: 2
+iteration: 1
+agent_id: ""                # qa-value | qa-completeness | qa-provenance
+agent_role: ""              # Value Verifier | Completeness Auditor | Provenance Auditor
+review_date: "YYYY-MM-DD HH:MM:SS"
+
+verdict: ""                 # PASS | FAIL
+
+# ── Value Verifier Section ──
+value_verification:
+  total_fields_checked: 0
+  results:
+    - field_id: ""
+      extracted_value: ""
+      source_file: ""
+      page: 0
+      verdict: ""           # VERIFIED | INCORRECT | UNVERIFIABLE
+      detail: ""
+      # If INCORRECT: what is the actual value?
+      actual_value: null
+      # If UNVERIFIABLE: why can't it be verified?
+      unverifiable_reason: null
+
+  criteria:
+    - id: "V-C01"
+      description: "All currency values are exact character-by-character transcriptions"
+      result: ""            # YES | NO
+      evidence: ""
+
+    - id: "V-C02"
+      description: "All names letter-perfect (capitalization, spacing, suffixes)"
+      result: ""
+      evidence: ""
+
+    - id: "V-C03"
+      description: "All dates exact transcriptions (no format conversion)"
+      result: ""
+      evidence: ""
+
+    - id: "V-C04"
+      description: "No fabricated values (every answer traces to source)"
+      result: ""
+      evidence: ""
+
+    - id: "V-C05"
+      description: "Multi-value field instance counts match reality"
+      result: ""
+      evidence: ""
+
+    - id: "V-C06"
+      description: "Confidence ratings are honest and appropriate"
+      result: ""
+      evidence: ""
+
+# ── Completeness Auditor Section ──
+completeness_audit:
+  not_found_fields_reviewed: 0
+  skip_files_sampled: 0
+  results:
+    - field_id: ""
+      status_claimed: ""    # NOT_FOUND
+      skip_files_checked: 0
+      verdict: ""           # CONFIRMED_ABSENT | FOUND_IN_SKIP | FOUND_ADDITIONAL
+      detail: ""
+      # If FOUND_IN_SKIP:
+      found_in:
+        file_path: ""
+        page: 0
+        evidence: ""
+
+  criteria:
+    - id: "C-C01"
+      description: "NOT_FOUND fields verified — data genuinely absent from corpus"
+      result: ""
+      evidence: ""
+
+    - id: "C-C02"
+      description: "No SKIP files contain data for NOT_FOUND fields (5+ sampled per field)"
+      result: ""
+      evidence: ""
+
+    - id: "C-C03"
+      description: "Multi-value fields captured ALL instances (not just first few)"
+      result: ""
+      evidence: ""
+
+    - id: "C-C04"
+      description: "All MAYBE files were included in extraction (none accidentally dropped)"
+      result: ""
+      evidence: ""
+
+# ── Provenance Auditor Section ──
+provenance_audit:
+  total_citations_checked: 0
+  spot_check_percentage: 0  # should be >= 50%
+  results:
+    - field_id: ""
+      source_file: ""
+      cited_page: 0
+      verdict: ""           # VALID | INVALID_PAGE | INVALID_SECTION | MISQUOTED | FABRICATED
+      detail: ""
+
+  criteria:
+    - id: "P-C01"
+      description: "Cited page numbers exist and contain relevant content"
+      result: ""
+      evidence: ""
+
+    - id: "P-C02"
+      description: "Cited sections exist on the cited pages"
+      result: ""
+      evidence: ""
+
+    - id: "P-C03"
+      description: "Verbatim quotes are actually verbatim (not paraphrased or truncated)"
+      result: ""
+      evidence: ""
+
+    - id: "P-C04"
+      description: "Quotes contain the extracted values"
+      result: ""
+      evidence: ""
+
+    - id: "P-C05"
+      description: "At least 50% of all citations spot-checked"
+      result: ""
+      evidence: ""
+
+# ── Domain Expert Section (PRISM-only — omit if prism_integration: false) ──
+domain_expert_audit:
+  total_fields_checked: 0
+  results:
+    - field_id: ""
+      verdict: ""           # INSTITUTIONAL_PASS | AUTHORITY_CONCERN | DOMAIN_FLAG | COMPLETENESS_GAP
+      detail: ""
+      source_file: ""
+      ccii_code_claimed: ""
+      ccii_code_actual: ""  # null if correct
+
+  criteria:
+    - id: "D-C01"
+      description: "Extracted values come from institutionally correct document types"
+      result: ""            # YES | NO
+      evidence: ""
+
+    - id: "D-C02"
+      description: "CCII codes assigned by extractors are accurate"
+      result: ""
+      evidence: ""
+
+    - id: "D-C03"
+      description: "Financial metrics fall within plausible ranges for deal size"
+      result: ""
+      evidence: ""
+
+    - id: "D-C04"
+      description: "Dates are internally consistent (origination before maturity, etc.)"
+      result: ""
+      evidence: ""
+
+    - id: "D-C05"
+      description: "Entity names are consistent across documents (same entity, different refs)"
+      result: ""
+      evidence: ""
+
+    - id: "D-C06"
+      description: "No standard DD documents missing that a senior analyst would expect"
+      result: ""
+      evidence: ""
+      missing_dd_documents: []
+      # - ccii_code: "0604"
+      #   document_type: "Title Report"
+      #   why_expected: "Real estate collateral requires title verification"
+
+    - id: "D-C07"
+      description: "Conflict resolutions follow correct authority hierarchy"
+      result: ""
+      evidence: ""
+
+# Overall agent summary
+summary:
+  pass_count: 0
+  fail_count: 0
+  flagged_fields: []
+  # - field_id: ""
+  #   issue: ""
+  #   action: "re-extract | fix-provenance | add-source | user-review"
+  #   priority: "high | medium | low"
+
+notes: null

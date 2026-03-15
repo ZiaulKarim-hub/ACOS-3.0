@@ -1,0 +1,119 @@
+# ACOS Data Extractor — Session Manifest
+# Master tracking document for the data-extractor pipeline
+# Created at Phase 0, updated at each phase boundary
+
+session_id: "{session-id}"
+created: "YYYY-MM-DD HH:MM:SS"
+status: "in-progress"  # in-progress | completed | escalated | failed
+
+# Input Configuration
+source_directories:
+  - path: ""
+    file_count: 0
+    pdf: 0
+    docx: 0
+    xlsx: 0
+    txt: 0
+    images: 0
+    other: 0
+
+output_directory: ""
+
+# PRISM Integration
+prism_integration: false    # true if PRISM DD framework detected and loaded
+
+# Extraction Schema
+schema:
+  source: ""              # path to schema file or "interactive"
+  field_count: 0
+  multi_fields: 0         # count of fields with multi: true
+  fields_summary: []
+  # - id: "origination_date"
+  #   name: "Loan Origination Date"
+  #   type: "date"
+  #   multi: false
+
+# Agent Configuration
+agents:
+  triage_count: 0         # 2-15 based on token budget
+  triage_model: ""        # Resolved via resolve-agent-model.sh
+  extractor_count: 0      # 2-7 based on triaged file count
+  extractor_model: ""     # Resolved via resolve-agent-model.sh
+  qa_model: ""            # Resolved via resolve-agent-model.sh
+
+# Phase Tracking
+phases:
+  phase_0:
+    status: "pending"     # pending | complete | failed
+    started: null
+    completed: null
+    total_files_inventoried: 0
+
+  phase_1:
+    status: "pending"     # pending | in_progress | complete | failed | escalated
+    started: null
+    completed: null
+    agents_spawned: 0
+    qa_gate:
+      iterations: 0
+      max_iterations: 3
+      final_verdict: null   # PASS | FAIL | ESCALATED
+      verdicts: []
+    triage_results:
+      relevant: 0
+      maybe: 0
+      skip: 0
+      deep_extraction_target: 0
+
+  phase_2:
+    status: "pending"     # pending | in_progress | complete | failed | escalated
+    started: null
+    completed: null
+    agents_spawned: 0
+    wigum:
+      max_iterations: 5
+      current_iteration: 0
+      history: []
+      # - iteration: 1
+      #   flag_count: 4
+      #   re_extracted: 2
+      #   verdict: "FAIL"
+      convergence_stuck: false
+    qa_gate:
+      iterations: 0
+      final_verdict: null   # PASS | FAIL | ESCALATED
+      value_flags: 0
+      completeness_flags: 0
+      provenance_flags: 0
+      domain_flags: 0       # Domain Expert flags (PRISM-only, non-blocking)
+
+  phase_3:
+    status: "pending"     # pending | complete | failed
+    started: null
+    completed: null
+    outputs:
+      extraction_report: null
+      extraction_results: null
+      provenance_record: null
+
+# Final Results (populated at Phase 3)
+results:
+  total_files_scanned: 0
+  files_triaged: 0
+  files_contributed_data: 0
+  total_fields: 0
+  fields_found: 0
+  fields_not_found: 0
+  fields_conflicted: 0
+  unresolved_conflicts: 0
+  high_confidence: 0       # fields with confidence >= 90%
+  medium_confidence: 0    # fields with confidence 60-89%
+  low_confidence: 0       # fields with confidence < 60%
+  qa_iterations_total: 0
+  final_verdict: ""       # PASS | PASS_WITH_WARNINGS | ESCALATED
+
+# Model assignments (resolved at Phase 0)
+models:
+  triage: null
+  extractors: null
+  qa_reviewer: null

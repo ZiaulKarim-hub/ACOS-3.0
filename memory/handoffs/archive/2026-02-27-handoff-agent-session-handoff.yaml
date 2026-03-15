@@ -1,0 +1,57 @@
+timestamp: "2026-02-27T01:25:00Z"
+status: "completed"
+session_summary: |
+  Created the emergency handoff system — a new handoff-agent and global /acos-handoff skill
+  that can capture session state even when the main context window is exhausted. Fixed broken
+  symlink issue for global skill distribution. Deployed handoff-agent to okoa-wiki project.
+
+current_work:
+  slice_id: "N/A"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "completed"
+
+completed_this_session:
+  - "Created .claude/agents/handoff-agent.md — emergency agent that runs in its own context window, reads project state from disk (git, planning, evidence, decisions), produces structured YAML handoff"
+  - "Created /acos-handoff global skill at ~/.claude/skills/acos-handoff/SKILL.md — ultra-minimal launcher that just spawns the handoff-agent via Task()"
+  - "Fixed broken symlink: ~/.claude/skills/acos-handoff was a symlink to the project-level skill; replaced with a real directory + file"
+  - "Copied handoff-agent.md to okoa-wiki project (.claude/agents/handoff-agent.md) so /acos-handoff works there"
+  - "Updated MEMORY.md — agent count 8→9, noted global skill addition, noted symlink issue"
+
+files_modified:
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "New file — emergency handoff agent definition (sonnet model, Read/Write/Glob/Grep/Bash tools, 20 maxTurns, 5-step protocol)"
+  - path: "~/.claude/skills/acos-handoff/SKILL.md"
+    changes: "New global skill — minimal launcher with allowed-tools: Task(handoff-agent) only"
+  - path: "~/Documents/Vibe Coding/okoa-wiki/.claude/agents/handoff-agent.md"
+    changes: "Copied handoff-agent to okoa-wiki project for cross-project availability"
+
+decisions_made:
+  - "Agent uses sonnet model (cost-effective for structured data gathering, not creative work)"
+  - "Skill is global (available in all projects), agent is project-level (reads project-specific paths)"
+  - "Agent has Edit in disallowedTools — can only create new handoff files, never modify existing project files"
+  - "Handoff type is 'emergency-manual' to distinguish from mechanical-stop and mechanical-compact types"
+  - "Replaced broken symlink with real directory — global skills should not depend on ACOS 3.0 project path"
+
+blockers: []
+
+next_actions:
+  - "Add handoff-agent.md to the acos-embed-skills portable agent list so new ACOS projects get it automatically"
+  - "Consider replacing other symlinked global skills (acos-complete, acos-start, acos-status, acos-oracle-protocol) with real files to avoid future breakage"
+  - "Test /acos-handoff in okoa-wiki by starting a new session and invoking it"
+  - "Commit the new handoff-agent.md to ACOS 3.0 repo"
+
+context_for_next_session: |
+  This session added an emergency handoff system as a safety net for when auto-handoff fails.
+  The system has two components: a global skill (/acos-handoff) and a project-level agent
+  (handoff-agent). The skill is ultra-minimal (~50 words) so it can execute even with very
+  few tokens remaining — it just spawns the agent via Task(), which gets its own fresh context
+  window. The agent then reads all project state from disk and produces a structured YAML handoff.
+
+  Key finding: several global skills (acos-complete, acos-start, acos-status, acos-oracle-protocol)
+  are symlinks pointing back to ACOS 3.0 project directory. These will break if the project is
+  moved. The acos-handoff symlink was already broken (we deleted the project-level source) and
+  was replaced with a real directory. The others should be migrated similarly.
+
+  The handoff-agent was also copied to okoa-wiki for immediate use there. Long-term, it should
+  be part of the acos-embed-skills portable set.

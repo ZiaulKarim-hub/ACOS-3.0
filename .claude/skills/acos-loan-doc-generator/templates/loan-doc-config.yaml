@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACOS Loan Document Generator — Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Location: .acos/loan-doc-generator/config.yaml (per-project, user-editable)
+# Template: .claude/skills/acos-loan-doc-generator/templates/loan-doc-config.yaml
+#
+# First-run: copied here automatically by the skill.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Design Library ────────────────────────────────────────────────────────────
+design_library:
+  # Root path for the design library
+  path: ".acos/loan-doc-generator/design-library"
+
+  # Automatically add new design extractions to the library
+  auto_add_new_designs: true
+
+  # Prompt user to provide a label when adding a new design
+  prompt_for_label: true
+
+# ── Extraction Settings ───────────────────────────────────────────────────────
+extraction:
+  # Maximum example documents to process in Phase 1 Track A
+  max_design_agents: 10
+
+# ── Phase 2 Cache ─────────────────────────────────────────────────────────────
+cache:
+  # Root path for Phase 2 loan folder analysis cache
+  path: ".acos/loan-doc-generator/cache"
+
+  # Offer to reuse Phase 2 results when the same loan folder is analyzed again
+  enable_phase2_cache: true
+
+# ── Generation Settings ───────────────────────────────────────────────────────
+generation:
+  # Maximum Wigum loop iterations before escalating to user
+  max_iterations: 3
+
+  # Minimum analyzer agents for Phase 2
+  min_analyzers: 3
+
+  # Maximum analyzer agents for Phase 2
+  max_analyzers: 15
+
+  # How to group documents for Phase 2 analysis
+  # per-doc: 1 agent per document (best for small folders)
+  # by-type: group by document classification (best for large folders)
+  # auto: use by-type if doc count > auto_strategy_threshold
+  analyzer_strategy: "auto"
+
+  # Threshold for auto strategy switch
+  auto_strategy_threshold: 10
+
+# ── Output Settings ───────────────────────────────────────────────────────────
+output:
+  # Output format for generated documents
+  format: "markdown"
+
+  # Include validation report alongside final document
+  include_validation_report: true
+
+  # Include data completeness assessment in output
+  include_data_gaps: true

@@ -1,0 +1,116 @@
+# Mapping Session Manifest
+# Master tracking document for the loan-doc-mapper pipeline
+# Created at Phase 0, updated at each phase boundary
+
+session_id: "[LDM-YYYY-MM-DD-HH-MM]"
+created_date: "[YYYY-MM-DD HH:MM:SS]"
+status: "[in_progress | complete | escalated | failed]"
+
+# Inputs
+target_form:
+  path: "[absolute path]"
+  filename: "[filename]"
+  format: "[pdf | docx | xlsx | txt | other]"
+  page_count: 0
+
+loan_folder:
+  path: "[absolute path]"
+  total_files: 0
+  by_format:
+    pdf: 0
+    docx: 0
+    xlsx: 0
+    txt: 0
+    images: 0
+    other: 0
+  unsupported_files: []
+  empty_files: []
+
+# Evidence bundle location
+evidence_path: ".acos/evidence/[DATE]/loan-doc-mapper-[SESSION-ID]/"
+
+# Phase tracking
+phases:
+  phase_0:
+    status: "[pending | complete | failed]"
+    started: "[YYYY-MM-DD HH:MM:SS]"
+    completed: null
+    notes: null
+
+  phase_1:
+    status: "[pending | in_progress | complete | failed | escalated]"
+    started: null
+    completed: null
+    agents_spawned: 0
+    qa_gate:
+      iterations: 0
+      max_iterations: 3
+      final_verdict: "[PASS | REJECT | ESCALATED]"
+      verdicts: []
+      # verdicts:
+      #   - iteration: 1
+      #     verdict: "[PASS | REJECT]"
+      #     pass_count: 0
+      #     fail_count: 0
+      #     failed_criteria: []
+    outputs:
+      field_registry: null     # path when written
+      source_inventory: null   # path when written
+    notes: null
+
+  phase_2:
+    status: "[pending | in_progress | complete | failed | escalated]"
+    started: null
+    completed: null
+    extractor_count: 0
+    agents_spawned: 0
+    qa_gate:
+      iterations: 0
+      max_iterations: 3
+      final_verdict: "[PASS | REJECT | ESCALATED]"
+      verdicts: []
+    outputs:
+      answer_map: null         # path when written
+      provenance_record: null  # path when written
+      conflict_resolutions: null
+    statistics:
+      total_fields: 0
+      found: 0
+      not_found: 0
+      conflicts: 0
+      unresolved_conflicts: 0
+    notes: null
+
+  phase_3:
+    status: "[pending | in_progress | complete | failed | escalated]"
+    started: null
+    completed: null
+    agents_spawned: 0
+    qa_gate:
+      iterations: 0
+      max_iterations: 3
+      final_verdict: "[PASS | REJECT | ESCALATED]"
+      verdicts: []
+    outputs:
+      completed_document: null  # path when written
+      population_log: null      # path when written
+      summary_report: null      # path when written
+    statistics:
+      total_fields: 0
+      populated: 0
+      not_found: 0
+      conflicts_resolved: 0
+      unresolved_conflicts: 0
+    notes: null
+
+# Model assignments (resolved at Phase 0)
+models:
+  form_analyst: null
+  source_inventory: null
+  extractors: null
+  document_writer: null
+  qa_reviewer: null
+
+# Data integrity rules applied
+data_integrity_rules_version: "1.0"
+data_integrity_rules_ref: "See SKILL.md ## Data Integrity Rules"

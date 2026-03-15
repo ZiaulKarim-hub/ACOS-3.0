@@ -1,0 +1,80 @@
+# QA Checklist — Phase 1: Triage Completeness Verification
+# Binary YES/NO evaluation. ALL criteria must be YES for PASS.
+# Reviewer: qa-reviewer agent (adversarial posture)
+# Input: triage-manifest.yaml + extraction-schema.yaml + 15% sample of SKIP files
+
+session_id: "{session-id}"
+phase: 1
+iteration: 1
+reviewer: "qa-reviewer"
+review_date: "YYYY-MM-DD HH:MM:SS"
+
+verdict: ""                 # PASS | FAIL
+
+# SKIP file sample verification
+skip_sample:
+  total_skip_files: 0
+  sample_size: 0            # ~15% of skip files
+  sample_verified: 0
+  misclassified_found: 0
+  misclassified_files: []
+  # - file_path: ""
+  #   should_be: "RELEVANT"
+  #   suspected_fields: ["origination_date"]
+  #   evidence: "Page 2 contains closing date reference"
+
+criteria:
+  - id: "T-C01"
+    description: "Every file in inventory has a triage classification"
+    result: ""              # YES | NO
+    evidence: ""
+
+  - id: "T-C02"
+    description: "No schema field has ZERO candidate files (unless genuinely absent)"
+    result: ""
+    evidence: ""
+    # For any field with 0 candidates: reviewer must search 10+ SKIP files
+    # to confirm the data truly isn't there
+
+  - id: "T-C03"
+    description: "SKIP file sample verified — no relevant files incorrectly skipped"
+    result: ""
+    evidence: ""
+
+  - id: "T-C04"
+    description: "Triage agents read actual content, not just filenames"
+    result: ""
+    evidence: ""
+    # Check: do content summaries reflect real document content?
+
+  - id: "T-C05"
+    description: "Spreadsheet triage checked sheet names and column headers"
+    result: ""
+    evidence: ""
+
+  - id: "T-C06"
+    description: "MAYBE classifications have reasonable rationale"
+    result: ""
+    evidence: ""
+
+  - id: "T-C07"
+    description: "Conservative bias applied — no borderline files marked SKIP"
+    result: ""
+    evidence: ""
+
+  - id: "T-C08"
+    description: "Multi-value fields have sufficient candidate files for completeness"
+    result: ""
+    evidence: ""
+    # e.g., if looking for 12 months of payments, are there enough source files?
+
+# Summary
+pass_count: 0
+fail_count: 0
+failed_criteria: []
+# - id: "T-C02"
+#   finding: "Field 'tax_parcel_id' has 0 candidates but file 'tax-assessment.pdf' was SKIPped"
+#   affected_fields: ["tax_parcel_id"]
+#   remediation: "Re-triage tax-assessment.pdf and similar files"
+
+notes: null

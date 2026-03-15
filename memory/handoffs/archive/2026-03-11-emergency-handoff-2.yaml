@@ -1,0 +1,283 @@
+timestamp: "2026-03-11T23:10:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Today (Mar 11) had two major sessions. Session 77d870f5 (morning/afternoon) completed the
+  Monarch Townhomes External Credit Memo via /acos-loan-doc-generator and integrated OpenCode
+  + GLM-5 model profiles via Doppler. Session 15a19056 (evening, ~22:18Z–23:05Z) performed a
+  major architectural refactor of /acos-loan-doc-generator: the monolithic 300K-token skill
+  was split into 3 delegated phase-orchestrator agents (loan-doc-phase1, loan-doc-phase2,
+  loan-doc-phase34), a phases/ directory with 4 phase instruction files, and an updated SKILL.md
+  that stays thin (~25K tokens). The session also fixed the acos CLI to auto-invoke /acos-start
+  via --prompt flag and discussed numerical accuracy improvement approaches for the credit memo.
+
+current_work:
+  slice_id: "N/A — no active ACOS planning slices"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+
+  - >
+    MONARCH TOWNHOMES EXTERNAL CREDIT MEMO — COMPLETE (session 77d870f5):
+    All 4 phases of /acos-loan-doc-generator ran to completion.
+    Final PDF (409KB) delivered to Dropbox loan folder.
+    Path: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf
+    Data gaps preserved as TBD (Rate, Term, Fee, Guarantee, Default Interest, Extension Terms,
+    Projected IRR, Contact info) — all require LOI negotiation before filling.
+
+  - >
+    OPENCODE + GLM-5 INTEGRATION (session 77d870f5 / 15a19056):
+    OpenRouter API key in Doppler (project acos-3-0, config dev).
+    Model profiles glm-review and glm-heavy added to .acos/config/model-profile.yaml.
+    Scripts created: fallback-to-opencode.sh, set-skill-model.sh.
+    Step 0.0 Model Selection added to 6 token-heavy skills.
+    Shell aliases: oc (launch OpenCode+GLM-5), ocfallback (continue from handoff).
+    Security fix: hardcoded API key removed from ~/.zshrc, replaced with Doppler-sourced key.
+
+  - >
+    ACOS CLI FIX (session 15a19056):
+    automation-scripts/acos updated: `acos start` now runs `claude --prompt /acos-start`
+    instead of just `claude`. This auto-invokes /acos-start on session launch — one step for users.
+    Test: open new Warp window, run `acos start`, verify /acos-start prompt appears.
+
+  - >
+    LOAN-DOC-GENERATOR ARCHITECTURAL REFACTOR (session 15a19056 — MAJOR):
+    Problem: /acos-loan-doc-generator was accumulating 300K+ tokens in primary context due
+    to all agent spawning (Phase 3: 9 designers + assembler, Phase 4: 8 validators) happening
+    in the main window. Fix: delegate each phase to a specialized orchestrator agent.
+
+    New agents created (all untracked):
+      .claude/agents/loan-doc-phase1.md — Phase 1 orchestrator (model: opus, maxTurns: 80)
+        Owns design pattern extraction. Reads phases/phase1-extract.md for instructions.
+      .claude/agents/loan-doc-phase2.md — Phase 2 orchestrator (model: opus, maxTurns: 80)
+        Owns loan folder analysis. Reads phases/phase2-analyze.md for instructions.
+      .claude/agents/loan-doc-phase34.md — Phase 3+4 orchestrator (model: opus, maxTurns: 150)
+        Owns document design + validation + full Wigum loop. Self-contained iteration.
+        Reads phases/phase3-design.md and phases/phase4-validate.md for instructions.
+
+    New phase instruction files created (all untracked):
+      .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md (7488B, 16:20)
+      .claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md (7568B, 16:40)
+      .claude/skills/acos-loan-doc-generator/phases/phase3-design.md (6204B, 16:41)
+      .claude/skills/acos-loan-doc-generator/phases/phase4-validate.md (8313B, 16:41)
+
+    SKILL.md updated (untracked, 21579B at 16:55):
+      - Primary context now handles ONLY Phase 0 (interactive interview) + phase dispatch
+      - Uses Task(loan-doc-phase1), Task(loan-doc-phase2), Task(loan-doc-phase34)
+      - Result: primary context stays ~25K tokens instead of 300K+
+
+    Design principle used ("Agent-reads-from-disk"):
+      Phase agents are told WHERE files are, not given file contents in prompts.
+      Only small files (templates ~2KB, manifests ~1KB) are embedded; large docs are not.
+
+    Doc-type catalog updated:
+      .claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml (40895B at 16:54)
+      This is the 10-category document type catalog used in Step 0.1 of the interview wizard.
+
+  - >
+    NUMERICAL ACCURACY DISCUSSION (session 15a19056 — OPEN):
+    User raised concern about numerical accuracy in generated credit memos.
+    Three approaches proposed:
+      Approach A (Tell Me First): User provides all numbers upfront → agents fill in
+      Approach B (Find Then Verify): Agents extract numbers, show them to user for approval
+      Approach C (Your Choice): Agent decides per-number based on confidence level
+    User had not chosen an approach by end of session. RESUME THIS DISCUSSION.
+
+files_modified:
+  - path: ".claude/agents/loan-doc-phase1.md"
+    changes: "Created — Phase 1 orchestrator agent (design pattern extraction)"
+  - path: ".claude/agents/loan-doc-phase2.md"
+    changes: "Created — Phase 2 orchestrator agent (loan folder analysis)"
+  - path: ".claude/agents/loan-doc-phase34.md"
+    changes: "Created — Phase 3+4 orchestrator agent (design + validate + Wigum loop, maxTurns 150)"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase1-extract.md"
+    changes: "Created — Phase 1 instruction file for loan-doc-phase1 agent"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md"
+    changes: "Created — Phase 2 instruction file for loan-doc-phase2 agent"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase3-design.md"
+    changes: "Created — Phase 3 instruction file for loan-doc-phase34 agent"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase4-validate.md"
+    changes: "Created — Phase 4 instruction file for loan-doc-phase34 agent"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Refactored to thin dispatcher — Phase 0 interview only, delegates phases to agents via Task()"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+    changes: "Updated — 10-category document type catalog (40895B)"
+  - path: ".claude/skills/acos-complete-vision/SKILL.md"
+    changes: "Added Step 0 Model Selection (tracked in git, has unstaged diff)"
+  - path: "automation-scripts/acos"
+    changes: "acos start command: claude → claude --prompt /acos-start (tracked, has unstaged diff)"
+  - path: ".claude/scripts/fallback-to-opencode.sh"
+    changes: "Created — OpenCode fallback with handoff auto-detection (untracked)"
+  - path: ".claude/scripts/set-skill-model.sh"
+    changes: "Created — session model profile switcher (untracked)"
+  - path: ".acos/config/model-profile.yaml"
+    changes: "Added glm-review and glm-heavy profiles"
+  - path: ".acos/config/providers.yaml"
+    changes: "Added z-ai/glm-5, z-ai/glm-4.7, z-ai/glm-4.5-air:free to OpenRouter models"
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf"
+    changes: "CREATED — final delivered PDF, 409264 bytes (Mar 11 14:34)"
+
+decisions_made:
+  - "Architectural decision: loan-doc-generator phases delegated to separate agent context windows to keep primary context thin. Phase agents (loan-doc-phase1/2/34) are permanent agents in .claude/agents/."
+  - "Agent-reads-from-disk pattern: agents receive file paths, not file contents, in their prompts. Only small files (<5KB) may be embedded."
+  - "Phase 3+4 merged into one orchestrator (loan-doc-phase34) to keep Wigum loop iteration context in one window rather than bouncing between agents."
+  - "Output format: PDF in → PDF out. When design example is PDF, generated document delivered as PDF."
+  - "CONDITIONAL PASS verdict accepted for Monarch Townhomes memo — 13 post-validation fixes applied. Remaining 4 are data gaps requiring LOI."
+  - "OpenRouter API key managed via Doppler (project acos-3-0, config dev) — never hardcoded."
+  - "acos start CLI auto-invokes /acos-start via --prompt flag. Single step for non-technical users."
+  - "Numerical accuracy approach not yet chosen — resume with user in next session."
+
+blockers:
+  - >
+    CRITICAL — GLOBAL HOOKS ABSENT (confirmed persistent across all sessions today):
+    ~/.claude/settings.json has an empty hooks section. This is why manual handoff-agent
+    invocations are required every session. Auto-handoff, token-gate, session-cleanup,
+    and PreCompact mechanical handoffs are ALL non-functional.
+    Fix requires updating ~/.claude/settings.json (NOT .claude/settings.local.json) with:
+      SessionStart → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/auto-load-handoff.sh
+      Stop         → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/context-monitor.sh
+      PreCompact   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/context-watchdog.sh
+      PreToolUse   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/token-gate.sh
+                     (matcher: Bash|Write|Edit|NotebookEdit|Task)
+      SessionEnd   → /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/session-cleanup.sh
+    Alternatively: bash "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/acos-bootstrap.sh"
+    then verify ~/.claude/settings.json was updated (bootstrap sometimes only writes project settings).
+
+  - >
+    LARGE UNCOMMITTED BACKLOG — all untracked files, no commits today:
+    .claude/agents/handoff-agent.md
+    .claude/agents/loan-doc-phase1.md   (NEW today)
+    .claude/agents/loan-doc-phase2.md   (NEW today)
+    .claude/agents/loan-doc-phase34.md  (NEW today)
+    .claude/scripts/fallback-to-opencode.sh
+    .claude/scripts/set-skill-model.sh
+    .claude/skills/acos-credit-memo-generator/
+    .claude/skills/acos-data-extractor/
+    .claude/skills/acos-loan-doc-finder/
+    .claude/skills/acos-loan-doc-generator/   (MAJOR changes today — phases/ dir, SKILL.md, catalog)
+    .claude/skills/acos-loan-doc-mapper/
+    .claude/skills/acos-software-swarm-review/
+    docs/prd-loan-doc-generator.md
+    starter-templates/
+    Also 2 tracked files with unstaged changes:
+      .claude/skills/acos-complete-vision/SKILL.md (Step 0 Model Selection added)
+      automation-scripts/acos (acos start → claude --prompt /acos-start)
+
+  - >
+    NUMERICAL ACCURACY APPROACH UNDECIDED:
+    Three approaches (Tell Me First / Find Then Verify / Your Choice) were discussed
+    with user at end of session 15a19056. User did not select one. Next session should
+    resume this discussion and implement the chosen approach.
+
+  - >
+    MEMORY.md OVER LINE LIMIT (236 lines, limit 200):
+    SEOS/loan-doc detailed content should move to topic files. The system-reminder shows
+    only 200 lines were loaded — the bottom 36 lines are cut off.
+
+  - >
+    INCOMPLETE LOAN EXTRACTIONS (pre-existing, lower priority):
+    ETNA Washington Blvd (DDE-20260309-113312): schema only, pipeline never ran.
+    USA_Narbeck (DDE-20260308-185830, DDE-20260308-193647): two attempts, stalled after Phase 1.
+
+next_actions:
+  - >
+    PRIORITY 1 — Restore global hooks in ~/.claude/settings.json.
+    Run bootstrap and verify: bash "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/acos-bootstrap.sh"
+    Then check: python3 -c "import json; d=json.load(open('/Users/zee/.claude/settings.json')); print(list(d.get('hooks',{}).keys()))"
+    Should show hooks keys, not empty list.
+
+  - >
+    PRIORITY 2 — Commit everything:
+    Stage: git add .claude/agents/ .claude/scripts/fallback-to-opencode.sh .claude/scripts/set-skill-model.sh
+    Stage: git add .claude/skills/acos-credit-memo-generator/ .claude/skills/acos-data-extractor/
+    Stage: git add .claude/skills/acos-loan-doc-finder/ .claude/skills/acos-loan-doc-generator/
+    Stage: git add .claude/skills/acos-loan-doc-mapper/ .claude/skills/acos-software-swarm-review/
+    Stage: git add docs/prd-loan-doc-generator.md starter-templates/
+    Stage: git add .claude/skills/acos-complete-vision/SKILL.md automation-scripts/acos
+    Commit message: "feat: Refactor loan-doc-generator to phase-agent architecture; add GLM-5, CLI fix, new loan skills"
+
+  - >
+    PRIORITY 3 — Resolve numerical accuracy approach with user.
+    Resume discussion of 3 approaches. Implement chosen approach in loan-doc-generator pipeline.
+    Approach C (Your Choice / confidence-based) was the most sophisticated option discussed.
+
+  - >
+    PRIORITY 4 — Finish Monarch Townhomes memo for distribution:
+    Fill in 3 contact placeholders (Name, Phone, Email on CTA page).
+    Fill LOI-dependent fields once LOI negotiated (Rate, Term, Fee, Guarantee, Default Interest,
+    Extension Terms, Projected IRR). PDF ready for internal review now.
+
+  - >
+    PRIORITY 5 — Update MEMORY.md / create topic files:
+    Move SEOS credit memo and loan-doc sections to topic files to get under 200 line limit.
+    Add: loan-doc-generator architectural refactor, phase-agent pattern, OpenCode integration.
+
+  - >
+    PRIORITY 6 — Test acos start CLI:
+    Open new Warp window, run `acos start`, verify /acos-start is auto-invoked.
+
+  - >
+    PRIORITY 7 — Re-run incomplete loan extractions after addressing ETNA and USA_Narbeck.
+
+  - >
+    PRIORITY 8 — Create Claude-style custom theme for OpenCode (user expressed interest).
+
+context_for_next_session: |
+  THE MOST IMPORTANT CHANGE TODAY was the loan-doc-generator architectural refactor.
+  The skill previously accumulated 300K+ tokens because all phase work (9 designers,
+  8 validators, Wigum loop) happened in the primary context. The new architecture
+  delegates each phase to its own orchestrator agent:
+    - loan-doc-phase1 agent → runs Phase 1 (design extraction), reads phases/phase1-extract.md
+    - loan-doc-phase2 agent → runs Phase 2 (loan analysis), reads phases/phase2-analyze.md
+    - loan-doc-phase34 agent → runs Phase 3+4 + Wigum loop, reads both phase3-design.md and phase4-validate.md
+  The primary SKILL.md now handles ONLY Phase 0 (interactive wizard) and dispatches phases
+  via Task(loan-doc-phase1), Task(loan-doc-phase2), Task(loan-doc-phase34).
+
+  ALL OF THIS IS UNTRACKED. Nothing was committed today. If these files are lost, the
+  architectural refactor must be re-done from scratch.
+
+  MONARCH TOWNHOMES CREDIT MEMO STATUS:
+  - Final PDF delivered to Dropbox (Mar 11 14:34). Status: complete.
+  - Data gaps still present (Rate, Term, Fee, Guarantee, IRR, Contact info) — all TBD until LOI.
+  - Session 20260310-115334 is complete. No need to resume.
+
+  INFRASTRUCTURE ALERT:
+  ~/.claude/settings.json hooks section is empty. Every session is unprotected.
+  Fix this before running any long skill.
+
+  OPEN DISCUSSION (resume with user):
+  Numerical accuracy approaches for credit memo generation were discussed but not resolved.
+  User needs to pick Approach A, B, or C so implementation can proceed.
+
+  KEY FILE PATHS:
+  - Delivered PDF: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID/Monarch Townhomes — Credit Memo (External).pdf
+  - MD source: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase3-design/iteration-2/synthesis/document-draft.md
+  - Validation report: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260310-115334/phase4-validation/iteration-2/synthesis/validation-report.yaml
+  - Phase agents: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/loan-doc-phase{1,2,34}.md
+  - Phase instructions: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator/phases/
+  - Main skill: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator/SKILL.md
+  - Global hooks: ~/.claude/settings.json
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-11-emergency-handoff.yaml (full read — prior state through Monarch Townhomes PDF delivery, 15:12Z)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-03-11-completion-handoff.yaml (full read — OpenCode/GLM-5 integration details)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-03-11-completion-handoff-2.yaml (full read — acos CLI fix, numerical accuracy discussion, session 15a19056)"
+  - ".acos/state/agent-lifecycle.log tail -50 (confirmed session 15a19056 active 22:18Z–23:05Z, developer at 22:52Z, handoff-agent at 23:05Z)"
+  - "git status --short (confirmed all untracked files, 2 tracked files with unstaged changes)"
+  - "git log --oneline -20 (confirmed HEAD: 04165e8, no new commits today)"
+  - "git diff HEAD -- .claude/skills/acos-complete-vision/SKILL.md (confirmed Step 0 Model Selection added)"
+  - "ls -lt .claude/agents/ (confirmed 3 new loan-doc-phase agents at 16:22, all untracked)"
+  - "ls -lt .claude/skills/acos-loan-doc-generator/ (confirmed phases/ dir at 16:41, SKILL.md at 16:55)"
+  - "ls -lt .claude/skills/acos-loan-doc-generator/phases/ (confirmed all 4 phase files, timestamps 16:20-16:41)"
+  - "ls -lt .claude/skills/acos-loan-doc-generator/templates/ (confirmed doc-type-catalog.yaml at 16:54)"
+  - "Read .claude/agents/loan-doc-phase1.md (confirmed Phase 1 agent definition, model: opus)"
+  - "Read .claude/agents/loan-doc-phase2.md (confirmed Phase 2 agent definition)"
+  - "Read .claude/agents/loan-doc-phase34.md (confirmed Phase 3+4 agent definition, maxTurns: 150)"
+  - "Read .claude/skills/acos-loan-doc-generator/SKILL.md (confirmed thin dispatcher architecture)"
+  - "Read memory/handoffs/archive/2026-03-11-completion-handoff.yaml (status: completed, OpenCode session)"
+  - "Read memory/handoffs/2026-03-11-completion-handoff-2.yaml (status: completed, numerical accuracy discussion)"
+  - "git diff --stat HEAD~5..HEAD (confirmed scope of last 5 commits — Oracle hardening was last)"

@@ -83,6 +83,9 @@ Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomi
 - **integration-reviewer** — Cross-component coherence (read-only, isolated).
 - **memory-agent** — RAG retrieval and memory organization.
 - **learning-agent** — Cross-project knowledge extraction and application.
+- **loan-doc-phase1** — Phase 1 orchestrator for loan document generator (design extraction).
+- **loan-doc-phase2** — Phase 2 orchestrator for loan document generator (loan folder analysis).
+- **loan-doc-phase34** — Phase 3+4 orchestrator for loan document generator (design + validation + Wigum loop).
 
 ## Review Process
 Reviews are assigned programmatically by .claude/scripts/assign-reviewers.sh

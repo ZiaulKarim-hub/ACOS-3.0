@@ -1,0 +1,77 @@
+# ACOS Data Extractor — Extraction Schema Template
+# Define the fields you want to extract from your document collection.
+# Each field describes a specific data point to find.
+#
+# Usage: /acos-data-extractor /path/to/docs --schema this-file.yaml
+#
+# Field types: text, date, currency, number, percentage, address, phone,
+#              email, boolean, currency_with_date, text_list
+#
+# Set multi: true to collect ALL instances of a field (e.g., monthly payments)
+# Set multi: false (default) for single-value fields (e.g., origination date)
+
+schema_version: "1.0"
+domain: ""                # Optional: e.g., "real estate lending", "legal", "insurance"
+description: ""           # Optional: brief description of what this extraction covers
+
+fields:
+  - id: "example_date"
+    name: "Loan Origination Date"
+    type: date
+    multi: false
+    hints:
+      - "origination date"
+      - "closing date"
+      - "loan date"
+      - "effective date"
+      - "date of origination"
+    notes: ""              # Optional: additional context for the extractor
+
+  - id: "example_address"
+    name: "Property Address"
+    type: address
+    multi: false
+    hints:
+      - "property address"
+      - "subject property"
+      - "collateral address"
+      - "premises"
+      - "real property"
+    notes: ""
+
+  - id: "example_currency"
+    name: "Payoff Amount"
+    type: currency
+    multi: false
+    hints:
+      - "payoff amount"
+      - "pay-off"
+      - "total payoff"
+      - "outstanding balance"
+      - "principal balance"
+      - "amount due"
+    notes: ""
+
+  - id: "example_multi_currency"
+    name: "Payments to Investors"
+    type: currency_with_date
+    multi: true
+    hints:
+      - "investor payment"
+      - "distribution"
+      - "disbursement"
+      - "payment to"
+      - "investor distribution"
+      - "payout"
+    notes: "Collect every payment with its date and amount"
+
+# Add your fields below. Delete the examples above.
+# fields:
+#   - id: "your_field_id"
+#     name: "Human-Readable Field Name"
+#     type: date
+#     multi: false
+#     hints:
+#       - "keyword 1"
+#       - "keyword 2"
+#     notes: ""

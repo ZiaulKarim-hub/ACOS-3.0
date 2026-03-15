@@ -1,0 +1,1642 @@
+# ===============================================================================
+# ACOS Loan Document Generator — Document Type Catalog
+# ===============================================================================
+#
+# Defines all supported document types using hierarchical document_id values.
+# Each entry provides:
+#   - document_id: hierarchical identifier (category/document-name)
+#   - category_id: grouping category for the document
+#   - default_sections: section list with full_data_access flag
+#   - benchmark_dimensions: for Phase 1 Track B + Phase 4 quality validators
+#   - structural_benchmark_items: simple checklist items for Haiku validators
+#   - designer_tone_directive: injected into every Phase 3 section designer
+#   - critical_figures: document-specific financial figures for human-in-the-loop
+#     Each figure has: key, label, hint, group (for display), required (bool)
+#     The skill generates a dynamic YAML template from these at runtime.
+#
+# full_data_access: true  -> section designer receives full loan-data.yaml
+# full_data_access: false -> section designer receives section brief only
+#                           (can still read loan-data.yaml via Read tool if needed)
+# ===============================================================================
+
+documents:
+
+  # ============================================================================
+  # CATEGORY A: Credit Underwriting
+  # ============================================================================
+
+  # -- A1. Internal Credit Memo ------------------------------------------------
+  - document_id: credit-underwriting/internal-credit-memo
+    category_id: credit-underwriting
+    label: "Credit Memo — Internal"
+    default_page_range: [8, 15]
+    default_sections:
+      - name: "Executive Summary"
+        full_data_access: true
+      - name: "Borrower & Sponsor Overview"
+        full_data_access: false
+      - name: "Transaction Summary"
+        full_data_access: false
+      - name: "Financial Analysis"
+        full_data_access: false
+      - name: "Collateral Analysis"
+        full_data_access: false
+      - name: "Risk Assessment"
+        full_data_access: false
+      - name: "Stress Testing"
+        full_data_access: false
+      - name: "Mitigants & Strengths"
+        full_data_access: false
+      - name: "Conditions & Covenants"
+        full_data_access: false
+      - name: "Recommendation"
+        full_data_access: true
+    benchmark_dimensions:
+      - "Required Sections Completeness"
+      - "Data Completeness & Accuracy"
+      - "Risk Coverage"
+      - "Financial Analysis Standards"
+      - "Stress Testing Rigor"
+      - "Recommendation Clarity"
+      - "Language & Tone"
+    structural_benchmark_items:
+      - "All 10 required sections are present in order"
+      - "Table of contents present and accurate"
+      - "Single footer/signature block at document end only (STRUCT-001)"
+      - "No footer or signature content embedded within section bodies"
+      - "Date and loan reference on title page"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Loan Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Loan Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.25% or SOFR + 350bps"
+        group: "Loan Terms"
+        required: true
+      - key: loan_term_months
+        label: "Loan Term"
+        hint: "e.g., 36 months"
+        group: "Loan Terms"
+        required: true
+      - key: maturity_date
+        label: "Maturity Date"
+        hint: "e.g., 2029-03-15"
+        group: "Loan Terms"
+        required: false
+      - key: amortization
+        label: "Amortization"
+        hint: "e.g., 360 months or Interest Only"
+        group: "Loan Terms"
+        required: false
+      # -- Property / Collateral --
+      - key: property_value
+        label: "Property Value (Appraised)"
+        hint: "e.g., 22000000"
+        group: "Collateral"
+        required: true
+      - key: property_type
+        label: "Property Type"
+        hint: "e.g., Multifamily, Office, Industrial"
+        group: "Collateral"
+        required: false
+      - key: occupancy_rate
+        label: "Occupancy Rate"
+        hint: "e.g., 94.5%"
+        group: "Collateral"
+        required: false
+      # -- Financial Metrics --
+      - key: noi
+        label: "NOI"
+        hint: "Net Operating Income, e.g., 1650000"
+        group: "Financial Metrics"
+        required: true
+      - key: dscr
+        label: "DSCR"
+        hint: "Debt Service Coverage Ratio, e.g., 1.35"
+        group: "Financial Metrics"
+        required: true
+      - key: ltv
+        label: "LTV"
+        hint: "Loan-to-Value, e.g., 68.2%"
+        group: "Financial Metrics"
+        required: true
+      - key: cap_rate
+        label: "Cap Rate"
+        hint: "e.g., 7.5%"
+        group: "Financial Metrics"
+        required: false
+      - key: debt_yield
+        label: "Debt Yield"
+        hint: "e.g., 11.0%"
+        group: "Financial Metrics"
+        required: false
+      # -- Borrower --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Borrower"
+        required: true
+      - key: sponsor_name
+        label: "Sponsor Name"
+        hint: "e.g., John Smith"
+        group: "Borrower"
+        required: false
+    designer_tone_directive: |
+      This is an INTERNAL credit memo for the credit committee. Be direct and
+      analytical. Lead with risks, not strengths. Every material risk must be
+      named, quantified where possible, and accompanied by a specific mitigant.
+      Stress test scenarios must be conservative and specific. The recommendation
+      must be unambiguous. Tone: formal institutional analysis. Do not soften or
+      hedge around negative findings — the committee needs the full picture.
+
+  # -- A2. External Credit Memo ------------------------------------------------
+  - document_id: credit-underwriting/external-credit-memo
+    category_id: credit-underwriting
+    label: "Credit Memo — External"
+    default_page_range: [5, 10]
+    default_sections:
+      - name: "Opportunity Headline"
+        full_data_access: true
+      - name: "Deal at a Glance"
+        full_data_access: false
+      - name: "Why This Deal"
+        full_data_access: true
+      - name: "The Asset"
+        full_data_access: false
+      - name: "The Borrower"
+        full_data_access: false
+      - name: "The Numbers"
+        full_data_access: false
+      - name: "Market Context"
+        full_data_access: false
+      - name: "Structure & Protections"
+        full_data_access: false
+      - name: "Call to Action"
+        full_data_access: true
+    benchmark_dimensions:
+      - "Headline & Hook Strength"
+      - "Scannability"
+      - "Thesis Coherence"
+      - "Asset Presentation"
+      - "Numbers Selection"
+      - "Objection Handling"
+      - "Call to Action Clarity"
+      - "Professional Marketing Tone"
+    structural_benchmark_items:
+      - "All 9 sections present"
+      - "Deal at a Glance is a scannable table or structured box — not prose"
+      - "Why This Deal has 3-5 distinct bullet points — not a paragraph"
+      - "Call to Action has a specific next step (contact, process, or deadline)"
+      - "Single footer/contact block at document end only (STRUCT-001)"
+      - "No footer content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Loan Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Loan Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.25% or SOFR + 350bps"
+        group: "Loan Terms"
+        required: true
+      - key: loan_term_months
+        label: "Loan Term"
+        hint: "e.g., 36 months"
+        group: "Loan Terms"
+        required: true
+      # -- Investment Thesis --
+      - key: property_value
+        label: "Property Value (Appraised)"
+        hint: "e.g., 22000000"
+        group: "Investment Thesis"
+        required: true
+      - key: purchase_price
+        label: "Purchase Price"
+        hint: "e.g., 20000000"
+        group: "Investment Thesis"
+        required: false
+      - key: ltv
+        label: "LTV"
+        hint: "Loan-to-Value, e.g., 68.2%"
+        group: "Investment Thesis"
+        required: true
+      - key: dscr
+        label: "DSCR"
+        hint: "Debt Service Coverage Ratio, e.g., 1.35"
+        group: "Investment Thesis"
+        required: false
+      # -- Return Profile --
+      - key: cap_rate
+        label: "Cap Rate"
+        hint: "e.g., 7.5%"
+        group: "Return Profile"
+        required: false
+      - key: debt_yield
+        label: "Debt Yield"
+        hint: "e.g., 11.0%"
+        group: "Return Profile"
+        required: false
+      - key: noi
+        label: "NOI"
+        hint: "Net Operating Income, e.g., 1650000"
+        group: "Return Profile"
+        required: false
+      # -- Deal Principals --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Deal Principals"
+        required: true
+      - key: sponsor_name
+        label: "Sponsor Name"
+        hint: "e.g., John Smith"
+        group: "Deal Principals"
+        required: false
+    designer_tone_directive: |
+      This is an EXTERNAL credit memo — it is a marketing and advertising
+      document. You are writing to attract capital partners and brokers, not
+      to interrogate the deal. Advertising principles apply:
+      - Lead with the opportunity and the return, not the structure or risk
+      - Every section should make the reader want to participate
+      - Use vivid, confident, specific language — not hedged financial prose
+      - Risks exist only as "managed risks" with strong mitigants leading
+      - Numbers are selected to support the thesis — do not dump all data
+      - Headlines and subheadings should be compelling, not generic
+      - The document must be visually scannable: short paragraphs, bullets,
+        callout boxes, bolded key metrics
+      - End with urgency and a clear, specific call to action
+      Tone: professional investment marketing. NOT an internal memo.
+
+  # -- A3. Term Sheet ----------------------------------------------------------
+  - document_id: credit-underwriting/term-sheet
+    category_id: credit-underwriting
+    label: "Term Sheet"
+    default_page_range: [2, 5]
+    default_sections:
+      - name: "Deal Overview"
+        full_data_access: true
+      - name: "Proposed Loan Terms"
+        full_data_access: true
+      - name: "Property Summary"
+        full_data_access: false
+      - name: "Borrower Summary"
+        full_data_access: false
+      - name: "Conditions Precedent"
+        full_data_access: false
+      - name: "Fees & Expenses"
+        full_data_access: false
+      - name: "Expiry & Acceptance"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Terms Completeness & Precision"
+      - "Table Format & Scannability"
+      - "Conditions Precedent Coverage"
+      - "Fee Schedule Clarity"
+      - "Binding vs. Non-Binding Designation"
+      - "Expiry & Acceptance Mechanics"
+      - "Conciseness"
+    structural_benchmark_items:
+      - "Proposed Loan Terms presented in table format, not prose"
+      - "All key economic terms listed (amount, rate, term, fees)"
+      - "Binding/non-binding designation explicitly stated"
+      - "Expiry date or validity period stated"
+      - "Acceptance signature block at document end (STRUCT-001)"
+      - "No signature content within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Deal Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Deal Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.25% or SOFR + 350bps"
+        group: "Deal Terms"
+        required: true
+      - key: loan_term_months
+        label: "Loan Term"
+        hint: "e.g., 36 months"
+        group: "Deal Terms"
+        required: true
+      - key: ltv
+        label: "LTV"
+        hint: "Loan-to-Value, e.g., 68.2%"
+        group: "Deal Terms"
+        required: false
+      # -- Property --
+      - key: property_value
+        label: "Property Value"
+        hint: "e.g., 22000000"
+        group: "Property"
+        required: false
+      # -- Fees --
+      - key: origination_fee
+        label: "Origination Fee"
+        hint: "e.g., 1.0% or 150000"
+        group: "Fees"
+        required: false
+      - key: exit_fee
+        label: "Exit Fee"
+        hint: "e.g., 0.5% or 75000"
+        group: "Fees"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a term sheet. Be concise, tabular, and precise. The Proposed Loan
+      Terms section MUST be a structured table — never prose. Every rate, fee,
+      condition, and deadline must be specific and unambiguous. Non-binding
+      provisions must be clearly distinguished from binding ones. Avoid narrative
+      — let the terms speak for themselves. The reader should be able to scan
+      every material term in under two minutes.
+
+  # -- A4. Deal Memo -----------------------------------------------------------
+  - document_id: credit-underwriting/deal-memo
+    category_id: credit-underwriting
+    label: "Deal Memo"
+    default_page_range: [3, 6]
+    default_sections:
+      - name: "Deal Summary"
+        full_data_access: true
+      - name: "Investment Thesis"
+        full_data_access: true
+      - name: "Transaction Structure"
+        full_data_access: false
+      - name: "Borrower & Sponsor"
+        full_data_access: false
+      - name: "Collateral Overview"
+        full_data_access: false
+      - name: "Risk Factors & Mitigants"
+        full_data_access: false
+      - name: "Recommendation"
+        full_data_access: true
+    benchmark_dimensions:
+      - "Thesis Clarity & Conviction"
+      - "Transaction Structure Completeness"
+      - "Risk-Mitigant Balance"
+      - "Borrower & Sponsor Analysis"
+      - "Collateral Coverage"
+      - "Recommendation Specificity"
+      - "Committee-Ready Conciseness"
+    structural_benchmark_items:
+      - "All 7 required sections present in order"
+      - "Investment Thesis leads with the core thesis, not background"
+      - "Risk Factors paired with specific mitigants"
+      - "Recommendation is unambiguous (approve/decline/conditional)"
+      - "Single footer/signature block at document end only (STRUCT-001)"
+      - "No footer or signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Deal Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Deal Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.25% or SOFR + 350bps"
+        group: "Deal Terms"
+        required: true
+      - key: ltv
+        label: "LTV"
+        hint: "Loan-to-Value, e.g., 68.2%"
+        group: "Deal Terms"
+        required: true
+      - key: dscr
+        label: "DSCR"
+        hint: "Debt Service Coverage Ratio, e.g., 1.35"
+        group: "Deal Terms"
+        required: false
+      # -- Collateral --
+      - key: property_value
+        label: "Property Value"
+        hint: "e.g., 22000000"
+        group: "Collateral"
+        required: true
+      - key: noi
+        label: "NOI"
+        hint: "Net Operating Income, e.g., 1650000"
+        group: "Collateral"
+        required: false
+      # -- Principals --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Principals"
+        required: true
+      - key: sponsor_name
+        label: "Sponsor Name"
+        hint: "e.g., John Smith"
+        group: "Principals"
+        required: false
+    designer_tone_directive: |
+      This is a concise committee presentation — a deal memo. Lead with the
+      investment thesis, not background. The committee has limited time: every
+      sentence must earn its place. Risk factors must be specific and paired
+      with concrete mitigants. The recommendation must be unambiguous. Tone:
+      confident, analytical, direct. Avoid hedging language. If the deal has
+      weaknesses, name them plainly and explain why the deal still works.
+
+  # -- A5. Scoping Letter ------------------------------------------------------
+  - document_id: credit-underwriting/scoping-letter
+    category_id: credit-underwriting
+    label: "Scoping Letter"
+    default_page_range: [1, 3]
+    default_sections:
+      - name: "Introduction"
+        full_data_access: true
+      - name: "Proposed Terms"
+        full_data_access: true
+      - name: "Conditions & Assumptions"
+        full_data_access: false
+      - name: "Next Steps"
+        full_data_access: false
+      - name: "Disclaimer"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Preliminary Terms Clarity"
+      - "Non-Binding Language Adequacy"
+      - "Conditions & Assumptions Coverage"
+      - "Next Steps Specificity"
+      - "Disclaimer Completeness"
+      - "Professional Tone"
+    structural_benchmark_items:
+      - "Non-binding / preliminary designation clearly stated"
+      - "Proposed terms presented at high level (ranges acceptable)"
+      - "Disclaimer section present and prominent"
+      - "Next steps section present with actionable items"
+      - "Single footer/signature block at document end only (STRUCT-001)"
+      - "No footer or signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Preliminary Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000 (range acceptable, e.g., 12M-15M)"
+        group: "Preliminary Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.00%-7.50% or SOFR + 300-350bps"
+        group: "Preliminary Terms"
+        required: true
+      - key: loan_term_months
+        label: "Loan Term"
+        hint: "e.g., 36 months"
+        group: "Preliminary Terms"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: property_address
+        label: "Property Address"
+        hint: "e.g., 123 Main St, City, ST 12345"
+        group: "Parties"
+        required: false
+    designer_tone_directive: |
+      This is a preliminary scoping letter expressing initial interest. Tone must
+      be professional, preliminary, and explicitly non-binding. Use qualifying
+      language throughout — "subject to," "preliminary," "indicative." Ranges are
+      acceptable for rates and amounts at this stage. Do not make commitments or
+      use language that could be construed as binding. The letter signals interest
+      and outlines what further diligence is needed before formal terms can be
+      offered.
+
+  # ============================================================================
+  # CATEGORY B: Closing & Administration
+  # ============================================================================
+
+  # -- B1. Closing Summary -----------------------------------------------------
+  - document_id: closing-admin/closing-summary
+    category_id: closing-admin
+    label: "Closing Summary"
+    default_page_range: [3, 8]
+    default_sections:
+      - name: "Transaction Summary"
+        full_data_access: true
+      - name: "Parties & Contacts"
+        full_data_access: true
+      - name: "Conditions Precedent Checklist"
+        full_data_access: false
+      - name: "Required Documents Checklist"
+        full_data_access: false
+      - name: "Outstanding Items"
+        full_data_access: false
+      - name: "Closing Timeline"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Checklist Completeness"
+      - "Conditions Precedent Coverage"
+      - "Party & Contact Accuracy"
+      - "Outstanding Items Tracking"
+      - "Timeline Specificity"
+      - "Procedural Clarity"
+    structural_benchmark_items:
+      - "Checklist items are numbered and actionable"
+      - "Responsible party assigned to each checklist item"
+      - "Closing date or timeline stated"
+      - "Outstanding items clearly flagged with owner and deadline"
+      - "Single footer/signature block at document end only (STRUCT-001)"
+      - "No footer or signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Transaction --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Transaction"
+        required: true
+      - key: purchase_price
+        label: "Purchase Price"
+        hint: "e.g., 20000000"
+        group: "Transaction"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      - key: title_company
+        label: "Title Company"
+        hint: "e.g., First American Title"
+        group: "Parties"
+        required: false
+      - key: escrow_agent
+        label: "Escrow Agent"
+        hint: "e.g., National Escrow Services"
+        group: "Parties"
+        required: false
+      # -- Dates --
+      - key: closing_date
+        label: "Closing Date"
+        hint: "e.g., 2026-05-15"
+        group: "Dates"
+        required: true
+      - key: funding_date
+        label: "Funding Date"
+        hint: "e.g., 2026-05-15"
+        group: "Dates"
+        required: false
+    designer_tone_directive: |
+      This is a closing summary document. Completeness and procedural clarity
+      take priority over narrative. Every checklist item must be specific,
+      actionable, and assigned to a responsible party. Timelines must be specific
+      (dates, not durations). Use checklists and tables wherever possible —
+      avoid prose where a list serves better. The reader should be able to
+      track every outstanding item and its owner at a glance.
+
+  # -- B2. Settlement Statement ------------------------------------------------
+  - document_id: closing-admin/settlement-statement
+    category_id: closing-admin
+    label: "Settlement Statement"
+    default_page_range: [2, 5]
+    default_sections:
+      - name: "Transaction Summary"
+        full_data_access: true
+      - name: "Sources of Funds"
+        full_data_access: true
+      - name: "Uses of Funds"
+        full_data_access: true
+      - name: "Prorations & Adjustments"
+        full_data_access: false
+      - name: "Net Disbursement"
+        full_data_access: true
+      - name: "Certification"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Sources & Uses Balance"
+      - "Line-Item Detail"
+      - "Proration Accuracy"
+      - "Net Disbursement Calculation"
+      - "Certification Completeness"
+      - "Financial Precision"
+    structural_benchmark_items:
+      - "Sources of Funds total equals Uses of Funds total"
+      - "Every line item has a specific dollar amount"
+      - "Prorations show calculation basis (per-diem, period)"
+      - "Net disbursement clearly stated"
+      - "Certification/signature block at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Transaction --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Transaction"
+        required: true
+      - key: purchase_price
+        label: "Purchase Price"
+        hint: "e.g., 20000000"
+        group: "Transaction"
+        required: false
+      - key: net_disbursement_amount
+        label: "Net Disbursement Amount"
+        hint: "e.g., 14650000"
+        group: "Transaction"
+        required: true
+      # -- Fees & Costs --
+      - key: origination_fee
+        label: "Origination Fee"
+        hint: "e.g., 1.0% or 150000"
+        group: "Fees & Costs"
+        required: false
+      - key: title_insurance_premium
+        label: "Title Insurance Premium"
+        hint: "e.g., 25000"
+        group: "Fees & Costs"
+        required: false
+      - key: escrow_deposit
+        label: "Escrow Deposit"
+        hint: "e.g., 150000"
+        group: "Fees & Costs"
+        required: false
+      - key: recording_fees
+        label: "Recording Fees"
+        hint: "e.g., 5000"
+        group: "Fees & Costs"
+        required: false
+      # -- Prorations --
+      - key: prorated_taxes
+        label: "Prorated Taxes"
+        hint: "e.g., 12500"
+        group: "Prorations"
+        required: false
+      - key: prorated_insurance
+        label: "Prorated Insurance"
+        hint: "e.g., 3500"
+        group: "Prorations"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a settlement statement — a precise financial document. Every dollar
+      must be accounted for. Sources of Funds must equal Uses of Funds exactly.
+      Present all figures in tabular format with clear line-item detail. Prorations
+      must show the calculation basis (daily rate, period covered). The net
+      disbursement must be unambiguous. Tone: precise, financial, authoritative.
+      No narrative — let the numbers speak.
+
+  # -- B3. Escrow Instructions -------------------------------------------------
+  - document_id: closing-admin/escrow-instructions
+    category_id: closing-admin
+    label: "Escrow Instructions"
+    default_page_range: [2, 4]
+    default_sections:
+      - name: "Parties & Escrow Agent"
+        full_data_access: true
+      - name: "Escrow Conditions"
+        full_data_access: false
+      - name: "Document Delivery Requirements"
+        full_data_access: false
+      - name: "Disbursement Instructions"
+        full_data_access: true
+      - name: "Contingencies & Cancellation"
+        full_data_access: false
+      - name: "Escrow Fees"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Escrow Conditions Specificity"
+      - "Document Delivery Completeness"
+      - "Disbursement Instruction Clarity"
+      - "Contingency Coverage"
+      - "Fee Transparency"
+      - "Directive Precision"
+    structural_benchmark_items:
+      - "All parties and escrow agent identified with full names"
+      - "Escrow conditions are specific and verifiable"
+      - "Document delivery requirements listed with deadlines"
+      - "Disbursement instructions are unambiguous"
+      - "Cancellation terms explicitly stated"
+      - "Signature block at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Escrow --
+      - key: escrow_deposit
+        label: "Escrow Deposit"
+        hint: "e.g., 150000"
+        group: "Escrow"
+        required: true
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Escrow"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      - key: escrow_agent
+        label: "Escrow Agent"
+        hint: "e.g., National Escrow Services"
+        group: "Parties"
+        required: true
+      # -- Dates --
+      - key: closing_date
+        label: "Closing Date"
+        hint: "e.g., 2026-05-15"
+        group: "Dates"
+        required: true
+    designer_tone_directive: |
+      This is an escrow instruction document. Every instruction must be precise,
+      directive, and unambiguous. Conditions must be specific and verifiable —
+      not subjective. Disbursement instructions must leave no room for
+      interpretation. Use imperative language: "Escrow Agent shall..." rather
+      than "Escrow Agent may..." Document delivery deadlines must be specific
+      dates, not durations. Tone: precise, directive, authoritative.
+
+  # -- B4. Wire Instructions ---------------------------------------------------
+  - document_id: closing-admin/wire-instructions
+    category_id: closing-admin
+    label: "Wire Instructions"
+    default_page_range: [1, 2]
+    default_sections:
+      - name: "Transaction Reference"
+        full_data_access: true
+      - name: "Beneficiary Information"
+        full_data_access: true
+      - name: "Bank Details"
+        full_data_access: true
+      - name: "Amount & Reference"
+        full_data_access: true
+      - name: "Verification Instructions"
+        full_data_access: false
+      - name: "Disclaimer"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Beneficiary Information Completeness"
+      - "Bank Details Accuracy"
+      - "Amount & Reference Precision"
+      - "Verification Protocol Presence"
+      - "Disclaimer Adequacy"
+      - "Zero Ambiguity"
+    structural_benchmark_items:
+      - "All bank details present (name, routing, account)"
+      - "Wire amount stated with exact figures"
+      - "Reference/memo line specified"
+      - "Verification callback instructions present"
+      - "Disclaimer regarding wire fraud present"
+      - "Single footer at document end only (STRUCT-001)"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Wire Details --
+      - key: wire_amount
+        label: "Wire Amount"
+        hint: "e.g., 15000000"
+        group: "Wire Details"
+        required: true
+      - key: beneficiary_name
+        label: "Beneficiary Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Wire Details"
+        required: true
+      - key: bank_name
+        label: "Bank Name"
+        hint: "e.g., JPMorgan Chase Bank, N.A."
+        group: "Wire Details"
+        required: true
+      - key: routing_number
+        label: "ABA Routing Number (SENSITIVE)"
+        hint: "e.g., 021000021"
+        group: "Wire Details"
+        required: true
+      - key: account_number
+        label: "Account Number (SENSITIVE)"
+        hint: "e.g., 123456789"
+        group: "Wire Details"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: false
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: false
+    designer_tone_directive: |
+      This is a wire instruction document. There must be ZERO ambiguity. Every
+      field must be exact — no abbreviations, no shorthand, no approximations.
+      Bank details must be complete and precisely formatted. Include verification
+      callback instructions to prevent wire fraud. Include a standard wire fraud
+      disclaimer. Tone: exact, no ambiguity, no narrative. Present bank details
+      in a clean, clearly labeled format that minimizes transcription errors.
+      NOTE: routing_number and account_number are SENSITIVE — flag them clearly.
+
+  # -- B5. Transaction Checklist -----------------------------------------------
+  - document_id: closing-admin/transaction-checklist
+    category_id: closing-admin
+    label: "Transaction Checklist"
+    default_page_range: [3, 8]
+    default_sections:
+      - name: "Pre-Closing Tasks"
+        full_data_access: true
+      - name: "Day-of-Closing Tasks"
+        full_data_access: false
+      - name: "Post-Closing Tasks"
+        full_data_access: false
+      - name: "Responsible Party Matrix"
+        full_data_access: true
+      - name: "Status Tracker"
+        full_data_access: false
+      - name: "Notes"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Task Completeness"
+      - "Responsible Party Assignment"
+      - "Timeline Accuracy"
+      - "Status Tracking Mechanism"
+      - "Pre/Day-of/Post Categorization"
+      - "Actionability"
+    structural_benchmark_items:
+      - "Every task has a responsible party assigned"
+      - "Every task has a deadline or target date"
+      - "Tasks categorized into pre-closing, day-of, and post-closing"
+      - "Status tracker has clear status options (pending, in-progress, complete)"
+      - "Responsible party matrix is in table format"
+      - "Single footer at document end only (STRUCT-001)"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Dates --
+      - key: closing_date
+        label: "Closing Date"
+        hint: "e.g., 2026-05-15"
+        group: "Dates"
+        required: true
+      - key: funding_date
+        label: "Funding Date"
+        hint: "e.g., 2026-05-15"
+        group: "Dates"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a transaction checklist — an actionable tracking document. Every
+      task must be specific, assignable, and time-bound. Use checkbox format
+      for tasks. The responsible party matrix must be a clear table. Status
+      tracking should use consistent, unambiguous status labels. Avoid narrative
+      — this document is for execution, not explanation. Tone: actionable,
+      status-tracking, operationally precise.
+
+  # ============================================================================
+  # CATEGORY C: Portfolio Management
+  # ============================================================================
+
+  # -- C1. Payoff Statement ----------------------------------------------------
+  - document_id: portfolio-management/payoff-statement
+    category_id: portfolio-management
+    label: "Payoff Statement"
+    default_page_range: [1, 3]
+    default_sections:
+      - name: "Loan Reference"
+        full_data_access: true
+      - name: "Outstanding Balance Breakdown"
+        full_data_access: true
+      - name: "Payoff Amount"
+        full_data_access: true
+      - name: "Wire Instructions"
+        full_data_access: true
+      - name: "Conditions for Release"
+        full_data_access: false
+      - name: "Contact Information"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Balance Breakdown Accuracy"
+      - "Per-Diem Calculation"
+      - "Good-Through Date Specificity"
+      - "Payoff Amount Precision"
+      - "Release Conditions Completeness"
+      - "Wire Instructions Presence"
+    structural_benchmark_items:
+      - "Outstanding balance broken into principal, accrued interest, fees"
+      - "Per-diem interest rate stated"
+      - "Good-through date explicitly stated"
+      - "Payoff amount clearly totaled"
+      - "Wire instructions present or referenced"
+      - "Single footer at document end only (STRUCT-001)"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Balance --
+      - key: unpaid_principal_balance
+        label: "Unpaid Principal Balance"
+        hint: "e.g., 14500000"
+        group: "Balance"
+        required: true
+      - key: accrued_interest
+        label: "Accrued Interest"
+        hint: "e.g., 85000"
+        group: "Balance"
+        required: true
+      - key: per_diem_interest
+        label: "Per Diem Interest"
+        hint: "e.g., 2876.71"
+        group: "Balance"
+        required: true
+      - key: payoff_amount
+        label: "Payoff Amount"
+        hint: "e.g., 14735000"
+        group: "Balance"
+        required: true
+      - key: good_through_date
+        label: "Good-Through Date"
+        hint: "e.g., 2026-04-30"
+        group: "Balance"
+        required: true
+      # -- Fees & Penalties --
+      - key: prepayment_penalty
+        label: "Prepayment Penalty"
+        hint: "e.g., 150000 or None"
+        group: "Fees & Penalties"
+        required: false
+      - key: late_fees
+        label: "Late Fees"
+        hint: "e.g., 25000 or None"
+        group: "Fees & Penalties"
+        required: false
+      # -- Loan Reference --
+      - key: loan_amount
+        label: "Original Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Loan Reference"
+        required: true
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Loan Reference"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Loan Reference"
+        required: true
+    designer_tone_directive: |
+      This is a payoff statement — a precise financial statement issued by the
+      lender. Every dollar amount must be exact and traceable. The outstanding
+      balance must be broken down into its components: principal, accrued
+      interest, fees, and per-diem. The payoff amount must include a specific
+      good-through date. Tone: precise, authoritative, financial. This document
+      may be relied upon by title companies and closing agents — accuracy is
+      non-negotiable.
+
+  # -- C2. Redemption Statement ------------------------------------------------
+  - document_id: portfolio-management/redemption-statement
+    category_id: portfolio-management
+    label: "Redemption Statement"
+    default_page_range: [1, 3]
+    default_sections:
+      - name: "Investor Reference"
+        full_data_access: true
+      - name: "Redemption Amount Calculation"
+        full_data_access: true
+      - name: "Timing & Payment Method"
+        full_data_access: false
+      - name: "Tax Withholding"
+        full_data_access: false
+      - name: "Wire Instructions"
+        full_data_access: true
+      - name: "Contact Information"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Redemption Calculation Transparency"
+      - "NAV & Units Accuracy"
+      - "Tax Withholding Disclosure"
+      - "Payment Timing Specificity"
+      - "Wire Instructions Completeness"
+      - "Investor-Facing Clarity"
+    structural_benchmark_items:
+      - "Redemption amount calculation shown step-by-step"
+      - "NAV per unit and units redeemed clearly stated"
+      - "Redemption date specified"
+      - "Tax withholding addressed (even if N/A)"
+      - "Wire instructions present or referenced"
+      - "Single footer at document end only (STRUCT-001)"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Redemption --
+      - key: redemption_amount
+        label: "Redemption Amount"
+        hint: "e.g., 5000000"
+        group: "Redemption"
+        required: true
+      - key: investor_name
+        label: "Investor Name"
+        hint: "e.g., Apex Pension Fund"
+        group: "Redemption"
+        required: true
+      - key: fund_name
+        label: "Fund Name"
+        hint: "e.g., XYZ Real Estate Fund III"
+        group: "Redemption"
+        required: true
+      - key: units_redeemed
+        label: "Units Redeemed"
+        hint: "e.g., 50000"
+        group: "Redemption"
+        required: true
+      - key: nav_per_unit
+        label: "NAV per Unit"
+        hint: "e.g., 100.00"
+        group: "Redemption"
+        required: true
+      - key: redemption_date
+        label: "Redemption Date"
+        hint: "e.g., 2026-03-31"
+        group: "Redemption"
+        required: true
+    designer_tone_directive: |
+      This is a redemption statement for an investor. The redemption amount
+      calculation must be transparent and shown step-by-step (units x NAV =
+      gross, minus withholding = net). Timing and payment method must be
+      specific. Tax withholding must be addressed even if not applicable.
+      Tone: precise, investor-facing, professional. The investor must be
+      able to verify every number independently.
+
+  # ============================================================================
+  # CATEGORY D: Loan Modifications
+  # ============================================================================
+
+  # -- D1. Extension Request ---------------------------------------------------
+  - document_id: loan-modifications/extension-request
+    category_id: loan-modifications
+    label: "Extension Request"
+    default_page_range: [2, 5]
+    default_sections:
+      - name: "Loan Reference"
+        full_data_access: true
+      - name: "Extension Request Details"
+        full_data_access: true
+      - name: "Current Loan Status"
+        full_data_access: false
+      - name: "Borrower Justification"
+        full_data_access: false
+      - name: "Proposed Terms"
+        full_data_access: false
+      - name: "Required Conditions"
+        full_data_access: false
+      - name: "Borrower Certification"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Extension Details Specificity"
+      - "Current Status Accuracy"
+      - "Justification Adequacy"
+      - "Proposed Terms Clarity"
+      - "Conditions Completeness"
+      - "Certification Formality"
+      - "Factual Tone"
+    structural_benchmark_items:
+      - "Current maturity date and proposed maturity date clearly stated"
+      - "Extension fee (if any) specified"
+      - "Current loan balance stated"
+      - "Borrower justification provided"
+      - "Required conditions for extension listed"
+      - "Borrower certification/signature at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Extension --
+      - key: loan_amount
+        label: "Original Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Extension"
+        required: true
+      - key: current_maturity_date
+        label: "Current Maturity Date"
+        hint: "e.g., 2026-06-15"
+        group: "Extension"
+        required: true
+      - key: proposed_maturity_date
+        label: "Proposed Maturity Date"
+        hint: "e.g., 2027-06-15"
+        group: "Extension"
+        required: true
+      - key: extension_fee
+        label: "Extension Fee"
+        hint: "e.g., 0.25% or 37500"
+        group: "Extension"
+        required: false
+      - key: current_balance
+        label: "Current Outstanding Balance"
+        hint: "e.g., 14200000"
+        group: "Extension"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a formal extension request from the borrower to the lender. Tone
+      must be formal, factual, and professional — not apologetic or defensive.
+      The justification should be substantive and fact-based, explaining why the
+      extension is needed and why the lender should approve it. Proposed terms
+      must be specific. Required conditions must be clearly listed. The borrower
+      certification must be formal and unambiguous.
+
+  # -- D2. Pre-Foreclosure Notice ----------------------------------------------
+  - document_id: loan-modifications/pre-foreclosure-notice
+    category_id: loan-modifications
+    label: "Pre-Foreclosure Notice"
+    default_page_range: [2, 4]
+    default_sections:
+      - name: "Parties & Property"
+        full_data_access: true
+      - name: "Notice of Default"
+        full_data_access: true
+      - name: "Default Description"
+        full_data_access: false
+      - name: "Cure Amount & Deadline"
+        full_data_access: true
+      - name: "Consequences of Non-Cure"
+        full_data_access: false
+      - name: "Contact Information"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Notice Requirements Compliance"
+      - "Default Description Specificity"
+      - "Cure Amount & Deadline Precision"
+      - "Consequences Articulation"
+      - "Statutory Language Adequacy"
+      - "Formal Legal Tone"
+    structural_benchmark_items:
+      - "Property identified with address (legal description if available)"
+      - "Default event specifically described with date"
+      - "Cure amount stated with exact figure"
+      - "Cure deadline stated with specific date"
+      - "Consequences of non-cure explicitly listed"
+      - "Signature and notarization block at document end (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Default --
+      - key: unpaid_principal_balance
+        label: "Unpaid Principal Balance"
+        hint: "e.g., 14500000"
+        group: "Default"
+        required: true
+      - key: accrued_interest
+        label: "Accrued Interest"
+        hint: "e.g., 350000"
+        group: "Default"
+        required: true
+      - key: default_date
+        label: "Default Date"
+        hint: "e.g., 2026-01-15"
+        group: "Default"
+        required: true
+      - key: cure_amount
+        label: "Cure Amount"
+        hint: "e.g., 850000"
+        group: "Default"
+        required: true
+      - key: cure_deadline
+        label: "Cure Deadline"
+        hint: "e.g., 2026-04-15"
+        group: "Default"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      # -- Property --
+      - key: property_address
+        label: "Property Address"
+        hint: "e.g., 123 Main St, City, ST 12345"
+        group: "Property"
+        required: true
+    designer_tone_directive: |
+      This is a formal legal notice — a pre-foreclosure notice. Tone must be
+      firm but procedural, not aggressive or inflammatory. The default must be
+      described specifically with dates and amounts. The cure amount and deadline
+      must be exact and unambiguous. Consequences of non-cure must be explicitly
+      stated. Follow statutory notice requirements where applicable. This
+      document may be introduced in court — precision and procedural correctness
+      are paramount.
+
+  # -- D3. Demand Letter -------------------------------------------------------
+  - document_id: loan-modifications/demand-letter
+    category_id: loan-modifications
+    label: "Demand Letter"
+    default_page_range: [2, 4]
+    default_sections:
+      - name: "Parties"
+        full_data_access: true
+      - name: "Background & Loan Reference"
+        full_data_access: true
+      - name: "Default Description"
+        full_data_access: false
+      - name: "Amount Demanded"
+        full_data_access: true
+      - name: "Demand for Payment"
+        full_data_access: false
+      - name: "Consequences of Non-Payment"
+        full_data_access: false
+      - name: "Response Deadline"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Legal Basis Clarity"
+      - "Factual Accuracy"
+      - "Demand Specificity"
+      - "Amount Demanded Precision"
+      - "Consequences Articulation"
+      - "Response Deadline Specificity"
+      - "Legally Precise Tone"
+    structural_benchmark_items:
+      - "All parties identified with full legal names"
+      - "Loan reference (date, amount, parties) specifically cited"
+      - "Default event described with specific facts and dates"
+      - "Amount demanded stated with exact figure and breakdown"
+      - "Response deadline stated with specific date"
+      - "Consequences of non-payment explicitly listed"
+      - "Signature block at document end (STRUCT-001)"
+      - "No signature content within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Demand --
+      - key: amount_demanded
+        label: "Amount Demanded"
+        hint: "e.g., 15200000"
+        group: "Demand"
+        required: true
+      - key: unpaid_principal
+        label: "Unpaid Principal"
+        hint: "e.g., 14500000"
+        group: "Demand"
+        required: true
+      - key: accrued_interest
+        label: "Accrued Interest"
+        hint: "e.g., 350000"
+        group: "Demand"
+        required: true
+      - key: default_date
+        label: "Default Date"
+        hint: "e.g., 2026-01-15"
+        group: "Demand"
+        required: true
+      - key: demand_deadline
+        label: "Response/Payment Deadline"
+        hint: "e.g., 2026-04-15"
+        group: "Demand"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a demand letter — a formal legal demand for payment. Tone must be
+      firm, assertive, and legally precise. Do not be aggressive or inflammatory,
+      but be direct and uncompromising. Every factual claim must be supportable
+      from the loan data. The amount demanded must be broken down into its
+      components (principal, interest, fees). The response deadline must be
+      specific. Consequences of non-payment must be stated clearly. This document
+      may be used as evidence of the lender's demand — precision matters.
+
+  # ============================================================================
+  # CATEGORY E: Investor & Participation
+  # ============================================================================
+
+  # -- E1. Participation Agreement ---------------------------------------------
+  - document_id: investor-participation/participation-agreement
+    category_id: investor-participation
+    label: "Participation Agreement"
+    default_page_range: [5, 12]
+    default_sections:
+      - name: "Parties & Recitals"
+        full_data_access: true
+      - name: "Definitions"
+        full_data_access: true
+      - name: "Participation Interest"
+        full_data_access: true
+      - name: "Purchase Price & Payment"
+        full_data_access: true
+      - name: "Representations & Warranties"
+        full_data_access: false
+      - name: "Servicing"
+        full_data_access: false
+      - name: "Payments & Distributions"
+        full_data_access: false
+      - name: "Events of Default"
+        full_data_access: false
+      - name: "Indemnification"
+        full_data_access: false
+      - name: "Miscellaneous"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Definitions Completeness"
+      - "Participation Interest Precision"
+      - "Purchase Price & Payment Clarity"
+      - "Representations & Warranties Scope"
+      - "Servicing Rights & Obligations"
+      - "Distribution Waterfall Accuracy"
+      - "Default & Remedies Coverage"
+      - "Legal Language Standards"
+    structural_benchmark_items:
+      - "All parties identified with full legal names"
+      - "Definitions section present and cross-referenced"
+      - "Participation percentage and amount explicitly stated"
+      - "Purchase price calculation shown"
+      - "Servicing responsibilities assigned"
+      - "Payment distribution waterfall specified"
+      - "Events of Default section present"
+      - "Signature block at document end (STRUCT-001)"
+      - "No signature content within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Participation --
+      - key: participation_amount
+        label: "Participation Amount"
+        hint: "e.g., 7500000"
+        group: "Participation"
+        required: true
+      - key: participation_percentage
+        label: "Participation Percentage"
+        hint: "e.g., 50%"
+        group: "Participation"
+        required: true
+      - key: loan_amount
+        label: "Underlying Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Participation"
+        required: true
+      - key: purchase_price
+        label: "Purchase Price"
+        hint: "e.g., 7500000 (par) or 7350000 (discount)"
+        group: "Participation"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lead_lender_name
+        label: "Lead Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      - key: participant_name
+        label: "Participant Name"
+        hint: "e.g., Apex Investment Fund"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is a legal participation agreement. Every term must be precise and
+      unambiguous. The participation interest, purchase price, and distribution
+      mechanics must be mathematically precise. Definitions must be complete
+      and used consistently throughout. Servicing obligations and rights must
+      be clearly allocated between lead lender and participant. The distribution
+      waterfall must be unambiguous. Follow legal agreement conventions exactly.
+      Tone: formal legal agreement, precise, comprehensive.
+
+  # -- E2. Investor Report -----------------------------------------------------
+  - document_id: investor-participation/investor-report
+    category_id: investor-participation
+    label: "Investor Report"
+    default_page_range: [4, 10]
+    default_sections:
+      - name: "Executive Summary"
+        full_data_access: true
+      - name: "Loan Performance Summary"
+        full_data_access: true
+      - name: "Collateral Update"
+        full_data_access: false
+      - name: "Financial Summary"
+        full_data_access: true
+      - name: "Key Developments"
+        full_data_access: false
+      - name: "Risk & Watchlist Items"
+        full_data_access: false
+      - name: "Forward Outlook"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Performance Data Accuracy"
+      - "Collateral Update Completeness"
+      - "Financial Summary Precision"
+      - "Risk Disclosure Transparency"
+      - "Forward Outlook Substance"
+      - "Investor-Appropriate Tone"
+      - "Reporting Period Coverage"
+    structural_benchmark_items:
+      - "Reporting period clearly stated"
+      - "Loan performance metrics present (balance, DSCR, LTV, occupancy)"
+      - "Financial figures present with prior period comparison"
+      - "Risk and watchlist items disclosed"
+      - "Contact information present"
+      - "Footer/disclosure block at document end (STRUCT-001)"
+      - "No footer content within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Loan Performance --
+      - key: loan_amount
+        label: "Original Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Loan Performance"
+        required: true
+      - key: current_balance
+        label: "Current Balance"
+        hint: "e.g., 14200000"
+        group: "Loan Performance"
+        required: true
+      - key: noi
+        label: "NOI"
+        hint: "Net Operating Income, e.g., 1650000"
+        group: "Loan Performance"
+        required: false
+      - key: dscr
+        label: "DSCR"
+        hint: "Debt Service Coverage Ratio, e.g., 1.35"
+        group: "Loan Performance"
+        required: false
+      - key: occupancy_rate
+        label: "Occupancy Rate"
+        hint: "e.g., 94.5%"
+        group: "Loan Performance"
+        required: false
+      - key: ltv
+        label: "LTV"
+        hint: "Loan-to-Value, e.g., 68.2%"
+        group: "Loan Performance"
+        required: false
+      # -- Reporting --
+      - key: reporting_period
+        label: "Reporting Period"
+        hint: "e.g., Q4 2025 or 2025-10-01 to 2025-12-31"
+        group: "Reporting"
+        required: true
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+    designer_tone_directive: |
+      This is an investor report for participation holders or limited partners.
+      Be transparent, professional, and clear. Report performance honestly —
+      explain variances, not just results. Financial figures must be precise
+      and match source data exactly — investors will verify them. Narrative
+      should give investors confidence in management without overselling.
+      Acknowledge challenges directly and explain how they are being managed.
+      Disclose watchlist items proactively. Tone: measured, institutional,
+      transparent, investor-friendly.
+
+  # ============================================================================
+  # CATEGORY F: Other
+  # ============================================================================
+
+  # -- F1. Other / Custom ------------------------------------------------------
+  - document_id: other/custom
+    category_id: other
+    label: "Other"
+    default_page_range: [3, 15]
+    default_sections:
+      - name: "Introduction"
+        full_data_access: true
+      - name: "Background"
+        full_data_access: false
+      - name: "Main Content"
+        full_data_access: false
+      - name: "Supporting Details"
+        full_data_access: false
+      - name: "Conclusions & Next Steps"
+        full_data_access: true
+    benchmark_dimensions:
+      - "Document Completeness"
+      - "Structural Coherence"
+      - "Language Clarity"
+      - "Data Accuracy"
+      - "Formatting Consistency"
+    structural_benchmark_items:
+      - "Document has a clear title"
+      - "Sections are logically ordered"
+      - "Conclusion or next steps section present"
+      - "Signature block at document end if applicable (STRUCT-001)"
+      - "No signature content within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Core --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Core"
+        required: false
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Core"
+        required: false
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Core"
+        required: false
+      - key: property_address
+        label: "Property Address"
+        hint: "e.g., 123 Main St, City, ST 12345"
+        group: "Core"
+        required: false
+      # -- Amounts --
+      - key: total_amount
+        label: "Total Amount"
+        hint: "e.g., 15000000"
+        group: "Amounts"
+        required: false
+      - key: effective_date
+        label: "Effective Date"
+        hint: "e.g., 2026-05-01"
+        group: "Amounts"
+        required: false
+    designer_tone_directive: |
+      Generate the requested document following the design patterns exactly.
+      Use the document_title and any additional instructions to calibrate
+      content, tone, and structure. Where design patterns are silent, default
+      to formal professional standards appropriate for private equity loan
+      documentation. Be precise and complete.

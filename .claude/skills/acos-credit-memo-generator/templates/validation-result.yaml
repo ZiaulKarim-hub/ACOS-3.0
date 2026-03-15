@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# SEOS Credit Memo — Validation Result Schema
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Output schema for Phase 4 (Benchmark Validation).
+# Each validator agent produces one of these per benchmark dimension.
+# The aggregator merges all findings into validation-report.yaml.
+#
+# This file is a TEMPLATE showing the expected structure.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Which benchmark dimension was validated
+dimension: ""
+agent_id: ""
+iteration: 0
+date_validated: ""
+
+# Per-criterion results
+results:
+  - criterion_id: ""
+    criterion_name: ""
+    severity: "required|recommended|nice-to-have"
+    verdict: "PASS|FAIL"
+    # Specific evidence supporting the verdict
+    evidence: ""
+    # For FAIL: what exactly is wrong
+    failure_detail: ""
+    # For FAIL: actionable fix instruction scoped to a specific section
+    fix_instruction: ""
+    # Which memo section(s) are affected
+    affected_sections: []
+
+# Dimension-level summary
+summary:
+  total_criteria: 0
+  passed: 0
+  failed: 0
+  # Overall dimension verdict
+  verdict: "PASS|FAIL"
+  # Key issues in priority order
+  key_issues:
+    - issue: ""
+      severity: "required|recommended|nice-to-have"
+      section: ""
+
+# Feedback for designers (section-scoped)
+# Only populated for FAIL results — consumed by Phase 3 on next iteration
+feedback_by_section:
+  # Key: section name, Value: list of actionable feedback items
+  # example:
+  # "Financial Analysis":
+  #   - "Add debt service coverage ratio calculation"
+  #   - "Include YoY revenue comparison"
