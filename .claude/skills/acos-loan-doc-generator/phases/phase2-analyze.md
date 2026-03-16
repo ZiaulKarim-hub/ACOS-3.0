@@ -10,15 +10,29 @@ You receive a session manifest path as your input. Read it first.
 ## Step 2.1: Load Context
 
 1. Read the session manifest YAML at the path provided
-2. Extract: `loan_folder_path`, `category_id`, `document_title`, `session_id`,
+2. Extract: `loan_folder_path`, `document_id`, `category_id`, `document_title`, `session_id`,
    `design_patterns_path`, `figures_mode`, `user_figures_path`
-3. Read the doc-type catalog entry from:
+3. Read the doc-type catalog entry matching this `document_id` from:
    `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Read the design patterns file at `design_patterns_path`
 5. Extract: canonical sections list + section-specific data expectations
+
+**Batch mode:** If `batch_mode: true`, iterate over `batch_items[]` and read each
+item's `design_patterns_path`. Build a union of all canonical sections and their
+data expectations. Extract data to satisfy ALL document types in the batch.
+
 6. Read config from `.acos/loan-doc-generator/config.yaml`
 7. **If `user_figures_path` is not null:** Read the user-figures YAML file.
    Parse all non-empty fields into `user_figures` dict. These are GROUND TRUTH.
+
+**Batch mode handling:** If the manifest contains `batch_mode: true`, there is no
+top-level `document_id`, `category_id`, or `document_title`. Instead:
+- Use the first batch item's `document_id` to load a representative catalog entry
+  for section structure reference, OR
+- Read design patterns from ALL batch items' `design_patterns_path` entries to
+  build a union of expected sections and data fields
+- The loan folder analysis should extract ALL data comprehensively — batch mode
+  requires data for multiple document types from the same folder
 
 ## Step 2.2: Inventory Loan Folder
 

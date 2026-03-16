@@ -63,7 +63,7 @@ Store as `interview_mode`: `quick`, `detailed`, or `batch`.
 Display the category menu:
 
 ```
-Step {1 of 4 if quick | 1 of 8 if detailed}: Select a document category
+Step {1 of 4 if quick | 1 of 8 if detailed | 1 of 4 if batch}: Select a document category
 
   [A]  Credit Memo & Underwriting
   [B]  Closing & Administration
@@ -100,8 +100,10 @@ Store as `category_id`.
   Document name: _
 ```
 
-Store the entered value as `document_title`. Set `document_id = "other/custom"`.
-Load the `other` fallback entry from `templates/doc-type-catalog.yaml`.
+Store the entered value as `document_title`. Generate `document_id` by slugifying
+the title: `"other/" + document_title.lower().replace(/[^a-z0-9]+/g, "-").strip("-")`
+(e.g., "Promissory Note" → `other/promissory-note`).
+Load the `other/custom` fallback entry from `templates/doc-type-catalog.yaml`.
 
 **For categories A–E**, display the documents within the selected category:
 
@@ -124,8 +126,10 @@ Enter selection [1-6]:
   [3]  Escrow Instructions          (escrow agent directives, conditions)
   [4]  Wire Instructions            (wire transfer details, routing)
   [5]  Transaction Checklist        (pre/post-close task tracking)
+  [6]  Loan Agreement              (bridge, construction, mezzanine)
+  [7]  Guarantee Document          (personal, carve-out, completion)
 
-Enter selection [1-5]:
+Enter selection [1-7]:
 ```
 
 **Category C — Portfolio Management:**
@@ -143,8 +147,9 @@ Enter selection [1-2]:
   [3]  Forbearance Agreement            (temporary relief, modified payment terms)
   [4]  Pre-Foreclosure Notice           (default notice, cure period)
   [5]  Demand Letter                    (payment demand, legal notice)
+  [6]  Foreclosure Complaint       (judicial foreclosure filing)
 
-Enter selection [1-5]:
+Enter selection [1-6]:
 ```
 
 **Category E — Investor & Participation:**
@@ -170,6 +175,8 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | B | 3 | `closing-admin/escrow-instructions` | Escrow Instructions |
 | B | 4 | `closing-admin/wire-instructions` | Wire Instructions |
 | B | 5 | `closing-admin/transaction-checklist` | Transaction Checklist |
+| B | 6 | `closing-admin/loan-agreement` | Loan Agreement |
+| B | 7 | `closing-admin/guarantee-document` | Guarantee Document |
 | C | 1 | `portfolio-management/payoff-statement` | Payoff Statement / Letter |
 | C | 2 | `portfolio-management/redemption-statement` | Redemption Statement |
 | D | 1 | `loan-modifications/extension-request` | Extension Request Questionnaire |
@@ -177,6 +184,7 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | D | 3 | `loan-modifications/forbearance-agreement` | Forbearance Agreement |
 | D | 4 | `loan-modifications/pre-foreclosure-notice` | Pre-Foreclosure Notice |
 | D | 5 | `loan-modifications/demand-letter` | Demand Letter |
+| D | 6 | `loan-modifications/foreclosure-complaint` | Foreclosure Complaint |
 | E | 1 | `investor-participation/participation-agreement` | Investor Participation Agreement |
 | E | 2 | `investor-participation/investor-report` | Investor Update / Report |
 | F | — | `other/custom` | (user-specified) |
@@ -208,6 +216,11 @@ Parse all selections into a `batch_entries` list. Each entry gets its own
 `batch_item` dict with `document_id`, `document_title`, `category_id`, and
 per-document pipeline state (design source, skip flags, page count, etc.).
 
+**Single-document batch warning:** If the final `batch_entries` list has only 1 item,
+suggest switching to Quick mode: `"You selected only 1 document. Batch mode adds
+overhead — switch to Quick mode? [Y/n]: "`. If Y, switch `interview_mode = "quick"`
+and continue with single-document flow.
+
 For any batch items from category F, prompt for each document name individually.
 
 ### Step 0.3: Design Library Check
@@ -218,7 +231,7 @@ Filter entries where `entry.document_id == document_id`.
 **Case A — Library has 1+ designs:**
 
 ```
-Step 2 of 5: Design style
+Step {2 of 4 if quick | 2 of 8 if detailed | 2 of 4 if batch}: Design style
 
   Design Library has {N} design(s) for "{catalog_entry.label}":
   ─────────────────────────────────────────────────────────────
@@ -249,7 +262,7 @@ If user selects **[N+1] Use New Design**, prompt for example path (see Case B be
 **Case B — No designs in library for this document type:**
 
 ```
-Step 2 of 5: Design style
+Step {2 of 4 if quick | 2 of 8 if detailed | 2 of 4 if batch}: Design style
 
   No designs in library for "{catalog_entry.label}". Using new design.
 
@@ -289,13 +302,15 @@ item). Run novelty checks as in single-document mode.
 ### Step 0.4: Loan Folder Path
 
 ```
-Step 3 of 5: Loan folder
+Step {3 of 4 if quick | 3 of 8 if detailed | 3 of 4 if batch}: Loan folder
 
   Enter path to the loan folder for this transaction:
   Path: _
 ```
 
-Validate the path exists. Store as `loan_folder_path`.
+Validate the path exists (check with `ls` or `stat`). If invalid, display error
+and re-prompt: `"Path not found: {path}. Please enter a valid path: "`.
+Store as `loan_folder_path`.
 
 ### Step 0.5: Critical Numbers
 
@@ -303,11 +318,11 @@ Validate the path exists. Store as `loan_folder_path`.
 
 **Detailed mode:** Continue below.
 
-The figures shown to the user are **category-specific** — read from
-`catalog_entry.critical_figures` (loaded in Step 0.1).
+The figures shown to the user are **document-specific** — read from
+`catalog_entry.critical_figures` (loaded in Step 0.2).
 
 ```
-Step 4 of 8: Financial figures
+Step 4 of 8: Financial figures  (detailed mode only)
 
   How should critical numbers be handled?
 
@@ -532,9 +547,15 @@ If found, read the manifest and compare:
 - `manifest.file_count` vs. current file count
 - `manifest.folder_mtime` vs. current latest file mtime
 
-- **Unchanged:** Prompt: `"Loan folder analysis found in cache (analyzed {date_analyzed}). Reuse? [Y/n]: "`. If Y: `skip_phase_2 = true`, load `loan_data_path` and `loan_data_brief_path` from manifest.
+- **Unchanged:** Verify the cached files still exist on disk: check that `loan_data_path`
+  and `loan_data_brief_path` from the cached manifest are readable. If files are missing,
+  treat as cache miss. If files exist, prompt: `"Loan folder analysis found in cache
+  (analyzed {date_analyzed}). Reuse? [Y/n]: "`. If Y: `skip_phase_2 = true`, load paths.
 - **Changed:** Display: `"Loan folder has changed since last analysis. Re-running Phase 2."`. Set `skip_phase_2 = false`.
 - **Not found:** `skip_phase_2 = false`.
+
+**Config override:** If `.acos/loan-doc-generator/config.yaml` has `cache.enable_phase2_cache: false`,
+skip the cache check entirely and set `skip_phase_2 = false`.
 
 ### Step 0.8: Confirmation & Bootstrap
 
@@ -993,13 +1014,14 @@ Configuration: .acos/loan-doc-generator/config.yaml
   [path or "not configured"]
 
 Design Library:  (.acos/loan-doc-generator/design-library/index.yaml)
-  CATEGORY                      DESIGN ID                    EXAMPLES  ADDED
-  credit-memo-internal          pe-format-2024               5         2026-02-15
-  loan-agreement                bank-style-2024              4         2026-03-01
+  DOCUMENT ID                                  LABEL                  ADDED
+  credit-underwriting/internal-credit-memo     Okoa PE Style          2026-03-15
+  credit-underwriting/term-sheet               Okoa PE Style          2026-03-15
+  closing-admin/settlement-statement           Okoa PE Style          2026-03-15
 
-Cached Extractions:
-  SESSION ID          DATE        CATEGORY               DOCS  STATUS
-  20260215-091500     2026-02-15  credit-memo-internal   5     complete
+Cached Phase 2 Analyses:
+  FINGERPRINT         LOAN FOLDER                        ANALYZED        FILES EXIST
+  sha256-abc123...    /path/to/loan-folder/              2026-03-01      Yes
 
 Phase 2 Cache:
   FINGERPRINT         LOAN FOLDER                        ANALYZED

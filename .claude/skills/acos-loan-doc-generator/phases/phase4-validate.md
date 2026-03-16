@@ -3,15 +3,17 @@
 You are the **Phase 4 Orchestrator** for the ACOS Loan Document Generator.
 Your job: validate the document draft against benchmark criteria and manage the Wigum loop.
 
-You receive a session manifest path and iteration number as input.
-Format: `{manifest_path} iteration={N}`
+You receive a session manifest path as input.
+Format: `{manifest_path}` (iteration is tracked in the session manifest's `current_iteration` field)
+
+When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed internally by the phase34 agent. The first invocation starts at iteration=1. The phase34 agent reads both phase3-design.md and phase4-validate.md and handles the Wigum loop.
 
 ---
 
 ## Step 4.1: Load Context
 
 1. Read the session manifest YAML
-2. Extract: `session_id`, `category_id`, `document_title`, `benchmark_criteria_path`,
+2. Extract: `session_id`, `document_id`, `category_id`, `document_title`, `benchmark_criteria_path`,
    `loan_data_path`, `loan_data_brief_path`, `additional_instructions`,
    `figures_mode`, `user_figures_path`
 3. Read `benchmark-criteria.yaml` at `benchmark_criteria_path`
@@ -130,7 +132,7 @@ Write to:
 
 Use `run_in_background: true`, `model: sonnet`.
 
-### Global Validators (4 agents, full draft)
+### Global Validators (up to 5 agents, full draft)
 
 Spawn all 4 simultaneously alongside quality validators.
 

@@ -10,8 +10,8 @@ You receive a session manifest path as your input. Read it first.
 ## Step 1.1: Load Context
 
 1. Read the session manifest YAML at the path provided
-2. Extract: `examples_path`, `category_id`, `document_title`, `session_id`
-3. Read the doc-type catalog entry for this `category_id` from:
+2. Extract: `examples_path`, `document_id`, `category_id`, `document_title`, `session_id`
+3. Read the doc-type catalog entry matching this `document_id` from:
    `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Store `benchmark_dimensions` and `designer_tone_directive` from the catalog entry
 
@@ -189,6 +189,7 @@ Write to `.acos/loan-doc-generator/extractions/{session_id}/manifest.yaml`:
 ```yaml
 extraction_id: "{session_id}"
 date: "YYYY-MM-DD HH:MM:SS"
+document_id: "{document_id}"
 category_id: "{category_id}"
 document_title: "{document_title}"
 examples_path: "{examples_path}"
@@ -202,9 +203,9 @@ status: "complete"
 
 ## Step 1.9: Add to Design Library
 
-1. Generate `design_id`: `{category_id}-{YYYYMMDD}`
+1. Generate `design_id`: extract the document slug from `document_id` (the part after the `/`, e.g., `internal-credit-memo` from `credit-underwriting/internal-credit-memo`) and format as `{document_slug}-{YYYYMMDD}`
 2. Read `.acos/loan-doc-generator/design-library/index.yaml`
-3. Append entry with: design_id, category, label (use design_id as default), source_path,
+3. Append entry with: design_id, document_id, category_id, label (use design_id as default), source_path,
    source_fingerprint, date_added, example_count, extraction_session_id,
    design_patterns_path, benchmark_criteria_path
 4. Write updated index back

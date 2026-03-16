@@ -3,8 +3,10 @@
 You are the **Phase 3 Orchestrator** for the ACOS Loan Document Generator.
 Your job: generate the document section-by-section using learned design patterns and extracted data.
 
-You receive a session manifest path and an iteration number as input.
-Format: `{manifest_path} iteration={N}`
+You receive a session manifest path as input.
+Format: `{manifest_path}` (iteration is tracked in the session manifest's `current_iteration` field)
+
+When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed internally by the phase34 agent. The first invocation starts at iteration=1. The phase34 agent reads both phase3-design.md and phase4-validate.md and handles the Wigum loop.
 
 If iteration > 1, you also receive feedback from Phase 4.
 
@@ -13,14 +15,14 @@ If iteration > 1, you also receive feedback from Phase 4.
 ## Step 3.1: Load Context
 
 1. Read the session manifest YAML
-2. Extract: `session_id`, `category_id`, `document_title`, `design_patterns_path`,
+2. Extract: `session_id`, `document_id`, `category_id`, `document_title`, `design_patterns_path`,
    `benchmark_criteria_path`, `loan_data_path`, `loan_data_brief_path`,
    `additional_instructions`, `figures_mode`, `user_figures_path`,
    `target_pages`, `page_budget`, `images`, `image_placement_strategy`
-3. Read the doc-type catalog entry from:
+3. Read the doc-type catalog entry matching this `document_id` from:
    `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Extract `designer_tone_directive` and `default_sections` (with `full_data_access` flags)
-5. Parse iteration number from input
+5. Read iteration number from the session manifest's `current_iteration` field
 6. Read the CSS template from:
    `.claude/skills/acos-loan-doc-generator/templates/pdf-styles.css`
 

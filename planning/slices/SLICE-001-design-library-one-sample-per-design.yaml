@@ -1,0 +1,108 @@
+slice_id: "SLICE-001"
+story_id: "standalone"
+epic_id: "loan-doc-generator-improvements"
+vision_id: "ACOS-3.0"
+created_date: "2026-03-15"
+created_by: the-architect
+status: "planned"
+
+title: "Design Library: One Sample Per Design, On-Demand Preview"
+objective: |
+  Restructure the design library so that each sample document is its own
+  independent design entry — not merged with other samples. Update the
+  Step 0.3 selection UI so users pick from multiple designs per document
+  type, with sample preview links shown only on request.
+
+  Current state: 23 entries in index.yaml, each with 1-3 samples merged
+  into a single synthesized design-patterns.yaml. Users see one "Okoa PE
+  Style" entry per doc type with all sample links shown inline.
+
+  Target state: ~44 entries (one per sample file), each with its own
+  design-patterns.yaml extracted from that single sample. Users see
+  multiple named designs per doc type and can preview any design's
+  sample on request.
+
+acceptance_criteria:
+  - "[ ] Each sample file has its own design library entry with a unique design_id"
+  - "[ ] Each entry has its own design-patterns.yaml extracted from that single sample"
+  - "[ ] Each entry has its own benchmark-criteria.yaml"
+  - "[ ] Each entry has exactly one sample_file (not sample_files array)"
+  - "[ ] Design labels are descriptive (derived from deal/borrower name, not generic 'Okoa PE Style')"
+  - "[ ] Step 0.3 shows numbered list of available designs per document type"
+  - "[ ] Sample file:// links are NOT shown by default in Step 0.3"
+  - "[ ] Step 0.3 offers a [V] View sample option that shows the file:// link for a selected design"
+  - "[ ] Batch mode design resolution table does NOT show sample links inline"
+  - "[ ] external-credit-memo existing extraction (Lux 2 PDF) preserved as-is, not re-extracted"
+  - "[ ] index.yaml version bumped to 3.0"
+  - "[ ] Design library directories renamed from {slug}/ to {design_id}/ to avoid collisions"
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - ".claude/skills/acos-loan-doc-generator/SKILL.md"
+  - ".claude/skills/acos-loan-doc-generator/templates/design-library-index.yaml"
+  - ".acos/loan-doc-generator/design-library/"
+
+files_prohibited:
+  - ".claude/skills/acos-loan-doc-generator/phases/"
+  - ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+  - "review-rules/"
+
+skills_recommended:
+  - "document-processing"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Current index: .acos/loan-doc-generator/design-library/index.yaml (23 entries, version 2.0)"
+  - "Current merged designs: 2 samples → 1 design-patterns.yaml per doc type"
+  - "Existing external-credit-memo extraction at extractions/20260310-115334/ is 48KB — high quality, keep as-is"
+  - "44 total sample files across 23 document types"
+  - "Design patterns are read by Phase 3 designers and Phase 4 validators"
+  - "File reading: textutil for DOCX, pandoc for PPTX, Read tool for PDF"
+
+technical_requirements:
+  - "Re-extract designs: one agent per sample file (not per document type)"
+  - "Directory structure: .acos/loan-doc-generator/design-library/{design_id}/"
+  - "Design ID format: {slug}-{deal-identifier} (e.g., term-sheet-wolfgramm-v5, term-sheet-warburton-draft)"
+  - "Label derived from deal/borrower name in the sample (e.g., 'Beehive Waldorf Style', 'Lux 2 Portfolio Style')"
+  - "Step 0.3 UI: show designs as numbered list, [V] to view sample, [N+1] for new design"
+  - "Batch mode: summary table shows design label only, no inline links"
+
+testing_requirements:
+  - "Validate all index entries have exactly 1 sample_file"
+  - "Validate all design-patterns.yaml files exist and parse as valid YAML"
+  - "Validate all benchmark-criteria.yaml files exist and parse as valid YAML"
+  - "Verify Step 0.3 menu renders correctly for doc types with 1, 2, and 3 designs"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  The key UX change: currently the design selection shows all sample links
+  upfront which is noisy. The new flow is:
+
+  Step 0.3 (single doc):
+    [1]  Beehive Waldorf Style   │  Added 2026-03-15
+    [2]  Lux 2 Portfolio Style   │  Added 2026-03-15
+    ─────────────────────────────────────────────────
+    [V]  View sample for a design
+    [3]  Use New Design
+
+  If user picks [V]:
+    Which design? [1-2]: 1
+    Sample: file:///Users/zee/.../Beehive - Waldorf Credit Memo 2024.08.13.pptx
+
+  Step 0.3 (batch mode summary):
+    #   DOCUMENT                  DESIGN                    PHASE 1
+    A1  Internal Credit Memo      Beehive Waldorf Style      Skip
+    A3  Term Sheet                Wolfgramm V5 Style         Skip
+
+  No inline links in batch — clean summary table.

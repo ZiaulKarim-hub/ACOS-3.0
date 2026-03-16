@@ -1037,6 +1037,248 @@ documents:
       — this document is for execution, not explanation. Tone: actionable,
       status-tracking, operationally precise.
 
+  # -- B6. Loan Agreement -------------------------------------------------------
+  - document_id: closing-admin/loan-agreement
+    category_id: closing-admin
+    label: "Loan Agreement"
+    default_page_range: [10, 25]
+    default_sections:
+      - name: "Parties & Recitals"
+        full_data_access: true
+      - name: "Definitions"
+        full_data_access: true
+      - name: "Loan Terms & Conditions"
+        full_data_access: true
+      - name: "Representations & Warranties"
+        full_data_access: false
+      - name: "Affirmative Covenants"
+        full_data_access: false
+      - name: "Negative Covenants"
+        full_data_access: false
+      - name: "Financial Covenants"
+        full_data_access: false
+      - name: "Events of Default"
+        full_data_access: false
+      - name: "Remedies"
+        full_data_access: false
+      - name: "Indemnification"
+        full_data_access: false
+      - name: "Miscellaneous"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Definitions Completeness"
+      - "Covenant Enforceability"
+      - "Default & Remedies Coverage"
+      - "Reps & Warranties Scope"
+      - "Cross-Reference Integrity"
+      - "Legal Language Standards"
+    structural_benchmark_items:
+      - "All 11 required sections are present in order"
+      - "Definitions section defines all capitalized terms used in the agreement"
+      - "Cross-references between sections are accurate and consistent"
+      - "Covenant sections distinguish affirmative from negative clearly"
+      - "Events of Default are enumerated and specific"
+      - "Signature block at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Loan Terms --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Loan Terms"
+        required: true
+      - key: interest_rate
+        label: "Interest Rate"
+        hint: "e.g., 7.25% or SOFR + 350bps"
+        group: "Loan Terms"
+        required: true
+      - key: rate_type
+        label: "Rate Type"
+        hint: "e.g., Fixed, Floating, SOFR-based"
+        group: "Loan Terms"
+        required: true
+      - key: loan_term_months
+        label: "Loan Term"
+        hint: "e.g., 36 months"
+        group: "Loan Terms"
+        required: true
+      - key: maturity_date
+        label: "Maturity Date"
+        hint: "e.g., 2029-03-15"
+        group: "Loan Terms"
+        required: true
+      - key: amortization
+        label: "Amortization"
+        hint: "e.g., 360 months or Interest Only"
+        group: "Loan Terms"
+        required: false
+      - key: monthly_payment
+        label: "Monthly Payment"
+        hint: "e.g., 95000"
+        group: "Loan Terms"
+        required: false
+      # -- Fees & Penalties --
+      - key: origination_fee
+        label: "Origination Fee"
+        hint: "e.g., 1.0% or 150000"
+        group: "Fees & Penalties"
+        required: false
+      - key: prepayment_penalty
+        label: "Prepayment Penalty"
+        hint: "e.g., 5-4-3-2-1 or yield maintenance"
+        group: "Fees & Penalties"
+        required: false
+      - key: default_interest_rate
+        label: "Default Interest Rate"
+        hint: "e.g., 5% above contract rate"
+        group: "Fees & Penalties"
+        required: false
+      - key: late_fee
+        label: "Late Fee"
+        hint: "e.g., 5% of payment or 4750"
+        group: "Fees & Penalties"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      - key: guarantor_name
+        label: "Guarantor Name"
+        hint: "e.g., John Smith"
+        group: "Parties"
+        required: false
+      # -- Property --
+      - key: property_address
+        label: "Property Address"
+        hint: "e.g., 123 Main St, City, State ZIP"
+        group: "Property"
+        required: true
+      - key: property_type
+        label: "Property Type"
+        hint: "e.g., Multifamily, Office, Industrial"
+        group: "Property"
+        required: false
+    designer_tone_directive: |
+      Legal, precise, unambiguous, defined terms used consistently. This is a
+      binding loan agreement — every provision must be enforceable and internally
+      consistent. All capitalized terms must be defined in the Definitions section
+      before use. Cross-references between sections must be accurate. Covenants
+      must be specific and measurable. Events of Default must be enumerated with
+      clear triggers and cure periods. Remedies must follow logically from the
+      default provisions. The document must read as a single coherent legal
+      instrument, not a collection of independent sections.
+
+  # -- B7. Guarantee Document ---------------------------------------------------
+  - document_id: closing-admin/guarantee-document
+    category_id: closing-admin
+    label: "Guarantee Document"
+    default_page_range: [5, 12]
+    default_sections:
+      - name: "Parties & Recitals"
+        full_data_access: true
+      - name: "Definitions"
+        full_data_access: true
+      - name: "Guaranty Obligations"
+        full_data_access: true
+      - name: "Scope & Limitations"
+        full_data_access: false
+      - name: "Carve-Outs"
+        full_data_access: false
+      - name: "Enforcement & Remedies"
+        full_data_access: false
+      - name: "Miscellaneous"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Guarantor Scope Clarity"
+      - "Carve-Outs & Limitations Coverage"
+      - "Enforcement Provisions"
+      - "Signatory & Execution Requirements"
+      - "Legal Language Standards"
+    structural_benchmark_items:
+      - "All 7 required sections are present in order"
+      - "Guaranty obligations scope is unambiguous (full, limited, or carve-out)"
+      - "Carve-outs are exhaustively enumerated with specific triggers"
+      - "Liability cap (if any) is explicitly stated with calculation method"
+      - "Enforcement provisions reference the underlying loan agreement"
+      - "Signature block at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Guarantee --
+      - key: guarantee_amount
+        label: "Guarantee Amount"
+        hint: "e.g., 15000000 or Unlimited"
+        group: "Guarantee"
+        required: true
+      - key: guarantor_name
+        label: "Guarantor Name"
+        hint: "e.g., John Smith"
+        group: "Guarantee"
+        required: true
+      - key: guarantor_liability_cap
+        label: "Guarantor Liability Cap"
+        hint: "e.g., 25% of loan amount or 3750000"
+        group: "Guarantee"
+        required: false
+      # -- Underlying Loan --
+      - key: loan_amount
+        label: "Loan Amount"
+        hint: "e.g., 15000000"
+        group: "Underlying Loan"
+        required: true
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Underlying Loan"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Underlying Loan"
+        required: true
+      # -- Carve-Out Amounts --
+      - key: environmental_carveout_amount
+        label: "Environmental Carve-Out Amount"
+        hint: "e.g., 500000 or Unlimited"
+        group: "Carve-Out Amounts"
+        required: false
+      - key: fraud_carveout_amount
+        label: "Fraud Carve-Out Amount"
+        hint: "e.g., Unlimited"
+        group: "Carve-Out Amounts"
+        required: false
+      # -- Guarantor Financials --
+      - key: guarantor_net_worth
+        label: "Guarantor Net Worth"
+        hint: "e.g., 50000000"
+        group: "Guarantor Financials"
+        required: false
+      - key: guarantor_liquidity
+        label: "Guarantor Liquidity"
+        hint: "e.g., 10000000"
+        group: "Guarantor Financials"
+        required: false
+    designer_tone_directive: |
+      Legal guarantee document — unambiguous scope, carve-outs exhaustive. This is
+      a binding guarantee — the guarantor's obligations must be crystal clear.
+      The scope of the guaranty (full recourse, limited, or carve-out only) must
+      be stated in the first substantive section. Every carve-out must be
+      specifically enumerated with precise trigger conditions. Liability caps
+      must include the calculation methodology. Enforcement provisions must
+      reference the underlying loan agreement and specify the lender's rights
+      upon guarantor default. Tone: formal legal instrument with absolute clarity
+      on the guarantor's exposure.
+
   # ============================================================================
   # CATEGORY C: Portfolio Management
   # ============================================================================
@@ -1656,6 +1898,118 @@ documents:
       components (principal, interest, fees). The response deadline must be
       specific. Consequences of non-payment must be stated clearly. This document
       may be used as evidence of the lender's demand — precision matters.
+
+  # -- D6. Foreclosure Complaint ------------------------------------------------
+  - document_id: loan-modifications/foreclosure-complaint
+    category_id: loan-modifications
+    label: "Foreclosure Complaint"
+    default_page_range: [4, 10]
+    default_sections:
+      - name: "Parties & Property Identification"
+        full_data_access: true
+      - name: "Statutory Basis & Default"
+        full_data_access: true
+      - name: "Notice of Default"
+        full_data_access: true
+      - name: "Rights & Opportunity to Cure"
+        full_data_access: false
+      - name: "Timeline & Procedures"
+        full_data_access: false
+      - name: "Relief Sought"
+        full_data_access: false
+    benchmark_dimensions:
+      - "Statutory Compliance"
+      - "Notice Requirements"
+      - "Timeline & Procedural Accuracy"
+      - "Rights Preservation"
+      - "Jurisdiction-Specific Standards"
+    structural_benchmark_items:
+      - "All 6 required sections are present in order"
+      - "Statutory basis for foreclosure explicitly cited with code references"
+      - "Property legal description included (lot, block, recording info)"
+      - "Default event described with specific dates and amounts"
+      - "Notice of default delivery method and date documented"
+      - "Cure period and cure amount explicitly stated"
+      - "Relief sought is specific and legally cognizable"
+      - "Signature block at document end only (STRUCT-001)"
+      - "No signature content embedded within section bodies"
+      - "No orphaned headings at page bottom (STRUCT-002)"
+      - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    critical_figures:
+      # -- Default & Amounts --
+      - key: unpaid_principal_balance
+        label: "Unpaid Principal Balance"
+        hint: "e.g., 14500000"
+        group: "Default & Amounts"
+        required: true
+      - key: accrued_interest
+        label: "Accrued Interest"
+        hint: "e.g., 350000"
+        group: "Default & Amounts"
+        required: true
+      - key: default_date
+        label: "Default Date"
+        hint: "e.g., 2026-01-15"
+        group: "Default & Amounts"
+        required: true
+      - key: total_amount_due
+        label: "Total Amount Due"
+        hint: "e.g., 15200000"
+        group: "Default & Amounts"
+        required: true
+      - key: cure_amount
+        label: "Cure Amount"
+        hint: "e.g., 850000"
+        group: "Default & Amounts"
+        required: false
+      - key: cure_deadline
+        label: "Cure Deadline"
+        hint: "e.g., 2026-05-15"
+        group: "Default & Amounts"
+        required: false
+      # -- Property --
+      - key: property_address
+        label: "Property Address"
+        hint: "e.g., 123 Main St, City, State ZIP"
+        group: "Property"
+        required: true
+      - key: property_legal_description
+        label: "Property Legal Description"
+        hint: "e.g., Lot 5, Block 12, Plat of..."
+        group: "Property"
+        required: true
+      - key: property_value
+        label: "Property Value"
+        hint: "e.g., 22000000"
+        group: "Property"
+        required: false
+      # -- Parties --
+      - key: borrower_name
+        label: "Borrower Name"
+        hint: "e.g., ABC Holdings LLC"
+        group: "Parties"
+        required: true
+      - key: lender_name
+        label: "Lender Name"
+        hint: "e.g., XYZ Capital Partners"
+        group: "Parties"
+        required: true
+      - key: trustee_name
+        label: "Trustee Name"
+        hint: "e.g., First National Trust Co."
+        group: "Parties"
+        required: false
+    designer_tone_directive: |
+      Formal legal, jurisdiction-specific, procedurally precise. This is a
+      foreclosure complaint — a legal filing that initiates judicial foreclosure
+      proceedings. Every statutory requirement must be met with precision.
+      The property must be identified by both street address and legal description.
+      The default must be described with specific facts, dates, and amounts.
+      Notice requirements must be documented with delivery method and dates.
+      The borrower's right to cure must be stated with the specific cure amount
+      and deadline. Relief sought must be legally cognizable in the applicable
+      jurisdiction. Tone: formal legal pleading — no editorializing, no
+      characterization beyond the facts.
 
   # ============================================================================
   # CATEGORY E: Investor & Participation
