@@ -22,7 +22,7 @@ When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed
    - `quality_criteria` — entries with `validator_tier: quality`
 5. Read config from `.acos/loan-doc-generator/config.yaml` (for `max_iterations`)
 6. Locate current draft at:
-   `.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/document-draft.md`
+   `.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/document-draft.html`
 7. Locate assembler notes at:
    `.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/assembler-notes.yaml`
 
@@ -48,11 +48,11 @@ For each criterion:
 - FAIL: clearly not met — quote exact evidence
 
 ALWAYS CHECK STRUCT-001:
-  Is there exactly ONE footer/signature block?
-  Is it AFTER all sections, following a horizontal rule (---)?
+  Is there exactly ONE footer/signature block using <div class="footer-block">?
+  Is it AFTER all sections, as the last major element before </body>?
   Does any section body contain footer, signature, or certification text?
-  PASS: one footer at document end, none within sections.
-  FAIL: footer within section body, multiple footers, or missing footer.
+  PASS: one <div class="footer-block"> at document end, none within sections.
+  FAIL: footer within section body, multiple footers, missing footer, or non-HTML footer syntax.
 
 ALWAYS CHECK STRUCT-002:
   Does the document include CSS pagination rules (pdf-styles.css or equivalent)?
@@ -62,6 +62,15 @@ ALWAYS CHECK STRUCT-002:
   Does h1 use break-before:page for major section starts?
   PASS: CSS pagination rules present, headings protected, tables/figures kept together.
   FAIL: missing CSS pagination rules, unprotected headings, split tables/figures.
+
+ALWAYS CHECK STRUCT-003:
+  HTML Well-Formedness
+  Verify the document is valid HTML: all tags are properly closed, no unclosed
+  <table>, <div>, or <section> tags. No raw markdown syntax (no `#`, `**`, `|---|`
+  pipe tables). If any markdown syntax is detected in the document body, flag as
+  FAIL — the document must be pure HTML.
+  PASS: well-formed HTML, all tags closed, no markdown syntax in document body.
+  FAIL: unclosed tags, raw markdown headings (#), bold (**), or pipe tables detected.
 
 Output matching schema:
 {validation-result.yaml template contents}

@@ -6,7 +6,7 @@ description: |
   work to phase orchestrator agents — each phase runs in its own context window.
   Includes persistent design library, Phase 2 cache, and quality-safe token
   optimizations. Primary context stays thin (~25K tokens vs ~300K+ previously).
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task(loan-doc-phase1), Task(loan-doc-phase2), Task(loan-doc-phase34)
 ---
@@ -709,7 +709,7 @@ On confirmation:
    │   ├── phase4-validation/
    │   └── output/
    └── output/
-       └── batch-report.md           ← combined provenance + results
+       └── batch-report.md           ← combined provenance + results (PDFs in batch-N/output/)
    ```
 
 ---
@@ -875,7 +875,7 @@ Update each `batch_item.status` to `"complete"` or `"failed"` based on results.
 After Phase 3+4 completes (regardless of PASS/FAIL), generate a data provenance table:
 
 1. Read `loan-data.yaml` at `loan_data_path` — each data point has `source_document` and `source_page` fields
-2. Read the final document draft to identify which data points were actually used
+2. Read the final PDF (or HTML fallback) to identify which data points were actually used
 3. Cross-reference: for each key figure appearing in the document, find its source in loan-data.yaml
 4. Display the provenance table in the context window:
 
@@ -915,7 +915,8 @@ Based on Phase 3+4 return:
 ║  Document      : {document_title}                           ║
 ║  Iterations    : {count}                                    ║
 ║  Pass Rate     : {rate}                                     ║
-║  Output        : {output_path}                              ║
+║  PDF Output    : {pdf_path}                                 ║
+║  HTML Source   : {html_path}                                ║
 ║  Provenance    : {provenance_table_path}                    ║
 ║  Validation    : {validation_report_path}                   ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -930,7 +931,8 @@ Based on Phase 3+4 return:
 ║  Iterations    : {count}/{max}                              ║
 ║  Pass Rate     : {rate}                                     ║
 ║  Remaining     : {failure_count} required failures          ║
-║  Output        : {output_path}                              ║
+║  PDF Output    : {pdf_path}                                 ║
+║  HTML Source   : {html_path}                                ║
 ║  Validation    : {validation_report_path}                   ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -955,7 +957,7 @@ all documents share the same loan folder analysis (Phase 2), many data points wi
 be reused across documents. The combined table deduplicates shared data:
 
 1. Read `loan-data.yaml` (shared Phase 2 output)
-2. For each batch item, read its final document draft from `batch-{N}/output/`
+2. For each batch item, read its final PDF (or HTML fallback) from `batch-{N}/output/`
 3. Cross-reference all documents against the shared loan data
 4. Display the combined provenance:
 
@@ -985,10 +987,10 @@ LTV Ratio: 65.6%          │ (calculated)         │ —    │ CM-Int
 ╔══════════════════════════════════════════════════════════════════════╗
 ║ Batch Generation Complete — {pass_count}/{N} passed                 ║
 ╠══════════════════════════════════════════════════════════════════════╣
-║  #  DOCUMENT                     RESULT  ITER  PASS RATE  OUTPUT    ║
-║  1  Credit Memo — Internal       PASS    2     95%        file://.. ║
-║  2  Credit Memo — External       PASS    1     100%       file://.. ║
-║  3  Deal Document                FAIL    5/5   72%        file://.. ║
+║  #  DOCUMENT                     RESULT  ITER  PASS RATE  PDF           ║
+║  1  Credit Memo — Internal       PASS    2     95%        file://...pdf ║
+║  2  Credit Memo — External       PASS    1     100%       file://...pdf ║
+║  3  Deal Document                FAIL    5/5   72%        file://...pdf ║
 ╠──────────────────────────────────────────────────────────────────────╣
 ║  Shared loan analysis   : {loan_data_path}                          ║
 ║  Combined provenance    : {batch_report_path}                       ║
@@ -1046,9 +1048,9 @@ Phase 1 Agent ─┬─ design-patterns.yaml ──→ Phase 2 + 3 + 4
 Phase 2 Agent ─┬─ loan-data.yaml ──→ Phase 3 + 4
                └─ loan-data-brief.yaml ──→ Phase 3 + 4
 
-Phase 3+4 Agent ─── document-draft.md ──→ validators ──→ Wigum loop ──→ output
+Phase 3+4 Agent ─── document-draft.html ──→ validators ──→ Wigum loop ──→ PDF output
 
-Phase 0 (post) ─── loan-data.yaml ──→ provenance-table.md (cross-ref with draft)
+Phase 0 (post) ─── loan-data.yaml ──→ provenance-table.md (cross-ref with HTML/PDF)
 
 Design Library ──→ Phase 0 (skip Phase 1 if cached)
 Phase 2 Cache  ──→ Phase 0 (skip Phase 2 if unchanged)

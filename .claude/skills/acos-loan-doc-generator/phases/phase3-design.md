@@ -75,7 +75,7 @@ If not applicable to this section: <!-- User instruction noted — not applicabl
 
 [IF iteration > 1]
 PREVIOUS DRAFT — Read your previous section at:
-.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N-1}/agent-{NN}/section.md
+.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N-1}/agent-{NN}/section.html
 
 FEEDBACK TO ADDRESS:
 {section-scoped feedback from previous validation report}
@@ -111,6 +111,12 @@ Image placement strategy: {image_placement_strategy or 'auto'}
 - after-header: place immediately after the section heading
 - appendix: do NOT place images in sections — they go in an appendix
 
+OUTPUT FORMAT: Write pure HTML fragment. NO markdown syntax.
+- Tables: <table><thead><tr><th>...</th></tr></thead><tbody>...</tbody></table>
+- Bold: <strong>text</strong> (NOT **text**)
+- Headings: <h2>, <h3> (NOT # or ##)
+- Lists: <ul><li> or <ol><li> (NOT - or 1.)
+
 MANDATORY FORMATTING RULES:
 ─────────────────────────────
 1. Write BODY CONTENT ONLY for this section.
@@ -125,8 +131,19 @@ MANDATORY FORMATTING RULES:
 8. Address ALL feedback items — do not skip any.
 9. Preserve parts of the previous draft that were not flagged.
 
-Write section content (markdown) to:
-.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/agent-{NN}/section.md
+Write section content as **HTML fragments** (not markdown). Use proper HTML tags:
+- `<h2>`, `<h3>` for sub-headings within the section (h1 reserved for section titles)
+- `<table>` with `<thead>` and `<tbody>` for all data tables
+- `<strong>` for bold, `<em>` for italics
+- `<ul>/<ol>` for lists
+- `<div class="callout">` for callout boxes
+- `<div class="summary-box">` for key metric summaries
+- `<blockquote>` for quotations or important notes
+- DO NOT use markdown syntax (no #, **, |table|, -, etc.)
+- DO NOT include <html>, <head>, <body>, or <style> tags — just the section content
+
+Write section content (HTML) to:
+.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/agent-{NN}/section.html
 ```
 
 Use `run_in_background: true`, `model: sonnet`.
@@ -142,8 +159,8 @@ TASK: Read all section files and assemble into a complete document draft.
 
 SECTIONS — Read each file in canonical order:
 [For each section:
-  - If written this iteration: .../iteration-{N}/agent-{NN}/section.md
-  - If carried forward: .../iteration-{N-1}/agent-{NN}/section.md (or from assembled draft)]
+  - If written this iteration: .../iteration-{N}/agent-{NN}/section.html
+  - If carried forward: .../iteration-{N-1}/agent-{NN}/section.html (or from assembled draft)]
 
 CANONICAL SECTION ORDER — Read from: {design_patterns_path}
 
@@ -161,65 +178,109 @@ MANDATORY ASSEMBLY RULES:
 1. Order sections per the canonical sequence.
 2. Add document title, date, and table of contents at the top.
    Wrap the TOC in `<div class="toc">...</div>`.
-3. Use `# Section Title` (h1) for major section headings — the CSS
+3. Use `<h1>Section Title</h1>` for major section headings — the CSS
    applies `break-before: page` to h1, so each major section starts
    on a new page automatically.
+4. Wrap each section in `<section class="chapter">` containing the `<h1>` title
+   followed by the section's HTML content.
 
-CSS EMBEDDING — CRITICAL:
-4. At the very top of the document, before the title, embed a `<style>` block
-   containing the FULL contents of pdf-styles.css. This ensures pagination
-   rules are present regardless of how the document is later converted to PDF.
+COMPLETE HTML DOCUMENT — CRITICAL:
+5. Produce a COMPLETE HTML document with `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`.
+6. In `<head>`, embed a `<style>` block containing the FULL contents of pdf-styles.css.
+   This ensures pagination rules are present for both browser rendering and PDF conversion.
+7. Generate an HTML table of contents inside `<div class="toc">` using `<ul>/<li>/<a href="#...">`.
+   Each section's `<section>` tag should have a matching `id` attribute for anchor links.
 
 FOOTER RULE — CRITICAL:
-5. Scan ALL section content for any footer, signature block,
+8. Scan ALL section content for any footer, signature block,
    certification lines, page numbers, or document-level metadata.
    REMOVE any such content from wherever it appears in sections.
-6. Place ONE consolidated footer/signature block at the very end,
+9. Place ONE consolidated footer/signature block at the very end,
    wrapped in `<div class="footer-block">...</div>`, following the
    FOOTER CONVENTION from design patterns.
-7. Exactly ONE footer. No more, no less (unless design patterns show none).
+10. Exactly ONE footer. No more, no less (unless design patterns show none).
 
 TABLE PROTECTION:
-8. Wrap any table longer than 5 rows in `<div class="keep-together">...</div>`
-   to prevent splitting across page boundaries.
+11. Wrap any table longer than 5 rows in `<div class="keep-together">...</div>`
+    to prevent splitting across page boundaries.
 
 [IF target_pages is not null]
 LENGTH ENFORCEMENT:
-9. After assembly, estimate total document length (~300 words per page).
+12. After assembly, estimate total document length (~300 words per page).
    Target: {target_pages} pages. If any section exceeds its page_budget by
    more than 50%, add an assembler note flagging it. Do NOT truncate — just flag.
 
 [IF images is not empty AND image_placement_strategy == "appendix"]
 IMAGE APPENDIX:
-10. Create an "Appendix: Property Images" section at the end (before footer).
+13. Create an "Appendix: Property Images" section at the end (before footer).
     Place all images there using:
     <figure><img src="file://{path}" /><figcaption>{caption}</figcaption></figure>
     Wrap in `<div class="appendix-section">...</div>`.
 
 [IF images is not empty AND image_placement_strategy != "appendix"]
 IMAGE HANDLING:
-10. Verify all `<figure>` tags from section designers are preserved.
+14. Verify all `<figure>` tags from section designers are preserved.
     Each figure must use: <figure><img src="file://{path}" /><figcaption>...</figcaption></figure>
     Remove any duplicate image references across sections.
 
 CONSISTENCY CHECK:
-11. Check for cross-section inconsistencies (entity names, figures, dates, terms).
-12. Flag inconsistencies as assembler notes — do NOT fix them.
+15. Check for cross-section inconsistencies (entity names, figures, dates, terms).
+16. Flag inconsistencies as assembler notes — do NOT fix them.
 
 Write assembled draft to:
-.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/document-draft.md
+.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/document-draft.html
 
 Write cross-section issues to:
 .acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/assembler-notes.yaml
 ```
 
-## Step 3.5: Return to Caller
+## Step 3.5: Convert to PDF
+
+After the HTML document is assembled, convert it to PDF using Puppeteer:
+
+```bash
+node -e "
+const puppeteer = require('puppeteer');
+(async () => {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+  const html = require('fs').readFileSync(process.argv[1], 'utf8');
+  await page.setContent(html, { waitUntil: 'networkidle0' });
+  await page.pdf({
+    path: process.argv[2],
+    format: 'Letter',
+    printBackground: true,
+    margin: { top: '1in', right: '1in', bottom: '1.25in', left: '1in' },
+    displayHeaderFooter: true,
+    headerTemplate: '<div></div>',
+    footerTemplate: '<div style=\"font-size:8pt;color:#999;text-align:center;width:100%;\">Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>'
+  });
+  await browser.close();
+  console.log('PDF generated: ' + process.argv[2]);
+})();
+" "{html_path}" "{pdf_path}"
+```
+
+Where:
+- `{html_path}` = `.acos/loan-doc-generator/sessions/{session_id}/phase3-design/iteration-{N}/synthesis/document-draft.html`
+- `{pdf_path}` = `.acos/loan-doc-generator/sessions/{session_id}/output/{document_title}.pdf`
+
+If Puppeteer is not available, fall back to pandoc:
+```bash
+pandoc "{html_path}" -f html -o "{pdf_path}" --pdf-engine=weasyprint
+```
+
+If neither works, keep the HTML output and warn the user:
+"PDF conversion tools not available. HTML document saved at: {html_path}"
+
+## Step 3.6: Return to Caller
 
 **Return:**
 ```
 Phase 3 iteration {N} complete.
 - Sections written: {count} (carried forward: {count})
-- Draft location: {draft_path}
+- HTML draft: {html_path}
+- PDF output: {pdf_path} (or "not generated — see warning")
 - Cross-section issues: {count from assembler-notes}
 - Assembler notes: {assembler_notes_path}
 ```
