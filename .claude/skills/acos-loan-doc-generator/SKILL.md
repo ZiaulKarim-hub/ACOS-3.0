@@ -112,8 +112,9 @@ Load the `other` fallback entry from `templates/doc-type-catalog.yaml`.
   [3]  Term Sheet                   (proposed deal terms)
   [4]  Deal Memo                    (deal summary, committee presentation)
   [5]  Scoping Letter               (preliminary interest, high-level terms)
+  [6]  Executive Summary            (deal overview, one-pager)
 
-Enter selection [1-5]:
+Enter selection [1-6]:
 ```
 
 **Category B — Closing & Administration:**
@@ -138,10 +139,12 @@ Enter selection [1-2]:
 **Category D — Loan Modifications & Workout:**
 ```
   [1]  Extension Request Questionnaire  (borrower extension request form)
-  [2]  Pre-Foreclosure Notice           (default notice, cure period)
-  [3]  Demand Letter                    (payment demand, legal notice)
+  [2]  Loan Extension Agreement         (extension terms, modified conditions)
+  [3]  Forbearance Agreement            (temporary relief, modified payment terms)
+  [4]  Pre-Foreclosure Notice           (default notice, cure period)
+  [5]  Demand Letter                    (payment demand, legal notice)
 
-Enter selection [1-3]:
+Enter selection [1-5]:
 ```
 
 **Category E — Investor & Participation:**
@@ -161,6 +164,7 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | A | 3 | `credit-underwriting/term-sheet` | Term Sheet |
 | A | 4 | `credit-underwriting/deal-memo` | Deal Memo |
 | A | 5 | `credit-underwriting/scoping-letter` | Scoping Letter |
+| A | 6 | `credit-underwriting/executive-summary` | Executive Summary / Deal Overview |
 | B | 1 | `closing-admin/closing-summary` | Closing Summary / Checklist |
 | B | 2 | `closing-admin/settlement-statement` | Settlement Statement |
 | B | 3 | `closing-admin/escrow-instructions` | Escrow Instructions |
@@ -169,8 +173,10 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | C | 1 | `portfolio-management/payoff-statement` | Payoff Statement / Letter |
 | C | 2 | `portfolio-management/redemption-statement` | Redemption Statement |
 | D | 1 | `loan-modifications/extension-request` | Extension Request Questionnaire |
-| D | 2 | `loan-modifications/pre-foreclosure-notice` | Pre-Foreclosure Notice |
-| D | 3 | `loan-modifications/demand-letter` | Demand Letter |
+| D | 2 | `loan-modifications/extension-agreement` | Loan Extension Agreement |
+| D | 3 | `loan-modifications/forbearance-agreement` | Forbearance Agreement |
+| D | 4 | `loan-modifications/pre-foreclosure-notice` | Pre-Foreclosure Notice |
+| D | 5 | `loan-modifications/demand-letter` | Demand Letter |
 | E | 1 | `investor-participation/participation-agreement` | Investor Participation Agreement |
 | E | 2 | `investor-participation/investor-report` | Investor Update / Report |
 | F | — | `other/custom` | (user-specified) |
@@ -216,28 +222,29 @@ Step 2 of 5: Design style
 
   Design Library has {N} design(s) for "{catalog_entry.label}":
   ─────────────────────────────────────────────────────────────
-  [1]  Choose Design from Library
-  [2]  Use New Design
+  [1]  {label}  │  {example_count} samples  │  Added {date_added}
+       Samples:
+         file://{sample_files[0]}
+         file://{sample_files[1]}
 
-Enter selection [1-2]:
-```
-
-If user selects **[1] Choose Design from Library**, display available entries:
-
-```
-  Available designs for "{catalog_entry.label}":
-  ─────────────────────────────────────────────────────────────
-  [1]  {label}  │  {example_count} examples  │  Added {date_added}
-  [2]  {label}  │  {example_count} examples  │  Added {date_added}
+  [2]  {label}  │  {example_count} samples  │  Added {date_added}
+       Samples:
+         file://{sample_files[0]}
   ...
+  ─────────────────────────────────────────────────────────────
+  [N+1]  Use New Design (provide new examples)
 
-Enter selection [1-N]:
+Enter selection [1-{N+1}]:
 ```
 
-Store as `selected_library_entry`. Set `skip_phase_1 = true`.
-Load `design_patterns_path` and `benchmark_criteria_path` from the selected entry.
+Sample `file://` links are clickable — users can open them to preview what the
+design looks like before choosing. The links open in the system's default viewer.
 
-If user selects **[2] Use New Design**, prompt for example path (see Case B below).
+If user selects **a numbered design [1-N]**, store as `selected_library_entry`.
+Set `skip_phase_1 = true`. Load `design_patterns_path` and `benchmark_criteria_path`
+from the selected entry.
+
+If user selects **[N+1] Use New Design**, prompt for example path (see Case B below).
 
 **Case B — No designs in library for this document type:**
 
