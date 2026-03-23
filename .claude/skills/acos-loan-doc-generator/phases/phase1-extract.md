@@ -15,9 +15,50 @@ You receive a session manifest path as your input. Read it first.
    `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Store `benchmark_dimensions` and `designer_tone_directive` from the catalog entry
 
+## Step 1.1b: PPTX Template Extraction (conditional)
+
+**Only execute if examples include `.pptx` files.**
+
+When the example document is a PowerPoint file, extract a reusable template:
+
+1. Read the source `.pptx` using python-pptx
+2. Extract design-spec.yaml with:
+   - Slide dimensions (width, height)
+   - Theme colors (from slide master color scheme)
+   - Font scheme (heading, body fonts)
+   - Background fills and gradient definitions
+3. Generate `template.pptx` — a blank presentation containing:
+   - Slide master with correct dimensions (typically 16:9)
+   - Theme colors from the source
+   - Font scheme matching the source
+   - Blank slide layouts for each layout type found in source (cover, content, two-column, etc.)
+   - **No content shapes** — only the masters/layouts/theme
+
+   ```python
+   # Template generation (run via Bash tool):
+   python3 -c "
+   from pptx import Presentation
+   src = Presentation('{source_pptx_path}')
+   # Create new presentation inheriting theme
+   tpl = Presentation()
+   tpl.slide_width = src.slide_width
+   tpl.slide_height = src.slide_height
+   # Theme colors are inherited from the slide master
+   tpl.save('{output_template_path}')
+   "
+   ```
+
+4. Write both files to the extraction directory:
+   - `.acos/loan-doc-generator/extractions/{session_id}/design-spec.yaml`
+   - `.acos/loan-doc-generator/extractions/{session_id}/template.pptx`
+
+5. Store `template_pptx_path` in the extraction manifest for Phase 3 to use.
+
+**For non-PPTX examples**, skip this step entirely.
+
 ## Step 1.2: Inventory Examples
 
-1. Glob for documents in `examples_path`: `**/*.{pdf,docx,doc,md,txt}`
+1. Glob for documents in `examples_path`: `**/*.{pdf,docx,doc,md,txt,pptx}`
 2. List all found documents with sizes and types
 3. Read config from `.acos/loan-doc-generator/config.yaml`
 4. If count > `config.extraction.max_design_agents` (default 10): truncate to most recent

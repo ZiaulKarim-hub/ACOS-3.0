@@ -222,10 +222,11 @@ Enter selection [1-6, N]:           [<] Back
 ```
   [1]  Investor Participation Agreement  (participation terms, pro-rata shares)
   [2]  Investor Update / Report          (portfolio performance, deal updates)
+  [3]  Participation Interest Offering  (presentation, investor marketing)
   ─────────────────────────────────────────────────────
   [N]  Define a new document type in this category
 
-Enter selection [1-2, N]:           [<] Back
+Enter selection [1-3, N]:           [<] Back
 ```
 
 Map selection to `document_id` (format: `{category_id}/{document_slug}`):
@@ -255,6 +256,7 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | D | 6 | `loan-modifications/foreclosure-complaint` | Foreclosure Complaint |
 | E | 1 | `investor-participation/participation-agreement` | Investor Participation Agreement |
 | E | 2 | `investor-participation/investor-report` | Investor Update / Report |
+| E | 3 | `investor-participation/participation-offering` | Participation Interest Offering |
 | F | 1 | `other/borrower-resolution` | Borrower Resolution |
 | F | 2 | `other/firpta-certificate` | FIRPTA Certificate |
 | F | 3 | `other/title-requirements-letter` | Title Requirements Letter |
@@ -698,6 +700,10 @@ Phase 4 validators check figures against this cascade:
 **Quick mode / Batch mode:** Set `target_pages` to the midpoint of `catalog_entry.default_page_range`
 (e.g., if `default_page_range: [5, 10]`, set `target_pages = 8`). Skip the prompt.
 For batch mode, compute this per `batch_item` using each item's `catalog_entry`.
+
+For PPTX document types (where `catalog_entry.output_format == 'pptx'`), use
+`default_slide_count` instead of `default_page_range`. Store as `target_slides`
+instead of `target_pages`.
 
 **Detailed mode:** Continue below.
 

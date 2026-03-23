@@ -10,6 +10,24 @@ When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed
 
 ---
 
+## PPTX Validation (conditional)
+
+**If `catalog_entry.output_format == 'pptx'`**, run PPTX-specific validation:
+
+1. Execute: `python3 .claude/scripts/validate-pptx.py <pptx> <data> <spec> -o <report>`
+2. Checks performed:
+   - Text overflow: every shape's text fits within bounds
+   - Boundary: no shape extends beyond slide edges
+   - Data integrity: every number matches verified-data.yaml
+   - Font compliance: correct font per content role (Courier New/Georgia/Calibri)
+   - Color compliance: all RGB values in design spec palette
+   - Anchor audit: all text_frames have vertical_anchor set
+   - Margin audit: no default margins (all explicit)
+3. Verdict: PASS if zero errors (warnings and info are advisory)
+4. On FAIL: feed findings back to Phase 3 for the Wigum loop iteration
+
+**For non-PPTX types**, continue with standard validation below.
+
 ## Step 4.1: Load Context
 
 1. Read the session manifest YAML

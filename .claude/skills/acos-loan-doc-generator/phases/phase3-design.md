@@ -12,6 +12,32 @@ If iteration > 1, you also receive feedback from Phase 4.
 
 ---
 
+## PPTX Output Path (conditional)
+
+**If `catalog_entry.output_format == 'pptx'`**, use the PPTX pipeline instead of HTML:
+
+1. Skip HTML assembly entirely
+2. Collect all section content as structured YAML data (not HTML)
+3. Call the PPTX generation engine:
+   ```bash
+   python3 .claude/scripts/data-to-pptx.py \
+     {session_dir}/verified-data.yaml \
+     {design_patterns_path}/design-spec.yaml \
+     --template {template_pptx_path} \
+     -o {session_dir}/output/{document_slug}.pptx
+   ```
+4. Run PPTX validation:
+   ```bash
+   python3 .claude/scripts/validate-pptx.py \
+     {session_dir}/output/{document_slug}.pptx \
+     {session_dir}/verified-data.yaml \
+     {design_patterns_path}/design-spec.yaml \
+     -o {session_dir}/phase4-validation/pptx-validation.yaml
+   ```
+5. Output: `{session_id}/output/{document_slug}.pptx` (no PDF/DOCX for PPTX types)
+
+**For non-PPTX types**, continue with the standard HTML->PDF+DOCX pipeline below.
+
 ## Step 3.1: Load Context
 
 1. Read the session manifest YAML
