@@ -42,6 +42,35 @@ All user interaction happens here. No CLI argument parsing except `status` and `
 - **Progress clarity.** Show step N of M. Show phase progress during dispatch.
 - **Fail gracefully.** One clear error message with what went wrong and what to do next.
 - **Output format.** ALWAYS produce DOCX + PDF. Never .html, .md, or any other format.
+- **Navigation.** Every step (except Step 0.0) shows `[<] Back` to return to the
+  previous step. At the confirmation step (0.8), numbered fields allow jumping to
+  any specific step. When revisiting a step after back-navigation, show the
+  previously-entered value as a default — pressing Enter with no input keeps it.
+
+### Back-Navigation Rules (apply to ALL steps)
+
+When the user enters `<` or `back` at any step prompt:
+
+1. Re-display the **previous step's** prompt
+2. Show the current stored value: `(current: {value})`
+3. Offer to keep it: `"Enter selection or press Enter to keep [{current}]"`
+4. If the user enters a new value, overwrite the stored variable
+5. If the user presses Enter with no input, keep the existing value and advance forward
+6. After the step completes, proceed forward from that step as normal
+
+**State invalidation on change:**
+- If `interview_mode` changes (Step 0.0): clear all mode-specific fields (figures,
+  images, charts, instructions, page count) to their defaults
+- If `document_id` changes (Step 0.2): set `selected_library_entry = null`,
+  re-run the design library lookup when reaching Step 0.3
+- If `category_id` changes (Step 0.1): clear `document_id` and cascade above
+
+**Batch mode back-navigation:**
+- During the category loop: `<` returns to the previous category's document selection,
+  removing documents added from the current (cancelled) category
+- During per-item design resolution: `<` returns to the previous item's design prompt
+- At batch confirmation: numbered jump can target category re-selection or a specific
+  item's design source
 
 If `$ARGUMENTS` contains `status`, skip to the **Status Command** section.
 If `$ARGUMENTS` contains `resume`, skip to the **Resume Mode** section in Phase Dispatch.
@@ -74,6 +103,7 @@ Display the category menu:
 
 ```
 Step {1 of 4 if quick | 1 of 8 if detailed | 1 of 4 if batch}: Select a document category
+{if revisiting: "(current: {letter} — {category_name})"}
 
   [A]  Credit Memo & Underwriting
   [B]  Closing & Administration
@@ -82,7 +112,7 @@ Step {1 of 4 if quick | 1 of 8 if detailed | 1 of 4 if batch}: Select a document
   [E]  Investor & Participation
   [F]  Other
 
-Enter selection [A-F]:
+Enter selection [A-F]{if revisiting: " or Enter to keep [{current}]"}:           [<] Back
 ```
 
 Map selection to `category_id`:
@@ -102,11 +132,27 @@ Store as `category_id`.
 
 **If category is F (Other):**
 
+Display existing named types in this category from `doc-type-catalog.yaml`,
+plus special options:
+
 ```
-  You selected: Other
+  Category F — Other:
+  [1]  Borrower Resolution          (corporate authorization, entity resolution)
+  [2]  FIRPTA Certificate           (foreign investment tax certificate)
+  [3]  Title Requirements Letter    (title company/closing agent directives)
+  ─────────────────────────────────────────────────────
+  [C]  Quick custom (name only, generic template)
+  [N]  Define a new document type
 
-  What document do you need?
+Enter selection [1-3, C, N]:           [<] Back
+```
 
+**If user selects [1-3]:** Load the matching catalog entry by `document_id`.
+Store `document_id`, `document_title`, `catalog_entry` as normal.
+
+**If user selects [C]:** Prompt for document name:
+
+```
   Document name: _
 ```
 
@@ -114,6 +160,8 @@ Store the entered value as `document_title`. Generate `document_id` by slugifyin
 the title: `"other/" + document_title.lower().replace(/[^a-z0-9]+/g, "-").strip("-")`
 (e.g., "Promissory Note" → `other/promissory-note`).
 Load the `other/custom` fallback entry from `templates/doc-type-catalog.yaml`.
+
+**If user selects [N]:** Jump to **Step 0.2N: New Document Type Definition** below.
 
 **For categories A–E**, display the documents within the selected category:
 
@@ -125,8 +173,10 @@ Load the `other/custom` fallback entry from `templates/doc-type-catalog.yaml`.
   [4]  Deal Memo                    (deal summary, committee presentation)
   [5]  Scoping Letter               (preliminary interest, high-level terms)
   [6]  Executive Summary            (deal overview, one-pager)
+  ─────────────────────────────────────────────────────
+  [N]  Define a new document type in this category
 
-Enter selection [1-6]:
+Enter selection [1-6, N]:           [<] Back
 ```
 
 **Category B — Closing & Administration:**
@@ -138,16 +188,20 @@ Enter selection [1-6]:
   [5]  Transaction Checklist        (pre/post-close task tracking)
   [6]  Loan Agreement              (bridge, construction, mezzanine)
   [7]  Guarantee Document          (personal, carve-out, completion)
+  ─────────────────────────────────────────────────────
+  [N]  Define a new document type in this category
 
-Enter selection [1-7]:
+Enter selection [1-7, N]:           [<] Back
 ```
 
 **Category C — Portfolio Management:**
 ```
   [1]  Payoff Statement / Letter    (outstanding balance, per-diem, payoff terms)
   [2]  Redemption Statement         (investor redemption amounts, timing)
+  ─────────────────────────────────────────────────────
+  [N]  Define a new document type in this category
 
-Enter selection [1-2]:
+Enter selection [1-2, N]:           [<] Back
 ```
 
 **Category D — Loan Modifications & Workout:**
@@ -158,16 +212,20 @@ Enter selection [1-2]:
   [4]  Pre-Foreclosure Notice           (default notice, cure period)
   [5]  Demand Letter                    (payment demand, legal notice)
   [6]  Foreclosure Complaint       (judicial foreclosure filing)
+  ─────────────────────────────────────────────────────
+  [N]  Define a new document type in this category
 
-Enter selection [1-6]:
+Enter selection [1-6, N]:           [<] Back
 ```
 
 **Category E — Investor & Participation:**
 ```
   [1]  Investor Participation Agreement  (participation terms, pro-rata shares)
   [2]  Investor Update / Report          (portfolio performance, deal updates)
+  ─────────────────────────────────────────────────────
+  [N]  Define a new document type in this category
 
-Enter selection [1-2]:
+Enter selection [1-2, N]:           [<] Back
 ```
 
 Map selection to `document_id` (format: `{category_id}/{document_slug}`):
@@ -197,10 +255,198 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | D | 6 | `loan-modifications/foreclosure-complaint` | Foreclosure Complaint |
 | E | 1 | `investor-participation/participation-agreement` | Investor Participation Agreement |
 | E | 2 | `investor-participation/investor-report` | Investor Update / Report |
-| F | — | `other/custom` | (user-specified) |
+| F | 1 | `other/borrower-resolution` | Borrower Resolution |
+| F | 2 | `other/firpta-certificate` | FIRPTA Certificate |
+| F | 3 | `other/title-requirements-letter` | Title Requirements Letter |
+| F | C | `other/custom` | (user-specified, quick custom) |
+| F | N | — | (new document type definition) |
 
 Load the matching entry from `templates/doc-type-catalog.yaml` using `document_id`.
 Store as `catalog_entry`. Set `document_title` from the table above (or user input for F).
+
+**When the user selects [N] at any category (A–F):** Jump to Step 0.2N below.
+
+### Step 0.2N: New Document Type Definition
+
+This sub-flow is triggered when the user selects `[N]` in any category. It creates
+a fully-defined document type entry and persists it to `doc-type-catalog.yaml`.
+
+```
+  Define a new document type
+  ─────────────────────────────────────────────────────
+
+  Category: {current category_name} (from Step 0.1)
+
+  How would you like to define this document type?
+
+  [1]  From example  — provide a sample doc, I'll learn the structure
+  [2]  Manual        — describe the sections, I'll build the definition
+  [3]  AI-generated  — I'll generate a definition from the name alone
+
+Enter selection [1-3]:           [<] Back
+```
+
+#### Path 1: From Example (recommended)
+
+1. Prompt for document name:
+   ```
+     Document name: _
+   ```
+
+2. Prompt for example document path:
+   ```
+     Enter path to example document(s):
+     Path: _
+   ```
+   Validate the path exists.
+
+3. Run Phase 1 in **catalog inference mode** — dispatch to `loan-doc-phase1` with
+   a special flag:
+   ```
+   Task(loan-doc-phase1)
+     - prompt: |
+         CATALOG INFERENCE MODE — do NOT write to design library yet.
+         Example path: {examples_path}
+         Document name: {document_name}
+         Category: {category_id}
+         Execute Phase 1 extraction, then run Step 1.5b to generate a
+         candidate catalog entry.
+         Read your instructions from:
+         .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
+   ```
+
+4. Read the candidate catalog entry from Phase 1 output. Display for review:
+   ```
+     Inferred definition for "{document_name}":
+     ──────────────────────────────────────────────────────
+     ID:         {category_id}/{slugified_name}
+     Pages:      {min}-{max}
+     Sections:
+       1. {section_name}    ({full_data_access ? "full data" : "section brief"})
+       2. {section_name}    (...)
+       ...
+     Benchmarks: {benchmark_1}, {benchmark_2}, ...
+     Critical figures: {figure_1}, {figure_2}, ...
+
+     [A]  Approve & save
+     [E]  Edit (modify sections, benchmarks, or figures)
+     [R]  Reject & try again
+
+   Enter selection [A/E/R]:
+   ```
+
+5. **If [E] Edit:** Show the candidate as YAML in a temp file, let the user edit,
+   then re-read and re-display for approval.
+
+6. **If [A] Approve:**
+   - Generate `document_id`: `{category_id}/{slugified_name}`. If this ID already
+     exists in the catalog, append `-v2`, `-v3`, etc.
+   - Read `templates/doc-type-catalog.yaml`, parse YAML, append the new entry to
+     the `documents` list with `user_defined: true`, write back the file.
+   - Store `catalog_entry` with the new entry.
+   - Store `document_id` and `document_title`.
+   - **Shortcut:** The example used here becomes the design source. Set
+     `examples_path = {path from step 2}`, `skip_phase_1 = false` (Phase 1 already
+     ran in inference mode — the extraction outputs are reusable). When dispatching
+     the normal Phase 1 later, check if catalog inference already produced
+     `design_patterns_path` and `benchmark_criteria_path`. If so, set
+     `skip_phase_1 = true` and reuse those outputs.
+   - Continue to **Step 0.3** (design library check).
+
+7. **If [R] Reject:** Loop back to the path selection prompt at the top of Step 0.2N.
+
+#### Path 2: Manual Definition (4 prompts)
+
+1. ```
+     Document name: _
+   ```
+
+2. ```
+     List the sections for this document (one per line, or comma-separated):
+     Sections: _
+   ```
+   Parse into a list of section names.
+
+3. ```
+     Typical page range?
+     [1] Short    (1-3 pages)
+     [2] Medium   (3-8 pages)
+     [3] Long     (8-15 pages)
+     [4] Custom: _
+
+   Enter selection [1-4]:
+   ```
+
+4. ```
+     Document purpose/tone (one sentence):
+     (e.g., "Formal legal document establishing lending commitment terms")
+     Tone: _
+   ```
+
+After collecting these 4 inputs, Claude generates a full catalog entry:
+- `document_id`: `{category_id}/{slugified_name}`
+- `default_sections`: from user's section list, with `full_data_access` inferred
+  (first and last sections = true, middle sections = false)
+- `default_page_range`: from page range selection
+- `benchmark_dimensions`: generate 5-7 reasonable dimensions based on document
+  name and sections (e.g., "Sections Completeness", "Data Accuracy", "Legal
+  Language Standards", "Formatting Consistency", "Structural Coherence")
+- `structural_benchmark_items`: generate 5-8 checklist items
+- `designer_tone_directive`: from the tone input
+- `critical_figures`: infer common PE lending figures relevant to this document
+  type (loan_amount, borrower_name, etc.)
+
+Display the same `[A]/[E]/[R]` review gate as Path 1. On approve, persist to
+`doc-type-catalog.yaml` with `user_defined: true`. Continue to **Step 0.3**.
+
+#### Path 3: AI-Generated (1 prompt)
+
+1. ```
+     Document name: _
+   ```
+
+Claude generates the entire catalog entry using its knowledge of PE loan
+documentation. This includes sections, benchmarks, page range, tone, and
+critical figures — all inferred from the document name and category.
+
+Display the same `[A]/[E]/[R]` review gate. On approve, persist to
+`doc-type-catalog.yaml` with `user_defined: true`. Continue to **Step 0.3**.
+
+#### Persistence Format
+
+New entries appended to `templates/doc-type-catalog.yaml` follow the existing
+schema exactly, with one addition:
+
+```yaml
+  - document_id: "{category_id}/{slug}"
+    category_id: "{category_id}"
+    label: "{document_name}"
+    user_defined: true                    # ← distinguishes from built-in types
+    date_added: "YYYY-MM-DD"
+    default_page_range: [min, max]
+    default_sections:
+      - name: "Section Name"
+        full_data_access: true
+      # ...
+    benchmark_dimensions:
+      - "Dimension 1"
+      # ...
+    structural_benchmark_items:
+      - "Item 1"
+      # ...
+    designer_tone_directive: |
+      Tone description...
+    critical_figures:
+      - key: "figure_key"
+        label: "Display Label"
+        hint: "e.g., 15000000"
+        group: "Group Name"
+        required: true
+      # ...
+```
+
+**Collision handling:** If `document_id` already exists in the catalog, append
+a version suffix (`-v2`, `-v3`, etc.) and inform the user of the adjusted ID.
 
 **Batch mode:** Both steps are combined. After category selection, the document
 menu changes to support multi-select within that category:
@@ -253,7 +499,7 @@ Step {2 of 4 if quick | 2 of 8 if detailed | 2 of 4 if batch}: Design style
   [V]  View sample for a design
   [{N+1}]  Use New Design
 
-Enter selection [1-{N+1}] or [V]:
+Enter selection [1-{N+1}] or [V]:           [<] Back
 ```
 
 **Sample links are NOT shown by default** — this keeps the UI clean. If user
@@ -276,7 +522,7 @@ Step {2 of 4 if quick | 2 of 8 if detailed | 2 of 4 if batch}: Design style
   Enter path to example document(s):
   (File path, directory, or glob pattern)
 
-  Path: _
+  Path: _                                             [<] Back
 ```
 
 Validate the path exists. Store as `examples_path`. Set `skip_phase_1 = false`.
@@ -310,9 +556,10 @@ item). Run novelty checks as in single-document mode.
 
 ```
 Step {3 of 4 if quick | 3 of 8 if detailed | 3 of 4 if batch}: Loan folder
+{if revisiting: "(current: {loan_folder_path})"}
 
   Enter path to the loan folder for this transaction:
-  Path: _
+  Path{if revisiting: " (Enter to keep current)"}: _           [<] Back
 ```
 
 Validate the path exists (check with `ls` or `stat`). If invalid, display error
@@ -337,7 +584,7 @@ Step 4 of 8: Financial figures  (detailed mode only)
   [2] Extract from documents     — fully automated
   [3] Hybrid                     — I'll provide some, extract the rest
 
-Enter selection [1-3]:
+Enter selection [1-3]:           [<] Back
 ```
 
 Store as `figures_mode`: `user`, `auto`, or `hybrid`.
@@ -465,7 +712,7 @@ Step 5 of 8: Document length
   [4] Custom    (enter your own target)
   [5] No limit  (let the content determine length)
 
-Enter selection [1-5]:
+Enter selection [1-5]:           [<] Back
 ```
 
 If [4], prompt: `Target pages: _`. Store the entered number.
@@ -499,7 +746,7 @@ Step 6 of 8: Images & photos  (optional — press Enter to skip)
 
   (Press Enter twice when done, or Enter once to skip)
 
-  Images: _
+  Images: _                                          [<] Back
 ```
 
 If images provided, prompt for placement strategy:
@@ -543,7 +790,7 @@ Step {N} of {M}: Charts & graphs  (optional)
   [4] Risk Factor Donut           (Risk Assessment)
   [5] Amortization Schedule       (Financial Analysis)
 
-  Select optional charts (comma-separated, or Enter to skip): _
+  Select optional charts (comma-separated, or Enter to skip): _    [<] Back
 ```
 
 For non-credit-memo document types, show only the optional charts menu (no
@@ -571,7 +818,7 @@ Step 7 of 8: Additional instructions  (optional — press Enter to skip)
     "Use California law conventions for the governing law section"
     "Flag any covenant breaches prominently"
 
-  Instructions: _
+  Instructions: _                                    [<] Back
 ```
 
 Store as `additional_instructions`. If the user presses Enter with no input, set to `null`.
@@ -607,7 +854,7 @@ Step {N of M}: Output destination  (optional — press Enter for default)
 
   Default: .acos/loan-doc-generator/sessions/{session_id}/output/
 
-  Custom path: _
+  Custom path: _                                     [<] Back
 ```
 
 If the user enters a custom path, validate it exists (or can be created). Store as
@@ -625,17 +872,24 @@ Display confirmation:
 ╔══════════════════════════════════════════════════════════════╗
 ║ Ready to Generate                                           ║
 ╠══════════════════════════════════════════════════════════════╣
-║  Mode          : {interview_mode}                           ║
-║  Document      : {document_title}                           ║
-║  Design Source : {label or path}                            ║
-║  Loan Folder   : {loan_folder_path}                         ║
-║  Figures Mode  : {figures_mode}                              ║
-║  Target Pages  : {target_pages or "no limit"}               ║
-║  Images        : {len(images) or "none"}                    ║
-║  Instructions  : {additional_instructions or "none"}        ║
-║  Output Format : PDF + DOCX                                 ║
-║  Output To     : {output_destination or "session default"}  ║
-║  Session ID    : {session_id}                               ║
+║  [1] Mode          : {interview_mode}                       ║
+║  [2] Category      : {category_name}                        ║
+║  [3] Document      : {document_title}                       ║
+║  [4] Design Source : {label or path}                        ║
+║  [5] Loan Folder   : {loan_folder_path}                     ║
+{if detailed:}
+║  [6] Figures Mode  : {figures_mode}                          ║
+║  [7] Target Pages  : {target_pages or "no limit"}           ║
+║  [8] Images        : {len(images) or "none"}                ║
+║  [9] Charts        : {chart_count or "auto"}                ║
+║ [10] Instructions  : {truncated or "none"}                  ║
+║ [11] Output To     : {output_destination or "session default"} ║
+{end if}
+{if quick:}
+║  [6] Output To     : {output_destination or "session default"} ║
+{end if}
+║      Output Format : PDF + DOCX                             ║
+║      Session ID    : {session_id}                           ║
 ╚══════════════════════════════════════════════════════════════╝
 
   Phases to run:
@@ -644,8 +898,15 @@ Display confirmation:
     ☐ Phase 3: Document Design
     ☐ Phase 4: Validation + Wigum Loop
 
-Proceed? [Y/n]:
+  [Y] Proceed   [<] Back   [1-{N}] Edit specific step
 ```
+
+If the user enters a number (e.g., `3`), jump directly to that step's prompt
+with the current value shown. After the user updates (or keeps) the value,
+return to this confirmation screen with the updated summary. Apply state
+invalidation rules from the Back-Navigation Rules section (e.g., changing
+document type clears design source).
+
 
 **Batch mode:**
 

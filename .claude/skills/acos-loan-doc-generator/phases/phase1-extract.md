@@ -118,6 +118,79 @@ Track B (benchmarks) reads from `design/synthesis/design-patterns.yaml` for the 
 sample. When multiple samples exist, Track B runs once per sample — each reading from
 that sample's `per-sample/sample-{NN}/design-patterns.yaml`.
 
+## Step 1.5b: Catalog Inference Mode (conditional)
+
+**Only execute this step if the prompt includes `CATALOG INFERENCE MODE`.**
+Skip this step entirely during normal Phase 1 execution.
+
+In catalog inference mode, the caller (Step 0.2N) wants a candidate `doc-type-catalog.yaml`
+entry generated from the extracted design patterns. This enables defining new document
+types from example documents.
+
+1. Read the synthesized design patterns from Step 1.5:
+   `.acos/loan-doc-generator/extractions/{session_id}/design/synthesis/design-patterns.yaml`
+
+2. From the extracted patterns, generate a candidate catalog entry:
+
+   ```yaml
+   # Candidate catalog entry — generated from example extraction
+   document_id: "{category_id}/{slugified_document_name}"
+   category_id: "{category_id}"
+   label: "{document_name}"
+   user_defined: true
+   date_added: "YYYY-MM-DD"
+   default_page_range: [{estimated_min}, {estimated_max}]  # infer from example length
+   default_sections:
+     # Derive from the CANONICAL SECTIONS in design-patterns.yaml
+     - name: "{section_name}"
+       full_data_access: true   # first and last sections = true
+     - name: "{section_name}"
+       full_data_access: false  # middle sections = false
+     # ... for each section found in the example
+   benchmark_dimensions:
+     # Generate 5-7 dimensions based on the sections and document type:
+     - "Required Sections Completeness"
+     - "Data Completeness & Accuracy"
+     # ... infer appropriate dimensions
+   structural_benchmark_items:
+     # Generate 5-8 checklist items
+     - "All required sections present in correct order"
+     # ...
+   designer_tone_directive: |
+     # Extract from the GLOBAL STYLE GUIDE tone/language section
+     {tone description from design patterns}
+   critical_figures:
+     # Infer common PE lending figures relevant to this document type
+     - key: "loan_amount"
+       label: "Loan Amount"
+       hint: "e.g., 15000000"
+       group: "Loan Terms"
+       required: true
+     - key: "borrower_name"
+       label: "Borrower"
+       hint: "e.g., ABC Holdings LLC"
+       group: "Entities"
+       required: true
+     # ... additional figures inferred from the document content
+   ```
+
+3. Write the candidate entry to:
+   `.acos/loan-doc-generator/extractions/{session_id}/candidate-catalog-entry.yaml`
+
+4. **In catalog inference mode, STOP HERE.** Do not proceed to Step 1.6 (Track B),
+   Step 1.9 (design library), or Step 1.10. The caller will handle persistence
+   after user review and approval.
+
+   Return to caller:
+   ```
+   Catalog inference complete.
+   - Candidate entry: .acos/loan-doc-generator/extractions/{session_id}/candidate-catalog-entry.yaml
+   - Design patterns: {design_patterns_path}
+   - Benchmark criteria: (not yet extracted — will run in full Phase 1 if user approves)
+   ```
+
+**Normal Phase 1 execution continues below.**
+
 ## Step 1.6: Launch Track B — Benchmark Extractors
 
 Read the benchmark-criterion template from:
