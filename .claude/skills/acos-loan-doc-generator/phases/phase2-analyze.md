@@ -49,6 +49,30 @@ top-level `document_id`, `category_id`, or `document_title`. Instead:
    - `other` — anything else
 3. Log inventory summary (count by type)
 
+### Step 2.2b: Pre-Process XLSX Files
+
+**For every .xlsx or .xlsm file found in the inventory**, run the XLSX extraction
+utility BEFORE assigning files to analyzer agents:
+
+```bash
+python3 .claude/scripts/xlsx-extract.py "{xlsx_path}" \
+  --output ".acos/loan-doc-generator/sessions/{session_id}/phase2-analysis/xlsx-extracts/{filename}.yaml"
+```
+
+This produces structured YAML with:
+- Cell-level values with addresses (e.g., `Sheet1!B7`)
+- Formula detection (both the formula string and computed value)
+- Currency/percentage/date type classification
+- Merged cell handling
+- Named range resolution
+
+The extracted YAML replaces the raw .xlsx file in the agent assignment. Analyzer
+agents receive the YAML extraction instead of trying to Read the .xlsx directly
+(which produces unreliable results). The YAML includes full provenance (file,
+sheet, cell address) for every data point.
+
+Log: `"Pre-processed {N} XLSX files → structured YAML with cell-level provenance"`
+
 ## Step 2.3: Determine Analyzer Strategy
 
 Read `config.generation.analyzer_strategy`:
@@ -79,22 +103,31 @@ generating a {document_title}.
 ASSIGNED DOCUMENTS (read each using your Read tool):
 {list of file paths assigned to this agent}
 
+NOTE ON XLSX FILES: Any .xlsx files have been pre-processed into structured
+YAML with cell-level provenance. You will receive the YAML extraction path
+instead of the raw .xlsx path. The YAML contains exact cell values, formulas,
+addresses, and type classifications. Use these extractions as your primary
+source for spreadsheet data — they are more reliable than reading .xlsx directly.
+
 CANONICAL SECTIONS TO MAP DATA TO:
 {section names from design-patterns.yaml}
 
 SECTION-SPECIFIC DATA EXPECTATIONS:
 {section-specific guidance from design-patterns.yaml}
 
-Extract into YAML matching this schema:
-{loan-data-extract.yaml template contents}
+Extract into YAML matching the schema at:
+.claude/skills/acos-loan-doc-generator/templates/loan-data-extract.yaml
+Read this template file using your Read tool — do NOT expect it embedded in this prompt.
 
 Rules:
 1. Extract EXACT values — never round, estimate, or interpret
-2. Record source document and page for every data point
+2. Record source document, page (or cell address for XLSX), and file path for every data point
 3. Map every fact to one or more document sections
 4. Flag contradictions across documents
 5. Note missing data — what SHOULD be here but isn't
 6. Extract ALL entities, financial figures, risk factors, conditions
+7. For XLSX-sourced data: preserve the cell reference (e.g., "Sheet1!B7") as provenance
+8. For calculated values from XLSX: note the formula and input cells
 
 [IF figures_mode is "user"]
 NOTE: The user has provided authoritative financial figures separately.
@@ -130,11 +163,27 @@ Read ALL files matching:
 Complete unified dataset:
 1. MERGED DATA BY SECTION — all facts organized by section, deduplicated
 2. ENTITY DIRECTORY — all entities with roles and relationships
-3. FINANCIAL FIGURES — all financials in a sortable table
+3. FINANCIAL FIGURES — all financials in a sortable table, each with:
+   - value, display_value, source_document, source_page_or_cell, file_path
+   - confidence (0.0-1.0), source_count (how many docs confirm this value)
+   - is_calculated (bool), calculation_formula (if derived)
+   - cross_validated (bool) — true if 2+ independent sources agree
 4. RISK FACTORS — consolidated risk register
 5. CONDITIONS — all conditions/covenants in one list
 6. CROSS-REFERENCE ISSUES — contradictions across documents
 7. DATA COMPLETENESS — per-section assessment (present vs. expected)
+8. CROSS-VALIDATION SUMMARY — for every financial figure:
+   - How many independent sources confirm the value
+   - List of confirming sources with page/cell references
+   - Flag "single-source" figures with confidence < 0.8
+   - Flag contradictions with all conflicting values and sources
+
+CROSS-VALIDATION RULES:
+- A figure confirmed by 2+ independent documents: confidence >= 0.9, cross_validated: true
+- A figure from only 1 document: confidence <= 0.7, cross_validated: false, flagged as "single-source"
+- A figure contradicted by another document: both values kept, flagged in CROSS-REFERENCE ISSUES
+- XLSX formula-derived values: trace input cells to their sources for transitive validation
+- User-provided figures are ALWAYS confidence: 1.0 and cross_validated: true (ground truth)
 
 When multiple agents extracted the same fact, keep higher confidence.
 
@@ -171,6 +220,59 @@ EXCLUDE these sections from the brief (they use full data directly):
 Write to:
 .acos/loan-doc-generator/sessions/{session_id}/phase2-analysis/synthesis/loan-data-brief.yaml
 ```
+
+## Step 2.5b: Generate Data Verification Table
+
+After synthesis completes, generate a comprehensive verification table from loan-data.yaml.
+This table will be presented to the user for accuracy review BEFORE document generation.
+
+Spawn verification table generator (model: sonnet):
+
+```
+You are the Data Verification Table Generator.
+
+TASK: Read the synthesized loan data and produce a verification table that lists
+EVERY data point that will appear in the generated document, with full provenance.
+
+Read the full loan data at:
+.acos/loan-doc-generator/sessions/{session_id}/phase2-analysis/synthesis/loan-data.yaml
+
+For EVERY data point (financial figures, entity names, addresses, dates, rates,
+ratios, conditions, property details), produce a table entry with:
+
+  data_point: "Loan Amount"
+  value: "$2,100,000"
+  type: "extracted"          # extracted | calculated | user-provided
+  source_document: "Loan Agreement.pdf"
+  source_location: "Page 2, Paragraph 1"  # or "Sheet1!B7" for XLSX
+  file_link: "file:///path/to/Loan Agreement.pdf"
+  confidence: 0.95
+  cross_validated: true
+  confirming_sources: 3      # number of independent sources
+  section_used_in: ["Executive Summary", "Transaction Summary"]
+
+For CALCULATED values, also include:
+  calculation:
+    formula: "LTV = Loan Amount / Property Value"
+    inputs:
+      - name: "Loan Amount"
+        value: "$2,100,000"
+        source: "Loan Agreement.pdf, Page 2"
+      - name: "Property Value"
+        value: "$3,200,000"
+        source: "Appraisal.pdf, Page 5"
+    result: "65.6%"
+
+Group entries by document section. Flag any entries where:
+- confidence < 0.8 (mark as "⚠ LOW CONFIDENCE")
+- cross_validated is false (mark as "⚠ SINGLE SOURCE")
+- type is "calculated" (mark as "📊 CALCULATED")
+
+Write to:
+.acos/loan-doc-generator/sessions/{session_id}/phase2-analysis/synthesis/verification-table.yaml
+```
+
+Update the session manifest with `verification_table_path`.
 
 ## Step 2.6: Write Phase 2 Cache Manifest
 

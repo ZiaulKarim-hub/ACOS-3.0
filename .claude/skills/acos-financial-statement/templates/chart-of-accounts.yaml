@@ -1,0 +1,726 @@
+# ═══════════════════════════════════════════════════════════════
+# Canonical Chart of Accounts — Commercial Real Estate (GAAP)
+# ═══════════════════════════════════════════════════════════════
+# Based on IREM standards and NCREIF PREA reporting conventions.
+# All sandbox agents MUST use these account codes and categories.
+# This ensures substance matching is mechanically possible.
+#
+# Code Structure: {block}{sub} where block = major category
+#   1000s = Assets
+#   2000s = Liabilities
+#   3000s = Equity
+#   4000s = Revenue
+#   5000s = Operating Expenses
+#   6000s = Non-Operating Items
+#
+# Each account has:
+#   code: unique identifier
+#   name: display name
+#   type: debit | credit (normal balance)
+#   classification: current | non-current | operating | non-operating
+#   cfs_category: operating | investing | financing (for cash flow statement)
+#   property_types: which property types use this account (all = universal)
+
+version: "1.0"
+standard: "IREM/NCREIF-aligned"
+
+# ═══════════════════════════════════════════════════════════════
+# ASSETS (1000-1999)
+# ═══════════════════════════════════════════════════════════════
+assets:
+  current_assets:
+    - code: "1000"
+      name: "Cash and Cash Equivalents"
+      type: debit
+      classification: current
+      cfs_category: null  # ending balance, not a flow
+      property_types: all
+
+    - code: "1010"
+      name: "Operating Account"
+      type: debit
+      classification: current
+      cfs_category: null
+      property_types: all
+
+    - code: "1020"
+      name: "Security Deposit Account"
+      type: debit
+      classification: current
+      cfs_category: null
+      property_types: all
+
+    - code: "1030"
+      name: "Reserve Account"
+      type: debit
+      classification: current
+      cfs_category: null
+      property_types: all
+
+    - code: "1100"
+      name: "Accounts Receivable — Tenant Rents"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "1110"
+      name: "Accounts Receivable — CAM Recoveries"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: [office, retail, industrial, mixed-use]
+
+    - code: "1120"
+      name: "Accounts Receivable — Other"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "1200"
+      name: "Prepaid Expenses"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "1210"
+      name: "Prepaid Insurance"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "1220"
+      name: "Prepaid Property Taxes"
+      type: debit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "1300"
+      name: "Deferred Leasing Costs"
+      type: debit
+      classification: non-current
+      cfs_category: operating
+      property_types: [office, retail, industrial]
+
+  non_current_assets:
+    - code: "1400"
+      name: "Straight-Line Rent Receivable"
+      type: debit
+      classification: non-current
+      cfs_category: operating
+      property_types: all
+      notes: "Difference between straight-line rent and cash rent when SL > cash"
+
+    - code: "1500"
+      name: "Land"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: all
+      notes: "Never depreciated"
+
+    - code: "1510"
+      name: "Buildings"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: all
+      notes: "Depreciate over 39 years (commercial) or 27.5 years (residential)"
+
+    - code: "1520"
+      name: "Building Improvements"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: all
+      notes: "Depreciate over 5-15 years"
+
+    - code: "1530"
+      name: "Tenant Improvements"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: [office, retail, industrial, mixed-use]
+      notes: "Depreciate over shorter of useful life or remaining lease term"
+
+    - code: "1540"
+      name: "Furniture, Fixtures & Equipment"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: all
+      notes: "Depreciate over 5-7 years"
+
+    - code: "1600"
+      name: "Accumulated Depreciation"
+      type: credit
+      classification: non-current
+      cfs_category: null  # non-cash, added back in CFS operating
+      property_types: all
+      notes: "Contra-asset; subtracted from gross fixed assets"
+
+    - code: "1700"
+      name: "Intangible Lease Assets (Above-Market Leases)"
+      type: debit
+      classification: non-current
+      cfs_category: operating
+      property_types: all
+      notes: "Amortize over lease term; amortization reduces rental revenue"
+
+    - code: "1710"
+      name: "Accumulated Amortization — Lease Intangibles"
+      type: credit
+      classification: non-current
+      cfs_category: null
+      property_types: all
+
+    - code: "1800"
+      name: "Deferred Financing Costs"
+      type: debit
+      classification: non-current
+      cfs_category: financing
+      property_types: all
+      notes: "Amortize over loan term"
+
+    - code: "1810"
+      name: "Accumulated Amortization — Financing Costs"
+      type: credit
+      classification: non-current
+      cfs_category: null
+      property_types: all
+
+    - code: "1900"
+      name: "Escrow Deposits"
+      type: debit
+      classification: non-current
+      cfs_category: investing
+      property_types: all
+
+# ═══════════════════════════════════════════════════════════════
+# LIABILITIES (2000-2999)
+# ═══════════════════════════════════════════════════════════════
+liabilities:
+  current_liabilities:
+    - code: "2000"
+      name: "Accounts Payable"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2100"
+      name: "Accrued Expenses"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2110"
+      name: "Accrued Property Taxes"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2120"
+      name: "Accrued Insurance"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2130"
+      name: "Accrued Interest"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2200"
+      name: "Security Deposits Held"
+      type: credit
+      classification: non-current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2300"
+      name: "Deferred Revenue (Prepaid Rent)"
+      type: credit
+      classification: current
+      cfs_category: operating
+      property_types: all
+
+    - code: "2400"
+      name: "Deferred Rent Liability (Straight-Line Adjustment)"
+      type: credit
+      classification: non-current
+      cfs_category: operating
+      property_types: all
+      notes: "When straight-line rent < cash rent collected"
+
+    - code: "2500"
+      name: "Mortgage Payable — Current Portion"
+      type: credit
+      classification: current
+      cfs_category: financing
+      property_types: all
+
+    - code: "2510"
+      name: "Line of Credit"
+      type: credit
+      classification: current
+      cfs_category: financing
+      property_types: all
+
+  non_current_liabilities:
+    - code: "2600"
+      name: "Mortgage Payable — Long-Term"
+      type: credit
+      classification: non-current
+      cfs_category: financing
+      property_types: all
+
+    - code: "2700"
+      name: "Below-Market Lease Intangible Liability"
+      type: credit
+      classification: non-current
+      cfs_category: operating
+      property_types: all
+      notes: "Amortize over lease term; amortization increases rental revenue"
+
+# ═══════════════════════════════════════════════════════════════
+# EQUITY (3000-3999)
+# ═══════════════════════════════════════════════════════════════
+equity:
+  - code: "3000"
+    name: "Owner/Partner Capital"
+    type: credit
+    classification: equity
+    cfs_category: financing
+    property_types: all
+
+  - code: "3100"
+    name: "Retained Earnings"
+    type: credit
+    classification: equity
+    cfs_category: null
+    property_types: all
+    notes: "Prior RE + Net Income - Distributions = Current RE"
+
+  - code: "3200"
+    name: "Distributions / Draws"
+    type: debit
+    classification: equity
+    cfs_category: financing
+    property_types: all
+    notes: "Contra-equity; reduces owner's equity"
+
+# ═══════════════════════════════════════════════════════════════
+# REVENUE (4000-4999)
+# ═══════════════════════════════════════════════════════════════
+revenue:
+  rental_revenue:
+    - code: "4000"
+      name: "Base Rental Income"
+      type: credit
+      classification: operating
+      property_types: all
+
+    - code: "4010"
+      name: "Straight-Line Rent Adjustment"
+      type: credit
+      classification: operating
+      property_types: all
+      notes: "Non-cash; difference between SL rent and cash rent"
+
+    - code: "4020"
+      name: "Above/Below Market Lease Amortization"
+      type: credit
+      classification: operating
+      property_types: all
+      notes: "Above-market = negative (reduces revenue); Below-market = positive"
+
+  recovery_revenue:
+    - code: "4100"
+      name: "CAM Recoveries"
+      type: credit
+      classification: operating
+      property_types: [office, retail, industrial, mixed-use]
+
+    - code: "4110"
+      name: "Tax Recoveries"
+      type: credit
+      classification: operating
+      property_types: [office, retail, industrial, mixed-use]
+
+    - code: "4120"
+      name: "Insurance Recoveries"
+      type: credit
+      classification: operating
+      property_types: [office, retail, industrial, mixed-use]
+
+  other_revenue:
+    - code: "4200"
+      name: "Percentage Rent / Overage Rent"
+      type: credit
+      classification: operating
+      property_types: [retail]
+      notes: "Recognized only when tenant exceeds breakpoint"
+
+    - code: "4300"
+      name: "Parking Income"
+      type: credit
+      classification: operating
+      property_types: [office, retail, multifamily, mixed-use]
+
+    - code: "4310"
+      name: "Storage Income"
+      type: credit
+      classification: operating
+      property_types: [multifamily]
+
+    - code: "4320"
+      name: "Laundry Income"
+      type: credit
+      classification: operating
+      property_types: [multifamily]
+
+    - code: "4330"
+      name: "Pet Fees"
+      type: credit
+      classification: operating
+      property_types: [multifamily]
+
+    - code: "4340"
+      name: "Application / Admin Fees"
+      type: credit
+      classification: operating
+      property_types: [multifamily]
+
+    - code: "4400"
+      name: "Late Fees"
+      type: credit
+      classification: operating
+      property_types: all
+
+    - code: "4500"
+      name: "Other Income"
+      type: credit
+      classification: operating
+      property_types: all
+
+  # Hospitality-specific
+  hospitality_revenue:
+    - code: "4600"
+      name: "Room Revenue"
+      type: credit
+      classification: operating
+      property_types: [hospitality]
+
+    - code: "4610"
+      name: "Food & Beverage Revenue"
+      type: credit
+      classification: operating
+      property_types: [hospitality]
+
+    - code: "4620"
+      name: "Spa / Amenity Revenue"
+      type: credit
+      classification: operating
+      property_types: [hospitality]
+
+    - code: "4630"
+      name: "Conference / Event Revenue"
+      type: credit
+      classification: operating
+      property_types: [hospitality]
+
+  contra_revenue:
+    - code: "4900"
+      name: "Vacancy & Credit Loss"
+      type: debit
+      classification: operating
+      property_types: all
+      notes: "Contra-revenue; deducted from gross potential rent"
+
+    - code: "4910"
+      name: "Concessions / Free Rent"
+      type: debit
+      classification: operating
+      property_types: all
+
+# ═══════════════════════════════════════════════════════════════
+# OPERATING EXPENSES (5000-5999)
+# ═══════════════════════════════════════════════════════════════
+operating_expenses:
+  - code: "5000"
+    name: "Property Management Fees"
+    type: debit
+    classification: operating
+    property_types: all
+    notes: "Typically 3-6% of EGI"
+
+  - code: "5100"
+    name: "Repairs & Maintenance"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5200"
+    name: "Utilities"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5210"
+    name: "Electric"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5220"
+    name: "Water / Sewer"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5230"
+    name: "Gas"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5240"
+    name: "Trash / Waste Removal"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5300"
+    name: "Property Taxes"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5400"
+    name: "Insurance"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5500"
+    name: "Janitorial / Cleaning"
+    type: debit
+    classification: operating
+    property_types: [office, retail, mixed-use]
+
+  - code: "5600"
+    name: "Landscaping / Grounds"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5700"
+    name: "Security"
+    type: debit
+    classification: operating
+    property_types: [office, retail, mixed-use, hospitality]
+
+  - code: "5800"
+    name: "Administrative / Office"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5810"
+    name: "Professional Fees (Legal, Accounting)"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5900"
+    name: "Marketing / Advertising"
+    type: debit
+    classification: operating
+    property_types: all
+
+  - code: "5910"
+    name: "Leasing Commissions"
+    type: debit
+    classification: operating
+    property_types: [office, retail, industrial]
+    notes: "May capitalize if significant; otherwise expense"
+
+  - code: "5920"
+    name: "Payroll / On-Site Staff"
+    type: debit
+    classification: operating
+    property_types: [multifamily, hospitality]
+
+  - code: "5930"
+    name: "Contract Services (Elevator, Pest Control)"
+    type: debit
+    classification: operating
+    property_types: [office, retail, multifamily, mixed-use]
+
+  - code: "5940"
+    name: "Snow Removal"
+    type: debit
+    classification: operating
+    property_types: all
+
+  # Hospitality-specific departmental expenses
+  - code: "5950"
+    name: "Rooms Department Expense"
+    type: debit
+    classification: operating
+    property_types: [hospitality]
+
+  - code: "5960"
+    name: "F&B Department Expense"
+    type: debit
+    classification: operating
+    property_types: [hospitality]
+
+  - code: "5970"
+    name: "Management / Franchise Fees"
+    type: debit
+    classification: operating
+    property_types: [hospitality]
+    notes: "Typically 3-5% of revenue + incentive fees"
+
+  - code: "5980"
+    name: "FF&E Reserve"
+    type: debit
+    classification: operating
+    property_types: [hospitality]
+    notes: "Typically 4-5% of gross revenue"
+
+# ═══════════════════════════════════════════════════════════════
+# NON-OPERATING ITEMS (6000-6999)
+# ═══════════════════════════════════════════════════════════════
+non_operating:
+  depreciation_amortization:
+    - code: "6000"
+      name: "Depreciation — Building"
+      type: debit
+      classification: non-operating
+      cfs_category: operating  # added back as non-cash
+      property_types: all
+      notes: "39 years commercial, 27.5 years residential, straight-line"
+
+    - code: "6010"
+      name: "Depreciation — Building Improvements"
+      type: debit
+      classification: non-operating
+      cfs_category: operating
+      property_types: all
+      notes: "5-15 years, straight-line"
+
+    - code: "6020"
+      name: "Depreciation — Tenant Improvements"
+      type: debit
+      classification: non-operating
+      cfs_category: operating
+      property_types: [office, retail, industrial, mixed-use]
+      notes: "Shorter of useful life or remaining lease term"
+
+    - code: "6030"
+      name: "Depreciation — FF&E"
+      type: debit
+      classification: non-operating
+      cfs_category: operating
+      property_types: all
+      notes: "5-7 years, straight-line"
+
+    - code: "6100"
+      name: "Amortization — Intangible Lease Assets"
+      type: debit
+      classification: non-operating
+      cfs_category: operating
+      property_types: all
+
+    - code: "6110"
+      name: "Amortization — Below-Market Lease Liability"
+      type: credit
+      classification: non-operating
+      cfs_category: operating
+      property_types: all
+      notes: "Credit = increases revenue"
+
+    - code: "6200"
+      name: "Amortization — Deferred Financing Costs"
+      type: debit
+      classification: non-operating
+      cfs_category: operating
+      property_types: all
+
+  interest:
+    - code: "6300"
+      name: "Interest Expense"
+      type: debit
+      classification: non-operating
+      cfs_category: operating  # or financing depending on policy
+      property_types: all
+
+  other:
+    - code: "6400"
+      name: "Gain on Sale of Property"
+      type: credit
+      classification: non-operating
+      cfs_category: investing
+      property_types: all
+      notes: "Reclassify from operating to investing in CFS"
+
+    - code: "6410"
+      name: "Loss on Sale of Property"
+      type: debit
+      classification: non-operating
+      cfs_category: investing
+      property_types: all
+
+    - code: "6500"
+      name: "Impairment Loss"
+      type: debit
+      classification: non-operating
+      cfs_category: operating  # non-cash
+      property_types: all
+      notes: "ASC 360-10; test when events suggest carrying amount not recoverable"
+
+# ═══════════════════════════════════════════════════════════════
+# SUPPLEMENTAL METRICS (non-GAAP, computed from GAAP data)
+# ═══════════════════════════════════════════════════════════════
+supplemental_metrics:
+  - code: "NOI"
+    name: "Net Operating Income"
+    formula: "Total Revenue (4xxx) - Total Operating Expenses (5xxx)"
+    notes: "Non-GAAP subtotal widely used in CRE; shown for analysis"
+
+  - code: "FFO"
+    name: "Funds From Operations"
+    formula: "Net Income + Depreciation (6000-6030) + Impairment Loss (6500) - Gain on Sale (6400) + Loss on Sale (6410)"
+    notes: "NAREIT definition; primary PE real estate performance metric"
+
+  - code: "AFFO"
+    name: "Adjusted Funds From Operations"
+    formula: "FFO - Maintenance CapEx - Straight-Line Rent Adj (4010) + Non-Recurring Items"
+    notes: "No standard definition; approximates recurring distributable cash flow"
+
+  - code: "DSCR"
+    name: "Debt Service Coverage Ratio"
+    formula: "NOI / Annual Debt Service"
+    notes: "Minimum typically 1.20x-1.35x for CRE lenders"
+
+  - code: "DEBT_YIELD"
+    name: "Debt Yield"
+    formula: "NOI / Loan Amount"
+    notes: "Minimum typically 8-12%; lender's unlevered return on loan"
+
+  - code: "LTV"
+    name: "Loan-to-Value"
+    formula: "Loan Amount / Property Value"
+    notes: "Maximum typically 65-75% for CRE"

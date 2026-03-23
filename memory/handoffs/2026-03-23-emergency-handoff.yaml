@@ -1,0 +1,210 @@
+timestamp: "2026-03-23T16:36:39Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session built out a large set of new capabilities spanning three domains:
+  (1) the loan document generator received a major multi-commit upgrade adding
+  DOCX output, recommendation matrix, XLSX cell-level extraction, and a pre-generation
+  data verification gate; (2) a brand-new financial statement preparation skill
+  (acos-financial-statement) was created and then had 17 swarm-review fixes applied
+  to it (all verified, evidence in .acos/evidence/2026-03-22/SWARM-FIXES/);
+  (3) supporting utility skills and scripts were added including acos-pdf-xlsx-converter,
+  acos-skill-maker, and four new Python scripts. All of this work is UNTRACKED and
+  UNCOMMITTED — the last git commit was a6b51b1 on 2026-03-16. Nothing from this
+  session has been committed to the repository yet.
+
+current_work:
+  slice_id: "SLICE-001 (superseded by EPIC-001 SLICE-S3-002)"
+  story_id: "multiple — EPIC-001 stories in progress across STORY-001-001 through STORY-001-006"
+  epic_id: "EPIC-001-loan-doc-generator-v2"
+  status: "in_progress"
+
+completed_this_session:
+  - "Built acos-financial-statement skill — triple-redundancy adversarial GAAP financial statement preparation (3 sandbox orchestrators + Primary Accountant Wigum loop). Supports Income Statement, Balance Sheet, Owner's Equity, Cash Flows. Actual and Projection modes. Output: institutional XLSX with live formulas, FAST Standard formatting, IB color conventions."
+  - "Applied 17 swarm-review fixes to acos-financial-statement — 2 critical, 7 high, 8 medium. All 17 verified PASS (see .acos/evidence/2026-03-22/SWARM-FIXES/verify.log). Key fixes: general-purpose agent created, data-requests.yaml relay, incremental Wigum mode, selective sandbox re-spawning, retry cap, COA reclassifications (1300/2200/2400 to non-current), FFO formula updated, metadata integrity checks, liability footing checks."
+  - "Created .claude/agents/general-purpose.md — generic Claude agent spawned by fin-stmt-sandbox for general-purpose sub-tasks."
+  - "Created .claude/agents/fin-stmt-sandbox.md (maxTurns: 120) and modified .claude/agents/fin-stmt-accountant.md (maxTurns: 150) — both part of the financial statement skill architecture."
+  - "Built acos-pdf-xlsx-converter skill — converts PDF accounting documents to XLSX with 0% error tolerance via triple adversarial review (Value Verifier, Structure Auditor, Formula Validator)."
+  - "Built acos-skill-maker skill — meta-skill that codifies completed work or specifications into reusable ACOS skills. Includes restriction guards (no review-rules/, no agents/, no oracle.yaml)."
+  - "Created four new Python scripts: xlsx-extract.py (14.7KB, cell-level XLSX parsing), generate-chart.py (34KB, SVG chart generation), html-to-docx.py (6.7KB, styled HTML-to-DOCX), compute-recommendation-score.py (12.5KB, PE lending recommendation matrix scoring)."
+  - "Modified loan-doc-config.yaml — output format changed from markdown to ['pdf', 'docx'], added docx_method: 'styled', include_provenance_table, recommendation_matrix config block."
+  - "Modified loan-doc-phase2.md agent — added XLSX pre-processing step (runs xlsx-extract.py before assigning to analyzer agents), verification table generation (Step 2.5b), cross-validation rules."
+  - "Modified loan-doc-phase34.md agent — updated output finalization to generate both PDF and DOCX, no .html or .md in output/ directory, added output_destination support."
+  - "Created recommendation-matrix.yaml template — full credit scoring config: Approve/Conditional Approval/Watchlist/Decline categories with score thresholds, pillar weights, sub-factor scoring, PE ratio thresholds."
+  - "Updated CLAUDE.md — added fin-stmt-sandbox and fin-stmt-accountant to Agent Roster."
+  - "Extensive uncommitted changes to loan-doc-generator SKILL.md and all 4 phase files (1076 insertions, 170 deletions across 13 tracked files per git diff --stat)."
+
+files_modified:
+  - path: ".claude/agents/fin-stmt-sandbox.md"
+    changes: "New file (UNTRACKED) — sandbox orchestrator for financial statement prep, maxTurns: 120"
+  - path: ".claude/agents/fin-stmt-accountant.md"
+    changes: "New file (UNTRACKED) — primary accountant agent, never gives numbers, maxTurns: 150, owns Wigum loop"
+  - path: ".claude/agents/general-purpose.md"
+    changes: "New file (UNTRACKED) — generic Claude sonnet agent, maxTurns: 30, for general sub-tasks"
+  - path: ".claude/agents/loan-doc-phase2.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — added XLSX pre-processing (xlsx-extract.py), verification table step, cross-validation rules, verification table generator model assignment"
+  - path: ".claude/agents/loan-doc-phase34.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — output finalization now generates PDF + DOCX via html-to-docx.py, strictly no .html or .md in output/, added output_destination support"
+  - path: ".claude/scripts/xlsx-extract.py"
+    changes: "New file (UNTRACKED) — 14.7KB, cell-level XLSX parser, outputs structured YAML with formulas and cell addresses"
+  - path: ".claude/scripts/generate-chart.py"
+    changes: "New file (UNTRACKED) — 34KB, SVG chart generation for bar/waterfall/line/pie/gauge/heatmap types, embeds in HTML→PDF and DOCX"
+  - path: ".claude/scripts/html-to-docx.py"
+    changes: "New file (UNTRACKED) — 6.7KB, styled HTML-to-DOCX converter using python-docx, preserves formatting better than plain pandoc"
+  - path: ".claude/scripts/compute-recommendation-score.py"
+    changes: "New file (UNTRACKED) — 12.5KB, PE lending recommendation matrix calculator, reads recommendation-matrix.yaml config"
+  - path: ".claude/skills/acos-financial-statement/SKILL.md"
+    changes: "New file (UNTRACKED) — 31.3KB, full financial statement prep skill; interview wizard, triple-sandbox architecture, XLSX output spec"
+  - path: ".claude/skills/acos-financial-statement/phases/phase1-sandbox.md"
+    changes: "New file (UNTRACKED) — 22.4KB, sandbox agent instructions; extraction, calculation, compilation, internal review, Wigum incremental mode"
+  - path: ".claude/skills/acos-financial-statement/phases/phase2-reconcile.md"
+    changes: "New file (UNTRACKED) — 20.7KB, primary accountant reconciliation; substance match, selective re-spawning, data-requests relay"
+  - path: ".claude/skills/acos-financial-statement/templates/chart-of-accounts.yaml"
+    changes: "New file (UNTRACKED) — 21.6KB, CRE-specific COA with 1300/2200/2400 as non-current per GAAP fix"
+  - path: ".claude/skills/acos-financial-statement/templates/session-manifest.yaml"
+    changes: "New file (UNTRACKED) — 6.5KB, session state schema with corrected chart_of_accounts path"
+  - path: ".claude/skills/acos-financial-statement/templates/validation-checks.yaml"
+    changes: "New file (UNTRACKED) — 12.1KB, all validation checks including META-001/002, FOOT-009/010/011"
+  - path: ".claude/skills/acos-pdf-xlsx-converter/SKILL.md"
+    changes: "New file (UNTRACKED) — 8.6KB, PDF-to-XLSX converter skill with triple adversarial review"
+  - path: ".claude/skills/acos-pdf-xlsx-converter/templates/reviewer-prompts.yaml"
+    changes: "New file (UNTRACKED) — 2.5KB, Value Verifier / Structure Auditor / Formula Validator prompts"
+  - path: ".claude/skills/acos-skill-maker/SKILL.md"
+    changes: "New file (UNTRACKED) — 11.5KB, meta-skill for codifying completed work into ACOS skills"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — large diff (+436/-0 approx); DOCX output pipeline, recommendation matrix integration, data verification gate, XLSX extraction flow"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase1-extract.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 87 insertions"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 110 insertions; XLSX extraction, verification table, cross-validation"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase3-design.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 142 insertions; DOCX step added (Step 3.5b), chart/recommendation matrix integration"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase4-validate.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 152 insertions; DOCX validation, chart validators, recommendation matrix checks"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 21 insertions; additional doc types"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/loan-doc-config.yaml"
+    changes: "Modified (TRACKED, UNCOMMITTED) — format: markdown → formats: [pdf, docx], docx_method, provenance table, recommendation_matrix block"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/pdf-styles.css"
+    changes: "Modified (TRACKED, UNCOMMITTED) — 243 insertions; extensive CSS overhaul for rendering quality"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml"
+    changes: "New file (UNTRACKED) — full credit scoring config: Approve/Conditional/Watchlist/Decline categories, pillar weights, PE ratio thresholds"
+  - path: ".claude/skills/acos-underwriting-pipeline/SKILL.md"
+    changes: "New file (UNTRACKED, from prior session Mar 16) — 6-phase underwriting pipeline skill, still not committed"
+  - path: "planning/epics/EPIC-001-loan-doc-generator-v2.yaml"
+    changes: "New file (UNTRACKED) — 603-line epic plan with 8 stories, 30 slices covering DOCX+PDF pipeline, rendering quality, design library, XLSX extraction, data verification, charts, workflow resilience, UX"
+  - path: "planning/slices/SLICE-001-design-library-one-sample-per-design.yaml"
+    changes: "Modified (TRACKED, UNCOMMITTED) — status: superseded (absorbed into EPIC-001 SLICE-S3-002)"
+  - path: "CLAUDE.md"
+    changes: "Modified (TRACKED, UNCOMMITTED) — added fin-stmt-sandbox and fin-stmt-accountant to Agent Roster"
+
+decisions_made:
+  - "Output format changed from markdown to DOCX+PDF strictly — no .html or .md in output/ directory. html-to-docx.py used for styled DOCX (preferred over plain pandoc). Both files generated from same canonical HTML source."
+  - "XLSX pre-processing: before analyzer agents run in Phase 2, xlsx-extract.py runs on every .xlsx/.xlsm file and feeds agents structured YAML with cell-level values, formulas, and addresses instead of raw spreadsheet reads."
+  - "Verification table gate added between Phase 2 and Phase 3: every data point displayed with provenance, confidence, and cross-validation status before generation proceeds. Single-source figures capped at confidence <= 0.7."
+  - "Recommendation matrix is user-configurable via .acos/loan-doc-generator/recommendation-matrix.yaml (editable), not hardcoded. Template at .claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml."
+  - "Financial statement skill architecture: Triple-redundancy sandboxes (A, B, C) each independently prepare complete FS. Primary Accountant never provides numbers — only identifies deficiencies. Substance convergence required for Actual mode; optimal synthesis for Projection mode."
+  - "COA accounts 1300 (Deferred Leasing Costs), 2200 (Security Deposits Held), 2400 (Deferred Rent Liability) reclassified from current to non-current per GAAP."
+  - "Incremental Wigum mode in fin-stmt-sandbox: iteration 2+ sandboxes skip re-extracting unchanged data. Enforced by instruction (not mechanical — architecture constraint)."
+  - "EPIC-001 status set to 'complete' in the epic YAML even though work is in-progress — this appears to be a planning artifact label and may need review."
+  - "SLICE-001 superseded by EPIC-001 SLICE-S3-002 (broader scope: research-backed + restructure, not just split)."
+
+blockers:
+  - "CRITICAL: All session work is UNTRACKED/UNCOMMITTED. No git commits since 2026-03-16 (a6b51b1). Everything built this session will be lost if the working tree is wiped. Immediate commit recommended."
+  - "acos-underwriting-pipeline skill (.claude/skills/acos-underwriting-pipeline/SKILL.md, 18.5KB, created 2026-03-16) remains untracked from the prior session — also needs to be committed."
+  - "EPIC-001 is a large multi-story initiative (8 stories, 30 slices). No individual slice has been formally started via /acos-execute-slice — all work is being done directly without the ACOS slice execution workflow."
+  - "EPIC-001.yaml has status: complete but the epic's acceptance criteria (DOCX output, rendering quality, XLSX extraction, data verification, etc.) are still being implemented. This status label appears to mean 'planning is complete', not 'work is complete' — but it could cause confusion."
+  - "html-to-docx.py requires python-docx package — may not be installed in all environments. No package.json or requirements.txt declares this dependency."
+  - "generate-chart.py at 34KB is a substantial script — unknown if it has been tested against a real loan document generation run."
+  - "The 2026-03-16-emergency-handoff.yaml (active, from prior session) has never been archived via /acos-complete."
+
+next_actions:
+  - "URGENT: Commit all untracked/unstaged files. Minimum set: new agents (fin-stmt-sandbox.md, fin-stmt-accountant.md, general-purpose.md), new scripts (xlsx-extract.py, generate-chart.py, html-to-docx.py, compute-recommendation-score.py), new skills (acos-financial-statement/, acos-pdf-xlsx-converter/, acos-skill-maker/, acos-underwriting-pipeline/), new templates (recommendation-matrix.yaml), new planning artifacts (EPIC-001.yaml), and all tracked modified files."
+  - "Run /acos-complete to archive the 2026-03-14 and 2026-03-16 handoffs (both still active, from prior sessions)."
+  - "Clarify EPIC-001.yaml status: change from 'complete' to 'in_progress' if it means work is still ongoing."
+  - "Update MEMORY.md to document the new skills: acos-financial-statement, acos-pdf-xlsx-converter, acos-skill-maker, and the four new scripts. MEMORY.md is already over its 200-line limit."
+  - "Test html-to-docx.py and compute-recommendation-score.py against a real session — these are new scripts with no evidence of a live test run recorded."
+  - "Consider adding python-docx to a requirements.txt or documenting it in the skill so users know the dependency exists."
+  - "Begin EPIC-001 execution in earnest using /acos-execute-slice for the first slice (SLICE-S1-001: Fix Puppeteer page number duplication) — currently all changes are being made directly without formal slice tracking."
+  - "Review the massive uncommitted diff to loan-doc-generator SKILL.md and phase files (1076 insertions, 170 deletions) before committing — verify the changes are coherent and complete."
+
+context_for_next_session: |
+  Two parallel workstreams are active:
+
+  WORKSTREAM 1 — Loan Document Generator V2 (EPIC-001)
+  The loan doc generator has received a large set of upgrades this session that are
+  all UNCOMMITTED. The key changes: (a) output is now DOCX+PDF (no more .html/.md),
+  using html-to-docx.py for styled Word documents; (b) XLSX files are pre-processed
+  through xlsx-extract.py before analyzer agents touch them, providing cell-level
+  accuracy; (c) a data verification gate was added between Phase 2 and Phase 3 to
+  surface all data points with provenance before generation proceeds; (d) a recommendation
+  matrix system was added for credit memos, configurable via
+  .acos/loan-doc-generator/recommendation-matrix.yaml; (e) generate-chart.py provides
+  SVG chart generation for embedding in documents. The EPIC-001 planning artifact
+  (planning/epics/EPIC-001-loan-doc-generator-v2.yaml) is comprehensive: 8 stories,
+  30 slices, covering everything from DOCX output to rendering quality, design library
+  overhaul, XLSX extraction, data verification, charts, workflow resilience, and UX.
+  The most pressing next step is to commit all this work.
+
+  WORKSTREAM 2 — Financial Statement Preparation (NEW SKILL)
+  A brand-new skill acos-financial-statement was built this session and is completely
+  untracked. Architecture: 3 independent sandbox orchestrators (fin-stmt-sandbox)
+  each prepare complete GAAP financial statements from a loan folder; a Primary Accountant
+  (fin-stmt-accountant) compares outputs, identifies deficiencies without providing numbers,
+  and runs a Wigum loop until substance convergence (Actual mode) or optimal synthesis
+  (Projection mode). Output is institutional-grade XLSX with FAST Standard formatting,
+  IB color conventions, and cross-statement linkages. A 9-lens swarm review ran on the
+  skill and 17 fixes were applied — all 17 verified PASS (evidence at
+  .acos/evidence/2026-03-22/SWARM-FIXES/). Key design decisions to be aware of:
+  the incremental Wigum mode (skip re-extraction on iterations 2+) is instruction-based
+  not mechanical; selective sandbox re-spawning skips sandboxes that are locked;
+  data-requests.yaml is the relay mechanism for critical missing data.
+
+  PRIOR SESSION LEFTOVERS
+  The acos-underwriting-pipeline skill (18.5KB, created 2026-03-16) has never been
+  committed despite being mentioned in the 2026-03-16 handoff. It implements a 6-phase
+  end-to-end underwriting pipeline that feeds into /acos-loan-doc-generator in batch
+  mode. It should be committed alongside the current session's work.
+
+  KEY FILE LOCATIONS
+  - New skills: .claude/skills/acos-financial-statement/, .claude/skills/acos-pdf-xlsx-converter/,
+    .claude/skills/acos-skill-maker/, .claude/skills/acos-underwriting-pipeline/
+  - New scripts: .claude/scripts/xlsx-extract.py, .claude/scripts/generate-chart.py,
+    .claude/scripts/html-to-docx.py, .claude/scripts/compute-recommendation-score.py
+  - New agents: .claude/agents/fin-stmt-sandbox.md, .claude/agents/fin-stmt-accountant.md,
+    .claude/agents/general-purpose.md
+  - New planning: planning/epics/EPIC-001-loan-doc-generator-v2.yaml
+  - New template: .claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml
+  - Evidence: .acos/evidence/2026-03-22/SWARM-FIXES/ (17 verified fixes to fin-stmt skill)
+  - Prior session untracked skill: .claude/skills/acos-underwriting-pipeline/SKILL.md
+
+reconstruction_sources:
+  - "git status --short (untracked and modified files)"
+  - "git log --oneline -20 (commit history — last commit a6b51b1 on 2026-03-16)"
+  - "git diff --stat HEAD~5..HEAD (diff summary over last 5 commits)"
+  - "git diff --stat (current uncommitted changes — 13 tracked modified files)"
+  - "git diff -- .claude/agents/loan-doc-phase2.md (full diff)"
+  - "git diff -- .claude/agents/loan-doc-phase34.md (full diff)"
+  - "git diff -- .claude/skills/acos-loan-doc-generator/templates/loan-doc-config.yaml (full diff)"
+  - "git diff -- CLAUDE.md (full diff)"
+  - "git diff --name-only HEAD~3..HEAD (files changed in last 3 commits)"
+  - "git log --oneline --since=2026-03-17 (no commits found — all session work is uncommitted)"
+  - "planning/slices/SLICE-001-design-library-one-sample-per-design.yaml (full read)"
+  - "planning/epics/EPIC-001-loan-doc-generator-v2.yaml (full read)"
+  - "memory/handoffs/2026-03-16-emergency-handoff.yaml (full read — prior session context)"
+  - ".acos/evidence/2026-03-22/SWARM-FIXES/Summary.md (full read)"
+  - ".acos/evidence/2026-03-22/SWARM-FIXES/verify.log (full read)"
+  - ".acos/state/model-session.yaml (active_profile: premium)"
+  - ".claude/skills/acos-financial-statement/SKILL.md (first 60 lines)"
+  - ".claude/skills/acos-pdf-xlsx-converter/SKILL.md (first 50 lines)"
+  - ".claude/skills/acos-skill-maker/SKILL.md (first 50 lines)"
+  - ".claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml (first 40 lines)"
+  - "ls -la .claude/skills/acos-financial-statement/ (structure)"
+  - "ls -la .claude/scripts/ | grep -E (new scripts list)"
+  - "ls -la .claude/agents/ | grep (new agent files)"
+  - "ls -la .acos/evidence/ (evidence directories)"
+  - "ls -lt memory/handoffs/ (existing handoffs)"
+  - "ls -la .acos/state/ (runtime state)"
+  - "ls -lt planning/ (planning directory structure)"

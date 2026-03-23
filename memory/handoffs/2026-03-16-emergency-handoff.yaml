@@ -1,0 +1,153 @@
+timestamp: "2026-03-16T21:01:21Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  The session (session f40b9aa7) has been running the loan document generator against a
+  real deal folder (Kelso, WA Warehouse) in batch mode. Session 20260316-130000 produced
+  4 of 5 documents successfully (Internal Credit Memo, Term Sheet, Executive Summary,
+  Scoping Letter — all as PDF+HTML). The 5th document (Deal Memo, batch_index 3) is
+  absent from the output folder, meaning it was either skipped or not yet generated.
+  Earlier in the day the session fixed the HTML→PDF pipeline (commit a6b51b1), remediating
+  a root-cause bug where Phase 3 designers wrote markdown but the PDF converter expected
+  HTML. The session also committed 23 QA findings (commit d79f5dd) and a batch/hierarchy
+  feature (commit 3637f85). A new untracked skill, acos-underwriting-pipeline, was created
+  (timestamped 2026-03-16 04:12) but is not yet committed.
+
+current_work:
+  slice_id: "SLICE-001"
+  story_id: "standalone"
+  epic_id: "loan-doc-generator-improvements"
+  status: "in_progress"
+
+completed_this_session:
+  - "Committed feat: Add batch mode, hierarchical doc selection, 6 new doc types, design library view (3637f85) — SKILL.md + doc-type-catalog.yaml with 24 doc types, clickable file:// sample links"
+  - "Committed fix: Remediate 23 QA findings (d79f5dd) — document_id contract across all 4 phase files, batch mode handling, 3 new doc types (Loan Agreement, Guarantee Document, Foreclosure Complaint = 27 total), SLICE-001 planning artifact created"
+  - "Committed fix: Replace markdown output with HTML→PDF pipeline via Puppeteer (a6b51b1) — phase3-design.md now writes HTML fragments, assembler produces complete HTML doc, new Step 3.5 converts HTML→PDF via Puppeteer; phase4-validate.md validates HTML; new STRUCT-003 check auto-fails on raw markdown"
+  - "Created .claude/scripts/html-to-pdf.js (177 lines) — Puppeteer-based PDF converter with Letter/A4, page numbers, background printing; 6/6 tests passed"
+  - "Created package.json + package-lock.json for Puppeteer npm dependency"
+  - "Ran batch session 20260316-130000 against Kelso, WA Warehouse loan folder — produced Internal Credit Memo, Term Sheet, Executive Summary, Scoping Letter as PDF+HTML (4 of 5 documents)"
+  - "Created acos-underwriting-pipeline skill (untracked) — 6-phase end-to-end underwriting pipeline ending in batch /acos-loan-doc-generator invocation"
+  - "Evidence bundles written for html-to-pdf-script and phase3-html-pdf under .acos/evidence/2026-03-16/"
+
+files_modified:
+  - path: ".claude/scripts/html-to-pdf.js"
+    changes: "New file — Puppeteer HTML-to-PDF converter, 177 lines, CLI: node html-to-pdf.js <input.html> <output.pdf> [--a4] [--landscape] [--no-footer] [--margin N]"
+  - path: ".claude/skills/acos-loan-doc-generator/SKILL.md"
+    changes: "Multiple passes: batch mode added (3637f85), 23 QA fixes including document_id contract and Step 0.3 design library view (d79f5dd), HTML/PDF data flow references updated (a6b51b1)"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase3-design.md"
+    changes: "Designers now write pure HTML fragments; assembler produces complete HTML doc with embedded CSS; Step 3.5 added for Puppeteer PDF conversion; Step 3.6 renumbered from 3.5 for return-to-caller"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase4-validate.md"
+    changes: "Now validates HTML not markdown; new STRUCT-003 check auto-fails if raw markdown syntax found; draft path changed from .md to .html"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase1-extract.md"
+    changes: "document_id extracted and used for catalog lookup; design_id generation uses document slug; library entry uses document_id field"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md"
+    changes: "document_id field added; batch mode handling block added (missing top-level fields + union-of-sections strategy)"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/design-library-index.yaml"
+    changes: "Rewritten to v2.0 schema per QA fix C4"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+    changes: "Now 27 doc types (was 17 at initial commit, grew to 24, then +3 more: Loan Agreement, Guarantee Document, Foreclosure Complaint)"
+  - path: "planning/slices/SLICE-001-design-library-one-sample-per-design.yaml"
+    changes: "New file — planned slice for restructuring design library to one entry per sample file (status: planned, not yet started)"
+  - path: ".gitignore"
+    changes: "Updated with 3 new additions (from a6b51b1)"
+  - path: "package.json"
+    changes: "New file — npm manifest declaring Puppeteer dependency"
+  - path: "package-lock.json"
+    changes: "New file — Puppeteer dependency lockfile"
+  - path: ".claude/skills/acos-underwriting-pipeline/SKILL.md"
+    changes: "New file (UNTRACKED) — 6-phase underwriting pipeline skill; takes loan folder path, runs triage/math/risk/synthesis, then invokes /acos-loan-doc-generator in batch mode. 18,452 bytes."
+
+decisions_made:
+  - "HTML as intermediate format for Phase 3: Designers write HTML fragments → assembler produces complete HTML doc → Puppeteer converts to PDF. Both HTML and PDF kept in output. This gives browser-viewable + distributable PDF and leverages CSS Paged Media in pdf-styles.css."
+  - "Puppeteer chosen over wkhtmltopdf/Prince for PDF conversion: full CSS Paged Media support, printBackground=true for colored cover pages, well-maintained npm package. Trade-off: ~170MB Chromium download. Pandoc is fallback."
+  - "STRUCT-003 auto-fail check: if raw markdown syntax (**, ##, |--) found in output HTML, Phase 4 fails immediately. Prevents silent markdown bleed-through from designers."
+  - "Iteration tracking via manifest (not input parameter): phase34 agent reads current_iteration from session-manifest.yaml rather than receiving it as CLI arg. Centralizes state."
+  - "document_id (not category_id) used for all catalog lookups across all 4 phases. category_id is preserved for grouping only."
+  - "Batch session 20260316-130000: 5 documents queued (Internal Credit Memo, Term Sheet, Deal Memo, Scoping Letter, Executive Summary) against Kelso, WA Warehouse — all Wall Street Classic design"
+
+blockers:
+  - "Deal Memo (batch_index 3) is absent from the output folder for session 20260316-130000. The session-manifest.yaml shows all 5 batch items as status: pending (manifest was written before generation), but the output folder has only 4 PDFs. Unknown whether Deal Memo was skipped, errored, or simply not yet run."
+  - "SLICE-001 (design library one-sample-per-design) has status: planned — no work started on it yet. It restructures design library from 23 merged entries to ~44 individual entries. This is a pending task."
+  - "acos-underwriting-pipeline skill is untracked — needs to be committed."
+  - "The session-manifest.yaml for 20260316-130000 shows status: in-progress and all batch items as status: pending — if the session context was lost mid-generation, the remaining documents (Deal Memo if not done) would need to be re-run."
+  - "Known limitation in html-to-pdf.js: baseUrl variable computed but not passed to page.goto() — HTML with relative image/CSS paths requires absolute paths or inline resources."
+
+next_actions:
+  - "Check whether Deal Memo was generated in a different location or needs to be re-run for session 20260316-130000"
+  - "Review the 4 generated PDFs (Internal-Credit-Memo.pdf, Term-Sheet.pdf, Executive-Summary.pdf, 'Scoping Letter.pdf') in /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260316-130000/output/ — validate quality"
+  - "Commit acos-underwriting-pipeline skill: git add .claude/skills/acos-underwriting-pipeline/ && git commit"
+  - "Begin SLICE-001 (design library restructure to one-sample-per-design) — the slice file is at planning/slices/SLICE-001-design-library-one-sample-per-design.yaml"
+  - "Update MEMORY.md to document acos-underwriting-pipeline and the HTML→PDF pipeline change"
+  - "Consider running /acos-complete to archive the 2026-03-14-emergency-handoff.yaml (still active, from prior session)"
+
+context_for_next_session: |
+  The primary active workstream is the loan document generator for a real client deal:
+  Kelso, WA Warehouse. The generator was run in batch mode (session 20260316-130000)
+  to produce 5 credit/underwriting documents using the Wall Street Classic design from
+  the design library. As of the handoff, 4 of 5 documents are confirmed in the output
+  folder as both PDF and HTML: Internal-Credit-Memo.pdf (656KB), Term-Sheet.pdf (329KB),
+  Executive-Summary.pdf (400KB), and Scoping Letter.pdf (157KB). Deal Memo is missing
+  and its status is unknown.
+
+  The most important recent technical change is the HTML→PDF pipeline (commit a6b51b1,
+  today at 13:01). Previously the pipeline produced markdown, which rendered as raw
+  text in PDFs. The fix: Phase 3 designers now write HTML fragments (not markdown),
+  the assembler builds a complete HTML document, and a new Step 3.5 runs
+  `node .claude/scripts/html-to-pdf.js` via Puppeteer. The html-to-pdf.js script is
+  at .claude/scripts/html-to-pdf.js — it's an npm/Node.js dependency (package.json
+  declares puppeteer). The output directory also keeps the .html file alongside the
+  .pdf for easy inspection.
+
+  The planning hierarchy has SLICE-001 defined but not started. SLICE-001 restructures
+  the design library from its current state (23 merged entries where multiple samples
+  are synthesized into one design-patterns.yaml per doc type) into ~44 individual
+  entries (one per sample file). The goal is to let users choose between named designs
+  per document type (e.g., "Beehive Waldorf Style" vs. "Lux 2 Portfolio Style") with
+  on-demand sample previews. The slice file is fully specified with acceptance criteria,
+  files_allowed/prohibited, and technical requirements.
+
+  A new acos-underwriting-pipeline skill was created today (untracked, 18KB). It
+  implements a 6-phase one-command underwriting pipeline: deal setup → document triage
+  → underwriting math → risk/sponsor analysis → synthesis → batch document generation.
+  This is intended as the "front door" that replaces manual multi-step orchestration.
+  It creates output in an underwriting-zee/ subfolder inside the loan folder itself.
+
+  The agent lifecycle log confirms session f40b9aa7 has been the long-running primary
+  session today. It spawned multiple loan-doc-phase34 agents (at 18:12 and 20:13) and
+  a handoff-agent at 21:00 (this agent). The loan-doc-phase34 spawns at 18:12 and 20:13
+  correspond to Phase 3+4 runs for the batch documents.
+
+  Key paths for next session:
+  - Active batch session: .acos/loan-doc-generator/sessions/20260316-130000/
+  - Output PDFs: .acos/loan-doc-generator/sessions/20260316-130000/output/
+  - Session manifest: .acos/loan-doc-generator/sessions/20260316-130000/session-manifest.yaml
+  - SLICE-001: planning/slices/SLICE-001-design-library-one-sample-per-design.yaml
+  - Untracked skill: .claude/skills/acos-underwriting-pipeline/SKILL.md
+  - PDF converter: .claude/scripts/html-to-pdf.js (requires: node, npm install puppeteer)
+
+reconstruction_sources:
+  - "git status --short (untracked files)"
+  - "git log --oneline -20 (commit history)"
+  - "git diff --stat HEAD~5..HEAD (file-level changes across last 5 commits)"
+  - "git show --stat a6b51b1 (HTML→PDF pipeline commit detail)"
+  - "git show --stat d79f5dd (23 QA findings remediation commit detail)"
+  - "git show --stat 3637f85 (batch mode + hierarchy commit detail)"
+  - "git show --stat 000b97f (initial loan ecosystem commit detail)"
+  - "git diff --name-only HEAD~3..HEAD (file list for last 3 commits)"
+  - "git log --oneline --since=2026-03-14 (commits since prior handoff)"
+  - "memory/handoffs/2026-03-14-emergency-handoff.yaml (most recent prior handoff — full read)"
+  - "planning/slices/SLICE-001-design-library-one-sample-per-design.yaml (full read)"
+  - ".acos/loan-doc-generator/sessions/20260316-130000/session-manifest.yaml (full read)"
+  - ".acos/loan-doc-generator/sessions/20260316-130000/output/ (ls — confirmed 4 of 5 PDFs present)"
+  - ".acos/loan-doc-generator/sessions/ (ls — 4 sessions: 20260310, 20260316-050036, 20260316-123911, 20260316-130000)"
+  - ".acos/evidence/2026-03-16/phase3-html-pdf/Summary.md (full read)"
+  - ".acos/evidence/2026-03-16/html-to-pdf-script/Summary.md (full read)"
+  - ".acos/evidence/2026-03-15/loan-doc-phase-fixes/Summary.md (full read)"
+  - ".acos/state/agent-lifecycle.log (tail -50 — confirmed session IDs, loan-doc-phase34 spawns, handoff-agent at 21:00)"
+  - ".acos/state/model-session.yaml (active_profile: premium)"
+  - ".claude/skills/acos-underwriting-pipeline/SKILL.md (first 80 lines — confirmed skill exists, untracked)"
+  - ".acos/loan-doc-generator/ (ls — confirmed design-library, cache, sessions, config.yaml, extractions)"
+  - "planning/ directory structure (ls — slices, stories, epics, vision)"
+  - "memory/decisions/ (ls — only acos-update-2026-02-22.md, pre-existing)"

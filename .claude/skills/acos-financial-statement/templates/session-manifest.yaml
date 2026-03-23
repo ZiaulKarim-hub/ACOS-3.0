@@ -1,0 +1,116 @@
+# ═══════════════════════════════════════════════════════════════
+# Session Manifest — ACOS Financial Statement Preparation
+# ═══════════════════════════════════════════════════════════════
+# This file is the single source of truth for the session.
+# All agents read from this file to understand user intent and
+# locate required files. Written by Phase 0 (interview wizard).
+
+session_id: "{session-id}"
+skill_name: "acos-financial-statement"
+timestamp: "{ISO-8601}"
+status: "initializing"    # initializing | sandbox-running | reconciling | finalizing | complete | failed
+
+# ─────────────────────────────────────────────────────────────
+# User Selections
+# ─────────────────────────────────────────────────────────────
+
+mode: "{actual|projection}"
+
+statements_requested:
+  income_statement: false
+  balance_sheet: false
+  owners_equity: false
+  cash_flow: false
+
+property_type: "{multifamily|office|retail|industrial|hospitality|mixed-use|other}"
+property_type_detail: ""     # free text if "other"
+
+# ─────────────────────────────────────────────────────────────
+# Time Period — Actual Mode
+# ─────────────────────────────────────────────────────────────
+
+time_period:
+  from: "{YYYY-MM-DD}"
+  to: "{YYYY-MM-DD}"
+
+# ─────────────────────────────────────────────────────────────
+# Time Period — Projection Mode
+# ─────────────────────────────────────────────────────────────
+
+projection:
+  period_from_month: 1       # e.g., 10 for October
+  period_from_day: 1
+  period_to_month: 12        # e.g., 9 for September
+  period_to_day: 31          # e.g., 30 for September
+  start_year: 2024
+  num_periods: 5
+  # Auto-generated list of period ranges:
+  periods: []
+  # Example:
+  #   - { from: "2024-10-01", to: "2025-09-30", label: "Year 1 (Oct 2024 – Sep 2025)" }
+  #   - { from: "2025-10-01", to: "2026-09-30", label: "Year 2 (Oct 2025 – Sep 2026)" }
+
+# ─────────────────────────────────────────────────────────────
+# Data Source
+# ─────────────────────────────────────────────────────────────
+
+loan_folder_path: "{absolute-path}"
+
+# ─────────────────────────────────────────────────────────────
+# Prior Period Sample (structural reference only)
+# ─────────────────────────────────────────────────────────────
+
+prior_sample:
+  provided: false
+  path: ""
+  usage: "structural_reference_only"  # NEVER "data_source"
+
+# ─────────────────────────────────────────────────────────────
+# Materiality & Configuration
+# ─────────────────────────────────────────────────────────────
+
+materiality:
+  balance_sheet_pct: 0.01    # 1% of total assets
+  income_statement_pct: 0.05 # 5% of total revenue
+  custom: false
+
+config:
+  max_iterations: 5          # actual mode (projection mode uses 4)
+  sandbox_count: 3
+  sandbox_ids: ["A", "B", "C"]
+
+# ─────────────────────────────────────────────────────────────
+# Session Paths
+# ─────────────────────────────────────────────────────────────
+
+paths:
+  session_dir: ".acos/financial-statement/sessions/{session-id}"
+  sandbox_a: ".acos/financial-statement/sessions/{session-id}/sandbox-A"
+  sandbox_b: ".acos/financial-statement/sessions/{session-id}/sandbox-B"
+  sandbox_c: ".acos/financial-statement/sessions/{session-id}/sandbox-C"
+  reconciliation: ".acos/financial-statement/sessions/{session-id}/reconciliation"
+  output: ".acos/financial-statement/sessions/{session-id}/output"
+  chart_of_accounts: ".acos/financial-statement/sessions/{session-id}/chart-of-accounts.yaml"
+  validation_checks: ".claude/skills/acos-financial-statement/templates/validation-checks.yaml"  # read directly from template (no session copy needed)
+
+# ─────────────────────────────────────────────────────────────
+# Iteration State (updated by Primary Accountant)
+# ─────────────────────────────────────────────────────────────
+
+current_iteration: 0
+convergence_history: []
+# Example:
+#   - iteration: 1
+#     sandbox_a_status: "divergent"
+#     sandbox_b_status: "divergent"
+#     sandbox_c_status: "divergent"
+#     material_differences: 12
+#     immaterial_differences: 34
+#   - iteration: 2
+#     sandbox_a_status: "converging"
+#     sandbox_b_status: "converged"
+#     sandbox_c_status: "converging"
+#     material_differences: 3
+#     immaterial_differences: 28
+
+final_output_path: ""        # set when XLSX is generated

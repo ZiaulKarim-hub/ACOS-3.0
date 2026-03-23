@@ -32,9 +32,19 @@ happens inside phase orchestrator agents — each in their own context window.
 
 ## Phase 0: Interview Wizard
 
-All user interaction happens here. No CLI argument parsing except `status`.
+All user interaction happens here. No CLI argument parsing except `status` and `resume`.
+
+### UX Principles (apply throughout all steps)
+
+- **Be concise.** Show only what the user needs to decide. No verbose explanations.
+- **Smart defaults.** Pre-fill obvious choices. Quick mode = minimal questions.
+- **No noise.** Sample file:// links are hidden by default. Agent internals stay in logs.
+- **Progress clarity.** Show step N of M. Show phase progress during dispatch.
+- **Fail gracefully.** One clear error message with what went wrong and what to do next.
+- **Output format.** ALWAYS produce DOCX + PDF. Never .html, .md, or any other format.
 
 If `$ARGUMENTS` contains `status`, skip to the **Status Command** section.
+If `$ARGUMENTS` contains `resume`, skip to the **Resume Mode** section in Phase Dispatch.
 
 ### Step 0.0: Mode Selection
 
@@ -233,25 +243,22 @@ Filter entries where `entry.document_id == document_id`.
 ```
 Step {2 of 4 if quick | 2 of 8 if detailed | 2 of 4 if batch}: Design style
 
-  Design Library has {N} design(s) for "{catalog_entry.label}":
-  ─────────────────────────────────────────────────────────────
-  [1]  {label}  │  {example_count} samples  │  Added {date_added}
-       Samples:
-         file://{sample_files[0]}
-         file://{sample_files[1]}
-
-  [2]  {label}  │  {example_count} samples  │  Added {date_added}
-       Samples:
-         file://{sample_files[0]}
+  {N} design(s) available for "{catalog_entry.label}":
+  ─────────────────────────────────────────────────────
+  [1]  {label}                    │  Added {date_added}
+  [2]  {label} (T)                │  Added {date_added}
   ...
-  ─────────────────────────────────────────────────────────────
-  [N+1]  Use New Design (provide new examples)
+  ─────────────────────────────────────────────────────
+  (T) = template-based design (no real sample document)
+  [V]  View sample for a design
+  [{N+1}]  Use New Design
 
-Enter selection [1-{N+1}]:
+Enter selection [1-{N+1}] or [V]:
 ```
 
-Sample `file://` links are clickable — users can open them to preview what the
-design looks like before choosing. The links open in the system's default viewer.
+**Sample links are NOT shown by default** — this keeps the UI clean. If user
+picks [V], prompt: `"Which design? [1-{N}]: "`, then display:
+`"Sample: file://{sample_files[0]}"`. The `file://` link is clickable.
 
 If user selects **a numbered design [1-N]**, store as `selected_library_entry`.
 Set `skip_phase_1 = true`. Load `design_patterns_path` and `benchmark_criteria_path`
@@ -283,17 +290,17 @@ Check against all entries in `design-library/index.yaml`.
 - **No match:** `skip_phase_1 = false`. Will extract and auto-add to library after Phase 1.
 
 **Batch mode design resolution:** Iterate through each `batch_item` and resolve
-its design source independently. Display a summary table:
+its design source independently. Display a clean summary table (no sample links):
 
 ```
-  Design sources for batch:
-  ─────────────────────────────────────────────────────────────
-  #  DOCUMENT                     DESIGN SOURCE           PHASE 1
-  1  Credit Memo — Internal       Library: pe-format-2024  Skip
-  2  Credit Memo — External       New: /path/to/examples   Run
-  3  Deal Document                Library: deal-v2          Skip
-
-  Documents needing Phase 1 extraction: 1 of 3
+  Batch design sources:
+  ──────────────────────────────────────────────────────
+  #  DOCUMENT                 DESIGN              PH1
+  1  Credit Memo — Internal   pe-format-2024       Skip
+  2  Credit Memo — External   New design           Run
+  3  Deal Document            deal-v2              Skip
+  ──────────────────────────────────────────────────────
+  Phase 1 extractions needed: 1 of 3
 ```
 
 For each item needing a new design, prompt for the examples path (one prompt per
@@ -512,6 +519,40 @@ Validate each path exists.
 Store `images` list (each entry: `{path, caption, placement}`) and `image_placement_strategy`
 (`auto`, `after-header`, or `appendix`).
 
+### Step 0.5d: Charts & Graphs
+
+**Quick mode:** For credit memos, auto-include must-have charts (LTV waterfall,
+DSCR gauge, recommendation matrix). For other document types, no charts by default.
+Set `selected_charts = "auto"`. Skip the prompt.
+
+**Batch mode:** Same as quick mode per batch item. Skip the prompt.
+
+**Detailed mode:** Continue below.
+
+```
+Step {N} of {M}: Charts & graphs  (optional)
+
+  ── Must-Have (credit memos only, auto-included) ──────────
+  {For each chart in catalog_entry.must_have_charts:}
+  ✓ {chart.description}          ({chart.section})
+
+  ── Optional Charts ───────────────────────────────────────
+  [1] Debt Structure Bar Chart    (Transaction Summary)
+  [2] Cash Flow Trend             (Financial Analysis)
+  [3] Cap Rate Comparison         (Collateral Analysis)
+  [4] Risk Factor Donut           (Risk Assessment)
+  [5] Amortization Schedule       (Financial Analysis)
+
+  Select optional charts (comma-separated, or Enter to skip): _
+```
+
+For non-credit-memo document types, show only the optional charts menu (no
+must-have section). The chart list is derived from `catalog_entry.available_charts`
+in the doc-type catalog.
+
+Store as `selected_charts`: list of chart IDs. For credit memos, always include
+the 3 must-have charts plus any user-selected optional charts.
+
 ### Step 0.6: Additional Instructions
 
 **Quick mode / Batch mode:** Set `additional_instructions = null`. Skip the prompt.
@@ -557,6 +598,21 @@ If found, read the manifest and compare:
 **Config override:** If `.acos/loan-doc-generator/config.yaml` has `cache.enable_phase2_cache: false`,
 skip the cache check entirely and set `skip_phase_2 = false`.
 
+### Step 0.7b: Output Destination
+
+```
+Step {N of M}: Output destination  (optional — press Enter for default)
+
+  Where should the final documents be saved?
+
+  Default: .acos/loan-doc-generator/sessions/{session_id}/output/
+
+  Custom path: _
+```
+
+If the user enters a custom path, validate it exists (or can be created). Store as
+`output_destination`. If Enter with no input, set `output_destination = null` (use default).
+
 ### Step 0.8: Confirmation & Bootstrap
 
 Generate `session_id`: `YYYYMMDD-HHMMSS`.
@@ -577,6 +633,8 @@ Display confirmation:
 ║  Target Pages  : {target_pages or "no limit"}               ║
 ║  Images        : {len(images) or "none"}                    ║
 ║  Instructions  : {additional_instructions or "none"}        ║
+║  Output Format : PDF + DOCX                                 ║
+║  Output To     : {output_destination or "session default"}  ║
 ║  Session ID    : {session_id}                               ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -615,6 +673,9 @@ On confirmation:
 
 1. Bootstrap config if `.acos/loan-doc-generator/config.yaml` does not exist:
    Copy `templates/loan-doc-config.yaml` → `.acos/loan-doc-generator/config.yaml`
+
+1b. Bootstrap recommendation matrix config if not present:
+   Copy `templates/recommendation-matrix.yaml` → `.acos/loan-doc-generator/recommendation-matrix.yaml`
 
 2. Bootstrap design library index if not present:
    Create `.acos/loan-doc-generator/design-library/` directory.
@@ -656,11 +717,19 @@ On confirmation:
    page_budget: {}                   # per-section budgets (section_name → pages)
    images: []                        # [{path, caption, placement}]
    image_placement_strategy: null    # null|auto|after-header|appendix
+   output_destination: null          # null = session default, or user-specified path
+   selected_charts: "auto"          # "auto" for credit memos, or list of chart IDs
+   verification_table_path: ""      # populated after Phase 2 Step 2.5b
    skip_phase_1: false
    skip_phase_2: false
    status: "in-progress"
    current_phase: 1
    current_iteration: 0
+   checkpoint:                      # populated after each phase completes
+     last_successful_phase: null
+     completed_phases: []
+     phase_outputs: {}
+     timestamp: null
    ```
 
    **Batch mode:**
@@ -674,8 +743,15 @@ On confirmation:
    loan_data_brief_path: ""         # shared — populated after Phase 2
    skip_phase_2: false
    figures_mode: "auto"             # batch always uses auto
+   output_destination: null
+   verification_table_path: ""
    status: "in-progress"
    current_phase: 1
+   checkpoint:
+     last_successful_phase: null
+     completed_phases: []
+     phase_outputs: {}
+     timestamp: null
    batch_items:
      - batch_index: 1
        category_id: ""
@@ -688,7 +764,9 @@ On confirmation:
        examples_path: ""
        target_pages: null
        page_budget: {}
+       selected_charts: "auto"
        skip_phase_1: false
+       current_iteration: 0
        status: "pending"            # pending|phase1|phase34|complete|failed
        output_path: ""
      - batch_index: 2
@@ -719,6 +797,45 @@ On confirmation:
 After Phase 0 completes, dispatch to phase orchestrator agents.
 The `manifest_path` is `.acos/loan-doc-generator/sessions/{session_id}/session-manifest.yaml`.
 
+### Session Checkpointing
+
+After each phase completes successfully, update the session manifest with a checkpoint:
+
+```yaml
+# Added after each phase completes:
+checkpoint:
+  last_successful_phase: 2       # 0, 1, 2, or 34
+  completed_phases: [0, 1, 2]
+  phase_outputs:
+    phase_1:
+      design_patterns_path: "..."
+      benchmark_criteria_path: "..."
+    phase_2:
+      loan_data_path: "..."
+      loan_data_brief_path: "..."
+  timestamp: "YYYY-MM-DD HH:MM:SS"
+```
+
+This enables resume from any checkpoint if the session is interrupted.
+
+### Resume Mode
+
+If `$ARGUMENTS` contains `resume` or `resume {session_id}`:
+
+1. If no session_id given, list all sessions with status `"in-progress"`:
+   ```
+   Incomplete sessions:
+     SESSION ID          DOCUMENT                    LAST PHASE   STATUS
+     20260316-143022     Internal Credit Memo        Phase 2      in-progress
+     20260315-091500     Term Sheet (batch 3)        Phase 1      in-progress
+
+   Resume which session? [session_id]:
+   ```
+
+2. Read the session manifest and checkpoint
+3. Report: `"Resuming session {session_id} from Phase {N+1}"`
+4. Skip to the appropriate dispatch step below based on `last_successful_phase`
+
 ### Single Document Dispatch (quick/detailed)
 
 #### Dispatch Phase 1 (if needed)
@@ -734,7 +851,8 @@ Task(loan-doc-phase1)
       .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
 ```
 
-Wait for completion. Report Phase 1 results to user.
+Wait for completion. **Checkpoint: update manifest with Phase 1 outputs.**
+Report Phase 1 results to user.
 
 If `skip_phase_1 = true`:
 Report: `"Phase 1 skipped — using cached design from library: {design_label}"`
@@ -752,10 +870,91 @@ Task(loan-doc-phase2)
       .claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md
 ```
 
-Wait for completion. Report Phase 2 results to user.
+Wait for completion. **Checkpoint: update manifest with Phase 2 outputs.**
+Report Phase 2 results to user.
 
 If `skip_phase_2 = true`:
 Report: `"Phase 2 skipped — using cached loan analysis from {date_analyzed}"`
+
+**When Phase 2 is cached**: The verification table may not exist for this session.
+Re-run ONLY Step 2.5b (verification table generation) using the cached loan-data.yaml:
+
+```
+Task(loan-doc-phase2)
+  - prompt: |
+      Session manifest: {manifest_path}
+      CACHE HIT MODE: Phase 2 data is already at {loan_data_path}.
+      Run ONLY Step 2.5b from phase2-analyze.md — generate the verification table.
+      Do NOT re-analyze the loan folder.
+```
+
+Wait for completion. Update `verification_table_path` in the manifest.
+
+#### Data Verification Gate (between Phase 2 and Phase 3)
+
+**This gate is MANDATORY. Do NOT skip it.**
+
+After Phase 2 completes (or cache is loaded), read the verification table at
+`verification_table_path` from the session manifest. Display it to the user:
+
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║ Data Verification — Review Before Document Generation                    ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+  {total_figures} data points extracted  │  {cross_validated_count} cross-validated
+  {single_source_count} single-source    │  {calculated_count} calculated
+
+  ── Key Financial Figures ────────────────────────────────────────────────
+  DATA POINT              VALUE              SOURCE              CONFIDENCE
+  ─────────────────────── ────────────────── ─────────────────── ──────────
+  Loan Amount             $2,100,000         Loan Agreement p2   ✓ 0.95
+  Interest Rate           7.25%              Term Sheet p1       ✓ 0.92
+  Property Value          $3,200,000         Appraisal p5        ✓ 0.90
+  📊 LTV Ratio            65.6%              (calculated)        ✓ 0.90
+  ⚠ Maturity Date         2027-03-15         Note p3             ⚠ 0.65
+
+  ── Entities ─────────────────────────────────────────────────────────────
+  Borrower                Cook Group LLC     Application p1      ✓ 0.98
+  Guarantor               James Cook         Guarantee p1        ✓ 0.95
+  Property                123 Main St, SLC   Appraisal p1        ✓ 0.93
+
+  ── Calculated Values ────────────────────────────────────────────────────
+  📊 LTV: $2,100,000 / $3,200,000 = 65.6%
+     └─ Loan Amount from: Loan Agreement.pdf p2
+     └─ Property Value from: Appraisal.pdf p5
+  📊 DSCR: $285,000 / $168,000 = 1.70x
+     └─ NOI from: Operating Statement.xlsx Sheet1!D15
+     └─ Debt Service from: Term Sheet.pdf p2 (calculated from rate + amort)
+
+  Click any source link to verify: file:// paths open the source document.
+
+╚══════════════════════════════════════════════════════════════════════════╝
+
+  [A]  Approve all data — proceed to document generation
+  [F]  Flag specific values for correction
+  [O]  Override a value manually (becomes ground truth)
+
+Enter selection [A/F/O]:
+```
+
+**If [A] Approve:** Proceed to Phase 3+4 dispatch.
+
+**If [F] Flag:** Prompt for which data points to re-examine. Offer to re-run
+specific analyzer agents on specific source documents. Update loan-data.yaml
+with corrected values. Regenerate verification table and re-display.
+
+**If [O] Override:** Prompt for the data point name and new value.
+```
+  Data point to override: _
+  New value: _
+  Reason (optional): _
+```
+Update loan-data.yaml with the override: set `source: "user_override"`,
+`confidence: 1.0`, `authoritative: true`. Also update user-figures.yaml if it
+exists (or create it). Regenerate verification table and re-display.
+
+Loop back to the verification display until the user selects [A] Approve.
 
 #### Dispatch Phase 3+4
 
@@ -770,7 +969,44 @@ Task(loan-doc-phase34)
       Handle all Wigum loop iterations internally.
 ```
 
-Wait for completion.
+Wait for completion. **Checkpoint: update manifest with Phase 3+4 outputs.**
+
+#### Human-in-the-Loop Approval Gate
+
+After Phase 3+4 completes (regardless of PASS/FAIL), do NOT finalize immediately.
+Present the user with a review gate:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║ Document Draft Ready for Review                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  Validation  : {PASS|FAIL} ({pass_rate}%)                   ║
+║  Iterations  : {count}                                       ║
+║  PDF Preview : file://{pdf_path}                             ║
+║  DOCX Preview: file://{docx_path}                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Please review the draft. Options:
+  [A]  Approve and finalize
+  [E]  Edit specific sections (provide instructions)
+  [R]  Reject and start over
+
+Enter selection [A/E/R]:
+```
+
+**If [A] Approve:** Proceed to the Report step. Copy final outputs to
+`output_destination` if set.
+
+**If [E] Edit:** Prompt for section name and editing instructions:
+```
+  Which section(s) to edit? (comma-separated):
+  Instructions for changes:
+```
+Store as iteration feedback and re-dispatch Phase 3+4 for only those sections.
+Return to this approval gate after the edit cycle completes.
+
+**If [R] Reject:** Mark session as `"rejected"` in the manifest. Offer to
+start a new session with the same configuration.
 
 ### Batch Dispatch
 
@@ -793,7 +1029,7 @@ Task(loan-doc-phase1)
       Execute Phase 1: Design Extraction for "{document_title}" ({category_id}).
       Read your instructions from:
       .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
-      Write outputs to: batch-{batch_index}/ subdirectory within the session.
+      Use batch_index {batch_index} to differentiate extraction outputs.
 ```
 
 Wait for all Phase 1 agents to complete. Report results:
@@ -865,6 +1101,37 @@ Phase 3+4 — Document Generation:
 ```
 
 Update each `batch_item.status` to `"complete"` or `"failed"` based on results.
+**Checkpoint: update manifest with all batch item statuses and outputs.**
+
+#### Batch Step 4: Partial Retry (if any items failed)
+
+If any `batch_item.status == "failed"`:
+
+```
+  {fail_count} of {total} documents failed validation.
+
+  Failed items:
+    #{batch_index}  {document_title}   {failure_reason}
+
+  [R]  Retry failed items only
+  [A]  Accept all (including failed drafts)
+  [S]  Skip — proceed to report with mixed results
+
+Enter selection [R/A/S]:
+```
+
+**If [R] Retry:** Re-dispatch ONLY the failed batch items through Phase 3+4
+using the same shared Phase 2 data. Update `batch_item.status` on completion.
+Return to this step if any still fail (max 2 retry cycles).
+
+**If [A] Accept:** Mark all as `"complete"` (even those with validation failures).
+
+**If [S] Skip:** Proceed to report. Failed items are flagged in the batch report.
+
+#### Batch Human-in-the-Loop Gate
+
+Same as single-document mode — present the batch results for review before
+finalizing. User can approve all, edit specific documents, or reject.
 
 ### Report Final Results
 
@@ -915,11 +1182,16 @@ Based on Phase 3+4 return:
 ║  Document      : {document_title}                           ║
 ║  Iterations    : {count}                                    ║
 ║  Pass Rate     : {rate}                                     ║
-║  PDF Output    : {pdf_path}                                 ║
-║  HTML Source   : {html_path}                                ║
+║  PDF Output    : file://{pdf_path}                          ║
+║  DOCX Output   : file://{docx_path}                         ║
 ║  Provenance    : {provenance_table_path}                    ║
 ║  Validation    : {validation_report_path}                   ║
 ╚══════════════════════════════════════════════════════════════╝
+```
+
+If `output_destination` was specified, also show:
+```
+║  Copied to     : {output_destination}                       ║
 ```
 
 **If FAIL (max iterations):**
@@ -931,8 +1203,8 @@ Based on Phase 3+4 return:
 ║  Iterations    : {count}/{max}                              ║
 ║  Pass Rate     : {rate}                                     ║
 ║  Remaining     : {failure_count} required failures          ║
-║  PDF Output    : {pdf_path}                                 ║
-║  HTML Source   : {html_path}                                ║
+║  PDF Output    : file://{pdf_path}                          ║
+║  DOCX Output   : file://{docx_path}                         ║
 ║  Validation    : {validation_report_path}                   ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -984,18 +1256,18 @@ LTV Ratio: 65.6%          │ (calculated)         │ —    │ CM-Int
 **Step R.2b: Batch Results Summary**
 
 ```
-╔══════════════════════════════════════════════════════════════════════╗
-║ Batch Generation Complete — {pass_count}/{N} passed                 ║
-╠══════════════════════════════════════════════════════════════════════╣
-║  #  DOCUMENT                     RESULT  ITER  PASS RATE  PDF           ║
-║  1  Credit Memo — Internal       PASS    2     95%        file://...pdf ║
-║  2  Credit Memo — External       PASS    1     100%       file://...pdf ║
-║  3  Deal Document                FAIL    5/5   72%        file://...pdf ║
-╠──────────────────────────────────────────────────────────────────────╣
-║  Shared loan analysis   : {loan_data_path}                          ║
-║  Combined provenance    : {batch_report_path}                       ║
-║  Session workspace      : {session_path}                            ║
-╚══════════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════╗
+║ Batch Generation Complete — {pass_count}/{N} passed                       ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  #  DOCUMENT                  RESULT  ITER  RATE   PDF             DOCX  ║
+║  1  Credit Memo — Internal    PASS    2     95%    file://...pdf   ...docx║
+║  2  Credit Memo — External    PASS    1     100%   file://...pdf   ...docx║
+║  3  Deal Document             FAIL    5/5   72%    file://...pdf   ...docx║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  Shared loan analysis   : {loan_data_path}                                ║
+║  Combined provenance    : {batch_report_path}                             ║
+║  Session workspace      : {session_path}                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
 ```
 
 If any documents failed validation, list their remaining failures grouped by
@@ -1042,18 +1314,31 @@ Active Sessions:
 ```
 Phase 0 (this context) ──→ session-manifest.yaml ──→ all phases read this
 
-Phase 1 Agent ─┬─ design-patterns.yaml ──→ Phase 2 + 3 + 4
-               └─ benchmark-criteria.yaml ──→ Phase 4
+Phase 1 Agent ─┬─ design-patterns.yaml (per-sample, not merged) ──→ Phase 3 + 4
+               └─ benchmark-criteria.yaml + DESIGN rules ──→ Phase 4
 
-Phase 2 Agent ─┬─ loan-data.yaml ──→ Phase 3 + 4
-               └─ loan-data-brief.yaml ──→ Phase 3 + 4
+Phase 2 Agent ─┬─ xlsx-extract.py (pre-process .xlsx) ──→ structured YAML
+               ├─ loan-data.yaml (with cross-validation) ──→ Phase 3 + 4
+               ├─ loan-data-brief.yaml ──→ Phase 3 + 4
+               └─ verification-table.yaml ──→ Phase 0 (user approval gate)
 
-Phase 3+4 Agent ─── document-draft.html ──→ validators ──→ Wigum loop ──→ PDF output
+  ── DATA VERIFICATION GATE (mandatory) ──
+  Phase 0 displays verification table → user approves / flags / overrides
 
-Phase 0 (post) ─── loan-data.yaml ──→ provenance-table.md (cross-ref with HTML/PDF)
+Phase 3+4 Agent ─┬─ document-draft.html ──→ Puppeteer ──→ PDF
+                  ├─ html-to-docx.py ──→ DOCX
+                  ├─ generate-chart.py ──→ SVG charts (embedded in HTML)
+                  └─ validators (structural + design + quality + global + charts)
+                     ──→ Wigum loop ──→ output/ (PDF + DOCX only)
+
+  ── HUMAN-IN-THE-LOOP GATE ──
+  Phase 0 displays draft for review → user approves / edits / rejects
+
+Phase 0 (post) ─── loan-data.yaml ──→ provenance-table.md (cross-ref with PDF)
 
 Design Library ──→ Phase 0 (skip Phase 1 if cached)
 Phase 2 Cache  ──→ Phase 0 (skip Phase 2 if unchanged)
+Checkpoints    ──→ Phase 0 resume (skip to last successful phase)
 ```
 
 **Batch mode:**
@@ -1061,15 +1346,23 @@ Phase 2 Cache  ──→ Phase 0 (skip Phase 2 if unchanged)
 Phase 0 ──→ session-manifest.yaml (with batch_items array)
          │
          ├─→ Phase 1 Agent [doc-1] ─┬─ design-patterns.yaml ──→ batch-1/
-         ├─→ Phase 1 Agent [doc-2] ─┤  (parallel, only for uncached)
+         ├─→ Phase 1 Agent [doc-2] ─┤  (parallel, per-sample, not merged)
          │   ...                    └─ benchmark-criteria.yaml
          │
-         ├─→ Phase 2 Agent (shared) ─┬─ loan-data.yaml ──→ all batch items
-         │                           └─ loan-data-brief.yaml
+         ├─→ Phase 2 Agent (shared) ─┬─ xlsx pre-processing
+         │                           ├─ loan-data.yaml ──→ all batch items
+         │                           ├─ loan-data-brief.yaml
+         │                           └─ verification-table.yaml ──→ user gate
          │
-         ├─→ Phase 3+4 Agent [doc-1] ──→ batch-1/output/ ─┐
-         ├─→ Phase 3+4 Agent [doc-2] ──→ batch-2/output/ ─┤ (parallel)
-         ├─→ Phase 3+4 Agent [doc-3] ──→ batch-3/output/ ─┘
+         ├─→ DATA VERIFICATION GATE (shared, one approval for all items)
+         │
+         ├─→ Phase 3+4 Agent [doc-1] ──→ batch-1/output/ (PDF+DOCX) ─┐
+         ├─→ Phase 3+4 Agent [doc-2] ──→ batch-2/output/ (PDF+DOCX) ─┤ parallel
+         ├─→ Phase 3+4 Agent [doc-3] ──→ batch-3/output/ (PDF+DOCX) ─┘
+         │
+         ├─→ BATCH PARTIAL RETRY (if any failed) ──→ re-dispatch failed only
+         │
+         ├─→ HUMAN-IN-THE-LOOP GATE (review all before finalizing)
          │
          └─→ Phase 0 (post) ──→ batch-report.md (combined provenance)
 ```
@@ -1101,11 +1394,32 @@ Phase 0 ──→ session-manifest.yaml (with batch_items array)
 ├── loan-doc-phase1.md               ← Phase 1 orchestrator agent
 ├── loan-doc-phase2.md               ← Phase 2 orchestrator agent
 └── loan-doc-phase34.md              ← Phase 3+4 orchestrator agent
+
+.claude/scripts/
+├── xlsx-extract.py                  ← XLSX cell-level extraction (openpyxl)
+├── generate-chart.py                ← SVG chart generation (bar, gauge, waterfall, donut, matrix)
+├── html-to-docx.py                  ← Styled DOCX conversion (pandoc + python-docx)
+└── html-to-pdf.js                   ← PDF conversion via Puppeteer
+
+.acos/loan-doc-generator/
+├── config.yaml                      ← Runtime configuration
+├── design-library/
+│   ├── index.yaml                   ← Master design index (one entry per sample)
+│   ├── STYLE-GUIDE.yaml             ← Okoa-specific style guide
+│   ├── STYLE-GUIDE-RESEARCH.yaml    ← Research-backed design quality rules (30 rules)
+│   └── {design_id}/                 ← Per-design extraction outputs
+├── research/
+│   └── pe-lending-ratios-research.yaml  ← PE ratios, scoring matrix, chart specs
+├── cache/                           ← Phase 2 cache by loan folder fingerprint
+└── sessions/{session_id}/           ← Per-session workspace
 ```
 
 ---
 
-*ACOS Loan Document Generator — Quick/Detailed/Batch interview modes, CSS pagination,
-page count control, image support, data provenance, delegated phase orchestration
-with design library, Phase 2 caching, parallel batch generation, section-scoped
-validation, and benchmark-driven Wigum loop.*
+*ACOS Loan Document Generator — Quick/Detailed/Batch interview modes, DOCX+PDF dual
+output (no other formats), CSS pagination, page count control, image support, data
+provenance, delegated phase orchestration with design library, Phase 2 caching,
+XLSX cell-level extraction, parallel batch generation, section-scoped validation,
+benchmark-driven Wigum loop, session checkpointing with resume, batch partial retry,
+human-in-the-loop approval gate, post-generation editing, and configurable output
+destination.*

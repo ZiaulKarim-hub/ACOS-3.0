@@ -86,6 +86,8 @@ Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomi
 - **loan-doc-phase1** — Phase 1 orchestrator for loan document generator (design extraction).
 - **loan-doc-phase2** — Phase 2 orchestrator for loan document generator (loan folder analysis).
 - **loan-doc-phase34** — Phase 3+4 orchestrator for loan document generator (design + validation + Wigum loop).
+- **fin-stmt-sandbox** — Sandbox orchestrator for financial statement preparation (independent GAAP preparation).
+- **fin-stmt-accountant** — Primary Accountant for adversarial reconciliation (Wigum loop, never gives numbers).
 
 ## Review Process
 Reviews are assigned programmatically by .claude/scripts/assign-reviewers.sh

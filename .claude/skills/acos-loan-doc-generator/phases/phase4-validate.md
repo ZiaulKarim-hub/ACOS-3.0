@@ -72,6 +72,62 @@ ALWAYS CHECK STRUCT-003:
   PASS: well-formed HTML, all tags closed, no markdown syntax in document body.
   FAIL: unclosed tags, raw markdown headings (#), bold (**), or pipe tables detected.
 
+ALWAYS CHECK STRUCT-004:
+  Visual Rendering Quality
+  Check the HTML for rendering issues that would cause visual defects in PDF/DOCX:
+  (a) No empty <section>, <div>, or <p> tags that create blank whitespace
+  (b) No consecutive <br> tags (use margins/padding instead)
+  (c) All tables have <thead> and <tbody> (required for header repeat on page break)
+  (d) No inline styles that override the stylesheet (e.g., style="margin-top:50px")
+      — except for chart SVGs and intentional color-coding classes
+  (e) Every <h1> is inside a <section class="chapter"> wrapper
+  (f) No text content outside of <section> tags (except document title area)
+  (g) No adjacent identical content (duplicate paragraphs or tables)
+  (h) All <img> tags have width/height or are inside a <figure> container
+  PASS: clean HTML structure, no rendering hazards detected.
+  FAIL: any of the above rendering hazards found — quote the specific HTML.
+
+ALWAYS CHECK STRUCT-004b:
+  Design Quality Rules (from STYLE-GUIDE-RESEARCH.yaml)
+  Read the design quality rules at:
+  .acos/loan-doc-generator/design-library/STYLE-GUIDE-RESEARCH.yaml
+  Look under the `enforceable_quality_rules` key.
+
+  Check ALL rules with severity: "required" (21 rules). Key checks include:
+  - DESIGN-001: Max 2 font families in the document
+  - DESIGN-002: Body font size 10-12pt
+  - DESIGN-003: Heading sizes form a clear hierarchy (h1 > h2 > h3)
+  - DESIGN-010: Page margins >= 0.75in on all sides
+  - DESIGN-020: Table headers visually distinct (background color or bold + border)
+  - DESIGN-021: Numeric columns right-aligned
+  - DESIGN-022: Every table has <thead> and <tbody>
+  - DESIGN-030: Max 5 distinct colors in the document
+  - DESIGN-031: Text contrast ratio >= 4.5:1
+  - DESIGN-040: Currency values use thousands separators ($X,XXX)
+  - DESIGN-041: Negative values use parentheses, not minus signs
+  - DESIGN-042: Percentages formatted consistently (X.X%)
+  - DESIGN-043: Date formats consistent throughout
+  - DESIGN-060: No skipped heading levels (h1→h2→h3, not h1→h3)
+  - DESIGN-065: If section numbering used, single scheme throughout
+
+  Also check "recommended" rules and report compliance percentage.
+  DESIGN-099 composite gate: ALL required pass AND >= 80% recommended pass.
+
+  PASS: DESIGN-099 composite gate passes.
+  FAIL: Any required design rule fails — list each failure with rule ID and evidence.
+
+ALWAYS CHECK STRUCT-005:
+  HTML-to-PDF/DOCX Convertibility
+  NOTE: Validation runs BEFORE PDF/DOCX conversion. Check the HTML structure
+  for elements that would prevent clean conversion:
+  (a) No JavaScript or interactive elements (they won't render in PDF/DOCX)
+  (b) All images use file:// absolute paths or are embedded SVG
+  (c) CSS is embedded in a <style> block (not external <link> stylesheet)
+  (d) No external resource dependencies (all content self-contained in the HTML)
+  (e) The HTML source is in phase3-design/iteration-N/synthesis/ (not output/)
+  PASS: HTML is self-contained and will convert cleanly to PDF and DOCX.
+  FAIL: HTML contains non-convertible elements — quote the specific issues.
+
 Output matching schema:
 {validation-result.yaml template contents}
 Set validator_tier: structural
@@ -141,58 +197,47 @@ Write to:
 
 Use `run_in_background: true`, `model: sonnet`.
 
-### Global Validators (up to 5 agents, full draft)
+### Global Validators
 
-Spawn all 4 simultaneously alongside quality validators.
+Spawn alongside quality validators. Globals 1-3 are CONSOLIDATED into a single
+Document Integrity Validator to avoid 3 redundant full-draft reads per iteration.
 
-**Global 1 — Entity Consistency:**
+**Global 1 — Document Integrity (consolidated: entity + financial + coherence):**
 ```
-You are the Entity Consistency Validator.
+You are the Document Integrity Validator.
+You check THREE dimensions in a SINGLE pass over the document.
 
 Read FULL draft at: {draft_path}
-Read entity directory from: {loan_data_path}
-
-Check: every entity referred to by same name/role throughout.
-Flag: different names for same entity, conflicting roles/descriptions.
-
-Write to: .../phase4-validation/iteration-{N}/global/entity/result.yaml
-```
-
-**Global 2 — Financial Figure Accuracy:**
-```
-You are the Financial Figures Validator.
-
-Read FULL draft at: {draft_path}
-Read financial_figures from: {loan_data_path}
-
-Check: (a) figures consistent across sections (b) no figure contradicts ground truth.
-Flag: same figure with different values in different sections, untraceable figures.
+Read entity directory and financial_figures from: {loan_data_path}
+Read assembler notes at: {assembler_notes_path}
 
 [IF user_figures_path is not null]
 USER-PROVIDED FIGURES — Read: {user_figures_path}
-These are AUTHORITATIVE ground truth. If a figure in the document matches
-a user-provided value, it is CORRECT even if loan-data.yaml has a different
-extracted value. Only flag figures that contradict USER-PROVIDED values.
-Figures that contradict only extracted (non-user) values should be noted
-but NOT marked as FAIL.
+These are AUTHORITATIVE ground truth. Figures matching user-provided values
+are CORRECT even if loan-data.yaml differs.
 
-Write to: .../phase4-validation/iteration-{N}/global/financials/result.yaml
+CHECK ALL THREE:
+
+DIMENSION A — Entity Consistency:
+  Every entity referred to by same name/role throughout.
+  Flag: different names for same entity, conflicting roles/descriptions.
+
+DIMENSION B — Financial Figure Accuracy:
+  (a) Figures consistent across sections (b) no figure contradicts ground truth.
+  Flag: same figure with different values in different sections, untraceable figures.
+  If user_figures_path exists: only flag figures contradicting USER-PROVIDED values.
+
+DIMENSION C — Cross-Section Coherence:
+  Coherent story end-to-end. Risks addressed, conclusion follows body,
+  no contradictions, appropriate narrative arc.
+
+Output a SINGLE result file with all three dimensions:
+Write to: .../phase4-validation/iteration-{N}/global/integrity/result.yaml
 ```
 
-**Global 3 — Cross-Section Coherence:**
-```
-You are the Cross-Section Coherence Validator.
+Use `run_in_background: true`, `model: sonnet`.
 
-Read FULL draft at: {draft_path}
-Read assembler notes at: {assembler_notes_path}
-
-Check: coherent story end-to-end. Risks addressed, conclusion follows body,
-no contradictions, appropriate narrative arc.
-
-Write to: .../phase4-validation/iteration-{N}/global/coherence/result.yaml
-```
-
-**Global 4 — User Instructions Compliance:**
+**Global 2 — User Instructions Compliance (lightweight — no full draft read needed if no instructions):**
 ```
 You are the User Instructions Compliance Validator.
 
@@ -208,7 +253,38 @@ No user instructions. Output minimal result: verdict PASS, all N/A.
 Write to: .../phase4-validation/iteration-{N}/global/instructions/result.yaml
 ```
 
-**Global 5 — Page Count Compliance (conditional):**
+**Global 3 — Chart & Ratio Accuracy (conditional):**
+
+Only spawn this validator if `selected_charts` is not null/empty in the session manifest.
+
+```
+You are the Chart & Ratio Accuracy Validator.
+
+Read FULL draft at: {draft_path}
+Read financial_figures from: {loan_data_path}
+
+Read the recommendation matrix config at:
+.acos/loan-doc-generator/recommendation-matrix.yaml
+
+TASK:
+1. For each chart/SVG in the document, verify the data values match loan-data.yaml
+2. For each ratio displayed (LTV, DSCR, Debt Yield, etc.), independently recalculate
+   from the source values in loan-data.yaml and verify the document's value matches
+3. For the recommendation matrix: read pillar_weights, categories, and override_rules
+   from the config. Recalculate the composite score independently. Verify the
+   document's score matches. Verify the color/category matches the config thresholds.
+4. For credit memos: verify all charts listed in config `must_have_charts` are present
+
+VERDICT:
+- Ratio mismatch > 0.1% = FAIL (required)
+- Missing must-have chart in credit memo = FAIL (required)
+- Chart data not matching source = FAIL (required)
+- Wrong recommendation color/category = FAIL (required)
+
+Write to: .../phase4-validation/iteration-{N}/global/charts/result.yaml
+```
+
+**Global 4 — Page Count Compliance (conditional):**
 
 Only spawn this validator if `target_pages` is not null in the session manifest.
 

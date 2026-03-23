@@ -1,0 +1,305 @@
+# ═══════════════════════════════════════════════════════════════
+# Validation Checks — Financial Statement Preparation
+# ═══════════════════════════════════════════════════════════════
+# Every sandbox MUST run ALL applicable checks before submitting.
+# Failed checks must be resolved internally before submission.
+# These checks are also embedded as live formulas in the final XLSX.
+#
+# Inspired by CaseWare's 450+ automated check taxonomy,
+# adapted for CRE financial statements.
+
+version: "1.0"
+
+# ─────────────────────────────────────────────────────────────
+# BALANCE CHECKS (must always pass)
+# ─────────────────────────────────────────────────────────────
+balance_checks:
+  - id: "BAL-001"
+    name: "Balance Sheet Equation"
+    formula: "Total Assets = Total Liabilities + Total Equity"
+    tolerance: 0.01  # $0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "BAL-002"
+    name: "Retained Earnings Continuity"
+    formula: "Ending RE = Beginning RE + Net Income - Distributions"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet, owners_equity]
+
+  - id: "BAL-003"
+    name: "Accumulated Depreciation Roll-Forward"
+    formula: "Ending AccumDepr = Beginning AccumDepr + Period Depreciation"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "BAL-004"
+    name: "Debt Balance Roll-Forward"
+    formula: "Ending Debt = Beginning Debt + New Issuance - Principal Repayments"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+# ─────────────────────────────────────────────────────────────
+# CROSS-STATEMENT RECONCILIATION CHECKS
+# ─────────────────────────────────────────────────────────────
+reconciliation_checks:
+  - id: "REC-001"
+    name: "Cash Flow to Balance Sheet — Ending Cash"
+    formula: "CFS Ending Cash = BS Cash and Cash Equivalents"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [cash_flow, balance_sheet]
+
+  - id: "REC-002"
+    name: "Net Income Consistency (IS → CFS)"
+    formula: "IS Net Income = CFS Starting Net Income"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement, cash_flow]
+
+  - id: "REC-003"
+    name: "Net Income Consistency (IS → OE)"
+    formula: "IS Net Income = OE Net Income line item"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement, owners_equity]
+
+  - id: "REC-004"
+    name: "Depreciation Consistency (IS → CFS)"
+    formula: "IS Depreciation Expense = CFS Depreciation Add-back"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement, cash_flow]
+
+  - id: "REC-005"
+    name: "Ending Equity Consistency (OE → BS)"
+    formula: "OE Ending Total Equity = BS Total Equity"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [owners_equity, balance_sheet]
+
+# ─────────────────────────────────────────────────────────────
+# FOOTING CHECKS (arithmetic verification)
+# ─────────────────────────────────────────────────────────────
+footing_checks:
+  - id: "FOOT-001"
+    name: "Revenue Subtotals"
+    formula: "Each revenue subtotal = SUM of its component line items"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "FOOT-002"
+    name: "Expense Subtotals"
+    formula: "Each expense subtotal = SUM of its component line items"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "FOOT-003"
+    name: "NOI Calculation"
+    formula: "NOI = Total Revenue - Total Operating Expenses"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "FOOT-004"
+    name: "Net Income Calculation"
+    formula: "Net Income = NOI - Total Non-Operating Expenses"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "FOOT-005"
+    name: "Current Assets Subtotal"
+    formula: "Total Current Assets = SUM of all current asset line items"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "FOOT-006"
+    name: "Total Assets Subtotal"
+    formula: "Total Assets = Current Assets + Non-Current Assets"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "FOOT-007"
+    name: "CFS Section Totals"
+    formula: "Net Change in Cash = Operating + Investing + Financing"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [cash_flow]
+
+  - id: "FOOT-008"
+    name: "CFS Cash Continuity"
+    formula: "Ending Cash = Beginning Cash + Net Change in Cash"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [cash_flow]
+
+  - id: "FOOT-009"
+    name: "Current Liabilities Subtotal"
+    formula: "Total Current Liabilities = SUM of all current liability line items"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "FOOT-010"
+    name: "Total Liabilities Subtotal"
+    formula: "Total Liabilities = Current Liabilities + Non-Current Liabilities"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+  - id: "FOOT-011"
+    name: "Total Equity Subtotal"
+    formula: "Total Equity = SUM of all equity components"
+    tolerance: 0.01
+    severity: critical
+    applies_to: [balance_sheet]
+
+# ─────────────────────────────────────────────────────────────
+# GAAP COMPLIANCE CHECKS
+# ─────────────────────────────────────────────────────────────
+gaap_checks:
+  - id: "GAAP-001"
+    name: "Straight-Line Rent Applied"
+    description: "If leases with escalations exist, straight-line rent adjustment (4010) must be non-zero"
+    severity: warning
+    applies_to: [income_statement]
+
+  - id: "GAAP-002"
+    name: "Depreciation Recorded"
+    description: "If fixed assets > $0 on BS, depreciation expense (6000-6030) must be non-zero"
+    severity: critical
+    applies_to: [income_statement, balance_sheet]
+
+  - id: "GAAP-003"
+    name: "Interest Expense Recorded"
+    description: "If mortgage payable > $0 on BS, interest expense (6300) must be non-zero"
+    severity: critical
+    applies_to: [income_statement, balance_sheet]
+
+  - id: "GAAP-004"
+    name: "Accrual Basis Verification"
+    description: "Revenue and expenses recognized when earned/incurred, not when cash received/paid"
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "GAAP-005"
+    name: "Period Cut-Off Correctness"
+    description: "All revenue and expense items fall within the specified reporting period"
+    severity: critical
+    applies_to: [income_statement]
+
+  - id: "GAAP-006"
+    name: "Proper Asset Classification"
+    description: "Assets due within 12 months classified as current; others as non-current"
+    severity: warning
+    applies_to: [balance_sheet]
+
+  - id: "GAAP-007"
+    name: "Proper Liability Classification"
+    description: "Liabilities due within 12 months classified as current; others as non-current"
+    severity: warning
+    applies_to: [balance_sheet]
+
+# ─────────────────────────────────────────────────────────────
+# REASONABLENESS CHECKS (projections)
+# ─────────────────────────────────────────────────────────────
+reasonableness_checks:
+  - id: "REAS-001"
+    name: "Rent Growth Rate"
+    description: "Annual rent growth should be 0-5%; flag if outside range"
+    benchmark_range: [0.0, 0.05]
+    severity: warning
+    applies_to: projection_only
+
+  - id: "REAS-002"
+    name: "Vacancy Rate"
+    description: "Vacancy should be 3-15% depending on property type"
+    benchmark_range:
+      multifamily: [0.03, 0.10]
+      office: [0.05, 0.15]
+      retail: [0.05, 0.15]
+      industrial: [0.03, 0.08]
+      hospitality: [0.20, 0.40]  # occupancy inverse
+    severity: warning
+    applies_to: projection_only
+
+  - id: "REAS-003"
+    name: "Operating Expense Ratio"
+    description: "OER should be within typical range for property type"
+    benchmark_range:
+      multifamily: [0.35, 0.55]
+      office: [0.35, 0.55]
+      retail: [0.20, 0.80]
+      industrial: [0.15, 0.25]
+      hospitality: [0.60, 0.80]
+    severity: warning
+    applies_to: projection_only
+
+  - id: "REAS-004"
+    name: "Expense Escalation Rate"
+    description: "Annual expense growth should be 2-5%; flag if outside range"
+    benchmark_range: [0.02, 0.05]
+    severity: warning
+    applies_to: projection_only
+
+  - id: "REAS-005"
+    name: "DSCR Above Minimum"
+    description: "Projected DSCR should not drop below 1.00x in any period"
+    minimum: 1.00
+    severity: critical
+    applies_to: projection_only
+
+  - id: "REAS-006"
+    name: "Expenses Exceed Historical"
+    description: "Projected expenses below 85% of historical T-12 are suspect (known 15-25% bias)"
+    severity: warning
+    applies_to: projection_only
+
+# ─────────────────────────────────────────────────────────────
+# SUPPLEMENTAL METRIC CHECKS
+# ─────────────────────────────────────────────────────────────
+supplemental_checks:
+  - id: "SUP-001"
+    name: "FFO Calculation"
+    formula: "FFO = Net Income + Depreciation + Impairment Loss - Gain on Sale + Loss on Sale"
+    tolerance: 0.01
+    severity: warning
+    applies_to: [income_statement]
+
+  - id: "SUP-002"
+    name: "DSCR Calculation"
+    formula: "DSCR = NOI / Annual Debt Service"
+    tolerance: 0.01
+    severity: warning
+    applies_to: [income_statement]
+
+  - id: "SUP-003"
+    name: "Debt Yield Calculation"
+    formula: "Debt Yield = NOI / Loan Amount"
+    tolerance: 0.001
+    severity: warning
+    applies_to: [income_statement, balance_sheet]
+
+# ─────────────────────────────────────────────────────────────
+# METADATA INTEGRITY CHECKS
+# ─────────────────────────────────────────────────────────────
+metadata_checks:
+  - id: "META-001"
+    name: "Confidence Score Within Tier Range"
+    description: "Every line item's confidence score must fall within its declared source_tier range: Tier 1 = 90-100, Tier 2 = 70-89, Tier 3 = 50-69, Tier 4 = 1-49, Tier 5 = 0"
+    severity: critical
+    applies_to: [income_statement, balance_sheet, owners_equity, cash_flow]
+
+  - id: "META-002"
+    name: "No Values Sourced From Prior Period Sample"
+    description: "If a prior period sample was provided, no source_file citation may match the sample file path"
+    severity: critical
+    applies_to: [income_statement, balance_sheet, owners_equity, cash_flow]

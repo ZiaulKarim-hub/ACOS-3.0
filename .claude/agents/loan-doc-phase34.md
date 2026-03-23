@@ -64,8 +64,11 @@ LOOP:
    - FAIL + max reached → copy current draft, return with remaining failures
    - Convergence stuck 2+ → add explicit assembler fix instructions
 
-7. **Output finalization**: Copy final draft to:
-   `.acos/loan-doc-generator/sessions/{session_id}/output/{document-title-slug}-final.md`
+7. **Output finalization**: Generate BOTH PDF and DOCX:
+   - Run Puppeteer HTML→PDF conversion (Step 3.5 in phase3-design.md)
+   - Run html-to-docx.py HTML→DOCX conversion (Step 3.5b in phase3-design.md)
+   - Place ONLY .pdf and .docx in the output/ directory — NO .html, .md, or other formats
+   - If `output_destination` is set in manifest, copy both files there too
    Copy validation report alongside if config says to include it.
 
 ## Return Value

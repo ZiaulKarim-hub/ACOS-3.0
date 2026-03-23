@@ -54,11 +54,25 @@ generation:
 
 # ── Output Settings ───────────────────────────────────────────────────────────
 output:
-  # Output format for generated documents
-  format: "markdown"
+  # Output formats — ALWAYS both PDF and DOCX. No other formats.
+  formats: ["pdf", "docx"]
+
+  # DOCX conversion method: "styled" uses html-to-docx.py (recommended),
+  # "pandoc" uses plain pandoc (fallback, loses styling)
+  docx_method: "styled"
 
   # Include validation report alongside final document
   include_validation_report: true
 
   # Include data completeness assessment in output
   include_data_gaps: true
+
+  # Include provenance table in output directory
+  include_provenance_table: true
+
+# ── Recommendation Matrix ────────────────────────────────────────────────────
+# Full configuration in: .acos/loan-doc-generator/recommendation-matrix.yaml
+# This section controls whether the matrix is active and which config file to use.
+recommendation_matrix:
+  enabled: true
+  config_path: ".acos/loan-doc-generator/recommendation-matrix.yaml"

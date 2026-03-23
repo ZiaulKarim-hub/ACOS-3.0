@@ -1,0 +1,602 @@
+# Epic Plan — Loan Document Generator V2: Production-Grade Output & Workflow
+# Created by The Architect
+
+epic_id: "EPIC-001"
+vision_id: "ACOS-3.0"
+created_date: "2026-03-16"
+created_by: the-architect
+status: "complete"
+
+# Epic overview
+title: "Loan Document Generator V2: Production-Grade Output & Workflow"
+description: |
+  Comprehensive overhaul of acos-loan-doc-generator to deliver institutional-quality
+  loan documents that are visually perfect, numerically accurate, and workflow-friendly.
+
+  This epic addresses 15 user-identified limitations spanning output format (DOCX+PDF only),
+  rendering quality (fix page number duplication, table placement), design library integrity
+  (no merged samples, research-backed designs), data accuracy (XLSX extraction, pre-generation
+  verification gate), advanced features (charts, graphs, color-coded recommendation matrix),
+  and workflow resilience (resume, post-generation editing, human-in-the-loop approval).
+
+  When complete, the loan doc generator will be a production-grade tool that Okoa Capital
+  can rely on for business-critical documents with zero tolerance for formatting or data errors.
+
+# Why this epic matters
+value_proposition: |
+  The current system generates documents with rendering defects (duplicated page numbers,
+  broken table placement), inconsistent output formats (sometimes .md, sometimes .html),
+  no Word document support, and no way to verify data accuracy before generation. For a
+  PE real estate lender, these documents go to credit committees, investors, and counterparties —
+  visual imperfections or numerical errors destroy credibility. This epic makes the system
+  production-ready.
+
+# Acceptance criteria for the entire epic
+acceptance_criteria:
+  - "[ ] All generated documents output DOCX + PDF (no .md, .html, or other formats in user-facing output)"
+  - "[ ] Output destination is user-configurable"
+  - "[ ] PDF rendering has zero visual defects: no duplicated page numbers, no orphaned tables, no empty spaces"
+  - "[ ] DOCX rendering preserves all formatting, tables, charts, and pagination from the design"
+  - "[ ] Design library entries are one-sample-per-design (no merged multi-sample designs)"
+  - "[ ] All designs backed by research-driven quality rules (from /acos-swarm-research)"
+  - "[ ] Web-search institutional designs either have validated quality or are removed"
+  - "[ ] XLSX extraction uses specialized parser with cell-level accuracy and formula tracking"
+  - "[ ] Pre-generation data verification table shows ALL data points with clickable sources"
+  - "[ ] Calculated values show their calculation process"
+  - "[ ] Credit memos include must-have charts, ratios, and color-coded recommendation matrix"
+  - "[ ] All document types support optional user-selected charts/graphs"
+  - "[ ] Post-generation editing workflow available"
+  - "[ ] Resume from any failed phase or context window interruption"
+  - "[ ] Batch mode supports partial retry of individual failed items"
+  - "[ ] Human-in-the-loop approval step before finalization"
+  - "[ ] Overall UX is clean, low-noise, and user-friendly"
+
+# Dependencies
+dependencies:
+  epics: []
+  external:
+    - "puppeteer (npm) — for HTML→PDF conversion"
+    - "pandoc — for HTML→DOCX conversion"
+    - "SheetJS or exceljs — for XLSX cell-level parsing"
+    - "Chart.js or SVG generation — for charts/graphs in documents"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STORY BREAKDOWN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+stories:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 1: DOCX + PDF Output Pipeline
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-001"
+    title: "DOCX + PDF Output Pipeline"
+    description: |
+      Replace the current inconsistent output pipeline (sometimes .md, sometimes .html,
+      sometimes .pdf) with a deterministic dual-output pipeline that ALWAYS produces
+      both DOCX and PDF. No other format should appear in the output directory.
+      Add configurable output destination.
+    priority: "high"
+    effort: "L"
+    dependencies: []
+    slices:
+      - slice_id: "SLICE-S1-001"
+        title: "Fix Puppeteer page number duplication + CSS/footerTemplate conflict"
+        description: |
+          Root cause: pdf-styles.css has @page @bottom-center page numbers AND Puppeteer's
+          footerTemplate also injects page numbers. Remove CSS @page page numbers, keep
+          only Puppeteer footerTemplate (it handles both PDF engines consistently). Also
+          fix empty spaces by tightening margin/padding rules.
+        effort: "S"
+      - slice_id: "SLICE-S1-002"
+        title: "Add pandoc HTML→DOCX conversion pipeline"
+        description: |
+          After HTML assembly, convert to DOCX via pandoc with a reference template
+          (.docx) that preserves fonts, colors, table styles, and pagination.
+          Create a reference-doc.docx template matching pdf-styles.css aesthetics.
+          Both PDF and DOCX generated from the same canonical HTML source.
+        effort: "M"
+      - slice_id: "SLICE-S1-003"
+        title: "Enforce strict DOCX+PDF-only output"
+        description: |
+          Update Phase 3 assembler and Phase 0 reporter to: (a) always generate both
+          DOCX and PDF, (b) move intermediate HTML to a /drafts/ subfolder (not /output/),
+          (c) never expose .md or .html in the output directory. Update batch mode similarly.
+          Fail loudly if conversion tools are missing rather than silently falling back to .md.
+        effort: "M"
+      - slice_id: "SLICE-S1-004"
+        title: "Configurable output destination"
+        description: |
+          Add output_destination to interview wizard (Step 0.8 confirmation or new step).
+          Default: .acos/loan-doc-generator/sessions/{session_id}/output/
+          Allow user to specify custom path (e.g., ~/Desktop/ or loan folder path).
+          Copy final DOCX+PDF to destination after generation.
+        effort: "S"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 2: Pixel-Perfect Rendering Quality
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-002"
+    title: "Pixel-Perfect Rendering Quality"
+    description: |
+      Eliminate ALL visual defects from generated documents. No empty spaces where
+      there shouldn't be, no broken table placement, no orphaned elements.
+      Add rendering quality validation as a hard gate — documents that don't pass
+      visual checks should not be finalized.
+    priority: "high"
+    effort: "L"
+    dependencies:
+      - "STORY-001-001"
+    slices:
+      - slice_id: "SLICE-S2-001"
+        title: "Overhaul pdf-styles.css for bulletproof rendering"
+        description: |
+          Rewrite CSS with: (a) eliminate all sources of empty whitespace (collapse
+          margins between sections, fix padding stacking), (b) add explicit table
+          cell sizing rules, (c) add print-specific media queries, (d) test with
+          both Puppeteer and WeasyPrint engines. Create a visual regression test:
+          generate a known document and screenshot key pages.
+        effort: "M"
+      - slice_id: "SLICE-S2-002"
+        title: "Add rendering quality validator to Phase 4"
+        description: |
+          New STRUCT-004 benchmark: "Visual Rendering Quality". The validator opens
+          the generated PDF, checks for: (a) no overlapping text, (b) no empty pages,
+          (c) tables fully contained within margins, (d) consistent spacing between
+          sections, (e) footer appears correctly on each page except first.
+          This is a REQUIRED criterion that blocks the Wigum loop.
+        effort: "M"
+      - slice_id: "SLICE-S2-003"
+        title: "DOCX rendering parity validation"
+        description: |
+          Ensure DOCX output matches PDF quality: tables, formatting, fonts, colors,
+          page breaks all preserved. Create pandoc reference-doc.docx with matching
+          styles. Add DOCX-specific validation checks.
+        effort: "M"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 3: Design Library Overhaul + Research
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-003"
+    title: "Design Library Overhaul with Research-Backed Quality Rules"
+    description: |
+      Three major changes: (1) Research professional document design principles using
+      /acos-swarm-research, (2) split merged samples into one-design-per-sample entries,
+      (3) fix or remove web-search institutional designs that have no real samples.
+      Incorporate research findings as enforceable design quality rules in Phase 4.
+    priority: "high"
+    effort: "XL"
+    dependencies: []
+    slices:
+      - slice_id: "SLICE-S3-001"
+        title: "Deep research on professional document design principles"
+        description: |
+          Use /acos-swarm-research to research: (a) institutional loan document design
+          standards (typography, layout, tables, color usage), (b) PE/CRE industry
+          document conventions, (c) professional document design rules (Tufte, Williams,
+          Butterick), (d) PDF/print design best practices. Produce a comprehensive
+          STYLE-GUIDE-RESEARCH.yaml that becomes the authoritative design quality ruleset.
+        effort: "L"
+      - slice_id: "SLICE-S3-002"
+        title: "One-sample-per-design library restructure"
+        description: |
+          (Supersedes SLICE-001) Each sample file becomes its own design entry with
+          its own design-patterns.yaml and benchmark-criteria.yaml. Update index.yaml
+          to v3.0 format with ~44 entries. Update Step 0.3 UI for cleaner selection.
+        effort: "L"
+        dependencies: ["SLICE-S3-001"]
+      - slice_id: "SLICE-S3-003"
+        title: "Audit and fix institutional-standard designs"
+        description: |
+          All 104 web-search designs have example_count: 0 and no sample files.
+          Options: (a) validate their design-patterns.yaml against the research-backed
+          quality rules and keep only those that pass, (b) enhance them with the
+          research findings, (c) remove those that can't meet quality standards.
+          Mark remaining ones clearly as "template-based" vs "sample-extracted".
+        effort: "M"
+        dependencies: ["SLICE-S3-001"]
+      - slice_id: "SLICE-S3-004"
+        title: "Encode design quality rules into Phase 4 validators"
+        description: |
+          Convert research findings into enforceable benchmark criteria: typography
+          rules, spacing rules, table formatting rules, color usage rules, layout
+          rules. These become REQUIRED structural checks that prevent any visually
+          imperfect output from passing validation.
+        effort: "M"
+        dependencies: ["SLICE-S3-001", "SLICE-S2-002"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 4: Bulletproof XLSX Extraction
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-004"
+    title: "Bulletproof XLSX Extraction with 100% Numerical Accuracy"
+    description: |
+      Replace the current approach (agents try to Read xlsx files, which is unreliable)
+      with a specialized extraction pipeline using SheetJS or exceljs. Extract at
+      cell level with formula tracking, named ranges, and sheet structure awareness.
+      Cross-validate extracted numbers across multiple source documents.
+    priority: "high"
+    effort: "L"
+    dependencies: []
+    slices:
+      - slice_id: "SLICE-S4-001"
+        title: "XLSX parsing utility with cell-level extraction"
+        description: |
+          Create .claude/scripts/xlsx-extract.js (or .py) that: (a) reads .xlsx files,
+          (b) extracts all cells with their values, formulas, and cell references,
+          (c) identifies named ranges and structured tables, (d) outputs structured
+          YAML with cell addresses as provenance. Must handle merged cells, hidden
+          sheets, and formula-only cells.
+        effort: "M"
+      - slice_id: "SLICE-S4-002"
+        title: "Integrate XLSX parser into Phase 2 analyzer swarm"
+        description: |
+          Update Phase 2 to: (a) detect .xlsx files in inventory, (b) pre-process them
+          through the XLSX parser before assigning to analyzer agents, (c) feed agents
+          structured cell data instead of raw file reads, (d) include formula provenance
+          in loan-data.yaml output.
+        effort: "M"
+        dependencies: ["SLICE-S4-001"]
+      - slice_id: "SLICE-S4-003"
+        title: "Cross-validation layer for extracted numbers"
+        description: |
+          Add a post-synthesis validation step: (a) every financial figure extracted
+          from XLSX must cross-reference against at least one other source document,
+          (b) figures that appear in only one source are flagged as "single-source"
+          with lower confidence, (c) contradictions are prominently surfaced.
+        effort: "M"
+        dependencies: ["SLICE-S4-002"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 5: Pre-Generation Data Verification Gate
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-005"
+    title: "Pre-Generation Data Verification Gate"
+    description: |
+      CRITICAL ACCURACY FEATURE: Before any document is designed (Phase 3), present
+      the user with a comprehensive table of ALL data points that will be used.
+      Each data point shows: value, source document, page, clickable file:// link,
+      and for calculated values the full calculation process. User must approve
+      before generation proceeds. This is the "you can't afford mistakes" gate.
+    priority: "high"
+    effort: "XL"
+    dependencies:
+      - "STORY-001-004"
+    slices:
+      - slice_id: "SLICE-S5-001"
+        title: "Design the data verification table schema"
+        description: |
+          Create the verification table format: columns for Data Point, Value,
+          Type (extracted/calculated/user-provided), Source Document, Page/Cell,
+          Clickable Link, Confidence Score, Cross-Reference Status. For calculated
+          values: Calculation Formula, Input Values (each with their own sources).
+          Group by document section.
+        effort: "S"
+      - slice_id: "SLICE-S5-002"
+        title: "Build verification table generator in Phase 2 synthesis"
+        description: |
+          After Phase 2 synthesis completes, generate the verification table from
+          loan-data.yaml. Map every data point to its source with file:// links.
+          Identify all calculated values and trace their inputs. Output as
+          verification-table.yaml in the session directory.
+        effort: "L"
+        dependencies: ["SLICE-S5-001"]
+      - slice_id: "SLICE-S5-003"
+        title: "Add interactive verification gate between Phase 2 and Phase 3"
+        description: |
+          New Step in the pipeline: after Phase 2, display the verification table
+          to the user in a structured format. User can: (a) approve all and proceed,
+          (b) flag specific values for correction, (c) override values manually,
+          (d) request re-extraction of specific documents. Only proceed to Phase 3
+          after explicit user approval. Overridden values become ground truth.
+        effort: "M"
+        dependencies: ["SLICE-S5-002"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 6: Charts, Graphs & Recommendation Matrix
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-006"
+    title: "Charts, Graphs & Color-Coded Recommendation Matrix"
+    description: |
+      Add chart/graph generation capability to documents. Credit memos get
+      mandatory charts (LTV waterfall, debt service coverage trend, etc.) and
+      a color-coded recommendation matrix based on calculated ratios. All
+      document types get optional user-selectable charts. REQUIRES SCHEMA
+      APPROVAL FROM USER BEFORE IMPLEMENTATION.
+    priority: "high"
+    effort: "XL"
+    dependencies:
+      - "STORY-001-001"
+      - "STORY-001-004"
+    slices:
+      - slice_id: "SLICE-S6-001"
+        title: "Research PE lending ratios, scoring matrices, and chart types"
+        description: |
+          Research: (a) standard PE real estate lending ratios and their thresholds,
+          (b) credit scoring matrices used by PE lenders (similar to S&P, Moody's but
+          for private RE lending), (c) appropriate visualization types for each ratio,
+          (d) color-coding standards for finance (green/amber/red conventions),
+          (e) recommendation categories for a private RE lender (Finance, Broker/Sell,
+          Reject — validate these against industry practice).
+        effort: "M"
+      - slice_id: "SLICE-S6-002"
+        title: "Design and present schema plan for user approval"
+        description: |
+          Create comprehensive schema: (a) credit memo must-have ratios list with
+          thresholds, (b) must-have charts list with descriptions, (c) optional
+          charts catalog for all document types, (d) recommendation matrix formula
+          (which ratios, what weights, what thresholds = green/amber/red),
+          (e) color-coding specification. Present to user for approval.
+          ★ GATE: Do not proceed without explicit user approval.
+        effort: "M"
+        dependencies: ["SLICE-S6-001"]
+      - slice_id: "SLICE-S6-003"
+        title: "Build chart/graph generation engine"
+        description: |
+          Create .claude/scripts/generate-chart.js that produces SVG charts
+          embeddable in both HTML→PDF and DOCX pipelines. Supported chart types:
+          bar, waterfall, line/trend, pie/donut, gauge, heatmap matrix.
+          Each chart: title, data points, colors, size. Output: SVG string.
+        effort: "L"
+        dependencies: ["SLICE-S6-002"]
+      - slice_id: "SLICE-S6-004"
+        title: "Integrate charts into Phase 3 designers + recommendation matrix"
+        description: |
+          Update Phase 3 section designers to: (a) compute ratios from loan data,
+          (b) call chart generation for must-have charts, (c) render recommendation
+          matrix with color coding, (d) embed SVGs in HTML sections. Update the
+          interview wizard with optional chart selection for non-credit-memo docs.
+        effort: "L"
+        dependencies: ["SLICE-S6-003"]
+      - slice_id: "SLICE-S6-005"
+        title: "Add chart/ratio validation to Phase 4"
+        description: |
+          New validators: (a) ratio calculation accuracy (recalculate independently),
+          (b) chart data matches loan data, (c) recommendation matrix color matches
+          threshold rules, (d) all must-have charts present in credit memos.
+        effort: "M"
+        dependencies: ["SLICE-S6-004"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 7: Workflow Resilience & Human-in-the-Loop
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-007"
+    title: "Workflow Resilience, Resume, Editing & Human-in-the-Loop"
+    description: |
+      Make the pipeline resilient to failures and user-friendly for iterative work:
+      (a) resume from any checkpoint after failure or context window exhaustion,
+      (b) post-generation editing of specific sections, (c) batch partial retry,
+      (d) human-in-the-loop approval before finalization (review draft, make edits,
+      then finalize to DOCX+PDF).
+    priority: "medium"
+    effort: "XL"
+    dependencies:
+      - "STORY-001-001"
+    slices:
+      - slice_id: "SLICE-S7-001"
+        title: "Session state checkpointing after each phase"
+        description: |
+          After each phase completes, write a checkpoint to session-manifest.yaml:
+          completed_phases list, last_successful_phase, phase_outputs dict. If the
+          skill is re-invoked with an existing session_id, detect the checkpoint
+          and offer to resume from the last successful phase.
+        effort: "M"
+      - slice_id: "SLICE-S7-002"
+        title: "Resume from checkpoint command"
+        description: |
+          Add `resume` mode to the skill (alongside status). When invoked with
+          $ARGUMENTS containing "resume" or "resume {session_id}", list incomplete
+          sessions, let user pick one, and resume from the last checkpoint.
+          Handle context window exhaustion: if a phase agent was interrupted,
+          detect partial output and offer to re-run just that phase.
+        effort: "M"
+        dependencies: ["SLICE-S7-001"]
+      - slice_id: "SLICE-S7-003"
+        title: "Batch partial retry"
+        description: |
+          When batch mode has mixed results (some pass, some fail), offer:
+          "Retry failed items only? [Y/n]". Re-dispatch only the failed batch
+          items through Phase 3+4, reusing the shared Phase 2 data. Track
+          per-item status in the manifest.
+        effort: "M"
+        dependencies: ["SLICE-S7-001"]
+      - slice_id: "SLICE-S7-004"
+        title: "Post-generation editing workflow"
+        description: |
+          After document is generated, offer: "Edit specific sections? [Y/n]".
+          If yes, show section list with checkboxes. User selects sections to
+          edit and provides instructions. Re-run Phase 3 for only those sections
+          (iteration N+1) with user instructions as feedback. Re-validate.
+        effort: "M"
+        dependencies: ["SLICE-S7-001"]
+      - slice_id: "SLICE-S7-005"
+        title: "Human-in-the-loop approval gate before finalization"
+        description: |
+          After Phase 4 passes, do NOT finalize immediately. Show the user:
+          (a) PDF preview path (clickable file:// link), (b) validation summary,
+          (c) data provenance summary, (d) any assembler notes. User options:
+          [A] Approve and finalize, [E] Edit sections, [R] Reject and start over.
+          Only generate final DOCX+PDF after explicit approval.
+        effort: "M"
+        dependencies: ["SLICE-S7-004"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STORY 8: UX Polish & Noise Reduction
+  # ─────────────────────────────────────────────────────────────────────────────
+  - story_id: "STORY-001-008"
+    title: "UX Polish & Noise Reduction"
+    description: |
+      Make the entire system more user-friendly: cleaner prompts, less verbose
+      status output, better progress indicators, consolidated error messages,
+      and streamlined interview flow. The system should feel professional and
+      effortless to use.
+    priority: "medium"
+    effort: "L"
+    dependencies:
+      - "STORY-001-001"
+      - "STORY-001-007"
+    slices:
+      - slice_id: "SLICE-S8-001"
+        title: "Streamline interview wizard prompts"
+        description: |
+          Audit all interview steps: remove redundant text, use consistent
+          formatting, add smart defaults that reduce user input. Quick mode
+          should be genuinely 3-4 questions. Step 0.3 design selection should
+          not show sample file:// links unless user asks (per SLICE-001 spec).
+        effort: "M"
+      - slice_id: "SLICE-S8-002"
+        title: "Clean phase dispatch progress output"
+        description: |
+          Replace verbose agent output with clean progress bars / status lines:
+          "Phase 1: Extracting design patterns... ✓ (4 agents, 12s)"
+          "Phase 2: Analyzing loan folder... ✓ (8 agents, 23s)"
+          Keep details in session logs, not in user-facing output.
+        effort: "S"
+      - slice_id: "SLICE-S8-003"
+        title: "Consolidated error messages with actionable suggestions"
+        description: |
+          When things fail: one clear error message with what happened, why,
+          and what the user can do. No stack traces, no agent internals.
+          Include "resume" instructions when applicable.
+        effort: "S"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXECUTION ORDER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+execution_order:
+  - phase: 1
+    label: "Foundation — Output Pipeline + Rendering + XLSX"
+    stories: ["STORY-001-001", "STORY-001-004"]
+    rationale: |
+      Output format and XLSX extraction are prerequisites for everything else.
+      These can run in parallel since they touch different parts of the system.
+
+  - phase: 2
+    label: "Quality — Rendering Quality + Design Library Research"
+    stories: ["STORY-001-002", "STORY-001-003"]
+    rationale: |
+      Once output pipeline is solid, fix rendering quality and overhaul the
+      design library. Research (SLICE-S3-001) can start immediately as it's
+      pure research with no code dependencies.
+
+  - phase: 3
+    label: "Accuracy — Data Verification Gate"
+    stories: ["STORY-001-005"]
+    rationale: |
+      Depends on XLSX extraction being complete. This is the critical
+      accuracy feature — must be rock-solid before adding charts/graphs.
+
+  - phase: 4
+    label: "Features — Charts, Graphs & Recommendation Matrix"
+    stories: ["STORY-001-006"]
+    rationale: |
+      Depends on rendering quality and XLSX extraction. Requires schema
+      approval gate before implementation proceeds.
+
+  - phase: 5
+    label: "Workflow — Resilience, Editing, Human-in-the-Loop"
+    stories: ["STORY-001-007"]
+    rationale: |
+      Can actually start in parallel with Phase 3-4 since it touches
+      orchestration logic rather than content generation. Listed as Phase 5
+      to reduce cognitive load, but slices can be interleaved.
+
+  - phase: 6
+    label: "Polish — UX & Noise Reduction"
+    stories: ["STORY-001-008"]
+    rationale: |
+      Final pass after all features are in place. Must wait for workflow
+      changes to know what the final UX should look like.
+
+# Technical considerations
+technical_notes: |
+  Key technical decisions needed:
+
+  1. DOCX generation: pandoc with reference-doc.docx template is the most reliable
+     approach. Alternative: python-docx for programmatic control but much more code.
+     Recommendation: pandoc (already may be installed, handles HTML→DOCX well).
+
+  2. Chart generation: Chart.js (Canvas→PNG) vs. D3/SVG. SVGs embed cleanly in
+     both HTML→PDF and DOCX. Recommendation: SVG-based approach using a lightweight
+     charting library or hand-rolled SVGs for the limited chart types needed.
+
+  3. XLSX parsing: SheetJS (xlsx npm package) is the most popular, handles formulas,
+     merged cells, named ranges. Alternative: Python openpyxl. Recommendation:
+     SheetJS since the pipeline is already Node.js-based (Puppeteer).
+
+  4. Page number fix is straightforward: remove @page @bottom-center from CSS,
+     keep Puppeteer footerTemplate. For WeasyPrint fallback, re-add CSS page
+     numbers conditionally.
+
+  5. Recommendation matrix formula needs research + user approval. Likely based on:
+     DSCR, LTV, Debt Yield, Interest Coverage, Sponsor Experience weighted composite.
+
+  6. The pre-generation verification gate is the most architecturally significant
+     change — it adds a new interactive step between Phase 2 and Phase 3, breaking
+     the current fire-and-forget dispatch model.
+
+# Files likely to be involved
+primary_files:
+  - ".claude/skills/acos-loan-doc-generator/SKILL.md"
+  - ".claude/skills/acos-loan-doc-generator/phases/phase1-extract.md"
+  - ".claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md"
+  - ".claude/skills/acos-loan-doc-generator/phases/phase3-design.md"
+  - ".claude/skills/acos-loan-doc-generator/phases/phase4-validate.md"
+  - ".claude/skills/acos-loan-doc-generator/templates/pdf-styles.css"
+  - ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+  - ".claude/skills/acos-loan-doc-generator/templates/design-library-index.yaml"
+  - ".acos/loan-doc-generator/design-library/index.yaml"
+  - ".acos/loan-doc-generator/design-library/STYLE-GUIDE.yaml"
+  - ".claude/scripts/xlsx-extract.js"               # new
+  - ".claude/scripts/generate-chart.js"              # new
+  - ".claude/skills/acos-loan-doc-generator/templates/reference-doc.docx"  # new
+  - ".claude/skills/acos-loan-doc-generator/templates/chart-catalog.yaml"  # new
+  - ".claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml"  # new
+
+# Review considerations
+review_focus:
+  - "Output format: verify DOCX+PDF are both generated and visually correct for every code path"
+  - "No fallback to .md or raw .html — must fail loudly if conversion tools missing"
+  - "XLSX extraction accuracy: test with real loan folder spreadsheets"
+  - "Data verification table: every number must trace to a source with clickable link"
+  - "Chart rendering: verify SVGs embed correctly in both PDF and DOCX"
+  - "Recommendation matrix: verify color coding matches threshold rules exactly"
+  - "Resume capability: test by killing a phase mid-execution and resuming"
+  - "Design quality: verify research findings are encoded as enforceable rules"
+
+# Effort estimate
+effort_estimate: "XL"
+
+# Slice count
+slice_count: 30
+story_count: 8
+
+# Notes
+notes: |
+  Mapping of user requirements to stories:
+
+  Item  1 (output format)         → STORY-001-001 (SLICE-S1-001, S1-003)
+  Item  2 (output destination)    → STORY-001-001 (SLICE-S1-004)
+  Item  3 (no samples for web)    → STORY-001-003 (SLICE-S3-003)
+  Item  4 (web designs don't work)→ STORY-001-003 (SLICE-S3-003, S3-004)
+  Item  5 (PDF rendering defects) → STORY-001-001 (SLICE-S1-001) + STORY-001-002
+  Item  6 (no merged designs)     → STORY-001-003 (SLICE-S3-001, S3-002)
+  Item  7 (DOCX+PDF only)         → STORY-001-001 (SLICE-S1-002, S1-003)
+  Item  8 (post-gen editing)      → STORY-001-007 (SLICE-S7-004)
+  Item  9 (resume capability)     → STORY-001-007 (SLICE-S7-001, S7-002)
+  Item 10 (XLSX extraction)       → STORY-001-004
+  Item 11 (batch partial retry)   → STORY-001-007 (SLICE-S7-003)
+  Item 12 (UX, reduce noise)      → STORY-001-008
+  Item 13 (human-in-the-loop)     → STORY-001-007 (SLICE-S7-005)
+  Item 14 (charts/graphs/matrix)  → STORY-001-006
+  Item 15 (data verification)     → STORY-001-005
+
+  ★ APPROVAL GATES:
+  - SLICE-S6-002: Charts/ratios/recommendation schema requires user approval
+  - SLICE-S5-003: Data verification table format should be reviewed by user
+  - SLICE-S3-001: Design research findings should be shared with user
+
+  ★ EXISTING SLICE-001 SUPERSEDED:
+  - SLICE-001 (design-library-one-sample-per-design) is absorbed into
+    SLICE-S3-002 with broader scope (research-backed + restructure).

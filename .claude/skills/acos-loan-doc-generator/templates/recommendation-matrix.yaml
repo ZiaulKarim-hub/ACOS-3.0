@@ -1,0 +1,458 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACOS Loan Document Generator — Recommendation Matrix Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Location: .acos/loan-doc-generator/recommendation-matrix.yaml (user-editable)
+# Template: .claude/skills/acos-loan-doc-generator/templates/recommendation-matrix.yaml
+#
+# This file controls EVERYTHING about the credit scoring system:
+#   - Recommendation categories (names, thresholds, colors)
+#   - Pillar weights
+#   - Sub-factor weights and scoring criteria
+#   - Must-have ratios and their thresholds
+#   - Override rules
+#   - Chart configuration
+#
+# To customize: edit values below. Changes take effect on next document generation.
+# To reset: delete this file — the skill will recreate it from the template.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+version: "1.0"
+
+# ── Recommendation Categories ────────────────────────────────────────────────
+# Adjust score thresholds and category names to match your firm's criteria.
+# Categories are evaluated top-to-bottom; first match wins.
+
+categories:
+  - id: "APPROVE"
+    name: "Approve"
+    min_score: 7.5
+    color_hex: "#22C55E"
+    color_name: "green"
+    bg_hex: "#F0FDF4"
+    text_hex: "#15803D"
+    action: "Proceed to term sheet and closing at standard terms."
+
+  - id: "CONDITIONAL_APPROVE"
+    name: "Conditional Approval"
+    min_score: 5.5
+    color_hex: "#EAB308"
+    color_name: "amber"
+    bg_hex: "#FEFCE8"
+    text_hex: "#854D0E"
+    action: "Issue conditional term sheet with specific conditions precedent."
+
+  - id: "WATCHLIST"
+    name: "Watchlist"
+    min_score: 4.5
+    color_hex: "#F97316"
+    color_name: "orange"
+    bg_hex: "#FFF7ED"
+    text_hex: "#9A3412"
+    action: "Escalate to Investment Committee. Request additional information."
+
+  - id: "DECLINE"
+    name: "Decline"
+    min_score: 0
+    color_hex: "#EF4444"
+    color_name: "red"
+    bg_hex: "#FEF2F2"
+    text_hex: "#991B1B"
+    action: "Decline with documented reasons. May suggest alternative structure."
+
+# ── Pillar Weights ───────────────────────────────────────────────────────────
+# Must sum to 1.00. Adjust to reflect your firm's priorities.
+
+pillar_weights:
+  property_quality: 0.30
+  financial_metrics: 0.30
+  sponsor_borrower: 0.25
+  market_conditions: 0.15
+
+# ── Edge Case Override Weights ───────────────────────────────────────────────
+# Used when pillars diverge significantly. Must still sum to 1.00.
+
+edge_case_weights:
+  strong_sponsor_weak_property:
+    property_quality: 0.20
+    financial_metrics: 0.30
+    sponsor_borrower: 0.35
+    market_conditions: 0.15
+
+  weak_sponsor_strong_property:
+    property_quality: 0.35
+    financial_metrics: 0.35
+    sponsor_borrower: 0.15
+    market_conditions: 0.15
+
+  strong_metrics_weak_market:
+    property_quality: 0.30
+    financial_metrics: 0.35
+    sponsor_borrower: 0.20
+    market_conditions: 0.15
+
+  transitional_property:
+    in_place_weight: 0.60
+    projected_weight: 0.40
+
+# ── Property Quality Pillar Sub-Factors ──────────────────────────────────────
+
+property_quality:
+  sub_factors:
+    - id: "location"
+      name: "Location Quality"
+      weight: 0.30
+      scoring:
+        - { range: [9, 10], criteria: "Primary market, A+ submarket, strong access/amenities" }
+        - { range: [7, 8],  criteria: "Primary market, B+ submarket, or strong secondary market" }
+        - { range: [5, 6],  criteria: "Secondary market, adequate submarket" }
+        - { range: [3, 4],  criteria: "Tertiary market or declining submarket" }
+        - { range: [1, 2],  criteria: "Rural, distressed, or inaccessible location" }
+
+    - id: "physical_condition"
+      name: "Physical Condition"
+      weight: 0.25
+      scoring:
+        - { range: [9, 10], criteria: "New construction or recently renovated, institutional quality" }
+        - { range: [7, 8],  criteria: "Good condition, well-maintained, minor deferred maintenance" }
+        - { range: [5, 6],  criteria: "Average condition, moderate deferred maintenance" }
+        - { range: [3, 4],  criteria: "Below average, significant deferred maintenance" }
+        - { range: [1, 2],  criteria: "Poor condition, major structural or environmental issues" }
+
+    - id: "tenant_quality"
+      name: "Tenant Quality"
+      weight: 0.20
+      scoring:
+        - { range: [9, 10], criteria: "Investment-grade tenants, long-term NNN, <5% near-term rollover" }
+        - { range: [7, 8],  criteria: "Creditworthy tenants, multi-year leases, <15% rollover" }
+        - { range: [5, 6],  criteria: "Mixed tenant credit, moderate rollover risk" }
+        - { range: [3, 4],  criteria: "Weak tenant credit, high rollover, month-to-month" }
+        - { range: [1, 2],  criteria: "High vacancy, no creditworthy tenants" }
+
+    - id: "property_type"
+      name: "Property Type Risk"
+      weight: 0.15
+      scoring:
+        - { range: [9, 10], criteria: "Multifamily, industrial (essential, low cyclicality)" }
+        - { range: [7, 8],  criteria: "Anchored retail, self-storage, medical office" }
+        - { range: [5, 6],  criteria: "Office (suburban/flex), unanchored retail" }
+        - { range: [3, 4],  criteria: "Hotel, senior living, specialty" }
+        - { range: [1, 2],  criteria: "Land, development sites, obsolete use" }
+
+    - id: "environmental"
+      name: "Environmental Risk"
+      weight: 0.10
+      scoring:
+        - { range: [9, 10], criteria: "Phase I clean, no flood/seismic, no hazmat history" }
+        - { range: [7, 8],  criteria: "Phase I clean with minor RECs, low natural hazard" }
+        - { range: [5, 6],  criteria: "Phase II required, moderate natural hazard" }
+        - { range: [3, 4],  criteria: "Known contamination (managed), high hazard zone" }
+        - { range: [1, 2],  criteria: "Unresolved contamination, severe natural hazard" }
+
+# ── Financial Metrics Pillar Sub-Factors ─────────────────────────────────────
+
+financial_metrics:
+  sub_factors:
+    - id: "ltv"
+      name: "LTV Score"
+      weight: 0.25
+      automated: true
+      scoring:
+        - { range: [9, 10], criteria: "LTV < 55%" }
+        - { range: [7, 8],  criteria: "LTV 55-65%" }
+        - { range: [5, 6],  criteria: "LTV 65-72%" }
+        - { range: [3, 4],  criteria: "LTV 72-80%" }
+        - { range: [1, 2],  criteria: "LTV > 80%" }
+
+    - id: "dscr"
+      name: "DSCR Score"
+      weight: 0.25
+      automated: true
+      scoring:
+        - { range: [9, 10], criteria: "DSCR > 1.50x" }
+        - { range: [7, 8],  criteria: "DSCR 1.30-1.50x" }
+        - { range: [5, 6],  criteria: "DSCR 1.15-1.29x" }
+        - { range: [3, 4],  criteria: "DSCR 1.00-1.14x" }
+        - { range: [1, 2],  criteria: "DSCR < 1.00x" }
+
+    - id: "debt_yield"
+      name: "Debt Yield Score"
+      weight: 0.20
+      automated: true
+      scoring:
+        - { range: [9, 10], criteria: "Debt Yield > 12%" }
+        - { range: [7, 8],  criteria: "Debt Yield 10-12%" }
+        - { range: [5, 6],  criteria: "Debt Yield 8-10%" }
+        - { range: [3, 4],  criteria: "Debt Yield 6-8%" }
+        - { range: [1, 2],  criteria: "Debt Yield < 6%" }
+
+    - id: "noi_trend"
+      name: "NOI Trend"
+      weight: 0.15
+      automated: true
+      scoring:
+        - { range: [9, 10], criteria: "NOI growing >5% annually" }
+        - { range: [7, 8],  criteria: "NOI growing 2-5% annually" }
+        - { range: [5, 6],  criteria: "NOI flat (0-2% growth)" }
+        - { range: [3, 4],  criteria: "NOI declining 0-5%" }
+        - { range: [1, 2],  criteria: "NOI declining >5%" }
+
+    - id: "stress_test"
+      name: "Stress Test Resilience"
+      weight: 0.15
+      automated: true
+      stress_scenario: "+200bps rate increase combined with 10% NOI decline"
+      scoring:
+        - { range: [9, 10], criteria: "Stressed DSCR > 1.20x" }
+        - { range: [7, 8],  criteria: "Stressed DSCR > 1.10x" }
+        - { range: [5, 6],  criteria: "Stressed DSCR > 1.00x" }
+        - { range: [3, 4],  criteria: "Stressed DSCR < 1.00x under moderate stress" }
+        - { range: [1, 2],  criteria: "Stressed DSCR < 1.00x under mild stress" }
+
+# ── Sponsor/Borrower Pillar Sub-Factors ──────────────────────────────────────
+
+sponsor_borrower:
+  sub_factors:
+    - id: "experience"
+      name: "Sponsor Experience"
+      weight: 0.30
+      scoring:
+        - { range: [9, 10], criteria: ">15 years, 20+ deals completed, multiple market cycles" }
+        - { range: [7, 8],  criteria: "10-15 years, 10-20 deals, proven in this asset class" }
+        - { range: [5, 6],  criteria: "5-10 years, moderate portfolio" }
+        - { range: [3, 4],  criteria: "2-5 years, limited track record" }
+        - { range: [1, 2],  criteria: "First-time sponsor, no relevant track record" }
+
+    - id: "financial_strength"
+      name: "Financial Strength"
+      weight: 0.25
+      scoring:
+        - { range: [9, 10], criteria: "Net worth >3x loan, liquid assets >20% of loan" }
+        - { range: [7, 8],  criteria: "Net worth 1.5-3x loan, liquid assets 10-20%" }
+        - { range: [5, 6],  criteria: "Net worth 1-1.5x loan, liquid assets 5-10%" }
+        - { range: [3, 4],  criteria: "Net worth 0.5-1x loan, limited liquidity" }
+        - { range: [1, 2],  criteria: "Net worth < 0.5x loan, minimal liquidity" }
+
+    - id: "payment_history"
+      name: "Payment History"
+      weight: 0.20
+      scoring:
+        - { range: [9, 10], criteria: "Zero late payments, no defaults, no modifications" }
+        - { range: [7, 8],  criteria: "Rare late payments (1-2), no defaults" }
+        - { range: [5, 6],  criteria: "Occasional late payments, no defaults" }
+        - { range: [3, 4],  criteria: "Frequent late payments or 1 modification/workout" }
+        - { range: [1, 2],  criteria: "Default history, foreclosure, litigation" }
+
+    - id: "operations"
+      name: "Operational Capability"
+      weight: 0.15
+      scoring:
+        - { range: [9, 10], criteria: "In-house professional management, institutional processes" }
+        - { range: [7, 8],  criteria: "Experienced third-party management, proven operations" }
+        - { range: [5, 6],  criteria: "Adequate management, some operational gaps" }
+        - { range: [3, 4],  criteria: "Inexperienced management, significant gaps" }
+        - { range: [1, 2],  criteria: "No management plan, self-managing without experience" }
+
+    - id: "legal_reputation"
+      name: "Legal / Reputation"
+      weight: 0.10
+      scoring:
+        - { range: [9, 10], criteria: "Clean legal history, strong industry reputation" }
+        - { range: [7, 8],  criteria: "Minor legal matters (resolved), good reputation" }
+        - { range: [5, 6],  criteria: "Pending litigation (non-material), neutral reputation" }
+        - { range: [3, 4],  criteria: "Material litigation, mixed reputation" }
+        - { range: [1, 2],  criteria: "Fraud allegations, regulatory actions, litigious" }
+
+# ── Market Conditions Pillar Sub-Factors ──────────────────────────────────────
+
+market_conditions:
+  sub_factors:
+    - id: "supply_demand"
+      name: "Supply / Demand Dynamics"
+      weight: 0.30
+      scoring:
+        - { range: [9, 10], criteria: "Supply-constrained, strong demand, <2% pipeline" }
+        - { range: [7, 8],  criteria: "Balanced supply/demand, moderate new supply" }
+        - { range: [5, 6],  criteria: "Slight oversupply or softening demand" }
+        - { range: [3, 4],  criteria: "Oversupply, declining absorption" }
+        - { range: [1, 2],  criteria: "Severe oversupply, negative absorption" }
+
+    - id: "rent_growth"
+      name: "Rent Growth Trajectory"
+      weight: 0.25
+      scoring:
+        - { range: [9, 10], criteria: "Rent growth >4% and accelerating" }
+        - { range: [7, 8],  criteria: "Rent growth 2-4%, stable" }
+        - { range: [5, 6],  criteria: "Rent growth 0-2%, flat" }
+        - { range: [3, 4],  criteria: "Rents declining 0-3%" }
+        - { range: [1, 2],  criteria: "Rents declining >3%" }
+
+    - id: "vacancy"
+      name: "Vacancy Trends"
+      weight: 0.25
+      scoring:
+        - { range: [9, 10], criteria: "Submarket vacancy <5% and declining" }
+        - { range: [7, 8],  criteria: "Submarket vacancy 5-8%, stable" }
+        - { range: [5, 6],  criteria: "Submarket vacancy 8-12%" }
+        - { range: [3, 4],  criteria: "Submarket vacancy 12-18%" }
+        - { range: [1, 2],  criteria: "Submarket vacancy >18%" }
+
+    - id: "economic_drivers"
+      name: "Economic Drivers"
+      weight: 0.20
+      scoring:
+        - { range: [9, 10], criteria: "Diverse economy, major employers, population growth" }
+        - { range: [7, 8],  criteria: "Moderate diversity, stable employment" }
+        - { range: [5, 6],  criteria: "Limited diversity, some concentration risk" }
+        - { range: [3, 4],  criteria: "Single-industry dependent, population decline" }
+        - { range: [1, 2],  criteria: "Economic distress, major employer loss" }
+
+# ── Must-Have Ratios ─────────────────────────────────────────────────────────
+# Color thresholds for the traffic-light display in credit memos.
+
+must_have_ratios:
+  - id: "LTV"
+    name: "Loan-to-Value"
+    formula: "loan_amount / appraised_value * 100"
+    unit: "%"
+    direction: "lower_is_better"
+    green_max: 65.0
+    amber_max: 75.0
+    # Above amber_max = red
+
+  - id: "DSCR"
+    name: "Debt Service Coverage Ratio"
+    formula: "annual_noi / annual_debt_service"
+    unit: "x"
+    direction: "higher_is_better"
+    green_min: 1.25
+    amber_min: 1.10
+    # Below amber_min = red
+
+  - id: "DY"
+    name: "Debt Yield"
+    formula: "annual_noi / loan_amount * 100"
+    unit: "%"
+    direction: "higher_is_better"
+    green_min: 10.0
+    amber_min: 8.0
+
+  - id: "ICR"
+    name: "Interest Coverage Ratio"
+    formula: "annual_noi / annual_interest_expense"
+    unit: "x"
+    direction: "higher_is_better"
+    green_min: 2.0
+    amber_min: 1.5
+
+  - id: "LTC"
+    name: "Loan-to-Cost"
+    formula: "loan_amount / total_project_cost * 100"
+    unit: "%"
+    direction: "lower_is_better"
+    green_max: 70.0
+    amber_max: 80.0
+    applicable_when: "construction, bridge_value_add, renovation"
+
+  - id: "CAP"
+    name: "Cap Rate"
+    formula: "annual_noi / property_value * 100"
+    unit: "%"
+    direction: "context_dependent"
+    analysis: "Compare to submarket avg and 10-yr Treasury + 150bps"
+
+  - id: "LIQ"
+    name: "Post-Closing Liquidity"
+    formula: "post_closing_liquid_assets / monthly_pitia"
+    unit: "months"
+    direction: "higher_is_better"
+    green_min: 12
+    amber_min: 6
+
+# ── Override Rules ───────────────────────────────────────────────────────────
+# Safety checks applied AFTER the composite score is calculated.
+
+override_rules:
+  - id: "pillar_floor"
+    rule: "Any single pillar score < 3.0"
+    action: "downgrade_one_category"
+    description: "Auto-downgrade one category if any pillar is critically weak"
+
+  - id: "red_ratio_cap"
+    rule: "Any must-have ratio in RED zone"
+    action: "cap_at_conditional"
+    description: "Cannot be APPROVE if any key ratio is in the red"
+
+  - id: "dscr_floor"
+    rule: "DSCR < 1.0x"
+    action: "auto_decline"
+    description: "Automatic decline — debt service not covered by NOI"
+
+  - id: "ltv_ceiling"
+    rule: "LTV > 85%"
+    action: "auto_decline"
+    description: "Automatic decline — leverage exceeds maximum policy limit"
+
+  - id: "sponsor_default"
+    rule: "Sponsor has default or foreclosure history"
+    action: "cap_at_conditional"
+    description: "Cannot be APPROVE with adverse credit history"
+
+# ── Chart Configuration ──────────────────────────────────────────────────────
+
+must_have_charts:
+  - id: "recommendation_badge"
+    type: "matrix"
+    section: "header"
+    description: "Color-coded composite score and recommendation"
+
+  - id: "key_metrics_table"
+    type: "rag_table"
+    section: "Executive Summary"
+    description: "All ratios with traffic-light colors"
+
+  - id: "capital_stack"
+    type: "bar"
+    section: "Transaction Summary"
+    description: "Senior debt / mezzanine / equity stacked bar"
+
+  - id: "dscr_gauge"
+    type: "gauge"
+    section: "Financial Analysis"
+    description: "DSCR with threshold zones"
+
+  - id: "noi_waterfall"
+    type: "waterfall"
+    section: "Financial Analysis"
+    description: "Revenue to expenses to NOI breakdown"
+
+  - id: "pillar_radar"
+    type: "radar"
+    section: "Risk Assessment"
+    description: "4-pillar scores on spider chart"
+
+optional_charts:
+  - id: "sensitivity_heatmap"
+    type: "heatmap"
+    section: "Risk Assessment"
+    description: "Rate and NOI sensitivity matrix"
+
+  - id: "cap_rate_comparison"
+    type: "bar"
+    section: "Collateral Analysis"
+    description: "Subject vs. market cap rates"
+
+  - id: "cash_flow_trend"
+    type: "line"
+    section: "Financial Analysis"
+    description: "Historical and projected cash flow"
+
+  - id: "expense_breakdown"
+    type: "donut"
+    section: "Financial Analysis"
+    description: "Operating expense categories"
+
+  - id: "amortization_schedule"
+    type: "area"
+    section: "Financial Analysis"
+    description: "Principal vs interest over loan term"

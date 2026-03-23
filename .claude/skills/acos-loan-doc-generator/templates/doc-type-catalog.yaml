@@ -67,6 +67,27 @@ documents:
       - "Date and loan reference on title page"
       - "No orphaned headings at page bottom (STRUCT-002)"
       - "Tables and figures do not split across page boundaries (STRUCT-002)"
+    must_have_charts:
+      - { id: "recommendation_badge", section: "header", type: "matrix" }
+      - { id: "key_metrics_table", section: "Executive Summary", type: "rag_table" }
+      - { id: "capital_stack", section: "Transaction Summary", type: "bar" }
+      - { id: "dscr_gauge", section: "Financial Analysis", type: "gauge" }
+      - { id: "noi_waterfall", section: "Financial Analysis", type: "waterfall" }
+      - { id: "pillar_radar", section: "Risk Assessment", type: "radar" }
+    available_charts:
+      - { id: "sensitivity_heatmap", label: "Sensitivity Heatmap", section: "Risk Assessment" }
+      - { id: "cap_rate_comparison", label: "Cap Rate Comparison", section: "Collateral Analysis" }
+      - { id: "cash_flow_trend", label: "Cash Flow Trend", section: "Financial Analysis" }
+      - { id: "expense_breakdown", label: "Expense Breakdown", section: "Financial Analysis" }
+      - { id: "amortization_schedule", label: "Amortization Schedule", section: "Financial Analysis" }
+    recommendation_matrix:
+      formula: "Composite = (Property * 0.30) + (Financial * 0.30) + (Sponsor * 0.25) + (Market * 0.15)"
+      thresholds:
+        approve: { min: 7.5, color: "#22C55E" }
+        conditional: { min: 5.5, color: "#EAB308" }
+        watchlist: { min: 4.5, color: "#F97316" }
+        decline: { min: 0, color: "#EF4444" }
+      research_file: ".acos/loan-doc-generator/research/pe-lending-ratios-research.yaml"
     critical_figures:
       # -- Loan Terms --
       - key: loan_amount

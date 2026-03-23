@@ -1,27 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
    ACOS Loan Document Generator — PDF Print Stylesheet
    ═══════════════════════════════════════════════════════════════════════════════
-   Embedded by the Phase 3 Assembler into the document YAML frontmatter or
-   <style> block. Targets WeasyPrint / Puppeteer / any CSS Paged Media engine.
+   Embedded by the Phase 3 Assembler into the <style> block. Page numbers are
+   handled by Puppeteer's footerTemplate (NOT CSS @page counters) to avoid
+   duplication. This CSS focuses on layout, typography, and pagination rules.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Page Setup ───────────────────────────────────────────────────────────── */
+/* NOTE: Page numbers are rendered by Puppeteer footerTemplate only.
+   Do NOT add @bottom-center content here — it causes double page numbers. */
 
 @page {
   size: letter;
   margin: 1in 1in 1.25in 1in;
-
-  @bottom-center {
-    content: "Page " counter(page) " of " counter(pages);
-    font-size: 8pt;
-    color: #999;
-    font-family: Calibri, Helvetica, Arial, sans-serif;
-  }
 }
 
 @page :first {
   margin-top: 1.5in;
-  @bottom-center { content: none; }
 }
 
 @page landscape {
@@ -143,22 +138,39 @@ body {
   font-size: 11pt;
   line-height: 1.4;
   color: #1a1a1a;
+  margin: 0;
+  padding: 0;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: Calibri, Helvetica, Arial, sans-serif;
   color: #003366;
+  margin-top: 18pt;
+  margin-bottom: 8pt;
 }
 
-h1 { font-size: 18pt; }
+h1 { font-size: 18pt; margin-top: 0; }
 h2 { font-size: 14pt; }
 h3 { font-size: 12pt; }
+
+p {
+  margin-top: 0;
+  margin-bottom: 8pt;
+}
+
+/* Collapse adjacent margins between sections to prevent empty gaps */
+section + section { margin-top: 0; }
+section.chapter { margin-top: 0; padding-top: 0; }
+section.chapter > h1 { margin-top: 0; padding-top: 6pt; }
 
 table {
   font-family: Calibri, Helvetica, Arial, sans-serif;
   font-size: 9.5pt;
   border-collapse: collapse;
   width: 100%;
+  margin-top: 6pt;
+  margin-bottom: 12pt;
+  border: 0.5pt solid #ddd;
 }
 
 th {
@@ -167,16 +179,29 @@ th {
   font-weight: 600;
   padding: 6pt 8pt;
   text-align: left;
+  border: 0.5pt solid #003366;
 }
 
 td {
   padding: 5pt 8pt;
   border-bottom: 0.5pt solid #ddd;
+  border-left: 0.5pt solid #eee;
+  border-right: 0.5pt solid #eee;
+  vertical-align: top;
 }
 
 tbody tr:nth-child(even) {
   background-color: #f5f5f5;
 }
+
+/* Prevent empty table cells from collapsing and creating visual gaps */
+td:empty::after { content: "\00a0"; }
+
+/* Numeric columns right-align for professional appearance */
+td.numeric, th.numeric { text-align: right; }
+
+/* Currency columns get consistent formatting */
+td.currency { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── Deal Summary Box ─────────────────────────────────────────────────────── */
 
@@ -207,6 +232,175 @@ tbody tr:nth-child(even) {
   background: #f5fff5;
 }
 
+/* ── List Styling ────────────────────────────────────────────────────────── */
+
+ul, ol {
+  margin-top: 4pt;
+  margin-bottom: 8pt;
+  padding-left: 24pt;
+}
+
+li {
+  margin-bottom: 3pt;
+  line-height: 1.4;
+}
+
+li > ul, li > ol {
+  margin-top: 2pt;
+  margin-bottom: 2pt;
+}
+
+/* ── Callout & Summary Boxes ─────────────────────────────────────────────── */
+
+.callout {
+  border: 1pt solid #003366;
+  background: #f0f4f8;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+  border-radius: 2pt;
+}
+
+.callout-title {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  color: #003366;
+  font-size: 10pt;
+  margin-bottom: 4pt;
+}
+
+.summary-box {
+  border: 1.5pt solid #003366;
+  background: #f8f9fa;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+}
+
+.summary-box table {
+  margin: 0;
+  border: none;
+}
+
+.summary-box td, .summary-box th {
+  border: none;
+  background: transparent;
+}
+
+/* ── Table of Contents ───────────────────────────────────────────────────── */
+
+.toc {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.toc li {
+  margin-bottom: 6pt;
+  padding: 2pt 0;
+  border-bottom: 0.5pt dotted #ccc;
+}
+
+.toc a {
+  color: #003366;
+  text-decoration: none;
+  font-size: 10.5pt;
+}
+
+.toc li li {
+  padding-left: 16pt;
+  font-size: 9.5pt;
+  border-bottom: none;
+}
+
+/* ── Cover Page / Title Section ──────────────────────────────────────────── */
+
+.cover-title {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-size: 24pt;
+  font-weight: 700;
+  color: #003366;
+  margin-bottom: 6pt;
+}
+
+.cover-subtitle {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-size: 14pt;
+  color: #666;
+  margin-bottom: 24pt;
+}
+
+.cover-meta {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  color: #444;
+  line-height: 1.6;
+}
+
+.cover-divider {
+  border: none;
+  border-top: 2pt solid #003366;
+  margin: 18pt 0;
+}
+
+/* ── Recommendation Matrix Colors ────────────────────────────────────────── */
+
+.recommendation-finance {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recommendation-conditional {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recommendation-decline {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── Chart Container ─────────────────────────────────────────────────────── */
+
+.chart-container {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 12pt 0;
+  text-align: center;
+}
+
+.chart-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.chart-title {
+  font-family: Calibri, Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #003366;
+  text-align: center;
+  margin-bottom: 6pt;
+}
+
+.chart-caption {
+  font-size: 8pt;
+  color: #666;
+  text-align: center;
+  margin-top: 4pt;
+  font-style: italic;
+}
+
 /* ── Provenance Table ─────────────────────────────────────────────────────── */
 
 .provenance-table {
@@ -224,4 +418,31 @@ tbody tr:nth-child(even) {
 .provenance-table td {
   padding: 3pt 6pt;
   font-size: 8pt;
+}
+
+/* ── Data Verification Table ─────────────────────────────────────────────── */
+
+.verification-table {
+  font-size: 8.5pt;
+}
+
+.verification-table .calculated {
+  background-color: #fff8e1;
+}
+
+.verification-table .user-provided {
+  background-color: #e8f5e9;
+}
+
+.verification-table .single-source {
+  background-color: #fff3e0;
+}
+
+/* ── Print-Specific Overrides ────────────────────────────────────────────── */
+
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  a { color: #003366; text-decoration: none; }
+  a[href]::after { content: none; }  /* Don't show URLs in print */
 }
