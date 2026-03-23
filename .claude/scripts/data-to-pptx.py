@@ -20,6 +20,7 @@ All margins set to 0 or intentional values.
 Font selected by content role, not hardcoded.
 """
 import argparse
+import re
 import sys
 import yaml
 from pathlib import Path
@@ -158,16 +159,51 @@ class SlideGrid:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def detect_font_role(text):
-    """Auto-detect content type for font role selection."""
+    """Auto-detect content type for font role selection.
+
+    Rules (checked in priority order):
+    1. "number" — text IS primarily a numeric value (currency, %, ratio, date-only)
+    2. "label" — short uppercase headers, category labels, column headers
+    3. "display" — everything else (prose, titles, entity names, descriptions)
+
+    Key principle: text that CONTAINS a number is NOT necessarily "number" role.
+    "Village 1", "Scenario A — 6-Month Hold", "& 1722 Mohawk LLC" are display, not number.
+    """
     if not text:
         return "label"
     s = str(text).strip()
-    # Numbers, currency, percentages, dates
-    if any(c.isdigit() for c in s) and not s.isalpha():
+
+    # 1. Pure numeric values: "$6,000,000", "14.00%", "50.00%", "$2,333", "9.75% · 19.5% Ann."
+    #    Strip currency/percent/comma/spaces/punctuation — if >=60% of remainder is digits, it's number
+    cleaned = re.sub(r'[\$,%\s·\-–+~×]', '', s)
+    if cleaned and len(cleaned) <= 20:
+        digit_ratio = sum(c.isdigit() or c == '.' for c in cleaned) / len(cleaned)
+        if digit_ratio >= 0.6:
+            return "number"
+
+    # 2. Date-only values: "Oct 1, 2026", "Apr 4, 2024", "MARCH 2026"
+    #    But NOT sentences like "Effective Apr 4, 2025" or "+180 days from Apr 3"
+    if re.match(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d', s, re.IGNORECASE):
+        if len(s.split()) <= 3:
+            return "number"
+
+    # 3. Short number+unit patterns: "6–12 Mo.", "~113 Acres", "2 / 5", "1st D/T"
+    if re.match(r'^[~$]?\d[\d,.\-–/\s]*\s*(Mo\.?|Acres?|Days?|p\.a\.|Ann\.?|D/T)?\s*$', s, re.IGNORECASE):
         return "number"
-    # Short labels (< 30 chars, no sentence structure)
-    if len(s) < 30 and "." not in s:
+
+    # 4. Financial column/unit headers: "% OF LOAN", "PER DIEM"
+    if re.match(r'^[%$#]\s', s) or s.upper() in ("% OF LOAN", "PER DIEM", "P.A."):
+        return "number"
+
+    # 5. UPPERCASE short labels: section headers, category labels
+    if s.isupper() and len(s) < 50:
         return "label"
+
+    # 6. Short non-numeric text: labels, captions
+    if len(s) < 30 and '.' not in s and not any(c.isdigit() for c in s):
+        return "label"
+
+    # 7. Everything else: display (prose, titles, entity names, descriptions)
     return "display"
 
 
@@ -232,6 +268,47 @@ def set_margins(tf, left=Emu(0), right=Emu(0), top=Emu(0), bottom=Emu(0)):
 def compute_height(font_size_pt, line_count, line_spacing=1.4):
     """Compute textbox height from content."""
     return Pt(font_size_pt * line_count * line_spacing)
+
+
+def check_text_fit(shape):
+    """Check if text fits within shape bounds after font changes. Returns True if OK."""
+    if not shape.has_text_frame:
+        return True
+    tf = shape.text_frame
+    for p in tf.paragraphs:
+        for run in p.runs:
+            if not run.text.strip() or not run.font.size:
+                continue
+            font_size_pt = run.font.size / 12700  # EMU to pt
+            is_mono = run.font.name in ("Courier New", "Consolas")
+            char_width_pt = font_size_pt * (0.62 if is_mono else 0.48)
+            text_width_pt = len(run.text) * char_width_pt
+            box_width_pt = shape.width / 12700
+            margin_pt = ((tf.margin_left or 0) + (tf.margin_right or 0)) / 12700
+            available = box_width_pt - margin_pt
+            if text_width_pt > available * 1.05:  # 5% tolerance
+                return False
+    return True
+
+
+def auto_fit_font(shape, min_size_pt=7):
+    """Reduce font size in 0.5pt increments until text fits, with a minimum."""
+    if check_text_fit(shape):
+        return False  # no change needed
+    tf = shape.text_frame
+    changed = False
+    for p in tf.paragraphs:
+        for run in p.runs:
+            if not run.font.size or not run.text.strip():
+                continue
+            current_pt = run.font.size / 12700
+            while current_pt > min_size_pt:
+                if check_text_fit(shape):
+                    break
+                current_pt -= 0.5
+                run.font.size = Pt(current_pt)
+                changed = True
+    return changed
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

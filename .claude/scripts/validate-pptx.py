@@ -42,13 +42,41 @@ DEFAULT_MARGIN = 91440
 
 
 def detect_font_role(text):
+    """Auto-detect content type for font role selection.
+    Must match the logic in data-to-pptx.py exactly."""
     if not text:
         return "label"
     s = str(text).strip()
-    if any(c.isdigit() for c in s) and not s.isalpha():
+
+    # 1. Pure numeric values (>=60% digits after stripping currency/punctuation)
+    cleaned = re.sub(r'[\$,%\s·\-–+~×]', '', s)
+    if cleaned and len(cleaned) <= 20:
+        digit_ratio = sum(c.isdigit() or c == '.' for c in cleaned) / len(cleaned)
+        if digit_ratio >= 0.6:
+            return "number"
+
+    # 2. Date-only values (short: "Oct 1, 2026" but not "Effective Apr 4, 2025")
+    if re.match(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d', s, re.IGNORECASE):
+        if len(s.split()) <= 3:
+            return "number"
+
+    # 3. Short number+unit: "6–12 Mo.", "~113 Acres", "2 / 5", "1st D/T"
+    if re.match(r'^[~$]?\d[\d,.\-–/\s]*\s*(Mo\.?|Acres?|Days?|p\.a\.|Ann\.?|D/T)?\s*$', s, re.IGNORECASE):
         return "number"
-    if len(s) < 30 and "." not in s:
+
+    # 4. Financial column/unit headers
+    if re.match(r'^[%$#]\s', s) or s.upper() in ("% OF LOAN", "PER DIEM", "P.A."):
+        return "number"
+
+    # 5. UPPERCASE short labels
+    if s.isupper() and len(s) < 50:
         return "label"
+
+    # 6. Short non-numeric text
+    if len(s) < 30 and '.' not in s and not any(c.isdigit() for c in s):
+        return "label"
+
+    # 7. Everything else: display
     return "display"
 
 
@@ -123,7 +151,7 @@ class PptxValidator:
         })
 
     def check_text_overflow(self):
-        """Check that text fits within shape bounds."""
+        """Check that text fits within shape bounds (height and width)."""
         for slide_idx, slide in enumerate(self.prs.slides, 1):
             for shape in slide.shapes:
                 if not shape.has_text_frame:
@@ -133,9 +161,9 @@ class PptxValidator:
                 if not text:
                     continue
 
-                # Estimate text height from font sizes and line count
+                # Height check: estimate from font sizes and line count
                 lines = text.split("\n")
-                max_font_size = 12  # default
+                max_font_size = 12
                 for p in tf.paragraphs:
                     for run in p.runs:
                         if run.font.size:
@@ -144,13 +172,33 @@ class PptxValidator:
                                 max_font_size = pts
 
                 estimated_height = Emu(int(max_font_size * len(lines) * 1.4 * 12700))
-                if estimated_height > shape.height * 1.2:  # 20% tolerance
+                if estimated_height > shape.height * 1.2:
                     self.add_finding(
                         "text_overflow", "warning", slide_idx,
                         shape.name,
-                        f"Text may overflow: {len(lines)} lines at ~{max_font_size}pt "
-                        f"in {shape.height} EMU height"
+                        f"Text may overflow vertically: {len(lines)} lines at "
+                        f"~{max_font_size}pt in {shape.height} EMU height"
                     )
+
+                # Width check: account for monospace being wider
+                margin_emu = (tf.margin_left or 0) + (tf.margin_right or 0)
+                available_width = shape.width - margin_emu
+                for p in tf.paragraphs:
+                    for run in p.runs:
+                        if not run.text.strip() or not run.font.size:
+                            continue
+                        font_pt = run.font.size.pt if run.font.size else 12
+                        is_mono = run.font.name in ("Courier New", "Consolas")
+                        char_width_emu = int(font_pt * (0.62 if is_mono else 0.48) * 12700)
+                        text_width = len(run.text) * char_width_emu
+                        if text_width > available_width * 1.05:
+                            self.add_finding(
+                                "text_overflow", "warning", slide_idx,
+                                shape.name,
+                                f"Text may overflow horizontally: '{run.text[:30]}...' "
+                                f"({run.font.name}, {font_pt}pt) est. {text_width} EMU "
+                                f"> available {available_width} EMU"
+                            )
 
     def check_boundaries(self):
         """Check no shape extends beyond slide edges."""
