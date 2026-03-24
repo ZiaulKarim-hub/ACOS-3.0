@@ -34,19 +34,27 @@ When the example document is a PowerPoint file, extract a reusable template:
    - Blank slide layouts for each layout type found in source (cover, content, two-column, etc.)
    - **No content shapes** — only the masters/layouts/theme
 
-   ```python
-   # Template generation (run via Bash tool):
+   Create the template by running:
+   ```bash
    python3 -c "
    from pptx import Presentation
-   src = Presentation('{source_pptx_path}')
-   # Create new presentation inheriting theme
-   tpl = Presentation()
-   tpl.slide_width = src.slide_width
-   tpl.slide_height = src.slide_height
-   # Theme colors are inherited from the slide master
-   tpl.save('{output_template_path}')
-   "
+   import sys
+   try:
+       src = Presentation(sys.argv[1])
+       tpl = Presentation()
+       tpl.slide_width = src.slide_width
+       tpl.slide_height = src.slide_height
+       tpl.save(sys.argv[2])
+   except Exception as e:
+       print(f'Template extraction failed: {e}', file=sys.stderr)
+       sys.exit(1)
+   " "{source_pptx_path}" "{output_template_path}"
    ```
+
+   If the PPTX file is corrupt, password-protected, or cannot be read:
+   - Log the error: "PPTX template extraction failed: {error}"
+   - Set template_pptx_path = null in the extraction manifest
+   - Continue to Step 1.2 — template extraction failure is non-fatal
 
 4. Write both files to the extraction directory:
    - `.acos/loan-doc-generator/extractions/{session_id}/design-spec.yaml`
@@ -108,7 +116,10 @@ Use `run_in_background: true` for all agents. Use `model: sonnet` for extractors
 ## Step 1.4: Collect Track A Results
 
 Wait for all Track A agents. Validate YAML structure of each output.
-Log any failures — note the gap but do not abort.
+Log any failures. If more than 50% of Track A agents failed (returned no valid YAML),
+ABORT Phase 1 and return error:
+"Phase 1 failed: {failed_count} of {total_count} extractors returned no results.
+Check example document paths and formats."
 
 ## Step 1.5: Synthesize Design Patterns (Per-Sample)
 
@@ -300,6 +311,12 @@ Write to:
 
 Use `run_in_background: true`, `model: sonnet`.
 
+**Multi-sample note:** In multi-sample runs, Track B reads from the primary
+sample's synthesis path (`design/synthesis/design-patterns.yaml` = sample-01).
+Benchmark criteria are derived from the primary sample only. For design libraries
+with N samples, each sample gets its own design-patterns.yaml but shares
+benchmark-criteria.yaml from the primary.
+
 ## Step 1.7: Collect Track B & Synthesize Benchmarks
 
 Wait for all Track B agents. Then spawn synthesizer (model: opus):
@@ -341,6 +358,8 @@ design_agents: N
 benchmark_agents: N
 design_patterns: ".acos/loan-doc-generator/extractions/{session_id}/design/synthesis/design-patterns.yaml"
 benchmark_criteria: ".acos/loan-doc-generator/extractions/{session_id}/benchmarks/synthesis/benchmark-criteria.yaml"
+template_pptx_path: ".acos/loan-doc-generator/extractions/{session_id}/template.pptx"  # null if not PPTX or extraction failed
+design_spec_path: ".acos/loan-doc-generator/extractions/{session_id}/design-spec.yaml"  # null if not PPTX or extraction failed
 status: "complete"
 ```
 
@@ -381,6 +400,9 @@ Update the session manifest with:
 - `design_patterns_path`
 - `benchmark_criteria_path`
 - `current_phase: 2`
+
+If PPTX template extraction ran (Step 1.1b), also write `template_pptx_path` and
+`design_spec_path`. If extraction failed, write both as `null`.
 
 **Return to caller:**
 ```

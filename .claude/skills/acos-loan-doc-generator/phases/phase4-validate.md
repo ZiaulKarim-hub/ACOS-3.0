@@ -6,6 +6,10 @@ Your job: validate the document draft against benchmark criteria and manage the 
 You receive a session manifest path as input.
 Format: `{manifest_path}` (iteration is tracked in the session manifest's `current_iteration` field)
 
+If current_iteration is 0 or null, treat as iteration 1 (first run).
+In batch mode, read current_iteration from the batch_item corresponding to
+the batch_index provided in the prompt, not from the top-level manifest.
+
 When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed internally by the phase34 agent. The first invocation starts at iteration=1. The phase34 agent reads both phase3-design.md and phase4-validate.md and handles the Wigum loop.
 
 ---
@@ -25,6 +29,9 @@ When invoked by the `loan-doc-phase34` agent, the iteration parameter is managed
    - Margin audit: no default margins (all explicit)
 3. Verdict: PASS if zero errors (warnings and info are advisory)
 4. On FAIL: feed findings back to Phase 3 for the Wigum loop iteration
+
+**After PPTX validation completes, STOP. Do not continue to Step 4.1 or any
+subsequent steps. Return the validation report to the caller.**
 
 **For non-PPTX types**, continue with standard validation below.
 
@@ -164,6 +171,10 @@ If STRUCT-001 fails or any `severity: required` structural criterion fails:
    fix instruction for the structural issues
 3. Re-run this structural validator on the corrected draft
 4. Only proceed to quality validators after structural passes
+
+Maximum 3 structural fix attempts. If STRUCT-001 still fails after 3 attempts:
+- Record "structural-loop-exceeded" in the validation report
+- Proceed to Step 4.3 quality validators (report structural failure to Wigum loop)
 
 ## Step 4.3: Launch Quality + Global Validators
 
@@ -350,6 +361,10 @@ Read ALL quality results matching:
 
 Read ALL global results matching:
 .../phase4-validation/iteration-{N}/global/*/result.yaml
+
+Some global validators may not have been spawned (e.g., charts validator when
+no charts selected, page count when target_pages is null). If a global result
+file does not exist, treat that validator as N/A — no pass/fail contribution.
 
 Produce validation-report.yaml with:
 

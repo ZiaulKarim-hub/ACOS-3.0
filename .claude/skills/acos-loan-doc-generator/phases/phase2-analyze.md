@@ -129,7 +129,7 @@ Rules:
 7. For XLSX-sourced data: preserve the cell reference (e.g., "Sheet1!B7") as provenance
 8. For calculated values from XLSX: note the formula and input cells
 
-[IF figures_mode is "user"]
+[IF figures_mode is "user" or "hybrid"]
 NOTE: The user has provided authoritative financial figures separately.
 Focus your extraction on: entities, narrative context, risk factors,
 conditions/covenants, property details, borrower background, and
@@ -279,6 +279,9 @@ Update the session manifest with `verification_table_path`.
 1. Compute `loan_folder_fingerprint`:
    - List all files in `loan_folder_path` recursively with sizes
    - Sort, concatenate filenames+sizes, compute sha256
+   - If any file cannot be stat'd (permission denied, broken symlink), skip it with
+     a warning log and exclude it from the fingerprint. Include the count of skipped
+     files in the cache manifest for transparency.
 2. Create `.acos/loan-doc-generator/cache/{loan_folder_fingerprint}/` directory
 3. Write `phase2-cache-manifest.yaml`:
 ```yaml

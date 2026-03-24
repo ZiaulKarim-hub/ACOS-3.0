@@ -36,12 +36,12 @@ except ImportError:
     sys.exit(1)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
+# CONSTANTS (defaults — overridden by design spec when provided)
+# =============================================================================
 
-SLIDE_WIDTH = Inches(13.333)   # 16:9 widescreen
-SLIDE_HEIGHT = Inches(7.5)
+DEFAULT_SLIDE_WIDTH = Inches(13.333)   # 16:9 widescreen
+DEFAULT_SLIDE_HEIGHT = Inches(7.5)
 
 # Default margins (from slide edge)
 MARGIN_LEFT = Inches(0.5)
@@ -76,9 +76,9 @@ DEFAULT_COLORS = {
 }
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 # DESIGN SPEC LOADER
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def load_design_spec(path):
     """Load design spec YAML and merge with defaults."""
@@ -87,16 +87,46 @@ def load_design_spec(path):
         with open(path) as f:
             spec = yaml.safe_load(f) or {}
 
+    # --- Slide dimensions (override from spec or use defaults) ---
+    spec["_slide_width"] = DEFAULT_SLIDE_WIDTH
+    spec["_slide_height"] = DEFAULT_SLIDE_HEIGHT
+    if spec.get("slide_width"):
+        try:
+            spec["_slide_width"] = Inches(float(spec["slide_width"]))
+        except (ValueError, TypeError):
+            pass
+    if spec.get("slide_height"):
+        try:
+            spec["_slide_height"] = Inches(float(spec["slide_height"]))
+        except (ValueError, TypeError):
+            pass
+
+    # --- Colors (handle flat, nested, and missing-# formats) ---
     colors = dict(DEFAULT_COLORS)
-    if "colors" in spec:
-        for key, hex_val in spec["colors"].items():
-            if isinstance(hex_val, str) and hex_val.startswith("#"):
+    raw_colors = spec.get("colors", {})
+    if isinstance(raw_colors, dict):
+        # Handle nested structure: {palette: {primary: "#hex"}}
+        flat_colors = {}
+        for key, val in raw_colors.items():
+            if isinstance(val, dict):
+                # Nested: e.g. colors.palette.primary
+                for sub_key, sub_val in val.items():
+                    flat_colors[sub_key] = sub_val
+            else:
+                flat_colors[key] = val
+
+        for key, hex_val in flat_colors.items():
+            if isinstance(hex_val, str):
                 hex_val = hex_val.lstrip("#")
-                colors[key] = RGBColor(
-                    int(hex_val[0:2], 16),
-                    int(hex_val[2:4], 16),
-                    int(hex_val[4:6], 16),
-                )
+                if len(hex_val) == 6:
+                    try:
+                        colors[key] = RGBColor(
+                            int(hex_val[0:2], 16),
+                            int(hex_val[2:4], 16),
+                            int(hex_val[4:6], 16),
+                        )
+                    except (ValueError, IndexError):
+                        pass  # keep default color
     spec["_colors"] = colors
 
     fonts = dict(FONT_ROLES)
@@ -110,22 +140,32 @@ def load_design_spec(path):
 
 
 def load_data(path):
-    """Load verified data YAML."""
+    """Load verified data YAML with error handling."""
+    if not path or not Path(path).exists():
+        print(f"ERROR: data file not found: {path}", file=sys.stderr)
+        sys.exit(2)
     with open(path) as f:
-        return yaml.safe_load(f) or {}
+        data = yaml.safe_load(f)
+    if not data:
+        print(f"ERROR: data file is empty or invalid: {path}", file=sys.stderr)
+        sys.exit(2)
+    return data
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 # LAYOUT ENGINE
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 class ContentArea:
     """Defines usable slide area after header/footer."""
-    def __init__(self, header_h=HEADER_HEIGHT, footer_h=FOOTER_HEIGHT):
+    def __init__(self, slide_width=None, slide_height=None,
+                 header_h=HEADER_HEIGHT, footer_h=FOOTER_HEIGHT):
+        sw = slide_width if slide_width is not None else DEFAULT_SLIDE_WIDTH
+        sh = slide_height if slide_height is not None else DEFAULT_SLIDE_HEIGHT
         self.left = MARGIN_LEFT
         self.top = MARGIN_TOP + header_h
-        self.width = SLIDE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
-        self.height = SLIDE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - header_h - footer_h
+        self.width = sw - MARGIN_LEFT - MARGIN_RIGHT
+        self.height = sh - MARGIN_TOP - MARGIN_BOTTOM - header_h - footer_h
 
 
 class SlideGrid:
@@ -154,28 +194,28 @@ class SlideGrid:
         return left, top, width, height
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 # TEXT HELPERS
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def detect_font_role(text):
     """Auto-detect content type for font role selection.
 
     Rules (checked in priority order):
-    1. "number" — text IS primarily a numeric value (currency, %, ratio, date-only)
-    2. "label" — short uppercase headers, category labels, column headers
-    3. "display" — everything else (prose, titles, entity names, descriptions)
+    1. "number" -- text IS primarily a numeric value (currency, %, ratio, date-only)
+    2. "label" -- short uppercase headers, category labels, column headers
+    3. "display" -- everything else (prose, titles, entity names, descriptions)
 
     Key principle: text that CONTAINS a number is NOT necessarily "number" role.
-    "Village 1", "Scenario A — 6-Month Hold", "& 1722 Mohawk LLC" are display, not number.
+    "Village 1", "Scenario A -- 6-Month Hold", "& 1722 Mohawk LLC" are display, not number.
     """
     if not text:
         return "label"
     s = str(text).strip()
 
-    # 1. Pure numeric values: "$6,000,000", "14.00%", "50.00%", "$2,333", "9.75% · 19.5% Ann."
-    #    Strip currency/percent/comma/spaces/punctuation — if >=60% of remainder is digits, it's number
-    cleaned = re.sub(r'[\$,%\s·\-–+~×]', '', s)
+    # 1. Pure numeric values: "$6,000,000", "14.00%", "50.00%", "$2,333", "9.75% . 19.5% Ann."
+    #    Strip currency/percent/comma/spaces/punctuation -- if >=60% of remainder is digits, it's number
+    cleaned = re.sub(r'[\$,%\s\u00b7\-\u2013+~\u00d7]', '', s)
     if cleaned and len(cleaned) <= 20:
         digit_ratio = sum(c.isdigit() or c == '.' for c in cleaned) / len(cleaned)
         if digit_ratio >= 0.6:
@@ -187,8 +227,8 @@ def detect_font_role(text):
         if len(s.split()) <= 3:
             return "number"
 
-    # 3. Short number+unit patterns: "6–12 Mo.", "~113 Acres", "2 / 5", "1st D/T"
-    if re.match(r'^[~$]?\d[\d,.\-–/\s]*\s*(Mo\.?|Acres?|Days?|p\.a\.|Ann\.?|D/T)?\s*$', s, re.IGNORECASE):
+    # 3. Short number+unit patterns: "6-12 Mo.", "~113 Acres", "2 / 5", "1st D/T"
+    if re.match(r'^[~$]?\d[\d,.\-\u2013/\s]*\s*(Mo\.?|Acres?|Days?|p\.a\.|Ann\.?|D/T)?\s*$', s, re.IGNORECASE):
         return "number"
 
     # 4. Financial column/unit headers: "% OF LOAN", "PER DIEM"
@@ -212,7 +252,6 @@ def set_text(tf, text, font_size=Pt(12), bold=False, color=None,
     """Set text on an existing text_frame's first paragraph."""
     tf.word_wrap = True
     p = tf.paragraphs[0]
-    p.text = str(text)
     p.alignment = alignment
     run = p.runs[0] if p.runs else p.add_run()
     run.text = str(text)
@@ -232,7 +271,6 @@ def add_paragraph(tf, text, font_size=Pt(12), bold=False, color=None,
                   space_before=Pt(0), space_after=Pt(0)):
     """Add a new paragraph to an existing text_frame."""
     p = tf.add_paragraph()
-    p.text = str(text)
     p.alignment = alignment
     p.space_before = space_before
     p.space_after = space_after
@@ -308,12 +346,57 @@ def auto_fit_font(shape, min_size_pt=7):
                 current_pt -= 0.5
                 run.font.size = Pt(current_pt)
                 changed = True
+    if not check_text_fit(shape):
+        print(f"WARNING: text cannot fit shape even at {min_size_pt}pt", file=sys.stderr)
     return changed
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
+# SLIDE BOUNDARY CLAMPING
+# =============================================================================
+
+def clamp_to_slide(shape, slide_width, slide_height, footer_height=FOOTER_HEIGHT):
+    """Ensure a shape does not extend beyond slide boundaries.
+
+    Adjusts position/size if the shape overflows the slide area.
+    Footer height is reserved at the bottom.
+    """
+    max_bottom = slide_height - footer_height
+
+    # Clamp right edge
+    if shape.left + shape.width > slide_width:
+        overflow = (shape.left + shape.width) - slide_width
+        if overflow <= shape.width // 2:
+            shape.width = slide_width - shape.left
+        else:
+            shape.left = slide_width - shape.width
+            if shape.left < 0:
+                shape.left = Emu(0)
+                shape.width = slide_width
+
+    # Clamp bottom edge
+    if shape.top + shape.height > max_bottom:
+        overflow = (shape.top + shape.height) - max_bottom
+        if overflow <= shape.height // 2:
+            shape.height = max_bottom - shape.top
+        else:
+            shape.top = max_bottom - shape.height
+            if shape.top < 0:
+                shape.top = Emu(0)
+                shape.height = max_bottom
+
+    # Clamp left edge (should not go negative)
+    if shape.left < 0:
+        shape.left = Emu(0)
+
+    # Clamp top edge
+    if shape.top < 0:
+        shape.top = Emu(0)
+
+
+# =============================================================================
 # SHAPE HELPERS
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def add_rect(slide, left, top, width, height, fill_color=None, border_color=None, border_width=Pt(0)):
     """Add a rectangle shape with optional fill and border."""
@@ -348,36 +431,56 @@ def add_textbox(slide, left, top, width, height, anchor=MSO_ANCHOR.TOP):
     return txbox, tf
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 # COMPONENTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def header_bar(slide, title, subtitle=None, spec=None):
-    """Render a slide header bar across the top."""
+    """Render a slide header bar across the top.
+
+    Title and subtitle are placed in separate textboxes:
+    title left-aligned at left margin, subtitle right-aligned at right side.
+    Both vertically centered within the header bar.
+    """
     colors = spec["_colors"] if spec else DEFAULT_COLORS
+    slide_width = spec.get("_slide_width", DEFAULT_SLIDE_WIDTH) if spec else DEFAULT_SLIDE_WIDTH
+
     # Background bar
-    add_rect(slide, Emu(0), Emu(0), SLIDE_WIDTH, HEADER_HEIGHT + MARGIN_TOP,
+    add_rect(slide, Emu(0), Emu(0), slide_width, HEADER_HEIGHT + MARGIN_TOP,
              fill_color=colors["bg_dark"])
-    # Title text
-    txbox, tf = add_textbox(slide, MARGIN_LEFT, MARGIN_TOP,
-                            SLIDE_WIDTH - MARGIN_LEFT * 2, HEADER_HEIGHT,
-                            anchor=MSO_ANCHOR.MIDDLE)
-    set_text(tf, title, font_size=Pt(22), bold=True,
-             color=colors["text_light"], font_name=spec["_fonts"]["display"] if spec else "Georgia",
+
+    # Title textbox (left-aligned, takes left ~60% of width)
+    title_width = Inches(7.0) if not subtitle else slide_width * 6 // 10
+    txbox_title, tf_title = add_textbox(slide, MARGIN_LEFT, MARGIN_TOP,
+                                        title_width, HEADER_HEIGHT,
+                                        anchor=MSO_ANCHOR.MIDDLE)
+    set_text(tf_title, title, font_size=Pt(22), bold=True,
+             color=colors["text_light"],
+             font_name=spec["_fonts"]["display"] if spec else "Georgia",
              spec=spec)
+
+    # Subtitle textbox (right-aligned, separate from title)
     if subtitle:
-        add_paragraph(tf, subtitle, font_size=Pt(12), bold=False,
-                      color=colors["text_light"],
-                      font_name=spec["_fonts"]["label"] if spec else "Calibri",
-                      spec=spec)
+        sub_width = slide_width * 35 // 100
+        sub_left = slide_width - MARGIN_RIGHT - sub_width
+        txbox_sub, tf_sub = add_textbox(slide, sub_left, MARGIN_TOP,
+                                        sub_width, HEADER_HEIGHT,
+                                        anchor=MSO_ANCHOR.MIDDLE)
+        set_text(tf_sub, subtitle, font_size=Pt(12), bold=False,
+                 color=colors["text_light"], alignment=PP_ALIGN.RIGHT,
+                 font_name=spec["_fonts"]["label"] if spec else "Calibri",
+                 spec=spec)
 
 
 def footer_bar(slide, left_text="", right_text="", spec=None):
     """Render a slide footer bar across the bottom."""
     colors = spec["_colors"] if spec else DEFAULT_COLORS
-    footer_top = SLIDE_HEIGHT - FOOTER_HEIGHT - MARGIN_BOTTOM
+    slide_width = spec.get("_slide_width", DEFAULT_SLIDE_WIDTH) if spec else DEFAULT_SLIDE_WIDTH
+    slide_height = spec.get("_slide_height", DEFAULT_SLIDE_HEIGHT) if spec else DEFAULT_SLIDE_HEIGHT
+
+    footer_top = slide_height - FOOTER_HEIGHT - MARGIN_BOTTOM
     # Separator line
-    add_rect(slide, MARGIN_LEFT, footer_top, SLIDE_WIDTH - MARGIN_LEFT * 2,
+    add_rect(slide, MARGIN_LEFT, footer_top, slide_width - MARGIN_LEFT * 2,
              Pt(1), fill_color=colors["border"])
     # Left text
     if left_text:
@@ -388,7 +491,7 @@ def footer_bar(slide, left_text="", right_text="", spec=None):
                  font_name=spec["_fonts"]["label"] if spec else "Calibri", spec=spec)
     # Right text
     if right_text:
-        txbox, tf = add_textbox(slide, SLIDE_WIDTH - MARGIN_RIGHT - Inches(3),
+        txbox, tf = add_textbox(slide, slide_width - MARGIN_RIGHT - Inches(3),
                                 footer_top + Pt(4), Inches(3), FOOTER_HEIGHT - Pt(4),
                                 anchor=MSO_ANCHOR.MIDDLE)
         set_text(tf, right_text, font_size=Pt(8), color=colors["text_dark"],
@@ -428,7 +531,6 @@ def metric_card(slide, left, top, width, height, label, value, sub_text=None,
 
     # Label paragraph
     p_label = tf.paragraphs[0]
-    p_label.text = str(label).upper()
     p_label.alignment = PP_ALIGN.LEFT
     p_label.space_after = Pt(2)
     run = p_label.runs[0] if p_label.runs else p_label.add_run()
@@ -440,7 +542,6 @@ def metric_card(slide, left, top, width, height, label, value, sub_text=None,
 
     # Value paragraph
     p_val = tf.add_paragraph()
-    p_val.text = str(value)
     p_val.alignment = PP_ALIGN.LEFT
     p_val.space_before = Pt(2)
     p_val.space_after = Pt(2)
@@ -454,7 +555,6 @@ def metric_card(slide, left, top, width, height, label, value, sub_text=None,
     # Sub-text paragraph (optional)
     if sub_text:
         p_sub = tf.add_paragraph()
-        p_sub.text = str(sub_text)
         p_sub.alignment = PP_ALIGN.LEFT
         p_sub.space_before = Pt(1)
         run_s = p_sub.add_run()
@@ -475,9 +575,10 @@ def badge_pill(slide, left, top, width, height, text, bg_color=None, text_color=
     if text_color is None:
         text_color = colors["text_light"]
 
-    shape = add_rect(slide, left, top, width, height, fill_color=bg_color)
-    # Round corners
-    shape.adjustments[0] = 0.25
+    shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = bg_color
+    shape.line.fill.background()
 
     tf = shape.text_frame
     tf.word_wrap = False
@@ -486,7 +587,6 @@ def badge_pill(slide, left, top, width, height, text, bg_color=None, text_color=
     shape.text_frame_anchor = MSO_ANCHOR.MIDDLE
 
     p = tf.paragraphs[0]
-    p.text = str(text).upper()
     p.alignment = PP_ALIGN.CENTER
     run = p.runs[0] if p.runs else p.add_run()
     run.text = str(text).upper()
@@ -519,7 +619,6 @@ def data_table(slide, left, top, width, headers, rows, spec=None, col_widths=Non
     # Header row
     for i, header_text in enumerate(headers):
         cell = table.cell(0, i)
-        cell.text = str(header_text)
         cell.fill.solid()
         cell.fill.fore_color.rgb = colors["bg_dark"]
         p = cell.text_frame.paragraphs[0]
@@ -538,7 +637,6 @@ def data_table(slide, left, top, width, headers, rows, spec=None, col_widths=Non
     for r_idx, row_data in enumerate(rows):
         for c_idx, cell_text in enumerate(row_data):
             cell = table.cell(r_idx + 1, c_idx)
-            cell.text = str(cell_text) if cell_text is not None else ""
             # Alternating row colors
             if r_idx % 2 == 1:
                 cell.fill.solid()
@@ -590,7 +688,6 @@ def timeline_strip(slide, left, top, width, height, events, spec=None):
 
         # Date
         p_date = tf.paragraphs[0]
-        p_date.text = str(event.get("date", ""))
         p_date.alignment = PP_ALIGN.LEFT
         p_date.space_after = Pt(3)
         run = p_date.runs[0] if p_date.runs else p_date.add_run()
@@ -602,7 +699,6 @@ def timeline_strip(slide, left, top, width, height, events, spec=None):
 
         # Event title
         p_title = tf.add_paragraph()
-        p_title.text = str(event.get("title", ""))
         p_title.alignment = PP_ALIGN.LEFT
         p_title.space_after = Pt(2)
         run_t = p_title.add_run()
@@ -615,7 +711,6 @@ def timeline_strip(slide, left, top, width, height, events, spec=None):
         # Detail (optional)
         if event.get("detail"):
             p_detail = tf.add_paragraph()
-            p_detail.text = str(event["detail"])
             p_detail.alignment = PP_ALIGN.LEFT
             run_d = p_detail.add_run()
             run_d.text = str(event["detail"])
@@ -647,7 +742,6 @@ def scenario_box(slide, left, top, width, height, title, line_items,
 
     # Title
     p_title = tf.paragraphs[0]
-    p_title.text = str(title).upper()
     p_title.alignment = PP_ALIGN.LEFT
     p_title.space_after = Pt(6)
     run = p_title.runs[0] if p_title.runs else p_title.add_run()
@@ -663,7 +757,6 @@ def scenario_box(slide, left, top, width, height, title, line_items,
         value = item.get("value", "")
         line_text = f"{label}    {value}" if value else str(label)
         p = tf.add_paragraph()
-        p.text = line_text
         p.alignment = PP_ALIGN.LEFT
         p.space_before = Pt(1)
         p.space_after = Pt(1)
@@ -676,18 +769,16 @@ def scenario_box(slide, left, top, width, height, title, line_items,
     # Separator + total
     if total_label and total_value:
         p_sep = tf.add_paragraph()
-        p_sep.text = "─" * 40
         p_sep.alignment = PP_ALIGN.LEFT
         p_sep.space_before = Pt(4)
         p_sep.space_after = Pt(2)
         run_sep = p_sep.add_run()
-        run_sep.text = "─" * 40
+        run_sep.text = "\u2500" * 40
         run_sep.font.size = Pt(6)
         run_sep.font.color.rgb = colors["border"]
 
         total_text = f"{total_label}    {total_value}"
         p_total = tf.add_paragraph()
-        p_total.text = total_text
         p_total.alignment = PP_ALIGN.LEFT
         run_tot = p_total.add_run()
         run_tot.text = total_text
@@ -697,17 +788,84 @@ def scenario_box(slide, left, top, width, height, title, line_items,
         run_tot.font.name = spec["_fonts"]["number"] if spec else "Courier New"
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
+# COMPONENT DISPATCH (for build_content_slide)
+# =============================================================================
+
+COMPONENT_DISPATCH = {
+    "metric_card": lambda slide, comp, area, spec: metric_card(
+        slide,
+        left=area.left + Inches(comp.get("x_offset", 0)),
+        top=area.top + Inches(comp.get("y_offset", 0)),
+        width=Inches(comp.get("width", 2.5)),
+        height=Inches(comp.get("height", 1.2)),
+        label=comp.get("label", ""),
+        value=comp.get("value", ""),
+        sub_text=comp.get("sub_text"),
+        bg_color=None,
+        spec=spec,
+    ),
+    "data_table": lambda slide, comp, area, spec: data_table(
+        slide,
+        left=area.left + Inches(comp.get("x_offset", 0)),
+        top=area.top + Inches(comp.get("y_offset", 0)),
+        width=Inches(comp.get("width", 12)),
+        headers=comp.get("headers", []),
+        rows=comp.get("rows", []),
+        spec=spec,
+    ),
+    "timeline_strip": lambda slide, comp, area, spec: timeline_strip(
+        slide,
+        left=area.left + Inches(comp.get("x_offset", 0)),
+        top=area.top + Inches(comp.get("y_offset", 0)),
+        width=Inches(comp.get("width", 12)),
+        height=Inches(comp.get("height", 1.5)),
+        events=comp.get("events", []),
+        spec=spec,
+    ),
+    "scenario_box": lambda slide, comp, area, spec: scenario_box(
+        slide,
+        left=area.left + Inches(comp.get("x_offset", 0)),
+        top=area.top + Inches(comp.get("y_offset", 0)),
+        width=Inches(comp.get("width", 5)),
+        height=Inches(comp.get("height", 3)),
+        title=comp.get("title", ""),
+        line_items=comp.get("line_items", []),
+        total_label=comp.get("total_label"),
+        total_value=comp.get("total_value"),
+        spec=spec,
+    ),
+    "badge_pill": lambda slide, comp, area, spec: badge_pill(
+        slide,
+        left=area.left + Inches(comp.get("x_offset", 0)),
+        top=area.top + Inches(comp.get("y_offset", 0)),
+        width=Inches(comp.get("width", 2.5)),
+        height=Inches(comp.get("height", 0.4)),
+        text=comp.get("text", ""),
+        spec=spec,
+    ),
+    "section_header": lambda slide, comp, area, spec: section_header(
+        slide,
+        title=comp.get("title", ""),
+        area=area,
+        spec=spec,
+    ),
+}
+
+
+# =============================================================================
 # SLIDE BUILDERS
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def build_cover_slide(prs, data, spec):
     """Build a title/cover slide."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank layout
     colors = spec["_colors"]
+    slide_width = spec.get("_slide_width", DEFAULT_SLIDE_WIDTH)
+    slide_height = spec.get("_slide_height", DEFAULT_SLIDE_HEIGHT)
 
     # Full-slide dark background
-    add_rect(slide, Emu(0), Emu(0), SLIDE_WIDTH, SLIDE_HEIGHT,
+    add_rect(slide, Emu(0), Emu(0), slide_width, slide_height,
              fill_color=colors["bg_dark"])
 
     # Title
@@ -738,34 +896,58 @@ def build_cover_slide(prs, data, spec):
 
 
 def build_content_slide(prs, slide_spec, data, spec):
-    """Build a generic content slide from a slide specification."""
+    """Build a generic content slide from a slide specification.
+
+    Reads slide_spec["components"] and renders each one via COMPONENT_DISPATCH.
+    If no components are specified, the slide is left with just header/footer
+    (the Phase 3 agent will add content programmatically).
+    """
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank layout
-    area = ContentArea()
+    slide_width = spec.get("_slide_width", DEFAULT_SLIDE_WIDTH)
+    slide_height = spec.get("_slide_height", DEFAULT_SLIDE_HEIGHT)
+    area = ContentArea(slide_width=slide_width, slide_height=slide_height)
 
     title = slide_spec.get("title", "")
-    header_bar(slide, title, spec=spec)
+    header_bar(slide, title, subtitle=slide_spec.get("subtitle"), spec=spec)
     footer_bar(slide, left_text=data.get("footer_left", ""),
                right_text=data.get("footer_right", ""), spec=spec)
+
+    # Render components if specified
+    components = slide_spec.get("components", [])
+    for comp in components:
+        comp_type = comp.get("type", "")
+        handler = COMPONENT_DISPATCH.get(comp_type)
+        if handler:
+            result = handler(slide, comp, area, spec)
+            # Clamp shapes placed by components to slide boundaries
+            # result may be a shape, table_shape, or None
+            if result is not None and hasattr(result, 'left'):
+                clamp_to_slide(result, slide_width, slide_height, FOOTER_HEIGHT)
 
     return slide, area
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 # MAIN ORCHESTRATOR
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 
 def generate_presentation(data_path, spec_path, template_path=None, output_path="output.pptx"):
     """Generate a complete PPTX from data and design spec."""
     data = load_data(data_path)
     spec = load_design_spec(spec_path)
 
+    slide_width = spec.get("_slide_width", DEFAULT_SLIDE_WIDTH)
+    slide_height = spec.get("_slide_height", DEFAULT_SLIDE_HEIGHT)
+
     # Create presentation from template or blank
     if template_path and Path(template_path).exists():
         prs = Presentation(template_path)
     else:
         prs = Presentation()
-        prs.slide_width = SLIDE_WIDTH
-        prs.slide_height = SLIDE_HEIGHT
+
+    # Always set slide dimensions from spec (overrides template defaults too)
+    prs.slide_width = slide_width
+    prs.slide_height = slide_height
 
     # Build slides from data structure
     slides_data = data.get("slides", [])

@@ -163,6 +163,13 @@ financial_metrics:
         - { range: [5, 6],  criteria: "LTV 65-72%" }
         - { range: [3, 4],  criteria: "LTV 72-80%" }
         - { range: [1, 2],  criteria: "LTV > 80%" }
+      bridge_note: |
+        For bridge/transitional assets, LTV bands shift upward:
+        - 9-10: LTV < 60%
+        - 7-8: LTV 60-70%
+        - 5-6: LTV 70-75%
+        - 3-4: LTV 75-80%
+        - 1-2: LTV > 80%
 
     - id: "dscr"
       name: "DSCR Score"
@@ -174,6 +181,10 @@ financial_metrics:
         - { range: [5, 6],  criteria: "DSCR 1.15-1.29x" }
         - { range: [3, 4],  criteria: "DSCR 1.00-1.14x" }
         - { range: [1, 2],  criteria: "DSCR < 1.00x" }
+      transitional_note: |
+        For bridge/transitional assets, in-place DSCR may be below 1.0x during
+        lease-up or renovation. Evaluate stabilized/projected DSCR separately.
+        Do not auto-decline on in-place DSCR alone if loan_purpose is bridge/transitional.
 
     - id: "debt_yield"
       name: "Debt Yield Score"
@@ -369,6 +380,16 @@ must_have_ratios:
     green_min: 12
     amber_min: 6
 
+  - id: "EXIT"
+    name: "Exit Feasibility"
+    formula: "qualitative — exit strategy documented and stress-tested"
+    unit: "narrative"
+    direction: "qualitative"
+    analysis: |
+      Assess: (1) refinance proceeds cover payoff at stressed cap rate,
+      (2) sale price covers payoff at -10% discount,
+      (3) timeline to stabilization vs. loan maturity
+
 # ── Override Rules ───────────────────────────────────────────────────────────
 # Safety checks applied AFTER the composite score is calculated.
 
@@ -397,6 +418,11 @@ override_rules:
     rule: "Sponsor has default or foreclosure history"
     action: "cap_at_conditional"
     description: "Cannot be APPROVE with adverse credit history"
+
+  # NOTE for bridge/transitional: in-place DSCR may be below 1.0x during lease-up.
+  # If loan_purpose is 'bridge' or 'transitional', consider manually overriding
+  # the dscr_floor rule and evaluating projected/stabilized DSCR instead.
+  # Future enhancement: add projected_dscr critical figure and companion override rule.
 
 # ── Chart Configuration ──────────────────────────────────────────────────────
 

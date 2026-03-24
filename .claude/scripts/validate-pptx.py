@@ -81,10 +81,15 @@ def detect_font_role(text):
 
 
 def load_yaml(path):
-    if path and Path(path).exists():
+    if not path or not Path(path).exists():
+        return {}
+    try:
         with open(path) as f:
-            return yaml.safe_load(f) or {}
-    return {}
+            data = yaml.safe_load(f)
+            return data or {}
+    except yaml.YAMLError as e:
+        print(f"WARNING: could not parse YAML at {path}: {e}", file=sys.stderr)
+        return {}
 
 
 def extract_numbers(text):
@@ -104,6 +109,7 @@ def normalize_number(s):
 class PptxValidator:
     def __init__(self, pptx_path, data_path=None, spec_path=None):
         self.prs = Presentation(pptx_path)
+        self._data_path_provided = bool(data_path)
         self.data = load_yaml(data_path) if data_path else {}
         self.spec = load_yaml(spec_path) if spec_path else {}
         self.findings = []
@@ -222,6 +228,9 @@ class PptxValidator:
     def check_data_integrity(self):
         """Check numbers in slides match verified data."""
         if not self.data_numbers:
+            if self._data_path_provided:
+                self.add_finding("data_integrity", "warning", 0, "",
+                    "Data integrity check skipped — verified data file was empty or unreadable")
             return
 
         slide_numbers = set()
@@ -304,6 +313,9 @@ class PptxValidator:
         for slide_idx, slide in enumerate(self.prs.slides, 1):
             for shape in slide.shapes:
                 if not shape.has_text_frame:
+                    continue
+                # Skip placeholder shapes from slide masters
+                if hasattr(shape, 'is_placeholder') and shape.is_placeholder:
                     continue
                 if not shape.text_frame.text.strip():
                     continue

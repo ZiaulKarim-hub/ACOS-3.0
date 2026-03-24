@@ -84,7 +84,7 @@ Display the mode selection first:
 ║        ACOS Loan Document Generator                         ║
 ╚══════════════════════════════════════════════════════════════╝
 
-  [1] Quick      — 3 questions, smart defaults, fast generation
+  [1] Quick      — minimal prompts, smart defaults, fast generation
   [2] Detailed   — Full wizard with all customization options
   [3] Batch      — Multiple documents, same loan folder
 
@@ -126,7 +126,7 @@ Map selection to `category_id`:
 | E | `investor-participation` |
 | F | `other` |
 
-Store as `category_id`.
+Store as `category_id`. Also store the human-readable label as `category_name` (e.g., "Credit Memo & Underwriting" for category A).
 
 ### Step 0.2: Document Type Selection
 
@@ -273,6 +273,9 @@ Store as `catalog_entry`. Set `document_title` from the table above (or user inp
 This sub-flow is triggered when the user selects `[N]` in any category. It creates
 a fully-defined document type entry and persists it to `doc-type-catalog.yaml`.
 
+Show a sub-step counter: "New type -- step X of Y" where Y depends on the path:
+Path 1 (example): Y=4, Path 2 (manual): Y=5, Path 3 (AI-generated): Y=2.
+
 ```
   Define a new document type
   ─────────────────────────────────────────────────────
@@ -351,8 +354,12 @@ Enter selection [1-3]:           [<] Back
      `examples_path = {path from step 2}`, `skip_phase_1 = false` (Phase 1 already
      ran in inference mode — the extraction outputs are reusable). When dispatching
      the normal Phase 1 later, check if catalog inference already produced
-     `design_patterns_path` and `benchmark_criteria_path`. If so, set
-     `skip_phase_1 = true` and reuse those outputs.
+     `design_patterns_path`. If so, set `skip_phase_1 = true` and reuse the
+     design patterns. Note: benchmark criteria were NOT extracted during catalog
+     inference — Phase 1 will still need to run Track B (benchmarks). Set a flag
+     `phase_1_track_b_only = true` so Phase 1 skips Track A (design extraction)
+     and only runs Track B (benchmark extraction) using the already-extracted
+     design patterns.
    - Continue to **Step 0.3** (design library check).
 
 7. **If [R] Reject:** Loop back to the path selection prompt at the top of Step 0.2N.
@@ -551,6 +558,8 @@ its design source independently. Display a clean summary table (no sample links)
   Phase 1 extractions needed: 1 of 3
 ```
 
+If the user enters `<` at the design summary, return to the last batch item's design prompt.
+
 For each item needing a new design, prompt for the examples path (one prompt per
 item). Run novelty checks as in single-document mode.
 
@@ -565,7 +574,13 @@ Step {3 of 4 if quick | 3 of 8 if detailed | 3 of 4 if batch}: Loan folder
 ```
 
 Validate the path exists (check with `ls` or `stat`). If invalid, display error
-and re-prompt: `"Path not found: {path}. Please enter a valid path: "`.
+and re-prompt:
+```
+Path not found: {path}
+  Tip: Use absolute paths (e.g., /Users/zee/deals/cook-group/)
+       ~ expansion is supported. Relative paths resolve from CWD.
+Try again: _
+```
 Store as `loan_folder_path`.
 
 ### Step 0.5: Critical Numbers
@@ -783,7 +798,7 @@ Set `selected_charts = "auto"`. Skip the prompt.
 **Detailed mode:** Continue below.
 
 ```
-Step {N} of {M}: Charts & graphs  (optional)
+Step 6 of 8: Charts & graphs  (detailed mode only)
 
   ── Must-Have (credit memos only, auto-included) ──────────
   {For each chart in catalog_entry.must_have_charts:}
@@ -853,8 +868,10 @@ skip the cache check entirely and set `skip_phase_2 = false`.
 
 ### Step 0.7b: Output Destination
 
+**Quick mode / Batch mode:** Set `output_destination = null`. Skip the prompt.
+
 ```
-Step {N of M}: Output destination  (optional — press Enter for default)
+Step 8 of 8: Output destination  (optional — press Enter for default)
 
   Where should the final documents be saved?
 
@@ -973,6 +990,8 @@ On confirmation:
    design_label: ""
    design_patterns_path: ""
    benchmark_criteria_path: ""
+   template_pptx_path: ""           # PPTX only: path to extracted template.pptx
+   design_spec_path: ""             # PPTX only: path to extracted design-spec.yaml
    examples_path: ""
    loan_folder_path: ""
    loan_data_path: ""
@@ -1100,8 +1119,12 @@ If `$ARGUMENTS` contains `resume` or `resume {session_id}`:
    ```
 
 2. Read the session manifest and checkpoint
-3. Report: `"Resuming session {session_id} from Phase {N+1}"`
-4. Skip to the appropriate dispatch step below based on `last_successful_phase`
+3. Before skipping any phase, verify that all phase output files referenced in
+   `checkpoint.phase_outputs` exist on disk and are non-empty. If any file is missing,
+   downgrade `last_successful_phase` to the phase before the missing output and report:
+   `"Phase {N} outputs not found — will re-run from Phase {N}."`
+4. Report: `"Resuming session {session_id} from Phase {N+1}"`
+5. Skip to the appropriate dispatch step below based on `last_successful_phase`
 
 ### Single Document Dispatch (quick/detailed)
 
@@ -1264,10 +1287,14 @@ Enter selection [A/E/R]:
 **If [A] Approve:** Proceed to the Report step. Copy final outputs to
 `output_destination` if set.
 
-**If [E] Edit:** Prompt for section name and editing instructions:
+**If [E] Edit:** Show the section list from `catalog_entry.default_sections` as a numbered pick-list:
 ```
-  Which section(s) to edit? (comma-separated):
-  Instructions for changes:
+  Which section(s) to edit?
+  [1] {section_1_name}
+  [2] {section_2_name}
+  ...
+  Enter numbers (comma-separated): _
+  Instructions for changes: _
 ```
 Store as iteration feedback and re-dispatch Phase 3+4 for only those sections.
 Return to this approval gate after the edit cycle completes.
@@ -1381,17 +1408,17 @@ If any `batch_item.status == "failed"`:
     #{batch_index}  {document_title}   {failure_reason}
 
   [R]  Retry failed items only
-  [A]  Accept all (including failed drafts)
+  [P]  Proceed with all (include failed drafts)
   [S]  Skip — proceed to report with mixed results
 
-Enter selection [R/A/S]:
+Enter selection [R/P/S]:
 ```
 
 **If [R] Retry:** Re-dispatch ONLY the failed batch items through Phase 3+4
 using the same shared Phase 2 data. Update `batch_item.status` on completion.
 Return to this step if any still fail (max 2 retry cycles).
 
-**If [A] Accept:** Mark all as `"complete"` (even those with validation failures).
+**If [P] Proceed:** Mark all as `"complete"` (even those with validation failures).
 
 **If [S] Skip:** Proceed to report. Failed items are flagged in the batch report.
 
@@ -1563,10 +1590,6 @@ Design Library:  (.acos/loan-doc-generator/design-library/index.yaml)
 Cached Phase 2 Analyses:
   FINGERPRINT         LOAN FOLDER                        ANALYZED        FILES EXIST
   sha256-abc123...    /path/to/loan-folder/              2026-03-01      Yes
-
-Phase 2 Cache:
-  FINGERPRINT         LOAN FOLDER                        ANALYZED
-  sha256-abc123...    /path/to/loan-folder/              2026-03-01
 
 Active Sessions:
   SESSION ID          DOCUMENT                           PHASE  ITER  STATUS

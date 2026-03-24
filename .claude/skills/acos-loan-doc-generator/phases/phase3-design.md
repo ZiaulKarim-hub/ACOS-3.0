@@ -12,7 +12,7 @@ If iteration > 1, you also receive feedback from Phase 4.
 
 ---
 
-## PPTX Output Path (conditional)
+## Step 3.0: PPTX Output Path (conditional — skip if not PPTX)
 
 **If `catalog_entry.output_format == 'pptx'`**, use the PPTX pipeline instead of HTML:
 
@@ -35,6 +35,9 @@ If iteration > 1, you also receive feedback from Phase 4.
      -o {session_dir}/phase4-validation/pptx-validation.yaml
    ```
 5. Output: `{session_id}/output/{document_slug}.pptx` (no PDF/DOCX for PPTX types)
+
+**After PPTX pipeline completes, STOP. Do not continue to Step 3.1 or any
+subsequent steps. Return to the caller with the PPTX output path.**
 
 **For non-PPTX types**, continue with the standard HTML->PDF+DOCX pipeline below.
 
@@ -142,9 +145,17 @@ CHARTS & GRAPHS:
 If the session manifest includes `charts` configuration, and this section has
 assigned charts, generate them using the chart generation script:
 
+Write chart data to a temp file first:
+Write {json_data} to: {session_dir}/phase3-design/chart-data-{chart_id}.json
+Then call:
 ```bash
-python3 .claude/scripts/generate-chart.py --type {chart_type} --data '{json_data}' --output {svg_path}
+python3 .claude/scripts/generate-chart.py --type {chart_type} --data-file {chart_data_path} --output {svg_path}
 ```
+
+After calling generate-chart.py, verify the SVG output file exists. If it does not:
+- Write a placeholder div: `<div class="chart-error">Chart generation failed: {chart_type}</div>`
+- Log warning: "Chart {chart_type} failed to generate — placeholder inserted"
+- This placeholder will be detected by Phase 4 Global 3 validator
 
 Embed the resulting SVG directly in the HTML:
 ```html
@@ -164,7 +175,8 @@ For CREDIT MEMOS, read the recommendation matrix config at:
 Generate ALL charts listed under `must_have_charts` in the config. For each chart:
 1. Read the chart spec (type, section, description)
 2. Compute the data from loan-data.yaml
-3. Call: python3 .claude/scripts/generate-chart.py --type {type} --data '{json}' --output {svg_path}
+3. Write chart data to: {session_dir}/phase3-design/chart-data-{chart_id}.json
+   Call: python3 .claude/scripts/generate-chart.py --type {type} --data-file {chart_data_path} --output {svg_path}
 4. Embed the SVG inline in the section's HTML
 
 For all document types, optional charts from `session_manifest.selected_charts`
@@ -179,12 +191,13 @@ deterministic scoring script — do NOT compute weighted averages manually.
    experience, financial_strength, payment_history, operations, legal_reputation,
    supply_demand, rent_growth, vacancy, economic_drivers
 
-2. Call the deterministic scorer:
+2. Write pillar scores to: {session_dir}/phase3-design/pillar-scores.yaml
+   Then call the deterministic scorer:
    ```bash
    python3 .claude/scripts/compute-recommendation-score.py \
      --loan-data {loan_data_path} \
      --config .acos/loan-doc-generator/recommendation-matrix.yaml \
-     --pillar-scores '{"location":8,"physical_condition":7,...}' \
+     --pillar-scores-file {session_dir}/phase3-design/pillar-scores.yaml \
      --output {session_dir}/recommendation-score.yaml
    ```
 
@@ -368,6 +381,10 @@ If html-to-docx.py fails, fall back to pandoc as a last resort:
 pandoc "{html_path}" -f html -o "{docx_path}" --wrap=none --standalone
 ```
 But warn the user: "DOCX generated with limited styling — python-docx unavailable."
+
+IMPORTANT: Write `docx_generator: "pandoc-fallback"` to the session manifest.
+Phase 4 STRUCT-005 must check this field — pandoc fallback is a REQUIRED FAIL
+that blocks the Wigum loop until python-docx is available.
 
 ## Step 3.5c: Organize Output Directory
 
