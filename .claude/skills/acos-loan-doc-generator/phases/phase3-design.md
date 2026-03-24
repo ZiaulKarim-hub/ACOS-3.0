@@ -21,17 +21,18 @@ If iteration > 1, you also receive feedback from Phase 4.
 3. Call the PPTX generation engine:
    ```bash
    python3 .claude/scripts/data-to-pptx.py \
-     {session_dir}/verified-data.yaml \
-     {design_patterns_path}/design-spec.yaml \
+     {loan_data_path} \
+     {design_spec_path} \
      --template {template_pptx_path} \
      -o {session_dir}/output/{document_slug}.pptx
    ```
+   Where `{loan_data_path}` and `{design_spec_path}` are read from the session manifest.
 4. Run PPTX validation:
    ```bash
    python3 .claude/scripts/validate-pptx.py \
      {session_dir}/output/{document_slug}.pptx \
-     {session_dir}/verified-data.yaml \
-     {design_patterns_path}/design-spec.yaml \
+     {loan_data_path} \
+     {design_spec_path} \
      -o {session_dir}/phase4-validation/pptx-validation.yaml
    ```
 5. Output: `{session_id}/output/{document_slug}.pptx` (no PDF/DOCX for PPTX types)
@@ -48,8 +49,8 @@ subsequent steps. Return to the caller with the PPTX output path.**
    `benchmark_criteria_path`, `loan_data_path`, `loan_data_brief_path`,
    `additional_instructions`, `figures_mode`, `user_figures_path`,
    `target_pages`, `page_budget`, `images`, `image_placement_strategy`
-3. Read the doc-type catalog entry matching this `document_id` from:
-   `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
+3. Read the `catalog_entry` directly from the session manifest (embedded by Phase 0).
+   If missing, fall back to: `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Extract `designer_tone_directive` and `default_sections` (with `full_data_access` flags)
 5. Read iteration number from the session manifest's `current_iteration` field
 6. Read the CSS template from:

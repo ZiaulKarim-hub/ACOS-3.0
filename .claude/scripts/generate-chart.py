@@ -774,17 +774,30 @@ def main():
     parser = argparse.ArgumentParser(description="Generate SVG charts for loan documents")
     parser.add_argument("--type", "-t", required=True, choices=CHART_GENERATORS.keys(),
                         help="Chart type")
-    parser.add_argument("--data", "-d", required=True,
-                        help="JSON data for the chart")
+    parser.add_argument("--data", "-d",
+                        help="JSON data for the chart (inline string)")
+    parser.add_argument("--data-file",
+                        help="Path to JSON data file (alternative to --data)")
     parser.add_argument("--output", "-o", help="Output SVG file (default: stdout)")
     parser.add_argument("--width", type=int, default=None, help="Chart width in px")
     parser.add_argument("--height", type=int, default=None, help="Chart height in px")
     args = parser.parse_args()
 
-    try:
-        data = json.loads(args.data)
-    except json.JSONDecodeError as e:
-        print(f"ERROR: Invalid JSON data: {e}", file=sys.stderr)
+    if args.data_file:
+        try:
+            with open(args.data_file) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"ERROR: Failed to read data file: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.data:
+        try:
+            data = json.loads(args.data)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: Invalid JSON data: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print("ERROR: either --data or --data-file is required", file=sys.stderr)
         sys.exit(1)
 
     kwargs = {}

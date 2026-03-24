@@ -26,6 +26,7 @@ from pathlib import Path
 try:
     from pptx import Presentation
     from pptx.util import Emu
+    from pptx.oxml.ns import qn
 except ImportError:
     print("ERROR: python-pptx required. Install: pip install python-pptx", file=sys.stderr)
     sys.exit(1)
@@ -44,7 +45,7 @@ DEFAULT_MARGIN = 91440
 def detect_font_role(text):
     """Auto-detect content type for font role selection.
     Must match the logic in data-to-pptx.py exactly."""
-    if not text:
+    if text is None or text == "":
         return "label"
     s = str(text).strip()
 
@@ -108,7 +109,17 @@ def normalize_number(s):
 
 class PptxValidator:
     def __init__(self, pptx_path, data_path=None, spec_path=None):
-        self.prs = Presentation(pptx_path)
+        self.pptx_path = pptx_path
+        self._broken = False
+        self._broken_error = None
+        try:
+            self.prs = Presentation(pptx_path)
+        except Exception as e:
+            self._broken = True
+            self._broken_error = str(e)
+            self.prs = None
+            self.findings = []
+            return
         self._data_path_provided = bool(data_path)
         self.data = load_yaml(data_path) if data_path else {}
         self.spec = load_yaml(spec_path) if spec_path else {}
@@ -116,12 +127,22 @@ class PptxValidator:
         self.slide_width = self.prs.slide_width
         self.slide_height = self.prs.slide_height
 
-        # Build color palette from spec
+        # Build color palette from spec (flatten nested dicts)
         self.palette = set()
         if "colors" in self.spec:
-            for hex_val in self.spec["colors"].values():
-                if isinstance(hex_val, str) and hex_val.startswith("#"):
-                    self.palette.add(hex_val.upper().lstrip("#"))
+            color_data = self.spec["colors"]
+            flat_colors = {}
+            for key, val in color_data.items():
+                if isinstance(val, dict):
+                    for k2, v2 in val.items():
+                        flat_colors[k2] = v2
+                else:
+                    flat_colors[key] = val
+            for key, hex_val in flat_colors.items():
+                if isinstance(hex_val, str):
+                    hex_val = hex_val.lstrip("#")
+                    if len(hex_val) == 6:
+                        self.palette.add(hex_val.upper())
 
         # Build expected fonts from spec
         self.expected_fonts = dict(FONT_ROLES)
@@ -189,11 +210,13 @@ class PptxValidator:
                 # Width check: account for monospace being wider
                 margin_emu = (tf.margin_left or 0) + (tf.margin_right or 0)
                 available_width = shape.width - margin_emu
+                if available_width <= 0:
+                    continue
                 for p in tf.paragraphs:
                     for run in p.runs:
                         if not run.text.strip() or not run.font.size:
                             continue
-                        font_pt = run.font.size.pt if run.font.size else 12
+                        font_pt = run.font.size.pt
                         is_mono = run.font.name in ("Courier New", "Consolas")
                         char_width_emu = int(font_pt * (0.62 if is_mono else 0.48) * 12700)
                         text_width = len(run.text) * char_width_emu
@@ -253,7 +276,7 @@ class PptxValidator:
                     n = float(num)
                     for dn in self.data_numbers:
                         try:
-                            if abs(float(dn) - n) < 0.01 * abs(n):
+                            if abs(float(dn) - n) < max(0.01 * abs(n), 0.005):
                                 found = True
                                 break
                         except ValueError:
@@ -319,17 +342,12 @@ class PptxValidator:
                     continue
                 if not shape.text_frame.text.strip():
                     continue
-                try:
-                    anchor = shape.text_frame_anchor
-                    if anchor is None:
-                        self.add_finding(
-                            "anchor_audit", "warning", slide_idx, shape.name,
-                            "text_frame has no vertical_anchor set"
-                        )
-                except (AttributeError, TypeError):
+                bps = shape._element.findall('.//' + qn('a:bodyPr'))
+                has_anchor = any(bp.get('anchor') is not None for bp in bps)
+                if not has_anchor:
                     self.add_finding(
                         "anchor_audit", "warning", slide_idx, shape.name,
-                        "Could not read text_frame_anchor"
+                        "text_frame has no vertical_anchor set"
                     )
 
     def check_margin_audit(self):
@@ -358,6 +376,27 @@ class PptxValidator:
 
     def validate(self):
         """Run all checks and return report."""
+        if self._broken:
+            return {
+                "validation": {
+                    "pptx_path": self.pptx_path,
+                    "slide_count": 0,
+                    "verdict": "FAIL",
+                    "summary": {
+                        "errors": 1,
+                        "warnings": 0,
+                        "info": 0,
+                        "total": 1,
+                    },
+                    "findings": [{
+                        "check": "file_integrity",
+                        "severity": "error",
+                        "slide": 0,
+                        "shape": "",
+                        "message": f"Corrupt or unreadable PPTX: {self._broken_error}",
+                    }],
+                }
+            }
         self.check_boundaries()
         self.check_text_overflow()
         self.check_anchor_audit()
@@ -372,7 +411,7 @@ class PptxValidator:
 
         report = {
             "validation": {
-                "pptx_path": str(self.prs.core_properties.title or ""),
+                "pptx_path": self.pptx_path,
                 "slide_count": len(self.prs.slides),
                 "verdict": "PASS" if not errors else "FAIL",
                 "summary": {

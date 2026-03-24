@@ -11,7 +11,9 @@ You receive a session manifest path as your input. Read it first.
 
 1. Read the session manifest YAML at the path provided
 2. Extract: `examples_path`, `document_id`, `category_id`, `document_title`, `session_id`
-3. Read the doc-type catalog entry matching this `document_id` from:
+3. Read the `catalog_entry` directly from the session manifest (it is embedded there
+   by Phase 0 to avoid reading the full 107KB catalog file). If `catalog_entry` is
+   missing or empty, fall back to reading from:
    `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Store `benchmark_dimensions` and `designer_tone_directive` from the catalog entry
 
@@ -63,6 +65,13 @@ When the example document is a PowerPoint file, extract a reusable template:
 5. Store `template_pptx_path` in the extraction manifest for Phase 3 to use.
 
 **For non-PPTX examples**, skip this step entirely.
+
+## Track B Only Mode (conditional)
+
+**If the session manifest has `phase_1_track_b_only: true`**, this means catalog
+inference (Step 0.2N) already extracted design patterns. Skip Steps 1.2 through 1.5
+entirely (Track A extraction + synthesis). Jump directly to **Step 1.6** (Track B —
+benchmark extraction) using the `design_patterns_path` already in the manifest.
 
 ## Step 1.2: Inventory Examples
 
@@ -390,7 +399,7 @@ For each sample file that was extracted:
    `.acos/loan-doc-generator/design-library/{design_id}/`
 4. Read `.acos/loan-doc-generator/design-library/index.yaml`
 5. Append entry with: design_id, document_id, category_id, label, source_type,
-   date_added, example_count (always 1), sample_file (single path, NOT array),
+   date_added, example_count (always 1), sample_files (["{path}"] — always an array, even for single files),
    extraction_session_id, design_patterns_path, benchmark_criteria_path
 6. Write updated index back
 

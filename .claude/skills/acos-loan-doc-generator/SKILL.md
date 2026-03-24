@@ -198,10 +198,11 @@ Enter selection [1-7, N]:           [<] Back
 ```
   [1]  Payoff Statement / Letter    (outstanding balance, per-diem, payoff terms)
   [2]  Redemption Statement         (investor redemption amounts, timing)
+  [3]  Draw Request                  (construction/renovation disbursement)
   ─────────────────────────────────────────────────────
   [N]  Define a new document type in this category
 
-Enter selection [1-2, N]:           [<] Back
+Enter selection [1-3, N]:           [<] Back
 ```
 
 **Category D — Loan Modifications & Workout:**
@@ -248,6 +249,7 @@ Map selection to `document_id` (format: `{category_id}/{document_slug}`):
 | B | 7 | `closing-admin/guarantee-document` | Guarantee Document |
 | C | 1 | `portfolio-management/payoff-statement` | Payoff Statement / Letter |
 | C | 2 | `portfolio-management/redemption-statement` | Redemption Statement |
+| C | 3 | `portfolio-management/draw-request` | Construction / Renovation Draw Request |
 | D | 1 | `loan-modifications/extension-request` | Extension Request Questionnaire |
 | D | 2 | `loan-modifications/extension-agreement` | Loan Extension Agreement |
 | D | 3 | `loan-modifications/forbearance-agreement` | Forbearance Agreement |
@@ -856,9 +858,10 @@ If found, read the manifest and compare:
 - `manifest.file_count` vs. current file count
 - `manifest.folder_mtime` vs. current latest file mtime
 
-- **Unchanged:** Verify the cached files still exist on disk: check that `loan_data_path`
-  and `loan_data_brief_path` from the cached manifest are readable. If files are missing,
-  treat as cache miss. If files exist, prompt: `"Loan folder analysis found in cache
+- **Unchanged:** Verify the cached files are valid: check that `loan_data_path`
+  and `loan_data_brief_path` from the cached manifest (a) exist on disk, (b) are
+  non-empty (file size > 0), and (c) parse as valid YAML mappings (not null, not a
+  list root). If any check fails, treat as cache miss. If files exist, prompt: `"Loan folder analysis found in cache
   (analyzed {date_analyzed}). Reuse? [Y/n]: "`. If Y: `skip_phase_2 = true`, load paths.
 - **Changed:** Display: `"Loan folder has changed since last analysis. Re-running Phase 2."`. Set `skip_phase_2 = false`.
 - **Not found:** `skip_phase_2 = false`.
@@ -986,6 +989,14 @@ On confirmation:
    category_id: ""                   # e.g., credit-underwriting
    document_id: ""                   # e.g., credit-underwriting/internal-credit-memo
    document_title: ""
+   catalog_entry: {}                 # FULL catalog entry from doc-type-catalog.yaml
+                                     # Embedded here so phase agents read ~1KB from manifest
+                                     # instead of parsing the full 107KB catalog file.
+                                     # Contains: default_sections, benchmark_dimensions,
+                                     # structural_benchmark_items, designer_tone_directive,
+                                     # critical_figures, default_page_range, etc.
+   phase_1_track_b_only: false       # true when catalog inference already extracted design patterns;
+                                     # Phase 1 should skip Track A (Steps 1.2-1.5) and only run Track B
    design_source: "library|new"
    design_label: ""
    design_patterns_path: ""
@@ -1120,9 +1131,13 @@ If `$ARGUMENTS` contains `resume` or `resume {session_id}`:
 
 2. Read the session manifest and checkpoint
 3. Before skipping any phase, verify that all phase output files referenced in
-   `checkpoint.phase_outputs` exist on disk and are non-empty. If any file is missing,
-   downgrade `last_successful_phase` to the phase before the missing output and report:
-   `"Phase {N} outputs not found — will re-run from Phase {N}."`
+   `checkpoint.phase_outputs` (a) exist on disk, (b) are non-empty (size > 0), and
+   (c) parse as valid YAML mappings (not null, not a list root). For YAML files
+   (design-patterns.yaml, benchmark-criteria.yaml, loan-data.yaml), verify the
+   file contains at least one expected top-level key (e.g., `canonical_sections`
+   for design patterns, `criteria` for benchmarks). If any check fails, downgrade
+   `last_successful_phase` to the phase before the missing/corrupt output and report:
+   `"Phase {N} outputs invalid or missing — will re-run from Phase {N}."`
 4. Report: `"Resuming session {session_id} from Phase {N+1}"`
 5. Skip to the appropriate dispatch step below based on `last_successful_phase`
 

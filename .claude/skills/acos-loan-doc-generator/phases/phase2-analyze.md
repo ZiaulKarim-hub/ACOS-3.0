@@ -12,8 +12,8 @@ You receive a session manifest path as your input. Read it first.
 1. Read the session manifest YAML at the path provided
 2. Extract: `loan_folder_path`, `document_id`, `category_id`, `document_title`, `session_id`,
    `design_patterns_path`, `figures_mode`, `user_figures_path`
-3. Read the doc-type catalog entry matching this `document_id` from:
-   `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
+3. Read the `catalog_entry` directly from the session manifest (embedded by Phase 0).
+   If missing, fall back to reading from: `.claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml`
 4. Read the design patterns file at `design_patterns_path`
 5. Extract: canonical sections list + section-specific data expectations
 

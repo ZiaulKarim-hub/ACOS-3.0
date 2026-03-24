@@ -219,7 +219,8 @@ def main():
     parser.add_argument("--config", required=True, help="Path to recommendation-matrix.yaml")
     parser.add_argument("--output", "-o", help="Output YAML path")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--pillar-scores", help="JSON dict of manual pillar sub-factor scores")
+    parser.add_argument("--pillar-scores", help="JSON dict of manual pillar sub-factor scores (inline string)")
+    parser.add_argument("--pillar-scores-file", help="Path to YAML/JSON file with pillar scores (alternative to --pillar-scores)")
     args = parser.parse_args()
 
     config = load_yaml(args.config)
@@ -254,7 +255,18 @@ def main():
 
     # Manual sub-factor scores (provided by the designer agent for qualitative factors)
     manual_scores = {}
-    if args.pillar_scores:
+    if args.pillar_scores_file:
+        try:
+            pillar_data = load_yaml(args.pillar_scores_file)
+            if isinstance(pillar_data, dict):
+                manual_scores = pillar_data
+            else:
+                print(f"ERROR: pillar-scores-file must contain a YAML/JSON dict, got {type(pillar_data).__name__}", file=sys.stderr)
+                sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: Failed to read pillar-scores-file: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.pillar_scores:
         manual_scores = json.loads(args.pillar_scores)
 
     # Compute pillar scores (automated sub-factors from ratios, manual from input)

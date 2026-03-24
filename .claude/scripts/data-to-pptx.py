@@ -86,6 +86,9 @@ def load_design_spec(path):
     if path and Path(path).exists():
         with open(path) as f:
             spec = yaml.safe_load(f) or {}
+        if not isinstance(spec, dict):
+            print(f"WARNING: design spec is not a YAML mapping — using defaults", file=sys.stderr)
+            spec = {}
 
     # --- Slide dimensions (override from spec or use defaults) ---
     spec["_slide_width"] = DEFAULT_SLIDE_WIDTH
@@ -145,7 +148,11 @@ def load_data(path):
         print(f"ERROR: data file not found: {path}", file=sys.stderr)
         sys.exit(2)
     with open(path) as f:
-        data = yaml.safe_load(f)
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            print(f"ERROR: failed to parse YAML in {path}: {e}", file=sys.stderr)
+            sys.exit(2)
     if not data:
         print(f"ERROR: data file is empty or invalid: {path}", file=sys.stderr)
         sys.exit(2)
@@ -178,6 +185,8 @@ class SlideGrid:
         self.v_gap = v_gap
         self.cell_width = (area.width - h_gap * (cols - 1)) // cols
         self.cell_height = (area.height - v_gap * (rows - 1)) // rows
+        self.cell_width = max(self.cell_width, Emu(1))
+        self.cell_height = max(self.cell_height, Emu(1))
 
     def cell(self, col, row):
         """Return (left, top, width, height) for grid cell at (col, row), 0-indexed."""
@@ -209,7 +218,7 @@ def detect_font_role(text):
     Key principle: text that CONTAINS a number is NOT necessarily "number" role.
     "Village 1", "Scenario A -- 6-Month Hold", "& 1722 Mohawk LLC" are display, not number.
     """
-    if not text:
+    if text is None or text == "":
         return "label"
     s = str(text).strip()
 
@@ -274,7 +283,7 @@ def add_paragraph(tf, text, font_size=Pt(12), bold=False, color=None,
     p.alignment = alignment
     p.space_before = space_before
     p.space_after = space_after
-    run = p.runs[0] if p.runs else p.add_run()
+    run = p.add_run()
     run.text = str(text)
     run.font.size = font_size
     run.font.bold = bold
@@ -317,7 +326,7 @@ def check_text_fit(shape):
         for run in p.runs:
             if not run.text.strip() or not run.font.size:
                 continue
-            font_size_pt = run.font.size / 12700  # EMU to pt
+            font_size_pt = run.font.size / 12700  # EMU → pt: 1 pt = 12700 EMU
             is_mono = run.font.name in ("Courier New", "Consolas")
             char_width_pt = font_size_pt * (0.62 if is_mono else 0.48)
             text_width_pt = len(run.text) * char_width_pt
@@ -361,6 +370,9 @@ def clamp_to_slide(shape, slide_width, slide_height, footer_height=FOOTER_HEIGHT
     Adjusts position/size if the shape overflows the slide area.
     Footer height is reserved at the bottom.
     """
+    if shape.width <= 0 or shape.height <= 0:
+        return
+
     max_bottom = slide_height - footer_height
 
     # Clamp right edge
@@ -401,7 +413,6 @@ def clamp_to_slide(shape, slide_width, slide_height, footer_height=FOOTER_HEIGHT
 def add_rect(slide, left, top, width, height, fill_color=None, border_color=None, border_width=Pt(0)):
     """Add a rectangle shape with optional fill and border."""
     shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-    shape.line.fill.background()
     if fill_color:
         shape.fill.solid()
         shape.fill.fore_color.rgb = fill_color
@@ -607,8 +618,8 @@ def data_table(slide, left, top, width, headers, rows, spec=None, col_widths=Non
     table_shape = slide.shapes.add_table(num_rows, num_cols, left, top, width, table_height)
     table = table_shape.table
 
-    # Set column widths
-    if col_widths:
+    # Set column widths (only if count matches to avoid IndexError)
+    if col_widths and len(col_widths) == num_cols:
         for i, w in enumerate(col_widths):
             table.columns[i].width = w
     else:
@@ -647,9 +658,10 @@ def data_table(slide, left, top, width, headers, rows, spec=None, col_widths=Non
             p = cell.text_frame.paragraphs[0]
             p.alignment = PP_ALIGN.LEFT
             run = p.runs[0] if p.runs else p.add_run()
-            run.text = str(cell_text) if cell_text is not None else ""
+            safe_text = str(cell_text) if cell_text is not None else ""
+            run.text = safe_text
             # Use number font for numeric content
-            role = detect_font_role(cell_text)
+            role = detect_font_role(safe_text)
             run.font.name = spec["_fonts"].get(role, "Calibri") if spec else FONT_ROLES.get(role, "Calibri")
             run.font.size = Pt(9)
             run.font.color.rgb = colors["text_dark"]
@@ -961,8 +973,13 @@ def generate_presentation(data_path, spec_path, template_path=None, output_path=
                 build_cover_slide(prs, slide_spec, spec)
             elif slide_type == "content":
                 build_content_slide(prs, slide_spec, data, spec)
+            else:
+                print(f"WARNING: unrecognized slide type '{slide_type}' — skipped", file=sys.stderr)
 
-    # Save
+    # Save — ensure output directory exists
+    output_dir = Path(output_path).parent
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
     prs.save(output_path)
     print(f"Generated: {output_path}")
     return output_path
