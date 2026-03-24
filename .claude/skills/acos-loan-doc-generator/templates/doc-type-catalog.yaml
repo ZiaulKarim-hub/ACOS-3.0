@@ -44,13 +44,15 @@ documents:
         full_data_access: false
       - name: "Collateral Analysis"
         full_data_access: false
-      - name: "Financial Analysis"
+      - name: "Market Analysis"
         full_data_access: false
-      - name: "Exit Strategy"
+      - name: "Financial Analysis"
         full_data_access: false
       - name: "Risk Assessment"
         full_data_access: false
       - name: "Stress Testing"
+        full_data_access: false
+      - name: "Exit Strategy"
         full_data_access: false
       - name: "Mitigants & Strengths"
         full_data_access: false
@@ -67,8 +69,9 @@ documents:
       - "Recommendation Clarity"
       - "Language & Tone"
       - "Exit Strategy Credibility"
+      - "Market Analysis Rigor"
     structural_benchmark_items:
-      - "All 11 required sections are present in order"
+      - "All 12 required sections are present in order"
       - "Table of contents present and accurate"
       - "Single footer/signature block at document end only (STRUCT-001)"
       - "No footer or signature content embedded within section bodies"
@@ -432,9 +435,9 @@ documents:
         required: false
       - key: extension_options
         label: "Extension Options"
-        hint: "e.g., 2x 6-month extensions, subject to conditions"
+        hint: "e.g., Two 6-month extensions at borrower's option. Enter 'None' if not applicable"
         group: "Deal Terms"
-        required: false
+        required: true
       - key: rate_floor
         label: "Interest Rate Floor"
         hint: "e.g., 6.00% (minimum rate if floating)"
@@ -571,6 +574,26 @@ documents:
         label: "Sponsor Name"
         hint: "e.g., John Smith"
         group: "Principals"
+        required: false
+      - key: loan_purpose
+        label: "Loan Purpose / Type"
+        hint: "e.g., Bridge, Construction, Stabilized Bridge, Mezz"
+        group: "Deal Terms"
+        required: true
+      - key: recourse_type
+        label: "Recourse Type"
+        hint: "e.g., Full Recourse, Non-Recourse with Carve-Outs"
+        group: "Deal Terms"
+        required: true
+      - key: interest_reserve
+        label: "Interest Reserve"
+        hint: "e.g., 750000 or None"
+        group: "Deal Terms"
+        required: false
+      - key: ltc
+        label: "LTC (Loan-to-Cost)"
+        hint: "e.g., 72.0%"
+        group: "Financial Metrics"
         required: false
     designer_tone_directive: |
       This is a concise committee presentation — a deal memo. Lead with the
@@ -1629,6 +1652,9 @@ documents:
       - "Draw amount matches budget line items"
       - "Inspection date within 30 days of draw"
       - "All lien waivers accounted for"
+      - "Inspector certification dated within 30 days of draw"
+      - "Retainage reconciliation present"
+      - "All lien waivers accounted for"
     designer_tone_directive: |
       Formal construction draw request. Data-heavy with budget tables, line-item
       breakdowns, and percentage-complete tracking. Clear approval blocks.
@@ -1667,6 +1693,36 @@ documents:
         label: "Lender"
         hint: "e.g., OKOA Capital LLC"
         group: "Entities"
+        required: true
+      - key: "inspector_name"
+        label: "Inspector Name"
+        hint: "e.g., ABC Inspection Services"
+        group: "Inspection"
+        required: true
+      - key: "inspection_date"
+        label: "Inspection Date"
+        hint: "e.g., 2026-03-15"
+        group: "Inspection"
+        required: true
+      - key: "contractor_name"
+        label: "General Contractor"
+        hint: "e.g., Smith Construction LLC"
+        group: "Contractor"
+        required: true
+      - key: "retainage_amount"
+        label: "Retainage Withheld"
+        hint: "e.g., 120000 (typically 10% of draw)"
+        group: "Budget"
+        required: true
+      - key: "approved_change_orders"
+        label: "Approved Change Orders"
+        hint: "e.g., 3 COs totaling $75,000"
+        group: "Budget"
+        required: false
+      - key: "lien_waiver_status"
+        label: "Lien Waiver Status"
+        hint: "e.g., All conditional waivers received"
+        group: "Draw"
         required: true
 
   # ============================================================================
@@ -1859,6 +1915,8 @@ documents:
         full_data_access: true
       - name: "Borrower Obligations"
         full_data_access: false
+      - name: "Guarantor Acknowledgment"
+        full_data_access: false
       - name: "Conditions & Milestones"
         full_data_access: false
       - name: "Termination Events"
@@ -1929,6 +1987,16 @@ documents:
         hint: "e.g., XYZ Capital Partners"
         group: "Parties"
         required: true
+      - key: guarantor_name
+        label: "Guarantor Name"
+        hint: "e.g., John Smith (required if non-recourse with carve-outs)"
+        group: "Parties"
+        required: true
+      - key: forbearance_fee
+        label: "Forbearance Fee"
+        hint: "e.g., 50000 or 0.50% of outstanding balance"
+        group: "Forbearance Terms"
+        required: false
     designer_tone_directive: |
       This is a forbearance agreement — a formal legal document in which the lender
       agrees to temporarily refrain from exercising remedies for a borrower default.
@@ -2019,6 +2087,11 @@ documents:
         hint: "e.g., 123 Main St, City, ST 12345"
         group: "Property"
         required: true
+      - key: guarantor_name
+        label: "Guarantor Name"
+        hint: "e.g., John Smith"
+        group: "Parties"
+        required: false
     designer_tone_directive: |
       This is a formal legal notice — a pre-foreclosure notice. Tone must be
       firm but procedural, not aggressive or inflammatory. The default must be

@@ -46,6 +46,11 @@ top-level `document_id`, `category_id`, or `document_title`. Instead:
    - `environmental` — Phase I/II, environmental assessments
    - `borrower-application` — applications, personal financials
    - `third-party-report` — market studies, engineering, inspections
+   - `rent-roll` — tenant schedules, occupancy rates, lease terms, expiry dates
+   - `operating-statement` — trailing twelve month (T12) income/expense statements
+   - `inspection-report` — property condition reports, PCAs, seismic assessments
+   - `survey` — ALTA surveys, boundary surveys
+   - `construction-docs` — construction contracts, draw schedules, architect certifications
    - `other` — anything else
 3. Log inventory summary (count by type)
 

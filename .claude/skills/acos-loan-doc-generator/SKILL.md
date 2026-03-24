@@ -914,7 +914,7 @@ Display confirmation:
 {if quick:}
 ║  [6] Output To     : {output_destination or "session default"} ║
 {end if}
-║      Output Format : PDF + DOCX                             ║
+║      Output Format : {if catalog_entry.output_format == 'pptx': "PPTX" else: "PDF + DOCX"} ║
 ║      Session ID    : {session_id}                           ║
 ╚══════════════════════════════════════════════════════════════╝
 

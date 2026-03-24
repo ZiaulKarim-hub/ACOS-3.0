@@ -91,6 +91,13 @@ edge_case_weights:
     sponsor_borrower: 0.20
     market_conditions: 0.15
 
+  bridge_loan:
+    description: "For bridge/transitional loans where sponsor execution is the primary risk"
+    property_quality: 0.25
+    financial_metrics: 0.20
+    sponsor_borrower: 0.35
+    market_conditions: 0.20
+
   transitional_property:
     in_place_weight: 0.60
     projected_weight: 0.40
@@ -212,7 +219,19 @@ financial_metrics:
       name: "Stress Test Resilience"
       weight: 0.15
       automated: true
-      stress_scenario: "+200bps rate increase combined with 10% NOI decline"
+      stress_scenarios:
+        - id: "rate_stress"
+          name: "Rate Stress (+200bps)"
+          scenario: "+200bps rate increase combined with 10% NOI decline"
+          applies_to: "stabilized"
+        - id: "lease_up_delay"
+          name: "Lease-Up Delay (Bridge)"
+          scenario: "Stabilization delayed 12 months beyond projected date; evaluate interest reserve coverage and sponsor carry capacity"
+          applies_to: "bridge_transitional"
+        - id: "exit_cap_expansion"
+          name: "Exit Cap Rate Expansion"
+          scenario: "Exit cap rate +75bps above underwritten rate; confirm refinance or sale proceeds cover full loan payoff"
+          applies_to: "bridge_transitional"
       scoring:
         - { range: [9, 10], criteria: "Stressed DSCR > 1.20x" }
         - { range: [7, 8],  criteria: "Stressed DSCR > 1.10x" }
@@ -418,6 +437,11 @@ override_rules:
     rule: "Sponsor has default or foreclosure history"
     action: "cap_at_conditional"
     description: "Cannot be APPROVE with adverse credit history"
+
+  - id: "exit_infeasible"
+    rule: "Exit strategy fails quantitative stress (refinance proceeds < payoff at stressed cap rate OR sale price < payoff at -10% discount)"
+    action: "cap_at_watchlist"
+    description: "Cannot recommend APPROVE if documented exit is quantitatively infeasible under standard stress. Escalate to committee with explicit exit risk disclosure."
 
   # NOTE for bridge/transitional: in-place DSCR may be below 1.0x during lease-up.
   # If loan_purpose is 'bridge' or 'transitional', consider manually overriding

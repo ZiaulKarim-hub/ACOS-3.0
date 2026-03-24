@@ -940,6 +940,49 @@ def build_content_slide(prs, slide_spec, data, spec):
 
 
 # =============================================================================
+# LOAN-DATA FORMAT ADAPTER
+# =============================================================================
+
+def auto_generate_slides_from_loan_data(data, spec):
+    """Generate slide specs from loan-data.yaml format.
+
+    When the PPTX pipeline receives a loan-data.yaml (with financial_figures,
+    entities, data_by_section) instead of a pre-structured slides list, this
+    function synthesizes a minimal slide deck that the Phase 3 agent can
+    populate programmatically.
+    """
+    slides = []
+
+    # Cover slide
+    title = data.get("deal_name", data.get("property_name", "Loan Participation Offering"))
+    slides.append({
+        "type": "cover",
+        "title": title,
+        "subtitle": data.get("document_title", ""),
+        "date": data.get("date", ""),
+    })
+
+    # Investment Overview slide from financial_figures
+    if data.get("financial_figures") or data.get("entities"):
+        slides.append({
+            "type": "content",
+            "title": "Investment Overview",
+            "components": []  # Phase 3 agent fills these programmatically
+        })
+
+    # One slide per section from data_by_section
+    if data.get("data_by_section"):
+        for section_name, section_data in data["data_by_section"].items():
+            slides.append({
+                "type": "content",
+                "title": section_name,
+                "components": []
+            })
+
+    return slides
+
+
+# =============================================================================
 # MAIN ORCHESTRATOR
 # =============================================================================
 
@@ -964,17 +1007,22 @@ def generate_presentation(data_path, spec_path, template_path=None, output_path=
     # Build slides from data structure
     slides_data = data.get("slides", [])
     if not slides_data:
-        # If no explicit slides, build a cover from top-level data
-        build_cover_slide(prs, data, spec)
-    else:
-        for slide_spec in slides_data:
-            slide_type = slide_spec.get("type", "content")
-            if slide_type == "cover":
-                build_cover_slide(prs, slide_spec, spec)
-            elif slide_type == "content":
-                build_content_slide(prs, slide_spec, data, spec)
-            else:
-                print(f"WARNING: unrecognized slide type '{slide_type}' — skipped", file=sys.stderr)
+        # Auto-generate from loan-data.yaml format (financial_figures, data_by_section, entities)
+        if data.get("financial_figures") or data.get("data_by_section") or data.get("entities"):
+            slides_data = auto_generate_slides_from_loan_data(data, spec)
+        else:
+            # Last resort: single cover slide
+            build_cover_slide(prs, data, spec)
+
+    # Iterate over slides (works for both explicit and auto-generated slide lists)
+    for slide_spec in slides_data:
+        slide_type = slide_spec.get("type", "content")
+        if slide_type == "cover":
+            build_cover_slide(prs, slide_spec, spec)
+        elif slide_type == "content":
+            build_content_slide(prs, slide_spec, data, spec)
+        else:
+            print(f"WARNING: unrecognized slide type '{slide_type}' — skipped", file=sys.stderr)
 
     # Save — ensure output directory exists
     output_dir = Path(output_path).parent

@@ -40,6 +40,23 @@ If iteration > 1, you also receive feedback from Phase 4.
 **After PPTX pipeline completes, STOP. Do not continue to Step 3.1 or any
 subsequent steps. Return to the caller with the PPTX output path.**
 
+**PPTX Wigum Loop (iteration > 1):**
+
+If Phase 4 PPTX validation returns FAIL, the Wigum loop restarts Phase 3.
+For PPTX types on iteration > 1:
+
+1. Read the Phase 4 PPTX validation report at:
+   `{session_dir}/phase4-validation/pptx-validation.yaml`
+2. For each finding with severity "error":
+   - Boundary violations: adjust component positions/sizes in the data YAML
+   - Data integrity failures: correct the data values
+   - Font/color compliance: update the design spec or component styling
+3. Regenerate by calling data-to-pptx.py again with corrected inputs
+4. Re-validate with validate-pptx.py
+
+This is a full regeneration, not a targeted fix -- PPTX generation is atomic.
+Maximum iterations controlled by `config.max_iterations` (default 3).
+
 **For non-PPTX types**, continue with the standard HTML->PDF+DOCX pipeline below.
 
 ## Step 3.1: Load Context
