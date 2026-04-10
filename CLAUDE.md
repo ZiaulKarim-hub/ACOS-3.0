@@ -5,6 +5,28 @@ ACOS is a multi-agent orchestration system for software development. It implemen
 a planning hierarchy (Vision > Epic > Story > Slice), an independence-walled
 review system, and cross-project learning.
 
+## Confirmation Gate (MANDATORY)
+Before executing ANY instruction that requires interpretation, understanding, or
+summarization, Claude MUST:
+
+1. **Pause** — Do NOT start executing (no tool calls, no file reads, no agent spawns).
+2. **Restate** — Write a plain-language summary of what you understood the user wants.
+3. **Ask** — "Did I understand this correctly?" and wait for explicit confirmation.
+4. **Only after "yes"** — Proceed with execution.
+
+If the user corrects your understanding, restate the corrected version and ask again.
+
+**Exception:** If the instruction is small, unambiguous, and universally understood
+(e.g., "read that file", "show git status", "what's in this directory"), execute
+immediately without restating. The gate applies when there is any room for
+misinterpretation — multi-step tasks, vague instructions, domain-specific requests,
+or anything where your understanding of the intent could differ from what the user
+actually meant.
+
+**Rule of thumb:** If you need to make assumptions or inferences about what the user
+wants, you MUST confirm those assumptions first. If the instruction maps 1:1 to a
+concrete action with no ambiguity, just do it.
+
 ## Key Principles
 - The Architect plans and orchestrates. Reviewers verify independently.
 - The Independence Wall: Reviewers NEVER see Architect decisions. The Architect
@@ -88,6 +110,7 @@ Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomi
 - **loan-doc-phase34** — Phase 3+4 orchestrator for loan document generator (design + validation + Wigum loop).
 - **fin-stmt-sandbox** — Sandbox orchestrator for financial statement preparation (independent GAAP preparation).
 - **fin-stmt-accountant** — Primary Accountant for adversarial reconciliation (Wigum loop, never gives numbers).
+- **electronics-expert** — Master electronics diagnostics agent. Analyzes circuit boards, guides fault isolation, provides repair instructions.
 
 ## Review Process
 Reviews are assigned programmatically by .claude/scripts/assign-reviewers.sh

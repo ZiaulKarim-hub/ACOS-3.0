@@ -21,7 +21,7 @@ This skill initializes ACOS in any directory that hasn't been set up yet, then r
 Run the ACOS bootstrap script to ensure the current project directory is initialized:
 
 ```bash
-bash "$(find ~ -path "*/ACOS 3.0/.claude/scripts/acos-bootstrap.sh" -maxdepth 5 2>/dev/null | head -1)"
+bash "$(find ~ -path "*/ACOS 3.0/.claude/scripts/acos-bootstrap.sh" -maxdepth 7 2>/dev/null | head -1)"
 ```
 
 If the script path is already known (e.g., from `.acos/config/project.yaml` → `acos_source` field), use that directly:

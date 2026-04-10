@@ -226,6 +226,7 @@ CORE_SKILLS=(
   "acos-oracle-protocol"
   "acos-model-change"
   "acos-update"
+  "acos-electronics-repair"
 )
 
 # Tier 2: Universal methodology — ALWAYS linked (useful for any project)
@@ -294,7 +295,7 @@ log ""
 # STEP 1: Create data directories
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[1/6] Creating data directories...${NC}"
+log "${BOLD}[1/8] Creating data directories...${NC}"
 
 DATA_DIRS=(
   ".acos/config"
@@ -332,7 +333,7 @@ log ""
 # STEP 2: Symlink agents (all agents — always needed)
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[2/6] Symlinking agents...${NC}"
+log "${BOLD}[2/8] Symlinking agents...${NC}"
 
 mkdir -p "$PROJECT_DIR/.claude/agents"
 
@@ -375,7 +376,7 @@ log ""
 # STEP 3: Symlink SELECTED skills only
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[3/6] Symlinking skills (selective)...${NC}"
+log "${BOLD}[3/8] Symlinking skills (selective)...${NC}"
 
 mkdir -p "$PROJECT_DIR/.claude/skills"
 
@@ -433,7 +434,7 @@ log ""
 # STEP 4: Symlink scripts (all scripts — enforcement infrastructure)
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[4/6] Symlinking scripts...${NC}"
+log "${BOLD}[4/8] Symlinking scripts...${NC}"
 
 mkdir -p "$PROJECT_DIR/.claude/scripts"
 
@@ -474,7 +475,7 @@ log ""
 # STEP 5: Merge settings.local.json (hooks)
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[5/6] Configuring hooks...${NC}"
+log "${BOLD}[5/8] Configuring hooks...${NC}"
 
 SETTINGS_FILE="$PROJECT_DIR/.claude/settings.local.json"
 ACOS_SETTINGS="$ACOS_ROOT/.claude/settings.local.json"
@@ -599,7 +600,7 @@ log ""
 # STEP 6: Copy review-rules.yaml & generate project.yaml
 # ═══════════════════════════════════════════════════════════════════════════
 
-log "${BOLD}[6/6] Generating project configuration...${NC}"
+log "${BOLD}[6/8] Generating project configuration...${NC}"
 
 # Copy review-rules/ directory (per-reviewer trigger rules, editable per-project)
 if [[ ! -d "$PROJECT_DIR/review-rules" ]]; then
@@ -739,7 +740,77 @@ log_ok "Project configuration ready"
 log ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STEP 7: Update .gitignore
+# STEP 7: Inject Confirmation Gate into project CLAUDE.md
+# ═══════════════════════════════════════════════════════════════════════════
+
+log "${BOLD}[7/8] Ensuring Confirmation Gate in CLAUDE.md...${NC}"
+
+CLAUDE_MD="$PROJECT_DIR/CLAUDE.md"
+GATE_MARKER="## Confirmation Gate (MANDATORY)"
+
+if [[ -f "$CLAUDE_MD" ]] && grep -qF "$GATE_MARKER" "$CLAUDE_MD" 2>/dev/null; then
+  log_ok "Confirmation Gate already present in CLAUDE.md"
+else
+  GATE_SECTION=$(cat <<'GATE_EOF'
+
+## Confirmation Gate (MANDATORY)
+Before executing ANY instruction that requires interpretation, understanding, or
+summarization, Claude MUST:
+
+1. **Pause** — Do NOT start executing (no tool calls, no file reads, no agent spawns).
+2. **Restate** — Write a plain-language summary of what you understood the user wants.
+3. **Ask** — "Did I understand this correctly?" and wait for explicit confirmation.
+4. **Only after "yes"** — Proceed with execution.
+
+If the user corrects your understanding, restate the corrected version and ask again.
+
+**Exception:** If the instruction is small, unambiguous, and universally understood
+(e.g., "read that file", "show git status", "what's in this directory"), execute
+immediately without restating. The gate applies when there is any room for
+misinterpretation — multi-step tasks, vague instructions, domain-specific requests,
+or anything where your understanding of the intent could differ from what the user
+actually meant.
+
+**Rule of thumb:** If you need to make assumptions or inferences about what the user
+wants, you MUST confirm those assumptions first. If the instruction maps 1:1 to a
+concrete action with no ambiguity, just do it.
+GATE_EOF
+)
+
+  if [[ -f "$CLAUDE_MD" ]]; then
+    # Prepend the gate section right after the first heading line (or at the top)
+    # We insert after the first line that starts with "# " (the project title)
+    FIRST_HEADING_LINE=$(grep -n '^# ' "$CLAUDE_MD" | head -1 | cut -d: -f1)
+    if [[ -n "$FIRST_HEADING_LINE" ]]; then
+      # Insert after the first heading
+      {
+        head -n "$FIRST_HEADING_LINE" "$CLAUDE_MD"
+        echo "$GATE_SECTION"
+        echo ""
+        tail -n +"$((FIRST_HEADING_LINE + 1))" "$CLAUDE_MD"
+      } > "$CLAUDE_MD.tmp" && mv "$CLAUDE_MD.tmp" "$CLAUDE_MD"
+    else
+      # No heading found — prepend at top
+      {
+        echo "$GATE_SECTION"
+        echo ""
+        cat "$CLAUDE_MD"
+      } > "$CLAUDE_MD.tmp" && mv "$CLAUDE_MD.tmp" "$CLAUDE_MD"
+    fi
+    log_ok "Injected Confirmation Gate into existing CLAUDE.md"
+  else
+    # No CLAUDE.md exists — create one with just the gate
+    cat > "$CLAUDE_MD" << NEWCLAUDE_EOF
+# $(basename "$PROJECT_DIR")
+$GATE_SECTION
+NEWCLAUDE_EOF
+    log_ok "Created CLAUDE.md with Confirmation Gate"
+  fi
+fi
+log ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STEP 8: Update .gitignore
 # ═══════════════════════════════════════════════════════════════════════════
 
 GITIGNORE="$PROJECT_DIR/.gitignore"

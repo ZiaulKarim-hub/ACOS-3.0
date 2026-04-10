@@ -230,10 +230,17 @@ Please provide the path to the loan folder:
   [absolute or relative path]
 ```
 
-Validate the path exists and list its contents for the user to confirm.
-If the folder contains 0 files, inform the user: "The specified folder is empty.
-Please provide a path to a folder containing loan documents." and re-prompt for
-a different path.
+**Path validation (MANDATORY):**
+1. Resolve the path to absolute using realpath
+2. Verify it exists and is a directory (not a file)
+3. **REJECT** paths containing `..` traversal sequences
+4. **REJECT** paths pointing to system directories (`/etc/`, `/usr/`, `/var/`, `~/.ssh/`)
+5. **REJECT** symlinks whose target resolves outside the user's home directory
+6. Verify the folder contains at least 1 file
+
+If validation fails, explain why and re-prompt. If the folder contains 0 files,
+inform the user: "The specified folder is empty. Please provide a path to a
+folder containing loan documents." and re-prompt.
 
 ```
 Found N files in the loan folder:
@@ -322,6 +329,15 @@ Display all selections:
 ### Step 0.8: Session Setup
 
 After confirmation, execute these setup steps:
+
+**0. Verify .gitignore protection (MANDATORY):**
+Check that `.acos/financial-statement/sessions/` is in `.gitignore`. Session directories
+contain extracted financial data (dollar amounts, loan balances, property valuations) from
+client loan folders. If not gitignored, add it immediately:
+```
+.acos/financial-statement/sessions/
+```
+This prevents accidental commit of confidential client financial data via `git add .`.
 
 **1. Generate session ID:**
 ```

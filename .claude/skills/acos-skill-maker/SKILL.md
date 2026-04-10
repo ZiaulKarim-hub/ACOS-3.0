@@ -26,8 +26,12 @@ Invoke `/acos-skill-maker` when:
 
 **NEVER read, reference, or write to these paths:**
 - `review-rules/` — ACOS restricted (Independence Wall)
-- `.claude/agents/` — Agent definitions require human approval
 - `.acos/config/oracle.yaml` — Oracle configuration is human-editable only
+
+**Read-only access (verification only, never modify):**
+- `.claude/agents/` — May read to verify agent definitions exist (Phase 5), but never create or modify agent files. Agent definitions require human approval.
+
+**Coexistence with `acos-create-skill`:** A global skill `acos-create-skill` exists at `~/.claude/skills/`. It is a lightweight methodology guide that auto-triggers. This skill (`acos-skill-maker`) is the heavy builder — explicit invocation only, creates all files. Use `acos-create-skill` for quick guidance, `/acos-skill-maker` when you need production-ready output.
 
 If the user's specification involves these areas, explain the restriction and refuse.
 
@@ -78,9 +82,9 @@ Read the description of any skill with a similar name or domain. Overlap means >
 
 Validate the skill name before anything else. The name MUST match:
 ```
-^[a-z][a-z0-9-]{1,49}$
+^[a-z][a-z0-9]*(-[a-z0-9]+)*$
 ```
-Rules: lowercase letters, digits, and hyphens only. No dots, slashes, backslashes, spaces, or underscores. 2–50 characters. Must start with a letter.
+Rules: lowercase letters, digits, and hyphens only. No dots, slashes, backslashes, spaces, or underscores. 2–50 characters. Must start with a letter. No trailing hyphens, no consecutive hyphens (`--`). Each hyphen-separated segment must contain at least one character.
 
 Prefix with `acos-` only for ACOS orchestration skills. Use kebab-case for all names.
 
@@ -190,7 +194,7 @@ Script requirements:
 - If external packages are needed (e.g., openpyxl), document the dependency in the skill's SKILL.md under a "Dependencies" section
 - Make scripts executable if they're meant to be run directly
 
-**Rollback on failure:** If Step 3 or Step 4 fails after Step 2 succeeded, delete the entire skill directory and report: "Skill creation failed at [step]. The partial files have been cleaned up. Error: [details]."
+**Rollback on failure:** If Step 3 or Step 4 fails after Step 2 succeeded, inform the user: "Skill creation failed at [step]. A partial skill exists at `{skill-dir}/`. Please delete this directory manually or I can overwrite it on the next attempt. Error: [details]." Do NOT leave a broken skill without warning the user.
 
 ### Phase 5: Verification
 

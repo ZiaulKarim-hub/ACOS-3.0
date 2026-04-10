@@ -1,0 +1,168 @@
+timestamp: "2026-03-30T15:43:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session focused on an entirely different domain from the ACOS framework itself:
+  building a professional 18-slide lender pitch deck (PPTX) for LKCap (Lamming Klein Capital)
+  to market the Ascent Park City Senior Loan Offering — an ~$83M construction financing
+  package for a 120-unit ski-in/ski-out condo-hotel in Park City, UT. LKCap is purchasing
+  the distressed asset from Okoa Capital at $30.8M after foreclosure (Phil Wolfgramm,
+  the defaulting developer, has been removed from all materials). The deck went through
+  multiple structural rebuilds — portrait to landscape, content rewrites, capital stack
+  corrections, C-PACE consolidation, font overhaul — and is not yet at final polish quality
+  per the user's boss. Separately, the ACOS framework received 5 commits since the last
+  handoff (Mar 23) that landed the PPTX generation pipeline, data-to-pptx.py, validate-pptx.py,
+  and closed 56+ swarm review findings across three remediation passes.
+
+current_work:
+  slice_id: "N/A — non-ACOS session (external deliverable)"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+
+completed_this_session:
+  # --- Ascent Park City Pitch Deck ---
+  - "Portrait-to-landscape conversion: deck rebuilt from 8.5x11 to 10\"x5.625\" 16:9 format"
+  - "Full LKCap rebrand: all Okoa/Wolfgramm sponsor references removed; LKCap (Cam Lamming + Alex Klein) set as sponsor throughout"
+  - "Phil Wolfgramm explicitly removed from deck — he is the defaulting developer, not a selling point"
+  - "18-slide structure completed: cover, investment highlights, property overview, collateral summary, capital stack, market overview, construction status, business plan (multi-slide), unit mix, financial projections, debt service, exit strategy, appendix"
+  - "Capital stack chart rebuilt with correct 72% proportional scaling: Senior $27M / C-PACE $30M / Reserves $8M / Construction $18M / LKCap Equity $15M = $98M total funded, against $116M appraised value (72% LTV)"
+  - "C-PACE line consolidated from two separate $25M+$5M entries to a single $30M line (Nuveen Green Capital)"
+  - "Business plan slides redesigned with timeline strips and metric cards"
+  - "All deck headers changed from Courier New to Georgia per design system"
+  - "Font audit completed: Georgia 162 instances, Calibri 98 instances, Courier New 11 instances (target: eliminate remaining Courier New from body copy)"
+  - "Presales marked TBD across unit types — data wiped in foreclosure, pending new info from boss"
+
+  # --- ACOS Framework commits (already committed, background context) ---
+  - "commit 1ba46db: Added native PPTX generation pipeline — data-to-pptx.py (1049 lines) + validate-pptx.py (457 lines) + component library and validation"
+  - "commit 4b40471: Rewrote PPTX font role detection — digit-ratio heuristic replacing naive contains-digit check"
+  - "commit 9783b58: Remediated 56 swarm review findings + 7 PPTX defects across loan doc generator"
+  - "commit b5ab8a0: Round-2 remediation — 30+ fixes across data-to-pptx.py, validate-pptx.py, generate-chart.py, compute-recommendation-score.py"
+  - "commit deddb4e: Closed all 13 remaining review items — domain logic, PPTX pipeline, UX improvements"
+
+files_modified:
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/Foreclosure Process/DRAFT Ascent Park City - Lender Pitch Deck 20260327.pptx"
+    changes: "Primary working deck — last saved 2026-03-27 17:33. 31.6MB. This is the current in-progress version."
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/Foreclosure Process/ZMH Draft Ascent Preso - Lender Takeout 20260327.pptx"
+    changes: "ZMH-prefixed draft — 44.5MB, last saved 2026-03-27 11:52. May be a prior iteration."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py"
+    changes: "COMMITTED (deddb4e) — 1049 lines, 40.6KB. PPTX generation script with auto_generate_slides_from_loan_data(), component library, Wigum loop support."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/validate-pptx.py"
+    changes: "COMMITTED (b5ab8a0) — 457 lines. PPTX validation script with XML-based anchor audit, nested color flattening, corrupt PPTX catch."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-financial-statement/SKILL.md"
+    changes: "UNCOMMITTED MODIFICATION — tracked file with uncommitted changes (per git status). Core skill file for financial statement prep."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-skill-maker/SKILL.md"
+    changes: "UNCOMMITTED MODIFICATION — tracked file with uncommitted changes (per git status)."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-file-converter/SKILL.md"
+    changes: "UNTRACKED NEW SKILL — 17.4KB, created 2026-03-24. Not yet committed."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/security-review-ultimate/SKILL.md"
+    changes: "UNTRACKED NEW SKILL — 45.7KB, created 2026-03-26. 12-specialist security swarm (quick/standard/deep modes). Not yet committed."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/ascent_park_city_taxes.csv"
+    changes: "UNTRACKED — tax data CSV for Ascent Park City. Likely generated during session research for the deck."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/scrape_summit_taxes.py"
+    changes: "UNTRACKED — Python script to scrape Summit County tax data. Used to pull property tax info for the deck."
+
+decisions_made:
+  - "LKCap is the sponsor, NOT Okoa or Wolfgramm. Okoa's role is as the existing senior lender being taken out. Phil Wolfgramm is explicitly absent from all materials."
+  - "Capital stack total: ~$98M funded against $116M appraised stabilized value = 72% LTV (appraisal method). LKCap underwrites to $134.5M ($102M condos at $850K/unit + $35M hotel) = 52% LTV."
+  - "C-PACE is a single $30M tranche (Nuveen Green Capital), not split. The prior $25M+$5M split was an artifact."
+  - "Presales data is TBD — all prior presale contracts were wiped in the foreclosure process. Section to be updated once user's boss provides new unit info."
+  - "Design system: sage green palette (#455D52 primary), Georgia/Calibri tri-font (eliminate Courier New from body), 10\"x5.625\" landscape, FROST metric cards on SAGE_DARK headers."
+  - "Headers font: Georgia only. Body text: Calibri. Remaining 11 Courier New instances are residual and should be eliminated."
+  - "All ACOS-level PPTX work: font role detection uses digit-ratio heuristic (not contains-digit). Slide generation uses {loan_data_path} and {design_spec_path} from manifest."
+
+blockers:
+  - "DECK QUALITY: User's boss has not yet reviewed slides 8-10 (last 3 content slides). Boss feedback pending — deck 'still doesn't look professional enough' relative to LKCap PDF reference."
+  - "PRESALE DATA: Average suggested unit prices and presale counts are wrong/TBD — user waiting for corrected data from boss. Until this arrives, slides showing presale absorption/pricing have placeholder TBD values."
+  - "UNIT INFO: Updated unit mix or pricing info may be pending from boss. Current data: Type A 351sf/19 units, Type B 451sf/64, Type C 383sf/18, Type D 628sf/18 = 120 total, avg 450sf."
+  - "TWO UNCOMMITTED FILES IN ACOS REPO: acos-financial-statement/SKILL.md and acos-skill-maker/SKILL.md have uncommitted tracked changes."
+  - "TWO UNTRACKED SKILLS: acos-file-converter/ (17.4KB) and security-review-ultimate/ (45.7KB) are new skills not yet committed to the repo."
+  - "UNTRACKED SCRIPTS: ascent_park_city_taxes.csv and scrape_summit_taxes.py are in the ACOS repo root but are Ascent-specific artifacts — should either be moved to the loan folder or gitignored."
+
+next_actions:
+  - "DECK: Wait for boss feedback on slides 8-10 before finalizing. Also waiting for corrected presale data and unit pricing from boss."
+  - "DECK: Address remaining 11 Courier New instances — convert all body/data text to Calibri per design system."
+  - "DECK: Polish pass to match LKCap PDF quality standard. Reference file: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/Foreclosure Process/LK Cap Ascent Preso Dec 2025.pdf"
+  - "DECK: Once presale data arrives, populate unit pricing slide and absorption schedule with real numbers."
+  - "ACOS: Commit uncommitted changes — acos-financial-statement/SKILL.md, acos-skill-maker/SKILL.md, acos-file-converter/ skill, security-review-ultimate/ skill."
+  - "ACOS: Move or gitignore ascent_park_city_taxes.csv and scrape_summit_taxes.py from ACOS repo root — they are Okoa project artifacts, not framework files."
+  - "ACOS: Run /acos-complete to archive the three stale active handoffs (Mar 14, Mar 16, Mar 23) before starting the next framework development session."
+
+context_for_next_session: |
+  THE ASCENT PARK CITY PITCH DECK (primary ongoing deliverable)
+
+  This is a real-money lender presentation being built for Lamming Klein Capital (LKCap),
+  led by Cam Lamming and Alex Klein. LKCap is taking over a distressed condo-hotel
+  construction project in Park City, UT after Okoa Capital foreclosed on the original
+  developer, Phil Wolfgramm (who must NEVER appear in the deck — he's the defaulting party).
+
+  The deal structure:
+  - LKCap purchases Okoa's position at $30.8M (Okoa has $15M preferred equity in the asset)
+  - LKCap brings $15M preferred equity and is raising an ~$83M senior construction loan
+  - Full capital stack: Senior $27M + C-PACE $30M (Nuveen Green Capital) + Reserves $8M
+    + Construction $18M + LKCap Equity $15M = ~$98M
+  - Collateral: 1st TD on Ascent Park City (120-unit ski-in/ski-out condo-hotel)
+  - Appraised stabilized value: $116M (Dec 2025 appraisal) → LTV 72% (appraisal basis)
+  - LKCap underwrites: $102M condos ($850K/unit avg x 120) + $35M hotel = $134.5M → 52% LTV
+  - Construction: 85% complete, $15M LKCap completion budget, 8-12 months to Certificate of Occupancy
+  - Unit mix: Type A 351sf (19 units), Type B 451sf (64 units), Type C 383sf (18 units),
+    Type D 628sf (18 units) = 120 total, avg ~450sf
+
+  The deck as of last save (2026-03-27 17:33):
+  - File: DRAFT Ascent Park City - Lender Pitch Deck 20260327.pptx (31.6MB)
+  - Location: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/
+    1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/Foreclosure Process/
+  - 18 slides, landscape 10"x5.625", sage green palette (#455D52), Georgia headers / Calibri body
+  - Presale data is intentionally TBD — wiped in foreclosure, waiting for updated info from boss
+  - Slides 8-10 have not yet been reviewed by boss
+
+  Quality benchmark: The boss wants the deck to match the LKCap PDF reference deck:
+  LK Cap Ascent Preso Dec 2025.pdf (same folder, 3.1MB)
+
+  KEY SOURCE DOCUMENTS (all in loan folder):
+  - EB5 Loan Memo: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/
+    1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/LK Cap Takeover Scenario/
+    Ascent Park City - EB5 Loan Memo Executive Summary.docx_compressed (1).pdf
+  - Project Model (XLSX): The Ascent Park City Project Model Overview 2-2026bp[12].xlsx
+    (at root of loan folder AND in LK Cap Takeover Scenario/Ascent-Waldorf-Docs/)
+  - Condo Pricing: Ascent Condo Pricing 12.27.2024.xlsx (at root of loan folder)
+  - December 2025 Appraisal: Ascent Appraisal December 2025.pdf (at root of loan folder, 5.5MB)
+  - Balance to Finish Budget: Ascent Balance to Finish Budget Final 3.28.26 - Verity notes (3).xlsx
+    (Foreclosure Process folder, updated 2026-03-28)
+  - New Loan Pro Forma: Ascent - New Loan Pro Forma.xlsx (Foreclosure Process folder, updated 2026-03-30)
+  - Loan Memo DOCX: 20260328 Ascent Park City - Loan Memo Executive Summary.docx (41.6MB)
+
+  ACOS FRAMEWORK STATE
+
+  Since Mar 23 handoff, 5 commits landed (all PPTX pipeline work):
+  - PPTX generation pipeline: data-to-pptx.py (1049 lines) + validate-pptx.py (457 lines)
+  - Three rounds of swarm review remediation (56 + 30 + 13 findings closed)
+  - Font role detection heuristic improved
+
+  Remaining uncommitted ACOS work:
+  - acos-financial-statement/SKILL.md and acos-skill-maker/SKILL.md have tracked but
+    uncommitted modifications
+  - Two new untracked skills need committing: acos-file-converter/ (17.4KB) and
+    security-review-ultimate/ (45.7KB — 12-specialist security swarm, quick/standard/deep modes)
+  - ascent_park_city_taxes.csv and scrape_summit_taxes.py are in the ACOS repo root
+    by accident — they're Okoa project files
+
+reconstruction_sources:
+  - "git log --oneline -20 (5 commits since last handoff, all PPTX pipeline)"
+  - "git status --short (identified uncommitted tracked changes and untracked files)"
+  - "git diff --stat HEAD~5..HEAD (files changed across last 5 commits)"
+  - "git show --stat deddb4e b5ab8a0 9783b58 4b40471 1ba46db (commit detail for all 5 commits)"
+  - "memory/handoffs/2026-03-23-emergency-handoff.yaml (prior session context, full read)"
+  - "ls /Foreclosure Process/ (identified PPTX deck files, dates, sizes)"
+  - "ls /LK Cap Takeover Scenario/ (EB5 memo, supporting docs, New Loan Pro Forma)"
+  - "ls /Wolfgramm_Ascent_Beehive - Waldorf (30M)/ (appraisal, condo pricing, project model)"
+  - "find ... -name '*EB5*' -o -name '*Condo*Pricing*' ... (source document discovery)"
+  - "ls .claude/skills/acos-file-converter/ (untracked skill, 17.4KB SKILL.md)"
+  - "ls .claude/skills/security-review-ultimate/ (untracked skill, 45.7KB SKILL.md, created Mar 26)"
+  - "head -30 .claude/skills/security-review-ultimate/SKILL.md (skill description and scope)"
+  - "wc -l data-to-pptx.py validate-pptx.py (line counts for PPTX scripts)"
+  - "ls -la .acos/evidence/ (evidence dates: Mar 16, 22, 23, 24 — most recent Mar 24)"
+  - "date -u (current timestamp: 2026-03-30T15:43:00Z)"
+  - "User-provided context (inline, authoritative): deal structure, capital stack, unit mix, slide status, design system"
