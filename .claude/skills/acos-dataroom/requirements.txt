@@ -1,0 +1,35 @@
+# acos-dataroom — Python dependencies
+#
+# Extraction libraries are imported lazily by scripts/extract_text.py and
+# scripts/ocr_and_vision.py — each one is optional, and an unavailable
+# library degrades that file type to "unable to extract" rather than
+# crashing the run. Installing all of them gives full coverage.
+#
+# Tested baseline: Python 3.11+ (developed against Python 3.14, macOS).
+# Install with:
+#     pip install --user --break-system-packages -r requirements.txt
+# (the --break-system-packages flag is needed on Homebrew Pythons that
+#  treat user-site installs as PEP 668 violations.)
+
+# ---- PDF extraction (Phase 4) ----
+pdfplumber>=0.10           # primary native PDF text extractor
+pypdf>=4.0                 # fallback PDF reader
+
+# ---- Office formats (Phase 4) ----
+python-docx>=1.0           # .docx native extraction
+python-pptx>=0.6           # .pptx native extraction (incl. embedded images)
+openpyxl>=3.1              # .xlsx native extraction + workbook builders
+
+# ---- Images + OCR (Phase 4) ----
+Pillow>=10.0               # image I/O for OCR pipeline + bridge requests
+pytesseract>=0.3.10        # Tesseract OCR wrapper (requires system tesseract binary)
+
+# ---- PDF page rendering for OCR/vision (Phase 4) ----
+# Either renderer works; ocr_and_vision.py tries pdf2image first, then PyMuPDF.
+pdf2image>=1.16            # preferred; needs system poppler binary
+PyMuPDF>=1.23              # fallback; pure-Python renderer (no system dep)
+
+# ---- System binaries (NOT installed by pip) ----
+# tesseract  — OCR engine. macOS: `brew install tesseract`
+# poppler    — PDF rendering for pdf2image. macOS: `brew install poppler`
+#              (skip if relying on PyMuPDF instead)

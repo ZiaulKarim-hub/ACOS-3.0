@@ -146,7 +146,11 @@ def verify_claim(claim_text: str, snippet_text: str, source_text: str) -> dict[s
     missing_numbers = claim_numbers - source_numbers
     numbers_ok = not missing_numbers
 
-    if overlap_ratio >= 0.80 and numbers_ok:
+    paraphrase_threshold = float(
+        utils.load_config().get("paraphrase_overlap_threshold", 0.80)
+    )
+
+    if overlap_ratio >= paraphrase_threshold and numbers_ok:
         confidence = 0.70 + 0.20 * overlap_ratio
         return {
             "status": "verified",
@@ -154,7 +158,8 @@ def verify_claim(claim_text: str, snippet_text: str, source_text: str) -> dict[s
             "confidence": round(confidence, 2),
             "explanation": (
                 f"Claim text appears to be a paraphrase of source. "
-                f"{len(overlap)}/{len(claim_tokens)} tokens ({overlap_ratio:.0%}) match. "
+                f"{len(overlap)}/{len(claim_tokens)} tokens ({overlap_ratio:.0%}) match "
+                f"(threshold: {paraphrase_threshold:.0%}). "
                 f"All numbers in claim present in source."
             ),
             "missing_tokens": missing_tokens[:10],
@@ -180,7 +185,7 @@ def verify_claim(claim_text: str, snippet_text: str, source_text: str) -> dict[s
         "confidence": round(overlap_ratio, 2),
         "explanation": (
             f"Only {len(overlap)}/{len(claim_tokens)} ({overlap_ratio:.0%}) of claim tokens "
-            f"appear in source. Threshold is 80% for paraphrase acceptance."
+            f"appear in source. Threshold is {paraphrase_threshold:.0%} for paraphrase acceptance."
         ),
         "missing_tokens": missing_tokens[:10],
     }

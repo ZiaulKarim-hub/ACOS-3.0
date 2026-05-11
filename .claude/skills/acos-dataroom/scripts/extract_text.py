@@ -127,26 +127,43 @@ def extract_xlsx(path: Path) -> dict[str, Any]:
     if openpyxl is None:
         return {"error": "openpyxl not installed", "library": None}
     try:
+        max_rows = int(utils.load_config().get("xlsx_max_rows_per_sheet", 1000))
         wb = openpyxl.load_workbook(str(path), data_only=False, read_only=True)
         sheets = []
+        truncated_sheets: list[str] = []
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             visible = ws.sheet_state == "visible"
             rows: list[list[Any]] = []
+            truncated = False
             for row in ws.iter_rows(values_only=True):
                 rows.append([("" if v is None else str(v)) for v in row])
-                if len(rows) >= 1000:  # Cap per sheet
+                if len(rows) >= max_rows:
+                    # Probe whether more rows existed after the cap
+                    try:
+                        next(ws.iter_rows(values_only=True, min_row=max_rows + 1, max_row=max_rows + 1))
+                        truncated = True
+                    except StopIteration:
+                        pass
                     break
+            if truncated:
+                truncated_sheets.append(sheet_name)
             sheets.append({
                 "sheet_name": sheet_name,
                 "visible": visible,
                 "row_count_sampled": len(rows),
+                "truncated_at_row_cap": truncated,
                 "rows": rows,
             })
         text_blob = "\n\n".join(
-            f"## Sheet: {s['sheet_name']}{' (HIDDEN)' if not s['visible'] else ''}\n" +
+            f"## Sheet: {s['sheet_name']}{' (HIDDEN)' if not s['visible'] else ''}"
+            f"{' (TRUNCATED)' if s.get('truncated_at_row_cap') else ''}\n" +
             "\n".join("\t".join(r) for r in s["rows"])
             for s in sheets
+        )
+        page_notes = (
+            [f"truncated_at_{max_rows}_rows:{','.join(truncated_sheets)}"]
+            if truncated_sheets else []
         )
         return {
             "library": "openpyxl",
@@ -156,10 +173,13 @@ def extract_xlsx(path: Path) -> dict[str, Any]:
                 "text": text_blob,
                 "char_count": len(text_blob),
                 "confidence": 1.0,
+                **({"notes": page_notes} if page_notes else {}),
             }],
             "metadata": {
                 "sheet_count": len(sheets),
                 "hidden_sheet_count": sum(1 for s in sheets if not s["visible"]),
+                "row_cap_per_sheet": max_rows,
+                "truncated_sheets": truncated_sheets,
                 "sheets": sheets,
             },
         }

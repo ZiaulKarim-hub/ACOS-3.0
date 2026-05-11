@@ -62,7 +62,8 @@ broadest scaffold and tailor in the Excel review.
 
 ## Why "Outbound" Diligence Matters
 
-OKOA's existing DD checklists at `/Users/zee/okoa-labs/okoa_ops/...` are
+OKOA's existing DD checklists (located via `$OKOA_OPS_DIR` or the
+candidate paths in `config.json:checklist_master_reference_paths`) are
 *origination-side* — they describe what OKOA collects when underwriting a
 borrower's loan. This skill produces the inverse: what OKOA must hand over
 when monetizing or transferring an existing position. Different artifacts,

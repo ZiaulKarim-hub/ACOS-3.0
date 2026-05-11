@@ -25,11 +25,17 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess:
 
 
 def test_fixture_present() -> None:
-    """The synthetic loan fixture must exist."""
+    """The synthetic loan fixture must exist with full file-type coverage."""
     assert FIXTURE.exists(), f"Missing fixture: {FIXTURE}"
     files = list(FIXTURE.rglob("*"))
     real_files = [f for f in files if f.is_file()]
-    assert len(real_files) >= 5, f"Fixture has too few files: {len(real_files)}"
+    assert len(real_files) >= 8, f"Fixture has too few files: {len(real_files)}"
+
+    # Confirm the file-type coverage added in v1.2.0 — PDF/DOCX/image paths
+    # must be exercised by the smoke tests, not just text/CSV/Markdown.
+    exts = {f.suffix.lower() for f in real_files}
+    for required in (".pdf", ".docx", ".png"):
+        assert required in exts, f"Fixture missing {required} coverage"
 
 
 def test_scan_folder_smoke() -> None:
@@ -67,7 +73,7 @@ def test_scan_folder_smoke() -> None:
 
 
 def test_extract_text_smoke() -> None:
-    """extract_text.py succeeds on a representative subset."""
+    """extract_text.py succeeds on a representative subset, including PDF/DOCX."""
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "loan"
         shutil.copytree(FIXTURE, src)
@@ -85,6 +91,9 @@ def test_extract_text_smoke() -> None:
             (run_dir / "intermediate" / "file_manifest.json").read_text()
         )
 
+        # Track which file types we actually exercised so we can assert later
+        ext_records_by_ext: dict[str, dict] = {}
+
         for f in manifest["files"]:
             if f["inclusion_in_extraction"] != "extracted":
                 continue
@@ -97,6 +106,30 @@ def test_extract_text_smoke() -> None:
             ])
             ext_json = run_dir / "extraction" / f["file_id"] / "extraction.json"
             assert ext_json.exists(), f"Missing extraction.json for {f['file_id']}"
+            record = json.loads(ext_json.read_text())
+            ext_records_by_ext.setdefault(f["extension"], record)
+
+        # PDF: must have at least one page with native text containing $1,500,000
+        pdf_rec = ext_records_by_ext.get(".pdf")
+        assert pdf_rec is not None, "PDF fixture was not extracted"
+        pdf_text = "\n".join(p.get("text", "") for p in pdf_rec.get("pages", []))
+        assert "1,500,000" in pdf_text or "1500000" in pdf_text, \
+            f"Expected $1,500,000 in PDF text, got: {pdf_text[:200]}"
+        assert pdf_rec.get("library") in ("pdfplumber", "pypdf"), \
+            f"Expected pdfplumber/pypdf library, got {pdf_rec.get('library')}"
+
+        # DOCX: must extract Borrower / Lender / Principal
+        docx_rec = ext_records_by_ext.get(".docx")
+        assert docx_rec is not None, "DOCX fixture was not extracted"
+        docx_text = "\n".join(p.get("text", "") for p in docx_rec.get("pages", []))
+        assert "Borrower" in docx_text and "OKOA Capital" in docx_text, \
+            f"DOCX text missing expected entities: {docx_text[:200]}"
+
+        # PNG: extract_text leaves it empty (pages == []); ocr_and_vision handles it
+        png_rec = ext_records_by_ext.get(".png")
+        assert png_rec is not None, "PNG fixture was not extracted"
+        assert png_rec.get("metadata", {}).get("is_image_only") is True, \
+            f"PNG should be flagged image-only: {png_rec}"
 
 
 def test_run_directory_layout() -> None:

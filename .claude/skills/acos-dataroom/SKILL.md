@@ -105,8 +105,8 @@ Required: `--source`, `--objective`. All others optional.
 ### Phase 2 — Checklist Load
 
 1. Load `references/checklist_<deal_type>.md` (skill-internal base — authoritative for this skill).
-2. Load `/Users/zee/okoa-labs/okoa_ops/.claude/data/dd-checklist-template.md` if present (category vocabulary supplement only — used to harmonize classification labels with OKOA terminology, NOT as a checklist).
-3. If the master reference is missing, fall back to `/Users/zee/okoa-labs/okoa_ops` directory search; if still missing, log a warning and proceed without vocabulary harmonization. The skill-internal base checklist is sufficient on its own.
+2. Resolve the OKOA master DD checklist by calling `utils.resolve_master_checklist_path()`. The helper reads `checklist_master_reference_paths` from `config.json` (an array of `${ENV_VAR}` / `~`-aware candidates) and returns the first that exists. The supplement is used only to harmonize classification labels with OKOA terminology — NOT as a checklist.
+3. If the master reference does not resolve, log a warning and proceed without vocabulary harmonization. The skill-internal base checklist is sufficient on its own. Operators wanting a custom path can either set `OKOA_OPS_DIR` env var or edit `config.json:checklist_master_reference_paths`.
 4. Load `references/taxonomy_<deal_type>.md` for the data room folder structure.
 
 ### Phase 3 — File Inventory

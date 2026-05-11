@@ -32,8 +32,23 @@ SUPPORTED_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".heic", ".webp",
 }
 
-OUT_OF_SCOPE_EMAIL = {".eml", ".msg", ".mbox"}
-OUT_OF_SCOPE_ARCHIVE = {".zip", ".tar", ".gz", ".7z", ".rar"}
+# Default sets used only as a final fallback if config is unreadable.
+_DEFAULT_OUT_OF_SCOPE_EMAIL = {".eml", ".msg", ".mbox"}
+_DEFAULT_OUT_OF_SCOPE_ARCHIVE = {".zip", ".tar", ".gz", ".7z", ".rar"}
+
+
+def _excluded_extension_sets(cfg: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """Split config.default_excluded_extensions into (email, archive) sets.
+
+    Recognizes the email extensions explicitly; everything else goes to
+    archive. Lets the operator change either set by editing config.json.
+    """
+    configured = cfg.get("default_excluded_extensions")
+    if not configured:
+        return set(_DEFAULT_OUT_OF_SCOPE_EMAIL), set(_DEFAULT_OUT_OF_SCOPE_ARCHIVE)
+    email = {e.lower() for e in configured if e.lower() in _DEFAULT_OUT_OF_SCOPE_EMAIL}
+    archive = {e.lower() for e in configured if e.lower() not in _DEFAULT_OUT_OF_SCOPE_EMAIL}
+    return email, archive
 
 
 def classify_inclusion(
@@ -46,7 +61,7 @@ def classify_inclusion(
     ext = path.suffix.lower()
 
     if utils.is_system_file(name, cfg.get("system_files_excluded", [])):
-        return "system_excluded", f"Matched system-files-excluded pattern"
+        return "system_excluded", "Matched system-files-excluded pattern"
 
     for ef in excluded_folders:
         if any(fnmatch.fnmatch(part, ef) for part in path.parts):
@@ -60,10 +75,11 @@ def classify_inclusion(
     if size == 0:
         return "zero_byte", "Empty file"
 
-    if ext in OUT_OF_SCOPE_EMAIL:
+    email_exts, archive_exts = _excluded_extension_sets(cfg)
+    if ext in email_exts:
         return "out_of_scope_email", "Email files not processed in v1"
 
-    if ext in OUT_OF_SCOPE_ARCHIVE:
+    if ext in archive_exts:
         return "out_of_scope_archive", "Archives not processed in v1 — extract contents and re-run"
 
     if ext not in SUPPORTED_EXTENSIONS:

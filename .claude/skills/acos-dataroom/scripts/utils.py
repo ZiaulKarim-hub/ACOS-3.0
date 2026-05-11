@@ -38,6 +38,38 @@ def load_config() -> dict[str, Any]:
     return _config_cache
 
 
+def resolve_master_checklist_path() -> Path | None:
+    """Resolve the OKOA master DD checklist path.
+
+    Reads `checklist_master_reference_paths` (a list of candidates that may
+    contain ${ENV_VAR} or ~ tokens) from config and returns the first one
+    that exists. Falls back to the legacy singular `checklist_master_reference_path`
+    if the list isn't present.
+
+    Returns None if no candidate resolves — callers must tolerate absence
+    (the skill-internal base checklist is authoritative on its own; the
+    master reference is a vocabulary supplement only).
+    """
+    cfg = load_config()
+    candidates = cfg.get("checklist_master_reference_paths")
+    if not candidates:
+        # Backward compatibility with old singular key
+        legacy = cfg.get("checklist_master_reference_path")
+        candidates = [legacy] if legacy else []
+
+    for raw in candidates:
+        if not raw:
+            continue
+        expanded = os.path.expandvars(os.path.expanduser(str(raw)))
+        # Drop candidates that still contain unresolved ${VAR} tokens
+        if "${" in expanded:
+            continue
+        p = Path(expanded)
+        if p.is_file():
+            return p
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Hashing & IDs
 # ---------------------------------------------------------------------------
