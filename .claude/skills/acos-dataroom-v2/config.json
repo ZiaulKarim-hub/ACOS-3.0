@@ -1,0 +1,86 @@
+{
+  "skill_name": "acos-dataroom-v2",
+  "version": "2.0.0",
+  "output_dir_template": "_acos_dataroom_v2_output/run_{timestamp}_{hash}",
+  "output_dir_root": "invocation_pwd",
+  "_comment_output_dir_root": "Audit trail (this directory) is created relative to $(pwd) where the skill is invoked from, NOT next to the source folder. Keeps deliberation material out of Dropbox-synced source folders. The FINAL shippable dataroom still lands next to the source folder for sharing convenience.",
+  "final_dataroom_dir_template": "{asset_name}_Dataroom",
+
+  "consensus": {
+    "deliberation_swarm_size": 3,
+    "qa_swarm_size": 3,
+    "research_swarm_size": 3,
+    "wigum_iteration_cap": 5,
+    "description_iteration_cap": 3,
+    "synthesizer_re_prompt_cap": 2,
+    "guide_qa_iteration_cap": 10,
+    "description_similarity_threshold": 0.90
+  },
+
+  "batching": {
+    "phase2_files_per_batch": 5,
+    "phase2_5_files_per_batch": 5,
+    "phase3_files_per_batch": 5,
+    "phase4b_files_per_batch": 5,
+    "phase5_files_per_batch": 5,
+    "phase6_descriptions_per_batch": 5
+  },
+
+  "models": {
+    "opus": "claude-opus-4-7",
+    "sonnet": "claude-sonnet-4-6",
+    "haiku": "claude-haiku-4-5"
+  },
+
+  "agent_model_assignments": {
+    "obj-researcher-1": "opus",
+    "obj-researcher-2": "sonnet",
+    "obj-researcher-3": "opus",
+    "obj-synthesizer": "opus",
+    "inclusion-deliberator-1": "opus",
+    "inclusion-deliberator-2": "sonnet",
+    "inclusion-deliberator-3": "opus",
+    "privilege-scanner-1": "opus",
+    "privilege-scanner-2": "sonnet",
+    "privilege-scanner-3": "opus",
+    "inclusion-qa-1": "opus",
+    "inclusion-qa-2": "sonnet",
+    "inclusion-qa-3": "opus",
+    "taxonomy-designer-1": "opus",
+    "taxonomy-designer-2": "sonnet",
+    "taxonomy-designer-3": "opus",
+    "taxonomy-synthesizer": "opus",
+    "placement-classifier-1": "opus",
+    "placement-classifier-2": "sonnet",
+    "placement-classifier-3": "opus",
+    "placement-qa-1": "opus",
+    "placement-qa-2": "sonnet",
+    "placement-qa-3": "opus",
+    "guide-drafter-1": "opus",
+    "guide-drafter-2": "sonnet",
+    "guide-drafter-3": "opus",
+    "guide-synthesizer": "opus",
+    "guide-qa": "opus",
+    "description-drafter-1": "opus",
+    "description-drafter-2": "sonnet",
+    "description-drafter-3": "opus",
+    "description-qa": "opus"
+  },
+
+  "file_filters": {
+    "system_files_excluded": [".DS_Store", "Thumbs.db", "desktop.ini", ".gitkeep"],
+    "default_excluded_extensions": [".eml", ".msg", ".mbox", ".zip", ".tar", ".gz", ".7z"],
+    "max_file_size_mb": 50,
+    "min_file_size_bytes": 1
+  },
+
+  "taxonomy_constraints": {
+    "max_folders": 15,
+    "min_folders": 3,
+    "sequential_numbering": true,
+    "no_gaps": true,
+    "no_semantic_duplicates": true
+  },
+
+  "verbose_logging": true
+}
