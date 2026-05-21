@@ -92,7 +92,38 @@ if [[ -z "$RESUME" ]]; then
     done < <(ls -t "$STATE"/pending-resume-*.txt 2>/dev/null)
 fi
 
-test -s "$RESUME" || { echo "ERROR: no pending resume found for this project (refusing cross-project fallback)"; exit 1; }
+if ! test -s "$RESUME"; then
+    # 2026-05-21 fix — defect (d) in the cross-session-misfire investigation.
+    # Before declaring failure, check state/consumed/ for a recently-mv'd
+    # pending-resume keyed to ANY session ID in this project. If found
+    # within the last 10 minutes, the UserPromptSubmit hook
+    # (eternity-resume-prepend.sh) already injected the resume content as
+    # additionalContext and we have NOTHING to do — exit 0 with a clear
+    # "auto-resume already completed" message rather than the previously
+    # misleading "ERROR: no pending resume found" that implied failure.
+    #
+    # Window choice: 10 min covers the typical /clear → daemon-claim →
+    # skill-typed → skill-body-runs path (seconds to a couple of minutes
+    # in practice), with margin for slow terminals or paused sessions.
+    # Outside that window, a stale consumed/ entry should NOT mask a
+    # genuine "no pending resume" error — return the original exit-1.
+    CONSUMED="$STATE/consumed"
+    if [[ -d "$CONSUMED" ]]; then
+        while IFS= read -r RECENT; do
+            [[ -z "$RECENT" ]] && continue
+            SID=$(basename "$RECENT" .txt | sed 's/^pending-resume-//')
+            if echo "$PROJECT_SESSIONS" | grep -Fxq "$SID"; then
+                MTIME=$(stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%SZ' "$RECENT" 2>/dev/null || echo "unknown")
+                echo "OK: auto-resume already completed for session $SID at $MTIME"
+                echo "    (UserPromptSubmit hook injected $(basename "$RECENT") as additionalContext;"
+                echo "     skill body has nothing further to do)"
+                exit 0
+            fi
+        done < <(find "$CONSUMED" -name 'pending-resume-*.txt' -mmin -10 2>/dev/null)
+    fi
+    echo "ERROR: no pending resume found for this project (refusing cross-project fallback)"
+    exit 1
+fi
 # Record which session_id owned this resume (for cleanup + Step 5 guard).
 RESUME_SID=$(basename "$RESUME" .txt | sed 's/^pending-resume-//')
 ```
