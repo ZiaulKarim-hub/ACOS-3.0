@@ -1,6 +1,6 @@
 ---
 name: acos-eternity-protocol-resume
-description: Manually injects the pending resume prompt into the active Warp pane. Fallback for when the daemon-driven post-clear resume injection didn't fire. Reads ~/Library/Application Support/acos-token-monitor/state/pending-resume-<session_id>.txt and uses inject-keystroke.py with --pid for precise targeting.
+description: Manually injects the pending resume prompt into the active Warp pane. Fallback for when the daemon-driven post-clear resume injection didn't fire. Reads ~/Library/Application Support/acos-token-monitor/state/pending-resume-<session_id>.txt and uses inject-keystroke.py with --session-id (AXTitle marker 'ACOS[<uuid>]') for precise targeting.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Bash
@@ -105,7 +105,14 @@ head -6 "$RESUME"
 echo "─── (full prompt: $(wc -l < "$RESUME") lines) ───"
 ```
 
-### Step 3: Read PID for targeted injection (PID-targeted ONLY)
+### Step 3: Liveness check — confirm session process is still alive
+
+Note: as of the 2026-05-20 rewrite the injector targets by **session UUID**
+(via the `ACOS[<uuid>]` AXTitle marker stamped by `register-session-pid.sh`),
+not by PID. This step's PID read is therefore **defensive only** — it refuses
+to inject if the `claude` process for this session is already dead (stale
+PID file), preventing the injector from typing into an unrelated window that
+later takes Warp focus. The PID itself is never passed to the injector.
 
 ```bash
 PID_FILE="$STATE/pid-${SESSION_ID}"
