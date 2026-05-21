@@ -38,21 +38,62 @@ echo "{\"session_id\":\"$SESSION_ID\"}" | \
     "$HOME/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh" 2>/dev/null || true
 ```
 
-### Step 1: Locate pending resume file
+### Step 1: Locate pending resume file (project-scoped)
 
 First look for one keyed to the *current* session ID. If absent, fall back to
-the most recent `pending-resume-*.txt` (this is the common case — the resume
-file is keyed to the PRE-/clear session ID, while this skill runs in the
-POST-/clear session with a new ID).
+the most recent `pending-resume-*.txt` **whose `<sid>` belongs to this
+project** — the common post-/clear case is that the resume file is keyed to
+the PRE-/clear session ID, which lives in this project's
+`~/.claude/projects/<sanitized-cwd>/` JSONL dir, while this skill runs in the
+POST-/clear session with a new (also in-project) ID.
+
+**2026-05-20 (PM) fix — Bug #5c.** Previously the fallback was an unscoped
+`ls -t pending-resume-*.txt | head -1`, which would silently inject a resume
+from a completely different project if this project had no pending resume of
+its own. The Wigum-style misrouting that resulted made the post-/clear session
+believe it was resuming a different deal entirely. See
+[`feedback_eternity_resume_stale_cross_contamination.md`](../../memory/feedback_eternity_resume_stale_cross_contamination.md).
+The project-scoping pattern below mirrors `eternity-resume-prepend.sh` lines
+56–87 verbatim so both code paths share one failure-mode surface.
 
 ```bash
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
-RESUME="$STATE/pending-resume-${SESSION_ID}.txt"
-if [[ ! -s "$RESUME" ]]; then
-    RESUME=$(ls -t "$STATE"/pending-resume-*.txt 2>/dev/null | head -1)
+
+# Compute the Claude Code project dir for THIS cwd (same sanitization the
+# hook uses: slashes/spaces/dots → dashes).
+PROJECT_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
+test -d "$PROJECT_DIR" || { echo "ERROR: no Claude Code project dir for cwd $(pwd) — refusing to scan globally"; exit 1; }
+
+# Set of session IDs that have ever lived in this project. Used to scope
+# both the primary lookup and the newest-first fallback so we never pick up
+# a sibling project's pending resume.
+PROJECT_SESSIONS=$(ls "$PROJECT_DIR"/*.jsonl 2>/dev/null | xargs -I{} basename {} .jsonl 2>/dev/null)
+test -n "$PROJECT_SESSIONS" || { echo "ERROR: no JSONLs in $PROJECT_DIR — refusing to inject"; exit 1; }
+
+# Prefer the current session's pending resume IF that SID belongs to this
+# project (it should — SESSION_ID came from this project's JSONL dir — but
+# the explicit check is cheap defense-in-depth).
+RESUME=""
+F="$STATE/pending-resume-${SESSION_ID}.txt"
+if [[ -s "$F" ]] && echo "$PROJECT_SESSIONS" | grep -Fxq "$SESSION_ID"; then
+    RESUME="$F"
 fi
-test -s "$RESUME" || { echo "ERROR: no pending resume found"; exit 1; }
-# Record which session_id owned this resume (for cleanup)
+
+# Fallback (post-/clear common case): walk pending-resume files newest-first,
+# take the first one whose <sid> is in this project's session set.
+if [[ -z "$RESUME" ]]; then
+    while IFS= read -r CANDIDATE; do
+        [[ -z "$CANDIDATE" ]] && continue
+        SID=$(basename "$CANDIDATE" .txt | sed 's/^pending-resume-//')
+        if echo "$PROJECT_SESSIONS" | grep -Fxq "$SID"; then
+            RESUME="$CANDIDATE"
+            break
+        fi
+    done < <(ls -t "$STATE"/pending-resume-*.txt 2>/dev/null)
+fi
+
+test -s "$RESUME" || { echo "ERROR: no pending resume found for this project (refusing cross-project fallback)"; exit 1; }
+# Record which session_id owned this resume (for cleanup + Step 5 guard).
 RESUME_SID=$(basename "$RESUME" .txt | sed 's/^pending-resume-//')
 ```
 
@@ -110,6 +151,17 @@ prune by mtime via a separate maintenance command — but never as a side
 effect of resume injection.
 
 ```bash
+# Defense-in-depth: Step 1 should already guarantee RESUME_SID belongs to
+# this project, but verify once more before mv-ing artifacts that might
+# belong to a sibling project's pending resume. Costs one grep, prevents
+# the worst class of Step 5 misbehavior if Step 1's invariant is ever
+# broken by a future refactor.
+if ! echo "$PROJECT_SESSIONS" | grep -Fxq "$RESUME_SID"; then
+    echo "ERROR: RESUME_SID $RESUME_SID is not in this project's session set"
+    echo "       refusing to mv artifacts (cross-contamination guard)"
+    exit 1
+fi
+
 CONSUMED="$STATE/consumed"
 mkdir -p "$CONSUMED"
 TS=$(date +%s)
