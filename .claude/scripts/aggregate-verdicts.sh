@@ -44,7 +44,8 @@ if os.path.isfile(exp_path):
         expected = []
 
 # Collected verdicts (every *.json except expected.json)
-collected = {}
+collected = {}   # name -> verdict
+details = {}      # name -> {issues, checks_performed}
 for f in glob.glob(os.path.join(d, "*.json")):
     if os.path.basename(f) == "expected.json":
         continue
@@ -52,10 +53,15 @@ for f in glob.glob(os.path.join(d, "*.json")):
         v = json.load(open(f))
         name = str(v.get("reviewer") or os.path.splitext(os.path.basename(f))[0])
         collected[name] = str(v.get("verdict", "")).upper()
+        details[name] = {
+            "issues": v.get("issues") or [],
+            "checks_performed": v.get("checks_performed") or [],
+        }
     except Exception:
         # An unparseable verdict file = INCONCLUSIVE for that reviewer.
         name = os.path.splitext(os.path.basename(f))[0]
         collected[name] = "INCONCLUSIVE"
+        details[name] = {"issues": [], "checks_performed": []}
 
 # Which reviewers must we check? Assigned set if known, else whoever reported.
 check = expected if expected else sorted(collected.keys())
@@ -72,12 +78,28 @@ for r in check:
         failures.append({"reviewer": r, "reason": collected[r] or "empty verdict"})
 
 decision = "PASS" if not failures else "REJECT"
+
+# ── Review-the-reviewers (finding 4.3, lightweight): flag rubber-stamp PASSes ──
+# A PASS with NO issues AND NO recorded checks_performed is indistinguishable from a
+# lazy reviewer. Non-blocking — surfaced for the human/architect to spot-check.
+warnings = []
+for r in check:
+    if collected.get(r) == "PASS":
+        det = details.get(r, {})
+        if not det.get("issues") and not det.get("checks_performed"):
+            warnings.append({
+                "reviewer": r,
+                "warning": "PASS with no issues and no checks_performed recorded — "
+                           "possible rubber-stamp; spot-check this review.",
+            })
+
 print(json.dumps({
     "decision": decision,
     "expected_count": len(check),
     "pass_count": sum(1 for r in check if collected.get(r) == "PASS"),
     "reviewers": {r: collected.get(r, "MISSING") for r in check},
     "failures": failures,
+    "warnings": warnings,
 }, indent=2))
 sys.exit(0 if decision == "PASS" else 2)
 PY

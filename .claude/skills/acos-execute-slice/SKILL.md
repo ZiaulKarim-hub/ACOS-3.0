@@ -147,6 +147,7 @@ Each reviewer returns a structured verdict:
 - scores per category
 - issues list (if any)
 - required fixes (if REJECT)
+- `checks_performed`: a list of what the reviewer actually verified (**required** — the gate flags a PASS with no issues *and* no `checks_performed` as a possible rubber-stamp; see Step 8 warnings)
 
 ### Step 8: Aggregate Verdicts (Mechanical Gate)
 
@@ -155,9 +156,9 @@ Verdict aggregation is **mechanical** — the Architect records raw verdicts but
 1. Write the assigned reviewer list (from Step 6) to `.acos/state/review-verdicts/$ARGUMENTS/expected.json` — a JSON array of reviewer names.
 2. For each reviewer that returned, write its verdict verbatim to `.acos/state/review-verdicts/$ARGUMENTS/<reviewer>.json`:
    ```json
-   {"reviewer": "<name>", "verdict": "PASS|REJECT|INCONCLUSIVE", "issues": [...]}
+   {"reviewer": "<name>", "verdict": "PASS|REJECT|INCONCLUSIVE", "issues": [...], "checks_performed": [...]}
    ```
-   Record faithfully. A crashed/failed reviewer that returned nothing gets **no file** — the gate treats a missing expected reviewer as INCONCLUSIVE (blocking).
+   Record faithfully. A crashed/failed reviewer that returned nothing gets **no file** — the gate treats a missing expected reviewer as INCONCLUSIVE (blocking). The script's `warnings[]` flags any PASS lacking both issues and `checks_performed` (possible rubber-stamp) — surface these to the human; do not silently accept.
 3. Run the authoritative gate:
    ```bash
    bash .claude/scripts/aggregate-verdicts.sh $ARGUMENTS

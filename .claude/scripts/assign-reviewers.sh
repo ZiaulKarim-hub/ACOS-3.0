@@ -93,6 +93,42 @@ snippets = manifest.get("code_snippets", [])
 level = manifest.get("review_level", "slice")
 file_count = len(files)
 
+# ── Robust matching (finding 4.6) + mechanical content extraction (finding 4.5) ──
+import fnmatch as _fnmatch
+
+def _matches(pattern, text):
+    """Match a trigger pattern against text.
+    - glob chars (*?[]) -> fnmatch against path and basename
+    - pattern containing '/' -> substring (explicit path fragment, intentional)
+    - bare word -> WORD BOUNDARY (so 'key' no longer matches 'monkey.ts',
+      'api' no longer matches 'capital.ts', 'role' no longer matches 'controller.ts')
+    """
+    p, t = str(pattern), str(text)
+    if not p:
+        return False
+    if any(c in p for c in "*?[]"):
+        return _fnmatch.fnmatch(t, p) or _fnmatch.fnmatch(os.path.basename(t), p)
+    if "/" in p:
+        return p in t
+    return re.search(r"\b" + re.escape(p) + r"\b", t) is not None
+
+def _read_modified_contents(paths, max_bytes=200000):
+    """Read modified-file contents so code-pattern triggers fire even when the
+    Architect-supplied code_snippets omit them (finding 4.5 — no silent miss)."""
+    out = []
+    for f in paths:
+        try:
+            if os.path.isfile(f) and os.path.getsize(f) < max_bytes:
+                with open(f, encoding="utf-8", errors="ignore") as fh:
+                    out.append(fh.read())
+        except Exception:
+            continue
+    return out
+
+# Code triggers match against BOTH the declared snippets and the ACTUAL file contents,
+# so assignment no longer depends on the Architect enumerating patterns correctly.
+code_haystack = [str(s) for s in snippets] + _read_modified_contents(files)
+
 reviewers = set()
 
 # ── Read each per-reviewer file ──────────────────────────────────────────
@@ -126,7 +162,7 @@ for filepath in reviewer_files:
         fp_patterns = cfg.get("trigger_file_paths", [])
         if isinstance(fp_patterns, list):
             for pattern in fp_patterns:
-                if any(str(pattern) in str(f) for f in files):
+                if any(_matches(pattern, f) for f in files):
                     triggered = True
                     break
 
@@ -135,7 +171,7 @@ for filepath in reviewer_files:
             code_patterns = cfg.get("trigger_code_patterns", [])
             if isinstance(code_patterns, list):
                 for pattern in code_patterns:
-                    if any(str(pattern) in str(s) for s in snippets):
+                    if any(_matches(pattern, h) for h in code_haystack):
                         triggered = True
                         break
 
@@ -160,14 +196,14 @@ for filepath in reviewer_files:
             fp_patterns = cfg.get("trigger_file_paths", [])
             if isinstance(fp_patterns, list):
                 for pattern in fp_patterns:
-                    if any(str(pattern) in str(f) for f in files):
+                    if any(_matches(pattern, f) for f in files):
                         triggered = True
                         break
             if not triggered:
                 code_patterns = cfg.get("trigger_code_patterns", [])
                 if isinstance(code_patterns, list):
                     for pattern in code_patterns:
-                        if any(str(pattern) in str(s) for s in snippets):
+                        if any(_matches(pattern, h) for h in code_haystack):
                             triggered = True
                             break
             if not triggered:
@@ -196,12 +232,12 @@ if isinstance(custom_rules, list):
         triggered = False
         if isinstance(fp_patterns, list):
             for p in fp_patterns:
-                if any(str(p) in str(f) for f in files):
+                if any(_matches(p, f) for f in files):
                     triggered = True
                     break
         if not triggered and isinstance(code_patterns, list):
             for p in code_patterns:
-                if any(str(p) in str(s) for s in snippets):
+                if any(_matches(p, h) for h in code_haystack):
                     triggered = True
                     break
         if triggered:

@@ -49,18 +49,25 @@ Use `Task(developer)` with:
 - Files allowed to modify
 - Updated evidence bundle path
 
-### Step 5: Re-Review
+### Step 5: Re-Review (BLIND)
 
-After the developer returns with fixes:
-1. Run reviewer assignment again (same reviewers as original)
-2. Spawn reviewers in parallel with updated evidence
-3. Collect verdicts
+Re-review must be **blind**: reviewers must NOT be told what previously failed, or they anchor on "is the prior issue fixed?" instead of independently re-assessing the whole slice. (A fix can resolve the flagged issue while introducing a new one a primed reviewer skips past.)
 
-### Step 6: Decision
+1. Run reviewer assignment again on the UPDATED files (`assign-reviewers.sh` — same trigger rules typically yield the same set).
+2. Spawn reviewers in parallel. Pass each **ONLY**: the updated code / evidence bundle, the original slice spec, and the acceptance criteria. Do **NOT** pass the prior round's consolidated feedback, prior reviewer verdicts, the fix plan, or the developer's fix rationale. Each reviewer re-evaluates from scratch against the acceptance criteria as if seeing the slice for the first time.
+3. Record each raw verdict to `.acos/state/review-verdicts/<slice_id>/<reviewer>.json` (overwriting the prior round) and the assigned list to `expected.json`.
 
-- If ALL PASS: return success to caller
-- If ANY REJECT and iteration < 3: loop back to Step 1 with new feedback
-- If ANY REJECT and iteration >= 3: escalate to human
+### Step 6: Decision (Mechanical Gate)
+
+Run the authoritative gate — do not judge it yourself (same binding gate as acos-execute-slice Step 8):
+
+```bash
+bash .claude/scripts/aggregate-verdicts.sh <slice_id>
+```
+
+- exit 0 (`decision: PASS`): return success to caller.
+- exit 2 and iteration < 3: loop back to Step 1 with the new feedback.
+- exit 2 and iteration >= 3: escalate to human (Step 7).
 
 ### Step 7: Escalation (if needed)
 

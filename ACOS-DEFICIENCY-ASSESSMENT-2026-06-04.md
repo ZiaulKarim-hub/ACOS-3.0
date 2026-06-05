@@ -165,17 +165,21 @@ Nothing requires a slice to produce a runnable/demo increment. **preeng-contrast
 `acos-review/SKILL.md` Step 6 / `acos-execute-slice` Step 8 instruct the Architect to "mark passed if ALL PASS." No `aggregate-verdicts.py` / mechanical gate runs. The entity being guarded against also interprets the verdicts and can rationalize a borderline REJECT into a PASS.
 > **FIX:** Added `.claude/scripts/aggregate-verdicts.sh` (the authoritative gate) and rewrote `acos-execute-slice` Step 8 to be mechanical: the Architect records each reviewer's raw verdict to `.acos/state/review-verdicts/<slice>/<reviewer>.json` + the assigned list to `expected.json`, then runs the script whose **exit code is binding** ("you MUST NOT override it"). Rule: every *expected* reviewer must have a `PASS` file; any REJECT/INCONCLUSIVE/missing → exit 2 (blocks). Verified 6/6 cases incl. missing-reviewer → block (mechanizing the INCONCLUSIVE-blocks-like-REJECT policy). The Architect can no longer rationalize the aggregate — only record raw verdicts. **Residual:** `acos-review/SKILL.md` (the standalone review skill) still uses prose aggregation — same script should be wired there too.
 
-### 4.3 No review of the reviewers — **High**
+### 4.3 No review of the reviewers — **High** — 🟡 **PARTIALLY FIXED 2026-06-04**
 No agent/hook/step audits reviewer output for completeness. A reviewer returning `PASS` with zero findings on a 500-line security diff is treated identically to a thorough one. The independent-verification group exists only in the standalone `acos-swarm-review`, **not** in the standard `acos-execute-slice` path most work uses.
+> **PARTIAL FIX:** `aggregate-verdicts.sh` now emits a `warnings[]` **rubber-stamp detector** — any PASS with no `issues` *and* no `checks_performed` is flagged (verified), and reviewers are now required to report `checks_performed` (execute-slice Step 7). The skill must surface these warnings, not silently accept. **Still open (deferred):** a true independent meta-reviewer agent that re-derives findings (the `acos-swarm-review` verification group ported into the standard path).
 
-### 4.4 Re-review is not blind — **High**
+### 4.4 Re-review is not blind — **High** — ✅ **FIXED 2026-06-04**
 `acos-feedback-resolution/SKILL.md:55` re-runs the *same* reviewer set, and the evidence bundle they read contains the Architect's synthesis of the prior round's findings — so re-reviewers learn what was flagged and anchor on "is it fixed?" rather than re-discovering issues. (`acos-robust-code-review` deploys fresh memoryless agents; the default path does not.) **preeng-contrast:** blind re-dispatch is a core preeng primitive.
+> **FIX:** Rewrote `acos-feedback-resolution` Step 5 as **blind re-review**: re-reviewers receive ONLY the updated code, original spec, and acceptance criteria — never the prior round's feedback, verdicts, fix plan, or rationale — and re-evaluate from scratch. Step 6 now uses the mechanical `aggregate-verdicts.sh` gate (consistent with Step 8).
 
-### 4.5 Reviewer assignment depends on Architect-authored `code_snippets` — **High**
+### 4.5 Reviewer assignment depends on Architect-authored `code_snippets` — **High** — ✅ **FIXED 2026-06-04**
 `acos-execute-slice/SKILL.md:95` has the Architect populate `code_snippets`, which drives security/perf reviewer triggers (`assign-reviewers.sh`). Omit "jwt" when touching auth and the security reviewer is never assigned. No fallback mechanical extraction from modified files.
+> **FIX:** `assign-reviewers.sh` now **mechanically reads the contents of every modified file** (`_read_modified_contents`) and matches code-pattern triggers against `snippets + actual file contents` (`code_haystack`). Assignment no longer depends on the Architect enumerating patterns — verified: an empty `code_snippets` with a file whose content contains a trigger still fires.
 
-### 4.6 Trigger matching is plain substring — **High**
+### 4.6 Trigger matching is plain substring — **High** — ✅ **FIXED 2026-06-04**
 `assign-reviewers.sh` uses `pattern in filename`. Security patterns include `key`, `api`, `role`, `order`, `index` → `monkey.ts`, `capital.ts`, `controller.ts`, `border.ts` all spuriously trigger; conversely novel names evade. High noise + no false-negative defense.
+> **FIX:** Replaced substring matching with `_matches()`: glob patterns → `fnmatch` (path + basename); patterns with `/` → substring (explicit path fragments); bare words → **word-boundary regex**. Verified 12/12: `key`↛`monkey.ts`, `api`↛`capital.ts`, `role`↛`controller.ts` no longer false-trigger, while `auth`→`src/auth/login.ts`, `*.sql`, and code-token matches still fire.
 
 ### 4.7 Coverage gaps: no a11y / observability / data-integrity / license / cost reviewer — **High**
 `review-rules/` has only qa/security/performance/integration/legal. Inaccessible UI, a GPL-contaminated dependency, a removed telemetry span, or a cost regression pass with no findings.
