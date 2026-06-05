@@ -302,6 +302,16 @@ For every node set `verifier.type` (∈ `verifier_vocabulary`), `verifier.auto_c
 machine can't judge), and `verifier.human_test` (`procedure[]` + `expected_observation` +
 `pass_criteria`). The human test is **always** present.
 
+**ISOLATION RULE (hard — both auto_check AND human_test):** a node's verifier must judge **that
+node's own output, using only that node's own artifact plus its already-built children's outputs.**
+It must **never** depend on an un-built ancestor or on the assembled product. Concretely, a **leaf**
+verifier must NOT invoke a parent/entrypoint that does not exist yet — e.g. for an "argument parser"
+leaf, test the parser **function in isolation** (call it directly, assert its return / its raised
+error), NOT by running the whole CLI binary (that belongs to the root component's verifier). Whole-
+product behavior (running the assembled entrypoint, end-to-end flows) is the **root/parent** node's
+verifier, never a leaf's. A verifier that can only pass once an ancestor is built violates the Unix
+Invariant (the node is then not independently testable) — re-scope it to the node's own surface.
+
 Then write the final `components/{id}.md` for every node — the human-facing spec, required structure:
 1. `# {name}  ({id} · {tier_label} · depth {depth})`
 2. `## What it is` — purpose.
