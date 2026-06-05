@@ -49,13 +49,34 @@ Status lives in `<feature-dir>/library-status.json` and is reflected in `library
 change (the runtime re-runs `acos-preeng-unix/scripts/render-library.py`). Open the library and use
 **🎲 Test a random component** to audit the build yourself at any point.
 
+## Runtime helpers (the deterministic glue)
+
+The SKILL prose is driven by two stdlib-only scripts so no agent ever hand-edits state:
+
+- **`scripts/next-ready.py <feature-dir>`** — the resumable build frontier. Reads on-disk status and
+  reports `ready[]` (buildable now: a leaf, or a parent whose children all `passed` — in build
+  order), `building[]`, `blocked[]` (waiting on a child), `done`, and a status histogram. Each ready
+  component is flagged `needs_human` when its `auto_check.runnable == false`. Because state lives on
+  disk, re-running this after any interruption recomputes the exact frontier — that's the resume.
+- **`scripts/set-status.py <feature-dir> <id> <status>`** — the ONLY status writer. Mirrors
+  `component-tree.json` ↔ `library-status.json`, writes an evidence note (`--note` / `--observed` /
+  `--source human|agent`), **enforces the parent-gating invariant** (refuses `parent=passed` while a
+  child isn't — exit 3), and re-renders `library.html`.
+
+The **human-verification gate** falls out of these two: `next-ready.py` flags `needs_human`; the
+SKILL pauses and asks the *user* to report the observed result; `set-status.py … --source human`
+records it. An LLM Verifier is spawned only for machine-/agent-checkable components — it never
+fabricates a physical measurement.
+
 ## Files
 
 ```
 .claude/skills/acos-execute-component/
-  SKILL.md                 # the bottom-up runtime protocol
+  SKILL.md                 # the bottom-up runtime protocol (next-ready → dispatch → set-status loop)
   README.md                # this file
   prompts/builder.md       # build one component's output (scope-bounded)
-  prompts/verifier.md      # zero-trust per-component verdict (auto + human)
+  prompts/verifier.md      # zero-trust per-component verdict (machine/agent-observable only)
   prompts/integrator.md    # compose children → parent + up→down→up repair loop
+  scripts/next-ready.py    # resumable build frontier + needs_human flags
+  scripts/set-status.py    # sole status writer; enforces parent-gating invariant; re-renders
 ```

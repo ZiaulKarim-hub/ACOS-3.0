@@ -66,52 +66,97 @@ coverage QA), **stop** — the tree is not ready to build. Send the user back to
 Read `component-tree.json`, `integration-map.json`, `build-plan.json`. The build plan's `order`
 is authoritative; `repair_protocol` governs failure handling.
 
-### Step 1: Initialize status
+### Step 1: Initialize status + render
 
 Ensure `library-status.json` exists with every component id set to its current status (`planned`
-for a fresh run; preserve prior statuses on resume). Render the library once so the user has a
-live view:
+for a fresh run; statuses are preserved on disk, so resume is automatic). Render the library once
+so the user has a live view:
 
 ```bash
 python3 .claude/skills/acos-preeng-unix/scripts/render-library.py "<feature-dir>"
 ```
 
-### Step 2: Walk the build plan (leaves first)
+**The runtime is driven by two deterministic helpers — never hand-edit the JSON:**
+- `scripts/next-ready.py <feature-dir>` → the build frontier: which components are buildable now
+  (leaf, or parent whose children all `passed`), each flagged `needs_human` when its auto-check
+  can't run; plus `building`, `blocked` (waiting on a child), and `done` (root passed).
+- `scripts/set-status.py <feature-dir> <id> <status> [--evidence … | --note … | --source human|agent --observed …]`
+  → the ONLY writer of status. It mirrors `component-tree.json` ↔ `library-status.json`, writes the
+  evidence note, **enforces the parent-gating invariant** (refuses to set a parent `passed` while a
+  child isn't — exit 3), and re-renders the library.
 
-Iterate `build-plan.json.order`. For each component, branch on whether it is a **leaf**
-(`children == []`) or an **intermediate/root**.
+### Step 2: The build loop (next-ready → dispatch → set-status, repeat)
+
+Loop until `next-ready.py` reports `done: true`:
+
+```bash
+python3 .claude/skills/acos-execute-component/scripts/next-ready.py "<feature-dir>"
+```
+
+Take the next `ready` component (they are already in build order). Branch on `is_leaf` and, for
+verification, on `needs_human`. After every build/verify, record the outcome with `set-status.py`
+(which re-renders the library automatically). Then re-run `next-ready.py`. Because all state lives
+on disk, an interrupted run resumes exactly where it stopped — just re-invoke the skill.
+
+> Independent `ready` leaves may be built **concurrently** (spawn their Builders in parallel); a
+> parent only appears in `ready` once `next-ready.py` confirms all its children `passed`, so the
+> bottom-up ordering is enforced by the helper, not by you tracking it.
+
+For each component, branch on whether it is a **leaf** (`is_leaf: true`) or an
+**intermediate/root**.
 
 #### 2a. Leaf — build then verify
-1. Set status `building`; refresh library.
+1. `set-status.py <feature-dir> <id> building` (this refreshes the library).
 2. **Spawn a Builder** (general-purpose, opus) with `prompts/builder.md` + the component's
    `components/<id>.md` spec + its `contract`. Scope is **only** this component's output
    artifact. It writes the artifact to `output_artifact.location_hint` (or a sensible default
    under the feature dir) and an evidence note.
-3. **Spawn a Verifier** (general-purpose, opus — a *fresh* agent that does NOT see the Builder's
-   self-assessment) with `prompts/verifier.md` + the component's `verifier`. It:
-   - runs `verifier.auto_check.method` if `runnable` (Bash) and asserts `expected`;
-   - performs / documents the `human_test` procedure and judges `pass_criteria`;
-   - returns `PASS` or `FAIL` + reasons.
-4. On `FAIL`: re-spawn the Builder with the Verifier's reasons (≤ `max_iterations_per_component`).
-   Still failing at the cap → mark `failed`, record the blocker, and **continue** to other
-   independent leaves (do not let one component stall the rest); surface it in the final report.
-5. On `PASS`: set status `passed`, write `evidence_ref`, refresh library.
+3. **Verify — branch on `needs_human` from `next-ready.py`:**
+   - **`needs_human: false`** (auto-check runnable, or an artifact an agent can inspect — e.g.
+     `software-test`, `document-render`, `data-schema`, `visual-diff`): **spawn a fresh Verifier**
+     (general-purpose, opus — does NOT see the Builder's self-assessment) with `prompts/verifier.md`
+     + the component's `verifier`. It runs `auto_check.method` (Bash) and asserts `expected`,
+     follows the `human_test` procedure against the artifact, checks every acceptance criterion,
+     and returns `PASS`/`FAIL` + reasons.
+   - **`needs_human: true`** (`auto_check.runnable == false` — `measurement`, `manual-only`, or any
+     physical/real-world test an agent cannot perform): **DO NOT let an agent fabricate a verdict.**
+     PAUSE and present to the user, verbatim, the component's `human_test.procedure`,
+     `expected_observation`, and `pass_criteria`, then **wait** for the user to report what they
+     observed and whether it passed. This is the human-verification gate — it is what makes the
+     domain-agnostic claim real (an LLM cannot read a thrust gauge).
+4. **Record the verdict with `set-status.py`** (it writes the evidence note + re-renders):
+   - agent PASS: `set-status.py <dir> <id> passed --source agent --note "<verifier summary>"`
+   - human PASS: `set-status.py <dir> <id> passed --source human --observed "<what they saw>" --note "<criteria met>"`
+   - FAIL: re-spawn the Builder with the FAIL reasons (≤ `repair_protocol.max_iterations_per_component`).
+     Still failing at the cap → `set-status.py <dir> <id> failed --note "<blocker>"`, then **continue**
+     to other independent `ready` leaves (one stuck component must not stall the rest); surface it in
+     the final report.
+5. After recording, re-run `next-ready.py` for the new frontier.
 
 #### 2b. Intermediate / root — compose then verify
-Reached only after **all** its children are `passed`.
-1. Set status `building`; refresh library.
+`next-ready.py` only surfaces a parent once **all** its children are `passed` (the helper enforces
+this; `set-status.py` independently refuses to mark a parent `passed` while a child isn't).
+1. `set-status.py <feature-dir> <id> building`.
 2. **Spawn an Integrator** (general-purpose, opus) with `prompts/integrator.md` + the parent's
    `contract` + the `integration-map.json` edges for its children + the children's built
    artifacts. It wires the children's outputs into the parent's inputs and produces the parent's
    composed output artifact.
-3. **Spawn a Verifier** on the parent (its verifier tests the *composed* component).
-4. On `PASS`: status `passed`; climb.
+3. **Verify the composed parent** — same `needs_human` branch as 2a step 3 (a parent whose verifier
+   is `measurement`/`manual-only` — e.g. the rocket's whole-product launch test — goes through the
+   human-verification gate, not an agent verdict).
+4. On `PASS`: `set-status.py <dir> <id> passed --source <agent|human> --note "…"` and climb (re-run
+   `next-ready.py`).
 5. On `FAIL` → **the up→down→up repair loop** (per `repair_protocol.on_integration_fail`):
+   - First, move the parent out of `building` so the frontier stays correct across the (multi-cycle)
+     repair: `set-status.py <dir> <parent> failed --note "integration fail: <reasons>"`. A `failed`
+     parent with non-passed children shows as `blocked` in `next-ready.py` and re-enters `ready` only
+     after its children re-pass — exactly the desired up→down→up sequencing.
    - The Integrator ranks the parent's children by likelihood of causing the failure, using
      contract mismatches (a child output that doesn't satisfy what the parent needed) and
      acceptance gaps revealed by the failure.
-   - Mark the top suspect(s) `failed`, re-open them as leaf/sub-builds (rebuild or **upgrade** —
-     a stronger spec, not just a retry), re-verify each, then re-compose the parent and re-verify.
+   - For each top suspect: `set-status.py <dir> <suspect> failed --note "<why suspected>"`, which
+     re-opens it (it re-appears in `next-ready.py`). Rebuild or **upgrade** it (a stronger spec, not
+     just a retry), re-verify, then the parent re-enters `ready` and you re-compose + re-verify.
    - Repeat up to `max_iterations_per_component`; then escalate to the user with the evidence.
 
 > Why drill down instead of patching the parent? Per the thesis, a parent has no behavior of its
