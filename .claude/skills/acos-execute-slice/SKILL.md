@@ -140,6 +140,7 @@ For each assigned reviewer, spawn simultaneously. Pass to each:
 - Evidence bundle path: `.acos/evidence/[DATE]/$ARGUMENTS/`
 - Source of truth path: `memory/source-of-truth/vision-document.md`
 - Slice spec path: `planning/slices/$ARGUMENTS.yaml`
+- **Evidence-authority directive (do NOT rely on developer self-report):** the mechanical quality-gate output from Step 5 (`run-quality-gates.sh`) is the authoritative functional check. The developer-authored `verify.log` / `Summary.md` are claims, not proof — independently derive at least one verification from the slice's acceptance criteria and run it yourself rather than only re-running the commands the developer chose to record.
 
 Each reviewer returns a structured verdict:
 - verdict: PASS or REJECT
@@ -147,11 +148,25 @@ Each reviewer returns a structured verdict:
 - issues list (if any)
 - required fixes (if REJECT)
 
-### Step 8: Aggregate Verdicts
+### Step 8: Aggregate Verdicts (Mechanical Gate)
 
-Collect all reviewer verdicts:
-- If **ALL PASS**: proceed to Step 10 (Completion)
-- If **ANY REJECT**: proceed to Step 9 (Feedback Resolution)
+Verdict aggregation is **mechanical** — the Architect records raw verdicts but does **not** decide the gate. This prevents the orchestrator (the entity the Independence Wall guards against) from rationalizing a borderline REJECT into a PASS.
+
+1. Write the assigned reviewer list (from Step 6) to `.acos/state/review-verdicts/$ARGUMENTS/expected.json` — a JSON array of reviewer names.
+2. For each reviewer that returned, write its verdict verbatim to `.acos/state/review-verdicts/$ARGUMENTS/<reviewer>.json`:
+   ```json
+   {"reviewer": "<name>", "verdict": "PASS|REJECT|INCONCLUSIVE", "issues": [...]}
+   ```
+   Record faithfully. A crashed/failed reviewer that returned nothing gets **no file** — the gate treats a missing expected reviewer as INCONCLUSIVE (blocking).
+3. Run the authoritative gate:
+   ```bash
+   bash .claude/scripts/aggregate-verdicts.sh $ARGUMENTS
+   ```
+4. **Obey the exit code — you MUST NOT override it:**
+   - exit 0 (`decision: PASS`, every expected reviewer PASS) → proceed to Step 10 (Completion).
+   - exit 2 (any REJECT / INCONCLUSIVE / missing reviewer) → proceed to Step 9 (Feedback Resolution); the JSON `failures[]` lists which reviewers blocked and why.
+
+   Do not proceed to completion on a non-zero exit, regardless of your own read of the reviews.
 
 ### Step 9: Feedback Resolution (on REJECT)
 
