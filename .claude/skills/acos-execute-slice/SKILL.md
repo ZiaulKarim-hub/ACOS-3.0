@@ -35,6 +35,19 @@ Read the slice spec from `planning/slices/$ARGUMENTS.yaml`. Extract:
 - Dependencies (verify all are complete)
 - Recommended skills
 
+### Step 1.5: Retrieve Prior Learnings (RAG)
+
+Before implementing, query the memory index for lessons relevant to this slice so the developer benefits from past experience rather than re-discovering known gotchas:
+
+```bash
+bash .claude/scripts/rag-query.sh --query "<slice objective + key files/domain>" --top-k 6
+```
+
+- Build the query from the slice objective and the domain of its `files_allowed`.
+- Scan `results[]` for `category: learning` (patterns/anti-patterns), `category: decision` (constraints to honor), and `category: handoff` (prior gotchas in this area).
+- Carry the relevant findings into the developer prompt in Step 4 (see the "Relevant prior learnings" bullet).
+- **Fallback:** if the JSON has `"fallback": true`, grep `memory/` and `learning-curve/` instead. Do **not** skip silently.
+
 ### Step 2: Set Active Slice (Scope Enforcement)
 
 Write the scope configuration to `.acos/config/active-slice.yaml`:
@@ -65,6 +78,7 @@ Use `Task(developer)` to delegate implementation. Pass in the prompt:
 - All acceptance criteria
 - Files allowed to modify
 - Relevant source of truth excerpts (read from `memory/source-of-truth/vision-document.md`)
+- Relevant prior learnings retrieved in Step 1.5 (patterns to reuse, anti-patterns/gotchas to avoid — include the source `path` for each)
 - Recommended skills to apply
 - Evidence bundle path
 

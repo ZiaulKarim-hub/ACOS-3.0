@@ -336,7 +336,7 @@ context_for_next_session: |
   the detailed decisions, blockers, and next-action analysis that /acos-handoff-protocol provides.
 
   Review the breadcrumbs and modified files to reconstruct session context.
-  The auto-load-handoff.sh SessionStart hook will inject this into your next session.
+  Load it next session with /acos-handoff (there is no auto-load SessionStart hook).
 '''
 
 with open(output_file, 'w') as f:

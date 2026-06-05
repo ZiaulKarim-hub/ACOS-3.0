@@ -19,8 +19,10 @@ if [[ -d ".acos" && -f ".acos/config/project.yaml" ]]; then
   SETTINGS=".claude/settings.local.json"
   if [[ -f "$SETTINGS" ]]; then
     HOOKS_OK=true
-    for cmd in "token-gate.sh" "oracle-evaluate.py" "check-scope.sh" "auto-load-handoff.sh" "context-monitor.sh"; do
-      if ! grep -q "$cmd" "$SETTINGS" 2>/dev/null; then
+    # Hooks may live in the project OR the user-global settings file (Claude Code merges both).
+    # auto-load-handoff.sh was removed Apr 2026 and is intentionally NOT checked here.
+    for cmd in "token-gate.sh" "oracle-evaluate.py" "check-scope.sh" "context-monitor.sh"; do
+      if ! grep -qs "$cmd" "$SETTINGS" "$HOME/.claude/settings.local.json"; then
         HOOKS_OK=false
         break
       fi

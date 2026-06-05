@@ -170,7 +170,6 @@ run_health_check() {
     ".claude/scripts/check-scope.sh:PreToolUse:required"
     ".claude/scripts/context-monitor.sh:Stop:required"
     ".claude/scripts/context-watchdog.sh:PreCompact:required"
-    ".claude/scripts/auto-load-handoff.sh:SessionStart:required"
     ".claude/scripts/post-write-evidence.sh:PostToolUse:optional"
     ".claude/scripts/log-agent-completion.sh:SubagentStop:optional"
     ".claude/scripts/inject-agent-context.sh:SubagentStart:required"
@@ -468,7 +467,7 @@ WAS_ACTIVE=$(echo "$ENFORCEMENT_JSON" | python3 -c "import sys,json; print(str(j
 if [ "$WAS_ACTIVE" = "false" ]; then
   HEALTH_ISSUES=""
   for script in ".claude/scripts/token-gate.sh" ".claude/scripts/context-monitor.sh" \
-                ".claude/scripts/context-watchdog.sh" ".claude/scripts/auto-load-handoff.sh"; do
+                ".claude/scripts/context-watchdog.sh"; do
     if [ ! -f "$script" ]; then
       HEALTH_ISSUES="${HEALTH_ISSUES}MISSING:$script "
     elif [ ! -x "$script" ] && [[ "$script" == *.sh ]]; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 # claude-loop.sh — Auto-continuation wrapper for Claude Code sessions
 # Automatically restarts Claude after session ends (context overflow, natural stop, etc.)
-# The auto-load-handoff.sh SessionStart hook handles injecting handoff context.
+# Handoff context is loaded manually next session via /acos-handoff (no auto-load hook).
 #
 # Usage:
 #   ./claude-loop.sh                    # Start fresh, auto-continue on exit

@@ -188,7 +188,7 @@ Return a brief summary to the parent:
 ### You MUST:
 - Always produce a handoff file, even if minimal
 - Include `reconstruction_sources` so the next session can verify your work
-- Use `status: "active"` so auto-load-handoff.sh picks it up
+- Use `status: "active"` so `/acos-handoff` surfaces it next session (there is no auto-load hook)
 - Use `type: "emergency-manual"` to distinguish from auto-generated handoffs
 
 ---

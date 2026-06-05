@@ -2,6 +2,7 @@
 
 import os
 import re
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -306,6 +307,61 @@ def chunk_yaml(filepath: str, content: str) -> list[Chunk]:
     return chunks
 
 
+def _split_text_to_max(text: str, size: int = MAX_SIZE) -> list[str]:
+    """Split text into pieces each <= size chars, preferring line boundaries.
+
+    A single line longer than `size` is hard-cut. Empty/whitespace pieces dropped.
+    """
+    if len(text) <= size:
+        return [text]
+    pieces: list[str] = []
+    cur: list[str] = []
+    cur_len = 0
+    for ln in text.split("\n"):
+        if len(ln) > size:
+            # Flush, then hard-cut the over-long line.
+            if cur:
+                pieces.append("\n".join(cur))
+                cur, cur_len = [], 0
+            for i in range(0, len(ln), size):
+                pieces.append(ln[i:i + size])
+            continue
+        if cur_len + len(ln) + 1 > size and cur:
+            pieces.append("\n".join(cur))
+            cur, cur_len = [ln], len(ln) + 1
+        else:
+            cur.append(ln)
+            cur_len += len(ln) + 1
+    if cur:
+        pieces.append("\n".join(cur))
+    return [p for p in pieces if p.strip()]
+
+
+def _enforce_max_size(chunks: list[Chunk]) -> list[Chunk]:
+    """Guarantee no chunk exceeds MAX_SIZE chars (the embedder's context bound).
+
+    Any oversized chunk — from invalid YAML, non-dict YAML, or an oversized scalar /
+    second-level value that the structural chunkers emit whole — is split at line
+    boundaries. chunk_index and total_chunks_in_file are recomputed across the file.
+    """
+    expanded: list[tuple[str, ChunkMetadata]] = []
+    for ch in chunks:
+        if len(ch.content) <= MAX_SIZE:
+            expanded.append((ch.content, ch.metadata))
+            continue
+        parts = _split_text_to_max(ch.content)
+        for j, part in enumerate(parts):
+            hdr = ch.metadata.section_header
+            hdr = f"{hdr} (part {j + 1})" if hdr else f"(part {j + 1})"
+            expanded.append((part, replace(ch.metadata, section_header=hdr, char_count=len(part))))
+
+    total = len(expanded)
+    return [
+        Chunk(content=content, metadata=replace(md, chunk_index=i, total_chunks_in_file=total))
+        for i, (content, md) in enumerate(expanded)
+    ]
+
+
 def chunk_file(filepath: str) -> list[Chunk]:
     """Chunk a file based on its type. Returns empty list if not indexable."""
     if not should_index(filepath):
@@ -319,7 +375,11 @@ def chunk_file(filepath: str) -> list[Chunk]:
 
     ext = Path(filepath).suffix.lower()
     if ext == ".md":
-        return chunk_markdown(filepath, content)
+        chunks = chunk_markdown(filepath, content)
     elif ext in (".yaml", ".yml"):
-        return chunk_yaml(filepath, content)
-    return []
+        chunks = chunk_yaml(filepath, content)
+    else:
+        return []
+
+    # Final safety net: no chunk may exceed MAX_SIZE (would 400 the embedder).
+    return _enforce_max_size(chunks)

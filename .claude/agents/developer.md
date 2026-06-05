@@ -17,6 +17,10 @@ hooks:
       hooks:
         - type: command
           command: ".claude/scripts/check-scope.sh"
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: ".claude/scripts/check-scope-bash.sh"
 ---
 
 # ACOS Developer Agent
