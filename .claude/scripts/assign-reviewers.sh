@@ -251,5 +251,49 @@ if isinstance(custom_rules, list):
 if not reviewers:
     reviewers.add("qa-reviewer")
 
+# ── Advisors (finding 4.8): NON-GATING rule files (e.g. legal-analyst.yaml) ───────
+# Advisory rules are any *.yaml that is NOT a gating *-reviewer.yaml and not global.yaml.
+# They are surfaced as diligence notes, NOT added to the gating reviewer set (so an
+# advisor like legal-analyst, which emits findings rather than PASS/REJECT, is never
+# forced to gate). Matches are written to a side file the execute-slice skill reads.
+slice_id = manifest.get("slice_id", "")
+advisors = []
+advisor_files = [
+    fp for fp in sorted(glob.glob(os.path.join(rules_dir, "*.yaml")))
+    if not fp.endswith("-reviewer.yaml") and os.path.basename(fp) != "global.yaml"
+]
+for filepath in advisor_files:
+    try:
+        with open(filepath) as f:
+            cfg = parse_yaml(f.read())
+    except Exception:
+        continue
+    name = str(cfg.get("name", "")).replace("ACOS-", "") or os.path.splitext(os.path.basename(filepath))[0]
+    triggered = False
+    fp_patterns = cfg.get("trigger_file_paths", [])
+    if isinstance(fp_patterns, list) and any(_matches(p, f2) for p in fp_patterns for f2 in files):
+        triggered = True
+    if not triggered:
+        code_patterns = cfg.get("trigger_code_patterns", [])
+        if isinstance(code_patterns, list) and any(_matches(p, h) for p in code_patterns for h in code_haystack):
+            triggered = True
+    if not triggered:
+        thr = cfg.get("trigger_file_count_gt")
+        if isinstance(thr, (int, float)) and file_count > thr:
+            triggered = True
+    if triggered:
+        advisors.append(name)
+
+# Write the advisor side file (even if empty) so execute-slice can read deterministically.
+if slice_id:
+    try:
+        adv_dir = os.path.join(".acos", "state", "review-advisors")
+        os.makedirs(adv_dir, exist_ok=True)
+        with open(os.path.join(adv_dir, f"{slice_id}.json"), "w") as af:
+            json.dump(sorted(set(advisors)), af)
+    except Exception:
+        pass
+
+# stdout stays a plain reviewer array — execute-slice's Step 6 parsing is unchanged.
 print(json.dumps(sorted(list(reviewers))))
 PYTHON

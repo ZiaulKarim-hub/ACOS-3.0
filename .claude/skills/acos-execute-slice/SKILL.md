@@ -182,10 +182,11 @@ If feedback resolution fails after 3 iterations, escalate to human.
 
 ### Step 10: Completion
 
-1. Update slice status in `planning/slices/$ARGUMENTS.yaml` to `status: completed`
-2. Clear `.acos/config/active-slice.yaml` (remove scope restrictions)
-3. Write summary log to `memory/handoffs/` for audit trail
-4. Report completion
+1. **Advisory review (non-gating).** Read `.acos/state/review-advisors/$ARGUMENTS.json` (written by `assign-reviewers.sh`). For each advisor listed (e.g. `legal-analyst`), spawn it via `Task()` (model-resolved like a reviewer) with the same evidence-bundle / slice-spec / source-of-truth context. Advisor output is **diligence findings, NOT a gate** — record it in the completion summary and surface it to the user, but do **NOT** block completion on it. (This is how legal-analyst is consulted on legal-touching slices without forcing it to emit PASS/REJECT — finding 4.8.)
+2. Update slice status in `planning/slices/$ARGUMENTS.yaml` to `status: completed`
+3. Clear `.acos/config/active-slice.yaml` (remove scope restrictions)
+4. Write summary log to `memory/handoffs/` for audit trail (include advisor findings)
+5. Report completion
 
 ## Error Handling
 
