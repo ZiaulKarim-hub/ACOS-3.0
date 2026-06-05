@@ -35,7 +35,7 @@
 | ~~H-4~~ | Learning loop write-only — retrieval now wired into plan + execute-slice — ✅ **FIXED 2026-06-04** | ~~Critical~~ | Memory/Learning |
 | ~~H-5~~ | RAG index 5/145 → **145/145** (re-indexed + chunker/embedder bugs fixed) — ✅ **FIXED 2026-06-04**. *(agent-metrics `unknown` = separate finding 6.3, still open)* | ~~Critical~~ | Memory/Learning |
 | H-6 | Oracle `hard_blocks: []` — force-push & inline `DROP TABLE` auto-approved — ⏸️ **DEFERRED (owner has separate Oracle plans, 2026-06-04)** | **High** | Hooks/Oracle |
-| H-7 | No mandatory research / domain-grounding / evidence-tiers before planning | **Critical** | Planning |
+| ~~H-7~~ | No mandatory research/domain-grounding before planning — added Step 1.6 (CQs + evidence tiers + diagnostics + coverage gate) — ✅ **FIXED 2026-06-04** | ~~Critical~~ | Planning |
 | H-8 | Verdict aggregation & evidence authenticity are self-attested, not mechanical | **High** | Review/Execution |
 | ~~H-9~~ | Doc drift: agent count corrected (40); stale `auto-load-handoff.sh` refs purged from 5 files — ✅ **FIXED 2026-06-04** | ~~High~~ | Agents/Hooks |
 | ~~H-10~~ | Quality gates now wired: added `quality-gates.yaml` (typecheck+test, verified passing) — ✅ **FIXED 2026-06-04** | ~~High~~ | Execution |
@@ -91,14 +91,17 @@ Both the project `.claude/settings.local.json` and the user-global `~/.claude/se
 
 ## 2. PLANNING & PRE-ENGINEERING
 
-### 2.1 No mandatory research / feasibility gate before planning — **Critical**
+### 2.1 No mandatory research / feasibility gate before planning — **Critical** — ✅ **FIXED 2026-06-04**
 `acos-interview/SKILL.md:29-83` goes from user Q&A straight to document creation; `acos-plan/SKILL.md:26-83` goes from interview to epic decomposition. No required step verifies prior art, feasibility, or domain constraints. (VISION-HVC-01 had a *voluntary* research pre-round — not mandated anywhere.) **preeng-contrast:** preeng's Phase 0 *requires* domain research, a knowledge lattice, and a `research.md`/`domain-brief.md` before requirements.
+> **FIX:** Added **Step 1.6 "Domain Grounding & Competency Questions"** to `acos-plan/SKILL.md` — **mandatory at vision/epic level**, recommended at story, skippable at slice. It requires: diagnostics (problem-before-solution), 8–15 Competency Questions answered from tiered evidence (T1–T5), a **≥80% coverage gate** (gaps become explicit Open Questions/Assumptions, never silent), and a durable artifact written to `planning/domain-briefs/` from a new `templates/domain-brief.md`. Uses RAG (Step 1.5) for internal priors + `WebSearch`/`WebFetch` (added to allowed-tools) for external facts. This is the distilled preeng "Constitutional Domain Compilation" in ACOS idiom. **Note:** a process gate — its force is that grounding is now a *checkable, reviewable artifact* rather than architect discretion.
 
-### 2.2 No evidence-quality tiers on planning claims — **Critical**
+### 2.2 No evidence-quality tiers on planning claims — **Critical** — 🟡 **PARTIALLY FIXED 2026-06-04**
 No template (`vision-document.md`, `vision.yaml`, `slice.yaml`) has a source/confidence field. Unverified assertions silently become requirements — exactly the cause of the EPIC-001 PPTX scope blow-up (`EPIC-001-…yaml:609-712`). The `deep-research` skill defines T1–T4 tiers but is **not wired into planning**. **preeng-contrast:** preeng tiers every claim T1–T5 and requires citations before locking T3+ requirements.
+> **PARTIAL FIX:** The Step 1.6 domain-brief now tags every competency-question answer with a T1–T5 evidence tier and tracks % at T1–T3. **Still open:** tiers are not yet required on claims *inside* the vision/epic/story/slice YAML templates themselves (only in the domain brief). Full fix = add a source/tier field to those templates.
 
-### 2.3 No diagnostic protocol ("problem before solution") — **High**
+### 2.3 No diagnostic protocol ("problem before solution") — **High** — 🟡 **PARTIALLY FIXED 2026-06-04**
 The interview has no structured "symptoms / affected users / current-vs-desired" category; templates have no Problem-Statement/Current-State section. **preeng-contrast:** preeng mandates a documented diagnosis before any requirement.
+> **PARTIAL FIX:** Step 1.6's domain brief opens with a mandatory **Diagnostics** section (symptoms / affected users / current-vs-desired / root-cause hypotheses) at vision/epic planning. **Still open:** `acos-interview` itself has no diagnostics question category, and slice/story templates have no problem-statement field.
 
 ### 2.4 No competency-question / coverage exit condition — **High**
 Interview exit (`acos-interview/SKILL.md:79-83`) is "Architect satisfied" / user signal / iteration count — all subjective. No mechanism detects domain blind spots or verifies feature→slice coverage. **preeng-contrast:** preeng writes 10–15 CQs and expands until ≥95% are answerable — a measurable exit gate.

@@ -3,7 +3,7 @@ name: acos-plan
 description: Creates or updates planning documents (vision, epics, stories, slices). Use /acos-plan [level] to plan at a specific level of the hierarchy.
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
 ---
 
 # ACOS Plan
@@ -41,6 +41,21 @@ bash .claude/scripts/rag-query.sh --query "<capability / feature / topic being p
 - Review `results[]` — each result has `path`, `section`, `excerpt`, `relevance`, and `category`. Prioritize `category: decision` (prior ADRs to honor or supersede), `category: learning` (retrospectives, patterns, anti-patterns), and `category: handoff` (prior gotchas).
 - Fold applicable lessons into the plan: reuse prior decisions, avoid documented anti-patterns, and cite the source `path` in the plan's `technical_notes` / rationale.
 - **Fallback:** if the JSON has `"fallback": true` (index or Ollama unavailable), grep `memory/` and `learning-curve/` for the topic instead. Do **not** skip this step silently.
+
+### Step 1.6: Domain Grounding & Competency Questions (MANDATORY at vision/epic level)
+
+Planning must be grounded in evidence, not in whatever the architect happens to already know. This step is **required when planning a vision or epic** (new capability/domain), **recommended for a story**, and **skippable for a slice** (slices inherit their story's grounding).
+
+Produce a **domain brief** before decomposing into children:
+
+1. **Diagnostics first (problem before solution).** Document symptoms, affected users/roles, current-vs-desired state, and root-cause hypotheses. Do not specify a solution until the problem is characterized.
+2. **Write 8–15 Competency Questions (CQs)** — the concrete questions a competent practitioner must be able to answer for this domain before building. (e.g. "What are the failure modes of X?", "What standard governs Y?", "What is the latency budget for Z?")
+3. **Answer each CQ from evidence**, drawing on, in order: the RAG results from Step 1.5 (prior ACOS decisions/learnings/handoffs), existing repo docs, and — for external facts — `WebSearch`/`WebFetch`. Tag every answer with an **evidence tier**:
+   - **T1** Authoritative (specs, standards, official docs) · **T2** Expert (papers, RFCs, recognized experts) · **T3** Empirical (tests, benchmarks, measured data) · **T4** Community (forums, vendor docs, blogs) · **T5** Internal (org knowledge, prior ACOS handoffs/decisions)
+4. **Coverage gate:** count how many CQs are confidently answerable. **Target ≥ 80%.** If below, either research further or record each gap as an explicit Open Question / Assumption — never silently proceed on an ungrounded plan.
+5. **Write the artifact** to `planning/domain-briefs/<LEVEL>-<ID>-domain-brief.md` using the template at `!cat templates/domain-brief.md`. Reference it from the vision/epic YAML so reviewers and downstream slices can check it.
+
+The CQ list + coverage figure become the plan's grounding record; unmet CQs flow into the plan's risks/open-questions. This makes "is this plan well-grounded?" a checkable property instead of a matter of trust.
 
 ### Step 2: Plan at the Appropriate Level
 
