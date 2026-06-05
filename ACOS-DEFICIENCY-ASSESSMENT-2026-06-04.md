@@ -181,11 +181,13 @@ No agent/hook/step audits reviewer output for completeness. A reviewer returning
 `assign-reviewers.sh` uses `pattern in filename`. Security patterns include `key`, `api`, `role`, `order`, `index` → `monkey.ts`, `capital.ts`, `controller.ts`, `border.ts` all spuriously trigger; conversely novel names evade. High noise + no false-negative defense.
 > **FIX:** Replaced substring matching with `_matches()`: glob patterns → `fnmatch` (path + basename); patterns with `/` → substring (explicit path fragments); bare words → **word-boundary regex**. Verified 12/12: `key`↛`monkey.ts`, `api`↛`capital.ts`, `role`↛`controller.ts` no longer false-trigger, while `auth`→`src/auth/login.ts`, `*.sql`, and code-token matches still fire.
 
-### 4.7 Coverage gaps: no a11y / observability / data-integrity / license / cost reviewer — **High**
+### 4.7 Coverage gaps: no a11y / observability / data-integrity / license / cost reviewer — **High** — 📝 **DRAFT PROVIDED (awaiting human apply) 2026-06-04**
 `review-rules/` has only qa/security/performance/integration/legal. Inaccessible UI, a GPL-contaminated dependency, a removed telemetry span, or a cost regression pass with no findings.
+> **DRAFT:** Paste-ready trigger YAMLs + companion agent definitions for accessibility / license / observability (+ data-integrity / cost templates) in `REVIEW-DIMENSION-DRAFTS-2026-06-04.md`. Cannot be applied by the assistant — `review-rules/` is human-only and now wall-blocked; `.claude/agents/` is human-approval-only. Triggers are written for the hardened (4.6) word-boundary matcher.
 
-### 4.8 `legal-analyst` can never be auto-assigned — **Medium**
+### 4.8 `legal-analyst` can never be auto-assigned — **Medium** — 📝 **DRAFT PROVIDED 2026-06-04**
 `assign-reviewers.sh:100` globs `*-reviewer.yaml`, which **excludes** `legal-analyst.yaml`; and the file itself declares it non-gating (`legal-analyst.yaml:138-140`). For OKOA's lending domain, a slice touching loan-doc logic passes all gates with no legal surfacing.
+> **DRAFT + offer:** Since legal-analyst is advisory (not gating), the fix is an **advisor path**, not a reviewer-set addition. Drafted in `REVIEW-DIMENSION-DRAFTS-2026-06-04.md`: your part = ensure `legal-analyst.yaml` triggers cover the legal surface; my part (non-restricted, on request) = add an advisor scan to `assign-reviewers.sh` (writes `.acos/state/review-advisors/<slice>.json`) + surface it non-gating in execute-slice.
 
 **Strengths:** Reviewer isolation (`disallowedTools: Write,Edit,Task` + `permissionMode: plan` + `isolation: worktree`) is genuinely mechanical and sound; INCONCLUSIVE-blocks-like-REJECT is correct; the rule files themselves are well-constructed.
 
