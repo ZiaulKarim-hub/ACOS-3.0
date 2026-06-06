@@ -63,8 +63,37 @@ If `verify-artifacts.sh` exits non-zero (missing artifacts, untestable tree, or 
 coverage QA), **stop** — the tree is not ready to build. Send the user back to
 `/acos-preeng-unix`.
 
+**Scope-hook guard (B1).** Component execution runs OUTSIDE the slice lifecycle — there is no
+active slice. `check-scope.sh` / `check-scope-bash.sh` both **fail open when
+`.acos/config/active-slice.yaml` is absent** (and always allow `.acos/evidence/`, `.acos/state/`,
+`memory/`), so Builder/Integrator writes under `<feature-dir>/build/` and `<feature-dir>/evidence/`
+are unblocked. BUT a **stale** `active-slice.yaml` from a prior `/acos-execute-slice` would scope-gate
+those writes to that slice's `files_allowed` and break the build. So check first:
+
+```bash
+test -f .acos/config/active-slice.yaml && echo "WARN: an active slice exists — it will scope-block component builds. Run /acos-complete (or finish that slice) before executing components." || echo "OK: no active slice; component writes unrestricted."
+```
+
+If an active slice exists, stop and tell the user to clear it (do not silently delete it — it's
+another workflow's state). The Oracle (PreToolUse) still scores Bash/Write/Task but file writes and
+test runs score low; at the default threshold (9) they auto-approve.
+
+**Model resolution (B2).** Resolve each role's model through the Model Profile System instead of
+hardcoding, mapping the three execution roles onto the closest profiled ACOS agents:
+
+```bash
+BUILDER_MODEL=$(bash .claude/scripts/resolve-agent-model.sh developer)      # Builder  ≈ developer
+VERIFIER_MODEL=$(bash .claude/scripts/resolve-agent-model.sh qa-reviewer)   # Verifier ≈ qa-reviewer
+INTEGRATOR_MODEL=$(bash .claude/scripts/resolve-agent-model.sh architect)   # Integrator ≈ architect
+```
+
+Spawn each agent with its resolved model (a bare name → Claude `Task()`; a `provider:model` →
+external runner per the Model Profile System). If resolution yields an external model for the
+Builder/Integrator, prefer the Claude fallback — these roles need tool access to write artifacts.
+
 Read `component-tree.json`, `integration-map.json`, `build-plan.json`. The build plan's `order`
-is authoritative; `repair_protocol` governs failure handling.
+is authoritative; `repair_protocol` governs failure handling. See `STATE-MACHINE.md` for the
+formal status transitions and invariants (B4), and `## Evidence convention` below (B3).
 
 ### Step 1: Initialize status + render
 
@@ -107,14 +136,14 @@ For each component, branch on whether it is a **leaf** (`is_leaf: true`) or an
 
 #### 2a. Leaf — build then verify
 1. `set-status.py <feature-dir> <id> building` (this refreshes the library).
-2. **Spawn a Builder** (general-purpose, opus) with `prompts/builder.md` + the component's
+2. **Spawn a Builder** (general-purpose, `$BUILDER_MODEL` from Step 0) with `prompts/builder.md` + the component's
    `components/<id>.md` spec + its `contract`. Scope is **only** this component's output
    artifact. It writes the artifact to `output_artifact.location_hint` (or a sensible default
    under the feature dir) and an evidence note.
 3. **Verify — branch on `needs_human` from `next-ready.py`:**
    - **`needs_human: false`** (auto-check runnable, or an artifact an agent can inspect — e.g.
      `software-test`, `document-render`, `data-schema`, `visual-diff`): **spawn a fresh Verifier**
-     (general-purpose, opus — does NOT see the Builder's self-assessment) with `prompts/verifier.md`
+     (general-purpose, `$VERIFIER_MODEL` — does NOT see the Builder's self-assessment) with `prompts/verifier.md`
      + the component's `verifier`. It runs `auto_check.method` (Bash) and asserts `expected`,
      follows the `human_test` procedure against the artifact, checks every acceptance criterion,
      and returns `PASS`/`FAIL` + reasons.
@@ -137,7 +166,7 @@ For each component, branch on whether it is a **leaf** (`is_leaf: true`) or an
 `next-ready.py` only surfaces a parent once **all** its children are `passed` (the helper enforces
 this; `set-status.py` independently refuses to mark a parent `passed` while a child isn't).
 1. `set-status.py <feature-dir> <id> building`.
-2. **Spawn an Integrator** (general-purpose, opus) with `prompts/integrator.md` + the parent's
+2. **Spawn an Integrator** (general-purpose, `$INTEGRATOR_MODEL` from Step 0) with `prompts/integrator.md` + the parent's
    `contract` + the `integration-map.json` edges for its children + the children's built
    artifacts. It wires the children's outputs into the parent's inputs and produces the parent's
    composed output artifact.
@@ -194,6 +223,26 @@ Next:
 ```
 
 Provide clickable links to `library.html` and any failing components' specs.
+
+---
+
+## Evidence convention (B3)
+
+Two layers, reconciled with ACOS's existing evidence + metrics machinery:
+
+1. **Canonical, feature-local** — `set-status.py` writes each verdict to
+   `<feature-dir>/evidence/<component-id>-<source>.md` and records the path in the node's
+   `evidence_ref`. This is the source of truth because it travels *with* the component tree and the
+   Component Library references it; the tree is self-describing and portable.
+2. **ACOS-visible mirror (optional)** — for parity with `/acos-execute-slice`, the runtime MAY also
+   append a one-line completion record per component to
+   `.acos/evidence/<YYYY-MM-DD>/preeng-unix-<feature-id>/<component-id>.log` (always-allowed by the
+   scope hooks) and log agent identity to `.acos/metrics/agent-completions.log` (the same sink the
+   preeng worker's instrumentation plan points at). This keeps component builds visible to ACOS
+   status/metrics tooling without making the tree depend on `.acos/`.
+
+Rule: never set a component `passed` without a recorded Verifier `PASS` (or a human `--source human`
+verdict) in layer 1. Layer 2 is a convenience mirror, not the gate.
 
 ---
 

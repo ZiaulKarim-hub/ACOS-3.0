@@ -74,9 +74,23 @@ fabricates a physical measurement.
 .claude/skills/acos-execute-component/
   SKILL.md                 # the bottom-up runtime protocol (next-ready → dispatch → set-status loop)
   README.md                # this file
+  STATE-MACHINE.md         # formal status states, legal transitions, the hard invariant
   prompts/builder.md       # build one component's output (scope-bounded)
   prompts/verifier.md      # zero-trust per-component verdict (machine/agent-observable only)
   prompts/integrator.md    # compose children → parent + up→down→up repair loop
   scripts/next-ready.py    # resumable build frontier + needs_human flags
   scripts/set-status.py    # sole status writer; enforces parent-gating invariant; re-renders
 ```
+
+## ACOS integration (SHOULD tier)
+
+- **Scope hooks (B1):** execution runs with no active slice, so `check-scope.sh` /
+  `check-scope-bash.sh` fail open. SKILL Step 0 warns if a stale `active-slice.yaml` exists (it would
+  scope-block builds) and tells the user to `/acos-complete` it first.
+- **Model profiles (B2):** the three roles resolve through `resolve-agent-model.sh` — Builder≈
+  `developer`, Verifier≈`qa-reviewer`, Integrator≈`architect` — so the active model profile governs
+  them (external models fall back to Claude for the tool-using roles).
+- **Evidence (B3):** canonical per-verdict notes are feature-local (`<feature-dir>/evidence/`,
+  referenced by each node's `evidence_ref`); an optional `.acos/evidence/<date>/preeng-unix-<id>/`
+  mirror + `.acos/metrics/agent-completions.log` keep builds visible to ACOS tooling.
+- **State machine (B4):** see `STATE-MACHINE.md`.
