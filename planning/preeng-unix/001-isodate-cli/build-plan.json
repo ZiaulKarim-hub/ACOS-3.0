@@ -1,0 +1,24 @@
+{
+  "feature_id": "001-isodate-cli",
+  "order": ["C-001", "C-002", "C-003", "C-000"],
+  "levels": [
+    {
+      "depth": 1,
+      "components": ["C-001", "C-002", "C-003"],
+      "kind": "leaf-build",
+      "note": "Three atomic-testable leaves. Build and verify each in isolation via its own unittest class (ClockTests, FormatterTests, ParserTests). Order among them is independent; C-001 before C-002 only because C-002's tests format a datetime the clock conceptually supplies."
+    },
+    {
+      "depth": 0,
+      "components": ["C-000"],
+      "kind": "integrate",
+      "children": ["C-001", "C-002", "C-003"],
+      "note": "Compose the three verified leaves into main(); verify end-to-end via EndToEndTests (real CLI invocations: default, --time, --utc --time, --bogus)."
+    }
+  ],
+  "repair_protocol": {
+    "on_component_fail": "Builder reworks the single failing component within its scope (one function in isodate.py); re-run that component's unittest class; max_iterations_per_component then escalate.",
+    "on_integration_fail": "Drill DOWN: rank C-001/C-002/C-003 by likelihood using contract mismatch + acceptance gaps (e.g. wrong stdout format => suspect C-002 formatter; wrong exit code on bad flag => suspect C-003 parser; wrong UTC/local => suspect C-001 clock). Mark suspects failed, rebuild/upgrade, re-verify the leaf, then re-compose C-000 and re-run EndToEndTests; climb again.",
+    "max_iterations_per_component": 5
+  }
+}

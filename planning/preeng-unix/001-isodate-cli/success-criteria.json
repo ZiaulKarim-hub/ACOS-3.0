@@ -1,0 +1,77 @@
+{
+  "feature_id": "001-isodate-cli",
+  "criteria": [
+    {
+      "id": "SC-01",
+      "statement": "Running `python3 build/isodate.py` with no flags prints a single line that is a valid local date in YYYY-MM-DD form.",
+      "measure": "stdout matches /^\\d{4}-\\d{2}-\\d{2}$/ and exit code is 0.",
+      "covered_by": [
+        "C-003",
+        "C-001",
+        "C-002",
+        "C-000"
+      ]
+    },
+    {
+      "id": "SC-02",
+      "statement": "Running `python3 build/isodate.py --utc` prints the current UTC date as YYYY-MM-DD.",
+      "measure": "With a fixed UTC clock, stdout equals the expected UTC YYYY-MM-DD; exit code 0.",
+      "covered_by": [
+        "C-003",
+        "C-001",
+        "C-002",
+        "C-000"
+      ]
+    },
+    {
+      "id": "SC-03",
+      "statement": "Running `python3 build/isodate.py --time` appends the current time as HH:MM:SS to the date.",
+      "measure": "stdout matches /^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/; exit code 0.",
+      "covered_by": [
+        "C-002",
+        "C-001",
+        "C-000"
+      ]
+    },
+    {
+      "id": "SC-04",
+      "statement": "Running `python3 build/isodate.py --utc --time` composes both: UTC date plus UTC time.",
+      "measure": "With a fixed clock, stdout equals expected UTC `YYYY-MM-DD HH:MM:SS`; exit code 0.",
+      "covered_by": [
+        "C-003",
+        "C-001",
+        "C-002",
+        "C-000"
+      ]
+    },
+    {
+      "id": "SC-05",
+      "statement": "An unknown or malformed flag causes a non-zero exit with a usage message on stderr.",
+      "measure": "`python3 build/isodate.py --bogus` exits non-zero and stderr contains 'usage'.",
+      "covered_by": [
+        "C-003",
+        "C-000"
+      ]
+    },
+    {
+      "id": "SC-06",
+      "statement": "Implementation is Python 3 standard-library-only and testable via shell/unittest.",
+      "measure": "Static check: only stdlib imports; `python3 -m unittest` over build/tests passes.",
+      "covered_by": [
+        "C-000",
+        "C-001",
+        "C-002",
+        "C-003"
+      ]
+    },
+    {
+      "id": "SC-07",
+      "statement": "Date/time output is deterministic when a fixed clock is injected.",
+      "measure": "Formatter/clock under a fixed datetime yields the same string every run.",
+      "covered_by": [
+        "C-001",
+        "C-002"
+      ]
+    }
+  ]
+}

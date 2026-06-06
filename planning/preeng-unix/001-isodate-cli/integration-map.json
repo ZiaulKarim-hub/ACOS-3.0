@@ -1,0 +1,31 @@
+{
+  "feature_id": "001-isodate-cli",
+  "edges": [
+    {
+      "child": "C-003",
+      "parent": "C-000",
+      "wires": "C-003.flags (Namespace{utc,time}) feeds C-000's branch logic (which clock mode and whether to append time).",
+      "compose_note": "main() calls parse_args(argv) first; on bad flags argparse raises SystemExit (non-zero) before any other component runs."
+    },
+    {
+      "child": "C-001",
+      "parent": "C-000",
+      "wires": "C-001.now (datetime) supplies the instant to format. main() calls now(utc=flags.utc).",
+      "compose_note": "Clock mode is selected by the parsed --utc flag from C-003."
+    },
+    {
+      "child": "C-002",
+      "parent": "C-000",
+      "wires": "C-002.line (str) is the exact text main() prints to stdout. main() calls format_line(now, flags.time).",
+      "compose_note": "Formatter consumes C-001.now and C-003.flags.time; its output string is the product's stdout."
+    }
+  ],
+  "composability_check": {
+    "parent": "C-000",
+    "required_inputs": ["parsed_flags", "now", "rendered_line"],
+    "supplied_by": { "parsed_flags": "C-003", "now": "C-001", "rendered_line": "C-002" },
+    "argv_source": "external (sys.argv) — Assumption: provided by the OS shell, not an internal component.",
+    "satisfied": true,
+    "notes": "Every required input of the root C-000 is produced by a child output. argv is the only external input and is documented as an Assumption."
+  }
+}
