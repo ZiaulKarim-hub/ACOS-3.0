@@ -123,6 +123,25 @@ right alongside code.
   templates/library.html            # self-contained library shell (injection tokens)
   scripts/render-library.py         # stdlib-only renderer: tree+status → library.html
   scripts/verify-artifacts.sh       # completeness + coverage gate (blocks execution)
+  scripts/registry.py               # cross-tree reuse registry (publish / search / link)
 ```
 
 Execution half lives in `.claude/skills/acos-execute-component/`.
+
+## Cross-tree reuse (operationalized)
+
+The Unix promise — *a proven component can be reused elsewhere* — is real, not just metadata.
+`scripts/registry.py` maintains a project-level index at `planning/preeng-unix/_registry/registry.json`
+(above any feature dir, because reuse is inherently cross-tree):
+
+- **publish** — when a `reuse.reusable` component reaches `passed`, `set-status.py` auto-indexes it
+  (capability tags, verifier, contract, the proven artifact location). The index never silently rots.
+- **search** — at plan time, Step 1.5 runs `registry.py search` and folds matches into the worker's
+  context, so decomposition prefers an existing proven part over inventing a new one.
+- **link** — at execution time, when a reusable leaf matches a registry entry, `/acos-execute-component`
+  runs `registry.py link` to copy the proven artifact into the new tree and mark the leaf `passed`
+  (source `reuse`) — no rebuild, no re-verification of already-proven work. The consumer is recorded
+  on the registry entry (`consumers[]`).
+
+So a "Clock provider" proven in one product is found and reused by the next, exactly as a Unix tool
+is reused across pipelines.

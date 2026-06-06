@@ -126,6 +126,22 @@ def main(argv):
             if r.returncode != 0:
                 sys.stderr.write(r.stderr)
 
+    # Auto-publish to the reuse registry when a reusable component passes.
+    # Skip reuse-sourced passes (a linked component points at the original artifact —
+    # publishing it again would duplicate the entry).
+    if status == "passed" and source != "reuse" and (node.get("reuse", {}) or {}).get("reusable"):
+        here = os.path.dirname(os.path.abspath(__file__))
+        registry = os.path.normpath(os.path.join(
+            here, "..", "..", "acos-preeng-unix", "scripts", "registry.py"))
+        if os.path.isfile(registry):
+            r = subprocess.run([sys.executable, registry, "publish", feature_dir, cid],
+                               capture_output=True, text=True)
+            # Best-effort: a publish failure must never block a status write.
+            if r.returncode == 0:
+                sys.stdout.write("[registry] " + r.stdout)
+            else:
+                sys.stderr.write("[registry] publish skipped: " + (r.stderr or r.stdout))
+
     print("OK: %s -> %s (%s)%s" % (cid, status, source,
           "  evidence=" + ev_rel if ev_rel else ""))
     return 0

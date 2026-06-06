@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "updated": "reset-after-selftest",
+  "entries": [
+    {
+      "registry_id": "R-0001",
+      "name": "Clock provider",
+      "capability_tags": [
+        "clock",
+        "time-source",
+        "injectable",
+        "determinism"
+      ],
+      "verifier_type": "software-test",
+      "output_kind": "software",
+      "source_feature": "001-isodate-cli",
+      "source_feature_dir": "planning/preeng-unix/001-isodate-cli",
+      "source_component_id": "C-001",
+      "contract": {
+        "inputs": [
+          {
+            "name": "utc",
+            "type": "bool",
+            "description": "If true, return the instant in UTC; else local."
+          },
+          {
+            "name": "fixed",
+            "type": "datetime|None",
+            "description": "Optional injected fixed instant for deterministic tests."
+          }
+        ],
+        "outputs": [
+          {
+            "name": "now",
+            "type": "datetime",
+            "description": "A datetime: tz-aware UTC when utc=True, naive-local otherwise (or the injected fixed value)."
+          }
+        ],
+        "connects_to_parent_via": "main() (C-000) calls now(utc=flags.utc) and passes the result to the formatter (C-002)."
+      },
+      "verifier": {
+        "type": "software-test",
+        "auto_check": {
+          "runnable": true,
+          "method": "PYTHONPATH=planning/preeng-unix/001-isodate-cli/build/tests python3 -m unittest test_isodate.ClockTests",
+          "expected": "Clock tests pass: now(fixed=X) returns X; now(utc=True) returns a UTC tz-aware datetime; exit code 0."
+        },
+        "human_test": {
+          "procedure": [
+            "From repo root run: python3 -c \"import sys; sys.path.insert(0,'planning/preeng-unix/001-isodate-cli/build'); import isodate, datetime; print(isodate.now(fixed=datetime.datetime(2020,1,2,3,4,5)))\"",
+            "Observe the printed datetime."
+          ],
+          "expected_observation": "Prints `2020-01-02 03:04:05` (the injected fixed value), proving the clock is injectable.",
+          "pass_criteria": "Output equals the injected fixed datetime exactly."
+        }
+      },
+      "acceptance_criteria": [
+        "now(fixed=X) returns exactly X (determinism under injection).",
+        "now(utc=True) returns a timezone-aware datetime in UTC.",
+        "now(utc=False) returns the local current instant.",
+        "Uses only stdlib datetime."
+      ],
+      "output_artifact": {
+        "kind": "software",
+        "description": "A `now(utc: bool, fixed: datetime|None)` function in build/isodate.py. Calling it with a fixed datetime returns that exact datetime; otherwise the real current instant.",
+        "location_hint": "planning/preeng-unix/001-isodate-cli/build/isodate.py"
+      },
+      "artifact_location": "planning/preeng-unix/001-isodate-cli/build/isodate.py",
+      "evidence_ref": "evidence/C-001-agent.md",
+      "consumers": []
+    },
+    {
+      "registry_id": "R-0002",
+      "name": "Date/time formatter",
+      "capability_tags": [
+        "formatter",
+        "iso8601",
+        "datetime",
+        "rendering"
+      ],
+      "verifier_type": "software-test",
+      "output_kind": "software",
+      "source_feature": "001-isodate-cli",
+      "source_feature_dir": "planning/preeng-unix/001-isodate-cli",
+      "source_component_id": "C-002",
+      "contract": {
+        "inputs": [
+          {
+            "name": "dt",
+            "type": "datetime",
+            "description": "The instant to format.",
+            "from_component": "C-001"
+          },
+          {
+            "name": "with_time",
+            "type": "bool",
+            "description": "Whether to append HH:MM:SS."
+          }
+        ],
+        "outputs": [
+          {
+            "name": "line",
+            "type": "str",
+            "description": "YYYY-MM-DD, or YYYY-MM-DD HH:MM:SS when with_time is true."
+          }
+        ],
+        "connects_to_parent_via": "main() (C-000) calls format_line(now, flags.time) and prints the returned string to stdout."
+      },
+      "verifier": {
+        "type": "software-test",
+        "auto_check": {
+          "runnable": true,
+          "method": "PYTHONPATH=planning/preeng-unix/001-isodate-cli/build/tests python3 -m unittest test_isodate.FormatterTests",
+          "expected": "Formatter tests pass: date-only and date+time outputs match the expected strings for a fixed datetime; exit code 0."
+        },
+        "human_test": {
+          "procedure": [
+            "From repo root run: python3 -c \"import sys; sys.path.insert(0,'planning/preeng-unix/001-isodate-cli/build'); import isodate, datetime; dt=datetime.datetime(2026,6,5,14,3,9); print(isodate.format_line(dt, False)); print(isodate.format_line(dt, True))\"",
+            "Read the two printed lines."
+          ],
+          "expected_observation": "Line 1 prints `2026-06-05`; line 2 prints `2026-06-05 14:03:09`.",
+          "pass_criteria": "Both lines match exactly (date-only, then date + HH:MM:SS)."
+        }
+      },
+      "acceptance_criteria": [
+        "format_line(dt, False) returns dt's date as YYYY-MM-DD.",
+        "format_line(dt, True) returns 'YYYY-MM-DD HH:MM:SS'.",
+        "Deterministic: same dt + flag always yields the same string.",
+        "Uses only stdlib datetime/strftime."
+      ],
+      "output_artifact": {
+        "kind": "software",
+        "description": "A `format_line(dt, with_time: bool)` function in build/isodate.py returning a string like '2026-06-05' or '2026-06-05 14:03:09'.",
+        "location_hint": "planning/preeng-unix/001-isodate-cli/build/isodate.py"
+      },
+      "artifact_location": "planning/preeng-unix/001-isodate-cli/build/isodate.py",
+      "evidence_ref": "evidence/C-002-agent.md",
+      "consumers": []
+    },
+    {
+      "registry_id": "R-0003",
+      "name": "Argument parser",
+      "capability_tags": [
+        "argparse",
+        "cli-flags",
+        "usage",
+        "exit-code"
+      ],
+      "verifier_type": "software-test",
+      "output_kind": "software",
+      "source_feature": "001-isodate-cli",
+      "source_feature_dir": "planning/preeng-unix/001-isodate-cli",
+      "source_component_id": "C-003",
+      "contract": {
+        "inputs": [
+          {
+            "name": "argv",
+            "type": "list[str]",
+            "description": "Arguments to parse (sys.argv[1:])."
+          }
+        ],
+        "outputs": [
+          {
+            "name": "flags",
+            "type": "Namespace{utc:bool,time:bool}",
+            "description": "Parsed flags on success."
+          },
+          {
+            "name": "usage_error",
+            "type": "SystemExit(code!=0)+stderr",
+            "description": "On bad input: usage to stderr and non-zero exit."
+          }
+        ],
+        "connects_to_parent_via": "main() (C-000) calls parse_args(argv) first; the returned flags drive the clock (C-001) and formatter (C-002) calls."
+      },
+      "verifier": {
+        "type": "software-test",
+        "auto_check": {
+          "runnable": true,
+          "method": "PYTHONPATH=planning/preeng-unix/001-isodate-cli/build/tests python3 -m unittest test_isodate.ParserTests",
+          "expected": "Parser tests pass: --utc/--time parse True; no flags parse False; bad flag raises SystemExit non-zero; exit code 0."
+        },
+        "human_test": {
+          "procedure": [
+            "In a Python shell with build/ on sys.path: from isodate import parse_args",
+            "Call parse_args([\"--utc\"]) and parse_args([\"--time\"]) and parse_args([]) and read the Namespace",
+            "Call parse_args([\"--bogus\"]) inside try/except SystemExit and inspect the raised exit code"
+          ],
+          "expected_observation": "parse_args returns the right Namespace for valid flags; a bad flag raises SystemExit with a non-zero code (argparse prints usage to stderr).",
+          "pass_criteria": "Valid flags yield correct utc/time booleans AND parse_args([\"--bogus\"]) raises SystemExit code != 0. Tested on the leaf function in isolation — NOT by running the assembled CLI (that is the root C-000 test)."
+        }
+      },
+      "acceptance_criteria": [
+        "parse_args(['--utc']) yields utc=True, time=False.",
+        "parse_args(['--time']) yields time=True.",
+        "parse_args([]) yields utc=False, time=False.",
+        "An unknown flag raises SystemExit with a non-zero code and writes usage to stderr.",
+        "Uses only stdlib argparse."
+      ],
+      "output_artifact": {
+        "kind": "software",
+        "description": "A `parse_args(argv)` function in build/isodate.py returning a Namespace with .utc and .time booleans; argparse handles usage/exit on bad flags.",
+        "location_hint": "planning/preeng-unix/001-isodate-cli/build/isodate.py"
+      },
+      "artifact_location": "planning/preeng-unix/001-isodate-cli/build/isodate.py",
+      "evidence_ref": "evidence/C-003-agent.md",
+      "consumers": []
+    }
+  ]
+}

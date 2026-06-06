@@ -135,6 +135,20 @@ For each component, branch on whether it is a **leaf** (`is_leaf: true`) or an
 **intermediate/root**.
 
 #### 2a. Leaf — build then verify
+0. **Reuse check first (don't rebuild what already works).** If the leaf is `reuse.reusable`, query
+   the cross-tree registry before building:
+   ```bash
+   python3 .claude/skills/acos-preeng-unix/scripts/registry.py search --tags "<this leaf's reuse.tags>" --type "<verifier.type>"
+   ```
+   If a candidate's capability tags + verifier type + contract match this leaf's need, **reuse it
+   instead of building**:
+   ```bash
+   python3 .claude/skills/acos-preeng-unix/scripts/registry.py link <feature-dir> <id> <registry-id>
+   ```
+   `link` copies the proven artifact into this feature's `build/`, marks the leaf `passed` (source
+   `reuse`, with an evidence note), and records this feature as a consumer. Then skip to re-running
+   `next-ready.py` — no Builder/Verifier needed. Only fall through to step 1 if there's no acceptable
+   match.
 1. `set-status.py <feature-dir> <id> building` (this refreshes the library).
 2. **Spawn a Builder** (general-purpose, `$BUILDER_MODEL` from Step 0) with `prompts/builder.md` + the component's
    `components/<id>.md` spec + its `contract`. Scope is **only** this component's output

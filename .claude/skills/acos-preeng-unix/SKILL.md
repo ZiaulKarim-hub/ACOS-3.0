@@ -123,6 +123,20 @@ bash .claude/scripts/rag-query.sh --query "<product/domain>" --top-k 8
 You MAY also run `WebSearch` / `WebFetch` for domain facts. Fold findings into the vision
 context under `## Pre-seeded research (T-tagged)` with evidence tiers. Skip to stay lean.
 
+**Reuse pre-seed (recommended).** Surface already-proven, reusable components from prior trees so
+the worker can plan to **reuse rather than reinvent** (the cross-tree half of §0.5):
+
+```bash
+python3 .claude/skills/acos-preeng-unix/scripts/registry.py search --json   # or --tags "<domain capabilities>"
+```
+
+Fold any relevant hits into the vision context under `## Available reusable components (registry)`
+listing each `registry_id`, name, capability tags, verifier type, and source. Instruct the worker
+(via `command_inputs.decompose.reuse_candidates`) that when a needed leaf matches one of these, it
+should name the `registry_id` in that node's `reuse.known_consumers` / notes so the execution engine
+reuses it (`registry.py link`) instead of building. The registry lives at
+`planning/preeng-unix/_registry/registry.json` and starts empty on a fresh project.
+
 ### Step 2: Run the Runner (compiler)
 
 Spawn a **general-purpose** agent (model **opus**) whose system prompt is this skill's runner

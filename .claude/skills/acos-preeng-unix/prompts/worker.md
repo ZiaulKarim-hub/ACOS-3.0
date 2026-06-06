@@ -90,6 +90,15 @@ Because every component is a real functional unit, it can be reused. Tag each wi
 **single shared component** referenced by both parents (record the second parent in
 `reuse.known_consumers`) over duplicating it.
 
+**Cross-tree reuse (registry):** the caller may inject a `## Available reusable components (registry)`
+block into your product context (and `command_inputs.decompose.reuse_candidates`) listing components
+already built + proven in OTHER trees. When a leaf you would create matches one of these by capability
+(tags + verifier type + a compatible contract), do NOT redundantly re-specify it from scratch — set
+that node's `reuse.reusable: true`, copy the matching `reuse.tags`, and note the candidate's
+`registry_id` in the node (e.g. in `reuse.known_consumers` or its `components/{id}.md` "Reuse"
+section). The execution engine will then reuse the proven artifact (`registry.py link`) instead of
+rebuilding. You never invent registry ids — only reference ones the caller supplied.
+
 ### 0.6 Evidence governance + decision trace (carried from preeng DNA)
 
 Maintain a CAGE-style decision trace for the decomposition itself:
