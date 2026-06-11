@@ -3,7 +3,7 @@ name: acos-start
 description: Initializes an ACOS project and routes to the appropriate workflow based on current project state (new vision, existing planning, or active work).
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
 # ACOS Start
@@ -21,7 +21,7 @@ This skill initializes ACOS in any directory that hasn't been set up yet, then r
 Run the ACOS bootstrap script to ensure the current project directory is initialized:
 
 ```bash
-bash "$(find ~ -path "*/ACOS 3.0/.claude/scripts/acos-bootstrap.sh" -maxdepth 7 2>/dev/null | head -1)"
+bash "$(find ~ -maxdepth 7 -path "*/ACOS 3.0/.claude/scripts/acos-bootstrap.sh" 2>/dev/null | head -1)"
 ```
 
 If the script path is already known (e.g., from `.acos/config/project.yaml` → `acos_source` field), use that directly:

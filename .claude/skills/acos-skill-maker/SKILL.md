@@ -106,7 +106,7 @@ Prefix with `acos-` only for ACOS orchestration skills. Use kebab-case for all n
 - Start with the minimum: `Read, Glob, Grep` for read-only skills
 - Add `Write, Edit` only if the skill creates/modifies files
 - Add `Bash` only if the skill needs to run shell commands (e.g., execute scripts, install deps)
-- Add `Agent` only if the skill spawns sub-agents as part of its protocol
+- **Sub-agent spawning is NOT a skill-frontmatter tool.** Never add `Agent` or `Task` to `allowed-tools` — the framework ignores it and it misleads readers. To let a skill spawn sub-agents, set `context: fork` and `agent: architect` so the skill inherits `Task()` from the Architect's context.
 - Add `WebSearch, WebFetch` only if the skill needs external information
 - **If both Bash and auto-trigger are requested**, warn the user: "This creates a high-privilege auto-triggering skill. Are you sure?" Require explicit confirmation.
 
@@ -200,7 +200,7 @@ Script requirements:
 
 1. **Read back** the SKILL.md file to confirm it was written correctly
 2. **Verify** the frontmatter YAML is valid (all required fields present and properly formatted)
-3. If the skill uses agents (`Agent` in allowed-tools), verify the referenced agent definitions exist in `.claude/agents/`
+3. If the skill spawns sub-agents (`context: fork` + `agent: architect`), verify the referenced agent definitions exist in `.claude/agents/`
 4. Tell the user how to invoke: `/[skill-name]` for user-invocable skills, or describe auto-trigger conditions if `disable-model-invocation: false`
 5. Inform the user of the new skill count if they want to update CLAUDE.md (do not modify CLAUDE.md directly — let the user decide)
 
@@ -234,11 +234,13 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 ```
 
 ### Multi-Agent Swarm Skill
-For parallel work (extraction, review, analysis). Needs Agent tool.
+For parallel work (extraction, review, analysis).
 ```yaml
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+context: fork
+agent: architect
 ```
-**Note:** Requires explicit justification for Bash and Agent tools.
+**Note:** Sub-agent spawning (`Task()`) is inherited from the invoking agent's context via `context: fork` + `agent: architect`; do NOT list `Task` or `Agent` in `allowed-tools`. Requires explicit justification for the `Bash` grant.
 
 ### Review/Validation Skill
 Read-only verification. No write access.
@@ -255,10 +257,12 @@ allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch
 ### Orchestration Skill
 Coordinates multi-phase pipelines with agent spawning and file I/O.
 ```yaml
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+context: fork
+agent: architect
 disable-model-invocation: true
 ```
-Orchestration skills should always be explicit-only due to their powerful tool grants.
+Orchestration capability (`Task()`) comes from `context: fork` + `agent: architect`, NOT from `allowed-tools` — matching the verified mechanism in `orchestration-creation/SKILL.md`. Orchestration skills should always be explicit-only due to their powerful tool grants.
 
 ## Output
 

@@ -2,7 +2,9 @@
 # Model Profile System — Agent Model Assignments
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# Controls which Claude model each ACOS agent uses when spawned via Task().
+# Controls which model each ACOS agent uses when spawned. Supports Claude (bare
+# name, dispatched via Task()) AND external providers (provider:model, dispatched
+# via run-external-agent.py).
 # Location: .acos/config/model-profile.yaml (per-project, user-editable)
 #
 # How it works:
@@ -15,7 +17,12 @@
 # To change profile mid-session: /acos-model-change
 # To set profile at startup:     /acos-start includes a model selection step
 #
-# Available models: opus, sonnet, haiku
+# Available Claude models: opus, sonnet, haiku
+# External models use provider:model syntax (e.g. openai:gpt-4o,
+#   google:gemini-2.5-pro, openrouter:google/gemini-2.0-flash-exp:free).
+#   External providers require .acos/config/providers.yaml (endpoints + keys).
+#   architect and developer are FORCED to Claude (tool access); external
+#   assignments for them silently fall back to the Claude default.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Which profile to use by default when no session override exists
@@ -79,3 +86,55 @@ profiles:
     integration-reviewer: sonnet
     memory-agent: haiku
     learning-agent: sonnet
+
+  # ── Multi-provider profiles ──────────────────────────────────────────────
+  # These require .acos/config/providers.yaml (API endpoints + keys).
+  # architect/developer stay on Claude (forced); external falls back silently.
+
+  hybrid-review:
+    description: "Claude for implementation, multi-provider diversity for review."
+    main: opus
+    architect: opus
+    developer: sonnet
+    qa-reviewer: openai:gpt-4o
+    security-reviewer: openrouter:google/gemini-2.5-pro-exp-03-25
+    performance-reviewer: openrouter:meta-llama/llama-3.3-70b-instruct
+    integration-reviewer: sonnet
+    memory-agent: haiku
+    learning-agent: openrouter:deepseek/deepseek-chat
+
+  free-tier:
+    description: "Free models via OpenRouter for review. Zero external cost."
+    main: sonnet
+    architect: sonnet
+    developer: sonnet
+    qa-reviewer: openrouter:google/gemini-2.0-flash-exp:free
+    security-reviewer: openrouter:google/gemini-2.0-flash-exp:free
+    performance-reviewer: openrouter:google/gemini-2.0-flash-exp:free
+    integration-reviewer: openrouter:google/gemini-2.0-flash-exp:free
+    memory-agent: haiku
+    learning-agent: openrouter:google/gemini-2.0-flash-exp:free
+
+  openai-review:
+    description: "Claude for implementation, OpenAI for all reviews."
+    main: opus
+    architect: opus
+    developer: sonnet
+    qa-reviewer: openai:gpt-4o
+    security-reviewer: openai:gpt-4o
+    performance-reviewer: openai:gpt-4o-mini
+    integration-reviewer: openai:gpt-4o-mini
+    memory-agent: haiku
+    learning-agent: openai:gpt-4o-mini
+
+  gemini-review:
+    description: "Claude for implementation, Google Gemini for all reviews."
+    main: opus
+    architect: opus
+    developer: sonnet
+    qa-reviewer: google:gemini-2.5-pro
+    security-reviewer: google:gemini-2.5-pro
+    performance-reviewer: google:gemini-2.5-flash
+    integration-reviewer: google:gemini-2.5-flash
+    memory-agent: haiku
+    learning-agent: google:gemini-2.5-flash

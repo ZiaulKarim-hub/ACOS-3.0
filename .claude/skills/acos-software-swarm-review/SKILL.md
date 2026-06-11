@@ -657,6 +657,7 @@ Write the final report to `.acos/software-swarm-review/[timestamp]/final-report.
 | S05 | Secrets | ... | ... | ... | ... | ... |
 | [S06–S14] | [Dynamic lenses] | ... | ... | ... | ... | ... |
 | XFILE | Cross-File Analyst | ... | ... | ... | ... | ... |
+| COORD | Coordinator (Phase 4) | (preliminary verdict) | ... | ... | ... | ... |
 | V01 | Independent Verifier A | — | N confirmed | N confirmed | — | — |
 | V02 | Independent Verifier B | — | N confirmed | N confirmed | — | — |
 

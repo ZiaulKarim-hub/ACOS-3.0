@@ -28,9 +28,13 @@ Review the conversation context to identify what was accomplished in this sessio
 
 ### Step 2: Check for Existing Current-Session Handoff
 
-Read all `memory/handoffs/*.yaml` files to determine if any existing handoff already captures this session's work.
+Read all active handoffs to determine if any existing handoff already captures this session's work. Handoffs are emitted as `.md` (current format) with legacy `.yaml` also possible, so glob BOTH extensions and exclude `.resume.md` sibling files (a resume copy is never the handoff itself):
 
-A handoff captures the current session if it references the same accomplishments, files, and decisions from this session. Also check `.acos/state/handoff-triggered-*` markers as a secondary signal that the Stop hook auto-created a handoff.
+```bash
+ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$'
+```
+
+A handoff captures the current session if it references the same accomplishments, files, and decisions from this session.
 
 **Decision criteria:**
 - If an existing handoff clearly describes this session's work → skip creation, proceed to Step 4
@@ -78,27 +82,32 @@ Note: This handoff is created with `status: "completed"` immediately — it is a
 
 ### Step 4: Mark Remaining Active Handoffs as Completed
 
-Search `memory/handoffs/*.yaml` for files with a top-level `status: "active"` field or no status field (legacy handoffs treated as active).
+Search both `.md` and `.yaml` handoffs (excluding `.resume.md` siblings) for files with a top-level `status: "active"` field or no status field (legacy handoffs treated as active):
+
+```bash
+ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$'
+```
 
 Skip files that already have `status: "completed"` or `status: "mechanical"`.
 
-For each active handoff found:
-- If it has a top-level `status:` field, change its value to `"completed"`
-- If it has no top-level `status:` field, add `status: "completed"` on the line after `timestamp:`
+For each active handoff found (the `status:` field lives in the YAML front-matter block of a `.md` handoff, or at the top level of a `.yaml` handoff):
+- If it has a top-level/front-matter `status:` field, change its value to `"completed"`
+- If it has no `status:` field, add `status: "completed"` on the line after `timestamp:`
 
 ### Step 5: Move to Archive
 
 Create `memory/handoffs/archive/` if it doesn't exist.
 
-Move all completed handoffs (including the one created in Step 3) to the archive directory:
+Move all completed handoffs (including the one created in Step 3) to the archive directory. Move the actual handoff files (`.md` and `.yaml`) but NOT `.resume.md` sibling files (those are per-session resume copies the eternity protocol still needs and must be preserved):
 ```bash
 mkdir -p memory/handoffs/archive
-mv memory/handoffs/<filename>.yaml memory/handoffs/archive/
+# Move each completed handoff by name (.md or .yaml); never move *.resume.md
+mv memory/handoffs/<filename> memory/handoffs/archive/
 ```
 
 ### Step 6: Cleanup
 
-Remove stale session markers from `.acos/state/`:
+Remove any stale legacy session markers from `.acos/state/` (defensive cleanup — the currently registered Stop hook is `autopilot-stop-handler.py`, which does not write `handoff-triggered-*` markers; this rm only clears residue from older hook generations):
 ```bash
 rm -f .acos/state/handoff-triggered-*
 ```

@@ -53,7 +53,7 @@ Produce a **domain brief** before decomposing into children:
 3. **Answer each CQ from evidence**, drawing on, in order: the RAG results from Step 1.5 (prior ACOS decisions/learnings/handoffs), existing repo docs, and — for external facts — `WebSearch`/`WebFetch`. Tag every answer with an **evidence tier**:
    - **T1** Authoritative (specs, standards, official docs) · **T2** Expert (papers, RFCs, recognized experts) · **T3** Empirical (tests, benchmarks, measured data) · **T4** Community (forums, vendor docs, blogs) · **T5** Internal (org knowledge, prior ACOS handoffs/decisions)
 4. **Coverage gate:** count how many CQs are confidently answerable. **Target ≥ 80%.** If below, either research further or record each gap as an explicit Open Question / Assumption — never silently proceed on an ungrounded plan.
-5. **Write the artifact** to `planning/domain-briefs/<LEVEL>-<ID>-domain-brief.md` using the template at `!cat templates/domain-brief.md`. Reference it from the vision/epic YAML so reviewers and downstream slices can check it.
+5. **Write the artifact** to `planning/domain-briefs/<LEVEL>-<ID>-domain-brief.md` using the template at `!cat templates/domain-brief.md`. Reference it from the vision/epic YAML so reviewers and downstream slices can check it. (`acos-bootstrap.sh` does not pre-create `planning/domain-briefs/` — the `Write` tool creates the parent directory on first write.)
 
 The CQ list + coverage figure become the plan's grounding record; unmet CQs flow into the plan's risks/open-questions. This makes "is this plan well-grounded?" a checkable property instead of a matter of trust.
 
