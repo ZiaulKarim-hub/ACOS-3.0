@@ -34,8 +34,13 @@ A separate subcommand rehydrates extraction.json after responses land:
 
     python ocr_and_vision.py --rehydrate --run-dir <run>
 
-Read references/vision_fallback.md for trigger logic and references/
-vision_bridge_contract.md for the request/response schemas.
+Bridge contract (schemas defined in-code below):
+  request  — written by this script to requests/<req_id>.json; carries
+             {request_id, file_id, page_number, image_path, prompt (VISION_PROMPT),
+             expected_schema (EXPECTED_RESPONSE_SCHEMA), trigger_reason, status}.
+  response — written by the orchestrator to responses/res_<...>.json; must match
+             EXPECTED_RESPONSE_SCHEMA (document_type, extracted_text, visual_elements,
+             critical_fields, privacy_flags, confidence_self_assessment, notes).
 """
 
 from __future__ import annotations

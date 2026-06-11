@@ -1,0 +1,66 @@
+# ACOS Legal Analysis — Session Manifest
+# One per invocation. Lives at: .acos/sessions/legal-analysis/{session-id}/session-manifest.yaml
+
+session_id: ""                      # la-YYYYMMDD-HHMMSS
+created_at: ""                      # ISO 8601
+created_by: "acos-legal-analysis"
+
+mode: ""                            # lending | ip-infringement | both
+party: "neutral"                    # plaintiff | defendant | neutral (Mode B only)
+
+folder_path: ""                     # absolute path to the analyzed folder
+session_dir: ""                     # absolute path to this session's directory
+
+status: "initialized"               # initialized | phase-0 | phase-1 | phase-2 | phase-3 | phase-4-citation-qa | phase-5-ic-memo | phase-6-summary | complete | error
+
+phases:
+  phase_1_inventory:
+    status: "pending"               # pending | running | complete | error
+    started_at: ""
+    completed_at: ""
+    agent_model: ""                 # e.g., opus, openai:gpt-4o
+    output_file: "inventory.yaml"
+  phase_2_deep_read:
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    agent_model: ""
+    docs_read: 0
+    docs_total: 0
+  phase_3_findings:
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    agent_model: ""
+    findings_count: 0
+    critical_count: 0
+    high_count: 0
+  phase_4_citation_qa:
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    agent_model: ""                 # citation-QA agent (typically sonnet)
+    wigum_iterations: 0             # re-grounding loop count (cap 3)
+    max_wigum_iterations: 3
+    fail_count: 0
+    final_verdict: ""               # PASS | PASS_WITH_NOTE | ESCALATED
+    output_file: "qa/citations-qa-report.md"
+  phase_5_ic_memo:
+    status: "pending"               # pending | running | complete | skipped | error
+    started_at: ""
+    completed_at: ""
+    skipped: false                  # true if --no-ic-memo or non-OKOA-context run
+    output_files:
+      - "IC-memo.html"
+      - "IC-memo.pdf"
+  phase_6_summary:
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    output_file: "SUMMARY.md"
+
+# Artifacts written during this session (for quick index)
+artifacts: []
+
+# Any errors or user-confirmed scope restrictions
+notes: []

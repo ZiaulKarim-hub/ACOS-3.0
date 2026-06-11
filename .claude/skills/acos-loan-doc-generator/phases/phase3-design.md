@@ -37,8 +37,65 @@ If iteration > 1, you also receive feedback from Phase 4.
    ```
 5. Output: `{session_id}/output/{document_slug}.pptx` (no PDF/DOCX for PPTX types)
 
-**After PPTX pipeline completes, STOP. Do not continue to Step 3.1 or any
-subsequent steps. Return to the caller with the PPTX output path.**
+**After PPTX pipeline completes, run the Post-Build Cleanup (Step 3.0b) below,
+then STOP. Do not continue to Step 3.1 or any subsequent steps. Return to the
+caller with the PPTX output path.**
+
+## Step 3.0b: PPTX Post-Build Cleanup (MANDATORY for all PPTX output)
+
+After every PPTX generation (initial or Wigum iteration), run these cleanup steps:
+
+1. **Strip theme shadows (python-pptx bug):** python-pptx's default theme template
+   defines `outerShdw` on all three `effectStyle` levels (idx 0, 1, 2). Every shape
+   gets `effectRef idx="2"`, silently inheriting a 35%-opacity black drop shadow.
+   This violates the OKOA brand rule "no drop shadows on cards." Fix:
+   ```python
+   from pptx import Presentation
+   from lxml import etree
+   prs = Presentation(pptx_path)
+   # Strip outerShdw from theme effectStyleLst
+   ns = {'a': 'http://schemas.openxmlformats.org/drawingml/2006/main'}
+   for theme in [sl.slide_layout.slide_master for sl in prs.slides]:
+       theme_elem = theme.element
+       for shadow in theme_elem.findall('.//a:outerShdw', ns):
+           shadow.getparent().remove(shadow)
+   # Reset all effectRef idx to 0
+   for slide in prs.slides:
+       for shape in slide.shapes:
+           for eref in shape._element.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/main}effectRef'):
+               eref.set('idx', '0')
+   prs.save(pptx_path)
+   ```
+
+2. **Verify explicit background fills:** Scan all shapes with text frames. Any shape
+   where `shape.fill.type is None` (no explicit fill) must have `shape.fill.solid()`
+   called with the appropriate background color (surface-white for content cards,
+   sage-600 for brand sections, ink-100 for dark sections). Shapes without explicit
+   fill appear transparent in screenshot renderers and PDF exports.
+
+3. **Font fallback advisory:** If the deck uses Cormorant Garamond, add a note to the
+   final slide or a companion file: "This presentation uses Cormorant Garamond for
+   display typography. Install from fonts.google.com/specimen/Cormorant+Garamond
+   for the intended editorial appearance."
+
+**Coffee-Table Book Detection:**
+
+If the session manifest contains `additional_instructions` mentioning "coffee table",
+"coffee-table", "editorial", "luxury", or "magazine-style", apply the coffee-table
+book variant from the design patterns YAML:
+- Full-bleed hero photos with gradient overlays, oversized Cormorant 88-130pt display
+- Photo break slides between every 2-3 data slides
+- Generous whitespace (half-empty slides = luxury, not deficiency)
+- Larger metric cards (2-3 per slide, not 4-6), 48-72pt coral Cormorant numbers
+- Section dividers are optional — offer but accept removal gracefully
+
+**Rate Selection for Recovery/IRR Scenarios:**
+
+When building IRR matrices or recovery scenario slides:
+- Use the COUPON rate for forward accrual if the loan is performing
+- Use the DEFAULT rate only if the loan is confirmed in default
+- Read the `loan_status.default_confirmed` field from loan-data.yaml
+- If `default_confirmed` is false or absent, always use the coupon rate
 
 **PPTX Wigum Loop (iteration > 1):**
 

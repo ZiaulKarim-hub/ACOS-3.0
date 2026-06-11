@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glyph Paint Editor — acos-type-forge</title>
+<style>
+  :root{--paper:#f4ece0;--ink:#2a2620;--gilt:#b2774a;--faint:#9a8e7a;--line:#d8cdbb;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#efe7da;color:var(--ink);font:13px/1.4 "Source Serif 4",Georgia,serif;display:flex;height:100vh;overflow:hidden;}
+  #alpha{width:132px;flex:none;background:#e8ddcb;border-right:1px solid var(--line);overflow-y:auto;padding:8px;}
+  #alpha h3{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gilt);margin:6px 2px;}
+  .scope{display:flex;gap:4px;margin:0 0 8px;}
+  .scope button{flex:1;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:5px 2px;border:1px solid var(--line);background:var(--paper);border-radius:4px;cursor:pointer;color:var(--ink);font-family:inherit;}
+  .scope button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .grp{margin-bottom:4px;}
+  .grp>summary{list-style:none;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--gilt);padding:5px 2px;cursor:pointer;display:flex;align-items:center;gap:5px;user-select:none;}
+  .grp>summary::-webkit-details-marker{display:none;}
+  .grp>summary::before{content:'▸';font-size:9px;transition:transform .15s ease;color:var(--faint);}
+  .grp[open]>summary::before{transform:rotate(90deg);}
+  .grpgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0 4px;}
+  .gbtn{position:relative;aspect-ratio:1;border:1px solid var(--line);background:var(--paper);border-radius:4px;font-family:Georgia,serif;font-size:22px;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .gbtn:hover{border-color:var(--gilt);}
+  .gbtn.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .gbtn .dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--gilt);display:none;}
+  .gbtn.edited .dot{display:block;}
+  #stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:16px;}
+  #wrap{position:relative;width:min(1040px,100%);aspect-ratio:1040/1000;background:var(--paper);border:1px solid var(--line);box-shadow:0 8px 30px rgba(42,38,32,.10);border-radius:4px;}
+  #wrap canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #ghost{opacity:.16;} #guides{pointer-events:none;} #paint{cursor:crosshair;} #overlay{pointer-events:none;cursor:crosshair;}
+  #caption{margin-top:10px;color:var(--faint);font-size:12px;}
+  #tools{width:218px;flex:none;background:#e8ddcb;border-left:1px solid var(--line);padding:14px;overflow-y:auto;}
+  #tools h3{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gilt);margin:14px 0 8px;}
+  #tools h3:first-child{margin-top:0;}
+  .tool{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;margin-bottom:5px;border:1px solid var(--line);background:var(--paper);border-radius:5px;cursor:pointer;font:inherit;font-size:13px;text-align:left;}
+  .tool:hover{border-color:var(--gilt);}
+  .tool.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .tool .k{margin-left:auto;font-size:10px;opacity:.5;}
+  .row{display:flex;gap:6px;}
+  input[type=range]{width:100%;}
+  .val{font-variant-numeric:tabular-nums;color:var(--gilt);}
+  .chk{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;}
+  .act{background:var(--gilt);color:#fff;border:none;width:100%;padding:9px;border-radius:5px;cursor:pointer;margin-bottom:6px;font:inherit;font-size:13px;}
+  .act.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  #shapebox{display:none;background:#f0e6d4;border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:6px;}
+  #shapebox.on{display:block;}
+  .sbhint{font-size:11px;color:var(--faint);margin-bottom:8px;line-height:1.5;}
+  .sbhint b{color:var(--ink);}
+  .hint{font-size:11px;color:var(--faint);margin-top:8px;line-height:1.5;}
+  .hint code{background:#e0d4bf;padding:1px 4px;border-radius:3px;}
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:6px;opacity:0;transition:.25s;pointer-events:none;font-size:13px;z-index:50;}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+  [hidden]{display:none!important;}
+</style>
+</head>
+<body>
+  <div id="alpha">
+    <div class="scope" id="scope">
+      <button data-scope="A" class="active" title="Core Latin — uppercase, lowercase, numbers, basic punctuation (~80 glyphs)">A · Core</button>
+      <button data-scope="B" title="Full Latin — adds accented letters and extended punctuation (~350 glyphs)">B · Full</button>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="wrap">
+      <canvas id="ghost" width="1040" height="1000"></canvas>
+      <canvas id="paint" width="1040" height="1000"></canvas>
+      <canvas id="guides" width="1040" height="1000"></canvas>
+      <canvas id="overlay" width="1040" height="1000"></canvas>
+    </div>
+    <div id="caption">Letter <b id="curch">A</b> — paint to add ink, erase to carve, copy to reuse parts. Edits auto-save locally.</div>
+  </div>
+
+  <div id="tools">
+    <a class="act ghost" href="./" style="display:block;text-align:center;text-decoration:none;margin-bottom:6px;">⌂ Home</a>
+    <a class="act" href="./spacing.html" style="display:block;text-align:center;text-decoration:none;margin-bottom:10px;">⇄ Spacing Editor</a>
+    <h3>Tools</h3>
+    <button class="tool active" data-tool="pencil">✏️ Pencil <span class="k">B</span></button>
+    <button class="tool" data-tool="eraser">🩹 Eraser <span class="k">E</span></button>
+    <button class="tool" data-tool="line">／ Straight line <span class="k">L</span></button>
+    <button class="tool" data-tool="erase-poly">▰ Erase shape <span class="k">R</span></button>
+    <button class="tool" data-tool="fill-poly">◆ Fill shape <span class="k">F</span></button>
+    <button class="tool" data-tool="copy-poly">⎘ Copy shape <span class="k">C</span></button>
+
+    <div id="shapebox">
+      <!-- polygon phase (erase / fill / copy-define) -->
+      <div id="sb-poly">
+        <div class="sbhint">
+          <b id="shapemode">Erase</b> shape.<br>
+          • Drag <b>corners</b> to reshape · drag <b>hollow mid-dots</b> to add a point<br>
+          • Drag inside to <b>move</b> · double-click a corner to remove it
+        </div>
+        <button class="act" id="apply">✓ Apply <span style="opacity:.6">⏎</span></button>
+        <button class="act" id="docopy" hidden>⎘ Copy selection <span style="opacity:.6">⏎</span></button>
+        <div class="row">
+          <button class="act ghost" id="reshape">⟲ Reset shape</button>
+          <button class="act ghost" id="dismiss">✕ Clear <span style="opacity:.6">esc</span></button>
+        </div>
+      </div>
+      <!-- paste phase (floating copy) -->
+      <div id="sb-clip" hidden>
+        <div class="sbhint">Floating copy.<br>• Drag inside to <b>move</b> · drag <b>corners</b> to resize · drag the <b>top knob</b> to rotate<br>• <b>switch letters</b> and stamp anywhere · stamp as many times as you like</div>
+        <button class="act" id="stamp">✓ Stamp here <span style="opacity:.6">⏎</span></button>
+        <div class="row">
+          <button class="act ghost" id="flipH">⇋ Flip H</button>
+          <button class="act ghost" id="flipV">⇅ Flip V</button>
+        </div>
+        <div class="row">
+          <button class="act ghost" id="resetT">⟲ Reset size/angle</button>
+          <button class="act ghost" id="recopy">⎘ New copy</button>
+        </div>
+        <button class="act ghost" id="clipclear">✕ Clear <span style="opacity:.6">esc</span></button>
+      </div>
+    </div>
+
+    <h3>Brush size · <span class="val" id="szval">22</span></h3>
+    <input type="range" id="size" min="1" max="140" value="22">
+
+    <h3>View</h3>
+    <label class="chk"><input type="checkbox" id="ckguides" checked> Guides (baseline/cap)</label>
+    <label class="chk"><input type="checkbox" id="ckghost" checked> Ghost of original</label>
+
+    <h3>Edit</h3>
+    <div class="row">
+      <button class="tool" id="undo">↶ Undo <span class="k">⌘Z</span></button>
+      <button class="tool" id="redo">↷ Redo</button>
+    </div>
+    <button class="act ghost" id="reset">⟲ Reset this letter</button>
+
+    <h3>Save</h3>
+    <button class="act" id="save">💾 Save project <span style="opacity:.6">⌘S</span></button>
+
+    <h3>Export</h3>
+    <button class="act ghost" id="dl">⬇︎ Download letter (PNG)</button>
+    <button class="act ghost" id="dlall">⬇︎ Export all edits (.json)</button>
+    <div class="hint">Save writes <code>edits/glyph-edits.json</code> to disk (the vectorizer reads it). Per-stroke autosave to this browser is separate; Save makes it durable + hands it back for rebuilding into the font.</div>
+  </div>
+  <div id="toast"></div>
+
+<script>
+const W=1040,H=1000,BASE=740,SIZE=620,INK="#2a2620";
+// Side-pane glyph sets, grouped into collapsible categories.
+// Scope A = core Latin (~80). Scope B = A + accented/extended (~350).
+const GROUPS_CORE=[
+  {name:"Uppercase",   chars:"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")},
+  {name:"Lowercase",   chars:"abcdefghijklmnopqrstuvwxyz".split("")},
+  {name:"Numbers",     chars:"0123456789".split("")},
+  {name:"Punctuation", chars:". , : ; ! ? ' \" ( ) - – — / & @ # % = +".split(" ")},
+];
+const GROUPS_EXT=[
+  {name:"Uppercase accented", chars:"À Á Â Ã Ä Å Æ Ç È É Ê Ë Ì Í Î Ï Ð Ñ Ò Ó Ô Õ Ö Ø Ù Ú Û Ü Ý Þ Œ Š Ž".split(" ")},
+  {name:"Lowercase accented", chars:"à á â ã ä å æ ç è é ê ë ì í î ï ð ñ ò ó ô õ ö ø ù ú û ü ý þ ÿ œ š ž ß".split(" ")},
+  {name:"More punctuation",   chars:"… ‹ › « » ‚ „ • · ± × ÷ ° § ¶ © ® ™ * [ ] { } | ~ ^ _ < > \\".split(" ")},
+  {name:"Currency",           chars:"$ € £ ¥ ¢ ¤".split(" ")},
+  {name:"Superscript/fraction", chars:"¹ ² ³ ½ ¼ ¾ ª º".split(" ")},
+];
+let scope="A";
+function activeGroups(){return scope==="B"?GROUPS_CORE.concat(GROUPS_EXT):GROUPS_CORE;}
+function allChars(){return activeGroups().flatMap(g=>g.chars);}
+const paint=document.getElementById('paint'),pctx=paint.getContext('2d');
+const ghost=document.getElementById('ghost'),gctx=ghost.getContext('2d');
+const guides=document.getElementById('guides'),uctx=guides.getContext('2d');
+const overlay=document.getElementById('overlay'),octx=overlay.getContext('2d');
+let cur="A",tool="pencil",size=22,drawing=false,start=null,snap=null;
+let undoStack=[],redoStack=[];
+const store={};
+let mask=null, drag=null;          // mask={mode:'erase'|'fill'|'copy',pts:[...]}
+let clip=null;                     // {canvas,w,h,cx,cy,sx,sy,rot,flipH,flipV} persists across letters
+
+const ff=new FontFace("CinzelEd","url(base.woff2)");
+ff.load().then(async f=>{document.fonts.add(f);
+  if(localStorage.getItem('tf_ver')!=='v2'){Object.keys(localStorage).filter(k=>k.startsWith('tf_')).forEach(k=>localStorage.removeItem(k));localStorage.setItem('tf_ver','v2');}
+  // load any saved edits from disk that aren't already in this browser (carries work across origins)
+  try{const disk=await (await fetch('glyph-edits.json')).json();for(const ch in disk){if(!localStorage.getItem('tf_'+ch)){store[ch]=disk[ch];localStorage.setItem('tf_'+ch,disk[ch]);}}}catch(_){}
+  buildAlphabet();drawGuides();
+  const q=new URLSearchParams(location.search);const ch=q.get('ch');
+  loadLetter(ch&&allChars().includes(ch)?ch:"A");
+  const t=q.get('t');if(t)selectTool(t);});
+
+// ---------- glyph + guides ----------
+function renderGlyphTo(ctx,ch,color){ctx.clearRect(0,0,W,H);ctx.fillStyle=color;ctx.textBaseline="alphabetic";ctx.font=`${SIZE}px CinzelEd`;
+  const m=ctx.measureText(ch);
+  const x=W/2-((m.actualBoundingBoxRight||0)-(m.actualBoundingBoxLeft||0))/2;  // center by INK, not advance
+  ctx.fillText(ch,x,BASE);}
+function drawGuides(){uctx.clearRect(0,0,W,H);if(!document.getElementById('ckguides').checked)return;
+  uctx.strokeStyle="#c9bca6";uctx.lineWidth=1;uctx.fillStyle="#b7a98f";uctx.font="11px sans-serif";
+  pctx.save();pctx.font=`${SIZE}px CinzelEd`;const asc=pctx.measureText("H").actualBoundingBoxAscent;pctx.restore();
+  for(const [y,t] of [[BASE,"baseline"],[BASE-asc,"cap height"]]){uctx.beginPath();uctx.moveTo(40,y);uctx.lineTo(W-40,y);uctx.stroke();uctx.fillText(t,44,y-5);}
+  uctx.beginPath();uctx.moveTo(W/2,40);uctx.lineTo(W/2,H-40);uctx.setLineDash([4,6]);uctx.stroke();uctx.setLineDash([]);}
+
+// ---------- alphabet ----------
+const OPEN_BY_DEFAULT=new Set(["Uppercase","Lowercase","Numbers"]);
+function buildAlphabet(){const wrap=document.getElementById('alpha');
+  wrap.querySelectorAll('.grp').forEach(n=>n.remove());          // clear sections, keep scope toggle
+  for(const g of activeGroups()){
+    const d=document.createElement('details');d.className="grp";if(OPEN_BY_DEFAULT.has(g.name))d.open=true;
+    const s=document.createElement('summary');s.textContent=g.name+" · "+g.chars.length;d.appendChild(s);
+    const grid=document.createElement('div');grid.className="grpgrid";
+    for(const ch of g.chars){const b=document.createElement('button');b.className="gbtn";b.dataset.ch=ch;b.innerHTML=ch+'<span class="dot"></span>';b.onclick=()=>{saveCurrent();loadLetter(ch);};grid.appendChild(b);}
+    d.appendChild(grid);wrap.appendChild(d);
+  }
+  refreshButtons();}
+function refreshButtons(){document.querySelectorAll('.gbtn').forEach(b=>{b.classList.toggle('active',b.dataset.ch===cur);b.classList.toggle('edited',!!localStorage.getItem('tf_'+b.dataset.ch));});}
+
+// ---------- load/save ----------
+function loadLetter(ch){cur=ch;document.getElementById('curch').textContent=ch;renderGlyphTo(gctx,ch,INK);
+  const saved=store[ch]||localStorage.getItem('tf_'+ch);
+  if(saved){const img=new Image();img.onload=()=>{pctx.clearRect(0,0,W,H);pctx.drawImage(img,0,0);};img.src=saved;}else{renderGlyphTo(pctx,ch,INK);}
+  undoStack=[];redoStack=[];refreshButtons();redrawOverlay();}
+function saveCurrent(){const url=paint.toDataURL();store[cur]=url;localStorage.setItem('tf_'+cur,url);refreshButtons();}
+
+// ---------- freehand ----------
+function pos(e,cv){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
+function pushUndo(){undoStack.push(pctx.getImageData(0,0,W,H));if(undoStack.length>40)undoStack.shift();redoStack=[];}
+function strokeStyle(){pctx.lineCap="round";pctx.lineJoin="round";pctx.lineWidth=size;}
+paint.addEventListener('pointerdown',e=>{if(tool!=="pencil"&&tool!=="eraser"&&tool!=="line")return;paint.setPointerCapture(e.pointerId);drawing=true;start=pos(e,paint);pushUndo();if(tool==="line")snap=pctx.getImageData(0,0,W,H);else dab(start,start);});
+paint.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e,paint);if(tool==="line"){pctx.putImageData(snap,0,0);setComp();strokeStyle();pctx.strokeStyle=INK;pctx.beginPath();pctx.moveTo(start.x,start.y);pctx.lineTo(p.x,p.y);pctx.stroke();pctx.globalCompositeOperation="source-over";}else{dab(start,p);start=p;}});
+paint.addEventListener('pointerup',()=>{if(drawing){drawing=false;saveCurrent();}});
+function setComp(){pctx.globalCompositeOperation=(tool==="eraser")?"destination-out":"source-over";}
+function dab(a,b){setComp();strokeStyle();pctx.strokeStyle=INK;pctx.beginPath();pctx.moveTo(a.x,a.y);pctx.lineTo(b.x,b.y);pctx.stroke();pctx.globalCompositeOperation="source-over";}
+
+// ---------- polygon mask (erase / fill / copy-define) ----------
+const COL={erase:{s:'#b03a2e',f:'rgba(176,58,46,0.16)'},fill:{s:'#3f6e50',f:'rgba(63,110,80,0.16)'},copy:{s:'#2f6da8',f:'rgba(47,109,168,0.14)'}};
+function spawnMask(mode){const cx=W/2,cy=BASE-220,w=250,h=190;mask={mode,pts:[{x:cx-w/2,y:cy-h/2},{x:cx+w/2,y:cy-h/2},{x:cx+w/2,y:cy+h/2},{x:cx-w/2,y:cy+h/2}]};drawMask();}
+function midpoints(){const m=[];for(let i=0;i<mask.pts.length;i++){const a=mask.pts[i],b=mask.pts[(i+1)%mask.pts.length];m.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,i});}return m;}
+function drawMask(){octx.clearRect(0,0,W,H);if(!mask)return;const c=COL[mask.mode];
+  octx.beginPath();mask.pts.forEach((p,i)=>i?octx.lineTo(p.x,p.y):octx.moveTo(p.x,p.y));octx.closePath();octx.fillStyle=c.f;octx.fill();octx.strokeStyle=c.s;octx.lineWidth=1.5;octx.stroke();
+  for(const m of midpoints()){octx.beginPath();octx.arc(m.x,m.y,5,0,7);octx.fillStyle="#fff";octx.fill();octx.strokeStyle=c.s;octx.lineWidth=1.5;octx.stroke();}
+  for(const p of mask.pts){octx.beginPath();octx.arc(p.x,p.y,6.5,0,7);octx.fillStyle=c.s;octx.fill();octx.strokeStyle="#fff";octx.lineWidth=2;octx.stroke();}}
+function inPoly(pt,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if(((a.y>pt.y)!=(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x))c=!c;}return c;}
+function near(p,q,r){return Math.hypot(p.x-q.x,p.y-q.y)<=r;}
+
+function applyMask(){if(!mask)return;pushUndo();pctx.save();pctx.beginPath();mask.pts.forEach((p,i)=>i?pctx.lineTo(p.x,p.y):pctx.moveTo(p.x,p.y));pctx.closePath();pctx.globalCompositeOperation=mask.mode==='erase'?'destination-out':'source-over';pctx.fillStyle=INK;pctx.fill();pctx.restore();pctx.globalCompositeOperation="source-over";saveCurrent();drawMask();}
+function dismissMask(){mask=null;drag=null;octx.clearRect(0,0,W,H);}
+
+// ---------- copy / clipboard ----------
+// clip is a FLOATING copy with a live affine transform (center cx/cy, uniform
+// scale sx/sy, rotation rot, flips). It stays editable — move/resize/rotate —
+// until you Stamp, which rasterizes the transform into the paint canvas.
+function captureClip(){if(!mask)return;const xs=mask.pts.map(p=>p.x),ys=mask.pts.map(p=>p.y);
+  const x0=Math.floor(Math.min(...xs)),y0=Math.floor(Math.min(...ys)),x1=Math.ceil(Math.max(...xs)),y1=Math.ceil(Math.max(...ys));
+  const w=Math.max(1,x1-x0),h=Math.max(1,y1-y0);const cc=document.createElement('canvas');cc.width=w;cc.height=h;const cx=cc.getContext('2d');
+  cx.drawImage(paint,x0,y0,w,h,0,0,w,h);                    // copy paint region
+  cx.globalCompositeOperation='destination-in';cx.beginPath();mask.pts.forEach((p,i)=>i?cx.lineTo(p.x-x0,p.y-y0):cx.moveTo(p.x-x0,p.y-y0));cx.closePath();cx.fillStyle='#000';cx.fill();cx.globalCompositeOperation='source-over';
+  clip={canvas:cc,w,h,cx:x0+w/2,cy:y0+h/2,sx:1,sy:1,rot:0,flipH:false,flipV:false};mask=null;drawCopyFloat();updateShapeUI();}
+// signed scale folds the flip booleans into the scale factors
+function clipSign(){return {sx:clip.sx*(clip.flipH?-1:1), sy:clip.sy*(clip.flipV?-1:1)};}
+function clipTransform(ctx){const s=clipSign();ctx.translate(clip.cx,clip.cy);ctx.rotate(clip.rot);ctx.scale(s.sx,s.sy);ctx.translate(-clip.w/2,-clip.h/2);}
+// the 4 transformed corners (TL,TR,BR,BL) in canvas space, for hit-testing + drawing
+function clipCorners(){const hw=clip.w/2,hh=clip.h/2,s=clipSign(),c=Math.cos(clip.rot),sn=Math.sin(clip.rot);
+  return [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([lx,ly])=>{const x=lx*s.sx,y=ly*s.sy;return{x:clip.cx+x*c-y*sn,y:clip.cy+x*sn+y*c};});}
+// rotate knob: off the top edge, along its outward normal (robust to flips)
+function clipRotHandle(){const k=clipCorners();const mx=(k[0].x+k[1].x)/2,my=(k[0].y+k[1].y)/2;
+  let dx=k[1].x-k[0].x,dy=k[1].y-k[0].y;const L=Math.hypot(dx,dy)||1;let nx=dy/L,ny=-dx/L;
+  if((mx+nx-clip.cx)**2+(my+ny-clip.cy)**2 < (mx-clip.cx)**2+(my-clip.cy)**2){nx=-nx;ny=-ny;}
+  return{x:mx+nx*36,y:my+ny*36,mx,my};}
+function drawClipTo(ctx,solid){if(!clip)return;ctx.save();ctx.globalAlpha=solid?1:0.85;ctx.imageSmoothingEnabled=true;clipTransform(ctx);ctx.drawImage(clip.canvas,0,0);ctx.restore();}
+function drawCopyFloat(){octx.clearRect(0,0,W,H);if(!clip)return;drawClipTo(octx,false);
+  const k=clipCorners();octx.strokeStyle='#2f6da8';octx.lineWidth=1.5;
+  octx.setLineDash([6,4]);octx.beginPath();k.forEach((p,i)=>i?octx.lineTo(p.x,p.y):octx.moveTo(p.x,p.y));octx.closePath();octx.stroke();octx.setLineDash([]);
+  const rh=clipRotHandle();octx.beginPath();octx.moveTo(rh.mx,rh.my);octx.lineTo(rh.x,rh.y);octx.stroke();
+  octx.beginPath();octx.arc(rh.x,rh.y,7,0,7);octx.fillStyle='#fff';octx.fill();octx.lineWidth=2;octx.stroke();
+  for(const p of k){octx.beginPath();octx.rect(p.x-6,p.y-6,12,12);octx.fillStyle='#2f6da8';octx.fill();octx.strokeStyle='#fff';octx.lineWidth=2;octx.stroke();octx.strokeStyle='#2f6da8';}}
+function stampClip(){if(!clip)return;pushUndo();drawClipTo(pctx,true);saveCurrent();drawCopyFloat();}
+function clearClip(){clip=null;octx.clearRect(0,0,W,H);if(tool==='copy-poly')spawnMask('copy');updateShapeUI();}
+
+// ---------- overlay interaction (branches on state) ----------
+overlay.addEventListener('pointerdown',e=>{overlay.setPointerCapture(e.pointerId);const p=pos(e,overlay);
+  if(clip&&tool==='copy-poly'){
+    if(near(p,clipRotHandle(),12)){drag={kind:'cliprot'};return;}
+    const k=clipCorners();for(let i=0;i<k.length;i++)if(near(p,k[i],12)){drag={kind:'clipscale'};return;}
+    if(inPoly(p,k)){drag={kind:'clip',last:p};}
+    return;
+  }
+  if(!mask)return;
+  for(let i=0;i<mask.pts.length;i++)if(near(p,mask.pts[i],11)){drag={kind:'corner',idx:i};return;}
+  for(const m of midpoints())if(near(p,m,9)){mask.pts.splice(m.i+1,0,{x:m.x,y:m.y});drag={kind:'corner',idx:m.i+1};drawMask();return;}
+  if(inPoly(p,mask.pts))drag={kind:'body',last:p};});
+overlay.addEventListener('pointermove',e=>{if(!drag)return;const p=pos(e,overlay);
+  if(drag.kind==='clip'){clip.cx+=p.x-drag.last.x;clip.cy+=p.y-drag.last.y;drag.last=p;drawCopyFloat();}
+  else if(drag.kind==='cliprot'){clip.rot=Math.atan2(p.y-clip.cy,p.x-clip.cx)+Math.PI/2;drawCopyFloat();}
+  else if(drag.kind==='clipscale'){const d0=Math.hypot(clip.w/2,clip.h/2)||1;const d=Math.hypot(p.x-clip.cx,p.y-clip.cy);const sc=Math.max(0.05,d/d0);clip.sx=sc;clip.sy=sc;drawCopyFloat();}
+  else if(drag.kind==='corner'){mask.pts[drag.idx]={x:p.x,y:p.y};drawMask();}
+  else{const dx=p.x-drag.last.x,dy=p.y-drag.last.y;mask.pts.forEach(q=>{q.x+=dx;q.y+=dy;});drag.last=p;drawMask();}});
+overlay.addEventListener('pointerup',()=>{drag=null;});
+overlay.addEventListener('dblclick',e=>{if(!mask||mask.pts.length<=3)return;const p=pos(e,overlay);for(let i=0;i<mask.pts.length;i++)if(near(p,mask.pts[i],11)){mask.pts.splice(i,1);drawMask();return;}});
+function redrawOverlay(){if(clip&&tool==='copy-poly')drawCopyFloat();else if(mask)drawMask();else octx.clearRect(0,0,W,H);}
+
+// ---------- tool switching + shape UI ----------
+function updateShapeUI(){const poly=(tool==='erase-poly'||tool==='fill-poly'||tool==='copy-poly');
+  document.getElementById('shapebox').classList.toggle('on',poly);
+  const pasting=(tool==='copy-poly'&&clip);
+  document.getElementById('sb-poly').hidden=pasting;
+  document.getElementById('sb-clip').hidden=!pasting;
+  if(poly&&!pasting){const copyDef=tool==='copy-poly';
+    document.getElementById('apply').hidden=copyDef;
+    document.getElementById('docopy').hidden=!copyDef;
+    document.getElementById('shapemode').textContent=tool==='erase-poly'?'Erase':tool==='fill-poly'?'Fill':'Copy';}}
+function selectTool(t){tool=t;document.querySelectorAll('.tool[data-tool]').forEach(x=>x.classList.toggle('active',x.dataset.tool===t));
+  const poly=(t==='erase-poly'||t==='fill-poly'||t==='copy-poly');overlay.style.pointerEvents=poly?'auto':'none';
+  if(t==='erase-poly')spawnMask('erase');
+  else if(t==='fill-poly')spawnMask('fill');
+  else if(t==='copy-poly'){if(clip)drawCopyFloat();else spawnMask('copy');}
+  else dismissMask();
+  updateShapeUI();}
+document.querySelectorAll('.tool[data-tool]').forEach(b=>b.onclick=()=>selectTool(b.dataset.tool));
+document.getElementById('apply').onclick=applyMask;
+document.getElementById('docopy').onclick=captureClip;
+document.getElementById('dismiss').onclick=()=>{dismissMask();updateShapeUI();};
+document.getElementById('reshape').onclick=()=>spawnMask(tool==='erase-poly'?'erase':tool==='fill-poly'?'fill':'copy');
+document.getElementById('stamp').onclick=stampClip;
+document.getElementById('flipH').onclick=()=>{if(clip){clip.flipH=!clip.flipH;drawCopyFloat();}};
+document.getElementById('flipV').onclick=()=>{if(clip){clip.flipV=!clip.flipV;drawCopyFloat();}};
+document.getElementById('resetT').onclick=()=>{if(clip){clip.sx=clip.sy=1;clip.rot=0;clip.flipH=clip.flipV=false;drawCopyFloat();}};
+document.getElementById('recopy').onclick=()=>{clip=null;spawnMask('copy');updateShapeUI();};
+document.getElementById('clipclear').onclick=clearClip;
+// A/B scope toggle — rebuilds the side pane (preserves all edits; they live in localStorage)
+document.querySelectorAll('#scope button').forEach(b=>b.onclick=()=>{scope=b.dataset.scope;
+  document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('active',x.dataset.scope===scope));
+  buildAlphabet();});
+
+// ---------- misc ----------
+document.getElementById('size').oninput=e=>{size=+e.target.value;document.getElementById('szval').textContent=size;};
+document.getElementById('ckguides').onchange=drawGuides;
+document.getElementById('ckghost').onchange=e=>ghost.style.display=e.target.checked?'block':'none';
+document.getElementById('undo').onclick=undo;document.getElementById('redo').onclick=redo;
+document.getElementById('reset').onclick=()=>{pushUndo();renderGlyphTo(pctx,cur,INK);saveCurrent();};
+function undo(){if(!undoStack.length)return;redoStack.push(pctx.getImageData(0,0,W,H));pctx.putImageData(undoStack.pop(),0,0);saveCurrent();}
+function redo(){if(!redoStack.length)return;undoStack.push(pctx.getImageData(0,0,W,H));pctx.putImageData(redoStack.pop(),0,0);saveCurrent();}
+function bw(){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.fillStyle="#fff";x.fillRect(0,0,W,H);x.drawImage(paint,0,0);const d=x.getImageData(0,0,W,H),a=d.data;for(let i=0;i<a.length;i+=4){const l=.3*a[i]+.59*a[i+1]+.11*a[i+2];const v=l<150?0:255;a[i]=a[i+1]=a[i+2]=v;a[i+3]=255;}x.putImageData(d,0,0);return c;}
+document.getElementById('dl').onclick=()=>{const a=document.createElement('a');a.download=`glyph-${cur}.png`;a.href=bw().toDataURL();a.click();};
+function collectEdits(){saveCurrent();const out={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('tf_')&&k!=='tf_ver'){out[k.slice(3)]=localStorage.getItem(k);}}return out;}
+document.getElementById('dlall').onclick=()=>{const a=document.createElement('a');a.download='glyph-edits.json';a.href=URL.createObjectURL(new Blob([JSON.stringify(collectEdits())],{type:'application/json'}));a.click();};
+let toastT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2200);}
+async function saveProject(){const out=collectEdits();
+  try{const r=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(out)});if(!r.ok)throw 0;toast('Saved ✓ → edits/glyph-edits.json');}
+  catch(_){const a=document.createElement('a');a.download='glyph-edits.json';a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));a.click();toast('Saved ✓ (downloaded — run via serve.sh for disk save)');}}
+document.getElementById('save').onclick=saveProject;
+
+addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();saveProject();return;}
+  if(e.metaKey||e.ctrlKey){if(e.key==='z'){e.preventDefault();e.shiftKey?redo():undo();}return;}
+  if(e.key==='Enter'){if(clip&&tool==='copy-poly'){e.preventDefault();stampClip();return;}if(mask&&tool==='copy-poly'){e.preventDefault();captureClip();return;}if(mask){e.preventDefault();applyMask();return;}}
+  if(e.key==='Escape'){if(clip&&tool==='copy-poly'){clearClip();return;}if(mask){dismissMask();updateShapeUI();return;}}
+  const map={b:'pencil',e:'eraser',l:'line',r:'erase-poly',f:'fill-poly',c:'copy-poly'};
+  if(map[e.key])selectTool(map[e.key]);
+  if(e.key==='[')document.getElementById('size').value=size=Math.max(1,size-4),document.getElementById('szval').textContent=size;
+  if(e.key===']')document.getElementById('size').value=size=Math.min(140,size+4),document.getElementById('szval').textContent=size;});
+</script>
+</body>
+</html>

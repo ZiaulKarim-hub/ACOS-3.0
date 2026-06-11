@@ -81,7 +81,7 @@ Then continue to Step 0.1.
 - `loan_folder_path` — directory containing source documents
 
 If either is missing, prompt the user:
-> "Please provide the path to the target form and the loan folder. Usage: `/loan-doc-mapper <target-form-path> <loan-folder-path>`"
+> "Please provide the path to the target form and the loan folder. Usage: `/acos-loan-doc-mapper <target-form-path> <loan-folder-path>`"
 
 **Step 0.2** — Validate both paths exist. For `loan_folder_path`, inventory all files:
 - Count total documents
@@ -135,7 +135,24 @@ Use these resolved models for all subsequent Task() or external agent dispatches
 - Classify each document (appraisal, tax return, bank statement, credit report, pay stub, W-2, 1099, deed, title, insurance, etc.)
 - Summarize available data in each document (key figures, dates, names, amounts)
 - Note document quality (clear/legible, partial, damaged)
-- Output as YAML following `templates/source-inventory.yaml` structure (inline — no separate template needed)
+- Output as YAML inline (no separate template needed) following this schema:
+
+```yaml
+source_inventory:
+  total_documents: <int>
+  documents:
+    - filename: "appraisal_2024.pdf"      # exact file name
+      path: "<absolute path>"             # full path within loan folder
+      doc_type: "appraisal"               # appraisal | tax_return | bank_statement | credit_report | pay_stub | W-2 | 1099 | deed | title | insurance | other
+      format: "PDF"                        # PDF | DOCX | XLSX | TXT | image | other
+      page_count: <int>                    # null if unknown
+      quality: "clear"                     # clear | partial | damaged | unreadable
+      available_data: "Key figures, dates, names, amounts summarized here"
+      notes: ""                            # optional: anomalies, unsupported/empty flags
+  unsupported_or_empty:
+    - filename: "<name>"
+      reason: "<why skipped>"
+```
 
 **Step 1.2** — Collect results from both agents. Merge Form Analyst output into `phase1/field-registry.yaml` and Source Inventory output into `phase1/source-inventory.yaml`. Save raw agent outputs as `phase1/form-analysis-raw.yaml`.
 

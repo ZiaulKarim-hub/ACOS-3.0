@@ -357,8 +357,8 @@ acos-dataroom validate-guide --guide "/path/to/edited.xlsx"
 Delegate to `scripts/validate_guide.py`:
 
 1. Read edited guide.
-2. Validate required columns and structure (no required columns deleted, dropdowns intact, row count matches manifest within tolerance).
-3. **Diff against original guide** — log every changed Include/Sensitivity/Decision cell to the `Change_Log` tab. The diff is audit-only; the human decision is final, even when it overrides a flag.
+2. Validate required columns and structure (no required columns deleted, row count matches manifest within tolerance).
+3. **Diff against original guide** — log every changed Include/Sensitivity/Decision cell to `<run_dir>/intermediate/change_log.json` (a JSON file, not a workbook tab). The diff is audit-only; the human decision is final, even when it overrides a flag.
 4. Confirm only rows marked `include` or `include_after_redaction` will be processed.
 5. Stop with a clear error if the edited guide references missing source files.
 6. Print summary: "Validated. N files marked include, M marked include_after_redaction, K marked internal_only_*, etc."
@@ -374,6 +374,17 @@ acos-dataroom create-room \
 
 `--confirmed true` is mandatory. Without it, the script prints a confirmation
 checklist and exits.
+
+**Required flags:**
+
+- `--confirmed true` — mandatory; the script copies nothing without it.
+- `--allow-non-empty-target true` — **required when `--target` already
+  contains files.** Without it, `create_dataroom.py` exits with code 2 rather
+  than overlaying an existing non-empty folder. Omit it only for a fresh,
+  empty target.
+- `--allow-unredacted-override <file_id>` — optional, repeatable; copies a
+  redaction-flagged file unredacted when no redacted version exists. **Never
+  auto-redacts.**
 
 Phase 11 produces two outputs: the physical data room folder and the
 buyer-facing index workbook.

@@ -17,8 +17,10 @@ a summary to the caller.
 
 ## Instructions
 
-Read your phase instructions from:
-`.claude/skills/acos-loan-doc-generator/phases/phase1-extract.md`
+Read your phase instructions from the path provided in the dispatching prompt's
+`phase_instructions_path` (the orchestrating skill passes the correct skill's
+phases/ directory), then read the file `phase1-extract.md` within it. Do not
+assume a hardcoded skill path.
 
 Follow those instructions exactly. Your input is a session manifest path.
 

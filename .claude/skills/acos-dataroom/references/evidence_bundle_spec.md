@@ -44,12 +44,16 @@ evidence bundle.
         "text": "<OCR'd text>",
         "confidence": 0.62,
         "vision_supplement": {
-          "method": "claude_vision",
+          "method": "claude_vision_via_bridge",
           "model": "claude-opus-4-7",
           "rendered_at": "2026-05-06T15:14:22Z",
-          "description": "<vision narrative>",
+          "document_type": "<vision document-type guess>",
           "extracted_text": "<text vision recovered>",
-          "visual_elements": ["signature_block_lower_right", "embossed_seal", "handwritten_date"]
+          "visual_elements": ["signature_block_lower_right", "embossed_seal", "handwritten_date"],
+          "critical_fields": ["<key fields vision read>"],
+          "privacy_flags": ["<PII / privileged cues spotted>"],
+          "confidence_self_assessment": 0.0,
+          "notes": "<vision model notes>"
         }
       }
     ]
@@ -155,23 +159,23 @@ against the failure mode where an agent confidently invents specifics
 (case numbers, account numbers, dates) that "sound right" for the document
 type but aren't actually present.
 
-## Hyperlinking
+## Locating a row's evidence bundle
 
-The Excel guide hyperlinks each row's `evidence_bundle_link` to the local
-`<run_dir>/evidence/<file_id>.json` file. Boss can click through to inspect
-the snippet trail.
+The internal workbook is hyperlink-free — there is no `evidence_bundle_link`
+column and no clickable cells. To inspect the snippet trail for a given file,
+open its bundle directly at `<run_dir>/evidence/<file_id>.json`.
 
 ## When Vision is Used
 
 A bundle whose `extraction.methods_used` contains any `vision_*` method is
 flagged in QA Pass #4. Reviewers should expect:
 
-- `vision_supplement.description` — narrative description of what's visible.
+- `vision_supplement.document_type` — the vision model's document-type guess.
 - `vision_supplement.extracted_text` — text the vision model recovered (may overlap with OCR; both are kept).
 - `vision_supplement.visual_elements` — list of structural cues (signatures, seals, stamps, handwriting, charts).
 
 ## Bundle Versioning
 
 `schema_version: "1.0"` — bumped on any breaking change to the bundle
-structure. The `validate-guide` script refuses to process bundles with
-unrecognized schema versions.
+structure. (`validate_guide.py` validates the edited workbook, not evidence
+bundles, so bundle schema versions are not enforced at validate-guide time.)

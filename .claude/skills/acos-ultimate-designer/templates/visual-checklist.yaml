@@ -1,0 +1,218 @@
+# Coffee-Table Visual Checklist (v1)
+#
+# Read by scripts/render-and-verify.sh and passed to the opus-pinned visual-reviewer
+# Task agent. Every criterion is evaluable from the rendered 200 DPI page PNG alone —
+# no reference to HTML source.
+#
+# Output format per criterion (produced by agent):
+#   {id, page, status: "pass"|"fail", severity, observation, fix_instruction}
+
+version: 1
+
+criteria:
+  # ─── CATEGORY: page_rhythm (5 items) ──────────────────────────────
+  - id: PR-01
+    category: page_rhythm
+    description: "At least one full-bleed photo page exists per every 3 content pages in the document."
+    severity_default: ERROR
+    pass_condition: "Count full-bleed photo pages. If >= ceil(content_pages / 3), pass."
+    fail_condition: "Too few full-bleed photo pages for content page count."
+    fix_instruction_template: "Insert a photo_break page between content pages {before} and {after}."
+
+  - id: PR-02
+    category: page_rhythm
+    description: "If content has multiple parts, a chapter divider page exists between them."
+    severity_default: ERROR
+    pass_condition: "Each part boundary has a chapter-divider page preceding or immediately after."
+    fail_condition: "Part boundaries missing a divider."
+    fix_instruction_template: "Insert chapter_divider for part {part_n} before page {page_n}."
+
+  - id: PR-03
+    category: page_rhythm
+    description: "The final page is a closing page with a dark brand panel (sage-80 or ink footer band + dark topographic panel)."
+    severity_default: ERROR
+    pass_condition: "Last page has a large dark panel and a dark footer band."
+    fail_condition: "Last page is a generic content page, no dark panel."
+    fix_instruction_template: "Ensure last page uses closing template with dark panel + sage footer."
+
+  - id: PR-04
+    category: page_rhythm
+    description: "Photo-break pages fill the entire canvas with a single image (no borders, no margins)."
+    severity_default: WARNING
+    pass_condition: "Image occupies all 4 edges; only caption overlay visible."
+    fail_condition: "White margins around the image, or image letterboxed."
+    fix_instruction_template: "Adjust photo-break template so image covers full 8.5x11."
+
+  - id: PR-05
+    category: page_rhythm
+    description: "The cover page has a full-bleed image with dark scrim and oversized title."
+    severity_default: ERROR
+    pass_condition: "Page 1 shows a photographic full-bleed image with Cormorant title text overlaid at least 42pt+."
+    fail_condition: "Page 1 is missing image, or title too small, or no scrim."
+    fix_instruction_template: "Use cover template; ensure cover_image slot is filled and display-xl title is present."
+
+  # ─── CATEGORY: typography (5 items) ───────────────────────────────
+  - id: TY-01
+    category: typography
+    description: "Every section title on a content page contains a Cormorant italic accent span (1-2 italicized words)."
+    severity_default: ERROR
+    pass_condition: "Section title glyphs show distinct italic Cormorant styling on the accent phrase."
+    fail_condition: "Titles are all upright, no italic accent visible."
+    fix_instruction_template: "Add italic_accent_phrase to page {page_n} content in page-plan; emitter re-renders."
+
+  - id: TY-02
+    category: typography
+    description: "Every eyebrow label on content pages uses 'NN NAME' format with zero-padded 2-digit page number, rendered in coral IBM Plex Mono uppercase."
+    severity_default: ERROR
+    pass_condition: "Eyebrow text matches /^\\d{2}\\s+[A-Z ]+$/, coral color, mono font, uppercase."
+    fail_condition: "Eyebrow missing number, wrong format, or wrong color/font."
+    fix_instruction_template: "Emitter: format eyebrow as '{{zero_padded_page_num}} {{section_name_upper}}' on page {page_n}."
+
+  - id: TY-03
+    category: typography
+    description: "Page footer shows roman page numbers in 'N / total' format (e.g., 'III / XII')."
+    severity_default: ERROR
+    pass_condition: "Footer has roman numerals on both sides of a ' / '."
+    fail_condition: "Arabic numerals, missing slash, or no page number."
+    fix_instruction_template: "Emitter: substitute {{page_number_roman}} with roman and ensure ' / ' separator."
+
+  - id: TY-04
+    category: typography
+    description: "Headlines use a serif (Cormorant Garamond shapes), body uses sans (IBM Plex Sans shapes), labels use monospace (IBM Plex Mono)."
+    severity_default: ERROR
+    pass_condition: "Visible font-family distinction across the three text roles."
+    fail_condition: "All text in one family (fallback cascade collapsed) or fonts swapped."
+    fix_instruction_template: "Verify Google Fonts link loads; re-render with fonts.ready await in Puppeteer."
+
+  - id: TY-05
+    category: typography
+    description: "No text is clipped by page edges or overflows the page canvas."
+    severity_default: ERROR
+    pass_condition: "Every text block visible fully within 8.5x11 bounds."
+    fail_condition: "Text cropped at edge or running off canvas."
+    fix_instruction_template: "Decomposer: split page {page_n} content across multiple pages OR reduce body length."
+
+  # ─── CATEGORY: palette (3 items) ──────────────────────────────────
+  - id: PA-01
+    category: palette
+    description: "Only Brad token colors are visible (sage, coral, navy, ink scale, white, warm). No colors outside this palette."
+    severity_default: WARNING
+    pass_condition: "Spot-check 5 colored elements per page against token palette."
+    fail_condition: "Off-palette colors present (e.g., stock bright green, purple, generic blue that's not navy/blue)."
+    fix_instruction_template: "Replace off-palette color with nearest Brad token; check tokens.css for usage."
+
+  - id: PA-02
+    category: palette
+    description: "Body text on light backgrounds has ≥4.5:1 contrast (WCAG AA). No --ink-40 (#8D8D8D) used as body text."
+    severity_default: ERROR
+    pass_condition: "Body text visually crisp; no washed-out gray on warm/white."
+    fail_condition: "Body text visibly low-contrast."
+    fix_instruction_template: "Emitter: change body color to --ink-80 or --ink on page {page_n}."
+
+  - id: PA-03
+    category: palette
+    description: "Coral accent color is consistent across pages (same hue/saturation)."
+    severity_default: WARNING
+    pass_condition: "Coral labels/accents look identical page-to-page."
+    fail_condition: "Coral drifts in tone between pages."
+    fix_instruction_template: "Verify all templates reference var(--coral), not hardcoded hex."
+
+  # ─── CATEGORY: photo_quality (3 items) ────────────────────────────
+  - id: PQ-01
+    category: photo_quality
+    description: "Every photo slot is filled with an image (not the 'IMAGE MISSING' placeholder)."
+    severity_default: ERROR
+    pass_condition: "No visible diagonal-stripe placeholders or 'IMAGE MISSING' text."
+    fail_condition: "Any page shows the empty-slot placeholder."
+    fix_instruction_template: "Image matcher: re-run fill-photo-slots.py; supply UNSPLASH_ACCESS_KEY or add brand asset."
+
+  - id: PQ-02
+    category: photo_quality
+    description: "No photo is pixelated, blurry, or obviously low-resolution."
+    severity_default: WARNING
+    pass_condition: "Image is sharp at reading distance for 8.5x11 print."
+    fail_condition: "Visible pixelation, blur, or JPEG artifacts."
+    fix_instruction_template: "Fetch higher-resolution replacement via fetch-image-fallback.py with min-width increased."
+
+  - id: PQ-03
+    category: photo_quality
+    description: "Photos fit their slots — not stretched, squished, or awkwardly letterboxed."
+    severity_default: WARNING
+    pass_condition: "Aspect ratio respected; image fills slot via cover or contain as appropriate."
+    fail_condition: "Visible distortion or awkward cropping."
+    fix_instruction_template: "Adjust template background-size / object-fit for slot {slot_id} on page {page_n}."
+
+  # ─── CATEGORY: logo (3 items) ─────────────────────────────────────
+  - id: LG-01
+    category: logo
+    description: "OKOA logo is present on at least the cover and closing pages."
+    severity_default: ERROR
+    pass_condition: "Logo (4-letter distinctive SVG shape) visible on cover and last page."
+    fail_condition: "Logo missing."
+    fix_instruction_template: "Emitter: inline OKOA SVG in cover and closing templates."
+
+  - id: LG-02
+    category: logo
+    description: "Logo color variant matches background — white logo on dark backgrounds (ink/sage/navy), dark logo on light (white/warm)."
+    severity_default: WARNING
+    pass_condition: "Logo visible and appropriately colored on every appearance."
+    fail_condition: "White logo on white bg (invisible) or dark on dark."
+    fix_instruction_template: "Emitter: select correct logo variant based on page background token."
+
+  - id: LG-03
+    category: logo
+    description: "Logo is not stretched, skewed, or surrounded by a background rectangle."
+    severity_default: WARNING
+    pass_condition: "Logo letterforms crisp, transparent around them."
+    fail_condition: "Distorted or boxed."
+    fix_instruction_template: "Use exact SVG viewBox from tokens.css logo block; do not override width/height independently."
+
+  # ─── CATEGORY: cross_page_consistency (3 items) ──────────────────
+  - id: CP-01
+    category: cross_page_consistency
+    description: "Running header content (left/right strings) is identical across all content pages."
+    severity_default: WARNING
+    pass_condition: "Same text at top of every body page."
+    fail_condition: "Header varies between content pages."
+    fix_instruction_template: "Emitter: derive running-header from document metadata, not per-page content."
+
+  - id: CP-02
+    category: cross_page_consistency
+    description: "Running footer content (excluding page number) is identical across all content pages."
+    severity_default: WARNING
+    pass_condition: "Footer left-text identical; only page number changes."
+    fail_condition: "Footer text varies."
+    fix_instruction_template: "Emitter: static 'OKOA CAPITAL' left, roman page number right."
+
+  - id: CP-03
+    category: cross_page_consistency
+    description: "Margins/spacing are identical across content pages of the same template."
+    severity_default: WARNING
+    pass_condition: "Same padding + text-block positions on all two-column-narrative pages, etc."
+    fail_condition: "Visible shift in margins between pages of the same template type."
+    fix_instruction_template: "Template: ensure padding and positioning are baked into template, not content-specific."
+
+  # ─── CATEGORY: brad_inherited (3 items) ──────────────────────────
+  - id: BI-01
+    category: brad_inherited
+    description: "Dark panels (sage-80, ink, navy backgrounds) have explicit background fill — no transparent regions where a text container sits."
+    severity_default: ERROR
+    pass_condition: "Dark panels are solidly colored, not translucent over image or white."
+    fail_condition: "Text container on dark panel shows through to white/image."
+    fix_instruction_template: "Emitter: verify bg-ink/bg-sage classes are applied to text containers on dark panels."
+
+  - id: BI-02
+    category: brad_inherited
+    description: "Eyebrow labels use the specific coral token (#FF795E), not a drifted variant."
+    severity_default: WARNING
+    pass_condition: "Eyebrow coral matches #FF795E within perceptual tolerance."
+    fail_condition: "Coral is visibly pinker, oranger, or duller than spec."
+    fix_instruction_template: "Token: restore --coral: #FF795E in tokens.css; re-run."
+
+  - id: BI-03
+    category: brad_inherited
+    description: "Page aspect ratio is 8.5:11 (portrait Letter) — no landscape, no A4 drift."
+    severity_default: ERROR
+    pass_condition: "Rendered PNG dimensions show width:height ratio ≈ 0.773 (8.5/11)."
+    fail_condition: "Landscape orientation or wrong aspect."
+    fix_instruction_template: "Puppeteer: set format='Letter' and preferCSSPageSize=true; verify @page rule."

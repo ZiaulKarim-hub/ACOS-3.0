@@ -16,11 +16,13 @@ acos-dataroom create-guide \
   --deal-type loan_sale \
   --data-room-name "AscentParkCity_LoanSale"
 
-# (You edit the Excel guide that pops out — Include / Sensitivity / Decision columns)
+# (You edit the internal working workbook that pops out — move rows between the
+#  "Files Included" and "Files Excluded" worksheets, and fix renamed filenames /
+#  folders / descriptions, to reflect your final include/exclude decisions.)
 
 # Phase 10: validate the edited guide
 acos-dataroom validate-guide \
-  --guide "/path/to/edited/AscentParkCity_LoanSale_Data_Room_Guide_2026-05-06.xlsx"
+  --guide "/path/to/edited/AscentParkCity_LoanSale_Internal_Working_2026-05-06.xlsx"
 
 # Phase 11: create the final data room
 acos-dataroom create-room \
@@ -59,6 +61,9 @@ broadest scaffold and tailor in the Excel review.
 5. **Every claim must be traceable** to source file, page, extraction method, and evidence-bundle snippet.
 6. **Vision is mandatory, not optional** for image-only PDFs and low-OCR-confidence pages.
 7. **Pause gates are real.** Deal-type confirmation (Phase 1) and guide review (Phase 9) require explicit user confirmation.
+8. **Defaults to no-upload, no-rename, no-share.** Destructive or external actions require explicit `--confirmed true`.
+
+> SKILL.md is the canonical source for the Non-Negotiables; this list mirrors it.
 
 ## Why "Outbound" Diligence Matters
 

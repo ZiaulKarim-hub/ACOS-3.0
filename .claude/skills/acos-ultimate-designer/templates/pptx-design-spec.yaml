@@ -1,0 +1,108 @@
+# Translation of acos-document-design-brad tokens to PPTX format.
+# Source of truth: acos-document-design-brad/SKILL.md + tokens.css
+# Consumed by scripts/render-pptx.sh via data-to-pptx.py.
+
+version: 1
+
+# ─── Slide canvas ─────────────────────────────────────────────────────
+# 13.33 x 7.5 widescreen (16:9). EMU: 914400 per inch.
+slide_dimensions:
+  width_emu: 12192000   # 13.33 in
+  height_emu: 6858000   #  7.5  in
+  label: "widescreen-16-9"
+
+# ─── Theme colors — Brad palette → RGB hex (PPTX is hex-only) ────────
+theme_colors:
+  # Sage family
+  sage-80:   { rgb_hex: "465D53", comment: "Darkest — footer bands, entity boxes" }
+  sage-60:   { rgb_hex: "5E7A6E", comment: "Dark accent" }
+  sage-40:   { rgb_hex: "7A9C8C", comment: "Medium" }
+  sage-20:   { rgb_hex: "A4CABB", comment: "Light — chart accents" }
+  sage-10:   { rgb_hex: "DCE7E1", comment: "Pale — light tints" }
+  sage-05:   { rgb_hex: "EEF3F0", comment: "Barely there" }
+
+  # Coral family
+  coral:     { rgb_hex: "FF795E", comment: "Primary accent — labels, dots" }
+  coral-40:  { rgb_hex: "FF9885", comment: "Lighter — text on dark bg" }
+  coral-20:  { rgb_hex: "FFCCC0", comment: "Very light" }
+
+  # Navy + Blue
+  navy:      { rgb_hex: "104473", comment: "Hero backgrounds, entity boxes" }
+  blue:      { rgb_hex: "1F72B6", comment: "Links, secondary accents" }
+  blue-40:   { rgb_hex: "678CA7", comment: "Muted supporting" }
+
+  # Ink scale
+  ink:       { rgb_hex: "161616", comment: "Near-black — primary text" }
+  ink-80:    { rgb_hex: "393939", comment: "Dark gray" }
+  ink-60:    { rgb_hex: "525252", comment: "Body text secondary" }
+  ink-40:    { rgb_hex: "8D8D8D", comment: "Muted — light bg only (≥ F4F4F4)" }
+  ink-20:    { rgb_hex: "C6C6C6", comment: "Borders, rules" }
+  ink-10:    { rgb_hex: "E0E0E0", comment: "Subtle dividers" }
+  ink-05:    { rgb_hex: "F4F4F4", comment: "Page background" }
+
+  # Surfaces
+  white:     { rgb_hex: "FFFFFF", comment: "" }
+  warm:      { rgb_hex: "F7F3EE", comment: "Warm off-white" }
+
+# ─── Font scheme — PPTX needs family names + fallback chains ─────────
+font_scheme:
+  heading:
+    family: "Cormorant Garamond"
+    fallback_chain: ["Georgia", "Times New Roman", "serif"]
+    # Display sizes (nominal points; PPTX lacks clamp())
+    display_xl_pt: 80
+    display_lg_pt: 64
+    display_md_pt: 48   # mid-point of clamp(32px,4vw,52px)
+    display_sm_pt: 36
+    display_data_pt: 48
+    display_quote_pt: 28
+  body:
+    family: "IBM Plex Sans"
+    fallback_chain: ["Helvetica", "Arial", "sans-serif"]
+    body_lg_pt: 18
+    body_md_pt: 17
+    body_sm_pt: 15
+    body_card_pt: 14
+    body_card_sm_pt: 13
+  mono:
+    family: "IBM Plex Mono"
+    fallback_chain: ["Courier New", "monospace"]
+    mono_label_pt: 11    # letter_spacing=2.5px, uppercase, weight 600
+    mono_meta_pt: 12
+    mono_tech_pt: 11
+    mono_tag_pt: 10
+
+# ─── Background fills per layout type ────────────────────────────────
+background_fills:
+  cover:                 ink        # dark scrim over image
+  two-column-narrative:  white
+  metric-grid:           warm
+  timeline:              white
+  chapter-divider:       ink        # dark scrim over image
+  product-detail:        white
+  portfolio-grid:        ink-05
+  photo-break:           ink        # image fills canvas
+  closing:               white      # three-zone layout
+
+# ─── Slide layout names (must match template.pptx) ───────────────────
+layout_names:
+  cover: "cover_layout"
+  two-column-narrative: "two_column_narrative_layout"
+  metric-grid: "metric_grid_layout"
+  timeline: "timeline_layout"
+  chapter-divider: "chapter_divider_layout"
+  product-detail: "product_detail_layout"
+  portfolio-grid: "portfolio_grid_layout"
+  photo-break: "photo_break_layout"
+  closing: "closing_layout"
+
+# ─── Font embedding target ──────────────────────────────────────────
+# scripts/pptx-cleanup.py attempts to embed these fonts via OOXML /ppt/fonts/
+# Look in /Library/Fonts/, ~/Library/Fonts/, /usr/share/fonts/ for .ttf files.
+font_embedding:
+  - family: "Cormorant Garamond"
+    required: true    # fallback (Georgia) is acceptable but flag it
+  - family: "IBM Plex Sans"
+    required: false
+  - family: "IBM Plex Mono"
+    required: false

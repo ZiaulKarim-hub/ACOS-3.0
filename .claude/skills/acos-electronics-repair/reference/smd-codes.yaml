@@ -1,0 +1,201 @@
+# SMD Component Marking Code Reference
+# Used by electronics-expert agent for identifying surface-mount components
+
+# ═══════════════════════════════════════════════════════════════
+# SMD RESISTOR CODES
+# ═══════════════════════════════════════════════════════════════
+
+resistor_3digit:
+  description: "3-digit code: first 2 digits = significant figures, 3rd = multiplier (number of zeros)"
+  examples:
+    "100": "10Ω (10 × 10^0)"
+    "101": "100Ω (10 × 10^1)"
+    "102": "1kΩ (10 × 10^2)"
+    "103": "10kΩ (10 × 10^3)"
+    "104": "100kΩ (10 × 10^4)"
+    "220": "22Ω"
+    "221": "220Ω"
+    "222": "2.2kΩ"
+    "330": "33Ω"
+    "470": "47Ω"
+    "471": "470Ω"
+    "472": "4.7kΩ"
+    "473": "47kΩ"
+    "4R7": "4.7Ω (R indicates decimal point)"
+    "R47": "0.47Ω"
+    "0R1": "0.1Ω"
+  note: "R in the code marks the decimal point position"
+
+resistor_4digit:
+  description: "4-digit code: first 3 digits = significant figures, 4th = multiplier"
+  examples:
+    "1000": "100Ω"
+    "1001": "1kΩ"
+    "1002": "10kΩ"
+    "4700": "470Ω"
+    "4701": "4.7kΩ"
+    "4702": "47kΩ"
+
+resistor_eia96:
+  description: "EIA-96 code for 1% resistors: 2-digit number + letter multiplier"
+  multiplier_letters:
+    "Z": "0.001"
+    "Y": "0.01"
+    "R": "0.01"
+    "X": "0.1"
+    "S": "0.1"
+    "A": "1"
+    "B": "10"
+    "H": "10"
+    "C": "100"
+    "D": "1000"
+    "E": "10000"
+    "F": "100000"
+  lookup_table_subset:
+    "01": "100"
+    "02": "102"
+    "03": "105"
+    "04": "107"
+    "05": "110"
+    "10": "124"
+    "20": "162"
+    "30": "200"
+    "40": "249"
+    "50": "316"
+    "60": "392"
+    "70": "499"
+    "80": "634"
+    "90": "806"
+    "96": "976"
+  example: "01C = 100 × 100 = 10kΩ"
+
+# ═══════════════════════════════════════════════════════════════
+# SMD CAPACITOR CODES
+# ═══════════════════════════════════════════════════════════════
+
+capacitor_codes:
+  description: "Capacitor value codes (applies to both SMD and through-hole)"
+  unit: "picofarads (pF) — divide by 1000 for nF, by 1000000 for µF"
+  examples:
+    "100": "10pF (10 × 10^0)"
+    "101": "100pF"
+    "102": "1nF (1000pF)"
+    "103": "10nF"
+    "104": "100nF (0.1µF)"
+    "105": "1µF"
+    "106": "10µF"
+    "220": "22pF"
+    "221": "220pF"
+    "222": "2.2nF"
+    "223": "22nF"
+    "224": "220nF (0.22µF)"
+    "330": "33pF"
+    "331": "330pF"
+    "332": "3.3nF"
+    "470": "47pF"
+    "471": "470pF"
+    "472": "4.7nF"
+    "473": "47nF"
+    "474": "470nF (0.47µF)"
+
+capacitor_voltage_codes:
+  description: "Single letter voltage rating codes (common on SMD ceramic caps)"
+  codes:
+    "A": "10V"
+    "C": "16V"
+    "D": "20V"
+    "E": "25V"
+    "G": "4V"
+    "H": "50V"
+    "J": "6.3V"
+    "K": "80V"
+    "L": "100V"
+
+# ═══════════════════════════════════════════════════════════════
+# TRANSISTOR / MOSFET MARKING CODES
+# ═══════════════════════════════════════════════════════════════
+
+transistor_markings:
+  common_sot23_codes:
+    "1A": "MMBT3904 (NPN general purpose)"
+    "1B": "BC846 (NPN general purpose)"
+    "1F": "BC856 (PNP general purpose)"
+    "1P": "MMBT2222A (NPN switching)"
+    "2A": "MMBT3906 (PNP general purpose)"
+    "J3": "S8050 (NPN medium power)"
+    "K3": "2N7002 (N-channel MOSFET)"
+    "W2": "BSS138 (N-channel MOSFET, logic level)"
+    "t1": "BSS84 (P-channel MOSFET)"
+  note: "SOT-23 markings are not standardized — same code can mean different parts from different manufacturers. Always check multiple sources."
+
+# ═══════════════════════════════════════════════════════════════
+# DIODE MARKING CODES
+# ═══════════════════════════════════════════════════════════════
+
+diode_markings:
+  common:
+    "T4": "1N4148 (small signal)"
+    "A1": "1N4001 (1A rectifier)"
+    "A7": "1N4007 (1A 1000V rectifier)"
+    "SS14": "1N5819 (Schottky 1A 40V)"
+    "SS34": "1N5822 (Schottky 3A 40V)"
+  polarity: "Cathode marked with a band/line on one end"
+
+# ═══════════════════════════════════════════════════════════════
+# THROUGH-HOLE RESISTOR COLOR CODE
+# ═══════════════════════════════════════════════════════════════
+
+resistor_color_code:
+  colors:
+    black: 0
+    brown: 1
+    red: 2
+    orange: 3
+    yellow: 4
+    green: 5
+    blue: 6
+    violet: 7
+    gray: 8
+    white: 9
+  multiplier:
+    black: 1
+    brown: 10
+    red: 100
+    orange: 1000
+    yellow: 10000
+    green: 100000
+    blue: 1000000
+    gold: 0.1
+    silver: 0.01
+  tolerance:
+    brown: "±1%"
+    red: "±2%"
+    gold: "±5%"
+    silver: "±10%"
+    none: "±20%"
+  reading_direction: "Tolerance band (gold/silver) is always at the RIGHT end. Read from LEFT."
+  example_4band: "Brown-Black-Red-Gold = 10 × 100 = 1kΩ ±5%"
+  example_5band: "Brown-Black-Black-Brown-Brown = 100 × 10 = 1kΩ ±1%"
+
+# ═══════════════════════════════════════════════════════════════
+# IC PACKAGE TYPES
+# ═══════════════════════════════════════════════════════════════
+
+ic_packages:
+  through_hole:
+    "DIP": "Dual Inline Package — two rows of pins, 0.1\" spacing. Easy to socket and replace."
+    "SIP": "Single Inline Package — one row of pins."
+    "TO-220": "Power package — tab for heatsinking. Common for voltage regulators, MOSFETs."
+    "TO-92": "Small 3-pin package — transistors, voltage references."
+    "TO-3": "Large metal can — high-power transistors."
+
+  surface_mount:
+    "SOT-23": "Tiny 3-pin (sometimes 5-6 pin) — transistors, MOSFETs, voltage references."
+    "SOT-223": "Medium power 3-pin with tab — voltage regulators."
+    "SOIC": "Small Outline IC — gull-wing leads, 1.27mm pitch. 8-28 pins."
+    "SSOP": "Shrink SOIC — 0.65mm pitch."
+    "TSSOP": "Thin Shrink SOIC — 0.65mm pitch, lower profile."
+    "QFP": "Quad Flat Package — pins on all 4 sides. 44-256 pins."
+    "QFN": "Quad Flat No-lead — pads underneath. Compact, good thermal."
+    "BGA": "Ball Grid Array — solder balls underneath. NOT hand-solderable."
+    "WLCSP": "Wafer Level Chip Scale — tiny BGA. Professional rework only."

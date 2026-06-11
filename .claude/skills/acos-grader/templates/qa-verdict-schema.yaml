@@ -1,0 +1,63 @@
+# QA agent output — one file per iteration per paper.
+# Path: .acos/state/grader-sessions/{session_id}/grading/{paper_id}/iter-{n}-qa-verdict.yaml
+
+paper_id: "STUDENT_123"
+iteration: 2
+qa_role: "grader-qa"
+timestamp: "2026-04-18T14:35:43Z"
+
+# --- Input snapshot ---------------------------------------------------------
+# References to the three grading sheets QA evaluated.
+inputs:
+  grading_sheet_A: ".acos/state/grader-sessions/{session_id}/grading/STUDENT_123/iter-2-grader-opus-A.yaml"
+  grading_sheet_B: ".acos/state/grader-sessions/{session_id}/grading/STUDENT_123/iter-2-grader-opus-B.yaml"
+  grading_sheet_C: ".acos/state/grader-sessions/{session_id}/grading/STUDENT_123/iter-2-grader-sonnet.yaml"
+
+# --- Criteria evaluated -----------------------------------------------------
+# QA evaluates only criteria currently pending (not already-converged).
+pending_criteria_count: 3
+
+# --- Per-criterion verdicts ------------------------------------------------
+verdicts:
+  - criterion_id: "criterion_1"
+    final_verdict: "PASS"                        # PASS | FAIL
+    numerical:
+      values: [8.5, 8.0, 9.0]
+      mean: 8.5
+      spread_absolute: 1.0
+      spread_relative_pct: 11.76                 # computed but may be overridden
+      guardrail_applied: false                   # true if near-zero absolute rule kicked in
+      pass: false                                # 11.76 > 5, so numerical would FAIL here
+    reasoning:
+      similarity_score: 94                       # 0-100, QA's internal judgment
+      pass: true
+    # NOTE: In this example, final_verdict would be FAIL because numerical failed.
+    # Shown as PASS purely for the template — real QA must not override either axis.
+
+  - criterion_id: "criterion_3"
+    final_verdict: "FAIL"
+    numerical:
+      values: [12.0, 16.0, 14.0]                 # wide spread
+      mean: 14.0
+      spread_absolute: 4.0
+      spread_relative_pct: 28.57
+      guardrail_applied: false
+      pass: false
+    reasoning:
+      similarity_score: 71                       # below 90 threshold
+      pass: false
+
+# --- Cross-criterion observations (advisory, for audit) --------------------
+cross_criterion_notes: |
+  Grader-opus-A awarded 16 on criterion_3 but only 8 on criterion_4. The two
+  criteria assess related skills (factor justification vs. implementation).
+  Grader-opus-A's reasoning shows an internal inconsistency in how they
+  weighted "theoretical correctness" vs. "practical applicability," which may
+  explain the outlier points. No action taken — flagging for post-hoc audit.
+
+# --- Summary ---------------------------------------------------------------
+summary:
+  passed: 1                                      # criteria locked this iteration
+  failed: 2                                      # criteria to re-dispatch
+  passed_ids: ["criterion_1"]
+  failed_ids: ["criterion_3", "criterion_4"]

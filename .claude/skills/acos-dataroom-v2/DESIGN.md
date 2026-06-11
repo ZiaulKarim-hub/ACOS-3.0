@@ -1,5 +1,13 @@
 # acos-dataroom-v2 — Design Specification
 
+> ⚠ **SUPERSEDED for Phase 2 by v2.1 — see `SKILL.md §5`** (asymmetric
+> single-EXCLUDE veto, no loop). This DESIGN.md is the historical v2.0 spec.
+> Where DESIGN.md teaches a unanimous-include + K=5 re-dispatch rule for
+> Phase 2 inclusion, it is OUT OF DATE — `SKILL.md` and
+> `dr2-inclusion-deliberator.md` are the authoritative v2.1 contract. The
+> agent roster is also 15 (DESIGN.md §10 historically said 14, omitting
+> `dr2-marquee-classifier`).
+
 **Status:** DRAFT, awaiting user (Zee) review before any implementation begins.
 **Author:** Claude (Opus 4.7).
 **Date:** 2026-05-13.
@@ -204,6 +212,14 @@ agent in Phases 2–6.
 ---
 
 ## 4. Phase 2 — Inclusion Deliberation
+
+> ⚠ **SUPERSEDED by v2.1 — see `SKILL.md §5`.** The rule below (unanimous
+> INCLUDE + K=5 blind re-dispatch on disagreement) is the historical v2.0
+> behavior. v2.1 uses ASYMMETRIC inclusion consensus: any single EXCLUDE
+> vote wins, non-unanimous-include = EXCLUDE, and there is NO re-dispatch
+> loop. The Phase 3 fresh-eyes QA loop is the recovery mechanism for
+> over-aggressive cuts. Read `SKILL.md §5` and `dr2-inclusion-deliberator.md`
+> for the authoritative contract.
 
 ### 4.1 Goal
 
@@ -581,13 +597,15 @@ levels (collapse/expand). No formulas. No hyperlinks. No dropdowns.
 | `taxonomy-synthesizer` | Opus | Phase 4a | Read, Write |
 | `placement-classifier-1/2/3` | Opus/Sonnet/Opus | Phase 4b | Read, Bash |
 | `placement-qa-1/2/3` | Opus/Sonnet/Opus | Phase 5 | Read, Bash |
+| `marquee-classifier-1/2/3` | Opus/Sonnet/Opus | Phase 5.7 | Read, Write |
 | `guide-drafter-1/2/3` | Opus/Sonnet/Opus | Phase 6 WS1 | Read, Write |
 | `guide-synthesizer` | Opus | Phase 6 WS1 | Read, Write |
 | `guide-qa` | Opus | Phase 6 WS1 | Read |
 | `description-drafter-1/2/3` | Opus/Sonnet/Opus | Phase 6 WS2 | Read, Bash |
 | `description-qa` | Opus | Phase 6 WS2 | Read |
 
-Total distinct agent role definitions: 14.
+Total distinct agent role definitions: 15 (the v2.0 draft listed 14, omitting
+`dr2-marquee-classifier`, which was added in v2.1 for the Phase 5.7 marquee pass).
 
 > **★ Design insight:** Agent role definitions are stored as `.claude/agents/
 > *.md` files (one per role) so the model assignments and prompts live in
@@ -611,6 +629,13 @@ re-dispatch is structurally identical to the first dispatch — only the
 random seed in model decoding changes.
 
 ### 11.2 Consensus rule (universal across phases)
+
+> ⚠ **SUPERSEDED for Phase 2 by v2.1 — see `SKILL.md §5`.** The "Inclusion
+> (Phase 2)" row below describes v2.0 (unanimous-include, otherwise EXCLUDE,
+> with a K=5 re-dispatch loop). In v2.1 Phase 2 is ASYMMETRIC: any single
+> EXCLUDE wins, non-unanimous-include = EXCLUDE, and there is NO re-dispatch
+> loop. The asymmetric Phase 2.5 (privilege) and Phase 5.7 (marquee) rows
+> remain accurate.
 
 | Phase decision type | Rule |
 |---|---|

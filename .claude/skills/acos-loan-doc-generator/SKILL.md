@@ -318,8 +318,8 @@ Enter selection [1-3]:           [<] Back
          Category: {category_id}
          Execute Phase 1 extraction, then run Step 1.5b to generate a
          candidate catalog entry.
-         Read your instructions from:
-         .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
+         phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+         Read phase1-extract.md from that directory.
    ```
 
 4. Read the candidate catalog entry from Phase 1 output. Display for review:
@@ -1152,8 +1152,8 @@ Task(loan-doc-phase1)
   - prompt: |
       Session manifest: {manifest_path}
       Execute Phase 1: Design Extraction.
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase1-extract.md from that directory.
 ```
 
 Wait for completion. **Checkpoint: update manifest with Phase 1 outputs.**
@@ -1171,8 +1171,8 @@ Task(loan-doc-phase2)
   - prompt: |
       Session manifest: {manifest_path}
       Execute Phase 2: Loan Folder Analysis.
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase2-analyze.md from that directory.
 ```
 
 Wait for completion. **Checkpoint: update manifest with Phase 2 outputs.**
@@ -1268,9 +1268,8 @@ Task(loan-doc-phase34)
   - prompt: |
       Session manifest: {manifest_path}
       Execute Phase 3 (Document Design) + Phase 4 (Validation + Wigum Loop).
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase3-design.md
-      .claude/skills/acos-loan-doc-generator/phases/phase4-validate.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase3-design.md and phase4-validate.md from that directory.
       Handle all Wigum loop iterations internally.
 ```
 
@@ -1336,8 +1335,8 @@ Task(loan-doc-phase1)
       Session manifest: {manifest_path}
       Batch item index: {batch_index}
       Execute Phase 1: Design Extraction for "{document_title}" ({category_id}).
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase1-extract.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase1-extract.md from that directory.
       Use batch_index {batch_index} to differentiate extraction outputs.
 ```
 
@@ -1364,8 +1363,8 @@ Task(loan-doc-phase2)
   - prompt: |
       Session manifest: {manifest_path}
       Execute Phase 2: Loan Folder Analysis (shared across batch).
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase2-analyze.md from that directory.
 ```
 
 Wait for completion. Update `loan_data_path` and `loan_data_brief_path` in the
@@ -1390,9 +1389,8 @@ Task(loan-doc-phase34)
       Batch item index: {batch_index}
       Document: "{document_title}" ({category_id})
       Execute Phase 3 (Document Design) + Phase 4 (Validation + Wigum Loop).
-      Read your instructions from:
-      .claude/skills/acos-loan-doc-generator/phases/phase3-design.md
-      .claude/skills/acos-loan-doc-generator/phases/phase4-validate.md
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase3-design.md and phase4-validate.md from that directory.
       Handle all Wigum loop iterations internally.
       Write outputs to: batch-{batch_index}/ subdirectory within the session.
       Use shared loan data from: {loan_data_path}

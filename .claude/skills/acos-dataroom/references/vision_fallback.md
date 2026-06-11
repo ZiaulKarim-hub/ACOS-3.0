@@ -100,7 +100,7 @@ When both OCR and vision run on the same page, the evidence bundle keeps
   "text": "<OCR output>",
   "confidence": 0.62,
   "vision_supplement": {
-    "method": "claude_vision",
+    "method": "claude_vision_via_bridge",
     "model": "claude-opus-4-7",
     "trigger_reason": "ocr_confidence_below_threshold",
     "extracted_text": "<vision output>",
@@ -123,10 +123,11 @@ Vision calls are billable. The skill respects:
 
 - A `--max-vision-calls` flag (default: 200 per run). If exceeded, remaining
   pages are processed OCR-only and flagged `vision_skipped_quota_exceeded`.
-- Caching: identical page hashes (after rendering) reuse prior vision results
-  within a run.
-- The boss can override: `--force-vision <file_id>` runs vision on a specific
-  file even if it didn't trigger naturally.
+  This is the only cost control currently implemented.
+- *(Planned / not yet implemented)* Caching: identical page hashes (after
+  rendering) would reuse prior vision results within a run.
+- *(Planned / not yet implemented)* A `--force-vision <file_id>` override to
+  run vision on a specific file even if it didn't trigger naturally.
 
 Cost note: as of v1.1.0, vision is dispatched via the bridge (see
 `vision_bridge_contract.md`), so calls bill through the user's Claude Code

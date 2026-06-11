@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specimen Viewer — Type-Forge</title>
+<style>
+  @font-face{font-family:"ForgeFont";src:url("font.woff2") format("woff2");font-display:swap;}
+  :root{--paper:#f4ece0;--ink:#2a2620;--gilt:#b2774a;--faint:#8d8270;--line:#ddd2bf;--bg:#f4ece0;--fg:#2a2620;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{max-width:100%;overflow-x:hidden;}
+  body{background:var(--bg);color:var(--fg);font:14px/1.5 "Source Serif 4",Georgia,serif;transition:background .15s,color .15s;}
+  #bar{position:sticky;top:0;z-index:10;background:#efe6d6;color:var(--ink);border-bottom:1px solid var(--line);
+       padding:10px clamp(12px,3vw,28px);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;}
+  #bar label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--gilt);display:flex;flex-direction:column;gap:4px;}
+  #bar input[type=text]{font:16px "Source Serif 4",serif;padding:6px 10px;border:1px solid var(--line);border-radius:5px;width:min(260px,60vw);background:var(--paper);color:var(--ink);}
+  #bar input[type=range]{width:clamp(110px,16vw,160px);}
+  #bar input[type=color]{width:38px;height:30px;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer;}
+  #bar .v{font-variant-numeric:tabular-nums;color:var(--ink);}
+  .nav a{color:var(--gilt);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 12px;border-radius:6px;}
+  .nav a:hover{border-color:var(--gilt);}
+  .swatches{display:flex;flex-wrap:wrap;gap:6px;padding:8px clamp(12px,3vw,28px);background:#efe6d6;border-bottom:1px solid var(--line);}
+  .sw{width:26px;height:26px;border-radius:5px;border:1px solid rgba(0,0,0,.2);cursor:pointer;}
+  .sw.on{outline:2px solid var(--gilt);outline-offset:1px;}
+  main{padding:clamp(16px,3vw,44px);max-width:1200px;margin:0 auto;}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--gilt);margin:44px 0 16px;border-top:1px solid var(--line);padding-top:14px;}
+  h2:first-of-type{margin-top:6px;border-top:none;}
+  .forge{font-family:"ForgeFont",serif;}
+  #hero{font-family:"ForgeFont",serif;font-size:clamp(56px,12vw,150px);line-height:.98;word-break:break-word;}
+  #live{font-family:"ForgeFont",serif;line-height:1.05;word-break:break-word;}
+  .scale div{font-family:"ForgeFont",serif;line-height:1.05;margin:6px 0;}
+  .lab{font:11px/1 "Source Serif 4",serif;color:var(--faint);letter-spacing:0;}
+  .track-row{display:flex;align-items:baseline;gap:18px;margin:10px 0;}
+  .track-row .t{font-family:"ForgeFont",serif;font-size:46px;}
+  .track-row .lab{width:80px;flex:none;}
+  /* across-backgrounds grid */
+  .lights{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .lights .cell{border-radius:10px;border:1px solid rgba(0,0,0,.12);padding:22px 16px;display:flex;flex-direction:column;gap:8px;min-height:130px;}
+  .lights .cell .w{font-family:"ForgeFont",serif;font-size:40px;line-height:1;word-break:break-word;}
+  .lights .cell .n{font:10px/1 "Source Serif 4",serif;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-top:auto;}
+  /* charset */
+  .cset .grp{margin:14px 0 22px;}
+  .cset .gname{font:10px/1 "Source Serif 4",serif;text-transform:uppercase;letter-spacing:.14em;color:var(--gilt);margin-bottom:8px;}
+  .cset .glyphs{font-family:"ForgeFont",serif;font-size:38px;line-height:1.55;word-spacing:.12em;letter-spacing:.04em;word-break:break-word;}
+  .para{font-family:"ForgeFont",serif;font-size:19px;line-height:1.45;max-width:62ch;}
+  .pairs{font-family:"ForgeFont",serif;font-size:54px;letter-spacing:.02em;display:flex;gap:30px;flex-wrap:wrap;}
+  footer{padding:24px clamp(12px,3vw,28px);color:var(--faint);font-size:12px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+  <div id="bar">
+    <label>Text<input type="text" id="txt" value="Specimen"></label>
+    <label>Size <span class="v" id="szv">96</span>px<input type="range" id="sz" min="12" max="280" value="96"></label>
+    <label>Tracking <span class="v" id="trv">0.01</span>em<input type="range" id="tr" min="-0.06" max="0.40" step="0.01" value="0.01"></label>
+    <label>Background<input type="color" id="bgc" value="#f4ece0"></label>
+    <label>Text<input type="color" id="fgc" value="#2a2620"></label>
+    <span class="nav" style="margin-left:auto"><a href="./">⌂ Home</a></span>
+  </div>
+  <div class="swatches" id="swatches"></div>
+
+  <main>
+    <h2>Display</h2>
+    <div id="hero">Specimen</div>
+
+    <h2>Live setting — type, size, tracking</h2>
+    <div id="live">Specimen</div>
+
+    <h2>Size waterfall (display → text)</h2>
+    <div class="scale" id="scale"></div>
+
+    <h2>Tracking ladder</h2>
+    <div id="ladder"></div>
+
+    <h2>Across backgrounds — the same word in many lights</h2>
+    <div class="lights" id="lights"></div>
+
+    <h2>In use — a setting</h2>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:30px;background:rgba(0,0,0,.02)">
+      <div class="forge" style="font-size:15px;letter-spacing:.34em;color:var(--gilt)">A DISPLAY TYPEFACE · 2025</div>
+      <div class="forge" style="font-size:clamp(40px,8vw,84px);line-height:1;margin:10px 0">Hamburgefonstiv</div>
+      <div class="forge" style="font-size:30px">Sphinx of black quartz</div>
+    </div>
+
+    <h2>As text (display faces close up small — sanity check)</h2>
+    <p class="para">The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.</p>
+
+    <h2>Full character set — every glyph in the font</h2>
+    <div class="cset" id="charset">loading…</div>
+
+    <h2>Kerning stress pairs</h2>
+    <div class="pairs"><span>AV</span><span>WA</span><span>VA</span><span>TO</span><span>YA</span><span>LT</span><span>RY</span><span>To</span><span>Th</span></div>
+  </main>
+  <footer>Specimen Viewer — Type-Forge. Judge the face at display sizes and across lighting before you ship.</footer>
+
+<script>
+  const $=id=>document.getElementById(id);
+  const name=new URLSearchParams(location.search).get('name');
+  if(name){$('txt').value=name; $('hero').textContent=name; document.title="Specimen — "+name;}
+  const txt=$('txt'),sz=$('sz'),tr=$('tr'),bgc=$('bgc'),fgc=$('fgc');
+
+  // curated lighting palette: [name, bg, fg]
+  const PALETTE=[
+    ["Paper","#f4ece0","#2a2620"],["White","#ffffff","#1a1a1a"],["Cream","#fbf3e2","#3a3026"],
+    ["Sand","#e7d8bf","#33291c"],["Light gray","#e9e9ea","#222"],["Warm gray","#cfc7ba","#2a2620"],
+    ["Black","#0e0d0c","#f3edda"],["Charcoal","#23211e","#efe7d6"],["Navy","#23304a","#f0ead8"],
+    ["Forest","#1f3026","#e8e2cc"],["Burgundy","#3a1f24","#f0dcd0"],["Sepia","#704214","#f7e9cf"]
+  ];
+  function applyBG(bg,fg){document.body.style.setProperty('--bg',bg);document.body.style.setProperty('--fg',fg);
+    bgc.value=toHex(bg);fgc.value=toHex(fg);markSwatch(bg);}
+  function toHex(c){if(c[0]==='#'&&c.length===7)return c;const m=document.createElement('canvas').getContext('2d');m.fillStyle=c;return m.fillStyle;}
+  function markSwatch(bg){document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.bg.toLowerCase()===bg.toLowerCase()));}
+  function buildSwatches(){const w=$('swatches');PALETTE.forEach(([n,bg,fg])=>{const s=document.createElement('div');
+    s.className='sw';s.style.background=bg;s.dataset.bg=bg;s.title=n;s.onclick=()=>applyBG(bg,fg);w.appendChild(s);});}
+  function buildLights(){const t=$('txt').value||" ";const g=$('lights');g.innerHTML='';
+    PALETTE.forEach(([n,bg,fg])=>{const c=document.createElement('div');c.className='cell';c.style.background=bg;c.style.color=fg;
+      const w=document.createElement('div');w.className='w';w.textContent=t;const lb=document.createElement('div');lb.className='n';lb.textContent=n;
+      c.append(w,lb);g.appendChild(c);});}
+
+  function upd(){
+    const t=txt.value||" ";
+    $('live').textContent=t; $('live').style.fontSize=sz.value+'px'; $('live').style.letterSpacing=tr.value+'em';
+    $('szv').textContent=sz.value; $('trv').textContent=(+tr.value).toFixed(2);
+    $('scale').innerHTML=[150,96,64,44,30,22,16].map(s=>
+      `<div style="font-size:${s}px;letter-spacing:${tr.value}em">${esc(t)}</div><span class="lab">${s}px</span>`).join('');
+    $('ladder').innerHTML=[-0.04,0,0.04,0.08,0.14,0.22].map(v=>
+      `<div class="track-row"><span class="lab">${v>0?'+':''}${v}em</span><span class="t" style="letter-spacing:${v}em">${esc(t)}</span></div>`).join('');
+    buildLights();
+  }
+  function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+  async function loadCharset(){
+    try{const cs=await (await fetch('charset.json')).json();
+      $('charset').innerHTML=cs.groups.map(g=>
+        `<div class="grp"><div class="gname">${esc(g.name)} · ${[...g.chars].length}</div><div class="glyphs">${esc(g.chars)}</div></div>`).join('');
+    }catch(_){$('charset').textContent='(charset.json unavailable — run via Type-Forge server)';}
+  }
+
+  [txt,sz,tr].forEach(el=>el.addEventListener('input',()=>{ if(el===txt)$('hero').textContent=txt.value||' '; upd(); }));
+  bgc.addEventListener('input',()=>{document.body.style.setProperty('--bg',bgc.value);markSwatch(bgc.value);});
+  fgc.addEventListener('input',()=>{document.body.style.setProperty('--fg',fgc.value);});
+  buildSwatches(); document.fonts.ready.then(()=>{upd();loadCharset();}); upd(); loadCharset();
+</script>
+</body>
+</html>

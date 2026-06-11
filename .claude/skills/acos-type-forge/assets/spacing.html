@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spacing Editor — acos-type-forge</title>
+<style>
+  @font-face{font-family:"ForgeFont";src:url("font.woff2") format("woff2");font-display:swap;}
+  :root{--paper:#f4ece0;--ink:#2a2620;--gilt:#b2774a;--faint:#8d8270;--line:#ddd2bf;--navy:#23304a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{max-width:100%;overflow-x:hidden;}
+  body{background:var(--paper);color:var(--ink);font:14px/1.5 "Source Serif 4",Georgia,serif;}
+  #bar{position:sticky;top:0;z-index:10;background:#efe6d6;border-bottom:1px solid var(--line);
+       padding:12px clamp(12px,3vw,28px);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;}
+  #bar label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--gilt);display:flex;flex-direction:column;gap:4px;}
+  #bar input[type=text]{font:16px "Source Serif 4",serif;padding:6px 10px;border:1px solid var(--line);border-radius:5px;width:min(260px,64vw);background:var(--paper);color:var(--ink);}
+  #bar input[type=range]{width:clamp(110px,18vw,170px);}
+  #bar .v{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .act{background:var(--gilt);color:#fff;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;}
+  .act.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .act.active{background:var(--ink);color:var(--paper);}
+  main{padding:clamp(16px,3vw,40px);max-width:1280px;margin:0 auto;}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--gilt);margin:26px 0 12px;border-top:1px solid var(--line);padding-top:12px;}
+  h2:first-of-type{margin-top:4px;border-top:none;}
+  #preview{font-family:"ForgeFont",serif;color:var(--ink);line-height:1.1;white-space:nowrap;overflow-x:auto;overflow-y:hidden;padding:10px 0 18px;max-width:100%;}
+  #preview span{display:inline-block;}
+  .hint{font-size:12px;color:var(--faint);line-height:1.5;margin:6px 0 0;}
+  .hint code{background:#e0d4bf;padding:1px 4px;border-radius:3px;}
+  /* cushion controls (shared by word cards, focus card, inline row editors) */
+  .sb{display:flex;align-items:center;gap:6px;min-width:0;}
+  .sb .k{width:12px;flex:none;font-weight:bold;color:var(--gilt);}
+  .sb input[type=range]{flex:1 1 0;min-width:0;}
+  .sb input[type=number]{width:46px;flex:none;font:13px "Source Serif 4",serif;padding:3px 4px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);text-align:right;}
+  .rst{font-size:11px;color:var(--gilt);background:none;border:none;cursor:pointer;padding:0;}
+  /* word-mode cards */
+  #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .card{border:1px solid var(--line);border-radius:8px;background:#fbf6ec;padding:12px;display:flex;flex-direction:column;gap:8px;}
+  .card .gl{font-family:"ForgeFont",serif;font-size:64px;line-height:1;text-align:center;color:var(--ink);border:1px dashed var(--line);border-radius:5px;padding:4px 0;background:var(--paper);}
+  .card .gl b{display:block;font:10px/1 "Source Serif 4",serif;letter-spacing:.1em;color:var(--gilt);text-transform:uppercase;margin-top:4px;}
+  .meta{font-size:10px;color:var(--faint);text-align:center;}
+  .card .rst{align-self:center;}
+  /* compare mode */
+  .focusbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:14px;}
+  #cmpfocus{font:22px "ForgeFont",serif;width:54px;text-align:center;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);}
+  .focuscard{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:#fbf6ec;border:1px solid var(--line);border-radius:8px;padding:12px 16px;flex:1;min-width:280px;}
+  .focuscard .big{font-family:"ForgeFont",serif;font-size:46px;line-height:1;}
+  .focuscard .sb{min-width:200px;flex:1;}
+  #cmprows{margin-top:6px;}
+  .crow{display:flex;align-items:flex-end;gap:14px;padding:7px 0;border-bottom:1px solid #e6dbc8;flex-wrap:wrap;}
+  .crow .cl{width:60px;flex:none;font:13px/1 ui-monospace,monospace;color:var(--gilt);cursor:pointer;user-select:none;padding-bottom:4px;}
+  .crow .cl:hover{text-decoration:underline;}
+  .cpair{font-family:"ForgeFont",serif;white-space:nowrap;line-height:1;color:var(--ink);}
+  .cpair span{display:inline-block;}
+  .cedit{flex-basis:100%;display:none;gap:16px;flex-wrap:wrap;align-items:center;padding:8px 0 4px 60px;}
+  .cedit.on{display:flex;}
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:6px;opacity:0;transition:.25s;pointer-events:none;font-size:13px;z-index:50;}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+  [hidden]{display:none!important;}
+</style>
+</head>
+<body>
+  <div id="bar">
+    <label>Test word<input type="text" id="txt" value="Hamburgefonstiv"></label>
+    <label>Size <span class="v" id="szv">120</span>px<input type="range" id="sz" min="32" max="280" value="120"></label>
+    <label>BG<select id="bg"><option value="paper">Paper</option><option value="white">White</option><option value="navy">Navy</option></select></label>
+    <button class="act ghost" id="cmpbtn">⊞ Compare all</button>
+    <button class="act" id="save">💾 Save spacing</button>
+    <button class="act ghost" id="resetall">⟲ Reset all</button>
+    <a class="act ghost" href="./editor.html" style="text-decoration:none;margin-left:auto;">← Glyph Editor</a>
+    <a class="act ghost" href="./" style="text-decoration:none;">⌂ Home</a>
+  </div>
+
+  <main>
+    <!-- WORD MODE -->
+    <div id="wordsection">
+      <h2>Live preview — your cushions applied (no rebuild needed to see it)</h2>
+      <div id="preview">Hamburgefonstiv</div>
+      <p class="hint">Drag a letter's <b>L</b> / <b>R</b> cushion below, or type a number. Units are font units (negative = the letter overhangs so neighbors tuck in). Edits apply to that glyph everywhere it appears.</p>
+      <h2>Cushions — letters in your test word</h2>
+      <div id="cards"></div>
+      <p class="hint">Change the test word above to space other letters. <b>Save</b> writes <code>edits/spacing.json</code>; tell me "saved" and I bake it into the font.</p>
+    </div>
+
+    <!-- COMPARE MODE -->
+    <div id="cmpsection" hidden>
+      <h2>Compare — <span id="cmpfocuslabel">A</span> against every letter, at live spacing</h2>
+      <div class="focusbar">
+        <label style="font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--gilt);display:flex;flex-direction:column;gap:4px;">Focus letter<input id="cmpfocus" maxlength="1" value="A"></label>
+        <div class="focuscard" id="cmpfocuscard"></div>
+      </div>
+      <p class="hint">The <b>focus letter's L/R sliders</b> above drive every row. Click any row's <b>label letter</b> to tweak <i>that</i> control letter's cushions too. Everything is live; <b>Save</b> when it reads right.</p>
+      <div id="cmprows"></div>
+    </div>
+  </main>
+  <div id="toast"></div>
+
+<script>
+let UPM=1000, BAKED={}, SPACE={}, compareOn=false, focusCh='A', ROWPX=96;
+const $=id=>document.getElementById(id);
+const txt=$('txt'), sz=$('sz'), bg=$('bg'), preview=$('preview'), cards=$('cards');
+const upx=px=>px/UPM;
+const uniq=s=>{const o=[];for(const c of s){if(c!==' '&&!o.includes(c))o.push(c);}return o;};
+const cssesc=c=>c.replace(/["\\]/g,'\\$&');
+const labelFor=ch=>(ch>='0'&&ch<='9')?'num':(ch===ch.toUpperCase()&&ch!==ch.toLowerCase()?'cap':'lc');
+
+// any cushion change routes here so the active view refreshes minimally
+function afterChange(ch){
+  const m=document.querySelector(`.meta[data-ch="${cssesc(ch)}"]`); if(m)m.textContent=`baked L${BAKED[ch][0]} R${BAKED[ch][1]}`;
+  if(compareOn) updateCompareMargins(); else renderPreview();
+}
+function makeSide(ch,side){
+  const wrap=document.createElement('div'); wrap.className='sb';
+  const k=document.createElement('span'); k.className='k'; k.textContent=side?'R':'L';
+  const r=document.createElement('input'); r.type='range'; r.min=-200; r.max=150; r.step=1; r.value=SPACE[ch][side];
+  const n=document.createElement('input'); n.type='number'; n.min=-200; n.max=150; n.value=SPACE[ch][side];
+  const set=v=>{v=Math.round(+v||0); SPACE[ch][side]=v; r.value=v; n.value=v; afterChange(ch);};
+  r.addEventListener('input',()=>set(r.value)); n.addEventListener('input',()=>set(n.value));
+  wrap.append(k,r,n); return wrap;
+}
+function resetBtn(ch,cb){const b=document.createElement('button');b.className='rst';b.textContent='reset '+ch;
+  b.onclick=()=>{SPACE[ch]=[BAKED[ch][0],BAKED[ch][1]];cb&&cb();afterChange(ch);};return b;}
+
+// ---------- word mode ----------
+function renderPreview(){
+  const t=txt.value||" "; const px=upx(+sz.value); preview.style.fontSize=sz.value+'px'; preview.innerHTML='';
+  for(const ch of t){
+    if(ch===' '){const s=document.createElement('span');s.style.width=(0.32*(+sz.value))+'px';preview.appendChild(s);continue;}
+    const s=document.createElement('span'); s.textContent=ch;
+    if(BAKED[ch]){s.style.marginLeft=((SPACE[ch][0]-BAKED[ch][0])*px)+'px';s.style.marginRight=((SPACE[ch][1]-BAKED[ch][1])*px)+'px';}
+    preview.appendChild(s);
+  }
+  $('szv').textContent=sz.value;
+}
+function renderCards(){
+  cards.innerHTML='';
+  for(const ch of uniq(txt.value)){
+    if(!BAKED[ch])continue;
+    const card=document.createElement('div');card.className='card';
+    const gl=document.createElement('div');gl.className='gl';gl.textContent=ch;
+    const tag=document.createElement('b');tag.textContent=labelFor(ch);gl.appendChild(tag);
+    card.append(gl,makeSide(ch,0),makeSide(ch,1));
+    const meta=document.createElement('div');meta.className='meta';meta.dataset.ch=ch;meta.textContent=`baked L${BAKED[ch][0]} R${BAKED[ch][1]}`;card.appendChild(meta);
+    card.appendChild(resetBtn(ch,()=>renderCards()));
+    cards.appendChild(card);
+  }
+}
+
+// ---------- compare mode ----------
+function renderCompare(){
+  let f=($('cmpfocus').value||'A')[0];
+  if(!BAKED[f]) f=Object.keys(BAKED)[0];
+  focusCh=f; $('cmpfocus').value=f; $('cmpfocuslabel').textContent=f;
+  const fc=$('cmpfocuscard'); fc.innerHTML='';
+  const big=document.createElement('span'); big.className='big'; big.textContent=f;
+  const meta=document.createElement('span'); meta.className='meta'; meta.dataset.ch=f; meta.textContent=`baked L${BAKED[f][0]} R${BAKED[f][1]}`;
+  fc.append(big,makeSide(f,0),makeSide(f,1),meta,resetBtn(f,()=>renderCompare()));
+  renderCompareRows();
+}
+function renderCompareRows(){
+  ROWPX=Math.min(+sz.value,96);
+  const wrap=$('cmprows'); wrap.innerHTML='';
+  for(const c of Object.keys(BAKED)){
+    const row=document.createElement('div'); row.className='crow';
+    const cl=document.createElement('span'); cl.className='cl'; cl.textContent=c+focusCh+c; cl.title='click to tweak '+c+"'s cushions";
+    const pair=document.createElement('div'); pair.className='cpair'; pair.style.fontSize=ROWPX+'px';
+    for(const ch of [c,focusCh,c]){const s=document.createElement('span');s.className='cmpglyph';s.dataset.ch=ch;s.textContent=ch;pair.appendChild(s);}
+    const edit=document.createElement('div'); edit.className='cedit';
+    cl.onclick=()=>{ if(!edit.childElementCount){
+        const lab=document.createElement('span'); lab.style.cssText='font:12px ui-monospace,monospace;color:var(--gilt);align-self:center'; lab.textContent='cushions for '+c;
+        edit.append(lab,makeSide(c,0),makeSide(c,1),resetBtn(c,()=>renderCompareRows())); }
+      edit.classList.toggle('on'); };
+    row.append(cl,pair,edit); wrap.appendChild(row);
+  }
+  updateCompareMargins();
+}
+function updateCompareMargins(){
+  const u=upx(ROWPX);
+  document.querySelectorAll('#cmprows .cmpglyph').forEach(s=>{const ch=s.dataset.ch; if(!BAKED[ch])return;
+    s.style.marginLeft=((SPACE[ch][0]-BAKED[ch][0])*u)+'px'; s.style.marginRight=((SPACE[ch][1]-BAKED[ch][1])*u)+'px';});
+}
+function setCompare(on){
+  compareOn=on; $('wordsection').hidden=on; $('cmpsection').hidden=!on;
+  $('cmpbtn').classList.toggle('active',on); $('cmpbtn').textContent=on?'✦ Word mode':'⊞ Compare all';
+  if(on) renderCompare();
+}
+
+// ---------- save / misc ----------
+async function save(){
+  const out={};
+  for(const ch in SPACE){ if(SPACE[ch][0]!==BAKED[ch][0]||SPACE[ch][1]!==BAKED[ch][1]) out[ch]=SPACE[ch]; }
+  try{const r=await fetch('/spacing.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(out)});
+      if(!r.ok)throw 0; toast(`Saved ✓ ${Object.keys(out).length} adjusted glyph(s) → edits/spacing.json`);}
+  catch(_){toast('Save failed — is spacing_serve.py running?');}
+}
+let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600);}
+
+bg.addEventListener('change',()=>{const navy=bg.value==='navy';
+  document.body.style.background=bg.value==='white'?'#fff':navy?'#23304a':'var(--paper)';
+  document.body.style.color=navy?'#f0ead8':'var(--ink)';
+  preview.style.color=navy?'#f3edda':'var(--ink)';
+  document.querySelectorAll('.cpair').forEach(p=>p.style.color=navy?'#f3edda':'var(--ink)');});
+txt.addEventListener('input',()=>{ if(!compareOn){renderPreview();renderCards();} });
+sz.addEventListener('input',()=>{ renderPreview(); if(compareOn)renderCompareRows(); });
+$('cmpfocus').addEventListener('input',renderCompare);
+$('cmpbtn').onclick=()=>setCompare(!compareOn);
+$('save').onclick=save;
+$('resetall').onclick=()=>{for(const ch in BAKED)SPACE[ch]=[BAKED[ch][0],BAKED[ch][1]]; if(compareOn)renderCompare(); else{renderCards();renderPreview();} toast('All cushions reset to baked');};
+
+(async function init(){
+  const m=await (await fetch('metrics.json')).json(); UPM=m.upm; BAKED=m.glyphs;
+  let saved={}; try{saved=await (await fetch('/spacing.json')).json();}catch(_){}
+  for(const ch in BAKED){ SPACE[ch] = saved[ch] ? [saved[ch][0],saved[ch][1]] : [BAKED[ch][0],BAKED[ch][1]]; }
+  await document.fonts.ready;
+  renderPreview(); renderCards();
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ name: acos-pdf-xlsx-converter
 description: Converts PDF financial/accounting documents to production-grade XLSX spreadsheets with 0% error tolerance. Triple adversarial review (Value Verifier, Structure Auditor, Formula Validator) ensures every number, heading, and formula is correct. Use when the user wants to convert a PDF to spreadsheet, extract tables from PDF, or create Excel from PDF.
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # ACOS PDF to XLSX Converter

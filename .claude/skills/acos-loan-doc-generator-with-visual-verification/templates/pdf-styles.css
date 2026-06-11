@@ -1,0 +1,513 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACOS Loan Document Generator — PDF Print Stylesheet (OKOA Design System)
+   ═══════════════════════════════════════════════════════════════════════════════
+   Embedded by the Phase 3 Assembler into the <style> block. Page numbers are
+   handled by Puppeteer's footerTemplate (NOT CSS @page counters) to avoid
+   duplication. This CSS focuses on layout, typography, pagination, and the
+   Carbon 16-column grid with OKOA brand colors.
+
+   REQUIRED: Add to HTML <head>:
+   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── OKOA Color Tokens ──────────────────────────────────────────────────────── */
+
+:root {
+  --sage-80: #465D53;  --sage-60: #5E7A6E;  --sage-40: #7A9C8C;
+  --sage-20: #A4CABB;  --sage-10: #DCE7E1;  --sage-05: #EEF3F0;
+  --coral: #FF795E;    --coral-40: #FF9885;  --coral-20: #FFCCC0;
+  --navy: #104473;     --blue: #1F72B6;      --blue-40: #678CA7;
+  --ink: #161616;      --ink-80: #393939;    --ink-60: #525252;
+  --ink-40: #8D8D8D;   --ink-20: #C6C6C6;   --ink-10: #E0E0E0;  --ink-05: #F4F4F4;
+  --white: #FFFFFF;    --warm: #F7F3EE;
+  --red: #DA1E28;      --red-10: #FFF1F1;
+  --green: #24A148;    --green-10: #DEFBE6;
+  --amber: #F1C21B;    --amber-10: #FDF6DD;
+}
+
+/* ── Page Setup ───────────────────────────────────────────────────────────── */
+/* NOTE: Page numbers are rendered by Puppeteer footerTemplate only.
+   Do NOT add @bottom-center content here — it causes double page numbers. */
+
+@page {
+  size: letter;
+  margin: 1in 1in 1.25in 1in;
+}
+
+@page :first {
+  margin-top: 1.5in;
+}
+
+@page landscape {
+  size: letter landscape;
+  margin: 0.75in;
+}
+
+/* ── Carbon 2x Grid — 16-Column System (Print) ─────────────────────────────── */
+/* Print CSS uses fixed 16 columns (no breakpoints — PDF is a fixed canvas) */
+
+.grid { width: 100%; max-width: 1584px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
+.grid--full-width { max-width: none; }
+.row { display: grid; grid-template-columns: repeat(16, 1fr); column-gap: 32px; row-gap: 0; }
+.row--condensed { column-gap: 16px; }
+.row--narrow { column-gap: 1px; }
+
+.col-1  { grid-column: span 1; }   .col-2  { grid-column: span 2; }
+.col-3  { grid-column: span 3; }   .col-4  { grid-column: span 4; }
+.col-5  { grid-column: span 5; }   .col-6  { grid-column: span 6; }
+.col-7  { grid-column: span 7; }   .col-8  { grid-column: span 8; }
+.col-9  { grid-column: span 9; }   .col-10 { grid-column: span 10; }
+.col-11 { grid-column: span 11; }  .col-12 { grid-column: span 12; }
+.col-13 { grid-column: span 13; }  .col-14 { grid-column: span 14; }
+.col-15 { grid-column: span 15; }  .col-16 { grid-column: span 16; }
+
+.col-offset-1 { grid-column-start: 2; }  .col-offset-2 { grid-column-start: 3; }
+.col-offset-3 { grid-column-start: 4; }  .col-offset-4 { grid-column-start: 5; }
+.col-offset-5 { grid-column-start: 6; }  .col-offset-6 { grid-column-start: 7; }
+.col-offset-7 { grid-column-start: 8; }  .col-offset-8 { grid-column-start: 9; }
+
+/* ── Heading Protection (Layer 1 — most critical) ─────────────────────────── */
+/* Prevents orphaned headings at page bottom                                    */
+
+h1, h2, h3, h4, h5, h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Major section headings start on new pages */
+h1 {
+  break-before: page;
+  page-break-before: always;
+}
+
+/* First h1 (document title) should NOT force a page break */
+h1:first-of-type {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+/* ── Paragraph Orphan/Widow Control (Layer 2) ─────────────────────────────── */
+
+p, li {
+  orphans: 3;
+  widows: 3;
+}
+
+/* ── Keep-Together Elements (Layer 3) ─────────────────────────────────────── */
+
+table, figure, blockquote, .deal-summary, .callout, .summary-box, .risk-box {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Wrapper class for stubborn engines (Puppeteer break-inside bug workaround) */
+.keep-together {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow: visible;
+}
+
+/* Heading + following content group */
+.heading-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── Table Behavior ───────────────────────────────────────────────────────── */
+
+thead {
+  display: table-header-group;
+}
+
+tfoot {
+  display: table-footer-group;
+}
+
+tbody tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── Section-Level Breaks ─────────────────────────────────────────────────── */
+
+.toc {
+  break-after: page;
+  page-break-after: always;
+}
+
+.footer-block {
+  break-before: page;
+  page-break-before: always;
+}
+
+.appendix-section {
+  break-before: page;
+  page-break-before: always;
+}
+
+.wide-table {
+  page: landscape;
+}
+
+/* ── Image and Figure Styling ─────────────────────────────────────────────── */
+
+figure {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 18pt 0;
+  text-align: center;
+}
+
+figure img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+figcaption {
+  font-size: 9pt;
+  font-style: italic;
+  color: #525252;
+  margin-top: 6pt;
+  text-align: left;
+}
+
+/* ── Typography (IBM Plex + OKOA palette) ────────────────────────────────── */
+
+body {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  color: #161616;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  color: #465D53;
+  margin-top: 18pt;
+  margin-bottom: 8pt;
+  font-weight: 600;
+}
+
+h1 { font-size: 18pt; margin-top: 0; }
+h2 { font-size: 14pt; }
+h3 { font-size: 12pt; }
+
+p {
+  margin-top: 0;
+  margin-bottom: 8pt;
+}
+
+/* Section label (IBM Plex Mono, uppercase, coral accent) */
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #FF795E;
+  margin-bottom: 8pt;
+}
+
+/* Coral accent utility */
+.accent-coral { color: #FF795E; }
+
+/* Collapse adjacent margins between sections to prevent empty gaps */
+section + section { margin-top: 0; }
+section.chapter { margin-top: 0; padding-top: 0; }
+section.chapter > h1 { margin-top: 0; padding-top: 6pt; }
+
+table {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 9.5pt;
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 6pt;
+  margin-bottom: 12pt;
+  border: 0.5pt solid #E0E0E0;
+}
+
+th {
+  background-color: #465D53;
+  color: white;
+  font-weight: 600;
+  padding: 6pt 8pt;
+  text-align: left;
+  border: 0.5pt solid #465D53;
+}
+
+td {
+  padding: 5pt 8pt;
+  border-bottom: 0.5pt solid #E0E0E0;
+  border-left: 0.5pt solid #E0E0E0;
+  border-right: 0.5pt solid #E0E0E0;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #EEF3F0;
+}
+
+/* Prevent empty table cells from collapsing and creating visual gaps */
+td:empty::after { content: "\00a0"; }
+
+/* Numeric columns right-align for professional appearance */
+td.numeric, th.numeric { text-align: right; }
+
+/* Currency columns get consistent formatting */
+td.currency { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Deal Summary Box ─────────────────────────────────────────────────────── */
+
+.deal-summary {
+  border: 2pt solid #465D53;
+  background: #F4F4F4;
+  padding: 12pt 16pt;
+  margin: 12pt 0;
+}
+
+.deal-summary td:first-child {
+  font-weight: 600;
+  color: #465D53;
+  width: 35%;
+}
+
+/* ── Risk Callouts ────────────────────────────────────────────────────────── */
+
+.risk-box {
+  border-left: 4pt solid #DA1E28;
+  background: #FFF1F1;
+  padding: 8pt 12pt;
+  margin: 12pt 0;
+}
+
+.risk-box.mitigant {
+  border-left-color: #24A148;
+  background: #DEFBE6;
+}
+
+/* ── List Styling ────────────────────────────────────────────────────────── */
+
+ul, ol {
+  margin-top: 4pt;
+  margin-bottom: 8pt;
+  padding-left: 24pt;
+}
+
+li {
+  margin-bottom: 3pt;
+  line-height: 1.4;
+}
+
+li > ul, li > ol {
+  margin-top: 2pt;
+  margin-bottom: 2pt;
+}
+
+/* ── Callout & Summary Boxes ─────────────────────────────────────────────── */
+
+.callout {
+  border: 1pt solid #465D53;
+  background: #EEF3F0;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+  border-radius: 0;
+}
+
+.callout-title {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  color: #465D53;
+  font-size: 10pt;
+  margin-bottom: 4pt;
+}
+
+.summary-box {
+  border: 1.5pt solid #465D53;
+  background: #F4F4F4;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+}
+
+.summary-box table {
+  margin: 0;
+  border: none;
+}
+
+.summary-box td, .summary-box th {
+  border: none;
+  background: transparent;
+}
+
+/* ── Table of Contents ───────────────────────────────────────────────────── */
+
+.toc {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.toc li {
+  margin-bottom: 6pt;
+  padding: 2pt 0;
+  border-bottom: 0.5pt dotted #C6C6C6;
+}
+
+.toc a {
+  color: #465D53;
+  text-decoration: none;
+  font-size: 10.5pt;
+}
+
+.toc li li {
+  padding-left: 16pt;
+  font-size: 9.5pt;
+  border-bottom: none;
+}
+
+/* ── Cover Page / Title Section ──────────────────────────────────────────── */
+
+.cover-title {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 24pt;
+  font-weight: 700;
+  color: #465D53;
+  margin-bottom: 6pt;
+}
+
+.cover-subtitle {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 14pt;
+  color: #525252;
+  margin-bottom: 24pt;
+}
+
+.cover-meta {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  color: #525252;
+  line-height: 1.6;
+}
+
+.cover-divider {
+  border: none;
+  border-top: 2pt solid #465D53;
+  margin: 18pt 0;
+}
+
+/* ── Recommendation Matrix Colors (OKOA palette) ───────────────────────────── */
+
+.recommendation-finance {
+  background-color: #DEFBE6;
+  color: #15803D;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recommendation-conditional {
+  background-color: #FDF6DD;
+  color: #854D0E;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recommendation-watchlist {
+  background-color: #FFCCC0;
+  color: #9A3412;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recommendation-decline {
+  background-color: #FFF1F1;
+  color: #991B1B;
+  padding: 4pt 8pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── Chart Container ─────────────────────────────────────────────────────── */
+
+.chart-container {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 12pt 0;
+  text-align: center;
+}
+
+.chart-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.chart-title {
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #465D53;
+  text-align: center;
+  margin-bottom: 6pt;
+}
+
+.chart-caption {
+  font-size: 8pt;
+  color: #525252;
+  text-align: center;
+  margin-top: 4pt;
+  font-style: italic;
+}
+
+/* ── Provenance Table ─────────────────────────────────────────────────────── */
+
+.provenance-table {
+  font-size: 8.5pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.provenance-table th {
+  background-color: #525252;
+  font-size: 8pt;
+  padding: 4pt 6pt;
+}
+
+.provenance-table td {
+  padding: 3pt 6pt;
+  font-size: 8pt;
+}
+
+/* ── Data Verification Table ─────────────────────────────────────────────── */
+
+.verification-table {
+  font-size: 8.5pt;
+}
+
+.verification-table .calculated {
+  background-color: #FDF6DD;
+}
+
+.verification-table .user-provided {
+  background-color: #DEFBE6;
+}
+
+.verification-table .single-source {
+  background-color: #FFCCC0;
+}
+
+/* ── Print-Specific Overrides ────────────────────────────────────────────── */
+
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  a { color: #465D53; text-decoration: none; }
+  a[href]::after { content: none; }  /* Don't show URLs in print */
+}

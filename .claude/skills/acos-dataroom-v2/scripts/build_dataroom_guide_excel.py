@@ -116,18 +116,19 @@ def _gather_file_tree(
     for f in taxonomy:
         folder_num = f.get("num")
         folder_name = f.get("name", "")
-        prefix = f"{int(folder_num):02d}_"
+        # v2.1 taxonomy folders are "NN <name>" with a SPACE prefix.
+        prefix = f"{int(folder_num):02d} "
         folder_lookup[prefix] = (folder_num, folder_name)
 
     # Walk the dataroom
     for sub in sorted(dataroom_dir.iterdir()):
         if not sub.is_dir():
             continue
-        # Match folder by number prefix
-        m = re.match(r"^(\d{2})_(.+)$", sub.name)
+        # Match folder by "NN <name>" space-separated number prefix (v2.1).
+        m = re.match(r"^(\d{2}) (.+)$", sub.name)
         if m:
             folder_num = int(m.group(1))
-            folder_label = f"{folder_num:02d} — {m.group(2).replace('_', ' ')}"
+            folder_label = f"{folder_num:02d} — {m.group(2)}"
         else:
             folder_label = sub.name  # e.g., 00_Pending_Classification
         # List files in folder

@@ -1,0 +1,89 @@
+# Brand-Asset Manifest Schema (v1)
+#
+# Location convention: {asset_dir}/.acos-ultimate-designer-manifest.yaml
+# Keyed by file_hash so the manifest is idempotent against re-scans of unchanged files.
+#
+# Written by scripts/bootstrap-manifest.py; read by scripts/match-image.py and
+# scripts/fill-photo-slots.py.
+
+version: 1
+
+# Top-level structure:
+#
+# entries:
+#   "<sha256_hash>":
+#     <see entry schema below>
+#
+# Each entry captures a single image's semantic profile + any user-feedback overrides.
+
+entry_schema:
+  file_hash:
+    type: string
+    description: "sha256 of file contents (entry key)"
+    required: true
+
+  filename:
+    type: string
+    description: "basename of the file at analysis time"
+    required: true
+
+  path:
+    type: string
+    description: "absolute path at analysis time (may become stale if user renames)"
+    required: true
+
+  description:
+    type: string
+    description: "2-3 sentence vision-model description of the image"
+    required: true
+
+  semantic_tags:
+    type: list[string]
+    description: "list of tags: subject, setting, mood, primary colors, RE category, etc."
+    required: true
+
+  deal_match:
+    type: string
+    description: "optional named entity (e.g., 'Ascent Park City') if the image is property-specific"
+    required: false
+
+  aesthetic_tags:
+    type: list[string]
+    description: "mood/style tags (e.g., 'editorial', 'atmospheric', 'warm', 'cinematic')"
+    required: false
+
+  user_rejected_for:
+    type: list[object]
+    description: "append-only list of user feedback rejections"
+    required: false
+    item_schema:
+      context: string       # e.g., "cover of Ascent Park City document"
+      reason: string        # user-supplied reason or default
+      timestamp: string     # ISO 8601
+      session_id: string    # for audit trail
+
+  date_analyzed:
+    type: string
+    description: "ISO 8601 timestamp of the vision analysis"
+    required: true
+
+  source:
+    type: string
+    enum: [brand, unsplash, pexels]
+    description: "provenance — 'brand' for user-supplied, others for fallback downloads cached in manifest"
+    required: true
+
+# Example entry:
+#
+# entries:
+#   "3a7f...b2e9":
+#     file_hash: "3a7f2e...b2e9"
+#     filename: "ascent-park-city-cover.jpg"
+#     path: "/Users/zee/okoa-photos/ascent-park-city-cover.jpg"
+#     description: "A modern residential building exterior at golden hour, framed by mountain ridgelines. The facade uses warm wood tones with large floor-to-ceiling windows."
+#     semantic_tags: [architecture, residential, sunset, mountain, modern, warm-tones, wood, glass]
+#     deal_match: "Ascent Park City"
+#     aesthetic_tags: [editorial, warm, cinematic]
+#     user_rejected_for: []
+#     date_analyzed: "2026-04-23T14:30:00Z"
+#     source: brand

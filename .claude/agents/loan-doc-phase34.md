@@ -18,9 +18,12 @@ window instead of accumulating in the primary context.
 
 ## Instructions
 
-Read your phase instructions from TWO files:
-1. `.claude/skills/acos-loan-doc-generator/phases/phase3-design.md`
-2. `.claude/skills/acos-loan-doc-generator/phases/phase4-validate.md`
+Read your phase instructions from the path provided in the dispatching prompt's
+`phase_instructions_path` (the orchestrating skill passes the correct skill's
+phases/ directory). Within that directory, read TWO files:
+1. `phase3-design.md`
+2. `phase4-validate.md`
+Do not assume a hardcoded skill path.
 
 Your input is a session manifest path. Follow this loop:
 

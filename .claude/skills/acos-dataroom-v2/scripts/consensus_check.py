@@ -1,7 +1,10 @@
 """Consensus-checking helper for acos-dataroom-v2.
 
 Reads a directory of agent vote JSON files for a single file_id and emits
-a consensus verdict (INCLUDE / EXCLUDE / SPLIT / KEEP / FLAG / PLACEMENT_n).
+a consensus verdict (INCLUDE / EXCLUDE / KEEP / FLAG / PLACEMENT_n).
+
+Note: inclusion consensus is ASYMMETRIC in v2.1 — any single EXCLUDE vote
+wins and there is NO re-dispatch loop. There is no SPLIT inclusion verdict.
 
 CLI usage:
   # Phase 2 inclusion consensus
@@ -48,6 +51,15 @@ def _load_votes(votes_dir: Path) -> list[dict[str, Any]]:
 
 
 def inclusion_consensus(votes_dir: Path) -> dict[str, Any]:
+    """v2.1 ASYMMETRIC inclusion consensus — any single EXCLUDE wins, no loop.
+
+    - any vote is EXCLUDE        -> EXCLUDE
+    - all 3 votes are INCLUDE    -> INCLUDE
+    - otherwise (non-unanimous)  -> EXCLUDE (any non-unanimous-include is an exclude)
+
+    There is NO SPLIT verdict and NO re-dispatch path in v2.1. The Phase 3
+    fresh-eyes QA loop is the recovery mechanism for over-aggressive cuts.
+    """
     votes = _load_votes(votes_dir)
     if len(votes) < 3:
         return {
@@ -57,22 +69,26 @@ def inclusion_consensus(votes_dir: Path) -> dict[str, Any]:
         }
     verdicts = [v.get("verdict") for v in votes]
     counts = Counter(verdicts)
+    if counts.get("EXCLUDE", 0) >= 1:
+        excluding = [v for v in votes if v.get("verdict") == "EXCLUDE"]
+        return {
+            "verdict": "EXCLUDE",
+            "breakdown": dict(counts),
+            "reasoning": "At least one deliberator voted EXCLUDE. Asymmetric "
+                         "consensus excludes the file (single-veto-wins, no loop).",
+            "excluding_agents": [v.get("agent_id") for v in excluding],
+        }
     if counts.get("INCLUDE", 0) == 3:
         return {
             "verdict": "INCLUDE",
             "breakdown": dict(counts),
             "reasoning": "Unanimous INCLUDE across all 3 agents.",
         }
-    if counts.get("EXCLUDE", 0) == 3:
-        return {
-            "verdict": "EXCLUDE",
-            "breakdown": dict(counts),
-            "reasoning": "Unanimous EXCLUDE across all 3 agents.",
-        }
     return {
-        "verdict": "SPLIT",
+        "verdict": "EXCLUDE",
         "breakdown": dict(counts),
-        "reasoning": f"Split decision: {dict(counts)}. Re-dispatch required.",
+        "reasoning": f"Non-unanimous INCLUDE ({dict(counts)}). Any non-unanimous-"
+                     "include is an EXCLUDE under v2.1 asymmetric consensus.",
     }
 
 

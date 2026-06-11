@@ -74,7 +74,7 @@ Parse `$ARGUMENTS` for source directories, output folder, and optional schema:
 
 **Examples:**
 ```
-/acos-loan-doc-finder /path/to/ascent /path/to/waldorf --output ~/Desktop/Waldorf Senior Loan files
+/acos-loan-doc-finder /path/to/ascent /path/to/waldorf --output "~/Desktop/Waldorf Senior Loan files"
 /acos-loan-doc-finder /path/to/deal-folder --output ~/Desktop/Output --schema categories.yaml
 ```
 
@@ -233,7 +233,7 @@ Task(general-purpose)
 # If CLASSIFIER_MODEL contains ":" (external provider):
 Bash(run_in_background: true):
   python3 .claude/scripts/run-external-agent.py \
-    --agent developer \
+    --agent general-purpose \
     --model "$CLASSIFIER_MODEL" \
     --task "[full prompt above]" \
     --context [file paths]
@@ -346,7 +346,6 @@ Spawn 3 adversarial QA agents in a SINGLE message, each with a different review 
 Task(general-purpose)
   - run_in_background: true
   - model: $QA_MODEL
-  - isolation: worktree
   - prompt: |
       You are an ADVERSARIAL Content Verifier. Your job is to DISPROVE document
       classifications. Assume every classification is WRONG until you verify it.
@@ -377,7 +376,6 @@ Task(general-purpose)
 Task(general-purpose)
   - run_in_background: true
   - model: $QA_MODEL
-  - isolation: worktree
   - prompt: |
       You are an ADVERSARIAL Completeness Auditor. Your job is to find MISSING
       documents that the classifiers overlooked.
@@ -409,7 +407,6 @@ Task(general-purpose)
 Task(general-purpose)
   - run_in_background: true
   - model: $QA_MODEL
-  - isolation: worktree
   - prompt: |
       You are a Domain Expert QA reviewer with deep knowledge of real estate
       lending and due diligence. You understand PRISM's 252-item DD framework.

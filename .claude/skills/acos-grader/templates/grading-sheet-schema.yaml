@@ -1,0 +1,48 @@
+# Per-grader output, written by grader-opus or grader-sonnet.
+# One file per grader per iteration per paper.
+# Path: .acos/state/grader-sessions/{session_id}/grading/{paper_id}/iter-{n}-{role}.yaml
+
+paper_id: "STUDENT_123"
+grader_role: "grader-opus-A"                    # grader-opus-A | grader-opus-B | grader-sonnet
+iteration: 1
+timestamp: "2026-04-18T14:32:17Z"
+
+# --- Per-criterion grading ---------------------------------------------------
+# Graders MUST produce entries only for criteria assigned in this iteration.
+# On iter 1, that is ALL criteria.
+# On iter > 1, that is ONLY criteria QA flagged FAIL in the previous iter.
+
+criteria:
+  - id: "criterion_1"
+    name: "Correctly identifies the portfolio's current Sharpe ratio"
+    points_total: 10
+    points_awarded: 8.5                          # MUST be in 0.5 increments
+    floor: 7.0                                   # from session manifest
+    ceiling: 9.0
+    reasoning: |
+      Student computed Sharpe ratio as (0.082 - 0.025) / 0.134 = 0.425 using
+      annual return 8.2%, risk-free rate 2.5%, annualized stdev 13.4%. Formula
+      correct and arithmetic accurate. However, student did not explicitly note
+      that the return and stdev were annualized while the risk-free rate was
+      stated per-annum — this consistency is required for full credit per the
+      rubric. Deducted 1.5 points for omission of period-consistency statement.
+
+  - id: "criterion_2"
+    name: "Applies mean-variance optimization to recommend allocation"
+    points_total: 15
+    points_awarded: 13.5
+    floor: 10.5
+    ceiling: 13.5
+    reasoning: |
+      Student correctly set up the MVO problem with the three-asset covariance
+      matrix and identified the tangency portfolio at weights (0.42, 0.33, 0.25).
+      Solution lies on the efficient frontier and respects the no-short-sale
+      constraint from the problem statement. Full credit within ceiling.
+
+# --- Grader self-check ------------------------------------------------------
+# Graders should verify their own output before submitting.
+self_check:
+  all_points_in_range: true                      # every awarded score within floor/ceiling
+  all_increments_valid: true                     # every score is a 0.5 multiple
+  all_criteria_graded: true                      # every assigned criterion has an entry
+  total_awarded: 22.0                            # sum of points_awarded in this sheet

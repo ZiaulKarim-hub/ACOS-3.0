@@ -1,0 +1,60 @@
+# acos-grader internal rubric format
+# Produced by `.claude/scripts/grader-parse-rubric.py` from the user's
+# DOCX/PDF/XLSX rubric. This is the machine-readable form every grader reads.
+
+rubric:
+  title: "Fall 2026 — Portfolio Theory Final Exam"     # optional, from source
+  subject_hint: "Investment Management"                 # optional, user-overridable
+  total_points: 100                                     # MUST equal sum(criteria[].points)
+
+  criteria:
+    - id: "criterion_1"                                 # stable identifier, kebab or snake_case
+      name: "Correctly identifies the portfolio's current Sharpe ratio"
+      points: 10
+      question_id: "Q1"                                 # OPTIONAL — hybrid mapping (Option C).
+                                                        # When set, grader focuses on student's
+                                                        # answer to this question. When null or
+                                                        # absent, grader uses full questions text
+                                                        # and domain expertise to map.
+      description: |
+        Student must compute the Sharpe ratio from the provided return data
+        and risk-free rate. Full credit requires: (a) correct formula, (b)
+        correct arithmetic, (c) annualized or period-consistent treatment
+        explicitly stated.
+
+    - id: "criterion_2"
+      name: "Applies mean-variance optimization to recommend allocation"
+      points: 15
+      question_id: "Q2"
+      description: |
+        Student must apply Markowitz MVO to the three-asset problem and
+        recommend an allocation that sits on the efficient frontier. Partial
+        credit for identifying the frontier but misapplying constraints.
+
+    - id: "criterion_3"
+      name: "Justifies factor tilts in light of the stated mandate"
+      points: 20
+      # question_id omitted — criterion spans multiple questions or is a
+      # global/synthesis criterion. Grader falls back to implicit mapping.
+      description: |
+        Student must explain which factor tilts (value, momentum, quality,
+        low-vol, size) are appropriate given the pension mandate described in
+        the problem. Must reference at least two factors with causal reasoning.
+
+    # ... continue for all criteria
+    #
+    # Requirements enforced by the parser:
+    # - every criterion has id (unique), name, points (> 0), description
+    # - sum(criteria[].points) == total_points
+    # - description is non-empty (graders rely on it as the sole source of
+    #   truth about what "correct" means)
+    # - question_id is OPTIONAL — any string matching a question label in the
+    #   questions document. No validation against the questions file is
+    #   performed; graders treat missing or null question_id as implicit.
+
+  metadata:
+    source_file: "rubric.docx"
+    source_extension: "docx"
+    parsed_at: "2026-04-18T14:30:00Z"
+    parser: "acos-data-extractor"                       # or acos-pdf-xlsx-converter
+    parser_version: "1.0"

@@ -271,15 +271,17 @@ It serves as a structural reference that shows the agents:
 
 If the user provides a sample:
 1. Accept the file path (PDF, XLSX, DOCX, or image)
-2. Copy or reference the file in the session directory:
+2. Copy or reference the file in the session directory, preserving the real
+   file extension (the literal `.*` does NOT expand — derive the extension):
    ```bash
-   cp "{sample_path}" .acos/financial-statement/sessions/{session_id}/prior-sample.*
+   ext="${sample_path##*.}"
+   cp "{sample_path}" ".acos/financial-statement/sessions/{session_id}/prior-sample.${ext}"
    ```
-3. Record in the manifest:
+3. Record the EXACT copied path (with the derived extension) in the manifest:
    ```yaml
    prior_sample:
      provided: true
-     path: ".acos/financial-statement/sessions/{session_id}/prior-sample.pdf"
+     path: ".acos/financial-statement/sessions/{session_id}/prior-sample.${ext}"  # actual extension (pdf/xlsx/docx/png/...)
      usage: "structural_reference_only"  # NEVER "data_source"
    ```
 
@@ -360,8 +362,14 @@ selections, and write to:
 
 **4. Resolve agent model:**
 ```bash
-ACCOUNTANT_MODEL=$(bash .claude/scripts/resolve-agent-model.sh architect 2>/dev/null || echo "opus")
+ACCOUNTANT_MODEL=$(bash .claude/scripts/resolve-agent-model.sh fin-stmt-accountant 2>/dev/null || echo "opus")
 ```
+Pass `ACCOUNTANT_MODEL` into the Task(fin-stmt-accountant) dispatch in Phase 1+2
+(via the spawn's `model` override) so model-profile overrides actually take
+effect. If `ACCOUNTANT_MODEL` is a bare Claude model name (`opus`/`sonnet`/`haiku`),
+use it as the Task model override; if it resolves to an external `provider:model`
+spec, ignore it and let the agent's own `model: opus` default stand (the
+architect/developer-style safety gate — the accountant requires Claude tool access).
 
 **5. Copy COA template:**
 Copy the chart-of-accounts.yaml to the session directory so all sandboxes
@@ -380,8 +388,13 @@ the entire process from here: sandbox spawning, comparison, Wigum loop, and
 finalization.
 
 **Dispatch:**
+
+Spawn `Task(fin-stmt-accountant)` with the `model` override set to the
+`ACCOUNTANT_MODEL` resolved in Step 0.8 #4 (when it is a bare Claude model name;
+otherwise omit the override and let the agent's `model: opus` default stand).
+
 ```
-Spawn Task(fin-stmt-accountant) with prompt:
+Spawn Task(fin-stmt-accountant) [model: {ACCOUNTANT_MODEL}] with prompt:
 
 "You are the Primary Accountant for financial statement session {session_id}.
 

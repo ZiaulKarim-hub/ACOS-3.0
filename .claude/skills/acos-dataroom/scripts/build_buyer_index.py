@@ -202,7 +202,9 @@ def _build_data_room_index(ws, *, included_rows: list[dict], openpyxl) -> None:
         r.get("Primary Subfolder") or "",
         r.get("Sub-folder") or "",
         r.get("Sub-sub-folder") or "",
-        r.get("Proposed Renamed Filename") or r.get("Original Filename") or "",
+        # Buyer index must never leak the source filename. Fall back to a neutral
+        # placeholder (not Original Filename) when the renamed cell is blank.
+        r.get("Proposed Renamed Filename") or "(unnamed document)",
     ))
 
     # Build raw rows then suppress repeats for visual grouping
@@ -211,7 +213,8 @@ def _build_data_room_index(ws, *, included_rows: list[dict], openpyxl) -> None:
         primary = r.get("Primary Subfolder") or ""
         sub = r.get("Sub-folder") or ""
         subsub = r.get("Sub-sub-folder") or ""
-        filename = r.get("Proposed Renamed Filename") or r.get("Original Filename") or ""
+        # Never leak the source filename to the buyer; use a neutral placeholder.
+        filename = r.get("Proposed Renamed Filename") or "(unnamed document)"
         description = r.get("Brief Description") or ""
         raw.append([primary, sub, subsub, filename, description])
 

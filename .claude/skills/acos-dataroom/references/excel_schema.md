@@ -201,7 +201,7 @@ Change_Log, README) is fully retired. Mapping to the new design:
 | Old tab | New location |
 |---|---|
 | README | Cover (WS 1) of internal workbook |
-| Risk_Dashboard | "Key Risks" callout on Cover |
+| Risk_Dashboard | Risks & Missing Documents (WS 4), Key Risks section |
 | Tailored_Diligence_Scope | Distributed across WS 2 (present items) and WS 4 (absent items) |
 | Proposed_Data_Room_Index | Files Included (WS 2) of internal workbook |
 | Source_File_Manifest | Eliminated as workbook tab; full manifest still lives at `intermediate/file_manifest.json` |

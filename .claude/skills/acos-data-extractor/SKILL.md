@@ -3,7 +3,7 @@ name: acos-data-extractor
 description: "Data extraction from large document collections with optional PRISM industry intelligence. Schema-driven triage, parallel extraction with provenance, adversarial QA with Wigum loop. When PRISM DD framework is available, enriches agents with 252-item due diligence taxonomy for institutional-grade accuracy. Handles hundreds to thousands of files (PDF, DOCX, XLSX, TXT)."
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 context: fork
 argument-hint: "<folder-path-1> [folder-path-2] ... --schema <schema.yaml> [--output <output-folder>]"
 ---
@@ -131,7 +131,7 @@ Schema: 12 fields to extract
 
 Write `session-manifest.yaml` using the template from `templates/session-manifest.yaml`.
 
-**Step 0.6** — PRISM Knowledge Integration (Optional Enhancement)
+**Step 0.5** — PRISM Knowledge Integration (Optional Enhancement)
 
 Check if PRISM intelligence is available:
 
@@ -192,13 +192,13 @@ If PRISM data is NOT available:
 
 Record in session manifest: `prism_integration: true|false`
 
-**Step 0.7** — Token Budget Planning
+**Step 0.6** — Token Budget Planning
 
 Before spawning any agents, compute the optimal agent counts for Phase 1 and Phase 2.
 This prevents token waste from over-parallelism (too much duplicated overhead) and
 quality degradation from under-parallelism (agents overloaded with too many files).
 
-**Step 0.7a** — Estimate per-file token costs from the file inventory:
+**Step 0.6a** — Estimate per-file token costs from the file inventory:
 
 ```
 For each file in inventory:
@@ -223,7 +223,7 @@ For each file in inventory:
     extraction_tokens = 5000
 ```
 
-**Step 0.7b** — Calculate per-agent overhead (tokens duplicated in every agent prompt):
+**Step 0.6b** — Calculate per-agent overhead (tokens duplicated in every agent prompt):
 
 ```
 # These are injected into EVERY agent, so they multiply by agent count
@@ -239,7 +239,7 @@ if prism_integration:
 overhead_per_agent = overhead_system_prompt + overhead_schema + overhead_integrity_rules + overhead_prism_context
 ```
 
-**Step 0.7c** — Compute optimal agent counts:
+**Step 0.6c** — Compute optimal agent counts:
 
 ```
 MAX_PAYLOAD_PER_AGENT = 80000    # tokens — safe working budget per agent context
@@ -268,7 +268,7 @@ min_extraction = max(MIN_AGENTS, ceil(total_extraction_payload / MAX_PAYLOAD_PER
 optimal_extraction_agents = clamp(min_extraction, MIN_AGENTS, MAX_EXTRACTION_AGENTS)
 ```
 
-**Step 0.7d** — Display token budget plan to user:
+**Step 0.6d** — Display token budget plan to user:
 
 ```
 Token Budget Plan
@@ -294,7 +294,7 @@ Phase 2 — Extraction (estimated, refined after triage):
   Efficiency:       {payload / (payload + overhead) * 100}%
 ```
 
-**Step 0.7e** — Save budget plan to `{session-dir}/token-budget.yaml`:
+**Step 0.6e** — Save budget plan to `{session-dir}/token-budget.yaml`:
 
 ```yaml
 token_budget:
@@ -329,13 +329,38 @@ token_budget:
 
 Record `optimal_triage_agents` and `optimal_extraction_agents` in session manifest.
 
+**Step 0.7** — Resolve Agent Models
+
+Before spawning any agents, resolve which model each agent role should use. This honors
+the project's model profile (Budget/Standard/Premium/Auto and multi-provider presets)
+rather than hardcoding a model.
+
+Run `.claude/scripts/resolve-agent-model.sh` for each agent role used in this skill:
+
+```bash
+TRIAGE_MODEL=$(.claude/scripts/resolve-agent-model.sh developer 2>/dev/null || echo "sonnet")
+EXTRACTOR_MODEL=$(.claude/scripts/resolve-agent-model.sh developer 2>/dev/null || echo "sonnet")
+QA_MODEL=$(.claude/scripts/resolve-agent-model.sh qa-reviewer 2>/dev/null || echo "sonnet")
+```
+
+Notes:
+- The triage and extractor agents read and write files, so they map to the `developer`
+  role (which the safety gate forces to a Claude model). The QA agents map to the
+  `qa-reviewer` role and may resolve to an external provider.
+- If the resolver is unavailable or errors, fall back to hardcoded defaults (`sonnet`)
+  — do not abort the run. (This is the fallback the error-handling table refers to.)
+
+Record the resolved models in the session manifest under both `agents:`
+(`triage_model`, `extractor_model`, `qa_model`) and `models:` (`triage`, `extractors`,
+`qa_reviewer`). Use these values when spawning agents in Phases 1, 2, and the QA gates.
+
 ---
 
 ### Phase 1: Triage (Fast Scan)
 
 **Goal:** Quickly identify which files are likely to contain answers for schema fields. This avoids deep-reading thousands of irrelevant files.
 
-**Step 1.1** — Read `optimal_triage_agents` from the token budget (Step 0.7).
+**Step 1.1** — Read `optimal_triage_agents` from the token budget (Step 0.6).
 
 This value was computed from actual file sizes and per-agent overhead — not a static lookup table.
 Bounds: minimum 2, maximum 15 agents.

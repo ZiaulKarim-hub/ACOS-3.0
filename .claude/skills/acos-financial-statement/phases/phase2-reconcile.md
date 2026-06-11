@@ -110,10 +110,10 @@ comparison:
   - account_code: "4000"
     account_name: "Base Rental Income"
     sandbox_a: 120000.00
-    sandbox_b: 118500.00
+    sandbox_b: 112500.00
     sandbox_c: 120000.00
-    max_difference: 1500.00
-    materiality_test: "1500 / 120000 = 1.25% — ABOVE threshold (1%)"
+    max_difference: 7500.00
+    materiality_test: "7500 / 120000 = 6.25% — ABOVE income-statement threshold (5%)"
     status: "material_difference"
 
   - account_code: "5300"
@@ -122,7 +122,7 @@ comparison:
     sandbox_b: 24000.00
     sandbox_c: 24100.00
     max_difference: 100.00
-    materiality_test: "100 / 24000 = 0.42% — BELOW threshold (5%)"
+    materiality_test: "100 / 24000 = 0.42% — BELOW income-statement threshold (5%)"
     status: "immaterial"
 ```
 
@@ -301,6 +301,23 @@ deficiencies:
 
 ## Step 6: Re-spawn Sandboxes (Iteration N+1)
 
+### 6.0 Iteration gate (evaluate BEFORE any re-spawn)
+
+Step 7's loop-exit checks are evaluated EVERY iteration, here, before any
+sandbox is re-spawned. At the top of every Step 6 pass:
+
+**If `current_iteration >= max_iterations` OR `converged` OR `stuck` (per the
+conditions in Step 7), STOP looping and go directly to Step 8 (Finalization).**
+
+- `converged` — actual mode: all material differences resolved and all critical
+  validation checks pass (Step 4.4 / Step 7). Projection mode: all sandboxes
+  score 7+ on all dimensions, or scores have plateaued (Step 7 diminishing returns).
+- `stuck` — material differences unchanged for 2 consecutive iterations (actual)
+  or scores plateaued for 2 iterations (projection). When stuck, you still go to
+  Step 8, but first add more specific feedback as described in Step 7.
+
+Only if NONE of these exit conditions is met do you proceed to re-spawn below.
+
 If not converged (actual) or if quality can be improved (projection):
 
 ### 6.1 Update session manifest
@@ -342,7 +359,10 @@ flagged as deficient unless you independently discover an error.
 ```
 
 ### 6.3 Wait and repeat
-Wait for all sandboxes to complete. Go back to Step 3.
+Wait for all sandboxes to complete, then read their new outputs (Step 3) and
+re-run the comparison (Step 4). Then return to the iteration gate at the TOP of
+Step 6 (Step 6.0) — NOT blindly back to Step 3 — so that Step 7's max-iteration,
+converged, and stuck checks are re-evaluated before any further re-spawn.
 
 ---
 
@@ -558,7 +578,7 @@ Supplemental metrics:
 | Benchmark | Typical Range | Default |
 |-----------|---------------|---------|
 | Net income | 5-10% | 5% |
-| Total revenue | 0.5-5% | 1% |
+| Total revenue | 0.5-5% | 5% |
 | Total assets | 0.5-2% | 1% |
 | Total equity | 1-5% | 2% |
 

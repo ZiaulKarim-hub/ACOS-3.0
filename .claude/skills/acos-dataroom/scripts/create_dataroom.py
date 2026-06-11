@@ -11,7 +11,7 @@ target folder under the deal-type taxonomy, with the renamed filename.
 Never auto-redacts. Never modifies originals. Never auto-uploads.
 
 Writes:
-- final_data_room_index.xlsx (mini-version of guide, only included rows)
+- <DataRoomName>_Index_<YYYY-MM-DD>.xlsx (buyer-facing index, only included rows)
 - creation_log.csv
 - PERMISSIONS_CHECKLIST.md
 """
@@ -152,6 +152,33 @@ def main(argv: list[str] | None = None) -> int:
         name_to_source[f.get("file_name", "")] = f.get("source_path", "")
     name_to_file_id: dict[str, str] = {c.get("file_name", ""): c.get("file_id", "") for c in classifications}
 
+    # The 'Files Included' worksheet carries no decision/redaction column, so we
+    # join each row back to its classification record to recover the
+    # external_room_recommendation decision and the redaction signal. This is the
+    # gate that enforces the invariant: a file marked for redaction must NEVER be
+    # copied unredacted unless the user passes --allow-unredacted-override.
+    def _decision_value(c: dict) -> str:
+        """external_room_recommendation may be a bare string or a {value, reasoning} dict."""
+        rec = c.get("external_room_recommendation")
+        if isinstance(rec, dict):
+            rec = rec.get("value", "")
+        return (rec or "").strip().lower()
+
+    name_to_decision: dict[str, str] = {}
+    name_to_redaction: dict[str, dict] = {}
+    for c in classifications:
+        nm = c.get("file_name", "")
+        name_to_decision[nm] = _decision_value(c)
+        sens = c.get("sensitivity") or {}
+        name_to_redaction[nm] = {
+            "recommended": bool(sens.get("redaction_recommended")),
+            "redacted_file_path": (c.get("redacted_file_path")
+                                   or sens.get("redacted_file_path") or ""),
+        }
+
+    # Normalize the override list (callers may pass file ids or original filenames).
+    override_ids = {str(o).strip() for o in (args.allow_unredacted_override or []) if str(o).strip()}
+
     to_copy = []
     skipped = []
     for row in index_rows:
@@ -160,6 +187,49 @@ def main(argv: list[str] | None = None) -> int:
             continue
         source_path = name_to_source.get(original, "")
         file_id = name_to_file_id.get(original, "")
+
+        # --- Decision gate ----------------------------------------------------
+        # If we can resolve a decision for this row, honor it. Rows whose decision
+        # is internal_only_*/superseded/absent must never be copied. (The internal
+        # workbook normally pre-filters these out, but we re-check defensively in
+        # case the boss hand-edited a row into 'Files Included'.)
+        decision = name_to_decision.get(original, "")
+        if decision and (decision.startswith("internal_only_")
+                         or decision in ("superseded", "absent")):
+            logger.warning("Row %s has decision %r — not an include decision; skipping.",
+                           original, decision)
+            skipped.append((original, f"decision_{decision}"))
+            continue
+        if decision and decision not in INCLUDE_DECISIONS:
+            logger.warning("Row %s has unrecognized decision %r — skipping.",
+                           original, decision)
+            skipped.append((original, f"decision_{decision}"))
+            continue
+
+        # --- Redaction gate ---------------------------------------------------
+        # A file marked for redaction (decision == include_after_redaction, or the
+        # sensitivity record flags redaction_recommended) must NOT be copied
+        # unredacted. Require either a redacted_file_path or an explicit override.
+        redaction = name_to_redaction.get(original, {})
+        needs_redaction = (decision == "include_after_redaction"
+                           or redaction.get("recommended"))
+        if needs_redaction:
+            redacted_path = (row.get("Redacted File Path")
+                             or redaction.get("redacted_file_path") or "")
+            overridden = (original in override_ids) or (file_id and file_id in override_ids)
+            if redacted_path:
+                # Copy the redacted version instead of the original.
+                source_path = redacted_path
+            elif overridden:
+                logger.warning("Row %s marked for redaction but copied UNREDACTED "
+                               "via --allow-unredacted-override.", original)
+            else:
+                logger.warning("Row %s marked for redaction but has no redacted file "
+                               "path and no --allow-unredacted-override; skipping.",
+                               original)
+                skipped.append((original, "redaction_required"))
+                continue
+
         if not source_path:
             logger.warning("No source path for %s — skipping", original)
             skipped.append((original, "source_missing"))

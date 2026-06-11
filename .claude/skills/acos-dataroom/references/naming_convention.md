@@ -75,9 +75,9 @@ sanitization rules to any boss-edited names.
 ## Original Filename Preservation
 
 The original filename is always preserved in:
-- `Source_File_Manifest.file_name` (Excel)
+- `intermediate/file_manifest.json → files[].file_name`
 - `evidence/<file_id>.json → source.name`
-- `creation_log.csv → source_file_name` column
+- `creation_log.csv → original_filename` column
 
 So even after rename, the original is recoverable. **Source files themselves
 are never modified, never moved, never renamed** — only copies in the target
