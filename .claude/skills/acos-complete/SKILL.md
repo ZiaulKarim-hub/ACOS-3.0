@@ -105,6 +105,23 @@ mkdir -p memory/handoffs/archive
 mv memory/handoffs/<filename> memory/handoffs/archive/
 ```
 
+After each move, check for a paired resume sibling (`memory/handoffs/<basename>.resume.md` — same basename, `.resume.md` extension). If one exists, rewrite any occurrence of the handoff's OLD path inside it (`memory/handoffs/<filename>`) to the new archive path (`memory/handoffs/archive/<filename>`). The sibling embeds an absolute "Read `<handoff path>`" pointer written by the eternity protocol; without this rewrite, a later eternity resume would instruct the fresh session to Read a path that no longer exists. Do NOT move or delete the sibling itself — per-PID pointers reference it in place:
+
+```bash
+# <filename> = the handoff just moved; sibling stays in place, path rewritten
+SIBLING="memory/handoffs/${filename%.*}.resume.md"
+if [ -f "$SIBLING" ]; then
+  python3 - "$SIBLING" "$filename" <<'PY'
+import sys, pathlib
+sib, fname = pathlib.Path(sys.argv[1]), sys.argv[2]
+text = sib.read_text()
+new = text.replace(f"memory/handoffs/{fname}", f"memory/handoffs/archive/{fname}")
+if new != text:
+    sib.write_text(new)
+PY
+fi
+```
+
 ### Step 6: Cleanup
 
 Remove any stale legacy session markers from `.acos/state/` (defensive cleanup — the currently registered Stop hook is `autopilot-stop-handler.py`, which does not write `handoff-triggered-*` markers; this rm only clears residue from older hook generations):

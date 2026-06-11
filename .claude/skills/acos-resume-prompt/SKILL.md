@@ -46,6 +46,9 @@ spawned but have not yet returned a result.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl)
+# Same fail-loud guard as eternity-protocol-core.sh — a malformed derivation
+# must not silently produce a bogus pending-resume-<id>.txt path.
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: bad SESSION_ID '$SESSION_ID'"; exit 1; }
 ```
 
 Run this Python walk to identify in-flight Tasks. NOTE: `"$JSONL"` below is a
