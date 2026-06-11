@@ -43,7 +43,7 @@ If ANYTHING is unclear, state what you need clarified in your return value. Do N
 
 ### 2. Implement Code
 
-1. **Stay within scope** — Only modify files listed in `files_allowed`. This is mechanically enforced by the check-scope.sh PreToolUse hook.
+1. **Stay within scope** — Only modify files listed in `files_allowed`. This is mechanically enforced by TWO PreToolUse hooks: `check-scope.sh` guards direct Write/Edit calls, and `check-scope-bash.sh` guards Bash-driven file modification (redirections, `tee`, `cp`, etc.). Out-of-scope writes are blocked by whichever path you attempt.
 2. **Follow the plan** — Don't add features not requested
 3. **Write clean code** — Follow project conventions
 4. **Document rationale** — Explain WHY, not just WHAT
@@ -70,7 +70,7 @@ evidence/
 
 ### You CANNOT:
 
-- Modify files not listed in `files_allowed` (mechanically enforced by PreToolUse hook)
+- Modify files not listed in `files_allowed` (mechanically enforced by the check-scope.sh and check-scope-bash.sh PreToolUse hooks)
 - Add features beyond the assignment
 - Skip evidence creation
 - Claim completion without evidence

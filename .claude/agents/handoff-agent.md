@@ -82,10 +82,10 @@ Read any decisions made today.
 Check if there's a stale or partial handoff already:
 
 ```bash
-ls -lt memory/handoffs/*.yaml 2>/dev/null | head -5
+ls -lt memory/handoffs/*.yaml memory/handoffs/*.md 2>/dev/null | grep -v '\.resume\.md' | head -5
 ```
 
-If a handoff exists from today, read it — it may contain useful context even if stale.
+Handoffs may be written as `.yaml` (auto-generated and emergency handoffs) or `.md` (semantic handoffs); glob both. Exclude `*.resume.md` (eternity-protocol resume siblings, not handoffs). If a handoff exists from today, read it — it may contain useful context even if stale.
 
 #### 2f. ACOS Runtime State
 
@@ -112,6 +112,8 @@ timestamp: "[ISO 8601 timestamp]"
 status: "active"
 type: "emergency-manual"
 trigger: "acos-handoff-agent"
+session_id: "[parent session_id if known, else 'unknown']"
+estimated_tokens: 0
 
 session_summary: |
   [2-3 sentence summary synthesized from git history, planning state, and evidence]
@@ -149,6 +151,8 @@ context_for_next_session: |
 reconstruction_sources:
   - "[List every file you read to build this handoff, so the next session can verify]"
 ```
+
+**On `session_id` and `estimated_tokens`:** `context-monitor.sh` greps the top-level `session_id:` and `estimated_tokens:` fields to correlate a handoff to its originating session and assess staleness. Always emit BOTH fields so your handoff is schema-compatible with that tooling. You run in your own context and usually do NOT know the parent's session_id — in that case write `session_id: "unknown"` (the date/recent-mtime fallback path still finds the handoff) rather than omitting the field. Set `estimated_tokens: 0` (an emergency handoff is created out-of-band, not at a measured token threshold).
 
 ### Step 4: Save
 
