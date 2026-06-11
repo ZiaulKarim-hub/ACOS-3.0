@@ -91,6 +91,26 @@ def _get_file_modified(filepath: str) -> str:
         return datetime.now(tz=timezone.utc).isoformat()
 
 
+def _fence_run(stripped: str) -> tuple[Optional[str], int]:
+    """If `stripped` (a left-stripped line) opens/closes a code fence, return
+    (fence_char, run_length); otherwise (None, 0).
+
+    Per CommonMark, a fence is a run of >= 3 backticks or tildes. The run length
+    matters: a fence opened with N markers can only be closed by a run of the
+    SAME char with length >= N. Tracking just the first 3 chars would let a
+    shorter inner ``` line falsely close a 4+-backtick fence.
+    """
+    if not stripped:
+        return None, 0
+    ch = stripped[0]
+    if ch not in ("`", "~"):
+        return None, 0
+    run = len(stripped) - len(stripped.lstrip(ch))
+    if run < 3:
+        return None, 0
+    return ch, run
+
+
 def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
     """Split markdown into (header, body) sections at H2 boundaries.
 
@@ -100,23 +120,25 @@ def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
     sections = []
     current_header = ""
     current_lines: list[str] = []
-    in_fence = False
-    fence_marker = ""
+    fence_char = ""
+    fence_len = 0
 
     for line in content.split("\n"):
         stripped = line.lstrip()
         # Track fenced-code-block state so a '## ' line inside a ``` or ~~~ fence
         # is treated as content, not a section header.
-        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
-            in_fence = True
-            fence_marker = stripped[:3]
+        ch, run = _fence_run(stripped)
+        if not fence_char and ch is not None:
+            fence_char = ch
+            fence_len = run
             current_lines.append(line)
             continue
-        if in_fence:
+        if fence_char:
             current_lines.append(line)
-            if stripped.startswith(fence_marker):
-                in_fence = False
-                fence_marker = ""
+            # Close only on the same fence char with run length >= the opener's.
+            if ch == fence_char and run >= fence_len:
+                fence_char = ""
+                fence_len = 0
             continue
         if line.startswith("## "):
             # Save previous section
@@ -139,23 +161,25 @@ def _split_at_h3(content: str) -> list[tuple[str, str]]:
     sections = []
     current_header = ""
     current_lines: list[str] = []
-    in_fence = False
-    fence_marker = ""
+    fence_char = ""
+    fence_len = 0
 
     for line in content.split("\n"):
         stripped = line.lstrip()
         # Track fenced-code-block state so a '### ' line inside a ``` or ~~~ fence
         # is treated as content, not a section header.
-        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
-            in_fence = True
-            fence_marker = stripped[:3]
+        ch, run = _fence_run(stripped)
+        if not fence_char and ch is not None:
+            fence_char = ch
+            fence_len = run
             current_lines.append(line)
             continue
-        if in_fence:
+        if fence_char:
             current_lines.append(line)
-            if stripped.startswith(fence_marker):
-                in_fence = False
-                fence_marker = ""
+            # Close only on the same fence char with run length >= the opener's.
+            if ch == fence_char and run >= fence_len:
+                fence_char = ""
+                fence_len = 0
             continue
         if line.startswith("### "):
             if current_lines:

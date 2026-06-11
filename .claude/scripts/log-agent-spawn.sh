@@ -23,7 +23,7 @@ try:
     data = json.load(sys.stdin)
     # Payload provides agent_type + agent_id; there is no agent_name field.
     def _clean(v):
-        return str(v).replace('\n', ' ').replace('\r', ' ')
+        return str(v).replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
 
     agent_type = _clean(data.get('agent_type') or data.get('agent_name') or 'unknown')
     agent_id = _clean(data.get('agent_id', ''))

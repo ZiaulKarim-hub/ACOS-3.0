@@ -69,6 +69,11 @@ if [ -f "$CACHE_FILE" ]; then
   CACHE_AGE=$(( $(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null || stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
   if [ "$CACHE_AGE" -lt 60 ]; then
     ESTIMATED_TOKENS=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+    # Validate: a corrupt non-numeric cache must NOT flow into the -eq 0 guard
+    # (which errors under set -u) or into the arithmetic TOKEN_DELTA below.
+    # Mirror the STOP_RETRIES guard — coerce garbage to 0 so the re-estimate
+    # path triggers. (Sibling of the round-3 STOP_RETRIES fix.)
+    [[ "$ESTIMATED_TOKENS" =~ ^[0-9]+$ ]] || ESTIMATED_TOKENS=0
   fi
 fi
 

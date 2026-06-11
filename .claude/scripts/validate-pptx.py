@@ -369,6 +369,10 @@ class PptxValidator:
             for shape in slide.shapes:
                 if not shape.has_text_frame:
                     continue
+                # Skip placeholder shapes from slide masters (margins are
+                # inherited from the layout, not spurious "default" findings).
+                if getattr(shape, 'is_placeholder', False):
+                    continue
                 if not shape.text_frame.text.strip():
                     continue
                 tf = shape.text_frame

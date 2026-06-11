@@ -92,6 +92,10 @@ find_latest_handoff() {
     local latest=""
     local latest_time=0
 
+    # Guard the loop: an empty search_dirs array expands to a fatal 'unbound
+    # variable' under `set -u` on bash 3.2, aborting the script instead of
+    # falling through to the intended 'No active handoff' path.
+    if [[ ${#search_dirs[@]} -gt 0 ]]; then
     for dir in "${search_dirs[@]}"; do
         [[ -d "$dir" ]] || continue
         while IFS= read -r -d '' file; do
@@ -111,6 +115,7 @@ find_latest_handoff() {
             # the fallback pre-loaded with a resume template instead of context.
         done < <(find "$dir" -maxdepth 1 \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) ! -name '*.resume.md' -print0 2>/dev/null)
     done
+    fi
 
     echo "$latest"
 }

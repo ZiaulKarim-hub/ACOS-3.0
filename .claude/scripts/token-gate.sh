@@ -68,6 +68,13 @@ EMERGENCY_THRESHOLD=$(( CONTEXT_WINDOW * EMERGENCY_PCT / 100 )) # 130,000
 # the handoff is considered stale and enforcement re-activates
 HANDOFF_STALE_DELTA=20000
 
+# mtime-based freshness window (seconds) for handoffs that do NOT carry an
+# `estimated_tokens:` field. The semantic handoff protocol (/acos-handoff-protocol)
+# omits that field, so we can't compute a token delta. A same-session handoff
+# whose file was written within this window is treated as fresh rather than
+# stale-from-birth. Generous so a just-created handoff always counts.
+HANDOFF_MTIME_FRESH_SECS=1800
+
 # Enforcement phase boundaries (retry counts)
 NUDGE_MAX=3
 PRESS_MAX=8
@@ -410,6 +417,8 @@ fi
 #   2. Fallback: the file's mtime mapped to the token cache at that time
 THIS_SESSION_HANDOFF=false
 HANDOFF_TOKENS_AT_CREATION=0
+HANDOFF_HAS_TOKENS=false
+NEWEST_HANDOFF_MTIME=0
 
 if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
   # Find the NEWEST matching handoff (most recent = most relevant)
@@ -429,29 +438,56 @@ if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
     fi
   done
 
-  # Extract token count at handoff creation from the newest matching handoff
+  # Extract token count at handoff creation from the newest matching handoff.
+  # The semantic handoff protocol does NOT emit estimated_tokens:, so absence
+  # is expected and must NOT be coerced to a stale-from-birth delta. We record
+  # whether the field was present (HANDOFF_HAS_TOKENS) and the file mtime so the
+  # freshness evaluator can fall back to mtime-based freshness when it's absent.
   if [ -n "$NEWEST_HANDOFF" ]; then
-    HANDOFF_TOKENS_AT_CREATION=$(grep -m1 '^estimated_tokens:' "$NEWEST_HANDOFF" 2>/dev/null | sed 's/^estimated_tokens:[[:space:]]*//' | tr -d '"' || echo 0)
-    if [ -z "$HANDOFF_TOKENS_AT_CREATION" ] || ! [[ "$HANDOFF_TOKENS_AT_CREATION" =~ ^[0-9]+$ ]]; then
+    NEWEST_HANDOFF_MTIME=$(get_mtime "$NEWEST_HANDOFF")
+    RAW_TOKENS=$(grep -m1 '^estimated_tokens:' "$NEWEST_HANDOFF" 2>/dev/null | sed 's/^estimated_tokens:[[:space:]]*//' | tr -d '"' || true)
+    if [ -n "$RAW_TOKENS" ] && [[ "$RAW_TOKENS" =~ ^[0-9]+$ ]]; then
+      HANDOFF_TOKENS_AT_CREATION=$RAW_TOKENS
+      HANDOFF_HAS_TOKENS=true
+    else
       HANDOFF_TOKENS_AT_CREATION=0
+      HANDOFF_HAS_TOKENS=false
     fi
   fi
 fi
 
 # Evaluate handoff freshness
 if [ "$THIS_SESSION_HANDOFF" = "true" ]; then
-  TOKEN_DELTA=$(( ESTIMATED_TOKENS - HANDOFF_TOKENS_AT_CREATION ))
+  if [ "$HANDOFF_HAS_TOKENS" = "true" ]; then
+    # Token-delta path: handoff recorded its creation-token count (mechanical
+    # fallback handoffs write estimated_tokens:).
+    TOKEN_DELTA=$(( ESTIMATED_TOKENS - HANDOFF_TOKENS_AT_CREATION ))
 
-  if [ "$TOKEN_DELTA" -lt "$HANDOFF_STALE_DELTA" ]; then
-    # Handoff is fresh — enforcement satisfied
-    reset_enforcement
-    exit 0
+    if [ "$TOKEN_DELTA" -lt "$HANDOFF_STALE_DELTA" ]; then
+      # Handoff is fresh — enforcement satisfied
+      reset_enforcement
+      exit 0
+    else
+      # Handoff is STALE — tokens grew significantly since it was created.
+      echo "TOKEN-GATE: Handoff stale — created at ~${HANDOFF_TOKENS_AT_CREATION} tokens, now at ~${ESTIMATED_TOKENS} (delta: ${TOKEN_DELTA} > threshold: ${HANDOFF_STALE_DELTA})" >&2
+      THIS_SESSION_HANDOFF=false
+    fi
   else
-    # Handoff is STALE — tokens grew significantly since it was created.
-    # Re-activate enforcement to demand a fresh handoff.
-    # Log staleness for debugging
-    echo "TOKEN-GATE: Handoff stale — created at ~${HANDOFF_TOKENS_AT_CREATION} tokens, now at ~${ESTIMATED_TOKENS} (delta: ${TOKEN_DELTA} > threshold: ${HANDOFF_STALE_DELTA})" >&2
-    THIS_SESSION_HANDOFF=false
+    # mtime-based freshness path: the semantic handoff protocol omits
+    # estimated_tokens:, so we cannot compute a token delta. A same-session
+    # handoff written recently is FRESH — judging it stale-from-birth (the old
+    # behavior) meant every correctly-created semantic handoff failed
+    # enforcement. Map the file mtime to recency instead.
+    NOW=$(date +%s)
+    HANDOFF_AGE=$(( NOW - NEWEST_HANDOFF_MTIME ))
+    if [ "$NEWEST_HANDOFF_MTIME" -gt 0 ] && [ "$HANDOFF_AGE" -lt "$HANDOFF_MTIME_FRESH_SECS" ]; then
+      # Recent same-session handoff with unknown creation-tokens — treat as fresh
+      reset_enforcement
+      exit 0
+    else
+      echo "TOKEN-GATE: Handoff lacks estimated_tokens and mtime is stale (age: ${HANDOFF_AGE}s > ${HANDOFF_MTIME_FRESH_SECS}s) — re-activating enforcement" >&2
+      THIS_SESSION_HANDOFF=false
+    fi
   fi
 fi
 

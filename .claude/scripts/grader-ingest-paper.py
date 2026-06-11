@@ -330,39 +330,46 @@ def _tesseract_ocr_path(image_path: Path, lang: str = "eng") -> str:
         return "[OCR timed out after 120s]"
 
 
-# Formats leptonica (tesseract's image backend) cannot decode (webp) or handles
-# poorly/not at all (gif). Writing these to a temp file and running tesseract
-# silently yields OCR-error/garbage text that downstream is treated as verbatim
-# student content. Convert them to PNG first; if conversion fails, emit an
-# explicit unreadable marker instead of feeding garbage to tesseract.
-_TESSERACT_UNSUPPORTED_EXTS = {"webp", "gif"}
+# Sentinel returned by _tesseract_ocr_bytes when an image is genuinely
+# undecodable (tesseract failed AND no fitz fallback was available/succeeded).
+# Callers MUST detect this sentinel and route it through the standard
+# figure/[no readable content] fencing — never emit it as plain (student) text.
+_UNREADABLE_MARKER = "[unreadable image — could not be decoded for OCR]"
+
+# Formats that the installed tesseract/leptonica build may not decode. On this
+# toolchain (tesseract 5.5.2 / leptonica 1.87.0, built WITH libwebp + libgif),
+# webp and gif decode NATIVELY, so they are NOT listed here — we always hand the
+# original bytes to tesseract first. Only formats tesseract truly cannot read
+# belong here; currently none are unconditionally unsupported.
+_TESSERACT_UNSUPPORTED_EXTS: set[str] = set()
 
 
-def _tesseract_ocr_bytes(image_bytes: bytes, ext: str, lang: str = "eng") -> str:
-    ext_norm = (ext or "").lower().lstrip(".")
-    if ext_norm in _TESSERACT_UNSUPPORTED_EXTS:
-        # Convert to PNG via fitz.Pixmap (same approach as the exotic-format branch)
-        # before handing bytes to tesseract, since leptonica can't decode webp and
-        # has poor/no gif support.
-        try:
-            import fitz
-            with tempfile.NamedTemporaryFile(suffix=f".{ext_norm}", delete=False) as ctmp:
-                ctmp.write(image_bytes)
-                conv_path = Path(ctmp.name)
-            try:
-                pix = fitz.Pixmap(str(conv_path))
-                if pix.n - pix.alpha >= 4:  # CMYK → RGB
-                    pix = fitz.Pixmap(fitz.csRGB, pix)
-                image_bytes = pix.tobytes("png")
-                ext = "png"
-            finally:
-                conv_path.unlink(missing_ok=True)
-        except Exception as e:
-            print(
-                f"WARNING: tesseract cannot decode .{ext_norm}; PNG conversion failed: {e}",
-                file=sys.stderr,
-            )
-            return f"[unreadable: tesseract cannot decode {ext_norm}]"
+def _fitz_png_from_bytes(image_bytes: bytes, ext_norm: str):
+    """Convert image bytes to PNG via PyMuPDF, or return None if fitz is
+    unavailable or cannot decode the format. fitz import is OPTIONAL — its
+    absence must never break the OCR path."""
+    try:
+        import fitz  # PyMuPDF — optional dependency
+    except ImportError:
+        return None
+    conv_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=f".{ext_norm or 'img'}", delete=False) as ctmp:
+            ctmp.write(image_bytes)
+            conv_path = Path(ctmp.name)
+        pix = fitz.Pixmap(str(conv_path))
+        if pix.n - pix.alpha >= 4:  # CMYK → RGB
+            pix = fitz.Pixmap(fitz.csRGB, pix)
+        return pix.tobytes("png")
+    except Exception as e:
+        print(f"WARNING: fitz PNG conversion failed (.{ext_norm}): {e}", file=sys.stderr)
+        return None
+    finally:
+        if conv_path is not None:
+            conv_path.unlink(missing_ok=True)
+
+
+def _run_tesseract_on_bytes(image_bytes: bytes, ext: str, lang: str) -> str:
     with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
         tmp.write(image_bytes)
         tmp_path = Path(tmp.name)
@@ -370,6 +377,54 @@ def _tesseract_ocr_bytes(image_bytes: bytes, ext: str, lang: str = "eng") -> str
         return _tesseract_ocr_path(tmp_path, lang=lang)
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def _ocr_looks_failed(text: str) -> bool:
+    """True if tesseract produced no usable output (empty, or an explicit
+    error marker emitted by _tesseract_ocr_path)."""
+    s = (text or "").strip()
+    if not s:
+        return True
+    return s.startswith("[OCR ") or s.startswith("[tesseract ")
+
+
+def _tesseract_ocr_bytes(image_bytes: bytes, ext: str, lang: str = "eng") -> str:
+    """OCR raw image bytes, degrading gracefully:
+
+    1. Hand the ORIGINAL bytes to tesseract first. The installed tesseract build
+       decodes webp/gif natively, so this is the common-case success path.
+    2. ONLY if tesseract returns empty/error AND fitz is importable, fall back to
+       a fitz->PNG conversion and retry tesseract.
+    3. ONLY if both fail, return the _UNREADABLE_MARKER sentinel (callers fence it).
+    """
+    ext_norm = (ext or "").lower().lstrip(".")
+
+    # Listed unsupported formats (currently none): convert via fitz up front.
+    if ext_norm in _TESSERACT_UNSUPPORTED_EXTS:
+        png = _fitz_png_from_bytes(image_bytes, ext_norm)
+        if png is not None:
+            return _run_tesseract_on_bytes(png, "png", lang)
+        return _UNREADABLE_MARKER
+
+    # Step 1: try the original bytes directly (native webp/gif/etc. support).
+    text = _run_tesseract_on_bytes(image_bytes, ext_norm or "img", lang)
+    if not _ocr_looks_failed(text):
+        return text
+
+    # Step 2: tesseract failed — fall back to fitz->PNG if fitz is importable.
+    png = _fitz_png_from_bytes(image_bytes, ext_norm)
+    if png is not None:
+        retry = _run_tesseract_on_bytes(png, "png", lang)
+        if not _ocr_looks_failed(retry):
+            return retry
+
+    # Step 3: both paths failed — genuinely undecodable.
+    print(
+        f"WARNING: tesseract could not decode image (.{ext_norm}); "
+        f"fitz fallback unavailable or failed",
+        file=sys.stderr,
+    )
+    return _UNREADABLE_MARKER
 
 
 # ---------- OCR dispatch ---------------------------------------------------
@@ -425,6 +480,11 @@ def _ocr_embedded_image(
     # Tesseract fallback
     text = _tesseract_ocr_bytes(image_bytes, ext, lang=lang).strip()
     _backend_stats["tesseract"] += 1
+    if text == _UNREADABLE_MARKER:
+        # Genuinely undecodable: fence it as a description so it is NOT graded as
+        # student writing. _format_embedded with empty transcription + this
+        # description yields "[FIGURE DESCRIPTION: ...]".
+        return _format_embedded(idx, location, "", _UNREADABLE_MARKER, backend="tesseract")
     return _format_embedded(idx, location, text, "", backend="tesseract")
 
 
@@ -458,7 +518,12 @@ def _ocr_page_image(
     # Tesseract fallback
     text = _tesseract_ocr_bytes(image_bytes, ext, lang=lang).strip()
     _backend_stats["tesseract"] += 1
-    body = text if text else "[no readable content]"
+    if not text or text == _UNREADABLE_MARKER:
+        # Empty or genuinely undecodable: emit the standard no-readable-content
+        # marker (fenced convention), never the raw sentinel as plain page text.
+        body = "[no readable content on this page]"
+    else:
+        body = text
     return f"{header}\n{body}"
 
 
@@ -712,7 +777,11 @@ def extract_image(
             return "\n".join(lines) if lines else ""
     # Tesseract fallback
     _backend_stats["tesseract"] += 1
-    return _tesseract_ocr_bytes(img_bytes, ext, lang=lang)
+    text = _tesseract_ocr_bytes(img_bytes, ext, lang=lang).strip()
+    if text == _UNREADABLE_MARKER:
+        # Genuinely undecodable: fence it so it is NOT graded as student content.
+        return f"[FIGURE DESCRIPTION: {_UNREADABLE_MARKER}]"
+    return text
 
 
 # ---------- Orchestration --------------------------------------------------

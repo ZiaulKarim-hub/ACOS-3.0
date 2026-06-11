@@ -24,7 +24,9 @@ print(data.get('transcript_path', ''))
 if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   FILENAME="$(date -u +%Y-%m-%d)-auto-compact-handoff.yaml"
-  cat > "$HANDOFF_DIR/$FILENAME" <<YAML
+  # Write to .tmp then atomically promote (gated on non-empty), matching the
+  # main path's discipline so a crash/empty write can't leave a truncated handoff.
+  cat > "$HANDOFF_DIR/$FILENAME.tmp" <<YAML
 timestamp: "$DATE"
 status: "mechanical"
 type: mechanical-compact
@@ -39,6 +41,11 @@ context_for_next_session: |
   This is an auto-generated mechanical handoff created before context compaction.
   The transcript was not accessible for detailed extraction.
 YAML
+  if [ -s "$HANDOFF_DIR/$FILENAME.tmp" ]; then
+    mv -f "$HANDOFF_DIR/$FILENAME.tmp" "$HANDOFF_DIR/$FILENAME"
+  else
+    rm -f "$HANDOFF_DIR/$FILENAME.tmp"
+  fi
   echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff"
   date +%s > "$STATE_DIR/last-auto-handoff-time"
   exit 0

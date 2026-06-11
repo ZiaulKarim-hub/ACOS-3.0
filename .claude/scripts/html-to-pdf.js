@@ -115,10 +115,21 @@ async function convertHtmlToPdf(options) {
         timeout: 60000
       });
     } catch (gotoErr) {
-      await page.goto(pathToFileURL(inputPath).href, {
-        waitUntil: 'load',
-        timeout: 60000
-      }).catch(() => {});
+      // networkidle0 may never settle on pages with live polling/analytics;
+      // degrade to a 'load' wait. But only swallow a fallback failure if the
+      // page actually navigated — otherwise rethrow so main()'s .catch sets a
+      // non-zero exit instead of rendering a blank/garbage PDF with exit 0.
+      try {
+        await page.goto(pathToFileURL(inputPath).href, {
+          waitUntil: 'load',
+          timeout: 60000
+        });
+      } catch (fallbackErr) {
+        if (page.url() === 'about:blank') {
+          throw fallbackErr;
+        }
+        // Page navigated despite the wait condition failing — proceed.
+      }
     }
 
     // Strip loading="lazy" so off-screen images actually load. In headless

@@ -82,7 +82,12 @@ def check_overrides(composite, category, pillar_scores, ratios, override_rules):
     triggered = []
 
     for rule in override_rules:
-        rule_id = rule["id"]
+        # Tolerate malformed rules: missing id/action would otherwise raise an
+        # uncaught KeyError mid-computation. Skip + warn instead.
+        rule_id = rule.get("id")
+        if rule_id is None or "action" not in rule:
+            print(f"WARNING: skipping override rule missing 'id'/'action': {rule!r}", file=sys.stderr)
+            continue
 
         if rule_id == "pillar_floor":
             for pillar, score in pillar_scores.items():
@@ -105,6 +110,13 @@ def check_overrides(composite, category, pillar_scores, ratios, override_rules):
 
         elif rule_id == "dscr_floor":
             dscr = ratios.get("DSCR", {}).get("value")
+            # Coerce: a string-typed figure (e.g. "0.95") would otherwise raise
+            # an uncaught TypeError on the numeric comparison. Treat as absent on
+            # failure.
+            try:
+                dscr = float(dscr) if dscr is not None else None
+            except (TypeError, ValueError):
+                dscr = None
             if dscr is not None and dscr < 1.0:
                 triggered.append({
                     "rule": rule_id,
@@ -114,6 +126,13 @@ def check_overrides(composite, category, pillar_scores, ratios, override_rules):
 
         elif rule_id == "ltv_ceiling":
             ltv = ratios.get("LTV", {}).get("value")
+            # Coerce: a string-typed figure (e.g. "90") would otherwise raise an
+            # uncaught TypeError on the numeric comparison. Treat as absent on
+            # failure.
+            try:
+                ltv = float(ltv) if ltv is not None else None
+            except (TypeError, ValueError):
+                ltv = None
             if ltv is not None and ltv > 85.0:
                 triggered.append({
                     "rule": rule_id,
@@ -127,6 +146,13 @@ def check_overrides(composite, category, pillar_scores, ratios, override_rules):
 def color_ratio(value, ratio_config):
     """Determine green/amber/red for a ratio value."""
     if value is None:
+        return "gray"
+
+    # Coerce: a quoted-string figure (e.g. ltv: "90") would raise an uncaught
+    # TypeError on the <=/>= comparisons against numeric thresholds.
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
         return "gray"
 
     direction = ratio_config.get("direction", "higher_is_better")
@@ -236,8 +262,17 @@ def main():
     pillar_scores = {}
     for pillar_key in ["property_quality", "financial_metrics", "sponsor_borrower", "market_conditions"]:
         pillar_cfg = config.get(pillar_key, {})
+        # Validate each sub_factor carries the 'id'/'weight' keys the scoring and
+        # weighted-average steps subscript directly; skip + warn on malformed
+        # entries instead of raising an uncaught KeyError mid-computation.
+        sub_factors = []
+        for _sf in pillar_cfg.get("sub_factors", []):
+            if not isinstance(_sf, dict) or "id" not in _sf or "weight" not in _sf:
+                print(f"WARNING: skipping sub_factor in '{pillar_key}' missing 'id'/'weight': {_sf!r}", file=sys.stderr)
+                continue
+            sub_factors.append(_sf)
         sf_scores = {}
-        for sf in pillar_cfg.get("sub_factors", []):
+        for sf in sub_factors:
             sf_id = sf["id"]
             if sf.get("automated") and sf_id in ratio_results:
                 # Use ratio color to approximate score
@@ -252,9 +287,9 @@ def main():
             else:
                 sf_scores[sf_id] = 5.0  # default
 
-        # Weighted average
-        total = sum(sf_scores[sf["id"]] * sf["weight"] for sf in pillar_cfg.get("sub_factors", []))
-        weight_sum = sum(sf["weight"] for sf in pillar_cfg.get("sub_factors", []))
+        # Weighted average (sub_factors already validated to carry id/weight)
+        total = sum(sf_scores[sf["id"]] * sf["weight"] for sf in sub_factors)
+        weight_sum = sum(sf["weight"] for sf in sub_factors)
         pillar_scores[pillar_key] = round(total / weight_sum, 2) if weight_sum > 0 else 5.0
 
     # Composite

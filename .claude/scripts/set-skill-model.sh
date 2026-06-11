@@ -32,7 +32,10 @@ PROFILE="${1:?Usage: set-skill-model.sh <profile-name|--reset>}"
 # Validate profile exists in config
 CONFIG="$PROJECT_ROOT/.acos/config/model-profile.yaml"
 if [[ -f "$CONFIG" ]]; then
-    if ! grep -qE "^[[:space:]]{2}$(printf '%s' "$PROFILE" | sed 's/[.[*^$\\]/\\&/g'):" "$CONFIG" 2>/dev/null; then
+    # Fixed-string match on the exactly-2-space-indented "  <profile>:" key.
+    # awk fixed-string compare avoids ERE-metachar escaping bugs entirely
+    # (profile names may contain + ? ( ) { } | ] etc.).
+    if ! awk -v p="  ${PROFILE}:" '$0 == p { found=1; exit } END { exit !found }' "$CONFIG" 2>/dev/null; then
         echo "Warning: Profile '$PROFILE' not found in model-profile.yaml" >&2
         echo "Available profiles:" >&2
         grep -E '^  [A-Za-z0-9]' "$CONFIG" | sed 's/:.*//' | sed 's/^  /    /' >&2

@@ -446,7 +446,9 @@ def generate_radar_chart(data, width=300, height=300):
     points = []
     for i, seg in enumerate(segments):
         val = seg.get("value", 0)
-        r = min(radius, radius * (val / max_val))
+        # Clamp BOTH ends: a negative val gives a negative r, plotting the vertex
+        # across-center (180deg) and drawing a self-intersecting polygon.
+        r = max(0, min(radius, radius * (val / max_val)))
         angle = -math.pi / 2 + i * angle_step
         points.append(f"{cx + r * math.cos(angle)},{cy + r * math.sin(angle)}")
 
@@ -457,7 +459,9 @@ def generate_radar_chart(data, width=300, height=300):
     for i, seg in enumerate(segments):
         val = seg.get("value", 0)
         label = seg.get("label", "")
-        r_pt = radius * (val / max_val)
+        # Clamp identically to the polygon vertex so the marker never plots
+        # across-center for negative/over-range values.
+        r_pt = max(0, min(radius, radius * (val / max_val)))
         r_label = radius + 15
         angle = -math.pi / 2 + i * angle_step
         px = cx + r_pt * math.cos(angle)
@@ -628,17 +632,26 @@ def generate_stacked_chart(data, width=500, height=80):
         svg.append(f'<text x="{width/2}" y="16" text-anchor="middle" '
                    f'font-size="11" font-weight="600" fill="{COLORS["primary"]}">{escape_xml(title)}</text>')
 
-    x = 0
-    for i, seg in enumerate(segments):
-        w = (seg.get("value", 0) / total) * width if total > 0 else 0
-        color = seg.get("color", CHART_PALETTE[i % len(CHART_PALETTE)])
-        svg.append(f'<rect x="{x}" y="{bar_y}" width="{w}" height="{bar_h}" fill="{color}"/>')
-        if w > 40:
-            svg.append(f'<text x="{x + w/2}" y="{bar_y + bar_h/2 + 4}" text-anchor="middle" '
-                       f'font-size="8" font-weight="600" fill="white">{format_number(seg.get("value", 0), fmt)}</text>')
-        svg.append(f'<text x="{x + w/2}" y="{label_y}" text-anchor="middle" '
-                   f'font-size="7" fill="{COLORS["text"]}">{escape_xml(seg.get("label", ""))}</text>')
-        x += w
+    if total > 0:
+        x = 0
+        for i, seg in enumerate(segments):
+            w = (seg.get("value", 0) / total) * width
+            color = seg.get("color", CHART_PALETTE[i % len(CHART_PALETTE)])
+            svg.append(f'<rect x="{x}" y="{bar_y}" width="{w}" height="{bar_h}" fill="{color}"/>')
+            if w > 40:
+                svg.append(f'<text x="{x + w/2}" y="{bar_y + bar_h/2 + 4}" text-anchor="middle" '
+                           f'font-size="8" font-weight="600" fill="white">{format_number(seg.get("value", 0), fmt)}</text>')
+            svg.append(f'<text x="{x + w/2}" y="{label_y}" text-anchor="middle" '
+                       f'font-size="7" fill="{COLORS["text"]}">{escape_xml(seg.get("label", ""))}</text>')
+            x += w
+    else:
+        # total <= 0 would render an empty (invisible) bar silently. Emit a
+        # visible placeholder so the chart degrades gracefully instead of
+        # appearing blank.
+        svg.append(f'<rect x="0" y="{bar_y}" width="{width}" height="{bar_h}" '
+                   f'fill="{COLORS["grid"]}" opacity="0.3" stroke="{COLORS["grid"]}" stroke-width="1"/>')
+        svg.append(f'<text x="{width/2}" y="{bar_y + bar_h/2 + 4}" text-anchor="middle" '
+                   f'font-size="8" fill="{COLORS["text"]}">No data (total ≤ 0)</text>')
 
     svg.append('</svg>')
     return "\n".join(svg)
@@ -661,7 +674,8 @@ def generate_heatmap_chart(data, width=400, height=None):
     margin_top = 50 if title else 30
     height = height or (margin_top + len(rows) * cell_h + 20)
 
-    flat_vals = [v for row in values for v in row if v is not None]
+    # Guard: a scalar (non-iterable) row would raise TypeError on `for v in row`.
+    flat_vals = [v for row in values if isinstance(row, (list, tuple)) for v in row if v is not None]
     min_v = min(flat_vals) if flat_vals else 0
     max_v = max(flat_vals) if flat_vals else 1
 
@@ -719,8 +733,14 @@ def generate_area_chart(data, width=500, height=250):
     plot_w = width - margin["left"] - margin["right"]
     plot_h = height - margin["top"] - margin["bottom"]
 
-    min_val = 0
-    max_val = max(points) * 1.1
+    # Derive the range from the data (symmetric padding), mirroring
+    # generate_line_chart. The previous `min_val = 0` hardcode plotted an
+    # all-negative series entirely off-chart.
+    lo = min(points)
+    hi = max(points)
+    span = (hi - lo) or 1
+    min_val = lo - 0.1 * span
+    max_val = hi + 0.1 * span
     val_range = max_val - min_val if max_val != min_val else 1
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '

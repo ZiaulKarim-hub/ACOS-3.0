@@ -185,6 +185,10 @@ if [ -f "$EVIDENCE_PATH/Summary.md" ]; then
             print_warn "Summary.md does not indicate ready for review"
             WARN=$((WARN+1))
         fi
+    else
+        # Section absent entirely — don't silently drop readiness; record a WARN.
+        print_warn "Summary.md has no Ready for Review section"
+        WARN=$((WARN+1))
     fi
 else
     print_fail "Summary.md missing"

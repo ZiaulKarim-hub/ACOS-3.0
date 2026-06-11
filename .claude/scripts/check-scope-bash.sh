@@ -66,9 +66,17 @@ targets = set()
 
 # 1) Redirections:  [N]> path  /  [N]>> path   (e.g. >out, 1>out, 2>>log)
 #    Capture an optional leading fd digit, then > or >>, then the target.
-#    fd-DUP forms (>&, &>) and /dev/* targets are filtered in the loop below.
-for mo in re.finditer(r'(?<![0-9&])(\d?)>>?\s*([^\s;|&>]+)', cmd):
+#    fd-DUP forms (>&, 2>&1) are excluded; /dev/* targets are filtered in the loop.
+for mo in re.finditer(r'(?<![0-9&])(\d?)>>?(?!&)\s*([^\s;|&>]+)', cmd):
     targets.add(mo.group(2))
+
+# 1b) All-streams redirect (&> / &>>) and clobber (>|) forms, which the
+#     plain-redirect regex above intentionally rejects (leading & / trailing |).
+#     fd-dup (>&, 2>&1) stays excluded — those have no standalone file target here.
+for mo in re.finditer(r'&>>?\s*([^\s;|&>]+)', cmd):
+    targets.add(mo.group(1))
+for mo in re.finditer(r'>\|\s*([^\s;|&>]+)', cmd):
+    targets.add(mo.group(1))
 
 # 2) tee [opts] path...
 for mo in re.finditer(r'\btee\b((?:\s+-\S+)*)((?:\s+[^\s;|&]+)+)', cmd):

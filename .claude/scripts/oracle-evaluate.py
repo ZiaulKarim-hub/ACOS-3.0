@@ -279,6 +279,9 @@ AUTOPILOT_DESTRUCTIVE_PATTERNS = [
     # rm -rf against $HOME, /, ., .., or HOME env var
     r"\brm\s+-[rRfvi]*r[rRfvi]*\s+(--\s+)?(/|~|/\*|\$HOME|\$\{HOME\}|\.|\.\.)\s*(/?\s*$|/?\*|\s)",
     r"\brm\s+-[rRfvi]+\s+(--\s+)?\$\{?HOME\}?\b",
+    # rm -rf ~/<anything> or $HOME/<anything> — a whole top-level home subdir wipe
+    # (e.g. `rm -rf ~/Documents`) must hit the morning-review audit trail too.
+    r"\brm\s+-[rRfvi]*r[rRfvi]*\s+(--\s+)?(~|\$\{?HOME\}?)/\S",
     # xargs rm — almost always mass deletion
     r"\bxargs\s+(-[^|]*\s+)?rm\b",
     # shred — file destruction
@@ -379,6 +382,13 @@ INFO_BASH = re.compile(
     r'^(git\s+(status|log|diff|branch|remote|show|tag)|ls|pwd|echo|cat|head|tail|wc|which|type|env|printenv|whoami|date|uname)',
     re.IGNORECASE
 )
+# A write redirection (`>`, `>>`, `&>`, `>|`, `| tee`/`|tee`) means the command
+# performs a write even if it leads with a "safe" info verb — used to suppress
+# the info_cmd discount. Excludes fd-dup forms (`>&`, `2>&1`) which aren't writes.
+WRITE_REDIRECT_BASH = re.compile(
+    r'(?<![0-9&])>>?(?![&])|&>>?|>\||\|\s*tee\b',
+    re.IGNORECASE
+)
 
 
 def extract_path(tool_name, tool_input):
@@ -431,8 +441,12 @@ def compute_temperature(tool_name, tool_input, config, project_root):
             modifier -= 2
             reasons.append("lint_cmd -2")
         if INFO_BASH.match(command.strip()):
-            modifier -= 3
-            reasons.append("info_cmd -3")
+            # Suppress the safe-command discount when the command also performs a
+            # write — a leading safe verb (echo/cat/head/...) followed by a write
+            # redirection (`>`, `>>`, `| tee`) or a destructive op is NOT safe.
+            if not (WRITE_REDIRECT_BASH.search(command) or DESTRUCTIVE_BASH.search(command)):
+                modifier -= 3
+                reasons.append("info_cmd -3")
 
     # ── In-scope file modifier ────────────────────────────────────────────
     if path:

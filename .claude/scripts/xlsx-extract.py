@@ -42,6 +42,13 @@ def classify_value(value, number_format):
         return "boolean", str(value).lower()
     if isinstance(value, (int, float)):
         fmt = (number_format or "").lower()
+        # Strip bracketed locale/color/condition tokens (e.g. '[$-409]', '[red]')
+        # BEFORE the currency '$' test. A localized long-date format like
+        # '[$-409]mmmm d, yyyy' contains a '$' only inside the locale token, so
+        # without stripping it would be misclassified as currency and its date
+        # serial rendered as '$45,000.00'. After stripping, the 'yy'/'mm'/'dd'
+        # date test correctly wins.
+        fmt = re.sub(r"\[[^\]]*\]", "", fmt)
         # Test percent BEFORE currency: a grouped-percent format like '#,##0%'
         # contains '#,##0' but is a percentage, not currency. Percent must win
         # so the value_type label agrees with the percentage display.
@@ -327,7 +334,15 @@ def to_yaml_safe(obj, indent=0):
         lines = []
         for item in obj:
             if isinstance(item, dict):
+                # to_yaml_dict now indents every key (including the first) at
+                # depth indent+1. For an inline list item we want the first key
+                # to sit right after "- ", so strip the leading prefix from the
+                # first line only; subsequent lines keep their indent+1 prefix
+                # which aligns under the "- ".
                 dict_yaml = to_yaml_dict(item, indent + 1)
+                child_prefix = "  " * (indent + 1)
+                if dict_yaml.startswith(child_prefix):
+                    dict_yaml = dict_yaml[len(child_prefix):]
                 lines.append(f"{prefix}- {dict_yaml}")
             else:
                 lines.append(f"{prefix}- {to_yaml_safe(item)}")
@@ -338,21 +353,27 @@ def to_yaml_safe(obj, indent=0):
 
 
 def to_yaml_dict(d, indent=0):
-    """Convert a dict to YAML lines."""
+    """Convert a dict to YAML lines.
+
+    Every key is emitted with the indent prefix for its depth. The parent
+    already emits the `key:` line, so a nested dict must indent its first key
+    too — there is no bare-first-key special case (that previously produced
+    malformed YAML for every nested dict). The one place that needs the first
+    key unprefixed is the list-item inline case (`- <dict>`), which strips the
+    leading prefix at the call site (see to_yaml_safe list branch).
+    """
     prefix = "  " * indent
     lines = []
-    first = True
     for key, value in d.items():
         if isinstance(value, (dict, list)) and value:
             if isinstance(value, dict):
-                lines.append(f"{'' if first else prefix}{key}:")
+                lines.append(f"{prefix}{key}:")
                 lines.append(to_yaml_dict(value, indent + 1))
             elif isinstance(value, list):
-                lines.append(f"{'' if first else prefix}{key}:")
+                lines.append(f"{prefix}{key}:")
                 lines.append(to_yaml_safe(value, indent + 1))
         else:
-            lines.append(f"{'' if first else prefix}{key}: {to_yaml_safe(value)}")
-        first = False
+            lines.append(f"{prefix}{key}: {to_yaml_safe(value)}")
     return "\n".join(lines)
 
 
