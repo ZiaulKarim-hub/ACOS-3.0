@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -248,6 +249,41 @@ def main():
         )
 
         events = read_transcript_tail(transcript_path, max_lines=400) if transcript_path else []
+
+        # ── Flush-race guard (observed live 2026-06-11 19:23:50.973Z) ─────────
+        # The Stop hook can launch before the harness flushes the turn's FINAL
+        # assistant text event to the JSONL. At that moment the tail ends in a
+        # tool_result / bookkeeping event, so last_assistant_text() returns an
+        # earlier mid-turn fragment and a trailing AUTOPILOT_GOAL_COMPLETE
+        # marker is silently missed (autopilot continues past completion).
+        # If the tail does not end with assistant text, re-read briefly.
+        def _tail_ends_with_assistant_text(evs):
+            for ev in reversed(evs):
+                role = ev.get("role") or (ev.get("message", {}) or {}).get("role")
+                if role == "assistant":
+                    content = (ev.get("message", {}) or {}).get("content")
+                    if content is None:
+                        content = ev.get("content")
+                    if isinstance(content, list):
+                        return any(isinstance(b, dict) and b.get("type") == "text"
+                                   and b.get("text", "").strip() for b in content)
+                    return isinstance(content, str) and bool(content.strip())
+                if role == "user":
+                    # tool_result carriers precede the final text in a flush
+                    # race; a genuine user event means the turn truly ended
+                    # without trailing text (e.g. pure tool-call turn).
+                    content = (ev.get("message", {}) or {}).get("content")
+                    if content is None:
+                        content = ev.get("content")
+                    if not _is_tool_result_carrier(content):
+                        return True  # don't retry on real user messages
+                # bookkeeping events (attachment/system/mode/...) — keep walking
+            return True  # empty/odd tail — don't loop on it
+
+        if transcript_path and events and not _tail_ends_with_assistant_text(events):
+            time.sleep(0.4)
+            events = read_transcript_tail(transcript_path, max_lines=400)
+
         this_iter_tool_count = count_last_turn_tool_calls(events) if events else 0
         last_text = last_assistant_text(events) if events else ""
 
