@@ -27,7 +27,7 @@ The spawning orchestrator (`grader-paper`) will provide:
 5. **Criteria to grade** — the list of criterion IDs to evaluate (may be all,
    or a subset if this is a re-grade pass). Each entry may include a
    `question_id` (explicit mapping) or null (implicit — you infer)
-5. **Calibration hints (optional)** — if the session was run with
+6. **Calibration hints (optional)** — if the session was run with
    `--calibrate`, the manifest may include per-criterion hints that further
    specify how to interpret ambiguous rubric language. These look like:
    ```

@@ -614,6 +614,8 @@ Consensus rule: substance similarity ≥90% on ≥2/3. If satisfied → synthesi
 
 After all descriptions assembled, spawn `dr2-description-qa` in batches for a final accuracy pass against extracted content. Wigum loop on fixes.
 
+Once the drafters + QA have converged for a `file_id`, the orchestrator (main Claude session) MUST write the post-consensus description for that file to `phase6/descriptions/<file_id>/consensus.json` as a JSON object with exactly these fields: `{"file_name": "<original filename>", "description": "<final 1-sentence description>"}`. This is the producer step that §10.2.1 below reads — without it, the aggregation step finds no `consensus.json` and silently drops every file. The field names `file_name` and `description` MUST match what the §10.2.1 aggregator and `build_dataroom_guide_excel.py` expect.
+
 #### 10.2.1 Aggregate descriptions into the ONE canonical file
 
 The per-file consensus descriptions live scattered under
@@ -659,7 +661,7 @@ python3 scripts/build_dataroom_guide_excel.py \
 ```
 
 `phase6/descriptions_final.json` is the ONE canonical aggregated descriptions file
-produced by the §10.2.1 aggregation step below — it maps each final filename to its
+produced by the §10.2.1 aggregation step above (§10.2.1) — it maps each final filename to its
 consensus one-sentence description. The script reads it via `--descriptions-json` and
 keys descriptions by filename.
 

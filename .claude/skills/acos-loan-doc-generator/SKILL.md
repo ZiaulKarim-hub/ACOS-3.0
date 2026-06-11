@@ -1189,6 +1189,8 @@ Task(loan-doc-phase2)
   - prompt: |
       Session manifest: {manifest_path}
       CACHE HIT MODE: Phase 2 data is already at {loan_data_path}.
+      phase_instructions_path: .claude/skills/acos-loan-doc-generator/phases/
+      Read phase2-analyze.md from that directory.
       Run ONLY Step 2.5b from phase2-analyze.md — generate the verification table.
       Do NOT re-analyze the loan folder.
 ```

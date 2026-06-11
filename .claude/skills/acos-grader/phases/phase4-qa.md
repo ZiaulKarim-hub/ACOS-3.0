@@ -115,9 +115,9 @@ verdicts:
     numerical:
       values: [8.5, 8.0, 9.0]
       mean: 8.5
-      spread_pct: 11.8           # computed but PASS because of guardrail? no — check
+      spread_pct: 11.8           # 11.8% > 5% and absolute 1.0 > 0.5 -> FAIL
       guardrail_applied: false
-      pass: true                 # 11.8% > 5% so actually FAIL numerical
+      pass: false                # 11.8% > 5% so FAIL numerical
     reasoning:
       similarity_score: 94
       pass: true
