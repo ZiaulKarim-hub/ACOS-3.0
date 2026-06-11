@@ -670,7 +670,9 @@ Style: Carbon-style header row, visual sub-folder grouping with outline levels, 
 ### 10.4 Manual Review markdown (conditional)
 
 If any of the buckets the phases actually emit is non-empty —
-`intermediate/unable_to_evaluate.csv` (Phase 2 pre-flight),
+unable-to-evaluate files (derived from `intermediate/file_manifest.json`
+entries whose `inclusion_in_extraction != "extracted"`, i.e. Phase 2 pre-flight
+non-extractable files),
 `phase3/qa_failed_unconverged.csv` (Phase 3 §7.2 K-exhaustion), or
 `dataroom/00_Pending_Classification/` (Phase 4b §8.2 split-after-K) —
 then:

@@ -111,7 +111,6 @@ paper_id: STUDENT_123
 iteration: 2
 verdicts:
   - criterion_id: criterion_1
-    verdict: PASS
     numerical:
       values: [8.5, 8.0, 9.0]
       mean: 8.5
