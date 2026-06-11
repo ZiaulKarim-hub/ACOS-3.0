@@ -55,9 +55,11 @@ def map_to_category(composite, categories):
     category whose threshold the composite meets is the highest-tier match,
     regardless of how categories are ordered in the config.
     """
-    ordered = sorted(categories, key=lambda c: c["min_score"], reverse=True)
+    ordered = sorted(categories, key=lambda c: c.get("min_score", float("-inf")), reverse=True)
+    if not ordered:
+        raise ValueError("recommendation config is missing 'categories' (no recommendation tiers defined)")
     for cat in ordered:
-        if composite >= cat["min_score"]:
+        if composite >= cat.get("min_score", float("-inf")):
             return cat
     return ordered[-1]  # fallback to last (lowest)
 
@@ -225,22 +227,42 @@ def main():
                                  config.get("override_rules", []))
 
     # Apply overrides
+    #
+    # Overrides compose monotonically: final_category only ever moves toward a
+    # WORSE outcome, and each override is evaluated against the CURRENT state
+    # (final_category), never the original `category`. This prevents an earlier
+    # downgrade_one_category from being silently clobbered by a later
+    # cap_at_conditional that rebuilds from scratch off the original category.
+    cats_ranked = sorted(config["categories"], key=lambda c: c.get("min_score", float("-inf")), reverse=True)
+
+    def _rank(cat_id):
+        # Lower index == better tier (higher min_score). Unknown ids rank last.
+        for i, c in enumerate(cats_ranked):
+            if c["id"] == cat_id:
+                return i
+        return len(cats_ranked)
+
     final_category = category
     for override in overrides:
         if override["action"] == "auto_decline":
-            final_category = [c for c in config["categories"] if c["id"] == "DECLINE"][0]
+            decline = [c for c in config["categories"] if c["id"] == "DECLINE"]
+            if decline:
+                final_category = decline[0]
             break
         elif override["action"] == "cap_at_conditional":
-            if category["id"] == "APPROVE":
-                final_category = [c for c in config["categories"] if c["id"] == "CONDITIONAL_APPROVE"][0]
+            # Cap based on the CURRENT category state, and only ever toward worse:
+            # if the current tier is strictly better than CONDITIONAL_APPROVE, cap
+            # it down. Never undo an earlier downgrade (don't move toward better).
+            cond = [c for c in config["categories"] if c["id"] == "CONDITIONAL_APPROVE"]
+            if cond and _rank(final_category["id"]) < _rank("CONDITIONAL_APPROVE"):
+                final_category = cond[0]
         elif override["action"] == "downgrade_one_category":
             # Order-independent: rank categories best-to-worst by min_score, then
-            # step down one rank. If the current category id isn't found, leave the
-            # category unchanged rather than silently defaulting to the top idx (0).
-            cats = sorted(config["categories"], key=lambda c: c["min_score"], reverse=True)
-            idx = next((i for i, c in enumerate(cats) if c["id"] == final_category["id"]), None)
-            if idx is not None and idx < len(cats) - 1:
-                final_category = cats[idx + 1]
+            # step down one rank from the CURRENT state. If the current category id
+            # isn't found, leave the category unchanged rather than defaulting to top.
+            idx = next((i for i, c in enumerate(cats_ranked) if c["id"] == final_category["id"]), None)
+            if idx is not None and idx < len(cats_ranked) - 1:
+                final_category = cats_ranked[idx + 1]
 
     result = {
         "composite_score": composite,

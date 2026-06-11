@@ -147,7 +147,14 @@ context_for_next_session: |
 
 print(yaml_out)
 " "$TRANSCRIPT_PATH" > "$HANDOFF_DIR/$FILENAME.tmp" 2>/dev/null
-mv -f "$HANDOFF_DIR/$FILENAME.tmp" "$HANDOFF_DIR/$FILENAME"
+# Only promote the .tmp into place if python succeeded AND produced output.
+# A crashed/empty python run must not overwrite (or create) the handoff with
+# a truncated/empty file.
+if [ -s "$HANDOFF_DIR/$FILENAME.tmp" ]; then
+  mv -f "$HANDOFF_DIR/$FILENAME.tmp" "$HANDOFF_DIR/$FILENAME"
+else
+  rm -f "$HANDOFF_DIR/$FILENAME.tmp"
+fi
 
 # Write markers (atomic)
 echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff.tmp"

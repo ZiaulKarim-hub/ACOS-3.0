@@ -523,9 +523,13 @@ class LayoutChecker:
                     continue
                 name_lower = shape.name.lower() if shape.name else ""
 
-                # Detect header bars (typically at top, full width or near-full)
+                # Detect header bars (typically at top, full width or near-full).
+                # Require a real header NAME signal — keying off "header in the
+                # shape name" rather than "lacks a text frame" prevents unrelated
+                # full-width graphics (pictures, lines, decorative bars) from being
+                # mistaken for header bars and emitting spurious drift warnings.
                 if shape.top < 500000 and shape.width > self.slide_width * 0.5:
-                    if not shape.has_text_frame or "header" in name_lower:
+                    if "header" in name_lower:
                         header_positions[slide_idx] = (
                             shape.left, shape.top, shape.width, shape.height
                         )

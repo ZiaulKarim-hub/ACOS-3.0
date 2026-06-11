@@ -631,6 +631,7 @@ def extract_image(
     """OCR a single image file."""
     img_bytes = path.read_bytes()
     ext = path.suffix.lower().lstrip(".")
+    skip_vision = False  # set when exotic-format conversion fails (bytes are not a vision-safe format)
     # Map to media type; coerce exotic formats to PNG
     if ext in ("jpg", "jpeg"):
         media_type = "image/jpeg"
@@ -652,8 +653,11 @@ def extract_image(
             ext = "png"
         except Exception as e:
             print(f"WARNING: could not convert {path.name} to PNG: {e}", file=sys.stderr)
-            # Fall through with original bytes; tesseract can still try
-            media_type = "image/png"
+            # Conversion failed: img_bytes are still the original TIFF/BMP. Sending
+            # those to the vision API mislabeled as image/png gets rejected and
+            # wastes a round-trip, so skip vision and go straight to tesseract
+            # (which reads the original bytes via the original ext).
+            skip_vision = True
 
     context = (
         f"Full-image submission ({path.name}). This is likely a scanned or photographed "
@@ -661,7 +665,7 @@ def extract_image(
         f"verbatim. Describe any diagrams structurally."
     )
 
-    if use_vision:
+    if use_vision and not skip_vision:
         result = _vision_ocr(img_bytes, media_type, context, vision_model)
         if result is not None:
             transcription, description = result

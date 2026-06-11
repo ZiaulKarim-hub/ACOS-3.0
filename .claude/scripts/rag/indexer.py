@@ -138,9 +138,16 @@ def run_index(full: bool = False, dry_run: bool = False) -> dict:
     database = db.get_db()
     table = db.get_or_create_table(database)
 
-    # Remove chunks for deleted files
+    # Remove chunks for deleted files.
+    # discover_files() and the modtime cache use RELATIVE paths, but chunk_file is
+    # called with the absolute fullpath, so source_file is stored ABSOLUTE in
+    # LanceDB (see upsert_chunks' delete predicate). Convert to absolute fullpaths
+    # here so delete_chunks_for_files' `source_file = "<path>"` predicate matches
+    # the absolute value actually stored — otherwise deleted-file chunks are never
+    # purged.
     if files_to_remove:
-        db.delete_chunks_for_files(table, files_to_remove)
+        fullpaths_to_remove = [os.path.join(repo_root, f) for f in files_to_remove]
+        db.delete_chunks_for_files(table, fullpaths_to_remove)
         for f in files_to_remove:
             cached_modtimes.pop(f, None)
 

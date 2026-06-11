@@ -42,14 +42,17 @@ def classify_value(value, number_format):
         return "boolean", str(value).lower()
     if isinstance(value, (int, float)):
         fmt = (number_format or "").lower()
-        if any(c in fmt for c in ["$", "currency", "#,##0"]):
-            return "currency", format_number(value, number_format)
+        # Test percent BEFORE currency: a grouped-percent format like '#,##0%'
+        # contains '#,##0' but is a percentage, not currency. Percent must win
+        # so the value_type label agrees with the percentage display.
         if "%" in fmt:
             # Excel stores percentages as the underlying fraction (0.25 == 25%),
             # so always scale by 100 — uniformly, for any magnitude. The old
             # branch only multiplied for |value|<1 (so 1.5 -> "1.5%" instead of
             # "150%") and guarded on a dead `'%' not in str(value)` check.
             return "percentage", f"{value * 100:g}%"
+        if any(c in fmt for c in ["$", "currency", "#,##0"]):
+            return "currency", format_number(value, number_format)
         if any(d in fmt for d in ["yy", "mm", "dd"]):
             return "date", str(value)
         return "number", value
@@ -79,9 +82,12 @@ def format_number(value, fmt):
         # multiplies by 100 while `:.1f}%` did not, so 0.25 -> "25.00%" but
         # 15 -> "15.0%" (should be "1500%").
         return f"{value * 100:g}%"
-    if isinstance(value, float) and value == int(value):
-        return int(value)
-    return value
+    # A '#,##0'-style format with no '$'/'%' (e.g. grouped integer) still needs a
+    # STRING display so the 'display' field is uniformly str. Group-format whole
+    # numbers with thousands separators; format any other numeric as a string too.
+    if isinstance(value, (int, float)) and value == int(value):
+        return f"{int(value):,}"
+    return f"{value:,.2f}"
 
 
 def extract_sheet(ws, wb, sheet_name, file_path):

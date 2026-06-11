@@ -326,7 +326,11 @@ def chunk_yaml(filepath: str, content: str) -> list[Chunk]:
 def _split_text_to_max(text: str, size: int = MAX_SIZE) -> list[str]:
     """Split text into pieces each <= size chars, preferring line boundaries.
 
-    A single line longer than `size` is hard-cut. Empty/whitespace pieces dropped.
+    A single line longer than `size` is hard-cut. This is the MAX-size safety-net
+    splitter: it must NOT mutate content, so whitespace-only pieces are preserved
+    (only the structural splitters drop empties). Truly empty ("") pieces — which
+    carry no characters — are dropped, but any piece containing whitespace is kept
+    so an oversized, largely-whitespace chunk doesn't silently lose that content.
     """
     if len(text) <= size:
         return [text]
@@ -350,7 +354,8 @@ def _split_text_to_max(text: str, size: int = MAX_SIZE) -> list[str]:
             cur_len += len(ln) + 1
     if cur:
         pieces.append("\n".join(cur))
-    return [p for p in pieces if p.strip()]
+    # Preserve whitespace-only pieces (no content loss); drop only truly empty "".
+    return [p for p in pieces if p != ""]
 
 
 def _enforce_max_size(chunks: list[Chunk]) -> list[Chunk]:

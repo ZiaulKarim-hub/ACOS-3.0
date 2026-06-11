@@ -137,12 +137,31 @@ def delete_chunks_for_files(
     table: lancedb.table.Table,
     filepaths: list[str],
 ) -> int:
-    """Remove all chunks for the given source files. Returns count removed."""
+    """Remove all chunks for the given source files. Returns count of files whose
+    chunks were actually removed.
+
+    LanceDB's table.delete() does NOT raise when zero rows match, so counting every
+    non-raising call masks an absolute/relative source_file mismatch (it would
+    report removals that never happened). Capture the row-count delta around each
+    delete and only count a file when rows actually went away; warn to stderr when
+    a delete for a cached/expected file removed nothing (stale-chunk indicator).
+    """
     removed = 0
     for fp in filepaths:
         try:
+            before = table.count_rows()
             table.delete(f'source_file = "{_escape_sql_literal(fp)}"')
-            removed += 1
+            after = table.count_rows()
+            if after < before:
+                removed += 1
+            else:
+                # Targeted an expected (cached) file but nothing matched: either
+                # already absent or a source_file representation mismatch.
+                print(
+                    f"warning: delete for {fp!r} removed 0 rows "
+                    f"(no matching chunks — possible stale-chunk/path mismatch)",
+                    file=sys.stderr,
+                )
         except Exception as e:
             # Surface to stderr so stale-chunk accumulation is visible.
             print(

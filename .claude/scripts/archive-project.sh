@@ -191,7 +191,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Keep structure but remove content
     find memory/decisions -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
     find memory/reviews -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
-    find memory/handoffs \( -name "*.yaml" -o -name "*.md" \) ! -name ".template.yaml" ! -name ".template.md" -delete 2>/dev/null || true
+    find memory/handoffs \( -name "*.yaml" -o -name "*.md" \) -not -path '*/archive/*' ! -name ".template.yaml" ! -name ".template.md" -delete 2>/dev/null || true
     find memory/code-rationale -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
     find memory/feedback-history -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
     rm -f memory/source-of-truth/vision-interview.md 2>/dev/null || true

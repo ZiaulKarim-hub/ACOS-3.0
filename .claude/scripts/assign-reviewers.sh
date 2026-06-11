@@ -112,6 +112,56 @@ def _matches(pattern, text):
         return p in t
     return re.search(r"\b" + re.escape(p) + r"\b", t) is not None
 
+def _matches_code(pattern, content):
+    """Match a trigger pattern against a (possibly multiline) code-content blob.
+
+    Distinct from _matches because fnmatch over a whole multiline blob never
+    behaves as a substring search ('*' does not span newlines as intended), so a
+    glob code pattern like 'api_*_key' would silently NEVER match real file
+    contents. Here:
+    - glob chars (*?[]) -> translate to a regex (DOTALL so '*' spans newlines)
+      and search anywhere in the blob.
+    - bare word -> WORD BOUNDARY substring search over the blob.
+    """
+    p, t = str(pattern), str(content)
+    if not p:
+        return False
+    if any(c in p for c in "*?[]"):
+        # Build a substring regex from the glob manually (fnmatch.translate
+        # anchors the end with \Z, which would defeat substring matching).
+        rx = ""
+        i, n = 0, len(p)
+        while i < n:
+            ch = p[i]
+            if ch == "*":
+                rx += ".*"
+            elif ch == "?":
+                rx += "."
+            elif ch == "[":
+                j = i + 1
+                if j < n and p[j] in "!^":
+                    j += 1
+                if j < n and p[j] == "]":
+                    j += 1
+                while j < n and p[j] != "]":
+                    j += 1
+                if j >= n:
+                    rx += r"\["
+                else:
+                    klass = p[i + 1:j].replace("\\", "\\\\")
+                    if klass.startswith("!"):
+                        klass = "^" + klass[1:]
+                    rx += "[" + klass + "]"
+                    i = j
+            else:
+                rx += re.escape(ch)
+            i += 1
+        try:
+            return re.search(rx, t, re.DOTALL) is not None
+        except re.error:
+            return False
+    return re.search(r"\b" + re.escape(p) + r"\b", t) is not None
+
 def _read_modified_contents(paths, max_bytes=200000):
     """Read modified-file contents so code-pattern triggers fire even when the
     Architect-supplied code_snippets omit them (finding 4.5 — no silent miss)."""
@@ -171,7 +221,7 @@ for filepath in reviewer_files:
             code_patterns = cfg.get("trigger_code_patterns", [])
             if isinstance(code_patterns, list):
                 for pattern in code_patterns:
-                    if any(_matches(pattern, h) for h in code_haystack):
+                    if any(_matches_code(pattern, h) for h in code_haystack):
                         triggered = True
                         break
 
@@ -203,7 +253,7 @@ for filepath in reviewer_files:
                 code_patterns = cfg.get("trigger_code_patterns", [])
                 if isinstance(code_patterns, list):
                     for pattern in code_patterns:
-                        if any(_matches(pattern, h) for h in code_haystack):
+                        if any(_matches_code(pattern, h) for h in code_haystack):
                             triggered = True
                             break
             if not triggered:
@@ -237,7 +287,7 @@ if isinstance(custom_rules, list):
                     break
         if not triggered and isinstance(code_patterns, list):
             for p in code_patterns:
-                if any(_matches(p, h) for h in code_haystack):
+                if any(_matches_code(p, h) for h in code_haystack):
                     triggered = True
                     break
         if triggered:
@@ -275,7 +325,7 @@ for filepath in advisor_files:
         triggered = True
     if not triggered:
         code_patterns = cfg.get("trigger_code_patterns", [])
-        if isinstance(code_patterns, list) and any(_matches(p, h) for p in code_patterns for h in code_haystack):
+        if isinstance(code_patterns, list) and any(_matches_code(p, h) for p in code_patterns for h in code_haystack):
             triggered = True
     if not triggered:
         thr = cfg.get("trigger_file_count_gt")

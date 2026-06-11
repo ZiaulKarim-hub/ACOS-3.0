@@ -95,8 +95,9 @@ find_latest_handoff() {
     for dir in "${search_dirs[@]}"; do
         [[ -d "$dir" ]] || continue
         while IFS= read -r -d '' file; do
-            # Skip completed/archived handoffs
-            if grep -q 'status: completed' "$file" 2>/dev/null; then
+            # Skip completed/archived handoffs. Completed handoffs are written
+            # QUOTED (status: "completed"); match both quoted and unquoted forms.
+            if grep -Eq 'status:[[:space:]]*"?completed"?' "$file" 2>/dev/null; then
                 continue
             fi
             local mtime

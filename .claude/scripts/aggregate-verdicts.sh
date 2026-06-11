@@ -55,22 +55,38 @@ if expected is None:
     sys.exit(2)
 
 # Collected verdicts (every *.json except expected.json)
-collected = {}   # name -> verdict
-details = {}      # name -> {issues, checks_performed}
+#
+# CANONICAL KEY = the verdict FILE basename (without .json). expected.json holds
+# the assigned reviewer names, and verdicts are written as "<reviewer>.json", so
+# the filename is the single key on which both sides compare. We deliberately do
+# NOT key on the in-file 'reviewer' field: a verdict JSON that omits or misspells
+# 'reviewer' would otherwise be filed under a name that differs from the assigned
+# set, making a genuine PASS look like a missing reviewer (false INCONCLUSIVE).
+collected = {}   # canonical_name -> verdict
+details = {}      # canonical_name -> {issues, checks_performed}
+name_mismatches = []  # non-blocking: in-file 'reviewer' disagrees with filename
 for f in glob.glob(os.path.join(d, "*.json")):
     if os.path.basename(f) == "expected.json":
         continue
+    name = os.path.splitext(os.path.basename(f))[0]  # canonical key
     try:
         v = json.load(open(f))
-        name = str(v.get("reviewer") or os.path.splitext(os.path.basename(f))[0])
         collected[name] = str(v.get("verdict", "")).upper()
         details[name] = {
             "issues": v.get("issues") or [],
             "checks_performed": v.get("checks_performed") or [],
         }
+        declared = v.get("reviewer")
+        if declared is not None and str(declared) != name:
+            name_mismatches.append({
+                "file": os.path.basename(f),
+                "declared_reviewer": str(declared),
+                "canonical_name": name,
+                "warning": "verdict file's 'reviewer' field disagrees with its filename; "
+                           "gate compares on filename to stay aligned with expected.json",
+            })
     except Exception:
         # An unparseable verdict file = INCONCLUSIVE for that reviewer.
-        name = os.path.splitext(os.path.basename(f))[0]
         collected[name] = "INCONCLUSIVE"
         details[name] = {"issues": [], "checks_performed": []}
 
@@ -107,6 +123,10 @@ for r in check:
                 "warning": "PASS with no issues and no checks_performed recorded — "
                            "possible rubber-stamp; spot-check this review.",
             })
+
+# Surface (non-blocking) any verdict files whose in-file 'reviewer' field
+# disagreed with the canonical filename key used for the gate comparison.
+warnings.extend(name_mismatches)
 
 print(json.dumps({
     "decision": decision,

@@ -576,8 +576,11 @@ print(json.dumps(existing, indent=2))
 PYEOF
 )
 
-    # Parse hooks_added count from first line, JSON from remaining lines
-    HOOKS_ADDED=$(echo "$MERGE_RESULT" | head -1 | cut -d: -f2)
+    # Parse hooks_added count from first line, JSON from remaining lines.
+    # Sanitize to digits only so a non-numeric value can't make the later
+    # arithmetic test (-eq 0) error out under set -e.
+    HOOKS_ADDED=$(echo "$MERGE_RESULT" | sed -n 's/^HOOKS_ADDED:\([0-9]*\)$/\1/p' | head -1)
+    HOOKS_ADDED="${HOOKS_ADDED:-0}"
     MERGE_JSON=$(echo "$MERGE_RESULT" | tail -n +2)
 
     if [[ -n "$MERGE_JSON" && "$MERGE_JSON" == "{"* ]]; then
@@ -823,10 +826,24 @@ ACOS_END_MARKER="# End ACOS 3.0"
 # --force re-run where the selection changed. Only the ACOS-managed block is
 # removed; user lines above and below are preserved.
 if [[ -f "$GITIGNORE" ]] && grep -qF "$ACOS_MARKER" "$GITIGNORE" 2>/dev/null; then
-  log "${BOLD}[+] Regenerating ACOS .gitignore block...${NC}"
-  # Delete from the start marker line through the end marker line. macOS sed
-  # (BSD) requires the '' argument to -i. The /,/ range deletes the managed block.
-  sed -i '' "/^$(printf '%s' "$ACOS_MARKER" | sed 's/[][\\/.*^$]/\\&/g')\$/,/^$(printf '%s' "$ACOS_END_MARKER" | sed 's/[][\\/.*^$]/\\&/g')\$/d" "$GITIGNORE"
+  ESCAPED_START=$(printf '%s' "$ACOS_MARKER" | sed 's/[][\\/.*^$]/\\&/g')
+  if grep -qF "$ACOS_END_MARKER" "$GITIGNORE" 2>/dev/null; then
+    log "${BOLD}[+] Regenerating ACOS .gitignore block...${NC}"
+    # Both markers present: delete from the start marker line through the end
+    # marker line. macOS sed (BSD) requires the '' argument to -i. The /,/ range
+    # deletes the managed block, preserving user lines above and below.
+    ESCAPED_END=$(printf '%s' "$ACOS_END_MARKER" | sed 's/[][\\/.*^$]/\\&/g')
+    sed -i '' "/^${ESCAPED_START}\$/,/^${ESCAPED_END}\$/d" "$GITIGNORE"
+  else
+    # SAFETY: end marker is missing (legacy/partial block, manual truncation, or
+    # an older bootstrap version). A range delete to /end/ would delete from the
+    # start marker through END OF FILE, destroying every user line below the ACOS
+    # block. Instead, delete ONLY the start-marker line and append a fresh block.
+    # This never deletes past the (absent) end marker. May leave a few stale ACOS
+    # entries below, but NEVER destroys user data.
+    log "${BOLD}[+] ACOS .gitignore block missing end marker — safe-appending fresh block...${NC}"
+    sed -i '' "/^${ESCAPED_START}\$/d" "$GITIGNORE"
+  fi
 else
   log "${BOLD}[+] Updating .gitignore...${NC}"
 fi

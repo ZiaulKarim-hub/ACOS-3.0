@@ -119,6 +119,8 @@ def count_last_turn_tool_calls(events):
         if role == "assistant":
             found_assistant = True
             content = (ev.get("message", {}) or {}).get("content")
+            if content is None:
+                content = ev.get("content")
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_use":
@@ -132,6 +134,8 @@ def last_assistant_text(events):
         role = ev.get("role") or (ev.get("message", {}) or {}).get("role")
         if role == "assistant":
             content = (ev.get("message", {}) or {}).get("content")
+            if content is None:
+                content = ev.get("content")
             if isinstance(content, str):
                 return content
             if isinstance(content, list):

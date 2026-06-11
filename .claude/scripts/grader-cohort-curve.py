@@ -105,7 +105,10 @@ def compute_raw_totals(paper_results: list[dict]) -> list[dict]:
             if isinstance(c, dict):
                 # Accept both legacy "points" and grader-paper's "points_awarded"
                 pts = c.get("points_awarded", c.get("points", 0))
-                raw_total += float(pts or 0)
+                try:
+                    raw_total += float(pts)
+                except (TypeError, ValueError):
+                    pass  # non-numeric points ('N/A', '8/10', '8 pts') → treat as 0
         paper["raw_total"] = round(raw_total, 2)
         paper["disputed_count"] = len(disputed)
 
@@ -606,7 +609,8 @@ def _normalize_iteration_audit(iteration: dict, session_dir: Path | None = None,
             for cs in summary:
                 if not isinstance(cs, dict):
                     continue
-                vals = cs.get("values") or cs.get("points") or []
+                vals = cs.get("values") or cs.get("points")
+                vals = vals if isinstance(vals, (list, tuple)) else []
                 a = vals[0] if len(vals) > 0 else cs.get("A", cs.get("grader_a", cs.get("grader-opus-A", "")))
                 b = vals[1] if len(vals) > 1 else cs.get("B", cs.get("grader_b", cs.get("grader-opus-B", "")))
                 c = vals[2] if len(vals) > 2 else cs.get("C", cs.get("grader_c", cs.get("grader-sonnet", "")))
@@ -622,7 +626,8 @@ def _normalize_iteration_audit(iteration: dict, session_dir: Path | None = None,
             for cid, cdata in summary.items():
                 if not isinstance(cdata, dict):
                     continue
-                vals = cdata.get("values") or cdata.get("points") or []
+                vals = cdata.get("values") or cdata.get("points")
+                vals = vals if isinstance(vals, (list, tuple)) else []
                 a = vals[0] if len(vals) > 0 else cdata.get("A", cdata.get("grader_a", cdata.get("grader-opus-A", "")))
                 b = vals[1] if len(vals) > 1 else cdata.get("B", cdata.get("grader_b", cdata.get("grader-opus-B", "")))
                 c = vals[2] if len(vals) > 2 else cdata.get("C", cdata.get("grader_c", cdata.get("grader-sonnet", "")))

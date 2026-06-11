@@ -293,15 +293,25 @@ fi
 # Read hook input from stdin
 INPUT=$(cat)
 
-# Extract tool name, transcript path, and session ID
-read -r TOOL_NAME TRANSCRIPT_PATH SESSION_ID <<< "$(echo "$INPUT" | python3 -c "
+# Extract tool name, transcript path, and session ID.
+# Print each field on its OWN line so values containing spaces (paths, ids)
+# are not word-split/truncated by the shell. Read each line separately.
+PARSED_FIELDS=$(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 tool = data.get('tool_name', '')
 tp = data.get('transcript_path', '')
 sid = data.get('session_id', '')
-print(tool, tp, sid)
-" 2>/dev/null)"
+print(tool)
+print(tp)
+print(sid)
+" 2>/dev/null)
+
+{
+  IFS= read -r TOOL_NAME
+  IFS= read -r TRANSCRIPT_PATH
+  IFS= read -r SESSION_ID
+} <<< "$PARSED_FIELDS"
 
 # If no transcript, can't measure — allow silently
 if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then

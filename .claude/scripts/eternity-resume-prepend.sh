@@ -108,11 +108,18 @@ if [[ -z "$RESUME" ]]; then
         [[ -z "$PARENT" || "$PARENT" -le 1 ]] && break
         COMM=$(ps -o comm= -p "$PARENT" 2>/dev/null || echo "")
         ARGS=$(ps -o command= -p "$PARENT" 2>/dev/null || echo "")
+        # The auto-loop wrapper `claude-loop.sh` (argv like `/bin/bash
+        # ./claude-loop.sh` or `/path/claude-loop.sh`) must NOT be mistaken for
+        # the real claude process — otherwise CLAUDE_PID resolves to the bash
+        # wrapper and the per-PID pointer (keyed by the real claude PID in
+        # core.sh) is missed, silently dropping the cross-pane-safe path.
         case "$COMM" in
+            *claude-loop*) WALK_PID=$PARENT; continue ;;
             claude|claude.ex|*/claude|*/claude.ex) CLAUDE_PID="$PARENT"; break ;;
         esac
         case "$ARGS" in
-            *" claude"*|*"/claude"*|*"npx claude"*|*"bunx claude"*) CLAUDE_PID="$PARENT"; break ;;
+            *claude-loop*) WALK_PID=$PARENT; continue ;;
+            *" claude"|*"/claude"|*"npx claude"*|*"bunx claude"*) CLAUDE_PID="$PARENT"; break ;;
         esac
         WALK_PID=$PARENT
     done

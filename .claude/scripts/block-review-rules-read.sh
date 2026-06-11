@@ -17,6 +17,10 @@
 # MUST be registered BARE (no `|| printf allow` wrapper) — the wrapper would fire on
 # exit 2 and emit an allow envelope, negating the block.
 #
+# This is an independence WALL: it FAILS CLOSED. Empty stdin or unparseable JSON
+# emits BLOCKED rather than silently allowing — a malformed payload must never
+# bypass the wall.
+#
 # Exit 0 = allow, Exit 2 = block.
 
 INPUT=$(cat)
@@ -24,17 +28,26 @@ INPUT=$(cat)
 HAS_VIOLATION=$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
-    d = json.load(sys.stdin)
-    inp = d.get('tool_input', {})
-    # Scan the ENTIRE tool_input, not a hardcoded subset of fields. Glob's primary
-    # target is 'pattern' and Grep uses 'pattern'/'glob', so a Glob/Grep aimed at
-    # the wall target via 'pattern' would bypass a file_path/command/path-only check.
-    # Serializing the whole input catches every current and future target field.
-    blob = json.dumps(inp)
-    if 'review-rules' in blob or 'review_rules' in blob:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        # Empty stdin: cannot prove this is safe -> fail CLOSED.
         print('BLOCKED')
+        sys.exit(0)
+    d = json.loads(raw)
 except Exception:
-    pass
+    # Could not parse stdin (malformed JSON): fail CLOSED.
+    print('BLOCKED')
+    sys.exit(0)
+
+# Parsed valid JSON: inspect for a protected target.
+inp = d.get('tool_input', {})
+# Scan the ENTIRE tool_input, not a hardcoded subset of fields. Glob's primary
+# target is 'pattern' and Grep uses 'pattern'/'glob', so a Glob/Grep aimed at
+# the wall target via 'pattern' would bypass a file_path/command/path-only check.
+# Serializing the whole input catches every current and future target field.
+blob = json.dumps(inp)
+if 'review-rules' in blob or 'review_rules' in blob:
+    print('BLOCKED')
 " 2>/dev/null)
 
 if [ "$HAS_VIOLATION" = "BLOCKED" ]; then

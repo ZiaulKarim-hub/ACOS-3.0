@@ -150,8 +150,11 @@ if [ -f "$EVIDENCE_PATH/Summary.md" ]; then
     fi
 
     # Check Ready for Review
+    # Scope the YES match to the 'Ready for Review' section (and use a word
+    # boundary) so a stray 'YES' anywhere else in the prose does not produce a
+    # false 'ready for review' PASS.
     if grep -q "Ready for Review" "$EVIDENCE_PATH/Summary.md" 2>/dev/null; then
-        if grep -q "YES" "$EVIDENCE_PATH/Summary.md" 2>/dev/null; then
+        if grep -A2 "Ready for Review" "$EVIDENCE_PATH/Summary.md" 2>/dev/null | grep -qw "YES"; then
             print_pass "Summary.md indicates ready for review"
             ((PASS++))
         else

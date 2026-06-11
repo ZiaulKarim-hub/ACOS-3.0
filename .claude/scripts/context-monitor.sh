@@ -164,6 +164,9 @@ if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
   # work as-is; .md handoffs without front-matter are caught by the recent-mtime
   # date fallback further down so a present, recent handoff always counts.
   for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml "$HANDOFF_DIR"/*.md; do
+    # Skip eternity `.resume.md` siblings — they are resume-prompt copies, NOT
+    # session handoffs, and must never satisfy HANDOFF_EXISTS.
+    case "$f" in *.resume.md) continue;; esac
     if [ -f "$f" ]; then
       HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
       if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
@@ -190,6 +193,9 @@ fi
 if [ "$HANDOFF_EXISTS" = "false" ]; then
   TODAY=$(date -u +%Y-%m-%d)
   for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml "$HANDOFF_DIR"/${TODAY}*.md; do
+    # Skip eternity `.resume.md` siblings (e.g. date-prefixed *.resume.md) —
+    # they are resume-prompt copies, not session handoffs.
+    case "$f" in *.resume.md) continue;; esac
     if [ -f "$f" ]; then
       HANDOFF_EXISTS=true
       break
@@ -205,6 +211,9 @@ fi
 if [ "$HANDOFF_EXISTS" = "false" ]; then
   NOW_EPOCH=$(date +%s)
   for f in "$HANDOFF_DIR"/*.md; do
+    # Skip eternity `.resume.md` siblings — a fresh resume-prompt copy must not
+    # be mistaken for a recently-written semantic handoff.
+    case "$f" in *.resume.md) continue;; esac
     if [ -f "$f" ]; then
       FILE_MTIME=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
       if [ $(( NOW_EPOCH - FILE_MTIME )) -lt 900 ]; then

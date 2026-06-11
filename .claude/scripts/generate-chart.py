@@ -148,6 +148,7 @@ def generate_gauge_chart(data, width=250, height=160):
     cx, cy = width / 2, height - 20
     radius = min(width / 2 - 20, height - 40)
     stroke_w = 18
+    span = (max_val - min_val) or 1
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
            f'font-family="Calibri, Helvetica, Arial, sans-serif">']
@@ -170,8 +171,8 @@ def generate_gauge_chart(data, width=250, height=160):
         segments.append((prev, max_val, segment_colors[-1]))
 
         for start, end, color in segments:
-            start_angle = math.pi * (1 - (start - min_val) / (max_val - min_val))
-            end_angle = math.pi * (1 - (end - min_val) / (max_val - min_val))
+            start_angle = math.pi * (1 - (start - min_val) / span)
+            end_angle = math.pi * (1 - (end - min_val) / span)
             x1 = cx + radius * math.cos(start_angle)
             y1 = cy - radius * math.sin(start_angle)
             x2 = cx + radius * math.cos(end_angle)
@@ -182,7 +183,7 @@ def generate_gauge_chart(data, width=250, height=160):
 
     # Value needle
     clamped = max(min_val, min(value, max_val))
-    angle = math.pi * (1 - (clamped - min_val) / (max_val - min_val))
+    angle = math.pi * (1 - (clamped - min_val) / span)
     needle_len = radius - 10
     nx = cx + needle_len * math.cos(angle)
     ny = cy - needle_len * math.sin(angle)
@@ -218,6 +219,9 @@ def generate_matrix_chart(data, width=300, height=80):
         {"name": "Decline", "min": 0, "color": COLORS["red"], "bg": COLORS["red_light"]},
     ])
 
+    if not categories:
+        return "<svg></svg>"
+
     # Find which category the score falls into. Sort descending by min so the
     # highest matching band wins regardless of the input order of categories.
     active_cat = categories[-1]  # default to worst
@@ -233,17 +237,17 @@ def generate_matrix_chart(data, width=300, height=80):
     svg.append(f'<rect x="0" y="0" width="{width}" height="{height}" '
                f'fill="{active_cat.get("bg", "#f0f0f0")}" rx="4"/>')
     svg.append(f'<rect x="0" y="0" width="{width}" height="{height}" '
-               f'fill="none" stroke="{active_cat["color"]}" stroke-width="2" rx="4"/>')
+               f'fill="none" stroke="{active_cat.get("color", COLORS["primary"])}" stroke-width="2" rx="4"/>')
 
     # Score
     svg.append(f'<text x="20" y="{height/2 + 6}" font-size="24" font-weight="700" '
-               f'fill="{active_cat["color"]}">{score:.1f}</text>')
+               f'fill="{active_cat.get("color", COLORS["primary"])}">{score:.1f}</text>')
 
     # Label and recommendation
     svg.append(f'<text x="80" y="{height/2 - 5}" font-size="10" '
                f'fill="{COLORS["text"]}">{escape_xml(label)}</text>')
     svg.append(f'<text x="80" y="{height/2 + 12}" font-size="14" font-weight="600" '
-               f'fill="{active_cat["color"]}">{escape_xml(active_cat["name"])}</text>')
+               f'fill="{active_cat.get("color", COLORS["primary"])}">{escape_xml(active_cat["name"])}</text>')
 
     # Scale indicator
     scale_x = 180
@@ -251,13 +255,13 @@ def generate_matrix_chart(data, width=300, height=80):
     for cat in reversed(categories):
         cat_w = scale_w * (1 / len(categories))
         svg.append(f'<rect x="{scale_x}" y="{height/2 - 6}" width="{cat_w}" height="12" '
-                   f'fill="{cat["color"]}" opacity="0.3"/>')
+                   f'fill="{cat.get("color", "#999")}" opacity="0.3"/>')
         scale_x += cat_w
 
     # Score marker on scale
     score_pct = min(1, max(0, score / 10))
     marker_x = 180 + score_pct * (width - 195)
-    svg.append(f'<circle cx="{marker_x}" cy="{height/2}" r="4" fill="{active_cat["color"]}"/>')
+    svg.append(f'<circle cx="{marker_x}" cy="{height/2}" r="4" fill="{active_cat.get("color", COLORS["primary"])}"/>')
 
     svg.append('</svg>')
     return "\n".join(svg)
@@ -289,9 +293,10 @@ def generate_waterfall_chart(data, width=500, height=300):
     all_vals = [b["start"] for b in bars] + [b["end"] for b in bars]
     min_val = min(0, min(all_vals))
     max_val = max(all_vals) * 1.1
+    val_range = (max_val - min_val) or 1
 
     def scale_y(v):
-        return margin["top"] + plot_h * (1 - (v - min_val) / (max_val - min_val))
+        return margin["top"] + plot_h * (1 - (v - min_val) / val_range)
 
     n = len(bars)
     bar_w = min(plot_w / n * 0.6, 60)
@@ -437,7 +442,7 @@ def generate_radar_chart(data, width=300, height=300):
                    f'stroke="{COLORS["grid"]}" stroke-width="0.5"/>')
 
     # Data polygon
-    max_val = data.get("max_value", 10)
+    max_val = data.get("max_value", 10) or 10
     points = []
     for i, seg in enumerate(segments):
         val = seg.get("value", 0)
