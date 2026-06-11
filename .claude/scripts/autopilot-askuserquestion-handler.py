@@ -41,7 +41,11 @@ def autopilot_active(project_root):
 
 
 def strip_recommended_suffix(label):
-    return re.sub(r"\s*\(Recommended\)\s*$", "", label).strip()
+    # Strip "(Recommended)" from ANYWHERE in the label (start/middle/end), since
+    # pick_option detects the marker via substring match anywhere. Collapse the
+    # resulting whitespace so the cleaned answer matches the real option text.
+    cleaned = re.sub(r"\s*\(Recommended\)\s*", " ", label)
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def pick_option(options, multi):

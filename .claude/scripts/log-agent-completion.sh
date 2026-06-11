@@ -8,8 +8,11 @@
 mkdir -p ".acos/metrics"
 
 INPUT=$(cat)
-read -r AGENT AID <<EOF
-$(printf '%s' "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_type') or d.get('agent_name') or 'unknown', d.get('agent_id',''))" 2>/dev/null)
+IFS=$'\t' read -r AGENT AID <<EOF
+$(printf '%s' "$INPUT" | python3 -c "import sys,json
+def c(v): return str(v).replace('\n',' ').replace('\r',' ').replace('\t',' ')
+d=json.load(sys.stdin)
+print(c(d.get('agent_type') or d.get('agent_name') or 'unknown') + '\t' + c(d.get('agent_id','')))" 2>/dev/null)
 EOF
 
 [ -z "$AGENT" ] && AGENT="unknown"

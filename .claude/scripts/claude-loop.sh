@@ -113,6 +113,9 @@ count_handoffs() {
   local today=$(date -u +%Y-%m-%d)
   local count=0
   for f in "$HANDOFF_DIR"/${today}*.yaml "$HANDOFF_DIR"/${today}*.yml "$HANDOFF_DIR"/${today}*.md; do
+    # 2026-06-11 fix: skip eternity `.resume.md` siblings — they are
+    # resume-prompt copies, NOT session handoffs (mirror context-monitor.sh).
+    case "$f" in *.resume.md) continue;; esac
     [ -f "$f" ] && count=$((count + 1))
   done
   echo "$count"

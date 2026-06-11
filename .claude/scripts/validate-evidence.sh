@@ -84,87 +84,111 @@ echo ""
 # before/baseline-status.log
 if [ -f "$EVIDENCE_PATH/before/baseline-status.log" ]; then
     print_pass "before/baseline-status.log exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 else
     print_fail "before/baseline-status.log missing"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 fi
 
 # after/modified-files.txt
 if [ -f "$EVIDENCE_PATH/after/modified-files.txt" ]; then
     print_pass "after/modified-files.txt exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 
     # Check if it has content
     if [ -s "$EVIDENCE_PATH/after/modified-files.txt" ]; then
         print_pass "after/modified-files.txt has content"
-        ((PASS++))
+        PASS=$((PASS+1))
     else
         print_warn "after/modified-files.txt is empty (no files modified?)"
-        ((WARN++))
+        WARN=$((WARN+1))
     fi
 else
     print_fail "after/modified-files.txt missing"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 fi
 
 # after/git-diff.patch
 if [ -f "$EVIDENCE_PATH/after/git-diff.patch" ]; then
     print_pass "after/git-diff.patch exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 else
     print_fail "after/git-diff.patch missing"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 fi
 
 # verify.log
 if [ -f "$EVIDENCE_PATH/verify.log" ]; then
     print_pass "verify.log exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 
     # Check if verification was completed
     if grep -q "Status: PENDING" "$EVIDENCE_PATH/verify.log" 2>/dev/null; then
         print_warn "verify.log shows PENDING status - verification not complete"
-        ((WARN++))
+        WARN=$((WARN+1))
     else
         print_pass "verify.log appears complete"
-        ((PASS++))
+        PASS=$((PASS+1))
     fi
 else
     print_fail "verify.log missing"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 fi
 
 # Summary.md
 if [ -f "$EVIDENCE_PATH/Summary.md" ]; then
     print_pass "Summary.md exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 
     # Check if summary was completed
     if grep -q "TODO" "$EVIDENCE_PATH/Summary.md" 2>/dev/null; then
         print_warn "Summary.md contains TODO items - not complete"
-        ((WARN++))
+        WARN=$((WARN+1))
     else
         print_pass "Summary.md appears complete"
-        ((PASS++))
+        PASS=$((PASS+1))
     fi
 
     # Check Ready for Review
-    # Scope the YES match to the 'Ready for Review' section (and use a word
-    # boundary) so a stray 'YES' anywhere else in the prose does not produce a
-    # false 'ready for review' PASS.
+    # Inspect the ANSWER itself, not just any 'YES' within range: grab the first
+    # non-empty line at/after the 'Ready for Review' header (stripping the header
+    # label and markdown if the answer is inline), and require it to BE 'YES'.
+    # This avoids a false PASS when the real answer is NO but a stray 'YES'
+    # happens to sit within two lines of the header.
     if grep -q "Ready for Review" "$EVIDENCE_PATH/Summary.md" 2>/dev/null; then
-        if grep -A2 "Ready for Review" "$EVIDENCE_PATH/Summary.md" 2>/dev/null | grep -qw "YES"; then
+        READY_ANSWER=$(awk '
+            /Ready for Review/ {
+                # Strip everything up to and including the header label so an
+                # inline answer ("Ready for Review: YES") is captured too.
+                line = $0
+                sub(/.*Ready for Review[^A-Za-z0-9]*:?/, "", line)
+                gsub(/[^A-Za-z0-9]/, " ", line)
+                gsub(/^ +| +$/, "", line)
+                if (line != "") { print line; exit }
+                found = 1
+                next
+            }
+            found {
+                # First non-empty line after a header with no inline answer.
+                line = $0
+                gsub(/[^A-Za-z0-9]/, " ", line)
+                gsub(/^ +| +$/, "", line)
+                if (line != "") { print line; exit }
+            }
+        ' "$EVIDENCE_PATH/Summary.md" 2>/dev/null | head -1)
+        # Uppercase and take the first token; require it to equal YES.
+        READY_FIRST=$(printf '%s' "$READY_ANSWER" | tr '[:lower:]' '[:upper:]' | awk '{print $1}')
+        if [ "$READY_FIRST" = "YES" ]; then
             print_pass "Summary.md indicates ready for review"
-            ((PASS++))
+            PASS=$((PASS+1))
         else
             print_warn "Summary.md does not indicate ready for review"
-            ((WARN++))
+            WARN=$((WARN+1))
         fi
     fi
 else
     print_fail "Summary.md missing"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 fi
 
 echo ""
@@ -179,19 +203,19 @@ echo ""
 # after/test-results.log
 if [ -f "$EVIDENCE_PATH/after/test-results.log" ]; then
     print_pass "after/test-results.log exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 else
     print_warn "after/test-results.log not found (tests may not apply)"
-    ((WARN++))
+    WARN=$((WARN+1))
 fi
 
 # after/build-results.log
 if [ -f "$EVIDENCE_PATH/after/build-results.log" ]; then
     print_pass "after/build-results.log exists"
-    ((PASS++))
+    PASS=$((PASS+1))
 else
     print_warn "after/build-results.log not found (build may not apply)"
-    ((WARN++))
+    WARN=$((WARN+1))
 fi
 
 echo ""
@@ -207,10 +231,10 @@ echo ""
 if [ -f "$EVIDENCE_PATH/before/baseline-status.log" ]; then
     if grep -q "Git Status" "$EVIDENCE_PATH/before/baseline-status.log" 2>/dev/null; then
         print_pass "Baseline includes git status"
-        ((PASS++))
+        PASS=$((PASS+1))
     else
         print_warn "Baseline may be incomplete"
-        ((WARN++))
+        WARN=$((WARN+1))
     fi
 fi
 
@@ -219,10 +243,10 @@ if [ -f "$EVIDENCE_PATH/after/git-diff.patch" ]; then
     if [ -s "$EVIDENCE_PATH/after/git-diff.patch" ]; then
         LINES=$(wc -l < "$EVIDENCE_PATH/after/git-diff.patch" | tr -d ' ')
         print_pass "Git diff has $LINES lines"
-        ((PASS++))
+        PASS=$((PASS+1))
     else
         print_warn "Git diff is empty (no changes?)"
-        ((WARN++))
+        WARN=$((WARN+1))
     fi
 fi
 

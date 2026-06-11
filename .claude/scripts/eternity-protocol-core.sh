@@ -55,7 +55,14 @@ LOGS="$HOME/Library/Application Support/acos-token-monitor/logs"
 # blocking all variant fires when only .md handoffs existed). Both globs run
 # in parallel; stderr suppressed to avoid "no matches" noise from either one
 # when its extension isn't present.
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | head -1)
+#
+# 2026-06-11 fix: exclude eternity `.resume.md` siblings. They are resume-PROMPT
+# copies (written below at RESUME_SIBLING), NOT session handoffs. Without this,
+# `ls -t` can return a `*.resume.md` as the newest, so HANDOFF points at a
+# resume-prompt copy and the downstream basename strip (~line 200) produces a
+# doubled `...resume.resume.md` pointer to a nonexistent file. Mirrors
+# context-monitor.sh's `case "$f" in *.resume.md) continue;; esac` exclusion.
+HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
 if [[ ! -s "$HANDOFF" ]]; then
     echo "ERROR: no handoff produced — expected newest .md or .yaml in memory/handoffs/" >&2
     return 1 2>/dev/null || exit 1

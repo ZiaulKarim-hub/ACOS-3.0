@@ -129,21 +129,41 @@ def count_last_turn_tool_calls(events):
 
 
 def last_assistant_text(events):
-    """Return concatenated text from the most recent assistant message."""
+    """Return concatenated text from ALL consecutive assistant events of the final turn.
+
+    A single logical turn can split its final text across multiple consecutive
+    assistant 'text' events (interleaved with intra-turn user tool_result carriers).
+    We walk backward, collecting text from every assistant segment, treating
+    tool_result-only user events as intra-turn carriers (mirroring
+    count_last_turn_tool_calls), and break only on a GENUINE human user message.
+    """
+    fragments = []
+    found_assistant = False
     for ev in reversed(events):
         role = ev.get("role") or (ev.get("message", {}) or {}).get("role")
+        if role == "user" and found_assistant:
+            content = (ev.get("message", {}) or {}).get("content")
+            if ev.get("content") is not None and content is None:
+                content = ev.get("content")
+            if _is_tool_result_carrier(content):
+                # Intra-turn tool_result carrier — keep walking, do not break
+                continue
+            # Genuine human message — start of the previous turn
+            break
         if role == "assistant":
+            found_assistant = True
             content = (ev.get("message", {}) or {}).get("content")
             if content is None:
                 content = ev.get("content")
             if isinstance(content, str):
-                return content
-            if isinstance(content, list):
+                fragments.append(content)
+            elif isinstance(content, list):
                 texts = [b.get("text", "") for b in content
                          if isinstance(b, dict) and b.get("type") == "text"]
-                return " ".join(texts)
-            return ""
-    return ""
+                fragments.append(" ".join(texts))
+    # Walked back-to-front; restore chronological order before joining.
+    fragments.reverse()
+    return "\n".join(f for f in fragments if f)
 
 
 def emit_continue(reason):
@@ -234,7 +254,12 @@ def main():
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # ── Exit condition: goal-complete marker ───────────────────────────────
-        if GOAL_COMPLETE_MARKER in last_text:
+        # Require the marker to be the LAST non-empty line of the assistant text
+        # (the directive instructs Claude to emit it "as the last line"). A bare
+        # substring test falsely terminates when the marker is echoed mid-narrative,
+        # since the marker string circulates in injected context/directives.
+        marker_lines = last_text.strip().splitlines()
+        if marker_lines and marker_lines[-1].strip().startswith(GOAL_COMPLETE_MARKER):
             audit(project_root,
                   f"[{ts}] AUTOPILOT_GOAL_COMPLETE | iter={iter_count} | goal={goal[:80]}")
             try:

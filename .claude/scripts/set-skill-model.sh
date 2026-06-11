@@ -32,10 +32,10 @@ PROFILE="${1:?Usage: set-skill-model.sh <profile-name|--reset>}"
 # Validate profile exists in config
 CONFIG="$PROJECT_ROOT/.acos/config/model-profile.yaml"
 if [[ -f "$CONFIG" ]]; then
-    if ! grep -q "^  ${PROFILE}:" "$CONFIG" 2>/dev/null; then
+    if ! grep -qE "^[[:space:]]{2}$(printf '%s' "$PROFILE" | sed 's/[.[*^$\\]/\\&/g'):" "$CONFIG" 2>/dev/null; then
         echo "Warning: Profile '$PROFILE' not found in model-profile.yaml" >&2
         echo "Available profiles:" >&2
-        grep '^  [a-z]' "$CONFIG" | sed 's/:.*//' | sed 's/^  /    /' >&2
+        grep -E '^  [A-Za-z0-9]' "$CONFIG" | sed 's/:.*//' | sed 's/^  /    /' >&2
         exit 1
     fi
 fi

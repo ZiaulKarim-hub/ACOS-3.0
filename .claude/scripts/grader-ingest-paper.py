@@ -330,7 +330,39 @@ def _tesseract_ocr_path(image_path: Path, lang: str = "eng") -> str:
         return "[OCR timed out after 120s]"
 
 
+# Formats leptonica (tesseract's image backend) cannot decode (webp) or handles
+# poorly/not at all (gif). Writing these to a temp file and running tesseract
+# silently yields OCR-error/garbage text that downstream is treated as verbatim
+# student content. Convert them to PNG first; if conversion fails, emit an
+# explicit unreadable marker instead of feeding garbage to tesseract.
+_TESSERACT_UNSUPPORTED_EXTS = {"webp", "gif"}
+
+
 def _tesseract_ocr_bytes(image_bytes: bytes, ext: str, lang: str = "eng") -> str:
+    ext_norm = (ext or "").lower().lstrip(".")
+    if ext_norm in _TESSERACT_UNSUPPORTED_EXTS:
+        # Convert to PNG via fitz.Pixmap (same approach as the exotic-format branch)
+        # before handing bytes to tesseract, since leptonica can't decode webp and
+        # has poor/no gif support.
+        try:
+            import fitz
+            with tempfile.NamedTemporaryFile(suffix=f".{ext_norm}", delete=False) as ctmp:
+                ctmp.write(image_bytes)
+                conv_path = Path(ctmp.name)
+            try:
+                pix = fitz.Pixmap(str(conv_path))
+                if pix.n - pix.alpha >= 4:  # CMYK → RGB
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+                image_bytes = pix.tobytes("png")
+                ext = "png"
+            finally:
+                conv_path.unlink(missing_ok=True)
+        except Exception as e:
+            print(
+                f"WARNING: tesseract cannot decode .{ext_norm}; PNG conversion failed: {e}",
+                file=sys.stderr,
+            )
+            return f"[unreadable: tesseract cannot decode {ext_norm}]"
     with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
         tmp.write(image_bytes)
         tmp_path = Path(tmp.name)

@@ -40,7 +40,20 @@ def load_yaml(path):
 
 
 def compute_composite(pillar_scores, weights):
-    """Compute weighted composite from pillar scores."""
+    """Compute weighted composite from pillar scores.
+
+    Validates that pillar_weights is non-empty and sums to ~1.0, so an empty
+    config does not silently yield composite 0.0 (always lowest tier) and a bad
+    sum does not silently mis-score into the wrong tier.
+    """
+    if not weights:
+        raise ValueError("pillar_weights is empty or missing — cannot compute composite score")
+    weight_total = sum(weights.values())
+    if abs(weight_total - 1.0) > 0.01:
+        raise ValueError(
+            f"pillar_weights must sum to ~1.0, got {weight_total:.4f} "
+            f"(weights: {weights})"
+        )
     composite = 0.0
     for pillar, weight in weights.items():
         score = pillar_scores.get(pillar, 5.0)
@@ -150,6 +163,24 @@ def main():
     config = load_yaml(args.config)
     loan_data = load_yaml(args.loan_data)
 
+    # Validate that every recommendation category carries the keys the result
+    # assembly (and overrides) subscript directly, so a malformed config raises a
+    # clear error instead of an unguarded KeyError deep in processing.
+    _required_cat_keys = ("id", "name", "color_hex", "color_name", "action")
+    _categories = config.get("categories", [])
+    if not isinstance(_categories, list) or not _categories:
+        print("ERROR: config 'categories' must be a non-empty list", file=sys.stderr)
+        sys.exit(1)
+    for _idx, _cat in enumerate(_categories):
+        if not isinstance(_cat, dict):
+            print(f"ERROR: category at index {_idx} is not a mapping", file=sys.stderr)
+            sys.exit(1)
+        _missing = [k for k in _required_cat_keys if k not in _cat]
+        if _missing:
+            _cid = _cat.get("id", f"<index {_idx}>")
+            print(f"ERROR: category '{_cid}' missing required key(s): {', '.join(_missing)}", file=sys.stderr)
+            sys.exit(1)
+
     # Extract financial figures from loan data
     figures = {}
     if isinstance(loan_data, dict):
@@ -192,7 +223,14 @@ def main():
             print(f"ERROR: Failed to read pillar-scores-file: {e}", file=sys.stderr)
             sys.exit(1)
     elif args.pillar_scores:
-        manual_scores = json.loads(args.pillar_scores)
+        try:
+            manual_scores = json.loads(args.pillar_scores)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: --pillar-scores is not valid JSON: {e}", file=sys.stderr)
+            sys.exit(1)
+        if not isinstance(manual_scores, dict):
+            print(f"ERROR: --pillar-scores must be a JSON dict, got {type(manual_scores).__name__}", file=sys.stderr)
+            sys.exit(1)
 
     # Compute pillar scores (automated sub-factors from ratios, manual from input)
     pillar_scores = {}
@@ -206,7 +244,11 @@ def main():
                 color = ratio_results[sf_id].get("color", "gray")
                 sf_scores[sf_id] = {"green": 8.5, "amber": 6.0, "red": 2.5, "gray": 5.0}.get(color, 5.0)
             elif sf_id in manual_scores:
-                sf_scores[sf_id] = float(manual_scores[sf_id])
+                try:
+                    sf_scores[sf_id] = float(manual_scores[sf_id])
+                except (TypeError, ValueError):
+                    print(f"ERROR: pillar sub-factor {sf_id} not numeric: {manual_scores[sf_id]!r}", file=sys.stderr)
+                    sys.exit(1)
             else:
                 sf_scores[sf_id] = 5.0  # default
 
@@ -248,7 +290,19 @@ def main():
             decline = [c for c in config["categories"] if c["id"] == "DECLINE"]
             if decline:
                 final_category = decline[0]
-            break
+            else:
+                # No explicit DECLINE tier configured — fall back to the
+                # worst-ranked category so an auto_decline still produces the
+                # worst available outcome rather than silently no-op'ing. Do NOT
+                # break, so later caps still apply against this worsened state.
+                print(
+                    "WARNING: auto_decline override fired but no 'DECLINE' category "
+                    "is configured; falling back to worst-ranked category "
+                    f"'{cats_ranked[-1]['id']}'",
+                    file=sys.stderr,
+                )
+                final_category = cats_ranked[-1]
+            continue
         elif override["action"] == "cap_at_conditional":
             # Cap based on the CURRENT category state, and only ever toward worse:
             # if the current tier is strictly better than CONDITIONAL_APPROVE, cap

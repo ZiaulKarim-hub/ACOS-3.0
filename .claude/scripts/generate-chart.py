@@ -88,13 +88,13 @@ def generate_bar_chart(data, width=500, height=300):
     colors = data.get("colors", CHART_PALETTE)
 
     n = len(labels)
-    if n == 0:
+    if n == 0 or not values:
         return "<svg></svg>"
 
     margin = {"top": 40, "right": 20, "bottom": 40, "left": 120 if horizontal else 60}
     plot_w = width - margin["left"] - margin["right"]
     plot_h = height - margin["top"] - margin["bottom"]
-    max_val = max(abs(v) for v in values) * 1.15
+    max_val = max((abs(v) for v in values), default=0) * 1.15
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
            f'font-family="Calibri, Helvetica, Arial, sans-serif">']
@@ -225,8 +225,8 @@ def generate_matrix_chart(data, width=300, height=80):
     # Find which category the score falls into. Sort descending by min so the
     # highest matching band wins regardless of the input order of categories.
     active_cat = categories[-1]  # default to worst
-    for cat in sorted(categories, key=lambda c: c["min"], reverse=True):
-        if score >= cat["min"]:
+    for cat in sorted(categories, key=lambda c: c.get("min", 0), reverse=True):
+        if score >= cat.get("min", 0):
             active_cat = cat
             break
 
@@ -247,7 +247,7 @@ def generate_matrix_chart(data, width=300, height=80):
     svg.append(f'<text x="80" y="{height/2 - 5}" font-size="10" '
                f'fill="{COLORS["text"]}">{escape_xml(label)}</text>')
     svg.append(f'<text x="80" y="{height/2 + 12}" font-size="14" font-weight="600" '
-               f'fill="{active_cat.get("color", COLORS["primary"])}">{escape_xml(active_cat["name"])}</text>')
+               f'fill="{active_cat.get("color", COLORS["primary"])}">{escape_xml(active_cat.get("name", ""))}</text>')
 
     # Scale indicator
     scale_x = 180
@@ -286,9 +286,9 @@ def generate_waterfall_chart(data, width=500, height=300):
     bars = []
     for item in items:
         start = running
-        value = item["value"]
+        value = item.get("value", 0)
         running += value
-        bars.append({"label": item["label"], "start": start, "end": running, "value": value})
+        bars.append({"label": item.get("label", ""), "start": start, "end": running, "value": value})
 
     all_vals = [b["start"] for b in bars] + [b["end"] for b in bars]
     min_val = min(0, min(all_vals))
@@ -356,7 +356,7 @@ def generate_donut_chart(data, width=250, height=250):
     cx, cy = width / 2, height / 2
     radius = min(width, height) / 2 - 30
     inner_radius = radius * 0.55
-    total = sum(s["value"] for s in segments)
+    total = sum(s.get("value", 0) for s in segments)
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
            f'font-family="Calibri, Helvetica, Arial, sans-serif">']
@@ -367,7 +367,7 @@ def generate_donut_chart(data, width=250, height=250):
 
     angle = -math.pi / 2  # start at top
     for i, seg in enumerate(segments):
-        pct = seg["value"] / total if total > 0 else 0
+        pct = seg.get("value", 0) / total if total > 0 else 0
         sweep = 2 * math.pi * pct
         color = seg.get("color", CHART_PALETTE[i % len(CHART_PALETTE)])
 
@@ -446,7 +446,7 @@ def generate_radar_chart(data, width=300, height=300):
     points = []
     for i, seg in enumerate(segments):
         val = seg.get("value", 0)
-        r = radius * (val / max_val)
+        r = min(radius, radius * (val / max_val))
         angle = -math.pi / 2 + i * angle_step
         points.append(f"{cx + r * math.cos(angle)},{cy + r * math.sin(angle)}")
 
@@ -559,8 +559,11 @@ def generate_line_chart(data, width=500, height=250):
     plot_w = width - margin["left"] - margin["right"]
     plot_h = height - margin["top"] - margin["bottom"]
 
-    min_val = min(points) * 0.9
-    max_val = max(points) * 1.1
+    lo = min(points)
+    hi = max(points)
+    span = (hi - lo) or 1
+    min_val = lo - 0.1 * span
+    max_val = hi + 0.1 * span
     val_range = max_val - min_val if max_val != min_val else 1
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
@@ -613,7 +616,7 @@ def generate_stacked_chart(data, width=500, height=80):
     if not segments:
         return "<svg></svg>"
 
-    total = sum(s["value"] for s in segments)
+    total = sum(s.get("value", 0) for s in segments)
     bar_y = 35 if title else 10
     bar_h = 30
     label_y = bar_y + bar_h + 14
@@ -627,12 +630,12 @@ def generate_stacked_chart(data, width=500, height=80):
 
     x = 0
     for i, seg in enumerate(segments):
-        w = (seg["value"] / total) * width if total > 0 else 0
+        w = (seg.get("value", 0) / total) * width if total > 0 else 0
         color = seg.get("color", CHART_PALETTE[i % len(CHART_PALETTE)])
         svg.append(f'<rect x="{x}" y="{bar_y}" width="{w}" height="{bar_h}" fill="{color}"/>')
         if w > 40:
             svg.append(f'<text x="{x + w/2}" y="{bar_y + bar_h/2 + 4}" text-anchor="middle" '
-                       f'font-size="8" font-weight="600" fill="white">{format_number(seg["value"], fmt)}</text>')
+                       f'font-size="8" font-weight="600" fill="white">{format_number(seg.get("value", 0), fmt)}</text>')
         svg.append(f'<text x="{x + w/2}" y="{label_y}" text-anchor="middle" '
                    f'font-size="7" fill="{COLORS["text"]}">{escape_xml(seg.get("label", ""))}</text>')
         x += w

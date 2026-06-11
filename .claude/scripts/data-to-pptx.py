@@ -93,12 +93,12 @@ def load_design_spec(path):
     # --- Slide dimensions (override from spec or use defaults) ---
     spec["_slide_width"] = DEFAULT_SLIDE_WIDTH
     spec["_slide_height"] = DEFAULT_SLIDE_HEIGHT
-    if spec.get("slide_width"):
+    if "slide_width" in spec:
         try:
             spec["_slide_width"] = Inches(float(spec["slide_width"]))
         except (ValueError, TypeError):
             pass
-    if spec.get("slide_height"):
+    if "slide_height" in spec:
         try:
             spec["_slide_height"] = Inches(float(spec["slide_height"]))
         except (ValueError, TypeError):
@@ -173,6 +173,8 @@ class ContentArea:
         self.top = MARGIN_TOP + header_h
         self.width = sw - MARGIN_LEFT - MARGIN_RIGHT
         self.height = sh - MARGIN_TOP - MARGIN_BOTTOM - header_h - footer_h
+        # Guard against negative content height on unusually short slides.
+        self.height = max(self.height, Emu(1))
 
 
 class SlideGrid:
@@ -294,7 +296,10 @@ def set_text(tf, text, font_size=Pt(12), bold=False, color=None,
     tf.word_wrap = True
     p = tf.paragraphs[0]
     p.alignment = alignment
-    run = p.runs[0] if p.runs else p.add_run()
+    # Clear any existing runs so a reused/multi-run paragraph doesn't retain
+    # stale runs[1:] (which would duplicate/garble the rendered text).
+    p.clear()
+    run = p.add_run()
     run.text = str(text)
     run.font.size = font_size
     run.font.bold = bold

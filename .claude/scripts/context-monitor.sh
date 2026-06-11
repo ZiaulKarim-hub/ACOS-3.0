@@ -255,6 +255,10 @@ fi
 # ── High usage session with no handoff ─────────────────────────────────
 # Track stop retry count
 STOP_RETRIES=$(cat "$STOP_RETRY_FILE" 2>/dev/null || echo 0)
+# 2026-06-11 fix: under set -euo pipefail a corrupted non-numeric retry-count
+# file makes the arithmetic increment error and abort the Stop hook. Validate
+# and reset to 0 if it is not a plain non-negative integer.
+[[ "$STOP_RETRIES" =~ ^[0-9]+$ ]] || STOP_RETRIES=0
 STOP_RETRIES=$((STOP_RETRIES + 1))
 echo "$STOP_RETRIES" > "$STOP_RETRY_FILE"
 

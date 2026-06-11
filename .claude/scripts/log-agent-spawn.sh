@@ -22,13 +22,17 @@ from datetime import datetime, timezone
 try:
     data = json.load(sys.stdin)
     # Payload provides agent_type + agent_id; there is no agent_name field.
-    agent_type = data.get('agent_type') or data.get('agent_name') or 'unknown'
-    agent_id = data.get('agent_id', '')
-    description = data.get('description', '')
-    session_id = data.get('session_id', '')
+    def _clean(v):
+        return str(v).replace('\n', ' ').replace('\r', ' ')
+
+    agent_type = _clean(data.get('agent_type') or data.get('agent_name') or 'unknown')
+    agent_id = _clean(data.get('agent_id', ''))
+    description = _clean(data.get('description', ''))
+    session_id = _clean(data.get('session_id', ''))
     now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    log_line = f'{now} SPAWN agent={agent_type} id={agent_id} session={session_id} desc=\"{description[:100]}\"'
+    desc_json = json.dumps(description[:100])
+    log_line = f'{now} SPAWN agent={agent_type} id={agent_id} session={session_id} desc={desc_json}'
     print(log_line)
 except Exception:
     pass

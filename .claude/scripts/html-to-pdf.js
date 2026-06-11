@@ -105,10 +105,21 @@ async function convertHtmlToPdf(options) {
     // directory, so relative paths and <base href> resolve correctly. The
     // previous setContent() path left origin at about:blank and silently
     // dropped all image / font loads.
-    await page.goto(pathToFileURL(inputPath).href, {
-      waitUntil: 'networkidle0',
-      timeout: 60000
-    });
+    // Prefer full network-idle, but degrade gracefully: a page with live
+    // polling / analytics may never reach idle, and a hard reject here would
+    // fail the whole conversion. Fall back to a DOM/load wait so a hung
+    // resource doesn't sink an otherwise-renderable page.
+    try {
+      await page.goto(pathToFileURL(inputPath).href, {
+        waitUntil: 'networkidle0',
+        timeout: 60000
+      });
+    } catch (gotoErr) {
+      await page.goto(pathToFileURL(inputPath).href, {
+        waitUntil: 'load',
+        timeout: 60000
+      }).catch(() => {});
+    }
 
     // Strip loading="lazy" so off-screen images actually load. In headless
     // Chromium the IntersectionObserver behind native lazy-loading never fires

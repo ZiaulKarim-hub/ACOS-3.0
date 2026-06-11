@@ -64,7 +64,12 @@ echo "Archive: $ARCHIVE_DIR"
 echo ""
 
 # Confirm
-read -p "Are you sure you want to archive this project? (y/N) " -n 1 -r
+if [[ ! -t 0 ]]; then
+    echo -e "${RED}Error: archive requires an interactive confirmation but stdin is not a TTY.${NC}"
+    echo "Re-run this script in an interactive terminal."
+    exit 1
+fi
+read -p "Are you sure you want to archive this project? (y/N) " -n 1 -r || true
 echo ""
 
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -182,7 +187,7 @@ print_success "Manifest created"
 # ═══════════════════════════════════════════════════════════════════════════
 
 echo ""
-read -p "Do you want to clear the current memory? (y/N) " -n 1 -r
+read -p "Do you want to clear the current memory? (y/N) " -n 1 -r || true
 echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -204,8 +209,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     find planning/slices -name "*.yaml" ! -name ".template.yaml" -delete 2>/dev/null || true
     find planning/vision -name "*.yaml" ! -name ".template.yaml" -delete 2>/dev/null || true
 
-    # Clear evidence
-    rm -rf .acos/evidence/*/ 2>/dev/null || true
+    # Clear evidence — clears ALL contents (loose files + dot-dirs), not just
+    # top-level subdirectories. The old `rm -rf .acos/evidence/*/` only matched
+    # subdirectories, leaving loose files and dot-dirs behind.
+    find .acos/evidence -mindepth 1 -delete 2>/dev/null || true
 
     print_success "Current memory cleared (templates preserved)"
 fi

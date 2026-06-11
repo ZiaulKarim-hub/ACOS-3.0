@@ -170,6 +170,10 @@ def auto_summarize(text, max_chars=500):
     Strategy: prefer the first non-empty paragraph (up to max_chars). Falls
     back to the first max_chars of stripped content if no paragraph break.
     """
+    # Normalize CRLF (and bare CR) so the LF-anchored frontmatter/paragraph
+    # parsing below works on Windows-authored vision files; otherwise raw YAML
+    # frontmatter leaks into the summary.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = text.strip()
     if not text:
         return ""
@@ -298,8 +302,11 @@ def cmd_off(args):
     loop_state = project_root / ".acos" / "state" / LOOP_STATE_NAME
 
     if not sentinel.is_file():
+        # Already off: deactivation is idempotent, so the desired post-state is
+        # satisfied. Exit 0 so a defensive `off` under `set -e` does not abort.
+        # Reserve non-zero exits for genuine failures.
         print("Autopilot is already OFF (no sentinel).")
-        sys.exit(1)
+        sys.exit(0)
 
     try:
         state = json.loads(sentinel.read_text(encoding="utf-8"))

@@ -74,8 +74,12 @@ fi
 
 if [[ -d "$PROJECT_DIR/.acos" && "$FORCE" == false ]]; then
   BROKEN=false
+  # Probe a representative link from EACH category (agents/, skills/, scripts/)
+  # so a broken link in any category triggers repair — not just architect.md.
   for link in "$PROJECT_DIR/.claude/agents/architect.md" \
-              "$PROJECT_DIR/.claude/skills/acos-start"; do
+              "$PROJECT_DIR/.claude/agents/developer.md" \
+              "$PROJECT_DIR/.claude/skills/acos-start" \
+              "$PROJECT_DIR/.claude/scripts/resolve-agent-model.sh"; do
     if [[ -L "$link" && ! -e "$link" ]]; then
       BROKEN=true
       break
@@ -843,6 +847,20 @@ if [[ -f "$GITIGNORE" ]] && grep -qF "$ACOS_MARKER" "$GITIGNORE" 2>/dev/null; th
     # entries below, but NEVER destroys user data.
     log "${BOLD}[+] ACOS .gitignore block missing end marker — safe-appending fresh block...${NC}"
     sed -i '' "/^${ESCAPED_START}\$/d" "$GITIGNORE"
+    # Also remove the known fixed ACOS data-dir lines so they don't become stale
+    # orphans below the (now-deleted) start marker. These are exact literal lines
+    # the fresh block re-appends; deleting only these specific entries is safe and
+    # never touches user data or a range-to-EOF.
+    for acos_line in \
+      ".acos/" \
+      "memory/" \
+      "planning/" \
+      "learning-curve/" \
+      "review-rules.yaml" \
+      ".claude/settings.acos-hooks.json"; do
+      ESCAPED_LINE=$(printf '%s' "$acos_line" | sed 's/[][\\/.*^$]/\\&/g')
+      sed -i '' "/^${ESCAPED_LINE}\$/d" "$GITIGNORE"
+    done
   fi
 else
   log "${BOLD}[+] Updating .gitignore...${NC}"

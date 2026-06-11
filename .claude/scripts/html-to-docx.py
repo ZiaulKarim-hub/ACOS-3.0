@@ -154,23 +154,24 @@ def convert(html_path, docx_path):
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
         tmp_path = tmp.name
 
-    result = subprocess.run(
-        ["pandoc", html_path, "-f", "html", "-o", tmp_path,
-         "--wrap=none", "--standalone"],
-        capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            ["pandoc", html_path, "-f", "html", "-o", tmp_path,
+             "--wrap=none", "--standalone"],
+            capture_output=True, text=True
+        )
 
-    if result.returncode != 0:
-        print(f"ERROR: pandoc failed: {result.stderr}", file=sys.stderr)
-        sys.exit(1)
+        if result.returncode != 0:
+            print(f"ERROR: pandoc failed: {result.stderr}", file=sys.stderr)
+            sys.exit(1)
 
-    # Pass 2: python-docx for styling
-    doc = Document(tmp_path)
-    style_document(doc)
-    doc.save(docx_path)
-
-    # Clean up temp file
-    Path(tmp_path).unlink(missing_ok=True)
+        # Pass 2: python-docx for styling
+        doc = Document(tmp_path)
+        style_document(doc)
+        doc.save(docx_path)
+    finally:
+        # Clean up temp file (also on pandoc failure / early exit)
+        Path(tmp_path).unlink(missing_ok=True)
 
     print(f"DOCX generated: {docx_path}", file=sys.stderr)
 

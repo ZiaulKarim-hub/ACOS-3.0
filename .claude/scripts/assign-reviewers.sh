@@ -139,7 +139,10 @@ def _matches_code(pattern, content):
                 rx += "."
             elif ch == "[":
                 j = i + 1
-                if j < n and p[j] in "!^":
+                # fnmatch-compatible negation: ONLY a leading '!' negates a class.
+                # A leading '^' is LITERAL under fnmatch, so consume it as a class
+                # member rather than as a negation marker.
+                if j < n and p[j] == "!":
                     j += 1
                 if j < n and p[j] == "]":
                     j += 1
@@ -150,7 +153,12 @@ def _matches_code(pattern, content):
                 else:
                     klass = p[i + 1:j].replace("\\", "\\\\")
                     if klass.startswith("!"):
+                        # fnmatch '!' -> regex '^' negation
                         klass = "^" + klass[1:]
+                    elif klass.startswith("^"):
+                        # fnmatch treats a leading '^' as a LITERAL member; escape
+                        # it so regex does not interpret it as negation.
+                        klass = "\\^" + klass[1:]
                     rx += "[" + klass + "]"
                     i = j
             else:
@@ -228,7 +236,10 @@ for filepath in reviewer_files:
         # File count trigger
         if not triggered:
             threshold = cfg.get("trigger_file_count_gt")
-            if threshold and isinstance(threshold, (int, float)):
+            # Test type explicitly so a configured threshold of 0 (fire on any
+            # file modification) is honored; `if threshold` would drop a falsy 0.
+            # Exclude bool, since bool is a subclass of int.
+            if isinstance(threshold, (int, float)) and not isinstance(threshold, bool):
                 if file_count > threshold:
                     triggered = True
 
@@ -258,7 +269,8 @@ for filepath in reviewer_files:
                             break
             if not triggered:
                 threshold = cfg.get("trigger_file_count_gt")
-                if threshold and isinstance(threshold, (int, float)):
+                # Honor a configured threshold of 0 (falsy); exclude bool.
+                if isinstance(threshold, (int, float)) and not isinstance(threshold, bool):
                     if file_count > threshold:
                         triggered = True
             if triggered:
@@ -329,7 +341,8 @@ for filepath in advisor_files:
             triggered = True
     if not triggered:
         thr = cfg.get("trigger_file_count_gt")
-        if isinstance(thr, (int, float)) and file_count > thr:
+        # Honor a configured threshold of 0; exclude bool (subclass of int).
+        if isinstance(thr, (int, float)) and not isinstance(thr, bool) and file_count > thr:
             triggered = True
     if triggered:
         advisors.append(name)

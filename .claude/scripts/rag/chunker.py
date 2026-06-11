@@ -100,8 +100,24 @@ def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
     sections = []
     current_header = ""
     current_lines: list[str] = []
+    in_fence = False
+    fence_marker = ""
 
     for line in content.split("\n"):
+        stripped = line.lstrip()
+        # Track fenced-code-block state so a '## ' line inside a ``` or ~~~ fence
+        # is treated as content, not a section header.
+        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+            in_fence = True
+            fence_marker = stripped[:3]
+            current_lines.append(line)
+            continue
+        if in_fence:
+            current_lines.append(line)
+            if stripped.startswith(fence_marker):
+                in_fence = False
+                fence_marker = ""
+            continue
         if line.startswith("## "):
             # Save previous section
             if current_lines:
@@ -123,8 +139,24 @@ def _split_at_h3(content: str) -> list[tuple[str, str]]:
     sections = []
     current_header = ""
     current_lines: list[str] = []
+    in_fence = False
+    fence_marker = ""
 
     for line in content.split("\n"):
+        stripped = line.lstrip()
+        # Track fenced-code-block state so a '### ' line inside a ``` or ~~~ fence
+        # is treated as content, not a section header.
+        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+            in_fence = True
+            fence_marker = stripped[:3]
+            current_lines.append(line)
+            continue
+        if in_fence:
+            current_lines.append(line)
+            if stripped.startswith(fence_marker):
+                in_fence = False
+                fence_marker = ""
+            continue
         if line.startswith("### "):
             if current_lines:
                 sections.append((current_header, "\n".join(current_lines)))
@@ -370,7 +402,12 @@ def _enforce_max_size(chunks: list[Chunk]) -> list[Chunk]:
         if len(ch.content) <= MAX_SIZE:
             expanded.append((ch.content, ch.metadata))
             continue
-        parts = _split_text_to_max(ch.content)
+        # _split_text_to_max preserves whitespace-only pieces to avoid SILENT
+        # mid-content loss, but a piece that is ENTIRELY whitespace after .strip()
+        # carries no content — embedding it wastes Ollama calls and pollutes the
+        # index with empty vectors. Drop fully-empty-after-strip parts here while
+        # keeping internal whitespace within content-bearing parts.
+        parts = [p for p in _split_text_to_max(ch.content) if p.strip()]
         for j, part in enumerate(parts):
             hdr = ch.metadata.section_header
             hdr = f"{hdr} (part {j + 1})" if hdr else f"(part {j + 1})"

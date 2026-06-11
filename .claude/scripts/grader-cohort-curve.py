@@ -587,7 +587,9 @@ def _normalize_iteration_audit(iteration: dict, session_dir: Path | None = None,
     Any missing QA verdicts are backfilled from the canonical
     ``iter-N-qa-verdict.yaml`` file when session_dir+paper_id are available.
     """
-    iter_num = iteration.get("iteration") or 1
+    # Default only on a MISSING key — `or 1` would coerce a legitimate iteration
+    # value of 0 (or '') to 1. The int() coercion below has its own guard.
+    iter_num = iteration.get("iteration", 1)
     # Audit schemas drift across 15+ agent variants — an iteration label may be
     # a non-numeric string (e.g. 'final', '1a', 'I'). Coerce defensively so the
     # whole cohort build doesn't crash on a single odd label. Original `iter_num`

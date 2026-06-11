@@ -64,9 +64,11 @@ repo_root = os.getcwd()
 # ── Heuristic extraction of write-target tokens from the command ──
 targets = set()
 
-# 1) Redirections:  > path  /  >> path   (skip >&2, >&1, >/dev/...)
-for mo in re.finditer(r'(?<![0-9&])>>?\s*([^\s;|&>]+)', cmd):
-    targets.add(mo.group(1))
+# 1) Redirections:  [N]> path  /  [N]>> path   (e.g. >out, 1>out, 2>>log)
+#    Capture an optional leading fd digit, then > or >>, then the target.
+#    fd-DUP forms (>&, &>) and /dev/* targets are filtered in the loop below.
+for mo in re.finditer(r'(?<![0-9&])(\d?)>>?\s*([^\s;|&>]+)', cmd):
+    targets.add(mo.group(2))
 
 # 2) tee [opts] path...
 for mo in re.finditer(r'\btee\b((?:\s+-\S+)*)((?:\s+[^\s;|&]+)+)', cmd):
@@ -108,7 +110,12 @@ def to_repo_relative(p):
         return None  # absolute path outside the repo — not a scope concern
     if p.startswith("./"):
         p = p[2:]
-    return os.path.normpath(p)
+    norm = os.path.normpath(p)
+    # A relative path that escapes the repo via '..' is out-of-repo — the Oracle's
+    # domain, not scope's. Mirror the absolute out-of-repo branch (return None).
+    if norm == ".." or norm.startswith(".." + os.sep):
+        return None
+    return norm
 
 
 def in_scope(rel):

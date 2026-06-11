@@ -522,10 +522,16 @@ elif [ "$RETRIES" -le "$FORCE_MAX" ]; then
 
 # ── PHASE 4: AUTO-FALLBACK (retries 15+) — Create mechanical handoff ─
 else
-  FALLBACK_FILE="$HANDOFF_DIR/$(date -u +%Y-%m-%dT%H:%M:%SZ)-enforced-handoff.yaml"
+  # Scope the collision guard to THIS session. A global glob over
+  # *-enforced-handoff.yaml lets a stale fallback from a PRIOR session suppress
+  # creation of a fresh one for the current session (it sees the old file, skips,
+  # resets, allows — and the current session ends with no handoff). Embedding the
+  # session id in the filename + globbing on that prefix keeps the guard correct.
+  SAFE_SID=$(printf '%s' "${SESSION_ID:-unknown}" | tr -c 'A-Za-z0-9._-' '_')
+  FALLBACK_FILE="$HANDOFF_DIR/$(date -u +%Y-%m-%dT%H:%M:%SZ)-${SAFE_SID}-enforced-handoff.yaml"
 
-  # Only create if we haven't already created one this round
-  if ! ls "$HANDOFF_DIR"/*-enforced-handoff.yaml 1>/dev/null 2>&1; then
+  # Only create if we haven't already created one this round FOR THIS SESSION
+  if ! ls "$HANDOFF_DIR"/*-"${SAFE_SID}"-enforced-handoff.yaml 1>/dev/null 2>&1; then
     python3 -c "
 import json, sys, os
 from collections import Counter

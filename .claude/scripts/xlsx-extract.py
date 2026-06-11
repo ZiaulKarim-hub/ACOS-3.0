@@ -51,10 +51,16 @@ def classify_value(value, number_format):
             # branch only multiplied for |value|<1 (so 1.5 -> "1.5%" instead of
             # "150%") and guarded on a dead `'%' not in str(value)` check.
             return "percentage", f"{value * 100:g}%"
-        if any(c in fmt for c in ["$", "currency", "#,##0"]):
+        # Only '$' or the literal 'currency' token marks a currency format. A bare
+        # grouped-integer format like '#,##0' (no '$') is a plain number, not
+        # currency — route it to the 'number' branch but still format via
+        # format_number for grouped thousands-separator display.
+        if any(c in fmt for c in ["$", "currency"]):
             return "currency", format_number(value, number_format)
         if any(d in fmt for d in ["yy", "mm", "dd"]):
             return "date", str(value)
+        if "#,##0" in fmt:
+            return "number", format_number(value, number_format)
         return "number", value
     if isinstance(value, datetime):
         return "datetime", value.isoformat()

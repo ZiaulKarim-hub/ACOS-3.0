@@ -665,6 +665,13 @@ def run_diagnose(config_path=None):
     print(f"  Effective threshold: {threshold}")
 
     yolo_active = threshold >= 11
+
+    # Autopilot short-circuits evaluate() to allow for everything (see evaluate()),
+    # so every diagnose case is EXPECTED to be 'allow' while autopilot is active.
+    # Without this, the 'Bash destructive (rm)' case (expected 'ask') reports a
+    # false FAIL even though the Oracle is behaving per autopilot spec.
+    autopilot_active = load_autopilot_state(project_root) is not None
+
     if yolo_active:
         print()
         print("  ┌─────────────────────────────────────────────────────────┐")
@@ -675,6 +682,15 @@ def run_diagnose(config_path=None):
         print("  │  will be auto-approved without any prompt.              │")
         print("  │                                                         │")
         print("  │  To restore safety: set threshold to 10 or lower.       │")
+        print("  └─────────────────────────────────────────────────────────┘")
+    if autopilot_active:
+        print()
+        print("  ┌─────────────────────────────────────────────────────────┐")
+        print("  │  ⚠  AUTOPILOT ACTIVE (.acos/state/autopilot-active)     │")
+        print("  │                                                         │")
+        print("  │  evaluate() short-circuits to ALLOW for every call.      │")
+        print("  │  All sample cases are expected to 'allow' accordingly.   │")
+        print("  │  Escalations surface as 'ask' → panic-stop in autopilot. │")
         print("  └─────────────────────────────────────────────────────────┘")
     print()
 
@@ -691,8 +707,8 @@ def run_diagnose(config_path=None):
         decision, reason, temperature, _, reasons = evaluate(tool_name, tool_input, cwd)
         # Adjust expectations for current threshold
         effective_expected = expected
-        if yolo_active:
-            effective_expected = "allow"  # YOLO auto-approves everything
+        if yolo_active or autopilot_active:
+            effective_expected = "allow"  # YOLO/autopilot auto-approve everything
         # For expected "ask", also accept "deny" (threshold might be very low)
         # For expected "deny", only accept "deny"
         if effective_expected == "deny":
@@ -747,10 +763,14 @@ def run_diagnose(config_path=None):
         print(f"  Warnings: {len(conflicts)} permission conflict(s)")
     if yolo_active:
         print(f"  ⚠ YOLO mode is active — all hard blocks are bypassed")
+    if autopilot_active:
+        print(f"  ⚠ Autopilot is active — every call auto-approves (expected 'allow')")
     print()
 
     if failed > 0 or conflicts:
         overall = "ISSUES DETECTED"
+    elif autopilot_active:
+        overall = "HEALTHY (⚠ AUTOPILOT — all calls auto-approved)"
     elif yolo_active:
         overall = "HEALTHY (⚠ YOLO — no guardrails)"
     else:

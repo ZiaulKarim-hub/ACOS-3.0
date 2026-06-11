@@ -106,7 +106,10 @@ find_latest_handoff() {
                 latest_time=$mtime
                 latest="$file"
             fi
-        done < <(find "$dir" -maxdepth 1 \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) -print0 2>/dev/null)
+            # 2026-06-11 fix: exclude eternity `.resume.md` siblings — they are
+            # resume-PROMPT copies, NOT session handoffs. Including them launches
+            # the fallback pre-loaded with a resume template instead of context.
+        done < <(find "$dir" -maxdepth 1 \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) ! -name '*.resume.md' -print0 2>/dev/null)
     done
 
     echo "$latest"

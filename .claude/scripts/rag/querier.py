@@ -121,19 +121,29 @@ def main():
         try:
             data = json.load(sys.stdin)
             query = data["query"]
-            top_k = data.get("top_k", args.top_k)
+            # Coerce numeric fields inside the try so a null/wrong-typed value
+            # (e.g. {"top_k": null}) maps to a clear 'Invalid stdin JSON' error
+            # rather than surfacing as a generic TypeError downstream.
+            top_k = int(data.get("top_k") if data.get("top_k") is not None else args.top_k)
             category = data.get("category", args.category)
-            min_score = data.get("min_score", args.min_score)
-        except (json.JSONDecodeError, KeyError) as e:
+            raw_min = data.get("min_score")
+            min_score = float(raw_min if raw_min is not None else args.min_score)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
             print(json.dumps(format_error(f"Invalid stdin JSON: {e}")))
             sys.exit(2)
-    elif args.query:
+    elif args.query is not None:
         query = args.query
         top_k = args.top_k
         category = args.category
         min_score = args.min_score
     else:
         print(json.dumps(format_error("No query provided. Use --query or --stdin")))
+        sys.exit(2)
+
+    # Reject empty/whitespace-only queries (covers both stdin and arg paths)
+    # before embedding so we don't waste an Ollama call on a meaningless search.
+    if not query or not query.strip():
+        print(json.dumps(format_error("Empty query")))
         sys.exit(2)
 
     result = run_query(query, top_k=top_k, category=category, min_score=min_score)

@@ -315,7 +315,11 @@ class PdfLayoutChecker:
             # carried a genuine multi-line bulk (len(tail_group) >= 2) before a
             # single stranded head line on the next page counts as a widow.
             if len(head_group) == 1 and len(tail_group) >= 2:
-                tail_x = tail_group[0]["x0"]
+                # Compare against the LAST trailing line — that is the line whose
+                # paragraph actually flows onto the next page. The first/topmost
+                # trailing line often carries a first-line indent, which would
+                # skew the 20pt similarity test.
+                tail_x = tail_group[-1]["x0"]
                 head_x = head_group[0]["x0"]
                 if abs(tail_x - head_x) < 20:
                     self.add(
