@@ -65,7 +65,7 @@ concrete action with no ambiguity, just do it.
 ## Model Profile System
 - Controls which model each agent uses when spawned — supports Claude AND external models.
 - Claude-only presets: Budget (haiku-heavy), Standard (sonnet), Premium (opus, default), Auto (smart mix).
-- Multi-provider presets: Hybrid-Review, Free-Tier, OpenAI-Review, Gemini-Review.
+- Multi-provider presets: Hybrid-Review, Free-Tier, OpenAI-Review, Gemini-Review, GLM-Review, GLM-Heavy.
 - Config: `.acos/config/model-profile.yaml` (per-project, persistent defaults).
 - Provider registry: `.acos/config/providers.yaml` (OpenAI, Google, OpenRouter, Custom endpoints).
 - Session state: `.acos/state/model-session.yaml` (ephemeral, cleaned by SessionEnd).
