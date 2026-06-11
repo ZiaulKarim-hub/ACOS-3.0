@@ -619,6 +619,14 @@ def _normalize_iteration_audit(iteration: dict, session_dir: Path | None = None,
                 verdict = cs.get("verdict") or cs.get("final_verdict") or cs.get("qa_verdict") or ""
                 if isinstance(verdict, dict):
                     verdict = verdict.get("verdict") or verdict.get("final_verdict") or ""
+                # Coerce to Excel-safe scalars: a drifted audit schema can nest a
+                # dict/list here, which openpyxl rejects with ValueError 'Cannot
+                # convert ... to Excel', crashing the whole workbook build. str()
+                # any non-scalar so one odd artifact degrades one row, not the run.
+                a, b, c, verdict = (
+                    x if isinstance(x, (int, float, str, type(None))) else str(x)
+                    for x in (a, b, c, verdict)
+                )
                 out.append((cs.get("criterion_id") or cs.get("id", ""), a, b, c, verdict))
             if out:
                 return _backfill_verdicts(out, session_dir, paper_id, iter_num_int)
@@ -636,6 +644,13 @@ def _normalize_iteration_audit(iteration: dict, session_dir: Path | None = None,
                 verdict = cdata.get("verdict") or cdata.get("final_verdict") or ""
                 if isinstance(verdict, dict):
                     verdict = verdict.get("verdict") or verdict.get("final_verdict") or ""
+                # Coerce to Excel-safe scalars (see list-branch note above): a
+                # nested dict/list reaching ws.cell(value=...) makes openpyxl raise
+                # ValueError and aborts the entire workbook build.
+                a, b, c, verdict = (
+                    x if isinstance(x, (int, float, str, type(None))) else str(x)
+                    for x in (a, b, c, verdict)
+                )
                 out.append((cid, a, b, c, verdict))
             if out:
                 return _backfill_verdicts(out, session_dir, paper_id, iter_num_int)

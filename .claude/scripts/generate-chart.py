@@ -442,7 +442,13 @@ def generate_radar_chart(data, width=300, height=300):
                    f'stroke="{COLORS["grid"]}" stroke-width="0.5"/>')
 
     # Data polygon
-    max_val = data.get("max_value", 10) or 10
+    # Coerce to positive magnitude: a NEGATIVE max_value is truthy (so a bare
+    # `or 10` won't catch it) but inverts val/max_val and collapses the polygon
+    # to center. abs(...) plus `or 10` also defends 0 / None / falsy.
+    try:
+        max_val = abs(float(data.get("max_value", 10))) or 10
+    except (TypeError, ValueError):
+        max_val = 10
     points = []
     for i, seg in enumerate(segments):
         val = seg.get("value", 0)
@@ -675,7 +681,10 @@ def generate_heatmap_chart(data, width=400, height=None):
     height = height or (margin_top + len(rows) * cell_h + 20)
 
     # Guard: a scalar (non-iterable) row would raise TypeError on `for v in row`.
-    flat_vals = [v for row in values if isinstance(row, (list, tuple)) for v in row if v is not None]
+    # Also filter ELEMENTS to numeric — a stray string inside an otherwise-list
+    # row would otherwise poison min()/max() (str vs int TypeError).
+    flat_vals = [v for row in values if isinstance(row, (list, tuple))
+                 for v in row if isinstance(v, (int, float))]
     min_v = min(flat_vals) if flat_vals else 0
     max_v = max(flat_vals) if flat_vals else 1
 
@@ -699,7 +708,13 @@ def generate_heatmap_chart(data, width=400, height=None):
                    f'font-size="7" fill="{COLORS["text"]}">{escape_xml(str(row_label))}</text>')
 
         for ci in range(len(cols)):
-            val = values[ri][ci] if ri < len(values) and ci < len(values[ri]) else None
+            # Guard the ROW type: a scalar (non-list) row must not be indexed.
+            # Guard the CELL type: a non-numeric cell is skipped (treated blank),
+            # so neither the color math nor the `{val:.2f}` format can raise.
+            row = values[ri] if ri < len(values) else None
+            val = row[ci] if isinstance(row, (list, tuple)) and ci < len(row) else None
+            if not isinstance(val, (int, float)):
+                val = None
             x = margin_left + ci * cell_w
             if val is not None:
                 t = (val - min_v) / (max_v - min_v) if max_v != min_v else 0.5

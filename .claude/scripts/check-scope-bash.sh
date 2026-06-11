@@ -61,26 +61,39 @@ except Exception:
 
 repo_root = os.getcwd()
 
+# Strip arithmetic-expansion spans `$(( ... ))` before redirect scanning. The
+# `>`/`<` inside them are arithmetic comparisons, not redirections — without this
+# `echo $((1>2))` would capture `2))` and `x=$((a>b))` would capture `b))` as a
+# write target, falsely BLOCKING legitimate commands. Replace with a space so the
+# surrounding token boundaries are preserved.
+scan_cmd = re.sub(r'\$\(\(.*?\)\)', ' ', cmd)
+
 # ── Heuristic extraction of write-target tokens from the command ──
 targets = set()
 
 # 1) Redirections:  [N]> path  /  [N]>> path   (e.g. >out, 1>out, 2>>log)
 #    Capture an optional leading fd digit, then > or >>, then the target.
 #    fd-DUP forms (>&, 2>&1) are excluded; /dev/* targets are filtered in the loop.
-for mo in re.finditer(r'(?<![0-9&])(\d?)>>?(?!&)\s*([^\s;|&>]+)', cmd):
+#    A target starting with '(' is process substitution `>(...)` (e.g. tee >(cat)),
+#    NOT a file — exclude it so it isn't captured as a write target.
+for mo in re.finditer(r'(?<![0-9&])(\d?)>>?(?!&)\s*([^\s;|&>(][^\s;|&>]*)', scan_cmd):
     targets.add(mo.group(2))
 
 # 1b) All-streams redirect (&> / &>>) and clobber (>|) forms, which the
 #     plain-redirect regex above intentionally rejects (leading & / trailing |).
 #     fd-dup (>&, 2>&1) stays excluded — those have no standalone file target here.
-for mo in re.finditer(r'&>>?\s*([^\s;|&>]+)', cmd):
+for mo in re.finditer(r'&>>?\s*([^\s;|&>(][^\s;|&>]*)', scan_cmd):
     targets.add(mo.group(1))
-for mo in re.finditer(r'>\|\s*([^\s;|&>]+)', cmd):
+for mo in re.finditer(r'>\|\s*([^\s;|&>(][^\s;|&>]*)', scan_cmd):
     targets.add(mo.group(1))
 
 # 2) tee [opts] path...
-for mo in re.finditer(r'\btee\b((?:\s+-\S+)*)((?:\s+[^\s;|&]+)+)', cmd):
+#    Skip operands that are redirections / process substitutions (`>(...)`, `<(...)`,
+#    `>out`, `(...)`) — e.g. `tee >(cat)` must NOT treat `>(cat)` as a file target.
+for mo in re.finditer(r'\btee\b((?:\s+-\S+)*)((?:\s+[^\s;|&]+)+)', scan_cmd):
     for p in mo.group(2).split():
+        if p[0] in "(<>":
+            continue
         targets.add(p)
 
 # 3) sed -i ... <file> (in-place edit; file is typically the trailing token)
@@ -138,7 +151,7 @@ def in_scope(rel):
 violations = []
 for t in targets:
     # Skip obvious non-file tokens: shell vars, fds, flags, device files.
-    if not t or t.startswith("$") or t.startswith("-") or t.startswith("&") or t.startswith("/dev/"):
+    if not t or t.startswith("$") or t.startswith("-") or t.startswith("&") or t.startswith("(") or t.startswith("/dev/"):
         continue
     rel = to_repo_relative(t)
     if rel is None:

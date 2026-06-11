@@ -48,6 +48,17 @@ def compute_composite(pillar_scores, weights):
     """
     if not weights:
         raise ValueError("pillar_weights is empty or missing — cannot compute composite score")
+    # Coerce each pillar weight to float up-front so a string-typed scalar (e.g.
+    # a quoted YAML "0.4") does not raise a TypeError at sum()/multiply below.
+    coerced_weights = {}
+    for pillar, weight in weights.items():
+        try:
+            coerced_weights[pillar] = float(weight)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"pillar_weight for '{pillar}' is not numeric: {weight!r}"
+            )
+    weights = coerced_weights
     weight_total = sum(weights.values())
     if abs(weight_total - 1.0) > 0.01:
         raise ValueError(
@@ -206,6 +217,17 @@ def main():
             _cid = _cat.get("id", f"<index {_idx}>")
             print(f"ERROR: category '{_cid}' missing required key(s): {', '.join(_missing)}", file=sys.stderr)
             sys.exit(1)
+        # Coerce 'min_score' to float once, up-front, so the descending sort and
+        # the `composite >= min_score` comparison in map_to_category / cats_ranked
+        # never hit a string-typed scalar (TypeError / broken sort). A non-numeric
+        # min_score defaults to -inf (lowest-tier threshold).
+        if "min_score" in _cat:
+            try:
+                _cat["min_score"] = float(_cat["min_score"])
+            except (TypeError, ValueError):
+                _cid = _cat.get("id", f"<index {_idx}>")
+                print(f"WARNING: category '{_cid}' has non-numeric min_score {_cat['min_score']!r}; defaulting to -inf", file=sys.stderr)
+                _cat["min_score"] = float("-inf")
 
     # Extract financial figures from loan data
     figures = {}
@@ -269,6 +291,15 @@ def main():
         for _sf in pillar_cfg.get("sub_factors", []):
             if not isinstance(_sf, dict) or "id" not in _sf or "weight" not in _sf:
                 print(f"WARNING: skipping sub_factor in '{pillar_key}' missing 'id'/'weight': {_sf!r}", file=sys.stderr)
+                continue
+            # Coerce 'weight' to float so a string-typed scalar (e.g. "0.3") does
+            # not raise a TypeError at `sf_scores[..] * sf['weight']` in the
+            # weighted-average step below; skip + warn on non-numeric, mirroring
+            # the manual_scores coercion pattern.
+            try:
+                _sf["weight"] = float(_sf["weight"])
+            except (TypeError, ValueError):
+                print(f"WARNING: skipping sub_factor '{_sf.get('id')}' in '{pillar_key}' with non-numeric weight: {_sf['weight']!r}", file=sys.stderr)
                 continue
             sub_factors.append(_sf)
         sf_scores = {}

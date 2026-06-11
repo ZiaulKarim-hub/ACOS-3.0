@@ -41,14 +41,28 @@ def classify_value(value, number_format):
     if isinstance(value, bool):
         return "boolean", str(value).lower()
     if isinstance(value, (int, float)):
-        fmt = (number_format or "").lower()
-        # Strip bracketed locale/color/condition tokens (e.g. '[$-409]', '[red]')
-        # BEFORE the currency '$' test. A localized long-date format like
-        # '[$-409]mmmm d, yyyy' contains a '$' only inside the locale token, so
-        # without stripping it would be misclassified as currency and its date
-        # serial rendered as '$45,000.00'. After stripping, the 'yy'/'mm'/'dd'
-        # date test correctly wins.
-        fmt = re.sub(r"\[[^\]]*\]", "", fmt)
+        raw_fmt = (number_format or "").lower()
+        # Detect currency on the RAW fmt, BEFORE/independently of stripping
+        # bracket tokens. Two prior fixes oscillated here: an unstripped '$' test
+        # misclassified the locale-id of '[$-409]mmmm d, yyyy' as currency, but a
+        # blanket strip of every '[...]' token THEN removed the currency symbol
+        # carried inside a currency-locale token like '[$$-1009]' (Canadian) or
+        # '[$€-407]' (Euro), misclassifying real currency as plain number.
+        #
+        # The distinction: a CURRENCY-locale token is '[$' followed by the
+        # currency symbol (a non-'-', non-']' char) — e.g. '[$$-1009]',
+        # '[$€-407]'. A NON-currency locale-id token is '[$' followed directly by
+        # '-' (e.g. '[$-409]'). So currency is present if either:
+        #   (a) a currency-locale token matches '\[\$[^-\]]', OR
+        #   (b) a bare '$' survives after stripping the '[$-...]' locale-id tokens.
+        non_currency_stripped = re.sub(r"\[\$-[^\]]*\]", "", raw_fmt)
+        is_currency = bool(re.search(r"\[\$[^-\]]", raw_fmt)) or (
+            "$" in non_currency_stripped or "currency" in non_currency_stripped
+        )
+        # Strip ALL remaining bracket tokens (locale-id '[$-...]', '[red]',
+        # conditions) for the percent/date test; the currency decision is already
+        # made above, so '[$-409]mmmm d, yyyy' still reaches the date test.
+        fmt = re.sub(r"\[[^\]]*\]", "", raw_fmt)
         # Test percent BEFORE currency: a grouped-percent format like '#,##0%'
         # contains '#,##0' but is a percentage, not currency. Percent must win
         # so the value_type label agrees with the percentage display.
@@ -58,11 +72,7 @@ def classify_value(value, number_format):
             # branch only multiplied for |value|<1 (so 1.5 -> "1.5%" instead of
             # "150%") and guarded on a dead `'%' not in str(value)` check.
             return "percentage", f"{value * 100:g}%"
-        # Only '$' or the literal 'currency' token marks a currency format. A bare
-        # grouped-integer format like '#,##0' (no '$') is a plain number, not
-        # currency — route it to the 'number' branch but still format via
-        # format_number for grouped thousands-separator display.
-        if any(c in fmt for c in ["$", "currency"]):
+        if is_currency:
             return "currency", format_number(value, number_format)
         if any(d in fmt for d in ["yy", "mm", "dd"]):
             return "date", str(value)
@@ -83,9 +93,27 @@ def classify_value(value, number_format):
     return "unknown", str(value)
 
 
+def _is_currency_format(fmt):
+    """True if an Excel number-format string denotes currency.
+
+    Mirrors classify_value's detection so display agrees with the value_type:
+    a currency-locale token '[$<symbol>...]' (e.g. '[$$-1009]', '[$€-407]')
+    carries the symbol inside the bracket, whereas '[$-409]' is a non-currency
+    locale-id. Detect a currency-locale token, OR a bare '$' surviving after the
+    '[$-...]' locale-id tokens are stripped.
+    """
+    if not fmt:
+        return False
+    low = fmt.lower()
+    if re.search(r"\[\$[^-\]]", low):
+        return True
+    non_currency_stripped = re.sub(r"\[\$-[^\]]*\]", "", low)
+    return "$" in non_currency_stripped or "currency" in non_currency_stripped
+
+
 def format_number(value, fmt):
     """Format a number using its Excel format string for human-readable output."""
-    if fmt and "$" in fmt:
+    if _is_currency_format(fmt):
         if value >= 0:
             return f"${value:,.2f}"
         return f"-${abs(value):,.2f}"

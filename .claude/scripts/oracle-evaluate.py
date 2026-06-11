@@ -382,11 +382,14 @@ INFO_BASH = re.compile(
     r'^(git\s+(status|log|diff|branch|remote|show|tag)|ls|pwd|echo|cat|head|tail|wc|which|type|env|printenv|whoami|date|uname)',
     re.IGNORECASE
 )
-# A write redirection (`>`, `>>`, `&>`, `>|`, `| tee`/`|tee`) means the command
-# performs a write even if it leads with a "safe" info verb — used to suppress
-# the info_cmd discount. Excludes fd-dup forms (`>&`, `2>&1`) which aren't writes.
+# A write redirection (`>`, `>>`, `1>`, `2>>`, `&>`, `>|`, `| tee`/`|tee`) means the
+# command performs a write even if it leads with a "safe" info verb — used to
+# suppress the info_cmd discount. An OPTIONAL leading fd digit is allowed so that
+# `ls 1>out` / `echo a 2> err.txt` (real file writes) are counted, matching what
+# check-scope-bash.sh treats as a write. The trailing `(?![&])` still excludes the
+# fd-dup form `N>&M` (`>&`, `2>&1`) which redirects to a descriptor, not a file.
 WRITE_REDIRECT_BASH = re.compile(
-    r'(?<![0-9&])>>?(?![&])|&>>?|>\||\|\s*tee\b',
+    r'(?<![&])\d?>>?(?![&])|&>>?|>\||\|\s*tee\b',
     re.IGNORECASE
 )
 

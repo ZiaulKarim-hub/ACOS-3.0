@@ -91,24 +91,41 @@ def _get_file_modified(filepath: str) -> str:
         return datetime.now(tz=timezone.utc).isoformat()
 
 
-def _fence_run(stripped: str) -> tuple[Optional[str], int]:
-    """If `stripped` (a left-stripped line) opens/closes a code fence, return
-    (fence_char, run_length); otherwise (None, 0).
+def _fence_run(line: str) -> tuple[Optional[str], int, bool]:
+    """If `line` (a RAW, un-stripped line) is a code-fence marker, return
+    (fence_char, run_length, has_info_string); otherwise (None, 0, False).
 
     Per CommonMark, a fence is a run of >= 3 backticks or tildes. The run length
     matters: a fence opened with N markers can only be closed by a run of the
     SAME char with length >= N. Tracking just the first 3 chars would let a
     shorter inner ``` line falsely close a 4+-backtick fence.
+
+    Two further CommonMark rules are enforced here so callers can apply them:
+      * Indentation: a fence may be indented 0-3 spaces only. A line indented
+        with a tab or with 4+ leading spaces is indented code, NOT a fence.
+      * Info string: only an OPENING fence may carry an info string. A CLOSING
+        fence must contain only the fence run + optional trailing whitespace.
+        `has_info_string` is True when non-whitespace follows the fence run, so
+        a close candidate can be rejected by the caller.
     """
+    if not line:
+        return None, 0, False
+    # Indentation must be 0-3 spaces and contain no tab (a tab => indented code).
+    stripped = line.lstrip(" ")
+    indent = len(line) - len(stripped)
+    if indent > 3 or "\t" in line[:indent]:
+        return None, 0, False
     if not stripped:
-        return None, 0
+        return None, 0, False
     ch = stripped[0]
     if ch not in ("`", "~"):
-        return None, 0
+        return None, 0, False
     run = len(stripped) - len(stripped.lstrip(ch))
     if run < 3:
-        return None, 0
-    return ch, run
+        return None, 0, False
+    # Anything non-whitespace after the fence run is an info string.
+    has_info_string = bool(stripped[run:].strip())
+    return ch, run, has_info_string
 
 
 def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
@@ -124,10 +141,9 @@ def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
     fence_len = 0
 
     for line in content.split("\n"):
-        stripped = line.lstrip()
         # Track fenced-code-block state so a '## ' line inside a ``` or ~~~ fence
         # is treated as content, not a section header.
-        ch, run = _fence_run(stripped)
+        ch, run, has_info = _fence_run(line)
         if not fence_char and ch is not None:
             fence_char = ch
             fence_len = run
@@ -135,8 +151,10 @@ def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
             continue
         if fence_char:
             current_lines.append(line)
-            # Close only on the same fence char with run length >= the opener's.
-            if ch == fence_char and run >= fence_len:
+            # Close only on the same fence char with run length >= the opener's,
+            # and only when the close line carries NO info string (info strings
+            # are permitted on the opener only).
+            if ch == fence_char and run >= fence_len and not has_info:
                 fence_char = ""
                 fence_len = 0
             continue
@@ -165,10 +183,9 @@ def _split_at_h3(content: str) -> list[tuple[str, str]]:
     fence_len = 0
 
     for line in content.split("\n"):
-        stripped = line.lstrip()
         # Track fenced-code-block state so a '### ' line inside a ``` or ~~~ fence
         # is treated as content, not a section header.
-        ch, run = _fence_run(stripped)
+        ch, run, has_info = _fence_run(line)
         if not fence_char and ch is not None:
             fence_char = ch
             fence_len = run
@@ -176,8 +193,10 @@ def _split_at_h3(content: str) -> list[tuple[str, str]]:
             continue
         if fence_char:
             current_lines.append(line)
-            # Close only on the same fence char with run length >= the opener's.
-            if ch == fence_char and run >= fence_len:
+            # Close only on the same fence char with run length >= the opener's,
+            # and only when the close line carries NO info string (info strings
+            # are permitted on the opener only).
+            if ch == fence_char and run >= fence_len and not has_info:
                 fence_char = ""
                 fence_len = 0
             continue

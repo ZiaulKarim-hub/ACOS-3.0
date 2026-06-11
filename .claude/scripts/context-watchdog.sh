@@ -46,8 +46,11 @@ YAML
   else
     rm -f "$HANDOFF_DIR/$FILENAME.tmp"
   fi
-  echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff"
-  date +%s > "$STATE_DIR/last-auto-handoff-time"
+  # Write markers atomically (.tmp + mv), matching the main path's discipline.
+  echo "$HANDOFF_DIR/$FILENAME" > "$STATE_DIR/last-compact-handoff.tmp"
+  mv -f "$STATE_DIR/last-compact-handoff.tmp" "$STATE_DIR/last-compact-handoff"
+  date +%s > "$STATE_DIR/last-auto-handoff-time.tmp"
+  mv -f "$STATE_DIR/last-auto-handoff-time.tmp" "$STATE_DIR/last-auto-handoff-time"
   exit 0
 fi
 
@@ -81,6 +84,12 @@ try:
             # Handle assistant messages with tool_use content blocks
             if msg_type == 'assistant':
                 for block in entry.get('message', {}).get('content', []):
+                    # Content blocks can be bare strings (not dicts). Guard before
+                    # .get(...) — matching context-monitor.sh — so a non-dict block
+                    # can't raise AttributeError and silently abort the whole parse
+                    # (which would leave NO mechanical handoff before compaction).
+                    if not isinstance(block, dict):
+                        continue
                     if block.get('type') == 'tool_use':
                         tool_count += 1
                         name = block.get('name', 'unknown')
