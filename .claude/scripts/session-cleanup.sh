@@ -27,10 +27,12 @@ fi
 
 # ── Remove ephemeral state files ──────────────────────────────────────
 
-# Token estimation cache (will be re-computed by next session's token-gate)
+# Token estimation cache — legacy file from the unregistered token-gate.sh hook.
+# No live hook produces it anymore (autopilot architecture, S5-R1 2026-06-11);
+# rm -f is a harmless no-op kept to clean up any stale file left by older sessions.
 rm -f "$STATE_DIR/.token-gate-cache"
 
-# Handoff enforcement state (retries, active flag — session-specific)
+# Handoff enforcement state — legacy token-gate.sh artifact, see note above.
 rm -f "$STATE_DIR/.handoff-enforcement"
 
 # Stop hook retry counter

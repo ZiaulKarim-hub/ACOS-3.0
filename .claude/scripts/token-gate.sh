@@ -1,6 +1,15 @@
 #!/bin/bash
 # PreToolUse hook — Token monitor with handoff enforcement loop
 #
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │ LEGACY / UNREGISTERED (as of 2026-06-11, S5-R1).                      │
+# │ This script is NOT registered in any settings file and its enforcement│
+# │ loop never fires under the current AUTOPILOT architecture (Stop ->    │
+# │ autopilot-stop-handler.py handles continuation; Eternity Protocol     │
+# │ handles cross-session resume). It is retained only for its            │
+# │ `--health-check` entrypoint and as reference. Do not assume it runs.  │
+# └──────────────────────────────────────────────────────────────────────┘
+#
 # PURPOSE: Monitors context window usage and enforces handoff creation
 # before context exhaustion. Implements a persistent retry loop that
 # escalates urgency until the handoff protocol actually executes.
@@ -169,14 +178,25 @@ run_health_check() {
   echo "=== ACOS Handoff Hook Health Check ==="
   echo ""
 
-  # Check all hook scripts
+  # Check all hook scripts.
+  # NOTE (2026-06-11 S5-R1): the autopilot architecture supersedes the legacy
+  # handoff trio. The load-bearing PreToolUse/Stop/UserPromptSubmit hooks are now
+  # oracle-evaluate.py, check-scope.sh, block-review-rules-read.sh,
+  # autopilot-stop-handler.py, autopilot-context-injector.py, eternity-resume-prepend.sh,
+  # register-session-pid.sh. token-gate.sh / context-monitor.sh / context-watchdog.sh
+  # still exist on disk but are UNREGISTERED — marked optional so a healthy
+  # autopilot install no longer reports FAIL against them.
   echo "--- Hook Scripts ---"
   declare -a SCRIPTS=(
-    ".claude/scripts/token-gate.sh:PreToolUse:required"
     ".claude/scripts/oracle-evaluate.py:PreToolUse:required"
     ".claude/scripts/check-scope.sh:PreToolUse:required"
-    ".claude/scripts/context-monitor.sh:Stop:required"
-    ".claude/scripts/context-watchdog.sh:PreCompact:required"
+    ".claude/scripts/block-review-rules-read.sh:PreToolUse:required"
+    ".claude/scripts/autopilot-stop-handler.py:Stop:required"
+    ".claude/scripts/autopilot-context-injector.py:UserPromptSubmit:required"
+    ".claude/scripts/eternity-resume-prepend.sh:UserPromptSubmit:optional"
+    ".claude/scripts/token-gate.sh:legacy-unregistered:optional"
+    ".claude/scripts/context-monitor.sh:legacy-unregistered:optional"
+    ".claude/scripts/context-watchdog.sh:legacy-unregistered:optional"
     ".claude/scripts/post-write-evidence.sh:PostToolUse:optional"
     ".claude/scripts/log-agent-completion.sh:SubagentStop:optional"
     ".claude/scripts/inject-agent-context.sh:SubagentStart:required"
@@ -218,8 +238,10 @@ for name, entries in hooks.items():
 " 2>/dev/null || echo "  ERROR: Could not parse settings.local.json")
     echo "$hook_info"
 
-    # Verify critical hooks are present
-    for required_hook in "PreToolUse" "Stop" "PreCompact" "SessionStart"; do
+    # Verify critical hook sections are present. PreCompact was dropped under the
+    # autopilot architecture (no in-repo PreCompact hook is registered); checking
+    # for it produced a false FAIL on a healthy install (fixed 2026-06-11 S5-R1).
+    for required_hook in "PreToolUse" "Stop" "SessionStart" "UserPromptSubmit"; do
       if ! python3 -c "
 import json, sys
 with open('.claude/settings.local.json') as f:

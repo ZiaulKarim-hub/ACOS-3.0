@@ -3,6 +3,12 @@
 # Matcher: auto
 # Parses the JSONL transcript to extract session state, saves to memory/handoffs/
 # Exit 0 always (cannot block compaction)
+#
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │ LEGACY / UNREGISTERED (as of 2026-06-11, S5-R1). No PreCompact hook   │
+# │ is registered under the autopilot architecture; this script never     │
+# │ fires. Retained for reference only — do not assume it runs.           │
+# └──────────────────────────────────────────────────────────────────────┘
 
 set -euo pipefail
 

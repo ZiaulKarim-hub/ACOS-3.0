@@ -1,6 +1,13 @@
 #!/bin/bash
 # Stop hook — blocks Claude from stopping until a handoff exists
 #
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │ LEGACY / UNREGISTERED (as of 2026-06-11, S5-R1). Superseded by the    │
+# │ autopilot Stop hook (autopilot-stop-handler.py). This script is       │
+# │ registered in NO settings file and never fires. Retained for          │
+# │ reference only — do not assume it runs.                               │
+# └──────────────────────────────────────────────────────────────────────┘
+#
 # Works with token-gate.sh (PreToolUse) as a two-layer defense:
 #   Layer 1 (token-gate): proactively monitors every tool call, warns/blocks at thresholds
 #   Layer 2 (this script): catches the stop event, ensures handoff exists before allowing exit

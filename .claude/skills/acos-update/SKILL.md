@@ -40,6 +40,12 @@ nothing breaks after changes.
 bash .claude/scripts/token-gate.sh --health-check
 ```
 
+> The `--health-check` entrypoint is autopilot-aware (updated 2026-06-11): it
+> verifies the registered autopilot hook set (oracle-evaluate.py, check-scope.sh,
+> block-review-rules-read.sh, autopilot-stop-handler.py, autopilot-context-injector.py)
+> and treats the legacy token-gate.sh / context-monitor.sh / context-watchdog.sh
+> as optional/unregistered. A healthy autopilot install should report PASSED.
+
 Save output as the **pre-update baseline**.
 
 ### Step 1.2: Inventory Current Capabilities

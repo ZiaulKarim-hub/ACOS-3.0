@@ -555,21 +555,24 @@ if 'hooks' in acos:
                         hooks_added += 1
                         break
 
-# Enforce ordering: token-gate.sh must be FIRST in PreToolUse
-# (it must run before Oracle to gate tool execution on context budget)
+# Enforce ordering: oracle-evaluate.py must be FIRST in PreToolUse so permission
+# scoring runs before any other PreToolUse guard. (The legacy token-gate.sh-first
+# rule was removed 2026-06-11 S5-R1 — token-gate.sh is unregistered under the
+# autopilot architecture, so the old block was dead code and asserted a chain
+# order that never existed.)
 if 'PreToolUse' in existing.get('hooks', {}):
     pre_hooks = existing['hooks']['PreToolUse']
-    gate_idx = None
+    oracle_idx = None
     for i, entry in enumerate(pre_hooks):
         for h in entry.get('hooks', []):
-            if 'token-gate.sh' in h.get('command', ''):
-                gate_idx = i
+            if 'oracle-evaluate.py' in h.get('command', ''):
+                oracle_idx = i
                 break
-        if gate_idx is not None:
+        if oracle_idx is not None:
             break
-    if gate_idx is not None and gate_idx != 0:
-        gate_entry = pre_hooks.pop(gate_idx)
-        pre_hooks.insert(0, gate_entry)
+    if oracle_idx is not None and oracle_idx != 0:
+        oracle_entry = pre_hooks.pop(oracle_idx)
+        pre_hooks.insert(0, oracle_entry)
 
 if 'outputStyle' in acos and 'outputStyle' not in existing:
     existing['outputStyle'] = acos['outputStyle']

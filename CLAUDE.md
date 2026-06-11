@@ -36,25 +36,14 @@ concrete action with no ambiguity, just do it.
 - Planning artifacts live in planning/ (vision, epics, stories, slices)
 - Memory artifacts live in memory/ (source-of-truth, decisions, reviews, handoffs)
 
-## Auto-Handoff System
-- Stop hook estimates token usage from transcript content (~3 chars/token + 30k
-  system overhead), fires once per session at ~100k tokens (~50%). Creates a
-  semantic handoff via /acos-handoff-protocol.
-- Token-gate (PreToolUse) enforces handoff with staleness detection: if tokens grew
-  >20k since the last handoff was created, it demands a FRESH handoff. Hard ceiling at 130k.
-- Context compaction triggers at 69% (~138k tokens) via CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69.
-  This fires ~8k tokens after the Stop hook, just after the handoff is saved.
-- SessionEnd hook (session-cleanup.sh) removes ephemeral state files (.token-gate-cache,
-  .handoff-enforcement, .stop-retry-count, continue markers) to prevent stale state.
-- PreCompact hook creates a mechanical handoff (`status: mechanical`) before compaction.
-- SessionStart hook auto-loads ALL **active** handoffs (newest first) + accepted ADRs
-  from memory/decisions/, within a 25k token budget. Falls back to mechanical handoffs
-  if no active ones exist. Skips `status: completed`.
-- Handoff lifecycle: handoffs stay `status: active` until user runs `/acos-complete`.
-  `/acos-complete` marks all active handoffs as completed and moves them to
-  `memory/handoffs/archive/`. Next session starts with clean context.
-- No time-based expiry — status lifecycle handles staleness.
-- Handoff files: memory/handoffs/ | Archive: memory/handoffs/archive/ | Runtime: .acos/state/
+## Handoff & Continuation System (Autopilot architecture)
+- **Continuation loop (active):** the `Stop` hook runs `autopilot-stop-handler.py`, which keeps Claude going across turns toward a goal until a completion marker, an iteration cap, or an idle window is hit. `UserPromptSubmit` runs `autopilot-context-injector.py` (injects autopilot state) and `eternity-resume-prepend.sh` (cross-session resume). `SessionStart` runs `register-session-pid.sh` (Eternity Protocol session registration + token-watcher daemon spawn).
+- **Cross-session resume:** managed by the Eternity Protocol (`-cmux` / `-warp` / `-stop` variants), not by an in-repo PreCompact/Stop handoff hook.
+- **Legacy (UNREGISTERED, superseded by autopilot):** `context-monitor.sh` (was Stop), `context-watchdog.sh` (was PreCompact), and `token-gate.sh` (was PreToolUse) still exist on disk but are registered in NO settings file and never fire. Do not assume they run. The `auto-load-handoff.sh` SessionStart hook was likewise never registered and was removed Apr 2026.
+- **Manual handoff loading:** `/acos-handoff` skill spawns `handoff-agent` in a separate context window when needed.
+- **Lifecycle:** handoffs stay `status: active` until `/acos-complete`, which marks them `completed` and moves them to `memory/handoffs/archive/`. No time-based expiry.
+- **Cleanup:** `session-cleanup.sh` (SessionEnd) removes ephemeral runtime state files in `.acos/state/`. Some legacy filenames it still clears (e.g. `.token-gate-cache`) are no longer produced by any live hook — harmless no-ops kept for backward cleanup.
+- **Files:** memory/handoffs/ | Archive: memory/handoffs/archive/ | Runtime: .acos/state/
 
 ## The Oracle (Permission Governance)
 - PreToolUse hook that scores every tool call on a temperature scale (0=safe, 10=dangerous).
@@ -71,7 +60,7 @@ concrete action with no ambiguity, just do it.
 - Fail-safe: shell-level `|| printf 'allow'` fallback prevents tool lockout if script errors.
 - No git dependency: hooks resolve paths via CWD and `__file__`, not `git rev-parse`.
 - Health check: `python3 .claude/scripts/oracle-evaluate.py --health` verifies all dependencies.
-- Hook ordering: Oracle (Bash|Write|Edit|NotebookEdit|Task) → check-scope.sh (Write|Edit only) → execute.
+- PreToolUse hook chain (registered order): (1) `oracle-evaluate.py` (Bash|Write|Edit|NotebookEdit|Task), (2) `check-scope.sh` (Write|Edit only), (3) `autopilot-askuserquestion-handler.py` (AskUserQuestion|ExitPlanMode), (4) `block-review-rules-read.sh` (Read|Bash|Grep|Glob — Independence Wall), (5) `autopilot-allow-extra-tools.py` (WebFetch|WebSearch|mcp__.*) → execute.
 
 ## Model Profile System
 - Controls which model each agent uses when spawned — supports Claude AND external models.
@@ -111,6 +100,7 @@ Vision (source of truth) > Epic (capability) > Story (user value) > Slice (atomi
 - **fin-stmt-sandbox** — Sandbox orchestrator for financial statement preparation (independent GAAP preparation).
 - **fin-stmt-accountant** — Primary Accountant for adversarial reconciliation (Wigum loop, never gives numbers).
 - **electronics-expert** — Master electronics diagnostics agent. Analyzes circuit boards, guides fault isolation, provides repair instructions.
+- **legal-analyst** — Dual-mode legal diligence agent. Mode A: real estate PE lending (loan docs, title, liens, SPE/entity). Mode B: copyright / IP infringement (ownership, substantial similarity, fair use, DMCA, damages, claim+defense mapping). Produces cited legal-risk reports. Diligence support only — NOT legal advice.
 
 ## Review Process
 Reviews are assigned programmatically by .claude/scripts/assign-reviewers.sh

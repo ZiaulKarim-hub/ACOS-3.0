@@ -20,9 +20,13 @@ if [[ -d ".acos" && -f ".acos/config/project.yaml" ]]; then
   if [[ -f "$SETTINGS" ]]; then
     HOOKS_OK=true
     # Hooks may live in the project OR the user-global settings file (Claude Code merges both).
-    # auto-load-handoff.sh was removed Apr 2026 and is intentionally NOT checked here.
-    for cmd in "token-gate.sh" "oracle-evaluate.py" "check-scope.sh" "context-monitor.sh"; do
-      if ! grep -qs "$cmd" "$SETTINGS" "$HOME/.claude/settings.local.json"; then
+    # Check the load-bearing hooks that are ACTUALLY registered under the autopilot
+    # architecture. The legacy handoff trio (token-gate.sh / context-monitor.sh /
+    # context-watchdog.sh) and auto-load-handoff.sh are unregistered/removed and are
+    # intentionally NOT checked here — checking them forced a non-converging
+    # bootstrap --force on every skill invocation (fixed 2026-06-11, S5-R1).
+    for cmd in "oracle-evaluate.py" "check-scope.sh" "block-review-rules-read.sh" "autopilot-stop-handler.py"; do
+      if ! grep -qs "$cmd" "$SETTINGS" "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json"; then
         HOOKS_OK=false
         break
       fi
