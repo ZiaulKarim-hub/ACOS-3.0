@@ -7,7 +7,8 @@
 #   - project-settings global (matcher Read|Bash|Grep|Glob) — fires in interactive mode,
 #     where the main conversation IS the architect and no agent boundary exists.
 #
-# Checks every read vector's target: Read.file_path, Bash.command, Grep/Glob.path.
+# Checks EVERY field of tool_input (serialized), so no read vector can slip a target
+# through an uninspected field (file_path, command, path, pattern, glob, notebook_path).
 # Covers the legacy review-rules.yaml AND the review-rules/ directory, and the
 # underscore variant review_rules. The legitimate reader assign-reviewers.sh reads
 # the dir internally and is invoked as `.../assign-reviewers.sh` (no review-rules in
@@ -25,8 +26,11 @@ import sys, json
 try:
     d = json.load(sys.stdin)
     inp = d.get('tool_input', {})
-    # All target fields across read vectors: Read(file_path), Bash(command), Grep/Glob(path)
-    blob = ' '.join(str(inp.get(k, '')) for k in ('file_path', 'command', 'path'))
+    # Scan the ENTIRE tool_input, not a hardcoded subset of fields. Glob's primary
+    # target is 'pattern' and Grep uses 'pattern'/'glob', so a Glob/Grep aimed at
+    # the wall target via 'pattern' would bypass a file_path/command/path-only check.
+    # Serializing the whole input catches every current and future target field.
+    blob = json.dumps(inp)
     if 'review-rules' in blob or 'review_rules' in blob:
         print('BLOCKED')
 except Exception:

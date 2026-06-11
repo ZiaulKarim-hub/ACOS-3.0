@@ -12,6 +12,7 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 function parseArgs(argv) {
   const args = argv.slice(2);
@@ -88,31 +89,53 @@ async function convertHtmlToPdf(options) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  // Read the HTML content
-  const html = fs.readFileSync(inputPath, 'utf8');
-
   console.log(`Converting: ${path.basename(inputPath)} -> ${path.basename(outputPath)}`);
   console.log(`  Format: ${format}, Margins: ${marginInches}in, Landscape: ${landscape}, Footer: ${!noFooter}`);
 
   // Launch headless Chrome
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--allow-file-access-from-files']
   });
 
   try {
     const page = await browser.newPage();
 
-    // Resolve the base URL so relative paths (images, CSS) work correctly.
-    // Using a file:// URL derived from the input HTML's directory.
-    const baseUrl = 'file://' + path.dirname(inputPath) + '/';
-
-    // Set the HTML content. waitUntil: 'networkidle0' ensures all resources
-    // (images, fonts, external stylesheets) finish loading before we proceed.
-    await page.setContent(html, {
+    // page.goto() with a file:// URL sets the document origin to the file's
+    // directory, so relative paths and <base href> resolve correctly. The
+    // previous setContent() path left origin at about:blank and silently
+    // dropped all image / font loads.
+    await page.goto(pathToFileURL(inputPath).href, {
       waitUntil: 'networkidle0',
-      timeout: 30000
+      timeout: 60000
     });
+
+    // Strip loading="lazy" so off-screen images actually load. In headless
+    // Chromium the IntersectionObserver behind native lazy-loading never fires
+    // for images below the fold, so they render blank in the PDF. Removing the
+    // attribute forces eager loading; we then wait for every <img> to settle.
+    await page.evaluate(() => {
+      document.querySelectorAll('img[loading]').forEach(i => i.removeAttribute('loading'));
+    });
+
+    // Wait for fonts and all (now eager) images to finish loading/decoding
+    // before generating the PDF, so nothing renders blank.
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      const imgs = Array.from(document.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) {
+          return img.decode().catch(() => {});
+        }
+        return new Promise(resolve => {
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }));
+    });
+
+    // Re-settle the network now that lazy images were forced to load
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 30000 }).catch(() => {});
 
     // Brief pause for any deferred CSS rendering or font application
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -126,7 +149,7 @@ async function convertHtmlToPdf(options) {
       margin: {
         top: `${marginInches}in`,
         right: `${marginInches}in`,
-        bottom: '1.25in',
+        bottom: noFooter ? `${marginInches}in` : '1.25in',
         left: `${marginInches}in`
       }
     };

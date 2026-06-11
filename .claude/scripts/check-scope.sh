@@ -40,25 +40,36 @@ fi
 #     - "src/bar.ts"
 ALLOWED=$(python3 -c "
 import sys, re
+# Exit codes (consumed by the bash caller):
+#   0 = success — files_allowed parsed (list printed on stdout). An EMPTY list
+#       here is meaningful: a slice that allows NO files. We print nothing and
+#       exit 0 so the caller fails CLOSED (blocks the write).
+#   2 = genuine parse error (file unreadable / regex blew up) — caller fails OPEN.
 try:
     with open(sys.argv[1]) as f:
         text = f.read()
     # Find the files_allowed block and extract list items
     m = re.search(r'files_allowed:\s*\n((?:\s+-\s+.*\n?)*)', text)
     if not m:
-        sys.exit(1)
+        # No files_allowed block (or it is empty) — a VALID slice that allows
+        # nothing. Emit an empty allow-list and exit 0 → caller blocks all writes.
+        sys.exit(0)
     for line in m.group(1).strip().split('\n'):
         line = line.strip()
         if line.startswith('- '):
             val = line[2:].strip().strip('\"').strip(\"'\")
             if val:
                 print(val)
+    sys.exit(0)
 except Exception:
-    sys.exit(1)
+    # Genuine parse failure — fail open so a malformed YAML doesn't lock out writes.
+    sys.exit(2)
 " "$ACTIVE_SLICE" 2>/dev/null)
+PARSE_RC=$?
 
-# If YAML parsing fails, fail open (log for diagnostics)
-if [ $? -ne 0 ]; then
+# Only a GENUINE parse error (exit 2) fails open. Exit 0 with an empty list means
+# "this slice allows nothing" → fall through to the matcher, which blocks (fail-closed).
+if [ "$PARSE_RC" -eq 2 ]; then
   echo "check-scope: FAIL-OPEN — could not parse files_allowed from $ACTIVE_SLICE" >&2
   exit 0
 fi

@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -42,6 +43,17 @@ def _resolve_path(path: str) -> str:
     return str(Path(path).resolve())
 
 
+def _escape_sql_literal(value: str) -> str:
+    """Escape a value for safe interpolation inside a double-quoted SQL predicate.
+
+    LanceDB filter predicates use a SQL-like syntax (e.g. `source_file = "x"`).
+    A raw path/category containing a double-quote or backslash would break the
+    predicate (and the bare except would swallow the error, leaving stale chunks
+    forever). Backslash-escape backslashes first, then double-quotes.
+    """
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def get_db(db_path: str = DEFAULT_DB_PATH) -> lancedb.DBConnection:
     """Open or create the LanceDB database."""
     resolved = _resolve_path(db_path)
@@ -61,7 +73,10 @@ def get_or_create_table(
 def chunks_to_records(chunks: list[Chunk], vectors: list[list[float]]) -> list[dict]:
     """Convert Chunk objects + vectors into dicts suitable for LanceDB insert."""
     records = []
-    for chunk, vector in zip(chunks, vectors):
+    # strict=True turns a silent length mismatch (which would drop chunks or
+    # vectors without error) into a loud ValueError caught by the caller's
+    # file-level handler. Embeddings must align 1:1 with chunks.
+    for chunk, vector in zip(chunks, vectors, strict=True):
         m = chunk.metadata
         records.append(
             {
@@ -100,12 +115,17 @@ def upsert_chunks(
     # Determine which source files are being updated
     source_files = list({c.metadata.source_file for c in chunks})
 
-    # Delete old chunks for those files
+    # Delete old chunks for those files. Escape the value so a path containing a
+    # quote/backslash doesn't break the predicate. Surface failures to stderr
+    # instead of silently swallowing — a failed delete leaves stale chunks behind.
     for sf in source_files:
         try:
-            table.delete(f'source_file = "{sf}"')
-        except Exception:
-            pass  # Table might be empty or file not present
+            table.delete(f'source_file = "{_escape_sql_literal(sf)}"')
+        except Exception as e:
+            print(
+                f"warning: failed to delete stale chunks for {sf!r}: {e}",
+                file=sys.stderr,
+            )
 
     # Insert new chunks
     records = chunks_to_records(chunks, vectors)
@@ -121,10 +141,14 @@ def delete_chunks_for_files(
     removed = 0
     for fp in filepaths:
         try:
-            table.delete(f'source_file = "{fp}"')
+            table.delete(f'source_file = "{_escape_sql_literal(fp)}"')
             removed += 1
-        except Exception:
-            pass
+        except Exception as e:
+            # Surface to stderr so stale-chunk accumulation is visible.
+            print(
+                f"warning: failed to delete chunks for {fp!r}: {e}",
+                file=sys.stderr,
+            )
     return removed
 
 
@@ -134,15 +158,33 @@ def search(
     top_k: int = 10,
     category: Optional[str] = None,
     min_score: float = 0.0,
+    max_per_file: int = 3,
 ) -> list[SearchResult]:
     """Search the table by vector similarity.
 
     Returns SearchResult objects sorted by descending relevance.
+
+    This is the ONLY over-fetch layer (the querier requests plain top_k). We
+    over-fetch enough to survive (a) per-file dedup in the querier, which keeps
+    at most `max_per_file` chunks per source file, and (b) min_score attrition.
+    Fetch = top_k * max_per_file + margin so a single dominant file or a strict
+    min_score can't starve the result set.
     """
-    query = table.search(query_vector).limit(top_k * 2)  # Over-fetch for filtering
+    fetch_k = top_k * max(1, max_per_file) + 10
+
+    # Use cosine distance. nomic-embed-text vectors are NOT L2-normalized, so the
+    # default L2 metric yields unbounded distances and `1 - distance/2` collapses
+    # to 0, breaking ranking + min_score filtering. Cosine distance is bounded in
+    # [0, 2] regardless of magnitude, giving a stable similarity in [0, 1].
+    query = table.search(query_vector).metric("cosine")
 
     if category:
-        query = query.where(f'category = "{category}"')
+        # prefilter=True applies the WHERE *before* the kNN limit, so fetch_k
+        # counts post-filter rows (otherwise the category filter could be starved
+        # by a limit applied to pre-filter candidates).
+        query = query.where(f'category = "{_escape_sql_literal(category)}"', prefilter=True)
+
+    query = query.limit(fetch_k)
 
     results_table = query.to_arrow()
 
@@ -151,8 +193,9 @@ def search(
 
     search_results = []
     for i in range(results_table.num_rows):
-        # LanceDB returns _distance (L2); convert to similarity score
-        # For normalized vectors, similarity ≈ 1 - (distance² / 2)
+        # LanceDB returns _distance as cosine distance (1 - cosine_similarity),
+        # bounded in [0, 2]. Convert to a bounded similarity in [0, 1]:
+        #   score = 1 - distance/2
         distance = results_table.column("_distance")[i].as_py()
         score = max(0.0, 1.0 - distance / 2.0)
 
@@ -170,9 +213,12 @@ def search(
             )
         )
 
-    # Sort by score descending, truncate to top_k
+    # Sort by score descending. Return the full over-fetched, filtered pool
+    # (up to fetch_k rows) rather than truncating to top_k here: the caller
+    # (querier) still needs the extra rows to perform per-file dedup before it
+    # takes its own top_k. Truncating here would starve that dedup.
     search_results.sort(key=lambda r: r.score, reverse=True)
-    return search_results[:top_k]
+    return search_results
 
 
 # --- Index metadata management ---

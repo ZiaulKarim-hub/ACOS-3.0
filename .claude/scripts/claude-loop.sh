@@ -112,7 +112,7 @@ should_stop() {
 count_handoffs() {
   local today=$(date -u +%Y-%m-%d)
   local count=0
-  for f in "$HANDOFF_DIR"/${today}*.yaml "$HANDOFF_DIR"/${today}*.yml; do
+  for f in "$HANDOFF_DIR"/${today}*.yaml "$HANDOFF_DIR"/${today}*.yml "$HANDOFF_DIR"/${today}*.md; do
     [ -f "$f" ] && count=$((count + 1))
   done
   echo "$count"

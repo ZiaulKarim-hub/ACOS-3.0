@@ -49,4 +49,8 @@ rm -f "$STATE_DIR"/handoff-triggered-*
 # Model profile session state (ephemeral — profile reverts to config default)
 rm -f "$STATE_DIR/model-session.yaml"
 
+# Autopilot state — never persist across sessions
+rm -f "$STATE_DIR/autopilot-active"
+rm -f "$STATE_DIR/autopilot-loop-state.json"
+
 exit 0

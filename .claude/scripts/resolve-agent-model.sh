@@ -66,6 +66,9 @@ AGENT_DEFAULTS = {
 
 def is_valid_model(model_spec):
     """Check if a model spec is valid — either a Claude name or provider:model format."""
+    # Guard against non-string input (e.g. empty YAML leaf parsed as {} or None).
+    if not isinstance(model_spec, str):
+        return False
     if model_spec in CLAUDE_MODELS:
         return True
     if ":" in model_spec:
@@ -76,6 +79,9 @@ def is_valid_model(model_spec):
 
 def is_external(model_spec):
     """Check if model spec refers to a non-Claude provider."""
+    # Guard against non-string input — non-strings are never external.
+    if not isinstance(model_spec, str):
+        return False
     if model_spec in CLAUDE_MODELS:
         return False
     if ":" in model_spec:
@@ -91,6 +97,9 @@ def normalize_model(model_spec):
     - claude:opus → opus (strip claude: prefix for Task() compatibility)
     - openai:gpt-4o → openai:gpt-4o (kept as-is for external dispatch)
     """
+    # Guard against non-string input — fall back to a safe Claude default.
+    if not isinstance(model_spec, str):
+        return "opus"
     if model_spec in CLAUDE_MODELS:
         return model_spec
     if ":" in model_spec:
@@ -146,7 +155,12 @@ def parse_simple_yaml(filepath):
                         if val:
                             result[current_section][key] = val
                         else:
-                            result[current_section][key] = {}
+                            # Empty second-level leaf: store '' (a safe string),
+                            # NOT {} — a {} leaf reaches is_valid_model() and raises
+                            # TypeError ('dict' unhashable in a set). If a third-level
+                            # key follows, the third-level branch promotes this to a
+                            # dict, preserving nested-map parsing.
+                            result[current_section][key] = ''
                             current_subsection = key
 
                 # Third-level key (4-space indent)
@@ -157,10 +171,13 @@ def parse_simple_yaml(filepath):
                     section = result.get(current_section, {})
                     if isinstance(section, dict):
                         subsection = section.get(current_subsection, {})
-                        if isinstance(subsection, dict):
-                            subsection[key] = val
-                            section[current_subsection] = subsection
-                            result[current_section] = section
+                        # Promote a '' placeholder (or any non-dict) to a dict so
+                        # genuine nested maps still parse correctly.
+                        if not isinstance(subsection, dict):
+                            subsection = {}
+                        subsection[key] = val
+                        section[current_subsection] = subsection
+                        result[current_section] = section
 
     except (IOError, OSError):
         return {}
@@ -211,19 +228,29 @@ def resolve(agent, state, config):
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
-state = parse_simple_yaml(state_path)
-config = parse_simple_yaml(config_path)
-model = resolve(agent_name, state, config)
+# Belt-and-suspenders: anything unexpected must still yield a usable model so
+# callers never dispatch with an empty model spec.
+try:
+    state = parse_simple_yaml(state_path)
+    config = parse_simple_yaml(config_path)
+    model = resolve(agent_name, state, config)
 
-# Safety gate: Claude-only agents cannot use external models
-if agent_name in CLAUDE_ONLY_AGENTS and is_external(model):
-    fallback = AGENT_DEFAULTS.get(agent_name, "opus")
-    print(
-        f"Warning: {agent_name} requires Claude (tool access). "
-        f"Ignoring '{model}', falling back to '{fallback}'.",
-        file=sys.stderr,
-    )
-    model = fallback
+    # Safety gate: Claude-only agents cannot use external models
+    if agent_name in CLAUDE_ONLY_AGENTS and is_external(model):
+        fallback = AGENT_DEFAULTS.get(agent_name, "opus")
+        print(
+            f"Warning: {agent_name} requires Claude (tool access). "
+            f"Ignoring '{model}', falling back to '{fallback}'.",
+            file=sys.stderr,
+        )
+        model = fallback
 
-print(normalize_model(model))
+    out = normalize_model(model)
+    # Final guard: never emit empty/whitespace — fall back to a safe Claude default.
+    if not isinstance(out, str) or not out.strip():
+        out = AGENT_DEFAULTS.get(agent_name, "opus")
+    print(out)
+except Exception as e:  # noqa: BLE001 — must never crash the caller
+    print(f"Warning: model resolution failed ({e}); using 'opus'.", file=sys.stderr)
+    print("opus")
 PYEOF

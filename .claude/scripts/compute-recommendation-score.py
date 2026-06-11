@@ -39,90 +39,6 @@ def load_yaml(path):
     raise ImportError("PyYAML required: pip install pyyaml")
 
 
-def score_from_range(value, scoring_bands, direction):
-    """Map a numeric value to a 1-10 score using the scoring bands."""
-    if value is None:
-        return 5  # default mid-range if data unavailable
-
-    for band in scoring_bands:
-        criteria = band["criteria"]
-        lo, hi = band["range"]
-        # Parse threshold from criteria string
-        # Bands are ordered high-to-low, first match wins
-        if lo <= 10 and hi >= 1:
-            return (lo + hi) / 2  # midpoint of range
-
-    return 5  # fallback
-
-
-def compute_automated_score(ratio_id, value, config):
-    """Score an automated sub-factor from its value and config thresholds."""
-    if value is None:
-        return 5.0, "DATA_UNAVAILABLE"
-
-    # Find the sub-factor scoring bands
-    for pillar_key in ["financial_metrics"]:
-        pillar = config.get(pillar_key, {})
-        for sf in pillar.get("sub_factors", []):
-            if sf["id"] == ratio_id and sf.get("automated"):
-                bands = sf["scoring"]
-                for band in bands:
-                    lo, hi = band["range"]
-                    criteria = band["criteria"]
-                    # Parse the criteria to check if value falls in this band
-                    if _value_matches_criteria(value, criteria, ratio_id):
-                        score = (lo + hi) / 2
-                        return score, criteria
-    return 5.0, "NO_MATCHING_BAND"
-
-
-def _value_matches_criteria(value, criteria, ratio_id):
-    """Check if a value matches a scoring criteria string."""
-    c = criteria.lower().strip()
-
-    # Handle "X > Y" and "X < Y" patterns
-    if ratio_id in ("ltv", "debt_yield", "dscr", "noi_trend", "stress_test"):
-        try:
-            if ">" in c and "<" not in c:
-                threshold = float(c.split(">")[1].strip().rstrip("%x"))
-                return value > threshold
-            elif "<" in c and ">" not in c:
-                threshold = float(c.split("<")[1].strip().rstrip("%x"))
-                return value < threshold
-            elif "-" in c:
-                parts = c.replace("%", "").replace("x", "").split("-")
-                # Find two numbers
-                nums = []
-                for p in parts:
-                    p = p.strip()
-                    try:
-                        nums.append(float(p.split()[-1]))
-                    except (ValueError, IndexError):
-                        pass
-                if len(nums) >= 2:
-                    return min(nums) <= value <= max(nums)
-        except (ValueError, IndexError):
-            pass
-
-    return False
-
-
-def compute_pillar_score(pillar_config, sub_factor_scores):
-    """Compute weighted pillar score from sub-factor scores."""
-    total = 0.0
-    weight_sum = 0.0
-    for sf in pillar_config.get("sub_factors", []):
-        sf_id = sf["id"]
-        weight = sf["weight"]
-        score = sub_factor_scores.get(sf_id, 5.0)
-        total += score * weight
-        weight_sum += weight
-
-    if weight_sum > 0:
-        return total / weight_sum * 10  # normalize to 1-10 scale
-    return 5.0
-
-
 def compute_composite(pillar_scores, weights):
     """Compute weighted composite from pillar scores."""
     composite = 0.0
@@ -133,11 +49,17 @@ def compute_composite(pillar_scores, weights):
 
 
 def map_to_category(composite, categories):
-    """Map composite score to recommendation category."""
-    for cat in categories:
+    """Map composite score to recommendation category.
+
+    Order-independent: sort categories by min_score descending so the first
+    category whose threshold the composite meets is the highest-tier match,
+    regardless of how categories are ordered in the config.
+    """
+    ordered = sorted(categories, key=lambda c: c["min_score"], reverse=True)
+    for cat in ordered:
         if composite >= cat["min_score"]:
             return cat
-    return categories[-1]  # fallback to last (lowest)
+    return ordered[-1]  # fallback to last (lowest)
 
 
 def check_overrides(composite, category, pillar_scores, ratios, override_rules):
@@ -197,17 +119,17 @@ def color_ratio(value, ratio_config):
     if direction == "lower_is_better":
         green_max = ratio_config.get("green_max")
         amber_max = ratio_config.get("amber_max")
-        if green_max and value <= green_max:
+        if green_max is not None and value <= green_max:
             return "green"
-        if amber_max and value <= amber_max:
+        if amber_max is not None and value <= amber_max:
             return "amber"
         return "red"
     elif direction == "higher_is_better":
         green_min = ratio_config.get("green_min")
         amber_min = ratio_config.get("amber_min")
-        if green_min and value >= green_min:
+        if green_min is not None and value >= green_min:
             return "green"
-        if amber_min and value >= amber_min:
+        if amber_min is not None and value >= amber_min:
             return "amber"
         return "red"
     return "gray"
@@ -244,7 +166,8 @@ def main():
     ratio_results = {}
     for ratio_cfg in config.get("must_have_ratios", []):
         rid = ratio_cfg["id"]
-        value = figures.get(rid.lower()) or figures.get(rid)
+        # Explicit membership so a legitimate 0/0.0 figure is not discarded as falsy.
+        value = figures[rid.lower()] if rid.lower() in figures else figures.get(rid)
         color = color_ratio(value, ratio_cfg) if value is not None else "gray"
         ratio_results[rid] = {
             "value": value,
@@ -311,9 +234,12 @@ def main():
             if category["id"] == "APPROVE":
                 final_category = [c for c in config["categories"] if c["id"] == "CONDITIONAL_APPROVE"][0]
         elif override["action"] == "downgrade_one_category":
-            cats = config["categories"]
-            idx = next((i for i, c in enumerate(cats) if c["id"] == category["id"]), 0)
-            if idx < len(cats) - 1:
+            # Order-independent: rank categories best-to-worst by min_score, then
+            # step down one rank. If the current category id isn't found, leave the
+            # category unchanged rather than silently defaulting to the top idx (0).
+            cats = sorted(config["categories"], key=lambda c: c["min_score"], reverse=True)
+            idx = next((i for i, c in enumerate(cats) if c["id"] == final_category["id"]), None)
+            if idx is not None and idx < len(cats) - 1:
                 final_category = cats[idx + 1]
 
     result = {

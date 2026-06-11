@@ -45,7 +45,11 @@ def classify_value(value, number_format):
         if any(c in fmt for c in ["$", "currency", "#,##0"]):
             return "currency", format_number(value, number_format)
         if "%" in fmt:
-            return "percentage", f"{value * 100 if value < 1 and value > -1 and '%' not in str(value) else value}%"
+            # Excel stores percentages as the underlying fraction (0.25 == 25%),
+            # so always scale by 100 — uniformly, for any magnitude. The old
+            # branch only multiplied for |value|<1 (so 1.5 -> "1.5%" instead of
+            # "150%") and guarded on a dead `'%' not in str(value)` check.
+            return "percentage", f"{value * 100:g}%"
         if any(d in fmt for d in ["yy", "mm", "dd"]):
             return "date", str(value)
         return "number", value
@@ -70,7 +74,11 @@ def format_number(value, fmt):
             return f"${value:,.2f}"
         return f"-${abs(value):,.2f}"
     if fmt and "%" in fmt:
-        return f"{value:.2%}" if abs(value) < 10 else f"{value:.1f}%"
+        # Excel stores percentages as fractions; scale by 100 uniformly for all
+        # magnitudes. The old abs<10 vs >=10 split was contradictory: `:.2%`
+        # multiplies by 100 while `:.1f}%` did not, so 0.25 -> "25.00%" but
+        # 15 -> "15.0%" (should be "1500%").
+        return f"{value * 100:g}%"
     if isinstance(value, float) and value == int(value):
         return int(value)
     return value

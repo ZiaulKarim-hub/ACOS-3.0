@@ -140,13 +140,29 @@ def _split_at_h3(content: str) -> list[tuple[str, str]]:
 
 
 def _split_at_paragraphs(content: str, target: int = TARGET_SIZE) -> list[str]:
-    """Split content at paragraph boundaries to fit within target size."""
+    """Split content at paragraph boundaries to fit within target size.
+
+    A single paragraph longer than `target` is further split with
+    _split_text_to_max (line/size-based) so a semantic cut happens here rather
+    than being emitted whole and later blindly hard-cut mid-word by the
+    _enforce_max_size safety net.
+    """
     paragraphs = re.split(r"\n\n+", content)
     chunks: list[str] = []
     current: list[str] = []
     current_len = 0
 
     for para in paragraphs:
+        # An individual paragraph larger than target can't fit in any accumulator;
+        # flush what we have and size-split this paragraph on its own.
+        if len(para) > target:
+            if current:
+                chunks.append("\n\n".join(current))
+                current = []
+                current_len = 0
+            chunks.extend(_split_text_to_max(para, target))
+            continue
+
         para_len = len(para)
         if current_len + para_len > target and current:
             chunks.append("\n\n".join(current))

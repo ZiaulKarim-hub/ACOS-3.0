@@ -33,7 +33,9 @@ if [[ -d ".acos" && -f ".acos/config/project.yaml" ]]; then
     # Missing hooks detected — re-run bootstrap to add them (merge is idempotent)
     echo "ACOS preflight: missing hooks detected, running bootstrap --force to repair..."
   else
-    exit 0
+    # settings.local.json absent means NO hooks are installed — fall through to
+    # the bootstrap-repair path below instead of falsely declaring ready.
+    echo "ACOS preflight: settings.local.json missing (no hooks installed), running bootstrap --force to repair..."
   fi
 fi
 

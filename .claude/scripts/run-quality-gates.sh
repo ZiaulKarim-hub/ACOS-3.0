@@ -78,9 +78,29 @@ for name, gate in gates.items():
     required = gate.get("required", False)
     gate_stage = gate.get("stage", "")
 
-    # Filter by stage if specified
+    # Filter by stage if specified.
     if stage_filter and gate_stage != stage_filter:
-        continue
+        # A gate with NO stage key (gate_stage == "") would otherwise be
+        # silently dropped for every stage filter — a required gate could then
+        # never run while overall "passed" stays True. Surface this loudly, and
+        # for a *required* stage-less gate, run it anyway (treat it as applying
+        # to all stages) rather than dropping it.
+        if not gate_stage:
+            sys.stderr.write(
+                f"[quality-gates] WARNING: gate '{name}' has no 'stage' key; "
+                f"it is skipped under stage filter '{stage_filter}'.\n"
+            )
+            if required:
+                sys.stderr.write(
+                    f"[quality-gates] WARNING: gate '{name}' is REQUIRED but "
+                    f"lacks a 'stage' — running it in this stage so it is not "
+                    f"silently dropped. Add an explicit 'stage' to fix.\n"
+                )
+                # Fall through (do NOT continue) so the required gate executes.
+            else:
+                continue
+        else:
+            continue
 
     if not command:
         continue

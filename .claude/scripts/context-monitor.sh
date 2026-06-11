@@ -73,7 +73,9 @@ if [ -f "$CACHE_FILE" ]; then
 fi
 
 # If no cached value, estimate from transcript
+RE_ESTIMATED=false
 if [ "$ESTIMATED_TOKENS" -eq 0 ]; then
+  RE_ESTIMATED=true
   ESTIMATED_TOKENS=$(python3 -c "
 import json, sys
 
@@ -133,12 +135,19 @@ fi
 
 if [ -z "$ESTIMATED_TOKENS" ]; then
   ESTIMATED_TOKENS=0
+  RE_ESTIMATED=true
 fi
 
 # Add system context overhead (system prompt, CLAUDE.md, MEMORY.md, handoffs,
 # skill definitions, system reminders). NOT in JSONL transcript.
 # Calibrated Feb 2026: 25k undercounted by ~5k for ACOS projects.
-ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + 30000 ))
+#
+# Double-count fix (2026-06-11): token-gate.sh writes its cache AFTER adding the
+# same 30000 overhead, so a cache hit already includes it. Only add the overhead
+# on the RE-ESTIMATE path (raw transcript char-count), never to a cached value.
+if [ "$RE_ESTIMATED" = "true" ]; then
+  ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + 30000 ))
+fi
 
 # ── Check if a FRESH handoff exists for this session ───────────────────
 # Staleness-aware: if tokens grew >20k since the handoff was created,
@@ -150,7 +159,11 @@ HANDOFF_TOKENS_AT_CREATION=0
 if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
   NEWEST_HANDOFF=""
   NEWEST_MTIME=0
-  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml; do
+  # Include .md handoffs (acos-handoff now emits .md). For .md handoffs that
+  # carry YAML front-matter, the same session_id/estimated_tokens greps below
+  # work as-is; .md handoffs without front-matter are caught by the recent-mtime
+  # date fallback further down so a present, recent handoff always counts.
+  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml "$HANDOFF_DIR"/*.md; do
     if [ -f "$f" ]; then
       HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
       if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
@@ -176,10 +189,28 @@ fi
 # Also check by date (fallback for handoffs without session_id)
 if [ "$HANDOFF_EXISTS" = "false" ]; then
   TODAY=$(date -u +%Y-%m-%d)
-  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml; do
+  for f in "$HANDOFF_DIR"/${TODAY}*.yaml "$HANDOFF_DIR"/${TODAY}*.yml "$HANDOFF_DIR"/${TODAY}*.md; do
     if [ -f "$f" ]; then
       HANDOFF_EXISTS=true
       break
+    fi
+  done
+fi
+
+# .md handoffs from acos-handoff are not always date-prefixed in their filename,
+# so the date glob above can miss them. Count ANY .md handoff whose mtime is
+# recent (within 15 min) as a real handoff — its presence means a semantic
+# handoff was just written and the Stop hook must not block + write a redundant
+# mechanical one.
+if [ "$HANDOFF_EXISTS" = "false" ]; then
+  NOW_EPOCH=$(date +%s)
+  for f in "$HANDOFF_DIR"/*.md; do
+    if [ -f "$f" ]; then
+      FILE_MTIME=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
+      if [ $(( NOW_EPOCH - FILE_MTIME )) -lt 900 ]; then
+        HANDOFF_EXISTS=true
+        break
+      fi
     fi
   done
 fi

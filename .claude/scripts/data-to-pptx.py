@@ -55,24 +55,24 @@ FOOTER_HEIGHT = Inches(0.45)
 
 # Font roles — auto-selected by content type
 FONT_ROLES = {
-    "number":  "Courier New",    # financial figures, percentages, dates
-    "display": "Georgia",        # titles, headings, prose
-    "label":   "Calibri",        # labels, captions, metadata
+    "number":  "IBM Plex Mono",  # financial figures, percentages, dates
+    "display": "IBM Plex Sans",  # titles, headings, prose
+    "label":   "IBM Plex Sans",  # labels, captions, metadata
 }
 
 # Default colors (overridden by design spec)
 DEFAULT_COLORS = {
-    "primary":    RGBColor(0x1A, 0x3C, 0x5E),  # dark navy
-    "secondary":  RGBColor(0x2E, 0x86, 0xAB),  # teal
-    "accent":     RGBColor(0xD4, 0x8B, 0x2C),  # gold
-    "bg_dark":    RGBColor(0x1A, 0x3C, 0x5E),
-    "bg_light":   RGBColor(0xF5, 0xF5, 0xF5),
-    "text_dark":  RGBColor(0x2D, 0x2D, 0x2D),
-    "text_light": RGBColor(0xFF, 0xFF, 0xFF),
-    "positive":   RGBColor(0x27, 0xAE, 0x60),
-    "caution":    RGBColor(0xF3, 0x9C, 0x12),
-    "negative":   RGBColor(0xE7, 0x4C, 0x3C),
-    "border":     RGBColor(0xDD, 0xDD, 0xDD),
+    "primary":    RGBColor(0x46, 0x5D, 0x53),  # sage-80 (OKOA primary)
+    "secondary":  RGBColor(0x10, 0x44, 0x73),  # navy (OKOA secondary)
+    "accent":     RGBColor(0xFF, 0x79, 0x5E),  # coral (OKOA accent)
+    "bg_dark":    RGBColor(0x46, 0x5D, 0x53),  # sage-80
+    "bg_light":   RGBColor(0xF4, 0xF4, 0xF4),  # ink-05
+    "text_dark":  RGBColor(0x16, 0x16, 0x16),  # ink
+    "text_light": RGBColor(0xFF, 0xFF, 0xFF),  # white
+    "positive":   RGBColor(0x24, 0xA1, 0x48),  # OKOA green
+    "caution":    RGBColor(0xF1, 0xC2, 0x1B),  # OKOA amber
+    "negative":   RGBColor(0xDA, 0x1E, 0x28),  # OKOA red
+    "border":     RGBColor(0xE0, 0xE0, 0xE0),  # ink-10
 }
 
 
@@ -201,6 +201,38 @@ class SlideGrid:
         width = col_span * self.cell_width + (col_span - 1) * self.h_gap
         height = row_span * self.cell_height + (row_span - 1) * self.v_gap
         return left, top, width, height
+
+
+class CarbonGrid(SlideGrid):
+    """16-column grid aligned to Carbon 2x Grid for consistent slide layouts.
+
+    Provides column-span positioning that mirrors the CSS 16-column grid
+    used in HTML/PDF output, ensuring visual consistency across formats.
+
+    Usage:
+        grid = CarbonGrid(area)
+        left, top, width, height = grid.columns(start=0, span=8)  # left half
+        left, top, width, height = grid.columns(start=8, span=8)  # right half
+    """
+    GUTTER = Inches(0.15)   # ~32px equivalent at slide scale
+    COLUMNS = 16
+
+    def __init__(self, area):
+        super().__init__(area, cols=self.COLUMNS, rows=1,
+                         h_gap=self.GUTTER, v_gap=Inches(0))
+
+    def columns(self, start=0, span=16):
+        """Return (left, top, width, height) for a column span.
+
+        Args:
+            start: 0-indexed column start (0-15)
+            span: number of columns to span (1-16)
+
+        Returns:
+            (left, top, width, height) in EMU
+        """
+        return self.span(col_start=start, row_start=0,
+                         col_span=span, row_span=1)
 
 
 # =============================================================================
@@ -438,7 +470,7 @@ def add_textbox(slide, left, top, width, height, anchor=MSO_ANCHOR.TOP):
     except Exception:
         pass
     # Set vertical anchor
-    txbox.text_frame_anchor = anchor
+    tf.vertical_anchor = anchor
     return txbox, tf
 
 
@@ -575,7 +607,7 @@ def metric_card(slide, left, top, width, height, label, value, sub_text=None,
         run_s.font.name = spec["_fonts"]["label"] if spec else "Calibri"
 
     # Vertical anchor: middle if no sub-text, top otherwise
-    shape.text_frame_anchor = MSO_ANCHOR.MIDDLE if not sub_text else MSO_ANCHOR.TOP
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE if not sub_text else MSO_ANCHOR.TOP
 
 
 def badge_pill(slide, left, top, width, height, text, bg_color=None, text_color=None, spec=None):
@@ -595,7 +627,7 @@ def badge_pill(slide, left, top, width, height, text, bg_color=None, text_color=
     tf.word_wrap = False
     tf.auto_size = None
     zero_margins(tf)
-    shape.text_frame_anchor = MSO_ANCHOR.MIDDLE
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
 
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
@@ -696,7 +728,7 @@ def timeline_strip(slide, left, top, width, height, events, spec=None):
         tf.auto_size = None
         set_margins(tf, left=Inches(0.1), right=Inches(0.1),
                     top=Inches(0.08), bottom=Inches(0.05))
-        shape.text_frame_anchor = MSO_ANCHOR.TOP
+        tf.vertical_anchor = MSO_ANCHOR.TOP
 
         # Date
         p_date = tf.paragraphs[0]
@@ -750,7 +782,7 @@ def scenario_box(slide, left, top, width, height, title, line_items,
     tf.auto_size = None
     set_margins(tf, left=Inches(0.15), right=Inches(0.15),
                 top=Inches(0.1), bottom=Inches(0.08))
-    shape.text_frame_anchor = MSO_ANCHOR.TOP
+    tf.vertical_anchor = MSO_ANCHOR.TOP
 
     # Title
     p_title = tf.paragraphs[0]
@@ -1011,8 +1043,18 @@ def generate_presentation(data_path, spec_path, template_path=None, output_path=
         if data.get("financial_figures") or data.get("data_by_section") or data.get("entities"):
             slides_data = auto_generate_slides_from_loan_data(data, spec)
         else:
-            # Last resort: single cover slide
-            build_cover_slide(prs, data, spec)
+            # Last resort: single cover slide.
+            # Normalize loan-data keys (deal_name/property_name/document_title)
+            # into the title/subtitle/date keys build_cover_slide expects —
+            # mirrors the cover mapping in auto_generate_slides_from_loan_data.
+            cover_spec = {
+                "type": "cover",
+                "title": data.get("deal_name",
+                                  data.get("property_name", "Loan Participation Offering")),
+                "subtitle": data.get("document_title", ""),
+                "date": data.get("date", ""),
+            }
+            build_cover_slide(prs, cover_spec, spec)
 
     # Iterate over slides (works for both explicit and auto-generated slide lists)
     for slide_spec in slides_data:

@@ -385,7 +385,7 @@ print(int(total_chars / $CHARS_PER_TOKEN))
   ESTIMATED_TOKENS=$(( ESTIMATED_TOKENS + SYSTEM_OVERHEAD ))
 
   # Cache the result (atomic write)
-  local cache_tmp="${CACHE_FILE}.tmp.$$"
+  cache_tmp="${CACHE_FILE}.tmp.$$"
   echo "$ESTIMATED_TOKENS" > "$cache_tmp"
   mv -f "$cache_tmp" "$CACHE_FILE"
 fi

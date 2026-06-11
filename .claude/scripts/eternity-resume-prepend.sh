@@ -64,18 +64,93 @@ PROJECT_DIR="$HOME/.claude/projects/$SANITIZED"
 PROJECT_SESSIONS=$(ls "$PROJECT_DIR"/*.jsonl 2>/dev/null | xargs -I{} basename {} .jsonl 2>/dev/null)
 [[ -z "$PROJECT_SESSIONS" ]] && exit 0
 
-# Find pending resume files whose session_id is in this project.
-# Prefer the current session's file; else most-recent that matches the project.
+# Find the resume content for THIS pane, in priority order:
+#   1. The current session's own pending-resume-<sid>.txt (PID-scoped by
+#      construction — the file is keyed to this exact session id).
+#   2. The per-claude-PID pointer for THIS pane (.eternity-pointer-pid-<pid>)
+#      written by eternity-protocol-core.sh. This is the cross-pane-safe path:
+#      claude PID is stable across /clear within a pane and differs between
+#      concurrent panes of the same project, so it cannot misfire into the
+#      wrong session the way the unscoped newest-in-project fallback can.
+#   3. (LAST RESORT) The newest pending-resume-*.txt that belongs to this
+#      project. This is NOT PID/pane-scoped, so with two concurrent panes of
+#      the same project it can pick the OTHER pane's resume — hence it now only
+#      runs when neither (1) nor (2) produced a match.
+#
+# Two carriers of resume content are possible:
+#   - RESUME           : a pending-resume-*.txt file (legacy path).
+#   - SIBLING          : a memory/handoffs/<basename>.resume.md sibling pointed
+#                        to by the per-PID pointer (preferred, archival).
+# CONTENT is populated from whichever carrier wins. On the pointer path we
+# consume ONLY the pointer (mv → consumed/), never the .resume.md sibling and
+# never any pending-resume file (preserve-pending-resumes invariant).
 RESUME=""
+SIBLING=""
+POINTER_MATCHED=""
+
+# (1) Current session's own pending-resume file.
 if [[ -n "$SESSION_ID" ]]; then
     F="$STATE/pending-resume-${SESSION_ID}.txt"
     if [[ -s "$F" ]] && echo "$PROJECT_SESSIONS" | grep -Fxq "$SESSION_ID"; then
         RESUME="$F"
     fi
 fi
+
+# (2) Per-claude-PID pointer for THIS pane (only if (1) found nothing).
+# Resolve THIS pane's claude PID by walking the parent process tree (up to 15
+# levels — matches register-session-pid.sh / the resume skill). The current
+# session's pid-<sid> file may not exist yet post-/clear, so derive live.
 if [[ -z "$RESUME" ]]; then
-    # Walk pending-resume files newest-first, take first one that matches this
-    # project (post-/clear case: file is keyed to the prior session ID).
+    CLAUDE_PID=""
+    WALK_PID=$$
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        PARENT=$(ps -o ppid= -p "$WALK_PID" 2>/dev/null | tr -d ' ' || echo "")
+        [[ -z "$PARENT" || "$PARENT" -le 1 ]] && break
+        COMM=$(ps -o comm= -p "$PARENT" 2>/dev/null || echo "")
+        ARGS=$(ps -o command= -p "$PARENT" 2>/dev/null || echo "")
+        case "$COMM" in
+            claude|claude.ex|*/claude|*/claude.ex) CLAUDE_PID="$PARENT"; break ;;
+        esac
+        case "$ARGS" in
+            *" claude"*|*"/claude"*|*"npx claude"*|*"bunx claude"*) CLAUDE_PID="$PARENT"; break ;;
+        esac
+        WALK_PID=$PARENT
+    done
+
+    if [[ -n "$CLAUDE_PID" ]]; then
+        POINTER="$STATE/.eternity-pointer-pid-${CLAUDE_PID}"
+        if [[ -s "$POINTER" ]]; then
+            # PID-reuse guard: if the OS recycled this PID after the original
+            # claude exited, the pointer belongs to a different (dead) instance.
+            # core.sh stamps claude_lstart precisely so we can detect this.
+            # Backward-compat: pointers without claude_lstart skip the check.
+            PTR_LSTART=$(grep '^claude_lstart:' "$POINTER" 2>/dev/null \
+                | head -1 | sed 's/^claude_lstart:[[:space:]]*//' \
+                | sed 's/[[:space:]]*$//')
+            STALE_POINTER=false
+            if [[ -n "$PTR_LSTART" ]]; then
+                LIVE_LSTART=$(ps -o lstart= -p "$CLAUDE_PID" 2>/dev/null \
+                    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+                if [[ -n "$LIVE_LSTART" && "$PTR_LSTART" != "$LIVE_LSTART" ]]; then
+                    STALE_POINTER=true
+                fi
+            fi
+            if [[ "$STALE_POINTER" == "false" ]]; then
+                BASENAME=$(grep '^handoff_basename:' "$POINTER" 2>/dev/null \
+                    | head -1 | sed 's/^handoff_basename:[[:space:]]*//')
+                CAND_SIBLING="memory/handoffs/${BASENAME}.resume.md"
+                if [[ -n "$BASENAME" && -s "$CAND_SIBLING" ]]; then
+                    SIBLING="$CAND_SIBLING"
+                    POINTER_MATCHED="$POINTER"
+                fi
+            fi
+        fi
+    fi
+fi
+
+# (3) LAST RESORT — newest pending-resume in this project (NOT pane-scoped).
+# Only when neither the current session's file nor the per-PID pointer matched.
+if [[ -z "$RESUME" && -z "$SIBLING" ]]; then
     while IFS= read -r CANDIDATE; do
         [[ -z "$CANDIDATE" ]] && continue
         SID=$(basename "$CANDIDATE" .txt | sed 's/^pending-resume-//')
@@ -86,37 +161,55 @@ if [[ -z "$RESUME" ]]; then
     done < <(ls -t "$STATE"/pending-resume-*.txt 2>/dev/null)
 fi
 
-# No matching pending resume in this project → silent passthrough.
-if [[ -z "$RESUME" || ! -s "$RESUME" ]]; then
+# No matching resume in this project → silent passthrough.
+if [[ -z "$SIBLING" && ( -z "$RESUME" || ! -s "$RESUME" ) ]]; then
     exit 0
 fi
 
-# Read content BEFORE deleting (race-safety).
-CONTENT=$(cat "$RESUME")
+# Read content BEFORE consuming (race-safety). Sibling (pointer path) wins.
+if [[ -n "$SIBLING" ]]; then
+    CONTENT=$(cat "$SIBLING")
+else
+    CONTENT=$(cat "$RESUME")
+fi
 
-# Consume the resume file + flags so the hook fires exactly once for this
-# cycle. Subsequent prompts pass through unmodified.
+# Consume so the hook fires exactly once for this cycle. Subsequent prompts
+# pass through unmodified.
 #
 # Preserve-by-move (not rm). Mirror /acos-eternity-protocol-resume SKILL.md
 # Step 5: mv each artifact to state/consumed/ with a unix-ts suffix on
 # filename collisions. Atomic on the same filesystem. Future maintenance
 # can prune state/consumed/ by mtime via a dedicated command — but never
 # as a side effect of hook consumption.
-RESUME_SID=$(basename "$RESUME" .txt | sed 's/^pending-resume-//')
 CONSUMED="$STATE/consumed"
 mkdir -p "$CONSUMED"
 TS=$(date +%s)
-for ARTIFACT in \
-    "$RESUME" \
-    "$STATE/.resume-pending-${RESUME_SID}" \
-    "$STATE/.compact-fired-${RESUME_SID}"
-do
-    [[ -e "$ARTIFACT" ]] || continue
-    BASENAME=$(basename "$ARTIFACT")
-    DEST="$CONSUMED/$BASENAME"
-    [[ -e "$DEST" ]] && DEST="${DEST}.${TS}"
-    mv "$ARTIFACT" "$DEST"
-done
+
+if [[ -n "$POINTER_MATCHED" ]]; then
+    # Pointer path: consume ONLY the per-PID pointer. The .resume.md sibling in
+    # memory/handoffs/ is archival and is NEVER consumed; no pending-resume file
+    # is touched here (preserve-pending-resumes invariant).
+    if [[ -e "$POINTER_MATCHED" ]]; then
+        DEST="$CONSUMED/$(basename "$POINTER_MATCHED")"
+        [[ -e "$DEST" ]] && DEST="${DEST}.${TS}"
+        mv "$POINTER_MATCHED" "$DEST"
+    fi
+else
+    # Legacy path: move the matched pending-resume file + its arming flags to
+    # consumed/ (preserve-by-move, never rm).
+    RESUME_SID=$(basename "$RESUME" .txt | sed 's/^pending-resume-//')
+    for ARTIFACT in \
+        "$RESUME" \
+        "$STATE/.resume-pending-${RESUME_SID}" \
+        "$STATE/.compact-fired-${RESUME_SID}"
+    do
+        [[ -e "$ARTIFACT" ]] || continue
+        BASENAME=$(basename "$ARTIFACT")
+        DEST="$CONSUMED/$BASENAME"
+        [[ -e "$DEST" ]] && DEST="${DEST}.${TS}"
+        mv "$ARTIFACT" "$DEST"
+    done
+fi
 
 # Emit hookSpecificOutput JSON. additionalContext is prepended to the user's
 # prompt by Claude Code, preserving the user's original input verbatim.

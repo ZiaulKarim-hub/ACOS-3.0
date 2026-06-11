@@ -96,8 +96,17 @@ def run_index(full: bool = False, dry_run: bool = False) -> dict:
         if f not in cached_modtimes or cached_modtimes.get(f) != current_modtimes.get(f):
             files_to_index.append(f)
 
-    # Determine deleted files (in cache but no longer on disk)
-    files_to_remove = [f for f in cached_modtimes if f not in current_modtimes]
+    # Determine deleted files (in cache but no longer on disk).
+    # A file absent from current_modtimes may simply have hit a transient stat
+    # failure (OSError) in get_file_modtimes — it still exists. Only treat a file
+    # as removed if it confirmedly does not exist, so a transient error can't
+    # purge a live file's chunks.
+    files_to_remove = [
+        f
+        for f in cached_modtimes
+        if f not in current_modtimes
+        and not os.path.exists(os.path.join(repo_root, f))
+    ]
 
     stats = {
         "total_files_found": len(all_files),
@@ -143,7 +152,9 @@ def run_index(full: bool = False, dry_run: bool = False) -> dict:
             chunks = chunker.chunk_file(fullpath)
             if not chunks:
                 # File passed should_index but produced no chunks
-                cached_modtimes[filepath] = current_modtimes[filepath]
+                mtime = current_modtimes.get(filepath)
+                if mtime is not None:
+                    cached_modtimes[filepath] = mtime
                 continue
 
             # Embed in batches
@@ -154,12 +165,25 @@ def run_index(full: bool = False, dry_run: bool = False) -> dict:
                 vectors = embedder.embed_texts(batch)
                 all_vectors.extend(vectors)
 
+            # Guard against silent chunk/vector misalignment before upsert. A
+            # mismatch here would otherwise drop content without error; raise so
+            # the file-level handler below records it instead.
+            if len(chunks) != len(all_vectors):
+                raise ValueError(
+                    f"chunk/vector count mismatch: {len(chunks)} chunks vs "
+                    f"{len(all_vectors)} vectors"
+                )
+
             # Upsert to DB
             inserted = db.upsert_chunks(table, chunks, all_vectors)
             total_chunks += inserted
 
-            # Update cached modtime
-            cached_modtimes[filepath] = current_modtimes[filepath]
+            # Update cached modtime. If the modtime is missing (transient stat
+            # failure), skip the cache write so the file is simply re-checked next
+            # run rather than recorded with a wrong/empty modtime.
+            mtime = current_modtimes.get(filepath)
+            if mtime is not None:
+                cached_modtimes[filepath] = mtime
 
         except embedder.EmbeddingError as e:
             stats["errors"].append(f"{filepath}: embedding error: {e}")

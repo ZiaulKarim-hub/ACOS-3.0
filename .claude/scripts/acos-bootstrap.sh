@@ -815,44 +815,53 @@ log ""
 
 GITIGNORE="$PROJECT_DIR/.gitignore"
 ACOS_MARKER="# ACOS 3.0 (auto-generated — do not commit orchestration infrastructure)"
+ACOS_END_MARKER="# End ACOS 3.0"
 
+# If a prior ACOS-managed block exists, strip it (from start marker through end
+# marker) so we can regenerate it fresh. Keying only on marker-presence and
+# skipping wholesale would leave newly-linked skills/scripts un-ignored on a
+# --force re-run where the selection changed. Only the ACOS-managed block is
+# removed; user lines above and below are preserved.
 if [[ -f "$GITIGNORE" ]] && grep -qF "$ACOS_MARKER" "$GITIGNORE" 2>/dev/null; then
-  log "  · .gitignore already has ACOS entries"
+  log "${BOLD}[+] Regenerating ACOS .gitignore block...${NC}"
+  # Delete from the start marker line through the end marker line. macOS sed
+  # (BSD) requires the '' argument to -i. The /,/ range deletes the managed block.
+  sed -i '' "/^$(printf '%s' "$ACOS_MARKER" | sed 's/[][\\/.*^$]/\\&/g')\$/,/^$(printf '%s' "$ACOS_END_MARKER" | sed 's/[][\\/.*^$]/\\&/g')\$/d" "$GITIGNORE"
 else
   log "${BOLD}[+] Updating .gitignore...${NC}"
-
-  {
-    echo ""
-    echo "$ACOS_MARKER"
-    echo "# Data directories"
-    echo ".acos/"
-    echo "memory/"
-    echo "planning/"
-    echo "learning-curve/"
-    echo "review-rules.yaml"
-    echo ""
-    echo "# Symlinked ACOS agents"
-    for agent in "${AGENTS[@]}"; do
-      echo ".claude/agents/$agent"
-    done
-    echo ""
-    echo "# Symlinked ACOS skills (only linked skills are listed)"
-    for skill in "${SYMLINKED_SKILLS_LIST[@]}"; do
-      echo ".claude/skills/$skill"
-    done
-    echo ""
-    echo "# Symlinked ACOS scripts"
-    for script in "${SYMLINKED_SCRIPTS[@]}"; do
-      echo ".claude/scripts/$script"
-    done
-    echo ""
-    echo "# ACOS hook reference"
-    echo ".claude/settings.acos-hooks.json"
-    echo "# End ACOS 3.0"
-  } >> "$GITIGNORE"
-
-  log_ok ".gitignore updated with ACOS entries"
 fi
+
+{
+  echo ""
+  echo "$ACOS_MARKER"
+  echo "# Data directories"
+  echo ".acos/"
+  echo "memory/"
+  echo "planning/"
+  echo "learning-curve/"
+  echo "review-rules.yaml"
+  echo ""
+  echo "# Symlinked ACOS agents"
+  for agent in "${AGENTS[@]}"; do
+    echo ".claude/agents/$agent"
+  done
+  echo ""
+  echo "# Symlinked ACOS skills (only linked skills are listed)"
+  for skill in "${SYMLINKED_SKILLS_LIST[@]}"; do
+    echo ".claude/skills/$skill"
+  done
+  echo ""
+  echo "# Symlinked ACOS scripts"
+  for script in "${SYMLINKED_SCRIPTS[@]}"; do
+    echo ".claude/scripts/$script"
+  done
+  echo ""
+  echo "# ACOS hook reference"
+  echo ".claude/settings.acos-hooks.json"
+  echo "$ACOS_END_MARKER"
+} >> "$GITIGNORE"
+
+log_ok ".gitignore updated with ACOS entries"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Summary

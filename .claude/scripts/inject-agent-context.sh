@@ -52,15 +52,18 @@ CONTEXT_PARTS=()
 # 1. Active slice (from active-slice.yaml config)
 SCOPE_FILE=".acos/config/active-slice.yaml"
 if [ -f "$SCOPE_FILE" ]; then
-  ACTIVE_SCOPE=$(python3 -c "
+  read -r -d '' _SLICE_PY <<'PY' || true
 import sys, re
 try:
     with open(sys.argv[1]) as f:
         text = f.read()
-    m = re.search(r'slice_id:\s*[\"'\''']?([^\"'\'''\n]+)', text)
-    if m: print(m.group(1).strip())
-except Exception: pass
-" "$SCOPE_FILE" 2>/dev/null || true)
+    m = re.search(r'''slice_id:\s*["']?([^"'\n]+)''', text)
+    if m:
+        print(m.group(1).strip())
+except Exception:
+    pass
+PY
+  ACTIVE_SCOPE=$(printf '%s' "$_SLICE_PY" | python3 - "$SCOPE_FILE" 2>/dev/null || true)
   if [ -n "$ACTIVE_SCOPE" ]; then
     CONTEXT_PARTS+=("Active slice: $ACTIVE_SCOPE")
   fi

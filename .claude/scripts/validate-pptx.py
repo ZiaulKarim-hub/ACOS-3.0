@@ -188,6 +188,12 @@ class PptxValidator:
                 if not text:
                     continue
 
+                # Placeholder shapes that inherit position/size from the slide
+                # layout return None for these attrs; skip them rather than
+                # crash on the arithmetic below (shape.height * 1.2, etc.).
+                if shape.width is None or shape.height is None:
+                    continue
+
                 # Height check: estimate from font sizes and line count
                 lines = text.split("\n")
                 max_font_size = 12
@@ -233,6 +239,13 @@ class PptxValidator:
         """Check no shape extends beyond slide edges."""
         for slide_idx, slide in enumerate(self.prs.slides, 1):
             for shape in slide.shapes:
+                # Placeholder shapes that inherit position/size from the slide
+                # layout return None for left/top/width/height; computing
+                # shape.left + shape.width on them raises TypeError and aborts
+                # the whole validation run. Skip them (matches check-pptx-layout.py).
+                if (shape.left is None or shape.top is None
+                        or shape.width is None or shape.height is None):
+                    continue
                 right = shape.left + shape.width
                 bottom = shape.top + shape.height
                 if shape.left < 0:

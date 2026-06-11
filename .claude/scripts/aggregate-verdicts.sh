@@ -34,14 +34,25 @@ if not os.path.isdir(d):
     print(json.dumps({"decision": "REJECT", "reason": f"no verdict directory: {d}"}))
     sys.exit(2)
 
-# Expected (assigned) reviewers
-expected = []
+# Expected (assigned) reviewers.
+# We MUST know the assigned set to verify unanimity. If expected.json is missing
+# or unparseable, we cannot tell whether an assigned reviewer crashed without
+# writing a file — so we block (REJECT) rather than trusting whoever reported.
+expected = None  # None = "assigned set unknown -> cannot verify -> block"
 exp_path = os.path.join(d, "expected.json")
 if os.path.isfile(exp_path):
     try:
         expected = [str(r) for r in json.load(open(exp_path))]
     except Exception:
-        expected = []
+        expected = None
+
+if expected is None:
+    print(json.dumps({
+        "decision": "REJECT",
+        "reason": "expected.json missing or unparseable — cannot verify the assigned "
+                  "reviewer set is unanimous (an assigned-but-crashed reviewer would be invisible)",
+    }))
+    sys.exit(2)
 
 # Collected verdicts (every *.json except expected.json)
 collected = {}   # name -> verdict
@@ -63,12 +74,16 @@ for f in glob.glob(os.path.join(d, "*.json")):
         collected[name] = "INCONCLUSIVE"
         details[name] = {"issues": [], "checks_performed": []}
 
-# Which reviewers must we check? Assigned set if known, else whoever reported.
-check = expected if expected else sorted(collected.keys())
+# Which reviewers must we check? Always the assigned set — never fall back to
+# "whoever reported", or an assigned-but-crashed reviewer (no file) would be
+# invisible and the slice could PASS with a missing reviewer.
+check = expected
 
 failures = []
 if not check:
-    print(json.dumps({"decision": "REJECT", "reason": "no reviewers ran"}))
+    # expected.json present but empty: a review with zero assigned reviewers
+    # never passes (cannot establish unanimity of an empty set).
+    print(json.dumps({"decision": "REJECT", "reason": "no reviewers assigned (expected.json is empty)"}))
     sys.exit(2)
 
 for r in check:

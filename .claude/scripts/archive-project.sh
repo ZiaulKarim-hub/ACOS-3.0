@@ -13,7 +13,7 @@
 
 set -e
 
-PROJECT_NAME="${1:-$(basename $(pwd))}"
+PROJECT_NAME="${1:-$(basename "$(pwd)")}"
 DATE=$(date +%Y-%m-%d)
 TIMESTAMP=$(date +%Y-%m-%dT%H:%M:%S)
 ARCHIVE_DIR=".acos/archive/${DATE}-${PROJECT_NAME}"
@@ -92,7 +92,7 @@ if [ -d "memory" ]; then
     # Count items
     DECISIONS=$(find memory/decisions -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     REVIEWS=$(find memory/reviews -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    HANDOFFS=$(find memory/handoffs -name "*.yaml" 2>/dev/null | wc -l | tr -d ' ')
+    HANDOFFS=$(find memory/handoffs \( -name "*.yaml" -o -name "*.md" \) -not -path '*/archive/*' 2>/dev/null | wc -l | tr -d ' ')
 
     echo "    - Decisions: $DECISIONS"
     echo "    - Reviews: $REVIEWS"
@@ -191,9 +191,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Keep structure but remove content
     find memory/decisions -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
     find memory/reviews -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
-    find memory/handoffs -name "*.yaml" ! -name ".template.yaml" -delete 2>/dev/null || true
+    find memory/handoffs \( -name "*.yaml" -o -name "*.md" \) ! -name ".template.yaml" ! -name ".template.md" -delete 2>/dev/null || true
     find memory/code-rationale -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
-    find memory/feedback-history -name "*.md" -delete 2>/dev/null || true
+    find memory/feedback-history -name "*.md" ! -name ".template.md" -delete 2>/dev/null || true
     rm -f memory/source-of-truth/vision-interview.md 2>/dev/null || true
     rm -f memory/source-of-truth/vision-document.md 2>/dev/null || true
     rm -f memory/source-of-truth/user-commands.md 2>/dev/null || true

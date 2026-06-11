@@ -29,16 +29,17 @@ from docx.oxml import parse_xml
 
 # ── Style Constants ─────────────────────────────────────────────────────────
 
-NAVY = RGBColor(0x00, 0x33, 0x66)
+SAGE_80 = RGBColor(0x46, 0x5D, 0x53)     # OKOA primary — replaces navy
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-DARK_TEXT = RGBColor(0x1A, 0x1A, 0x1A)
-HEADER_BG = "003366"
-ZEBRA_BG = "F5F6F8"
-FOOTER_BG = "EEF2F7"
+DARK_TEXT = RGBColor(0x16, 0x16, 0x16)    # OKOA ink
+CORAL = RGBColor(0xFF, 0x79, 0x5E)        # OKOA accent
+HEADER_BG = "465D53"                       # sage-80
+ZEBRA_BG = "EEF3F0"                       # sage-05
+FOOTER_BG = "DCE7E1"                      # sage-10
 
-HEADING_FONT = "Calibri"
-BODY_FONT = "Garamond"  # Must match pdf-styles.css primary: Garamond, Georgia fallback
-TABLE_FONT = "Calibri"
+HEADING_FONT = "IBM Plex Sans"
+BODY_FONT = "IBM Plex Sans"  # Must match pdf-styles.css primary: IBM Plex Sans
+TABLE_FONT = "IBM Plex Sans"
 
 
 def set_cell_shading(cell, color_hex):
@@ -59,7 +60,7 @@ def style_document(doc):
     for para in doc.paragraphs:
         if para.style.name.startswith("Heading"):
             for run in para.runs:
-                run.font.color.rgb = NAVY
+                run.font.color.rgb = SAGE_80
                 run.font.name = HEADING_FONT
             if para.style.name == "Heading 1":
                 for run in para.runs:

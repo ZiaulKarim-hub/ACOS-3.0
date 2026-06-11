@@ -165,7 +165,9 @@ def generate_gauge_chart(data, width=250, height=160):
         for i, t in enumerate(sorted_t):
             segments.append((prev, t, segment_colors[i] if i < len(segment_colors) else COLORS["green"]))
             prev = t
-        segments.append((prev, max_val, segment_colors[min(len(sorted_t), len(segment_colors) - 1)]))
+        # Final (best) segment always uses the highest "good" color so a
+        # single-threshold pass/fail gauge reads red->green, not red->amber.
+        segments.append((prev, max_val, segment_colors[-1]))
 
         for start, end, color in segments:
             start_angle = math.pi * (1 - (start - min_val) / (max_val - min_val))
@@ -216,9 +218,10 @@ def generate_matrix_chart(data, width=300, height=80):
         {"name": "Decline", "min": 0, "color": COLORS["red"], "bg": COLORS["red_light"]},
     ])
 
-    # Find which category the score falls into
+    # Find which category the score falls into. Sort descending by min so the
+    # highest matching band wins regardless of the input order of categories.
     active_cat = categories[-1]  # default to worst
-    for cat in categories:
+    for cat in sorted(categories, key=lambda c: c["min"], reverse=True):
         if score >= cat["min"]:
             active_cat = cat
             break

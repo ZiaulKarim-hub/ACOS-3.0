@@ -105,7 +105,7 @@ find_latest_handoff() {
                 latest_time=$mtime
                 latest="$file"
             fi
-        done < <(find "$dir" -maxdepth 1 -name "*.yaml" -o -name "*.yml" -print0 2>/dev/null | tr '\n' '\0')
+        done < <(find "$dir" -maxdepth 1 \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) -print0 2>/dev/null)
     done
 
     echo "$latest"

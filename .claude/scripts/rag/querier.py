@@ -13,8 +13,12 @@ from collections import defaultdict
 from . import db, embedder
 from .models import SearchResult
 
+# Max chunks kept per source file after dedup. Shared with db.search so the
+# single over-fetch layer there is sized to survive this dedup cap.
+MAX_PER_FILE = 3
 
-def deduplicate(results: list[SearchResult], max_per_file: int = 3) -> list[SearchResult]:
+
+def deduplicate(results: list[SearchResult], max_per_file: int = MAX_PER_FILE) -> list[SearchResult]:
     """Limit to max_per_file chunks per source file, keeping highest-scoring."""
     file_counts: dict[str, int] = defaultdict(int)
     deduped = []
@@ -78,18 +82,23 @@ def run_query(
     try:
         database = db.get_db()
         table = db.get_or_create_table(database)
+        # Request plain top_k. db.search is the single over-fetch layer: it
+        # fetches top_k * max_per_file + margin internally so that, after the
+        # per-file dedup below and any min_score attrition, we can still return
+        # up to top_k results.
         results = db.search(
             table,
             query_vector,
-            top_k=top_k * 2,  # Over-fetch before dedup
+            top_k=top_k,
             category=category,
             min_score=min_score,
+            max_per_file=MAX_PER_FILE,
         )
     except Exception as e:
         return format_error(f"Database search failed: {e}")
 
-    # Deduplicate and limit
-    results = deduplicate(results, max_per_file=3)[:top_k]
+    # Deduplicate (cap per source file) and limit to top_k.
+    results = deduplicate(results, max_per_file=MAX_PER_FILE)[:top_k]
 
     return format_output(results)
 

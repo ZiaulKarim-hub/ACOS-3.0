@@ -58,7 +58,7 @@ def parse_yaml(text):
         stripped = raw_line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        list_match = re.match(r'^\s+-\s+(.*)', raw_line)
+        list_match = re.match(r'^\s*-\s+(.*)', raw_line)
         if list_match and current_key is not None:
             item = _parse_value(list_match.group(1))
             if current_key in result:

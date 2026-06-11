@@ -326,6 +326,16 @@ def call_openai_compatible(api_base, api_key, model_name, system_prompt,
     message = choices[0].get("message", {})
     content = message.get("content", "")
 
+    # The API may return content as JSON null (-> Python None) or empty string,
+    # e.g. when the model produced only tool calls or hit a content filter.
+    # Never let "None"/"" reach stdout as the agent's verdict — treat as an error.
+    if content is None or (isinstance(content, str) and not content.strip()):
+        print(
+            "API returned empty/null message content (no usable response text)",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
     # Log usage to stderr for cost tracking
     usage = body.get("usage", {})
     if usage:
