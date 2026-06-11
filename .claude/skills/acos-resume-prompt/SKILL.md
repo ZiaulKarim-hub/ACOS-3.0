@@ -51,10 +51,14 @@ SESSION_ID=$(basename "$JSONL" .jsonl)
 [[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: bad SESSION_ID '$SESSION_ID'"; exit 1; }
 ```
 
-Run this Python walk to identify in-flight Tasks. NOTE: `"$JSONL"` below is a
-shell-variable placeholder, not literal Python — substitute the resolved path
-from the bash block above (e.g. run the snippet via `python3 - <<EOF` with an
-UNQUOTED heredoc delimiter so the shell interpolates it, or inline the path):
+Run this Python walk to identify in-flight Tasks — but ONLY if the JSONL
+resolved (`[[ -s "$JSONL" ]]`). This step is best-effort enrichment: if the
+session JSONL can't be found, SKIP the walk and continue with an empty
+subagent registry rather than aborting (Step 1 already guaranteed a handoff).
+NOTE: `"$JSONL"` below is a shell-variable placeholder, not literal Python —
+substitute the resolved path from the bash block above (e.g. run the snippet
+via `python3 - <<EOF` with an UNQUOTED heredoc delimiter so the shell
+interpolates it, or inline the path):
 
 ```python
 import json
