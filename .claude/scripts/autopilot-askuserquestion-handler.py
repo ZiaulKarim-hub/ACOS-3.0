@@ -50,20 +50,26 @@ def strip_recommended_suffix(label):
 
 def pick_option(options, multi):
     """Return the answer for a question. Pick (Recommended) labels first, else first option."""
-    if not options:
+    # Guard non-dict options on EVERY path (not just the recommended scan): a
+    # malformed option element would otherwise raise AttributeError in the
+    # fallback branches, and the outer except would drop the auto-pick entirely —
+    # stalling an unattended autopilot run on the resulting consent prompt.
+    dict_opts = [o for o in options if isinstance(o, dict)] if options else []
+    if not dict_opts:
         return [] if multi else ""
-    recommended = [o for o in options if isinstance(o, dict)
-                   and "(Recommended)" in o.get("label", "")]
+    recommended = [o for o in dict_opts if "(Recommended)" in o.get("label", "")]
     if multi:
-        chosen = recommended if recommended else options[:1]
+        chosen = recommended if recommended else dict_opts[:1]
         return [strip_recommended_suffix(o.get("label", "")) for o in chosen]
-    chosen = recommended[0] if recommended else options[0]
+    chosen = recommended[0] if recommended else dict_opts[0]
     return strip_recommended_suffix(chosen.get("label", ""))
 
 
 def synthesize_answers(questions):
     """Build the answers object for AskUserQuestion's updatedInput."""
     answers = {}
+    if not isinstance(questions, list):
+        return answers
     for q in questions:
         if not isinstance(q, dict):
             continue

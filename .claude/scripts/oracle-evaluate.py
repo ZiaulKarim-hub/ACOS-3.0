@@ -36,61 +36,101 @@ from pathlib import Path
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def parse_yaml(text):
-    """Parse simple 2-level YAML. Handles scalars, lists, and one level of nesting."""
-    result = {}
-    current_key = None
-    current_dict = result
-    indent_stack = [(0, result)]
+    """Parse the subset of YAML used by oracle.yaml — stdlib only.
 
-    for raw_line in text.splitlines():
-        # Skip comments and blank lines
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
+    Supports: top-level scalars, nested block mappings (any consistent indent
+    width), inline lists ([a, b, c]), block lists of scalars (- x), and block
+    lists of flat dicts (- key: value with continuation key: value lines).
+
+    Recursive-descent with lookahead: each block's member indent is discovered
+    from its first member, so arbitrary indent widths parse correctly. This
+    replaces the previous indentation-stack parser whose (indent+2, <=) frame
+    handling silently dropped every nested block mapping — e.g. base_temperatures
+    parsed to {} and its keys leaked to the top-level result, so any user-authored
+    base_temperatures / modifiers / learning override was ignored and the Oracle
+    silently fell back to the in-code DEFAULTS.
+    """
+    lines = []
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#"):
             continue
+        indent = len(raw) - len(raw.lstrip())
+        lines.append((indent, s))
 
-        indent = len(raw_line) - len(raw_line.lstrip())
+    pos = 0
 
-        # Pop back to correct nesting level
-        while len(indent_stack) > 1 and indent <= indent_stack[-1][0]:
-            indent_stack.pop()
-        current_dict = indent_stack[-1][1]
+    def block(block_indent):
+        nonlocal pos
+        container = None
+        while pos < len(lines):
+            indent, content = lines[pos]
+            if indent < block_indent:
+                break
+            if indent > block_indent:
+                # Defensive: a deeper line with no opener — skip.
+                pos += 1
+                continue
 
-        # List item: "- value" or "- key: value"
-        list_match = re.match(r'^(\s*)-\s+(.*)', raw_line)
-        if list_match:
-            item_content = list_match.group(2).strip()
-            if current_key and current_key in current_dict:
-                target = current_dict[current_key]
-                if not isinstance(target, list):
-                    current_dict[current_key] = []
-                    target = current_dict[current_key]
-                # Check if item is a dict "key: value"
-                kv = re.match(r'^(\w[\w_]*)\s*:\s*(.+)', item_content)
-                if kv:
-                    # Start a dict item — collect subsequent indented lines too
-                    item_dict = {kv.group(1): _parse_value(kv.group(2))}
-                    target.append(item_dict)
-                    # Store reference so subsequent indented kv pairs add to this dict
-                    indent_stack.append((indent + 2, item_dict))
+            list_m = re.match(r'-\s+(.*)$', content)
+            if list_m:
+                if container is None:
+                    container = []
+                item = list_m.group(1).strip()
+                pos += 1
+                kv = re.match(r'([\w][\w_-]*)\s*:\s*(.*)$', item)
+                if kv and not kv.group(2).strip().startswith('['):
+                    d = {}
+                    k, v = kv.group(1), kv.group(2).strip()
+                    if v == "" or v == "|":
+                        if pos < len(lines) and lines[pos][0] > indent:
+                            d[k] = block(lines[pos][0])
+                        else:
+                            d[k] = {}
+                    else:
+                        d[k] = _parse_value(v)
+                    # Continuation "key: value" lines for this dict item live at an
+                    # indent deeper than the '-' marker and are not list items.
+                    while (pos < len(lines) and lines[pos][0] > indent
+                           and not re.match(r'-\s+', lines[pos][1])):
+                        cind, cont = lines[pos]
+                        ckv = re.match(r'([\w][\w_-]*)\s*:\s*(.*)$', cont)
+                        if not ckv:
+                            pos += 1
+                            continue
+                        ck, cv = ckv.group(1), ckv.group(2).strip()
+                        pos += 1
+                        if cv == "" or cv == "|":
+                            if pos < len(lines) and lines[pos][0] > cind:
+                                d[ck] = block(lines[pos][0])
+                            else:
+                                d[ck] = {}
+                        else:
+                            d[ck] = _parse_value(cv)
+                    container.append(d)
                 else:
-                    target.append(_parse_value(item_content))
-            continue
+                    container.append(_parse_value(item))
+                continue
 
-        # Key-value pair
-        kv_match = re.match(r'^(\s*)([\w][\w_]*)\s*:\s*(.*)', raw_line)
-        if kv_match:
-            key = kv_match.group(2)
-            value = kv_match.group(3).strip()
-            if value == "" or value == "|":
-                # Start of nested dict or list
-                current_dict[key] = {}
-                current_key = key
-                indent_stack.append((indent + 2, current_dict[key]))
+            kv = re.match(r'([\w][\w_-]*)\s*:\s*(.*)$', content)
+            if not kv:
+                pos += 1
+                continue
+            if container is None:
+                container = {}
+            k, v = kv.group(1), kv.group(2).strip()
+            pos += 1
+            if v == "" or v == "|":
+                if pos < len(lines) and lines[pos][0] > indent:
+                    container[k] = block(lines[pos][0])
+                else:
+                    container[k] = {}
             else:
-                current_dict[key] = _parse_value(value)
-                current_key = key
+                container[k] = _parse_value(v)
+        return container if container is not None else {}
 
-    return result
+    result = block(0)
+    return result if isinstance(result, dict) else {}
 
 
 def _parse_value(s):
@@ -282,6 +322,12 @@ AUTOPILOT_DESTRUCTIVE_PATTERNS = [
     # rm -rf ~/<anything> or $HOME/<anything> — a whole top-level home subdir wipe
     # (e.g. `rm -rf ~/Documents`) must hit the morning-review audit trail too.
     r"\brm\s+-[rRfvi]*r[rRfvi]*\s+(--\s+)?(~|\$\{?HOME\}?)/\S",
+    # GNU long-form recursive/force deletes against broad targets — the short-flag
+    # patterns above miss `rm --recursive --force /` and `rm --recursive ~`.
+    r"\brm\s+(--(recursive|force|no-preserve-root|dir)\s+)+(--\s+)?(/|~|/\*|\$\{?HOME\}?|\.|\.\.)(\s*$|/?\s|/?\*|/\S)",
+    # --no-preserve-root is a deliberately catastrophic flag — log on sight, in any
+    # flag combination (e.g. `rm -rf --no-preserve-root /`, mixed short+long).
+    r"\brm\s+.*--no-preserve-root\b",
     # xargs rm — almost always mass deletion
     r"\bxargs\s+(-[^|]*\s+)?rm\b",
     # shred — file destruction
