@@ -33,9 +33,9 @@ except ImportError:
 
 
 FONT_ROLES = {
-    "number":  "Courier New",
-    "display": "Georgia",
-    "label":   "Calibri",
+    "number":  "IBM Plex Mono",  # financial figures, percentages, dates
+    "display": "IBM Plex Sans",  # titles, headings, prose
+    "label":   "IBM Plex Sans",  # labels, captions, metadata
 }
 
 # Default python-pptx margins (91440 EMU = 0.1 inch)

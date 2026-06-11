@@ -83,7 +83,7 @@ def extract_docx(path: Path) -> list[Criterion]:
 
         # Identify columns
         name_col = _find_col(header, ("criterion", "criteria", "item", "question"))
-        points_col = _find_col(header, ("points", "pts", "marks", "score"))
+        points_col = _find_col(header, POINTS_KEYS)
         desc_col = _find_col(header, ("description", "details", "rubric", "notes"))
 
         if name_col is None or points_col is None:
@@ -130,7 +130,7 @@ def extract_xlsx(path: Path) -> list[Criterion]:
             continue
 
         name_col = _find_col(header, ("criterion", "criteria", "item", "question"))
-        points_col = _find_col(header, ("points", "pts", "marks", "score"))
+        points_col = _find_col(header, POINTS_KEYS)
         desc_col = _find_col(header, ("description", "details", "rubric", "notes"))
 
         if name_col is None or points_col is None:
@@ -174,7 +174,7 @@ def extract_pdf(path: Path) -> list[Criterion]:
                     continue
 
                 name_col = _find_col(header, ("criterion", "criteria", "item", "question"))
-                points_col = _find_col(header, ("points", "pts", "marks", "score"))
+                points_col = _find_col(header, POINTS_KEYS)
                 desc_col = _find_col(header, ("description", "details", "rubric", "notes"))
 
                 if name_col is None or points_col is None:
@@ -208,10 +208,17 @@ def extract_pdf(path: Path) -> list[Criterion]:
 # ---------- Heuristics -----------------------------------------------------
 
 
+# Shared keyword set for the points column. Includes the SINGULAR 'point' so a
+# header literally labeled 'Point' both passes _header_looks_like_rubric AND
+# resolves a points column in _find_col (previously asymmetric — the gate
+# accepted 'point' but _find_col did not, silently dropping the table).
+POINTS_KEYS = ("point", "points", "pts", "marks", "score")
+
+
 def _header_looks_like_rubric(header: list[str]) -> bool:
     joined = " ".join(header)
     has_criterion = any(k in joined for k in ("criterion", "criteria", "item", "question"))
-    has_points = any(k in joined for k in ("point", "pts", "marks", "score"))
+    has_points = any(k in joined for k in POINTS_KEYS)
     return has_criterion and has_points
 
 
@@ -314,7 +321,18 @@ def _yaml_str(s: str) -> str:
     if not s:
         return '""'
     needs_quote = any(ch in s for ch in ":#{}[]|>'\"&*!%@`,\n\r\t\f\v")
-    if needs_quote or s.strip() != s or s.lower() in ("yes", "no", "true", "false", "null"):
+    # YAML block indicators are only special in LEADING position. A scalar whose
+    # value begins with one (e.g. "- Introduction to risk" reads as a sequence
+    # entry; "? maybe later" as a complex mapping key) must be quoted or it fails
+    # to round-trip through yaml.safe_load downstream.
+    leading_indicators = set("-?:,[]{}#&*!|>%@`\"' \t")
+    leading_special = s[:1] in leading_indicators or s[:2] in ("- ", "? ", ": ")
+    if (
+        needs_quote
+        or leading_special
+        or s.strip() != s
+        or s.lower() in ("yes", "no", "true", "false", "null")
+    ):
         escaped = (
             s.replace("\\", "\\\\")
              .replace('"', '\\"')

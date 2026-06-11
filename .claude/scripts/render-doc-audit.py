@@ -76,6 +76,15 @@ CHAR_WIDTHS = {
     'Courier New': {
         16: 130000, 18: 146000, 20: 162000,
     },
+    # IBM Plex Sans — proportional sans (metrics close to Calibri)
+    'IBM Plex Sans': {
+        7: 48000, 8: 54000, 9: 60000, 10: 67000, 11: 73000,
+        12: 80000, 14: 93000, 16: 107000, 18: 120000, 20: 134000,
+    },
+    # IBM Plex Mono — monospace (metrics close to Courier New)
+    'IBM Plex Mono': {
+        16: 130000, 18: 146000, 20: 162000,
+    },
 }
 
 # Fallback: 65000 EMU per character at Pt(9), scaled linearly
@@ -200,6 +209,8 @@ def get_pil_font(font_name, font_size_px):
         'Calibri': '/System/Library/Fonts/Supplemental/Calibri.ttf',
         'Courier New': '/System/Library/Fonts/Supplemental/Courier New.ttf',
         'Arial': '/System/Library/Fonts/Supplemental/Arial.ttf',
+        'IBM Plex Sans': os.path.expanduser('~/Library/Fonts/IBMPlexSans-Regular.otf'),
+        'IBM Plex Mono': os.path.expanduser('~/Library/Fonts/IBMPlexMono-Regular.otf'),
     }
     path = mac_fonts.get(font_name)
     if path and os.path.exists(path):
