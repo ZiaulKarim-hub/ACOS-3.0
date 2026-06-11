@@ -277,6 +277,17 @@ command is missing or errors, we WARN and proceed (don't hard-block on a
 probe we can't run). A successful probe is cached in
 `state/.cmux-method-verified` so we skip it next time the method is unchanged.
 
+> **Daemon counterpart (2026-06-11, post-swarm-re-review).** The out-of-repo
+> injector `inject-via-cmux.py` resolves the method `env CMUX_INJECT_METHOD >
+> cached .cmux-method-verified > default`, and on an "unknown method" RPC error
+> it self-heals: it runs `cmux capabilities`, retries the best candidate, and
+> caches the winner. Hardening from the re-review: `read_verified_method()` now
+> shape-validates the cached value (`_looks_like_method`) before trusting it, so
+> a corrupted/hand-edited cache cannot "stick" and silently fail every fire — a
+> non-method-shaped value falls through to the default, which the self-heal can
+> then correct. The cache file format is a single bare method-name line, written
+> atomically by both this skill's probe and the injector.
+
 ```bash
 # Re-derive base vars (own shell) + recover Step 3 exports from the sidecar.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
