@@ -134,15 +134,26 @@ if [[ ! -S "$CMUX_SOCKET" ]]; then
     exit 1
 fi
 
-# Heartbeat freshness — daemon must be alive to consume our flags
+# Heartbeat freshness — daemon must be alive to consume our flags.
+# 2026-06-11: threshold raised 90s → 150s (the daemon's kqueue loop can
+# legitimately idle-sleep ~60s, so 90s was a tight margin prone to false
+# aborts). Also guard the mtime read: stat output that is empty/non-numeric
+# (BSD vs GNU stat, missing file race) would otherwise feed the numeric test
+# garbage and behave unpredictably — so we compute with a portable fallback
+# and skip the staleness check (rather than abort) if we can't read a number.
 HEARTBEAT="$HOME/Library/Application Support/acos-token-monitor/state/heartbeat"
 if [[ -f "$HEARTBEAT" ]]; then
-    HB_AGE=$(( $(date +%s) - $(stat -f%m "$HEARTBEAT") ))
-    if [[ $HB_AGE -gt 90 ]]; then
-        echo "ERROR: daemon heartbeat is ${HB_AGE}s old (>90s) — refusing to fire /clear."
-        echo "       Daemon stalled or dead; the post-/clear resume injection would never fire."
-        echo "       Restart: launchctl kickstart -k gui/\$UID/com.acos.token-monitor"
-        exit 1
+    HB_MTIME=$(stat -f%m "$HEARTBEAT" 2>/dev/null || stat -c%Y "$HEARTBEAT" 2>/dev/null)
+    if [[ -z "$HB_MTIME" || ! "$HB_MTIME" =~ ^[0-9]+$ ]]; then
+        echo "WARN: could not read heartbeat mtime — skipping staleness check"
+    else
+        HB_AGE=$(( $(date +%s) - HB_MTIME ))
+        if [[ $HB_AGE -gt 150 ]]; then
+            echo "ERROR: daemon heartbeat is ${HB_AGE}s old (>150s) — refusing to fire /clear."
+            echo "       Daemon stalled or dead; the post-/clear resume injection would never fire."
+            echo "       Restart: launchctl kickstart -k gui/\$UID/com.acos.token-monitor"
+            exit 1
+        fi
     fi
 fi
 

@@ -1,0 +1,245 @@
+#!/bin/bash
+# eternity-protocol-core.sh
+#
+# Shared post-skill plumbing for the eternity protocol variants (cmux + warp).
+#
+# Both variants follow the same pre-clear orchestration:
+#   1. acos-handoff skill writes a handoff yaml.
+#   2. acos-resume-prompt skill writes state/pending-resume-<sid>.txt.
+#   3. THIS SCRIPT (sourced or executed by the variant SKILL.md) handles the
+#      rest: verify both artifacts exist, capture the pre-clear token total
+#      from the watcher log, and atomically write state/.resume-pending-<sid>
+#      with the daemon-consumed metadata.
+#
+# After this script returns successfully, the cmux variant goes on to write
+# state/.clear-requested-<sid> (daemon-side automation), while the warp
+# variant prints a visible block and stops (user-driven manual /clear).
+#
+# Modes:
+#   - sourced (.) — exports vars for the caller to use: $RESUME_FILE,
+#     $PRE_CLEAR_TOTAL, $HANDOFF, $RESUME_PENDING, $SESSION_ID.
+#   - executed   — same work but exits non-zero on error; caller uses $?.
+#
+# Created 2026-05-28 as part of the -cmux + -warp variant split.
+
+# ── Idempotency: refuse to double-run inside the same shell ────────────────
+if [[ -n "$ETERNITY_PROTOCOL_CORE_RAN" ]]; then
+    echo "ERROR: eternity-protocol-core.sh already ran in this shell — refusing to re-execute" >&2
+    return 1 2>/dev/null || exit 1
+fi
+export ETERNITY_PROTOCOL_CORE_RAN=1
+
+# ── Resolve session_id ─────────────────────────────────────────────────────
+# Same sanitization pattern Claude Code uses for project-dir names:
+# slashes/spaces/dots → dashes. The newest *.jsonl in that dir is this session.
+SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
+JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
+SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+if [[ -z "$SESSION_ID" ]]; then
+    echo "ERROR: could not determine session_id (no JSONL in $SESSION_DIR)" >&2
+    return 1 2>/dev/null || exit 1
+fi
+export SESSION_ID
+
+STATE="$HOME/Library/Application Support/acos-token-monitor/state"
+LOGS="$HOME/Library/Application Support/acos-token-monitor/logs"
+
+# ── Verify Step 1 artifact: a fresh handoff was created ───────────────────
+# 2026-06-10 fix: accept BOTH .md and .yaml handoffs (acos-handoff was updated
+# at some point to emit .md, but this script was still hardcoded to .yaml,
+# blocking all variant fires when only .md handoffs existed). Both globs run
+# in parallel; stderr suppressed to avoid "no matches" noise from either one
+# when its extension isn't present.
+HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | head -1)
+if [[ ! -s "$HANDOFF" ]]; then
+    echo "ERROR: no handoff produced — expected newest .md or .yaml in memory/handoffs/" >&2
+    return 1 2>/dev/null || exit 1
+fi
+# Freshness check: handoff should have been written in the last 5 minutes.
+# Older means the acos-handoff skill probably no-op'd and we're about to arm
+# the daemon with a stale-context resume — refuse and surface the error.
+HANDOFF_AGE=$(( $(date +%s) - $(stat -f%m "$HANDOFF") ))
+if [[ $HANDOFF_AGE -gt 300 ]]; then
+    echo "ERROR: newest handoff is ${HANDOFF_AGE}s old (>300s) — acos-handoff may have failed to write" >&2
+    echo "       handoff: $HANDOFF" >&2
+    return 1 2>/dev/null || exit 1
+fi
+export HANDOFF
+
+# ── Verify Step 2 artifact: resume prompt for this session exists ─────────
+RESUME_FILE="$STATE/pending-resume-${SESSION_ID}.txt"
+if [[ ! -s "$RESUME_FILE" ]]; then
+    echo "ERROR: resume prompt missing or empty at $RESUME_FILE" >&2
+    echo "       acos-resume-prompt skill may have failed" >&2
+    return 1 2>/dev/null || exit 1
+fi
+export RESUME_FILE
+
+# ── Step 3: capture pre-clear token total (fallback chain) ────────────────
+# Authoritative source is the daemon's per-session .last-total marker, written
+# atomically on every JSONL event (single line, ASCII integer). When that's
+# unavailable we degrade through progressively weaker fallbacks and flag the
+# result as defaulted so the daemon can warn.
+#
+# Fallback order:
+#   1. STATE/.last-total-<sid>          (real measured total — normal path)
+#   2. watcher log scrape of approx=    (secondary, kept from prior behavior)
+#   3. config.yaml `threshold: N`       (configured threshold, not measured)
+#   4. hardcoded 400000                 (last resort)
+#
+# PRE_CLEAR_DEFAULTED is set to 1 for cases 2–4 (anything that is NOT a real
+# .last-total measurement) so the .resume-pending sidecar gets the
+# `pre_compact_total_defaulted: true` line per the daemon contract.
+PRE_CLEAR_TOTAL=""
+PRE_CLEAR_DEFAULTED=0
+
+# --- 1. authoritative .last-total marker ---
+LAST_TOTAL_FILE="$STATE/.last-total-${SESSION_ID}"
+if [[ -s "$LAST_TOTAL_FILE" ]]; then
+    CANDIDATE=$(tr -d '[:space:]' < "$LAST_TOTAL_FILE" 2>/dev/null)
+    if [[ "$CANDIDATE" =~ ^[0-9]+$ ]]; then
+        PRE_CLEAR_TOTAL="$CANDIDATE"
+    fi
+fi
+
+# --- 2. watcher log scrape (secondary) ---
+WATCHER_LOG="$LOGS/${SESSION_ID}.log"
+if [[ -z "$PRE_CLEAR_TOTAL" ]]; then
+    CANDIDATE=$(tail -100 "$WATCHER_LOG" 2>/dev/null \
+        | grep -oE 'approx=\s*[0-9,]+' \
+        | tail -1 | grep -oE '[0-9,]+' | tr -d ',')
+    if [[ -n "$CANDIDATE" ]]; then
+        PRE_CLEAR_TOTAL="$CANDIDATE"
+        PRE_CLEAR_DEFAULTED=1
+        echo "WARN: .last-total-${SESSION_ID} unavailable — used watcher-log scrape fallback (${PRE_CLEAR_TOTAL})" >&2
+    fi
+fi
+
+# --- 3. configured threshold from config.yaml ---
+if [[ -z "$PRE_CLEAR_TOTAL" ]]; then
+    CONFIG_YAML="$HOME/Library/Application Support/acos-token-monitor/config.yaml"
+    if [[ -f "$CONFIG_YAML" ]]; then
+        # Grab the first `threshold:` line, strip the key, trailing comments,
+        # and all whitespace; validate it is a pure integer before trusting it.
+        CANDIDATE=$(grep -E '^[[:space:]]*threshold:' "$CONFIG_YAML" 2>/dev/null \
+            | head -1 \
+            | sed -E 's/^[[:space:]]*threshold:[[:space:]]*//; s/#.*$//' \
+            | tr -d '[:space:]')
+        if [[ "$CANDIDATE" =~ ^[0-9]+$ ]]; then
+            PRE_CLEAR_TOTAL="$CANDIDATE"
+            PRE_CLEAR_DEFAULTED=1
+            echo "WARN: no .last-total and no log scrape — used configured threshold fallback from config.yaml (${PRE_CLEAR_TOTAL})" >&2
+        fi
+    fi
+fi
+
+# --- 4. hardcoded last resort ---
+if [[ -z "$PRE_CLEAR_TOTAL" ]]; then
+    PRE_CLEAR_TOTAL=400000
+    PRE_CLEAR_DEFAULTED=1
+    echo "WARN: all pre-clear total sources failed (.last-total, log scrape, config.yaml) — defaulting to 400000" >&2
+fi
+export PRE_CLEAR_TOTAL PRE_CLEAR_DEFAULTED
+
+# ── Step 4: arm the daemon — write .resume-pending-<sid> atomically ───────
+PROJECT_DIR_KEY=$(basename "$SESSION_DIR")
+RESUME_PENDING="$STATE/.resume-pending-${SESSION_ID}"
+TMP=$(mktemp "${RESUME_PENDING}.XXXXXX")
+cat > "$TMP" <<EOF
+pre_compact_total: ${PRE_CLEAR_TOTAL}
+resume_prompt_file: ${RESUME_FILE}
+project_dir_key: ${PROJECT_DIR_KEY}
+armed_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+armed_by: ${ETERNITY_PROTOCOL_VARIANT:-unknown}
+EOF
+# Per the daemon contract: when pre_compact_total did NOT come from a real
+# .last-total measurement (i.e. any of the fallbacks fired), append the
+# defaulted marker so the daemon parses it and logs a warning.
+if [[ "${PRE_CLEAR_DEFAULTED:-0}" == "1" ]]; then
+    echo "pre_compact_total_defaulted: true" >> "$TMP"
+fi
+mv "$TMP" "$RESUME_PENDING"
+chmod 600 "$RESUME_PENDING" 2>/dev/null || true
+export RESUME_PENDING
+
+# ── Sanity: confirm what we just wrote is on disk ─────────────────────────
+if [[ ! -s "$RESUME_PENDING" ]]; then
+    echo "ERROR: failed to write .resume-pending file at $RESUME_PENDING" >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+# ── Step 5 (2026-06-04): handoff-paired resume sibling + per-PID pointer ──
+# Solves the "any time" resume problem: when the user types
+# /acos-eternity-protocol-resume hours or days after the warp/cmux fire,
+# the resume skill needs to find the correct handoff for THIS pane.
+#
+# Mechanism:
+#   - Copy the resume prompt content next to the handoff yaml as a sibling
+#     `.resume.md` file. This file lives in memory/handoffs/ forever — never
+#     auto-consumed. Acts as the authoritative, archival resume artifact.
+#   - Write a tiny per-claude-PID pointer file containing the handoff basename.
+#     The pointer is keyed by claude OS PID (which survives /clear in the same
+#     pane — claude PID stays stable until the claude process is restarted).
+#     Different panes have different PIDs → no cross-pane interference.
+#   - The resume skill reads the pointer for the current pane's claude PID to
+#     find the correct handoff sibling. Atomic, unambiguous, even days later.
+#
+# Backward compat: state/pending-resume-<sid>.txt is STILL written above. The
+# resume skill falls back to it if the pointer or sibling is missing.
+
+# Strip whichever extension is present (.md OR .yaml). basename takes a single
+# suffix arg, so we run the right one based on what we found.
+case "$HANDOFF" in
+    *.md)   HANDOFF_BASENAME=$(basename "$HANDOFF" .md) ;;
+    *.yaml) HANDOFF_BASENAME=$(basename "$HANDOFF" .yaml) ;;
+    *)      HANDOFF_BASENAME=$(basename "$HANDOFF") ;;
+esac
+RESUME_SIBLING="memory/handoffs/${HANDOFF_BASENAME}.resume.md"
+
+# Copy resume content to the sibling. cp preserves contents; never modifies
+# the original pending-resume file (which legacy paths still need).
+if cp "$RESUME_FILE" "$RESUME_SIBLING" 2>/dev/null; then
+    chmod 644 "$RESUME_SIBLING" 2>/dev/null || true
+else
+    echo "WARN: failed to write handoff-paired resume sibling at $RESUME_SIBLING" >&2
+    # Non-fatal: legacy pending-resume-<sid>.txt path still works.
+fi
+export RESUME_SIBLING HANDOFF_BASENAME
+
+# Per-claude-PID pointer. Resolves the user's "how do I make sure the correct
+# handoff is loaded no matter when I run resume" concern: PID is the only
+# identifier stable across /clear within the same pane.
+CLAUDE_PID=""
+CLAUDE_LSTART=""
+PID_FILE="$STATE/pid-${SESSION_ID}"
+if [[ -f "$PID_FILE" ]]; then
+    CLAUDE_PID=$(head -1 "$PID_FILE" 2>/dev/null)
+    # Line 2 of the pid file is the process start time (lstart) recorded by
+    # register-session-pid.sh. Carrying it into the pointer lets the resume
+    # skill detect PID reuse (claude exited, OS recycled the PID for an
+    # unrelated process) and refuse a stale pointer.
+    CLAUDE_LSTART=$(sed -n '2p' "$PID_FILE" 2>/dev/null)
+fi
+if [[ -n "$CLAUDE_PID" ]]; then
+    POINTER="$STATE/.eternity-pointer-pid-${CLAUDE_PID}"
+    TMP_PTR=$(mktemp "${POINTER}.XXXXXX")
+    cat > "$TMP_PTR" <<EOF
+handoff_basename: ${HANDOFF_BASENAME}
+resume_sibling: ${RESUME_SIBLING}
+session_id_at_write: ${SESSION_ID}
+project_dir_key: ${PROJECT_DIR_KEY}
+claude_pid: ${CLAUDE_PID}
+claude_lstart: ${CLAUDE_LSTART}
+written_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+written_by: ${ETERNITY_PROTOCOL_VARIANT:-unknown}
+EOF
+    mv "$TMP_PTR" "$POINTER"
+    chmod 600 "$POINTER" 2>/dev/null || true
+    export ETERNITY_POINTER="$POINTER"
+else
+    echo "WARN: could not resolve claude PID for pointer write (pid file missing); resume skill will use pick-from-list fallback" >&2
+fi
+
+# ── Success: caller now has handoff + resume_file + sibling + pointer ─────
+# Caller diverges from here based on variant (cmux vs warp).
+return 0 2>/dev/null || exit 0

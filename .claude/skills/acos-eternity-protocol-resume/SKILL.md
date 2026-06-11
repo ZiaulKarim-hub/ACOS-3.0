@@ -100,6 +100,37 @@ POINTER_USED=""
 if [[ -n "$CLAUDE_PID" ]]; then
     POINTER="$STATE/.eternity-pointer-pid-${CLAUDE_PID}"
     if [[ -s "$POINTER" ]]; then
+        # PID-REUSE GUARD (2026-06-11): the OS can recycle a PID after the
+        # original claude process exits. If that happens, this pointer was
+        # written by a DIFFERENT (now-dead) claude instance and injecting its
+        # handoff would resume the wrong work. core.sh stamps the process
+        # start time into `claude_lstart:` precisely so we can detect reuse.
+        #
+        # The lstart value contains spaces (e.g. "Wed Jun 11 09:14:02 2026"),
+        # so we take the FULL remainder of the line after the key, not just the
+        # first token. Compare (trimmed) against the live process's lstart.
+        # Backward-compat: pointers written before this field existed have no
+        # claude_lstart line → we skip the check and proceed as before.
+        PTR_LSTART=$(grep '^claude_lstart:' "$POINTER" \
+            | head -1 | sed 's/^claude_lstart:[[:space:]]*//' \
+            | sed 's/[[:space:]]*$//')
+        if [[ -n "$PTR_LSTART" ]]; then
+            LIVE_LSTART=$(ps -o lstart= -p "$CLAUDE_PID" 2>/dev/null \
+                | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            if [[ -n "$LIVE_LSTART" && "$PTR_LSTART" != "$LIVE_LSTART" ]]; then
+                echo "WARN: pointer is from a previous claude instance with a recycled PID"
+                echo "      (pointer lstart: '$PTR_LSTART'  vs  live PID $CLAUDE_PID lstart: '$LIVE_LSTART')"
+                echo "      retiring stale pointer → consumed/ and falling through to legacy lookup"
+                CONSUMED="$STATE/consumed"
+                mkdir -p "$CONSUMED"
+                TS=$(date +%s)
+                DEST="$CONSUMED/$(basename "$POINTER").stale.${TS}"
+                mv "$POINTER" "$DEST" 2>/dev/null || true
+                POINTER=""   # force fall-through to Step 1
+            fi
+        fi
+    fi
+    if [[ -n "$POINTER" && -s "$POINTER" ]]; then
         # Extract handoff_basename from the pointer yaml
         BASENAME=$(grep '^handoff_basename:' "$POINTER" | sed 's/^handoff_basename:[[:space:]]*//')
         SIBLING="memory/handoffs/${BASENAME}.resume.md"
