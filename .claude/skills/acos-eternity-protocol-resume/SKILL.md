@@ -41,6 +41,8 @@ SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-'
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 test -n "$JSONL" || { echo "ERROR: no JSONL for current project"; exit 1; }
 SESSION_ID=$(basename "$JSONL" .jsonl)
+# Mirror token-watcher.py EXACTLY (^[a-zA-Z0-9_-]{1,128}$); a real UUID passes.
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 
 echo "{\"session_id\":\"$SESSION_ID\"}" | \
     "$HOME/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh" 2>/dev/null || true
@@ -76,6 +78,7 @@ SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-'
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 test -n "$JSONL" || { echo "ERROR: no JSONL for current project"; exit 1; }
 SESSION_ID=$(basename "$JSONL" .jsonl)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 
 # Resolve THIS pane's claude PID by walking the parent process tree.
@@ -220,6 +223,7 @@ test -d "$PROJECT_DIR" || { echo "ERROR: no Claude Code project dir for cwd $(pw
 JSONL=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
 test -n "$JSONL" || { echo "ERROR: no JSONL in $PROJECT_DIR — refusing to inject"; exit 1; }
 SESSION_ID=$(basename "$JSONL" .jsonl)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 
 # Set of session IDs that have ever lived in this project. Used to scope
 # both the primary lookup and the newest-first fallback so we never pick up
@@ -325,6 +329,7 @@ STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 PROJECT_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 JSONL=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 SIDECAR="$STATE/.resume-skill-context-${SESSION_ID}"
 test -s "$SIDECAR" || { echo "ERROR: Step 1 sidecar missing ($SIDECAR) — re-run from Step 1"; exit 1; }
 # shellcheck disable=SC1090
@@ -350,6 +355,7 @@ STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 PROJECT_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 JSONL=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 
 PID_FILE="$STATE/pid-${SESSION_ID}"
 test -f "$PID_FILE" || { echo "ERROR: no PID file at $PID_FILE — Step 0 should have written one. claude ancestor not found in process tree?"; exit 1; }
@@ -373,6 +379,7 @@ STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 PROJECT_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 JSONL=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 SIDECAR="$STATE/.resume-skill-context-${SESSION_ID}"
 test -s "$SIDECAR" || { echo "ERROR: Step 1 sidecar missing ($SIDECAR) — re-run from Step 1"; exit 1; }
 # shellcheck disable=SC1090
@@ -427,6 +434,7 @@ PROJECT_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-'
 test -d "$PROJECT_DIR" || { echo "ERROR: no Claude Code project dir for cwd $(pwd)"; exit 1; }
 JSONL=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 SIDECAR="$STATE/.resume-skill-context-${SESSION_ID}"
 test -s "$SIDECAR" || { echo "ERROR: Step 1 sidecar missing ($SIDECAR) — re-run from Step 1"; exit 1; }
 # shellcheck disable=SC1090

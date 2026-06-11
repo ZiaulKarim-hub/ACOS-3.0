@@ -99,6 +99,9 @@ SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-'
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
 test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
+# Mirror token-watcher.py EXACTLY (^[a-zA-Z0-9_-]{1,128}$). A real UUID always
+# passes; a failure means the derivation is broken before SESSION_ID hits paths.
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 
@@ -227,6 +230,7 @@ automatically post-/clear. A one-block status is enough.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 CMUX_SURFACE_FILE="$STATE/cmux-surface-${SESSION_ID}"
 CMUX_SIDECAR="$STATE/.cmux-skill-context-${SESSION_ID}"
@@ -279,6 +283,7 @@ SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-'
 JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
 test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 CMUX_SIDECAR="$STATE/.cmux-skill-context-${SESSION_ID}"
 PRE_CLEAR_TOTAL=0
@@ -329,7 +334,15 @@ EOF
             # Probe succeeded (method found, or capabilities gave no usable
             # output to contradict it) → cache the verified method.
             if [[ -n "$CAP_OUT" ]] && printf '%s' "$CAP_OUT" | grep -Fq "$METHOD"; then
-                printf '%s\n' "$METHOD" > "$VERIFIED_CACHE"
+                # SHARED CONTRACT with the daemon's injector: this file MUST
+                # contain a SINGLE bare line = the method name, nothing else
+                # (no trailing commentary, no `method=` prefix). The injector
+                # reads it verbatim to skip re-probing on a seamless first fire.
+                # Write atomically (tmp + mv) so the injector never sees a
+                # half-written file on a concurrent read.
+                VC_TMP=$(mktemp "${VERIFIED_CACHE}.XXXXXX")
+                printf '%s\n' "$METHOD" > "$VC_TMP"
+                mv "$VC_TMP" "$VERIFIED_CACHE"
                 echo "RPC method '$METHOD' verified via 'cmux capabilities' — cached."
             else
                 echo "WARN: 'cmux capabilities' produced no usable output — could not"

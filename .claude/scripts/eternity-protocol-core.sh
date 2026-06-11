@@ -39,6 +39,11 @@ if [[ -z "$SESSION_ID" ]]; then
     echo "ERROR: could not determine session_id (no JSONL in $SESSION_DIR)" >&2
     return 1 2>/dev/null || exit 1
 fi
+# Mirror token-watcher.py's validation EXACTLY: ^[a-zA-Z0-9_-]{1,128}$. A real
+# Claude session id is a UUID, which always passes — this can never reject an
+# id Python already accepted. A failure here means the derivation is broken
+# (and SESSION_ID is about to be used in paths/heredocs), so refuse loudly.
+[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID" >&2; return 1 2>/dev/null || exit 1; }
 export SESSION_ID
 
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
@@ -214,6 +219,14 @@ CLAUDE_LSTART=""
 PID_FILE="$STATE/pid-${SESSION_ID}"
 if [[ -f "$PID_FILE" ]]; then
     CLAUDE_PID=$(head -1 "$PID_FILE" 2>/dev/null)
+    # Validate before it's used to build the pointer path. A non-numeric value
+    # (corrupt pid file) must not become part of a filename. On failure, blank
+    # it so the code below falls through to the pick-from-list pointer fallback
+    # (log-and-proceed — never abort the auto-loop over a bad pointer write).
+    if [[ -n "$CLAUDE_PID" ]] && ! [[ "$CLAUDE_PID" =~ ^[0-9]+$ ]]; then
+        echo "WARN: pid file $PID_FILE held non-numeric value '$CLAUDE_PID' — ignoring; resume skill will use pick-from-list fallback" >&2
+        CLAUDE_PID=""
+    fi
     # Line 2 of the pid file is the process start time (lstart) recorded by
     # register-session-pid.sh. Carrying it into the pointer lets the resume
     # skill detect PID reuse (claude exited, OS recycled the PID for an

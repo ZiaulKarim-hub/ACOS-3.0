@@ -47,14 +47,47 @@ If invoked with no argument, prints the current threshold.
 
 ```bash
 NEW_THRESHOLD=$(echo "$ARGUMENTS" | tr -d ', \t\n\r')
+
+# HARD GATE before this value reaches the sed substitution in Step 2. Without
+# it, a non-numeric or sed-metacharacter argument (`/`, `&`, `\`) would corrupt
+# the config.yaml that the daemon hot-reloads — directly breaking the auto-loop.
+# Require a pure integer (no signs, no decimals, no metachars).
+[[ "$NEW_THRESHOLD" =~ ^[0-9]+$ ]] || { echo "ERROR: threshold must be a positive integer (got: '$ARGUMENTS')"; exit 1; }
+
+# Lower-bound sanity: a tiny threshold would make the daemon fire on almost
+# every event — a smoothness hazard (constant /clear churn). Reject < 10000.
+if [[ "$NEW_THRESHOLD" -lt 10000 ]]; then
+    echo "ERROR: threshold $NEW_THRESHOLD is too small (< 10000) — would make the daemon fire constantly."
+    echo "       Use a realistic value (default 400000; see the guidance table below)."
+    exit 1
+fi
+
+# Soft upper/odd-range warnings — apply anyway (these are valid integers).
+if [[ "$NEW_THRESHOLD" -lt 50000 ]]; then
+    echo "WARN: threshold $NEW_THRESHOLD is unusually aggressive (< 50000) — applying anyway."
+elif [[ "$NEW_THRESHOLD" -gt 950000 ]]; then
+    echo "WARN: threshold $NEW_THRESHOLD effectively disables auto-fire (> 950000) — applying anyway."
+fi
 ```
 
-- Must parse to a positive integer
-- Sanity-check range: warn if < 50,000 or > 950,000 but apply anyway
+- Must parse to a positive integer (enforced above — rejects non-numeric and
+  sed-metacharacter input before it can corrupt config.yaml)
+- Hard-rejects < 10000 (constant-fire smoothness hazard)
+- Soft-warns on < 50,000 or > 950,000 but applies anyway
 
 ### Step 2: Update the YAML
 
+Each fenced bash block runs in its OWN shell, so `$NEW_THRESHOLD` validated in
+Step 1 is empty here. Re-derive AND re-validate it before it reaches `sed` —
+the validation is what protects config.yaml from a corrupting substitution, so
+it must live in the same block that runs the `sed`.
+
 ```bash
+NEW_THRESHOLD=$(echo "$ARGUMENTS" | tr -d ', \t\n\r')
+# Re-validate in this block (self-contained guard right before sed).
+[[ "$NEW_THRESHOLD" =~ ^[0-9]+$ ]] || { echo "ERROR: threshold must be a positive integer (got: '$ARGUMENTS')"; exit 1; }
+[[ "$NEW_THRESHOLD" -ge 10000 ]] || { echo "ERROR: threshold $NEW_THRESHOLD is too small (< 10000)"; exit 1; }
+
 CONFIG="$HOME/Library/Application Support/acos-token-monitor/config.yaml"
 sed -i '' "s/^threshold:.*/threshold: ${NEW_THRESHOLD}/" "$CONFIG"
 ```
