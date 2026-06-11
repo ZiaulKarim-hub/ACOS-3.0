@@ -348,7 +348,7 @@ for t in last_texts[-8:]:
 breadcrumbs_yaml = chr(10).join(breadcrumbs) if breadcrumbs else '  - \"No context captured\"'
 
 yaml = f'''timestamp: \"{now}\"
-status: \"active\"
+status: \"mechanical\"
 type: mechanical-stop
 trigger: context-monitor-stop-hook
 session_id: \"{session_id}\"

@@ -424,7 +424,10 @@ if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "" ]; then
   # Find the NEWEST matching handoff (most recent = most relevant)
   NEWEST_HANDOFF=""
   NEWEST_MTIME=0
-  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml; do
+  for f in "$HANDOFF_DIR"/*.yaml "$HANDOFF_DIR"/*.yml "$HANDOFF_DIR"/*.md; do
+    # Skip eternity `.resume.md` siblings — they are resume-prompt copies, NOT
+    # handoffs, and must not satisfy the handoff gate (mirrors context-monitor.sh).
+    case "$f" in *.resume.md) continue;; esac
     if [ -f "$f" ]; then
       HANDOFF_SID=$(grep -m1 '^session_id:' "$f" 2>/dev/null | sed 's/^session_id:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true)
       if [ "$HANDOFF_SID" = "$SESSION_ID" ]; then
@@ -642,7 +645,7 @@ for t in last_texts[-8:]:
 breadcrumbs_yaml = chr(10).join(breadcrumbs) if breadcrumbs else '  - \"No context captured\"'
 
 yaml = f'''timestamp: \"{now}\"
-status: \"active\"
+status: \"mechanical\"
 type: enforced-mechanical
 trigger: handoff-enforcement-auto-fallback
 session_id: \"{session_id}\"

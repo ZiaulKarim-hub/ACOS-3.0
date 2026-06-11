@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import shlex
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -315,19 +316,12 @@ def check_hard_blocks(tool_name, tool_input, config):
 #   - DELETE FROM <table> without WHERE  (entirely unblocked)
 #
 # What still gets logged (and allowed):
+# NOTE: broad-target `rm` detection is handled by _command_is_destructive_rm()
+# below (a tokenizer), NOT by these regexes — regex flag/quote handling kept
+# leaving gaps (mixed short+long flags `rm -r --force /`, split flags
+# `rm -f -r /`, quoted targets `rm -rf "/"`). The tokenizer is order- and
+# quote-agnostic. These regexes cover the remaining non-rm destructive shapes.
 AUTOPILOT_DESTRUCTIVE_PATTERNS = [
-    # rm -rf against $HOME, /, ., .., or HOME env var
-    r"\brm\s+-[rRfvi]*r[rRfvi]*\s+(--\s+)?(/|~|/\*|\$HOME|\$\{HOME\}|\.|\.\.)\s*(/?\s*$|/?\*|\s)",
-    r"\brm\s+-[rRfvi]+\s+(--\s+)?\$\{?HOME\}?\b",
-    # rm -rf ~/<anything> or $HOME/<anything> — a whole top-level home subdir wipe
-    # (e.g. `rm -rf ~/Documents`) must hit the morning-review audit trail too.
-    r"\brm\s+-[rRfvi]*r[rRfvi]*\s+(--\s+)?(~|\$\{?HOME\}?)/\S",
-    # GNU long-form recursive/force deletes against broad targets — the short-flag
-    # patterns above miss `rm --recursive --force /` and `rm --recursive ~`.
-    r"\brm\s+(--(recursive|force|no-preserve-root|dir)\s+)+(--\s+)?(/|~|/\*|\$\{?HOME\}?|\.|\.\.)(\s*$|/?\s|/?\*|/\S)",
-    # --no-preserve-root is a deliberately catastrophic flag — log on sight, in any
-    # flag combination (e.g. `rm -rf --no-preserve-root /`, mixed short+long).
-    r"\brm\s+.*--no-preserve-root\b",
     # xargs rm — almost always mass deletion
     r"\bxargs\s+(-[^|]*\s+)?rm\b",
     # shred — file destruction
@@ -338,6 +332,70 @@ AUTOPILOT_DESTRUCTIVE_PATTERNS = [
 _AUTOPILOT_DESTRUCTIVE_REGEXES = [
     re.compile(p, re.IGNORECASE) for p in AUTOPILOT_DESTRUCTIVE_PATTERNS
 ]
+
+# Broad/catastrophic rm targets (after quote-stripping). Specific subpaths like
+# /tmp/x or ./build are intentionally NOT flagged — only whole-root / whole-home
+# / current-or-parent-dir wipes reach the morning-review audit trail.
+_BROAD_RM_TARGETS = {"/", "/*", "~", ".", ".."}
+_SHELL_SEPARATORS = {";", "&&", "||", "|", "&"}
+
+
+def _is_broad_rm_target(tok):
+    """True if an rm argument names a catastrophic target (/, ~, $HOME, ., ..,
+    or any whole-top-level-home subdir ~/x / $HOME/x). Quote-agnostic."""
+    if len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in ("'", '"'):
+        tok = tok[1:-1]
+    t = tok.strip()
+    if t in _BROAD_RM_TARGETS:
+        return True
+    if t == "~" or t.startswith("~/"):
+        return True
+    if t in ("$HOME", "${HOME}") or t.startswith("$HOME/") or t.startswith("${HOME}/"):
+        return True
+    # bare root with trailing slashes (e.g. "//"), or "/*"
+    if t and t.rstrip("/") == "":
+        return True
+    return False
+
+
+def _command_is_destructive_rm(command):
+    """Order- and quote-agnostic detection of `rm` with a recursive (or
+    --no-preserve-root) flag against a broad/catastrophic target. Replaces the
+    prior regex set, which missed mixed/split short+long flags and quoted
+    targets. Log-and-allow (per spec) — this just ensures the audit trail is
+    complete. Scans every `rm` occurrence in a compound command."""
+    if "rm" not in command:
+        return False
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = command.split()
+    i, n = 0, len(tokens)
+    while i < n:
+        base = tokens[i].rsplit("/", 1)[-1]
+        if base == "rm":
+            recursive = False
+            broad = False
+            j = i + 1
+            while j < n and tokens[j] not in _SHELL_SEPARATORS:
+                a = tokens[j]
+                if a == "--":
+                    pass
+                elif a.startswith("--"):
+                    if a in ("--recursive", "--no-preserve-root"):
+                        recursive = True
+                elif a.startswith("-") and len(a) > 1:
+                    if "r" in a or "R" in a:
+                        recursive = True
+                elif _is_broad_rm_target(a):
+                    broad = True
+                j += 1
+            if recursive and broad:
+                return True
+            i = j
+        else:
+            i += 1
+    return False
 
 # Kept for backward-compat with anything reading the old name; same content.
 AUTOPILOT_HARD_BLOCKS = AUTOPILOT_DESTRUCTIVE_PATTERNS
@@ -363,6 +421,9 @@ def check_autopilot_hard_blocks(tool_name, tool_input):
     command = tool_input.get("command", "")
     if not command:
         return False, None
+    # Tokenizer-based broad-rm detection (order/quote-agnostic) first.
+    if _command_is_destructive_rm(command):
+        return True, "rm-recursive-broad-target"
     for pat, regex in zip(AUTOPILOT_DESTRUCTIVE_PATTERNS, _AUTOPILOT_DESTRUCTIVE_REGEXES):
         try:
             if regex.search(command):
