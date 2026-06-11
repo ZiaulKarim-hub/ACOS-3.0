@@ -176,7 +176,9 @@ mechanically verify a fresh handoff was written:
 ```bash
 # 2026-06-11 fix: accept BOTH .md and .yaml handoffs (mirrors the Jun-10
 # core.sh / warp-skill fix — acos-handoff now emits .md; older runs emit .yaml).
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | head -1)
+# The .resume.md exclusion is REQUIRED: the resume sibling is written right
+# after the handoff, so without it ls -t binds $HANDOFF to the .resume.md.
+HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
 test -s "$HANDOFF" || { echo "ERROR: no handoff produced"; exit 1; }
 ```
 

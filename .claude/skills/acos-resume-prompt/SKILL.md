@@ -23,7 +23,9 @@ the referenced handoff, and continues the prior work without losing context.
 ### Step 1: Locate the latest handoff
 
 ```bash
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml memory/handoffs/*.yml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
+# Extension set intentionally matches core.sh exactly (.md + .yaml; no .yml
+# is ever emitted) so the two readers can never select different handoffs.
+HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
 test -n "$HANDOFF" || { echo "ERROR: no handoff exists — run /acos-handoff first"; exit 1; }
 ```
 
@@ -46,7 +48,10 @@ JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
 SESSION_ID=$(basename "$JSONL" .jsonl)
 ```
 
-Run this Python walk to identify in-flight Tasks (use the variables above):
+Run this Python walk to identify in-flight Tasks. NOTE: `"$JSONL"` below is a
+shell-variable placeholder, not literal Python — substitute the resolved path
+from the bash block above (e.g. run the snippet via `python3 - <<EOF` with an
+UNQUOTED heredoc delimiter so the shell interpolates it, or inline the path):
 
 ```python
 import json

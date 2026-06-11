@@ -3,7 +3,7 @@ name: acos-model-change
 description: Manages model profiles for ACOS agents. Switch between Budget/Standard/Premium/Auto tiers, override individual agents, and view current assignments.
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 ---
 
 # ACOS Model Change

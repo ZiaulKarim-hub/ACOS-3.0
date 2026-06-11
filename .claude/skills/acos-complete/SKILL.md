@@ -88,9 +88,9 @@ Search both `.md` and `.yaml` handoffs (excluding `.resume.md` siblings) for fil
 ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$'
 ```
 
-Skip files that already have `status: "completed"` or `status: "mechanical"`.
+Skip files that already have `status: "completed"`. Files with `status: "mechanical"` (PreCompact-created) are ALSO marked completed and archived here — a finished milestone supersedes them, and leaving them behind would violate the clean-context guarantee this skill makes.
 
-For each active handoff found (the `status:` field lives in the YAML front-matter block of a `.md` handoff, or at the top level of a `.yaml` handoff):
+For each active or mechanical handoff found (the `status:` field lives in the YAML front-matter block of a `.md` handoff, or at the top level of a `.yaml` handoff):
 - If it has a top-level/front-matter `status:` field, change its value to `"completed"`
 - If it has no `status:` field, add `status: "completed"` on the line after `timestamp:`
 
