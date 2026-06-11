@@ -3,7 +3,8 @@
 # Completes the agent lifecycle audit trail (paired with log-agent-completion.sh)
 # Runs async — does not block agent creation
 #
-# Input: JSON with agent_name, agent_type, description, parent session info
+# Input: JSON with agent_type, agent_id, description, parent session info
+#        (no agent_name field exists in the payload — see line ~24)
 # Output: Appends to .acos/state/agent-lifecycle.log
 
 set -euo pipefail

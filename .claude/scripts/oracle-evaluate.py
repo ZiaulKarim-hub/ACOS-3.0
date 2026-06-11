@@ -378,8 +378,11 @@ LINT_BASH = re.compile(
     r'(eslint|biome|prettier|ruff|clippy|golangci-lint|npm\s+run\s+lint|npx\s+biome)',
     re.IGNORECASE
 )
+# Trailing (\s|$|;|\||&) boundary prevents prefix matches: without it,
+# "catalog" matched "cat", "lshw" matched "ls", "datetime" matched "date" —
+# all wrongly receiving the info_cmd -3 discount.
 INFO_BASH = re.compile(
-    r'^(git\s+(status|log|diff|branch|remote|show|tag)|ls|pwd|echo|cat|head|tail|wc|which|type|env|printenv|whoami|date|uname)',
+    r'^(git\s+(status|log|diff|branch|remote|show|tag)|ls|pwd|echo|cat|head|tail|wc|which|type|env|printenv|whoami|date|uname)(\s|$|;|\||&)',
     re.IGNORECASE
 )
 # A write redirection (`>`, `>>`, `1>`, `2>>`, `&>`, `>|`, `| tee`/`|tee`) means the
@@ -457,7 +460,16 @@ def compute_temperature(tool_name, tool_input, config, project_root):
         if active_slice.is_file():
             try:
                 slice_text = active_slice.read_text(encoding="utf-8")
-                if path in slice_text:
+                # Hook inputs carry ABSOLUTE paths while active-slice.yaml
+                # stores repo-relative ones — test both forms or the discount
+                # never applies in practice.
+                rel_path = None
+                if os.path.isabs(path):
+                    try:
+                        rel_path = os.path.relpath(path, project_root)
+                    except ValueError:
+                        rel_path = None
+                if path in slice_text or (rel_path and rel_path in slice_text):
                     modifier -= 2
                     reasons.append("in_scope -2")
             except OSError:

@@ -23,6 +23,13 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+# Claude Code passes file_path as an ABSOLUTE path, but the carve-outs below and
+# the files_allowed patterns in active-slice.yaml are repo-relative. Strip the
+# project-root prefix (hooks run with cwd at project root) so the glob matches
+# work. Paths outside the repo keep their absolute form and fall through to the
+# matcher, which blocks them (correct: out-of-repo writes are never in scope).
+FILE_PATH="${FILE_PATH#"$PWD"/}"
+
 # Always allow writes to .acos/evidence/ and .acos/state/ (runtime data)
 # Block .acos/config/ (requires explicit scope allowance like any other file)
 if [[ "$FILE_PATH" == .acos/evidence/* ]] || [[ "$FILE_PATH" == .acos/state/* ]]; then

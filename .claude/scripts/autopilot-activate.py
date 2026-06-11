@@ -374,6 +374,9 @@ def cmd_status(args):
     print("Pre-flight check:")
     ok, findings = preflight(project_root)
     print_findings(findings)
+    if not ok:
+        print()
+        print("WARNING: autopilot is ON but pre-flight has FAILs — hooks may not fire correctly.")
     sys.exit(0)
 
 

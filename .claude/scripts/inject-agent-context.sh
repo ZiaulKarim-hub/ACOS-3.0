@@ -13,7 +13,9 @@
 # This hook runs synchronously (not async) because the context needs to be
 # available when the subagent starts. It should complete in <500ms.
 #
-# Input: JSON with agent_name, agent_type, session_id
+# Input: JSON with agent_type, agent_id, session_id (there is NO agent_name
+#        field in the SubagentStart payload — agent_name is read only as a
+#        legacy fallback; see log-agent-spawn.sh which documents the same)
 # Output: JSON with additionalContext (or empty for no injection)
 
 set -euo pipefail
@@ -38,9 +40,13 @@ except Exception:
 
 IFS=$'\t' read -r AGENT_NAME AGENT_TYPE <<< "$AGENT_INFO"
 
+# The payload carries agent_type (agent_name does not exist post-2026-06-04);
+# resolve agent_type first with agent_name as legacy fallback.
+AGENT="${AGENT_TYPE:-$AGENT_NAME}"
+
 # Only inject context for agents that benefit from it
 # Skip for memory-agent, learning-agent (they have their own context)
-case "$AGENT_NAME" in
+case "$AGENT" in
   memory-agent|learning-agent)
     exit 0
     ;;
@@ -117,6 +123,7 @@ CONTEXT_JSON=$(python3 -c "import sys,json; print(json.dumps(sys.argv[1]))" "$CO
 cat <<EOF
 {
   "hookSpecificOutput": {
+    "hookEventName": "SubagentStart",
     "additionalContext": $CONTEXT_JSON
   }
 }

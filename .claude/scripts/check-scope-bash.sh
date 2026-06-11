@@ -11,6 +11,12 @@
 # (>, >>, tee, cp, mv, sed -i, dd of=, install, ln, touch). The airtight containment
 # is isolation:worktree on the developer agent (separate change).
 #
+# KNOWN LIMITATION: target-token extraction splits on whitespace, so a quoted
+# write target containing spaces (including any path under a repo root with a
+# space in it, like this project's "ACOS 3.0") is truncated at the first space
+# and then rejected as outside-repo → the write is ALLOWED through. Proper fix
+# is shlex-aware tokenization (tracked on the robust-review punch-list).
+#
 # Only enforces on paths INSIDE the repo. Absolute paths outside the repo (/tmp, /etc)
 # are left to the Oracle — scope is about repo containment.
 #
