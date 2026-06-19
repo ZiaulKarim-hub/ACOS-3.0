@@ -1,16 +1,20 @@
 ---
-name: acos-eternity-protocol-warp
-description: Eternity protocol — Warp variant. MANUAL-ONLY (no auto-fire at 400k). User types `/acos-eternity-protocol-warp` when ready to hand off; the skill generates a handoff + resume prompt, writes the handoff-paired `.resume.md` sibling + per-claude-PID pointer, and DISPLAYS them in the conversation as a visible block. User then manually types `/clear` and `/acos-eternity-protocol-resume`. Auto-fire was disabled 2026-06-04 because the AXTitle marker race makes daemon-driven keystroke injection fail in multi-Warp-window setups.
+name: acos-continue
+description: Manual session-continuation handoff for Warp terminals — the manual counterpart to the automatic /acos-eternity-protocol (cmux) flow. MANUAL-ONLY (no auto-fire at 400k). You invoke /acos-continue when ready to hand off across a context reset; the skill generates a handoff + resume prompt, writes the handoff-paired `.resume.md` sibling + per-claude-PID pointer, and DISPLAYS them in the conversation as a visible block. You then manually type /clear and /acos-eternity-protocol-resume to pick up where you left off. Formerly acos-eternity-protocol-warp; auto-fire was disabled 2026-06-04 because the AXTitle marker race makes daemon-driven keystroke injection fail in multi-Warp-window setups.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill
 ---
 
-# ACOS Eternity Protocol — Warp Variant (MANUAL-ONLY)
+# ACOS Continue — Manual Session-Continuation Handoff (Warp, MANUAL-ONLY)
+
+> Formerly `acos-eternity-protocol-warp`. Renamed to `acos-continue` 2026-06-19.
+> Behavior is unchanged — this is the manual counterpart to the automatic
+> `/acos-eternity-protocol` (cmux) flow.
 
 ## Overview
 
-The Warp variant solves the "I'm at 400k and need to hand off NOW" problem
+`/acos-continue` solves the "I'm at 400k and need to hand off NOW" problem
 without depending on the broken AXTitle marker injection path. **You invoke
 this skill manually** when you decide to hand off; it generates the handoff
 + resume-prompt artifacts, writes the handoff-paired `.resume.md` sibling
@@ -35,7 +39,7 @@ This is the right variant when:
   manually when you see the visible block appear
 
 For the fully-automated experience, use the cmux variant
-(`/acos-eternity-protocol-cmux`) inside a cmux surface where the
+(`/acos-eternity-protocol`) inside a cmux surface where the
 Unix-socket IPC eliminates the AXTitle race.
 
 ## Execution Policy

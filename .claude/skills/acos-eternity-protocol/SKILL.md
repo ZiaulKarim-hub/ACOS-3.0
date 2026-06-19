@@ -1,5 +1,5 @@
 ---
-name: acos-eternity-protocol-cmux
+name: acos-eternity-protocol
 description: Eternity protocol — cmux variant. Fully automatic. At 400k tokens, generates the handoff + resume prompt, signals the daemon via state/.clear-requested-<sid> + state/cmux-surface-<sid>; daemon uses cmux Unix-socket RPC (cmux rpc <method> with surface/text JSON payload fields) to inject /clear into the cmux surface, then — after compaction — injects the RAW pending-resume content directly into the surface (it does NOT type /acos-eternity-protocol-resume; the resume skill is never invoked in this auto path). Loops forever — sessions never end. Designed for cmux surfaces where the Unix-socket IPC eliminates the AXTitle marker race that breaks Warp.
 disable-model-invocation: false
 user-invocable: true
@@ -20,7 +20,7 @@ over that socket and asks "send these characters to surface S." No AXTitle
 marker race, no Warp-vs-Node binary mismatch, no synthetic CGEventPost.
 
 For the manual-fallback variant (Warp, no IPC), use
-`/acos-eternity-protocol-warp`. To disable auto-fire for this session, use
+`/acos-continue`. To disable auto-fire for this session, use
 `/acos-eternity-protocol-stop`.
 
 ## Architecture
@@ -123,7 +123,7 @@ CMUX_SURFACE_FILE="$STATE/cmux-surface-${SESSION_ID}"
 if [[ ! -s "$CMUX_SURFACE_FILE" ]]; then
     echo "ERROR: no cmux surface recorded for this session."
     echo "       This session was not launched inside a cmux surface."
-    echo "       Use /acos-eternity-protocol-warp instead."
+    echo "       Use /acos-continue instead."
     exit 1
 fi
 
@@ -133,7 +133,7 @@ CMUX_SOCKET="$HOME/Library/Application Support/cmux/cmux.sock"
 if [[ ! -S "$CMUX_SOCKET" ]]; then
     echo "ERROR: cmux socket not found at $CMUX_SOCKET"
     echo "       The cmux app is not running. Launch cmux first, then retry."
-    echo "       (Or use /acos-eternity-protocol-warp for the manual-fallback flow.)"
+    echo "       (Or use /acos-continue for the manual-fallback flow.)"
     exit 1
 fi
 
@@ -375,7 +375,7 @@ TMP=$(mktemp "${CLEAR_FLAG}.XXXXXX")
 cat > "$TMP" <<EOF
 requested_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 session_id: ${SESSION_ID}
-requested_by: acos-eternity-protocol-cmux
+requested_by: acos-eternity-protocol
 pre_clear_total: ${PRE_CLEAR_TOTAL}
 variant: cmux
 EOF

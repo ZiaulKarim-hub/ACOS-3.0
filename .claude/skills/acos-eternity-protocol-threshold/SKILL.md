@@ -1,6 +1,6 @@
 ---
 name: acos-eternity-protocol-threshold
-description: Sets the auto-fire threshold for the eternity protocol. Edits ~/Library/Application Support/acos-token-monitor/config.yaml so the daemon acts when the token count crosses the new value. The daemon dispatches by SESSION VARIANT — it fires /acos-eternity-protocol-cmux for cmux sessions; for warp sessions it only logs that manual invocation is required (auto-fire disabled 2026-06-04). The retired /acos-eternity-protocol skill is no longer dispatched. Hot-reloads — no daemon restart needed. Usage. /acos-eternity-protocol-threshold 350000
+description: Sets the auto-fire threshold for the eternity protocol. Edits ~/Library/Application Support/acos-token-monitor/config.yaml so the daemon acts when the token count crosses the new value. The daemon dispatches by SESSION VARIANT — it fires /acos-eternity-protocol for cmux sessions; for warp sessions it only logs that manual invocation is required (auto-fire disabled 2026-06-04). Hot-reloads — no daemon restart needed. Usage. /acos-eternity-protocol-threshold 350000
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash
@@ -15,10 +15,11 @@ remembering the YAML path.
 
 When the token count crosses the threshold, the token-watcher daemon dispatches
 by **session variant**: for cmux sessions it fires
-`/acos-eternity-protocol-cmux`; for warp sessions it only logs that manual
+`/acos-eternity-protocol`; for warp sessions it only logs that manual
 invocation is required (warp auto-fire was disabled 2026-06-04 due to the
-AXTitle marker race). The legacy `/acos-eternity-protocol` skill was retired
-2026-05-28 and is no longer dispatched.
+AXTitle marker race). The original monolithic `/acos-eternity-protocol` skill was retired
+2026-05-28; the cmux engine was renamed back to `/acos-eternity-protocol`
+on 2026-06-18 and is now the canonical auto-fire target.
 
 The token-watcher daemon hot-reloads its config when the file mtime changes,
 so the new threshold takes effect immediately on the next event.
