@@ -1,0 +1,99 @@
+# Slice Plan — Embedded blind swarm + between-rounds synthesizer
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-06-swarm-synthesizer"
+story_id: "STORY-APS-06"
+epic_id: "EPIC-APS-06"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Embedded blind swarm + between-rounds synthesizer"
+objective: |
+  Implement the embedded blind isolated swarm + the between-rounds synthesizer.
+  swarm_dispatch.py builds the channel x jurisdiction x entity agent matrix for a round;
+  each agent runs isolated/blind (no shared context), dispatched subscription-only via
+  Task(), and writes workspace/<sid>/round-NN/agent-NN/findings.md. synthesize_round.py
+  cross-references findings -> confidence (Verified = 2+ INDEPENDENT isolated agents),
+  PRESERVES conflicts as manual-review flags (never harmonize), hub-prunes + enforces the
+  hop limit (holds the stop-list + hop counter), and emits next-round seeds; the loop stops
+  when a round yields no new high-confidence nodes.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Two INDEPENDENT isolated agents landing on the same parcel mark it Verified; a single agent does not — pass: corroboration test (REQUIRED)"
+  - "[ ] Conflicting owner names are PRESERVED as a manual-review flag, never harmonized — pass: conflict-preservation test (REQUIRED; a silent merge = REJECT)"
+  - "[ ] The synthesizer hub-prunes + enforces the hop limit before seeding the next round; prunes logged — pass: prune/hop test"
+  - "[ ] The loop stops when a round yields no new high-confidence nodes — pass: loop-termination test"
+  - "[ ] Agents are isolated (no shared context) and dispatched subscription-only via Task() — pass: isolation + no-API-key test (REQUIRED)"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-05-channels-arcgis-assessor-recorder"
+      what_it_provides: "The channel adapters the per-round agents run; parcel results to corroborate"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/swarm_dispatch.py"     # stdlib only
+  - ".claude/skills/acos-property-search/scripts/synthesize_round.py"   # stdlib only
+  - ".claude/skills/acos-property-search/scripts/tests/test_synthesize_round.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-06-swarm-synthesizer.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/graph.py"   # owned by slice-04
+  - ".claude/skills/acos-property-search/scripts/score.py"   # owned by slice-09
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-06-swarm-synthesizer.md"
+  - "Demo 2. Corroboration is genuine ONLY because agents are blind: two independent agents landing on the same parcel = real corroboration."
+  - "Gotcha (hard gates): corroboration (2+ independent), conflict-preservation, and isolation + no-API-key are REQUIRED; any silent merge / cross-leak / single-source-Verified / ANTHROPIC_API_KEY = REJECT."
+  - "Gotcha: the synthesizer holds the hub stop-list + hop counter and emits next seeds; the loop stops at no-new-high-confidence-nodes."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; subscription-only dispatch via Task() (never ANTHROPIC_API_KEY / direct model HTTP)"
+  - "swarm_dispatch builds the channel x jurisdiction x entity matrix + the per-agent isolation contract"
+  - "synthesize_round: Verified at >=2 independent agents; conflicts -> review flags; hub-prune + hop-limit; emit next seeds; return new_high_confidence_count (0 => stop)"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors a conflicting-owner fixture; confirm BOTH names survive as a review flag — any silent merge = REJECT"
+  - "QA re-authors one-agent vs. two-independent-agents fixtures; confirm Verified only at 2+ independent"
+  - "QA greps the swarm scripts for ANTHROPIC_API_KEY / direct model HTTP — must find none"
+  - "QA confirms agents cannot see each other's findings (isolation) and the loop halts at no-new-nodes"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # subscription-only / isolation enforcement
+
+# Effort estimate (from stories.json)
+effort_estimate: "L"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-06-swarm-synthesizer.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

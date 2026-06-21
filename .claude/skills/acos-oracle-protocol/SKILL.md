@@ -1,6 +1,6 @@
 ---
 name: acos-oracle-protocol
-description: Configures The Oracle permission governance system. Manage threshold, hard blocks, modifiers, learned patterns, view audit log, and toggle on/off.
+description: Configures The Oracle permission governance system. Manage threshold, hard blocks, modifiers, learned patterns, view audit log, toggle on/off, and activate session autopilot.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -10,11 +10,117 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 ## Overview
 
-The Oracle is ACOS's permission governance system — a temperature-scoring PreToolUse hook that auto-approves low-risk tool calls and escalates high-risk ones to the user. This skill manages its configuration.
+The Oracle is ACOS's permission governance system — a temperature-scoring PreToolUse hook that auto-approves low-risk tool calls and escalates high-risk ones to the user. This skill manages its configuration **and** controls session-scoped Autopilot mode (auto-accept all prompts including AskUserQuestion / ExitPlanMode, with destructive-delete escalation preserved).
 
 Configuration file: `.acos/config/oracle.yaml`
 Audit log: `.acos/state/oracle-audit.log`
 Session override: `.acos/state/oracle-session-threshold`
+Autopilot sentinel: `.acos/state/autopilot-active` (JSON; presence = autopilot ON)
+Autopilot loop state: `.acos/state/autopilot-loop-state.json`
+
+## Phase 0: Subcommand Routing (runs before everything else)
+
+Inspect skill invocation arguments (`$ARGUMENTS`). Match the first token, then **delegate to `autopilot-activate.py` for deterministic behavior** — do not re-implement the logic interpretively.
+
+| First token in $ARGUMENTS | Bash command to run | Then |
+|---|---|---|
+| `autopilot-on` | `python3 .claude/scripts/autopilot-activate.py on "<rest of $ARGUMENTS as goal>" [--max-iter N]` | Show script output verbatim to user. **Do NOT** re-ask the user to confirm the goal — the script handles pre-flight, sentinel write, audit log, and reports termination conditions. Do show the safety contract block below ONCE before running, so the user sees what they're agreeing to. If script exits non-zero, surface the error and stop. |
+| `autopilot-off` | `python3 .claude/scripts/autopilot-activate.py off` | Show output. Exit. |
+| `autopilot-status` | `python3 .claude/scripts/autopilot-activate.py status` | Show output. Exit. |
+| `autopilot-preflight` | `python3 .claude/scripts/autopilot-activate.py preflight` | Show output. Exit. |
+| (no argument or other token) | proceed to Phase 1 (legacy Oracle configuration flow) | — |
+
+### Argument parsing for `autopilot-on`
+
+Extract `--max-iter N` from `$ARGUMENTS` if present; pass it through to the script. Everything else is the goal text, passed as positional arguments to the script.
+
+**If $ARGUMENTS contains explicit goal text (the existing path):**
+
+- `/acos-oracle-protocol autopilot-on Build the dataroom for Vaughn-Mora`
+  → `python3 .claude/scripts/autopilot-activate.py on "Build" "the" "dataroom" "for" "Vaughn-Mora"`
+- `/acos-oracle-protocol autopilot-on --max-iter 200 Refactor the test suite to vitest`
+  → `python3 .claude/scripts/autopilot-activate.py on --max-iter 200 "Refactor" "the" "test" "suite" "to" "vitest"`
+
+**If $ARGUMENTS is empty or contains only `--max-iter N` (no goal text — implicit-goal mode):**
+
+This mode is intended for after running a pre-engineering skill (like acos-genesis-protocol) that produces a vision artifact. Follow these steps:
+
+1. **Check `memory/source-of-truth/vision-document.md`** (the ACOS convention vision path).
+   - If the file exists and is non-empty: read it. Identify the core goal / success criteria. Compose a **1–3 sentence summary** that captures what "done" looks like. The summary will be injected on every iteration so keep it tight.
+   - If the file does NOT exist: proceed to step 2.
+
+2. **Decipher the goal from the current conversation context.** Look at the most recent skill outputs (the user has likely just run acos-genesis-protocol or a similar pre-engineering skill). Identify:
+   - The vision statement
+   - The acceptance criteria / definition of done
+   - Any explicit deliverables mentioned
+   Compose a 1–3 sentence summary capturing those.
+
+3. **Confirm with the user via AskUserQuestion** — single question, one option labeled `(Recommended)` containing your composed summary, plus an `Other` path so the user can revise. Example header: "Confirm goal." This is the one-and-only confirmation step before autopilot starts the loop.
+
+4. **Run the activate command** with the confirmed summary:
+   - If step 1 found the vision file:
+     `python3 .claude/scripts/autopilot-activate.py on --goal-file memory/source-of-truth/vision-document.md "<confirmed summary>" [--max-iter N]`
+   - If step 1 found nothing (context fallback):
+     `python3 .claude/scripts/autopilot-activate.py on "<confirmed summary>" [--max-iter N]`
+
+The `--goal-file` flag stores the absolute path in the sentinel so the Stop hook's continuation directive includes `GOAL_FILE: <path>  (re-read this anytime for the full vision)` on every iteration. This means Claude can always go back to the source of truth even after eternity-protocol `/clear` cycles — the file path persists, even when the conversation context resets.
+
+### Safety contract (show ONCE before running `on`)
+   > **Autopilot will auto-approve:**
+   > - All tool permission prompts (Bash, Edit, Write, Task)
+   > - `(Recommended)` options on AskUserQuestion (else first option)
+   > - ExitPlanMode confirmations
+   > - WebFetch / WebSearch (any domain)
+   > - MCP server tools (`mcp__*`) — note: MCP server `deny` is broken in
+   >   Claude Code (#33106), so blocking destructive MCP actions is impossible
+   >
+   > **Autopilot will LOG-AND-ALLOW these destructive patterns** (entries
+   > written to `.acos/state/requested-destructive.log` for your morning review;
+   > the action still proceeds — no denial):
+   > - `rm -rf` against $HOME, /, ., .., project root  (INCLUDING `rm -rf /`)
+   > - `xargs rm`
+   > - `shred`
+   > - `dd` to `/dev/{zero,null,random,urandom,sd*,nvme*,disk*}`
+   >
+   > **The following are now ENTIRELY UNBLOCKED under autopilot** (no log, no
+   > escalation — trusted to Claude's judgment per user spec 2026-06-05):
+   > - `find ... -delete` (mass deletion by pattern)
+   > - SQL destructive ops (DROP TABLE/DATABASE/SCHEMA, TRUNCATE, DELETE without WHERE)
+   >
+   > **Autopilot CANNOT prevent these (no hook layer exists for them):**
+   > - OS-level dialogs (macOS Accessibility, Screen Recording, network consent)
+   > - Subprocess password prompts (sudo, GPG signing, ssh keys, npm 2FA, git credentials)
+   > - Claude's own safety refusals
+   > - Anthropic rate-limit / quota exhaustion errors
+   >
+   > **Behavior with eternity-protocol (cmux variant):**
+   > - Autopilot SURVIVES /clear cycles. The UserPromptSubmit hook detects
+   >   pending-resume markers and exempts them from panic-stop.
+   > - Iteration count, goal text, and tool-call history persist in the sentinel
+   >   across context wraps.
+   > - Combined with eternity-protocol-cmux, autopilot can run indefinitely
+   >   (subject to the 50-iter / idle / goal-complete brakes).
+   >
+   > **Continuation loop will TERMINATE on:**
+   > - `AUTOPILOT_GOAL_COMPLETE` marker phrase from Claude (graceful exit)
+   > - Iteration count >= max_iterations (default 150, overridable with `--max-iter`)
+   > - Five consecutive iterations with zero tool calls (idle exit)
+   > - Explicit deactivation: `/acos-oracle-protocol autopilot-off` (inside Claude)
+   >   or `python3 .claude/scripts/autopilot-activate.py off` (any shell)
+   >
+   > **User messages during autopilot are treated as MID-COURSE GUIDANCE**,
+   > not stop signals. Claude reads them, responds, and continues. The only
+   > way to stop autopilot is via the explicit deactivation paths above or
+   > the natural exit conditions.
+   >
+   > **Autopilot does NOT persist across sessions** — SessionEnd cleans it up.
+   >
+   > **Cmux + eternity-protocol-cmux dependency** — For autopilot runs that
+   > may cross 400k tokens, eternity-protocol-cmux MUST be active in your
+   > cmux session for autopilot to survive `/clear` cycles. Without it,
+   > autopilot dies at 400k like any session. Verify with `cat ~/Library/Application\ Support/acos-token-monitor/config.yaml`.
+
+After showing the safety contract, **run the activate-script command** and surface its output. The script does everything else: pre-flight, sentinel write, audit log, termination-condition summary. Do NOT add additional confirmation prompts after the safety contract.
 
 ## Skill Protocol
 

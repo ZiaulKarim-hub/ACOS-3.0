@@ -1,0 +1,148 @@
+handoff_id: "2026-06-10-eternity-protocol-hardening-complete"
+handoff_type: "session-end"
+created_date: "2026-06-10"
+created_by: "session b9240c80-4ae1-4d0c-9f8d-76fe4456a69a"
+status: "completed"
+trigger: "user-invoked /acos-eternity-protocol-warp"
+
+session_summary: |
+  Multi-week saga building, debugging, and hardening the ACOS Eternity
+  Protocol. This session (b9240c80, alive since May 19) accumulated the
+  full design + implementation arc:
+    - May 28: variant split (-cmux / -warp / -stop replacing single skill)
+    - Jun 4: per-PID pointer + handoff-paired .resume.md sibling design
+    - Jun 4 PM: warp variant made manual-only (auto-fire disabled)
+    - Jun 9: universal SessionStart hook → every claude session in every
+              project auto-gets a watcher; per-project launchd plists
+              kept as safety net
+    - Jun 9 PM: all 5 eternity-protocol skills globalized via symlinks
+              into ~/.claude/skills/; eternity-protocol-core.sh also
+              symlinked into the global daemon bin dir
+    - Jun 10: three-bug fix surfaced by Auto-Blogger autopilot postmortem:
+              (1) core.sh handoff glob now accepts .md AND .yaml,
+              (2) inject-via-cmux.py retries once on EPIPE/broken-pipe,
+              (3) check_post_compact tolerates pre_compact_total=0
+              (defaults to threshold instead of deleting marker)
+    - Jun 10: watcher processes restarted to load the new check_post_compact
+              code
+
+what_works_now:
+  universal_coverage: |
+    User-global SessionStart hook in ~/.claude/settings.json ensures every
+    claude session in every project gets a token-watcher.py spawned. No
+    per-project setup needed. Idempotent via pgrep guard.
+  variant_dispatch: |
+    Daemon's dispatch_threshold_fire() at 400k correctly identifies cmux
+    vs warp sessions via state/cmux-surface-<sid> marker. cmux gets full
+    automation via Unix-socket RPC. warp is manual-only (auto-fire
+    disabled deliberately because AXTitle race makes injection
+    ~always fail in multi-Warp-window setups).
+  resume_lookup: |
+    /acos-eternity-protocol-resume uses per-claude-PID pointer first
+    (state/.eternity-pointer-pid-<pid>), then legacy state/pending-resume-*
+    (project-scoped), then pick-from-list of newest .resume.md siblings.
+    Cross-day resume works because claude PID survives /clear within a pane.
+  globally_reachable: |
+    All 5 skills (-cmux, -warp, -stop, -resume, -threshold) symlinked into
+    ~/.claude/skills/. eternity-protocol-core.sh symlinked into
+    ~/Library/Application Support/acos-token-monitor/bin/. inject-via-cmux.py
+    and inject-keystroke.py natively in daemon bin. memory/handoffs/ auto-
+    created by skill body if missing. Works in any project.
+
+known_limitations:
+  warp_auto_fire_disabled: |
+    Deliberate. AXTitle marker race makes daemon-driven keystroke injection
+    fail in multi-Warp-window setups. User invokes /acos-eternity-protocol-warp
+    manually when ready to hand off. Skill produces handoff + visible block
+    with paths; user does /clear and resume manually.
+  cmux_socket_dependency: |
+    cmux variant requires the cmux GUI app to be running. If the socket
+    file is missing or the cmux process is dead, RPC injection fails.
+    Jun 10 EPIPE retry handles stale sockets; relaunching cmux app fixes
+    fully-dead-process case. Operator hint surfaced in daemon log.
+  cmux_rpc_method_name_unverified: |
+    inject-via-cmux.py defaults to RPC method "surface.send-input". Not
+    confirmed against `cmux capabilities` output. Override via
+    CMUX_INJECT_METHOD env var if cmux's real method name differs.
+
+todays_three_bug_fixes:
+  - bug: "core.sh handoff glob hardcoded to *.yaml"
+    location: ".claude/scripts/eternity-protocol-core.sh L53"
+    impact: "Blocked all variant fires when only .md handoffs existed"
+    fix: "Glob both extensions; case statement for basename suffix strip"
+  - bug: "inject-via-cmux.py didn't retry on EPIPE"
+    location: "~/Library/Application Support/acos-token-monitor/bin/inject-via-cmux.py"
+    impact: "Stale cmux socket caused immediate failure on first write"
+    fix: "is_broken_pipe() helper + 0.4s sleep + single retry; surfaces relaunch hint"
+  - bug: "check_post_compact deleted markers with pre_compact_total<=0"
+    location: "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    impact: "Resume artifacts lost when upstream derivation failed"
+    fix: ">10M still deleted; <=0 now defaults to cfg threshold (preserves marker)"
+
+key_files:
+  skills:
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-cmux/SKILL.md"
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-warp/SKILL.md"
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-stop/SKILL.md"
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+  scripts:
+    - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-protocol-core.sh"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/bin/inject-via-cmux.py"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/bin/backfill-watchers.sh"
+  config:
+    - "/Users/zee/.claude/settings.json (universal SessionStart hook)"
+    - "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+  memory_entries_today:
+    - "memory/feedback_eternity_protocol_broken_pipe_glob_bugs.md (Jun 10)"
+    - "memory/feedback_eternity_protocol_universal_coverage.md (Jun 9)"
+    - "memory/feedback_eternity_protocol_handoff_pointer.md (Jun 4)"
+    - "memory/feedback_eternity_protocol_variants.md (May 28, updated Jun 4)"
+
+current_runtime_state:
+  alive_watchers:
+    - sid: "b9240c80-4ae1-4d0c-9f8d-76fe4456a69a"
+      project: "ACOS 3.0"
+      claude_pid: 45454
+      note: "this session"
+    - sid: "610c36e0-ae21-4ab3-929c-a5a92cfbc7ed"
+      project: "ACOS 3.0"
+      claude_pid: 76070
+      note: "second ACOS-3-0 session in different pane"
+    - sid: "c8933f7d-603b-4a7b-bf88-d456923d6a67"
+      project: "Auto-Blogger"
+      claude_pid: 31350
+      note: "autopilot building 33-component preeng-unix tree, M4 underway"
+  alive_launchers:
+    - "com.acos.token-monitor (ACOS 3.0 — PID 37968)"
+    - "com.acos.token-monitor.okoa (okoa-website worktree — PID 37970)"
+  cmux_app_running: "verify with: test -S ~/Library/Application*Support/cmux/cmux.sock"
+
+resume_continuation_notes: |
+  The next session can confidently rely on the eternity protocol working
+  end-to-end. All three layers (skill bodies, daemon dispatch, recovery
+  paths) have been hardened with the today's fixes. The pre-Jun-10 bug
+  cascade pattern (Auto-Blogger postmortem) has been addressed at all
+  three layers.
+
+  Outstanding work the next session might want to consider:
+    - Decommission the per-project launchd plists (kept as safety net since
+      Jun 9; if no issues by Jun 16, can `launchctl unload` them)
+    - Verify the cmux RPC method name (`cmux capabilities` when cmux is
+      running) and set CMUX_INJECT_METHOD in the daemon plist env if
+      "surface.send-input" is wrong
+    - Auto-Blogger autopilot continues building (M4 OKOA tokens C-020 PASS;
+      M4 review-UI leaves remaining: C-021/C-022/C-023; then M5 audio,
+      M6 publish + root)
+
+git_status_snapshot: "branch: main; uncommitted edits from this session in .claude/skills/, .claude/scripts/, memory/. Safe to ignore for handoff continuity."
+
+what_the_next_session_should_do_first: |
+  1. Read this handoff to understand the eternity protocol's current state.
+  2. Optionally read the four memory entries listed in key_files.memory_entries_today
+     for the full design rationale.
+  3. Then proceed with whatever the user wants to do next — the eternity
+     protocol layer is stable infrastructure, not active work.

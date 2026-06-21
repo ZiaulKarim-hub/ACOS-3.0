@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "acos-hypercore-ask/feed-manifest.schema.json",
+  "title": "hca-trusted-feed manifest",
+  "_note": "The TRUST CONTRACT for an acos-hypercore-ask downstream feed (SLICE-HCA-09, Demo 3). A consumer reads this manifest to (a) trace EVERY figure's value to a cached Tier-1 raw API response via {raw_response_id, json_field_path}, (b) confirm the completeness proof is the REAL pagination-completeness gate result (not a placeholder), and (c) honor refusals + confidence. NO borrower-level value appears in the manifest — only provenance pointers, counts, field-names, confidence, and gate booleans. Validated by hca-feed.validate_manifest (stdlib structural validator; no jsonschema dependency).",
+  "type": "object",
+  "required": [
+    "kind", "skill", "schema_version", "generated_at", "state",
+    "figure_count", "delivered_count", "refused_count", "figures", "refusals"
+  ],
+  "properties": {
+    "kind": { "type": "string", "enum": ["hca-trusted-feed:manifest"] },
+    "skill": { "type": "string", "enum": ["acos-hypercore-ask"] },
+    "schema_version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "title": { "type": ["string", "null"] },
+    "state": {
+      "type": "string",
+      "enum": ["DELIVERED", "REFUSED", "ESCALATED", "NO_LIVE_DATA"]
+    },
+    "pii_safe": { "type": "boolean" },
+    "figure_count": { "type": "integer" },
+    "delivered_count": { "type": "integer" },
+    "refused_count": { "type": "integer" },
+    "figures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "confidence", "provenance", "completeness", "gate_verdict"],
+        "properties": {
+          "label": { "type": "string" },
+          "unit": { "type": ["string", "null"] },
+          "currency": { "type": ["string", "null"] },
+          "confidence": { "type": ["number", "null"] },
+          "tier": { "type": ["string", "null"] },
+          "source_count": { "type": ["integer", "null"] },
+          "provenance": {
+            "type": "object",
+            "required": ["aggregate"],
+            "properties": {
+              "raw_response_id": { "type": ["string", "null"] },
+              "json_field_path": { "type": ["string", "null"] },
+              "aggregate": { "type": "boolean" },
+              "source_count": { "type": ["integer", "null"] },
+              "contributing": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "raw_response_id": { "type": ["string", "null"] },
+                    "json_field_path": { "type": ["string", "null"] }
+                  }
+                }
+              }
+            }
+          },
+          "completeness": {
+            "type": "object",
+            "required": ["complete", "pagination_complete"],
+            "properties": {
+              "complete": { "type": "boolean" },
+              "pagination_complete": { "type": ["boolean", "null"] },
+              "gate_outcome": { "type": ["string", "null"] },
+              "gate_tier": { "type": ["string", "null"] }
+            }
+          },
+          "freshness": {
+            "type": "object",
+            "properties": {
+              "freshness_ok": { "type": ["boolean", "null"] }
+            }
+          },
+          "gate_verdict": {
+            "type": "object",
+            "required": ["outcome"],
+            "properties": {
+              "outcome": { "type": ["string", "null"] },
+              "tier": { "type": ["string", "null"] },
+              "schema_ok": { "type": ["boolean", "null"] },
+              "pagination_complete": { "type": ["boolean", "null"] },
+              "freshness_ok": { "type": ["boolean", "null"] },
+              "reconciliation_ok": { "type": ["boolean", "null"] },
+              "normalization_applied": { "type": ["boolean", "null"] },
+              "schema_drift_ok": { "type": ["boolean", "null"] },
+              "provenance_ok": { "type": ["boolean", "null"] },
+              "failures": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["figure", "reason_code"],
+        "properties": {
+          "figure": { "type": "string" },
+          "tier": { "type": ["string", "null"] },
+          "figure_state": { "type": ["string", "null"] },
+          "reason_code": { "type": "string" },
+          "reason": { "type": ["string", "null"] },
+          "inner_reason_code": { "type": ["string", "null"] },
+          "inner_reason": { "type": ["string", "null"] },
+          "failed_gates": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

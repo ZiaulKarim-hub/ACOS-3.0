@@ -1,0 +1,274 @@
+timestamp: "2026-05-20T17:27:22Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "43619f37-99e7-493f-a612-adb6443ba8bb"
+handoff_sequence: "4th handoff today (of 4); preceded by: eternity-protocol-end-to-end-test-retry, eternity-protocol-fix-implemented, eternity-protocol-live-test-fire"
+
+session_summary: |
+  Session 43619f37 completed the architectural fix for the ACOS Eternity Protocol
+  clear-injection path and restarted the daemon with the new code. The root problem:
+  the skill was calling inject-keystroke.py for /clear from inside its own running
+  turn — Warp's input field is busy with tool output, so keystrokes either drop or
+  land at the wrong moment. The fix moves /clear injection entirely to the daemon:
+  the skill now writes a .clear-requested-<sid> flag and exits; the daemon's main
+  loop polls the flag on every kqueue event and the 60s timeout, then fires /clear
+  via the same fire_inject() path that already successfully types /acos-eternity-protocol
+  itself. The daemon was restarted via launchctl kickstart and verified running (PID 34506
+  for session 43619f37). This is the pre-test-fire handoff; the test fire has NOT yet
+  been executed in this session.
+
+current_work:
+  slice_id: "eternity-protocol-daemon-clear-arch"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "in_progress — architecture fix complete, daemon restarted, test fire pending"
+
+# ── WHAT CHANGED IN THIS SESSION ─────────────────────────────────────────────
+
+completed_this_session:
+  - "Modified token-watcher.py: added CLEAR_REQUESTED constant (line ~67), added
+    check_clear_request() function (~lines 660-695), wired into main loop in TWO places:
+    60s-timeout path (line ~773: check_clear_request(log_label='loop-tick')) and
+    per-event path (line ~835: check_clear_request(log_label=f'evt {evt_n}'))."
+  - "Modified acos-eternity-protocol SKILL.md Step 5: rewrote from 'call inject-keystroke.py
+    for /clear' to 'write .clear-requested-<sid> flag and exit'. Added architecture diagram
+    showing daemon-owns-clear split. Added 2026-05-20 architecture note explaining why
+    skill-side injection fails (input field busy)."
+  - "Regenerated bin-manifest.sha256 to match new token-watcher.py hash. Launcher verifies
+    this on every watcher spawn — stale manifest causes a crash-loop."
+  - "Restarted daemon via: launchctl kickstart -k gui/$UID/com.acos.token-monitor"
+  - "Verified daemon running: PID 34504 (launcher), PID 34506 (watcher for session 43619f37),
+    PID 34507 (watcher for 8f1cee65), PID 34508 (watcher for 2264d70c), PID 75897 (okoa worktree launcher)"
+  - "Verified config.yaml is correct: threshold=400000, fire_command='/acos-eternity-protocol'"
+  - "Wrote memory entry: /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_skill_cannot_inject_own_clear.md"
+  - "Updated MEMORY.md (timestamp 2026-05-20T17:04Z) to link the new memory entry."
+
+files_modified:
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: |
+      Added CLEAR_REQUESTED constant at line ~67:
+        CLEAR_REQUESTED = STATE_DIR / f".clear-requested-{SESSION_ID}"
+      Added check_clear_request() function (~lines 660-695): reads flag, fires /clear
+        via fire_inject(), deletes flag (always, to prevent re-fire loop), returns bool.
+      Wired into main loop at two call sites:
+        Line ~773: check_clear_request(log_label="loop-tick")  — runs on 60s idle timeout
+        Line ~835: check_clear_request(log_label=f"evt {evt_n}") — runs on every JSONL write
+      File size: 846 lines, 36964 bytes (was 675 lines per prior handoff)
+      Last modified: 2026-05-20T11:00 (per ls -la)
+
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: |
+      Architecture diagram updated to show 10-step split: steps 1-5 in skill (pre-clear),
+        steps 6-10 in daemon (clear + post-clear).
+      Step 5 rewritten: previously called inject-keystroke.py for /clear directly;
+        now writes .clear-requested-<sid> flag via tmp+mv and exits.
+      Added 2026-05-20 architecture note explaining why skill-side injection fails.
+      Added code block for flag-write step with YAML content (requested_at, session_id,
+        requested_by, pre_clear_total).
+      Added "Step 6: Skill exits cleanly" section.
+
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+    changes: |
+      Regenerated. New token-watcher.py hash:
+        token-watcher.py  2ed5b67c994bca88dc9373c7b4aa8f9502d152901cc6c08edee51c0008805e66
+      All 5 files listed:
+        inject-keystroke.py  c9d04772319a29f87a24f879ce79808e1ba7b261de72bfb7fd5e3667bbc53957
+        register-session-pid.sh  71af3ec0e488cb5b0504831968806fed1584b81ff02364899378df572b3770f2
+        resolve-session-pid.py  9bf21dbbb4e5584505543867b83e9326e3427b6720d55551488ddd1f72094207
+        token-watcher-launcher.py  5b11d21bd83d593438813a43236eb02f44fe4d74eb5ec6f3b8d1b9e6bcef2e84
+        token-watcher.py  2ed5b67c994bca88dc9373c7b4aa8f9502d152901cc6c08edee51c0008805e66
+
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_skill_cannot_inject_own_clear.md"
+    changes: "New file written. Documents the diagnosis, fix, and manifest regeneration recipe."
+
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Updated timestamp (2026-05-20T17:04Z) and linked feedback_eternity_skill_cannot_inject_own_clear.md."
+
+decisions_made:
+  - "Daemon owns ALL /clear injection. The skill NEVER calls inject-keystroke.py for /clear.
+    This is a permanent architectural boundary. Rationale: daemon fires from outside the agent
+    loop on an idle JSONL transcript; skill fires during its own running turn (input busy)."
+  - "The .clear-requested-<sid> flag is the interface between skill and daemon for /clear.
+    Pattern: skill writes flag + exits; daemon polls flag + fires + deletes flag."
+  - "Daemon deletes the flag after firing regardless of inject self-reported success.
+    Leaving it would cause repeated /clear fires on every subsequent kqueue event (DoS).
+    If inject fails, user can rewrite the flag or manually run /acos-eternity-protocol-resume."
+
+# ── DAEMON STATE AT HANDOFF ───────────────────────────────────────────────────
+
+daemon_state_at_handoff:
+  launcher_pids:
+    - pid: 34504
+      watching: "ACOS 3.0 project directory"
+    - pid: 75897
+      watching: "okoa-website worktree"
+  watcher_pids:
+    - pid: 34506
+      watching: "43619f37 (this session)"
+    - pid: 34507
+      watching: "8f1cee65"
+    - pid: 34508
+      watching: "2264d70c"
+  session_43619f37_state_files:
+    pid_file: "EXISTS — 45454 / Tue May 19 21:52:35 2026"
+    compact_fired: "ABSENT (no .compact-fired-43619f37-* in state dir)"
+    clear_requested: "ABSENT (no .clear-requested-43619f37-* in state dir)"
+    resume_pending: "ABSENT (no .resume-pending-43619f37-* in state dir)"
+    pending_resume_txt: "ABSENT (no pending-resume-43619f37-*.txt in state dir)"
+    cycle_counter: "EXISTS — content: '1' (written May 20 10:52)"
+    cycle_history: |
+      [{"cycle": 1, "fired_at": 1779294937.554301, "pre_total": 59136, "post_total": null},
+       {"cycle": 2, "fired_at": 1779295953.470279, "pre_total": 79975, "post_total": null}]
+    parse_offset: "EXISTS — written May 20 11:26"
+  daemon_log_summary: |
+    Log restarted at 2026-05-20T17:04:07Z when daemon was restarted (kickstart).
+    Baseline at startup: total_input=149,778
+    Current at evt 11: total=164,477, approx=168,425 (as of 17:26:28Z)
+    Threshold is 400,000 — daemon will NOT fire again until that is crossed.
+    No THRESHOLD CROSSED events since restart.
+
+config_state:
+  path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+  threshold: 400000
+  fire_command: "/acos-eternity-protocol"
+  post_compact_drop_pct: 35
+  status: "CORRECT — threshold is at production value 400000 (was 50000 during test session 43619f37 cycle 1)"
+
+# ── TEST FIRE CONTEXT (what this session is a build-up to) ───────────────────
+
+test_fire_context: |
+  This session (43619f37) started as a CONTINUATION of the live test fire that
+  happened in a PRIOR WATCHER RESTART. The previous log entries (evt 1-80) show the
+  old watcher (PID 45454's watcher before daemon restart) reaching ~139k tokens.
+  Daemon was restarted at 17:04:07Z with new code. The new watcher sees the session
+  at 149,778 baseline.
+
+  The test fire status: the PREVIOUS watcher (cycles 1 and 2 per cycle-history) fired
+  at evt 27 (~61k pre-restart) and again at ~79k. Those are recorded in the cycle-history.
+  The daemon WAS running the NEW check_clear_request() code starting at 17:04:07Z.
+
+  The user's context states this is the "pre-test-fire" handoff — the test fire of
+  the NEW architecture (skill writes flag, daemon fires /clear) has NOT yet been
+  observed and confirmed. The architecture is implemented and the daemon is running
+  with the new code, but the actual end-to-end validation (skill runs, flag written,
+  daemon sees flag, /clear fires) is the next thing to verify.
+
+# ── POST-CLEAR ACTION ITEMS (CRITICAL — read this first in the new session) ──
+
+post_clear_action_items:
+  step_1_verify_config:
+    description: "Verify threshold is still 400000 in config.yaml"
+    command: "cat \"/Users/zee/Library/Application Support/acos-token-monitor/config.yaml\""
+    expected: "threshold: 400000"
+    if_wrong: "Edit config.yaml directly. Hot-reloaded — no daemon restart needed."
+    urgency: "CRITICAL — if threshold is 50000 or lower, daemon fires on every short conversation"
+
+  step_2_verify_fire_command:
+    description: "Verify fire_command is still /acos-eternity-protocol"
+    expected: "fire_command: \"/acos-eternity-protocol\""
+    if_wrong: "Edit config.yaml. /clear as fire_command bypasses all state preservation — the bug that started this whole repair arc."
+
+  step_3_report_test_outcome:
+    description: "Report to Jason (user) the test outcome in scorecard format"
+    scorecard_items:
+      - "Did /clear actually fire? If you are reading this in a fresh post-clear session, YES."
+      - "Did the resume prompt auto-inject? Check whether user's first message contained eternity-protocol resume preamble. If yes, YES."
+      - "Daemon log for any failures: /Users/zee/Library/Application Support/acos-token-monitor/logs/<new_session_id>.log"
+    tone: "Tight. User was frustrated by prior failures. No waffle. Scorecard with YES/NO/UNKNOWN per item."
+
+  step_4_commit_changes:
+    description: "If everything worked — commit the changes that were made this session"
+    commit_message: "fix(acos-eternity-protocol): move /clear injection from skill to daemon (idle-state firing)"
+    files_to_commit:
+      - "/Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+      - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+      - "/Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+      - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_skill_cannot_inject_own_clear.md"
+      - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    git_repo: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+    note: "token-watcher.py and bin-manifest.sha256 live OUTSIDE the git repo (in ~/Library). They cannot be committed to the ACOS 3.0 git repo. Commit only the ACOS repo files: SKILL.md, memory files, MEMORY.md."
+
+  step_5_pending_items:
+    - "Extend JSONL verification timeout from 3s to 8-10s in inject-keystroke.py's
+      verify_clear_in_jsonl(timeout_s=3.0). File:
+      /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py"
+    - "TCC csreq-pinning for Warp Accessibility permission (MEDIUM priority, preventive hardening).
+      Without this, a Warp auto-update will silently break keystroke injection.
+      Reference: /Users/zee/Documents/Vibe Coding/Warp-Disk-Access-Permanent-Fix.md"
+    - "Add --dry-run flag to eternity-resume-prepend.sh (LOW priority).
+      File: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    - "Per-file decision on orphan pending-resume files in state dir (NEVER auto-delete):
+        - pending-resume-c38121b3-*.txt (OKOA website session)
+        - pending-resume.txt (May 6 legacy)
+        - RESCUED-resume-ascent-dataroom-pii.txt
+        - RESCUED-resume-from-smoke-test.txt"
+
+# ── ARCHITECTURAL SUMMARY (for AI picking this up fresh) ─────────────────────
+
+context_for_next_session: |
+  You are reading this in the post-/clear session after the ACOS Eternity Protocol
+  test fire ran for session 43619f37-99e7-493f-a612-adb6443ba8bb.
+
+  THE BIG PICTURE: A multi-session repair arc (starting May 19) fixed the Eternity
+  Protocol's keystroke injection pipeline. The core bugs were:
+    1. fire_command="/clear" bypassed the protocol entirely (fixed: now "/acos-eternity-protocol")
+    2. CGEventPostToPid to Node.js is a silent no-op (fixed: CGEventPost(kCGHIDEventTap) + AXRaise)
+    3. Skill injecting /clear from inside its own turn fails because Warp input is busy
+       (fixed THIS SESSION: skill writes .clear-requested flag; daemon fires /clear)
+
+  THE NEW ARCHITECTURE (as of this session):
+    PRE-CLEAR (skill): handoff → resume-prompt → .resume-pending flag → .clear-requested flag → exit
+    POST-CLEAR (daemon): polls .clear-requested → fires /clear → detects token drop → types resume prompt
+
+  CURRENT STATE:
+    - Daemon is running with new code (PID 34506 for this session)
+    - Config: threshold=400000, fire_command="/acos-eternity-protocol"
+    - No .compact-fired, .clear-requested, or .resume-pending flags for session 43619f37
+    - This is a FRESH post-clear session state — the prior cycles consumed their flags
+
+  WHAT TO DO FIRST:
+    1. Verify config.yaml: threshold=400000, fire_command="/acos-eternity-protocol"
+    2. Report test outcome to Jason in scorecard format
+    3. If confirmed working: commit ACOS repo files (SKILL.md, memory/, MEMORY.md)
+
+  KEY FILES:
+    - /Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py (846 lines)
+    - /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py (438 lines)
+    - /Users/zee/Library/Application Support/acos-token-monitor/config.yaml
+    - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md
+    - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh (UserPromptSubmit hook)
+
+  PRIOR HANDOFF CHAIN (today, in order):
+    memory/handoffs/2026-05-20-eternity-protocol-end-to-end-test-retry.yaml
+    memory/handoffs/2026-05-20-eternity-protocol-fix-implemented.yaml
+    memory/handoffs/2026-05-20-eternity-protocol-live-test-fire.yaml
+    memory/handoffs/2026-05-20-eternity-protocol-daemon-clear-arch.yaml (this file)
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+
+reconstruction_sources:
+  - "User-provided context (authoritative): explicit list of 6 changes, post-clear action items, active state to preserve"
+  - "git status --short (working tree — confirmed modified files match expected changes)"
+  - "git log --oneline -20 (most recent commit: feat(acos-dataroom-v2): v2.0.0 — no new commits yet)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-live-test-fire.yaml (read in full — cycle 1 fire record, threshold=50000 test state)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-fix-implemented.yaml (read in full — 3-cycle history, inject-keystroke.py rewrite, B11 fix)"
+  - "ls -lt memory/handoffs/ (confirmed 3 prior handoffs today, this is the 4th)"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/config.yaml (threshold=400000, fire_command=/acos-eternity-protocol — CONFIRMED CORRECT)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/bin/ (token-watcher.py=36964 bytes May 20 11:00, inject-keystroke.py=18677 May 20 01:44)"
+  - "grep CLEAR_REQUESTED/check_clear_request/clear-requested from token-watcher.py — confirmed at lines 67, 668, 671, 673, 677, 680, 685, 691, 694, 768, 773, 835"
+  - "wc -l token-watcher.py = 846 lines"
+  - "Read token-watcher.py lines 660-695 (check_clear_request function body — confirmed implementation)"
+  - "Read token-watcher.py lines 755-835 (main loop — confirmed both call sites: loop-tick and evt {n})"
+  - "Read .claude/skills/acos-eternity-protocol/SKILL.md (full file — confirmed Step 5 flag-write architecture, architecture diagram, 2026-05-20 note)"
+  - "cat bin-manifest.sha256 (all 5 hashes — confirmed token-watcher.py hash 2ed5b67c...)"
+  - "ps aux | grep token-watcher (PIDs 34504, 34506, 34507, 34508, 75897 confirmed live)"
+  - "cat state/pid-43619f37-... = '45454 / Tue May 19 21:52:35 2026'"
+  - "ls -la state/ | grep 43619f37 (compact-fired ABSENT, clear-requested ABSENT, resume-pending ABSENT)"
+  - "cat state/.cycle-history-43619f37-... = 2 cycles (fired_at ~16:35 and ~16:52)"
+  - "tail -30 logs/43619f37-*.log (daemon restarted 17:04:07Z, currently at evt 11, approx=168k, threshold=400k not crossed)"
+  - "cat memory/feedback_eternity_skill_cannot_inject_own_clear.md (confirmed written this session, originSessionId=43619f37)"
+  - "ls -lt /Users/zee/.claude/projects/.../memory/ (MEMORY.md timestamp 2026-05-20 11:04 — updated this session)"
+  - ".acos/evidence/ (no evidence bundles today — last was 2026-04-21)"
+  - "memory/decisions/ (no new decisions today — last ADR was Apr 23)"
+  - "date -u = 2026-05-20T17:27:22Z"

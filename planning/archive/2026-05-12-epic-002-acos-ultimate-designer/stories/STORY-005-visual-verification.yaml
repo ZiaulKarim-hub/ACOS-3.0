@@ -1,0 +1,99 @@
+story_id: "STORY-005"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Visual Verification + Wigum Loop"
+description: |
+  Render each output (PDF or PPTX) to 200 DPI PNGs. An opus-model agent reads
+  each page screenshot and evaluates against a coffee-table visual checklist.
+  Any ERROR-severity defect triggers a Wigum loop back to Story 1 (content
+  decomposer / HTML emitter) with specific fix instructions. Iteration ceiling 5
+  (hard ceiling 10). Reuse loan-doc's render-doc-audit.py as library; build
+  new checklist + fix-mapping specific to coffee-table composition.
+
+user_story: |
+  As a user who wants guaranteed visual quality,
+  I want the skill to catch design defects (missing photo rhythm, contrast
+  problems, wrong page numbers, missing Cormorant italic accents, etc.) and
+  automatically fix them before giving me the output,
+  So that I never have to inspect the output myself and can trust that every
+  generated document meets the aesthetic standard.
+
+acceptance_criteria:
+  - "[ ] visual-checklist.yaml defines coffee-table-specific visual criteria (~25 items): (a) page rhythm — ≥1 full-bleed photo per 3 content pages, chapter divider between parts, closing dark panel on last page; (b) typography — Cormorant italic accent on every section title, coral mono eyebrow in 'NN NAME' format, roman page numbers 'N / total'; (c) palette — only Brad tokens used, no external colors; (d) photo quality — every photo visible, not a placeholder, not pixelated; (e) logo — OKOA present on every page, white variant on dark backgrounds, dark variant on light; (f) cross-page consistency — header/footer identical across content pages; (g) Brad-inherited checks from html-qa-gate"
+  - "[ ] scripts/render-and-verify.sh: (1) runs render-doc-audit.py on the output file, producing PNG per page at 200 DPI in session visual-audit/ dir; (2) spawns a Task agent (model: opus) that reads every PNG via Read tool and evaluates against visual-checklist.yaml; (3) writes visual-defects.yaml with ERROR/WARNING per defect + fix instruction; (4) returns PASS (zero ERRORs) or FAIL with actionable fixes"
+  - "[ ] Fix-feedback mapper: given a defect, identifies which Story 1 component needs re-running (decomposer, emitter, or QA gate), passes the specific fix instruction, triggers Wigum re-iteration"
+  - "[ ] Wigum loop orchestrator: maintains current_iteration, enforces max_iterations (default 5) with hard ceiling 10, feeds prior-iteration defects into next iteration's context, terminates on PASS or ceiling"
+  - "[ ] Visual reviewer model is pinned to opus (not inherited from session config) — subtle defect detection needs vision-model acuity"
+  - "[ ] Severity stability rule: a defect marked WARNING on 2 consecutive iterations escalates to ERROR on iteration 3 (prevents non-deterministic loop termination)"
+
+dependencies:
+  stories:
+    - story_id: "STORY-003"
+      what_it_provides: "PDF output to render and review"
+    - story_id: "STORY-004"
+      what_it_provides: "PPTX output to render and review"
+
+slices:
+  - slice_id: "SLICE-005-01"
+    title: "Coffee-table visual checklist"
+    description: "Write templates/visual-checklist.yaml with ~25 criteria in the structure {id, category, description, severity_default, pass_condition, fail_condition, fix_instruction_template}. Categories: page_rhythm, typography, palette, photo_quality, logo, cross_page_consistency, brad_inherited. Each criterion must be evaluable from a screenshot alone — no reference to HTML source."
+    effort: "M"
+    dependencies: []
+
+  - slice_id: "SLICE-005-02"
+    title: "Render-and-verify pipeline"
+    description: "scripts/render-and-verify.sh: (a) runs python3 {loan_doc_scripts}/render-doc-audit.py {output_file} --output-dir {session}/visual-audit/iteration-{N}/ --dpi 200; (b) spawns Task(visual-reviewer) — an inline-defined agent with model=opus — with the visual-checklist.yaml + paths to all PNGs. Agent reads each PNG via Read tool, evaluates every criterion, produces visual-defects.yaml with {page, criterion_id, severity, description, fix_instruction}; (c) returns verdict + defects list."
+    effort: "L"
+    dependencies: ["SLICE-005-01"]
+
+  - slice_id: "SLICE-005-03"
+    title: "Fix-feedback mapper + Wigum loop"
+    description: "scripts/wigum-loop.py: wraps the full pipeline (Story 1 + 2 + 3|4 + 5). Takes a max_iterations arg. On each iteration: runs Story 1+2, renders via Story 3|4, verifies via SLICE-005-02. If PASS: returns success. If FAIL: classifies each defect (decomposer issue / emitter issue / image issue / template issue), emits fix-instructions.yaml, re-runs affected stages with fix context. Enforces severity escalation rule (WARNING × 2 → ERROR on 3). Terminates on PASS or iteration > 10 (hard ceiling)."
+    effort: "L"
+    dependencies: ["SLICE-005-02"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-005-01"]
+  - phase: 2
+    slices: ["SLICE-005-02"]
+  - phase: 3
+    slices: ["SLICE-005-03"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/templates/visual-checklist.yaml"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/render-and-verify.sh"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/wigum-loop.py"
+
+technical_notes: |
+  - Visual reviewer MUST be opus — documented in the phase file, not left to
+    session config. Sonnet misses subtle hierarchy and density defects.
+  - Render command reuses loan-doc's render-doc-audit.py exactly — same DPI,
+    same output structure. No need to re-implement.
+  - Checklist criteria are SCREENSHOT-ONLY — do not refer to source HTML in
+    criterion descriptions. The reviewer sees pixels, not markup.
+  - Fix-instruction templates should include specific, actionable guidance:
+    'add a full-bleed photo between page 4 and page 5' or 'replace image on
+    page 7 — current image is portrait, should be landscape' — NOT vague
+    'fix hierarchy'.
+  - Wigum loop reuses the shape from loan-doc phase4-validate.md but does NOT
+    reuse the code — build a new wigum-loop.py since the feedback channels
+    are different (this skill has a decomposer stage that loan-doc doesn't).
+
+review_focus:
+  - "Verify checklist is comprehensive enough to catch the failure modes shown in prior evaluations (photo rhythm, italic accents, page numbers)"
+  - "Verify opus is pinned — grep the spawned Task() call for model='opus', not model config reference"
+  - "Verify severity escalation rule actually fires — simulate a WARNING × 3 scenario"
+  - "Verify hard ceiling of 10 — simulate 10+ iterations and confirm abort"
+
+effort_estimate: "M"
+
+notes: |
+  This story is the quality guarantee. Without it, the skill is just HTML + PDF
+  conversion with hope. With it, every output is mechanically verified against
+  the v3 standard.

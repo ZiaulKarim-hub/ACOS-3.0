@@ -1,0 +1,123 @@
+# Slice Plan — Inline SVG extractor
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-03"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 4  # all LOW: filename cosmetic, diff.patch missing dom-walker entry, check-scope hook (carryover), types.ts staging (carryover)
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-03/"
+
+# Slice overview
+title: "Inline SVG extractor"
+objective: |
+  Capture every <svg> element in the source HTML as a single
+  ContainerRecord with kind='svg'. SVG markup is preserved verbatim
+  (no traversal of internal <path>/<circle>/<g> nodes) so the editor
+  and PDF export pipeline can re-render the chart at any size without
+  quality loss. Intrinsic dimensions derived from viewBox or width/height
+  attributes; aspect ratio computed for downstream aspect-locked corner
+  drag.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/extractors/svg.ts exports extractSvg(el: SVGSVGElement): ContainerRecord with kind='svg'"
+  - "[ ] ContainerRecord.content for kind='svg' includes: rawMarkup (string, the full <svg>…</svg> source), viewBox ({x,y,width,height} | null), aspectRatio (number)"
+  - "[ ] Walker (dom-walker.ts from slice 02) is updated to dispatch <svg> elements to extractSvg() and skip walking SVG internals"
+  - "[ ] SVG with explicit viewBox=\"0 0 100 50\" produces aspectRatio = 2.0"
+  - "[ ] SVG without viewBox but with width=\"200\" height=\"100\" attributes produces aspectRatio = 2.0 and viewBox = null"
+  - "[ ] SVG with neither viewBox nor width/height defaults to aspectRatio = 1.0 (square) and an info-level warning is logged"
+  - "[ ] Unit tests in tests/parser/svg.test.ts pass against tests/fixtures/brad-chart.html (assertion: every <svg> appears as a record, rawMarkup preserves <path>/<g> children byte-for-byte)"
+  - "[ ] tests/fixtures/brad-chart.html exists: a Brad-style document containing at least 3 <svg> nodes representing a bar chart, a line chart, and an icon; one with viewBox, one with explicit dimensions, one with neither"
+  - "[ ] Round-trip integrity: parsing rawMarkup back through DOMParser produces an equivalent SVG (assert via outerHTML equality after parse → serialize)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-02"
+      what_it_provides: "walker pattern, dispatcher hook for new element kinds"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/extractors/svg.ts"
+  - "apps/visual-composer/src/parser/dom-walker.ts"            # add SVG dispatch
+  - "apps/visual-composer/src/parser/index.ts"                 # wire extractor into extract()
+  - "apps/visual-composer/tests/parser/svg.test.ts"
+  - "apps/visual-composer/tests/fixtures/brad-chart.html"
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/extractors/text.ts"       # slice 02
+  - "apps/visual-composer/src/parser/extractors/image.ts"      # slice 02
+  - "apps/visual-composer/src/parser/extractors/table.ts"      # slice 04
+  - "apps/visual-composer/src/parser/extractors/background.ts" # slice 05
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"       # slice 06
+  - "apps/visual-composer/src/parser/types.ts"                 # SvgContent type was defined in slice 01
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "SVG preservation must be byte-faithful. Brad's chart SVGs use precise dasharrays, gradients, and embedded fonts. ANY mutation of the markup breaks chart rendering."
+  - "Use el.outerHTML to capture rawMarkup. Do not reconstruct from el.innerHTML — you'll lose attributes on the root <svg>."
+  - "viewBox parsing: SVGSVGElement.viewBox.baseVal is an SVGRect with x/y/width/height as numbers. Width OR height of 0 means viewBox is absent."
+  - "aspectRatio derivation order: (1) viewBox.width / viewBox.height if both > 0; (2) attribute width / attribute height if both > 0; (3) fallback 1.0 + warn."
+  - "Walker dispatch: when the walker hits an <svg>, it should call extractSvg and then NOT descend into the SVG's children. Otherwise text extractors will mis-fire on <text> SVG elements."
+  - "Brad's chart pipeline emits SVGs without a viewBox sometimes (only width/height attributes). The default-fallback path is important — don't treat 'no viewBox' as an error."
+
+# Technical requirements
+technical_requirements:
+  - "extractSvg is a pure function — no DOM mutation, no side effects beyond logging"
+  - "Walker is updated minimally: one new conditional branch + early-return"
+  - "Round-trip integrity test serializes via outerHTML, re-parses via DOMParser, and asserts deep equality"
+  - "Performance: parsing 10 SVGs adds <20ms to walker total"
+
+# Testing requirements
+testing_requirements:
+  - "Vitest unit tests for extractSvg covering: with-viewBox, with-width-height-attrs, with-neither, with-nested-defs"
+  - "Round-trip test: rawMarkup → DOMParser → outerHTML → assert structural equality"
+  - "Integration through extract(): full brad-chart.html parse returns N records of kind='svg' where N = number of <svg> in fixture"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+# Rationale: ~30min extractor + viewBox/aspect logic; ~30min walker dispatch update; ~45min tests + fixture creation.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Brad's chart SVGs are the highest-fidelity element in the entire
+  document — they are vector all the way through the pipeline (HTML →
+  this parser → editor canvas → Puppeteer PDF export). Any quality
+  loss in this slice cascades to the final PDF.
+
+  Do NOT introduce an SVG parsing library (svgo, svg-parser, etc.).
+  rawMarkup as a string + viewBox metadata is all downstream needs.

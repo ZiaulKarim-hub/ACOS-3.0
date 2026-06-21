@@ -1,0 +1,294 @@
+timestamp: "2026-05-16T03:30:00Z"
+status: "completed"
+type: "semantic-eternity"
+trigger: "acos-handoff-agent (emergency-manual, user-invoked mid-Phase-6)"
+
+session_summary: |
+  acos-dataroom-v2 production run on the Wolfgramm / Ascent Park City / Beehive Waldorf
+  $30M loan. Phases 1–5 are fully complete. Phase 6 is approximately 90% complete: the
+  WS1 guide is drafted and QA-passed, WS2 descriptions are done for all 645 files, the
+  Excel is built, the manual-review doc is written, and the pre-delivery PII scan is done.
+  The session ended with ONE UNRESOLVED BLOCKER: the PII scan found 5 files with confirmed
+  or borderline live bank/financial-account detail, and the user issued a verbatim directive
+  (2026-05-16) to pull every suspicious file from the shipped set before delivery. That
+  directive has NOT yet been applied. The next session must apply it, then rebuild the Excel,
+  re-scan, and ship.
+
+# ============================================================
+# CRITICAL — READ THIS FILE FIRST
+# ============================================================
+first_action_for_resuming_session: |
+  READ THIS FILE BEFORE ANYTHING ELSE:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase6/PHASE6_RESUMPTION_STATE.md
+  It contains: full Phase 6 completion status, the verbatim PII directive, the 5 flagged
+  files with exact paths, the exact remaining steps in order.
+
+  THEN READ:
+    .claude/skills/acos-dataroom-v2/SKILL.md §10
+  It contains the canonical Phase 6 procedure this run is executing under.
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+dropbox_final_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+skill_version: "v2.0.0"
+
+current_work:
+  slice_id: "acos-dataroom-v2-ascent-run"
+  story_id: "phase6-pii-clean-and-ship"
+  epic_id: "acos-dataroom-v2"
+  status: "in_progress"
+
+# ============================================================
+# DOMAIN CONTEXT
+# ============================================================
+
+domain_context:
+  asset: "The Ascent Park City (Tapestry Collection by Hilton), 4080 N Cooper Lane, Park City UT 84098"
+  borrower_spe: "Beehive Hospitality Ascent PC, LLC"
+  loan: "$30M Okoa senior construction loan; Nuveen/Greenworks C-PACE $27.5M statutory senior"
+  deal_mode: "workout / settlement / sale — dataroom is for prospective buyers"
+  naming_warning: "'Waldorf' in filenames is the LOAN FAMILY CODENAME, not the Waldorf-Astoria hotel brand."
+  user: "Zee (jason@okoacapital.com), Okoa Capital. Boss reviews ONLY the final dataroom + Excel — must be boss-criticism-proof on first cold look. NO intermediate review steps."
+
+# ============================================================
+# PHASES 1–5: COMPLETE
+# ============================================================
+
+phases_complete:
+  phase1: "Objective extraction + open-question resolution. Phase 1 convergence 85%, confidence 82%."
+  phase2: |
+    Full inclusion/exclusion sweep: 1858-file canonical queue, 14 waves of tier-3 swarm, 901 files
+    included into dataroom flat root. Exclusion log: phase2/exclusion_log.csv.
+  phase2_5: "Privilege scan: 119 files scanned, 104 flagged/removed, 15 kept. Three payoff .docx files retained with wiring redactions confirmed."
+  phase3: |
+    Inclusion-QA forward sweep (182 batches, 901 files). 99 fails removed -> quarantined to
+    phase3/removed_phase3_fails/. USER DECISION: Phase 3 QA failure = final, no Wigum.
+    Then a second stricter exclusion-only QA pass over 802 survivors at 99.99%-certainty bar;
+    157 further removed -> quarantined to phase3/removed_exclusion_qa/.
+    Post-Phase-3 dataroom: 645 files (confirmed in run_state.json final_dataroom_count=645).
+  phase4a: |
+    Taxonomy designed via 3 dr2-taxonomy-designer (opus) + dr2-taxonomy-synthesizer (opus).
+    14 folders validated. See phase4/TAXONOMY.json.
+  phase4b: |
+    Per-file placement of all 645 files into 14 sub-folders. 54 batches x 3 placement-classifier
+    agents (opus/sonnet/opus). 633 unanimous on first pass; 12 splits re-dispatched (K=5); 643
+    resolved, 2 terminally split -> 00_Pending_Classification. Folder skeleton created inside
+    dataroom/ with files physically moved.
+  phase5: |
+    Placement QA: 54 batches x 3 dr2-placement-qa agents. 643/645 PASS; 2 FAIL. The 2 FAIL files
+    are the same 2 in 00_Pending_Classification; re-placement confirmed the split is deterministic
+    (model-family disagreement, not stochastic). K=5 loop halted: end state = 00_Pending_Classification,
+    unchanged. Phase 5 complete; taxonomy revision NOT triggered (fail rate 0.3%, threshold 20%).
+
+dataroom_state_at_handoff:
+  total_files: 645
+  sub_folders: 14
+  structure: |
+    00_Pending_Classification  (2 files — terminally unresolved placement)
+    01_Property_Overview_And_Marketing  (5)
+    02_Borrower_And_SPE_Entity_Documents  (17)
+    03_Title_Survey_And_Land_Records  (22)
+    04_Architectural_Drawings  (225)
+    05_Engineering_And_MEP_Drawings  (153)
+    06_Construction_Status_Reports  (31)
+    07_Construction_Draws_And_Lien_Waivers  (76)
+    08_Loan_And_Security_Documents  (27)
+    09_Capital_Stack_And_Intercreditor  (24)
+    10_Brand_Franchise_And_Hotel_Management  (5)
+    11_Appraisals_Financial_Models_And_Payoff  (24)
+    12_Workout_Default_And_Settlement  (16)
+    13_Sponsor_And_Guarantor_Financials  (6)
+    14_Sale_Process_And_Cross_Collateral  (12)
+  excel_file: "dataroom/Ascent_Park_City_Guide_20260516.xlsx (2 worksheets: Data Room Guide 21 rows; File Tree 646 rows = 645 + header)"
+
+# ============================================================
+# PHASE 6: PARTIAL — WHAT IS DONE
+# ============================================================
+
+phase6_completed_steps:
+  ws1_guide: |
+    DONE. phase6/ws1_guide.md — drafted by 3 agents, synthesized, QA PASS (1st iteration).
+    21-row Data Room Guide ready.
+  ws2_descriptions: |
+    DONE. All 645 files. phase6/descriptions.json (full 3-vote raw) and
+    phase6/descriptions_final.json (flattened filename->description_text, QA-cleaned).
+    desc-QA result: 641 PASS / 3 FAIL; all 3 FAILs replaced via suggested_replacement.
+  excel_built: |
+    DONE. dataroom/Ascent_Park_City_Guide_20260516.xlsx — built via
+    .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py.
+    WS1: Data Room Guide (21 rows). WS2: File Tree (646 rows = 645 + header). Verified.
+  manual_review_doc: |
+    DONE. Run-dir root (NOT in dataroom/): run_dir/Manual_Review_Required_20260516.md.
+    Contents: 137 Phase 2 inclusion disputes + 2 00_Pending_Classification files.
+    This is an operator artifact — keep out of buyer dataroom.
+  predelivery_pii_scan: |
+    DONE. Run-dir root: run_dir/Pre_Delivery_PII_Scan_20260516.md.
+    Raw scan data: phase6/predelivery_scan.json (49 keyword hits analyzed).
+    THREE PAYOFF .docx files VERIFIED REDACTED (good).
+    FIVE FILES FLAGGED — see blocker below.
+
+# ============================================================
+# THE BLOCKER — PII DIRECTIVE NOT YET APPLIED
+# ============================================================
+
+blocker:
+  description: "Pre-delivery PII scan found live bank/account detail + embedded AmEx card statement in 5 shipped files. User issued verbatim pull directive. Directive NOT YET APPLIED."
+
+  user_directive_verbatim: |
+    "Don't ship any file that is even remotely suspicious or contains any data that might
+    compromise anything that has to do with our company or any other company, any investor's
+    name, or anything compromising. Just don't ship any of those things. Those files should
+    not be included in the data room."
+    — Zee, 2026-05-16
+
+  directive_interpretation: |
+    PULL from dataroom/ every file with confirmed OR borderline-suspicious PII / bank detail /
+    compromising data. Be conservative — err toward removal. At minimum the 5 flagged files.
+    Given the directive's breadth, also re-review the V2401 Pay Application series (07/08/09/10)
+    for embedded vendor card statements or bank detail — the AmEx embed in App 02 means the
+    others may carry the same (the 1800-char scan may have under-sampled long draw packets).
+
+  flagged_files:
+    - num: 1
+      path: "dataroom/07_Construction_Draws_And_Lien_Waivers/3. Owner Soft Costs March 2024.pdf"
+      exposure: "CONFIRMED LIVE — SJ Managing Company ABA Routing Number: 324079555 / Account Number: 501012125655"
+      action: "PULL"
+    - num: 2
+      path: "dataroom/07_Construction_Draws_And_Lien_Waivers/V2401 Pay Application 02 - June 2024 The Ascent Park City.pdf"
+      exposure: "CONFIRMED LIVE — Embedded American Express card statement for VERITY LLC / Shaun W Johnson (Account Ending 4-11005, SkyMiles acct, full transaction detail) + Sunbelt Rentals customer account 1012165"
+      action: "PULL"
+    - num: 3
+      path: "dataroom/12_Workout_Default_And_Settlement/WA Park City - Beehive Default Letter.pdf"
+      exposure: "CONFIRMED LIVE — ABA# 026009593 / Account #1291942692"
+      action: "PULL"
+    - num: 4
+      path: "dataroom/11_Appraisals_Financial_Models_And_Payoff/_A__Appraisal - The Ascent Park City.pdf"
+      exposure: "Account Number: 513068 — likely appraiser internal job reference (6 digits); needs human glance to confirm benign. Per directive: PULL conservatively."
+      action: "PULL (conservative per directive)"
+    - num: 5
+      path: "dataroom/07_Construction_Draws_And_Lien_Waivers/Lien Waiver Progress Payment - Geneva Rock - Lien - Owing.pdf"
+      exposure: "Account # 0473197 — likely vendor customer-account number, not bank account; needs glance. Per directive: PULL conservatively."
+      action: "PULL (conservative per directive)"
+    - num: 6
+      path: "dataroom/07_Construction_Draws_And_Lien_Waivers/V2401 Pay Application 07 (and 08/09/10).pdf — SERIES"
+      exposure: "Same series as App 02 which carried embedded AmEx card statement. Re-read these for embedded card/bank detail before deciding. Scan may have under-sampled."
+      action: "RE-REVIEW then PULL if any embedded statements found"
+
+# ============================================================
+# REMAINING STEPS IN ORDER (post-/clear resume)
+# ============================================================
+
+next_actions:
+  - step: 1
+    name: "Apply PII directive — pull flagged files"
+    detail: |
+      Move every suspicious file out of dataroom/ into a quarantine directory at
+      phase6/pulled_pii/. Log each moved file (original path, reason) at the bottom of
+      run_dir/Manual_Review_Required_20260516.md. Be conservative — when in doubt, pull.
+      Also read the V2401 Pay Application 07/08/09/10 extractions to check for embedded
+      card statements before deciding.
+  - step: 2
+    name: "Rebuild Excel for reduced file set"
+    detail: |
+      Regenerate descriptions_final.json to exclude the pulled files (filter them out
+      from the flat dict). Then rebuild dataroom/Ascent_Park_City_Guide_20260516.xlsx using:
+        python3 .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py
+          --guide-md phase6/ws1_guide.md
+          --descriptions-json <updated descriptions_final.json>
+          --taxonomy-json phase4/TAXONOMY.json
+          --dataroom-dir dataroom/
+          --output dataroom/Ascent_Park_City_Guide_20260516.xlsx
+      Verify WS2 row count == final file count after pulls.
+  - step: 3
+    name: "Re-run pre-delivery PII scan"
+    detail: |
+      Run a fresh scan over the reduced dataroom/ set. Confirm zero confirmed exposures
+      remain. Update or replace Pre_Delivery_PII_Scan_20260516.md with the clean result.
+  - step: 4
+    name: "Final-ship copy to Dropbox destination"
+    detail: |
+      cp -R "<run_dir>/dataroom/" "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+      IMPORTANT: do NOT copy Manual_Review_Required_*.md or Pre_Delivery_PII_Scan_*.md —
+      they live in run_dir root (not inside dataroom/), so a plain cp -R of dataroom/ is
+      already clean. Verify the destination matches the reduced file count.
+  - step: 5
+    name: "Checkpoint run_state.json"
+    detail: |
+      Set phase="complete", last_completed_checkpoint="phase6_excel_written",
+      final_output="/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/".
+  - step: 6
+    name: "Print SKILL.md §14 final report"
+    detail: |
+      Read .claude/skills/acos-dataroom-v2/SKILL.md §14 and produce the final session
+      report in the format specified there.
+
+# ============================================================
+# KEY FILE PATHS
+# ============================================================
+
+key_files:
+  phase6_resumption_state: "<run_dir>/phase6/PHASE6_RESUMPTION_STATE.md  ← READ THIS FIRST"
+  skill_phase6_procedure: ".claude/skills/acos-dataroom-v2/SKILL.md §10  ← READ SECOND"
+  run_state: "<run_dir>/run_state.json  (checkpoint: phase4_placement_complete; final_dataroom_count: 645)"
+  dataroom: "<run_dir>/dataroom/  (14 sub-folders + Excel + 00_Pending_Classification)"
+  excel: "<run_dir>/dataroom/Ascent_Park_City_Guide_20260516.xlsx  (MUST be rebuilt after PII pulls)"
+  pii_scan_report: "<run_dir>/Pre_Delivery_PII_Scan_20260516.md  (operator artifact, NOT in dataroom/)"
+  pii_scan_raw: "<run_dir>/phase6/predelivery_scan.json  (49 keyword hits detail)"
+  manual_review_doc: "<run_dir>/Manual_Review_Required_20260516.md  (operator artifact, NOT in dataroom/)"
+  ws1_guide: "<run_dir>/phase6/ws1_guide.md"
+  ws1_qa_verdict: "<run_dir>/phase6/ws1_qa_verdict.json"
+  descriptions_json: "<run_dir>/phase6/descriptions.json  (645 files, 3-vote raw)"
+  descriptions_final: "<run_dir>/phase6/descriptions_final.json  (flat filename->description_text, QA-cleaned)"
+  desc_helpers: "<run_dir>/phase6/desc.py, descqa.py, build_desc_qa_batches.py"
+  excel_builder_script: ".claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py"
+  taxonomy: "<run_dir>/phase4/TAXONOMY.json  (14 folders)"
+  quarantine_pii: "<run_dir>/phase6/pulled_pii/  (CREATE THIS — destination for pulled files)"
+  prior_handoff: "memory/handoffs/2026-05-16-ascent-dataroom-v2-phase4b-ready.yaml  (Phase 4b context, now superseded)"
+
+# ============================================================
+# CONTEXT FOR NEXT SESSION
+# ============================================================
+
+context_for_next_session: |
+  This is the Ascent Park City dataroom v2 production run. The heavy lifting is done:
+  645 files organized into 14 sub-folders, a 2-worksheet Excel guide built, all descriptions
+  written. The ONLY thing standing between this run and completion is applying the user's
+  conservative PII pull directive — and the user was emphatic about it.
+
+  The user's exact words: "Don't ship any file that is even remotely suspicious." This means
+  err toward pulling rather than keeping. At minimum pull the 5 flagged files. The most clear-cut
+  are files 1, 2, and 3 (live ABA/account numbers and an embedded credit card statement). Files
+  4 and 5 are likely benign internal reference numbers, but the directive is conservative — pull
+  them too unless you can confirm on a second read that they are unambiguously non-sensitive.
+  The V2401 Pay Application series (07, 08, 09, 10) also needs a re-check because App 02 in that
+  same series had a full AmEx card statement embedded; the other apps may too.
+
+  After pulling, regenerate the Excel (MUST reflect the reduced file count — the boss will notice
+  if the row count is wrong), run a fresh PII scan to confirm zero remaining exposures, then copy
+  dataroom/ to the Dropbox destination. The Manual_Review_Required and Pre_Delivery_PII_Scan
+  docs live in the run_dir root, NOT inside dataroom/, so a plain cp -R dataroom/ keeps them out
+  of the buyer set automatically.
+
+  The boss sees ONLY the Dropbox destination folder and the Excel. Both must be boss-criticism-proof
+  on first cold look. No draft artifacts, no operator-only docs, no files with live bank/card detail.
+
+  Technical notes for resuming:
+  - The extraction.json for any file is at: extraction/<file_id>/extraction.json
+  - The file_id<->dataroom-filename mapping comes from phase2/inclusion_log.csv
+    (look for 'Copied to: <name>' in the reasoning column; fall back to basename(relative_path))
+  - The Excel builder takes --descriptions-json as a flat {filename: text} dict
+    (use descriptions_final.json, filter out the pulled files before passing it)
+  - The quarantine dir for pulled files should be phase6/pulled_pii/ (create it)
+  - run_state.json checkpoint after ship: phase="complete", last_completed_checkpoint="phase6_excel_written"
+
+reconstruction_sources:
+  - "memory/handoffs/2026-05-16-ascent-dataroom-v2-phase4b-ready.yaml (prior session handoff, superseded)"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase6/PHASE6_RESUMPTION_STATE.md"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/Pre_Delivery_PII_Scan_20260516.md"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json (phase4_placement, phase5 fields)"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase6/ (directory listing)"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/ (root directory listing)"
+  - "git log --oneline -20 (confirms v2.0.0 commit as HEAD)"
+  - ".acos/state/ (agent-lifecycle.log confirms active session state)"
+  - "User-provided summary in handoff invocation (authoritative for Phase 6 narrative)"

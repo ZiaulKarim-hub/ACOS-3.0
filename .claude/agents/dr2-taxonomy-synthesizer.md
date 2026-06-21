@@ -48,8 +48,41 @@ Your prompt gives you:
    folders. Continue until count ≤15.
 
 6. **All-encompassing.** Every file in the inventory MUST fit ≥1 folder in
-   the final taxonomy. If you can't fit some, add a "99 — Other" folder as a
+   the final taxonomy. If you can't fit some, add a "99 Other" folder as a
    last resort (this is exceptional, not normal).
+
+7. **v2.1.0 naming convention validation (mandatory).** Every folder's
+   `full_label` MUST match this pattern:
+   ```
+   ^[0-9]{2} [A-Z][A-Za-z0-9 &'\-]+$
+   ```
+   That is: exactly two digits, then exactly one space, then a Title-Cased name
+   composed of letters, digits, spaces, ampersands, apostrophes, hyphens, or
+   commas. **NO UNDERSCORES anywhere in the label.** **NO snake_case.**
+
+   If any incoming proposal violates the convention (e.g., a designer slipped
+   back to v2.0 `01_Property_Overview` style), rewrite the label to comply
+   before merging.
+
+   Examples that PASS:
+   - `01 Broker Market Evaluation & Marketing`
+   - `02 Title & Land Records`
+   - `07 C-Pace Financing`
+   - `09 Appraisals & Financial Models`
+
+   Examples that FAIL (you must rewrite):
+   - `01_Property_Overview_And_Marketing` — has underscores → rewrite to
+     `01 Property Overview & Marketing`
+   - `01-Property-Overview` — has hyphens between words → rewrite
+   - `01property overview` — lowercase first word → rewrite
+   - `1 Title` — single-digit number prefix → rewrite to `01 Title`
+
+8. **Deal-type appropriateness validation.** Read the active `--deal-type` from
+   SOLIDIFIED_OBJECTIVE.md metadata. If any proposed folder is in the "forbidden
+   for this deal type" list per `dr2-taxonomy-designer.md` Conventional CRE
+   diligence categories §, DROP that folder. The categorical-exclusion fast
+   path will have cut all the files that would have gone there anyway, so the
+   folder would be empty-on-arrival.
 
 ## Output schema
 
@@ -58,11 +91,13 @@ Write `<run_dir>/phase4/TAXONOMY.json`:
 ```json
 {
   "synthesis_date": "<ISO>",
+  "deal_type": "<active deal type>",
   "folder_count": N,
   "folders": [
     {
       "num": 1,
-      "name": "Property Overview",
+      "name": "Broker Market Evaluation & Marketing",
+      "full_label": "01 Broker Market Evaluation & Marketing",
       "description": "<one sentence: what goes here>",
       "convergence_count": 3 | 2 | 1,
       "source_proposals": ["agent_1", "agent_2", "agent_3"]
@@ -73,7 +108,9 @@ Write `<run_dir>/phase4/TAXONOMY.json`:
     "sequential_no_gaps": true,
     "no_semantic_duplicates": true,
     "max_folders_satisfied": true,
-    "all_encompassing": true
+    "all_encompassing": true,
+    "naming_convention_v21_compliant": true,
+    "deal_type_appropriate": true
   },
   "open_concerns": []
 }
@@ -90,6 +127,9 @@ populated.
 - Use Title Case (e.g., "Property Overview" not "Property overview").
 - 2-5 words per folder name. Avoid "and/and" patterns (e.g., not "Title and
   Survey and Recorded Documents" — split or shorten).
+- **v2.1.0:** number prefix is `NN ` (two digits + single space). Folder name
+  uses spaces between words, `&` for "and" between roughly-equal concepts.
+  NO underscores anywhere. See Synthesis rules §7.
 
 ## Invariants
 
@@ -103,4 +143,6 @@ populated.
 
 ---
 
-*acos-dataroom-v2 Phase 4a synthesizer. Merge three blind proposals into one constraint-compliant taxonomy.*
+*acos-dataroom-v2 v2.1.0 Phase 4a synthesizer. Merge three blind proposals into
+one constraint-compliant taxonomy with v2.1 "NN Title Case With Spaces & Ampersands"
+naming + deal-type-appropriateness validation.*

@@ -1,0 +1,127 @@
+timestamp: "2026-06-01T18:55:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session was entirely focused on the global acos-guided-reader skill
+  (~/.claude/skills/acos-guided-reader/). No changes were made inside the
+  ACOS 3.0 git repository. Over multiple turns the skill received six major
+  capability areas: browser UX improvements (F-key debug, help overlay, arrow
+  cursor, collapsible explanations, wider explain panel, session-ended overlay),
+  a word-segment cursor that correctly highlights ≤15-word chunks with balanced
+  strong-tag handling, Tier A+B arbitrary-file support via a new plan-builder.py,
+  a snappy explain redesign with four modes (default/simpler/example/deeper) and
+  action buttons, a pre-warmed claude subprocess pool (gr-pool.py) that delivers
+  ~5–7s explain latency regardless of session length, and an auto-expand fix for
+  nested follow-up explanations. The session ended with auto-expand confirmed
+  working; browser end-to-end validation by the user is still pending.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  note: >
+    This work is outside the ACOS 3.0 planning hierarchy. The guided-reader is
+    a global personal skill (not a planned slice). The ACOS 3.0 planning
+    hierarchy (EPIC-003 / STORY-003-001 / SLICE-003-001-07) belongs to the
+    visual-composer project and is unrelated to this session's work.
+
+completed_this_session:
+  - "Browser UX rebuild: F-key debug, help overlay + ? key, arrow-key line cursor, clickable sidebar TOC with goto command, collapsible explanation entries, wider explain panel (~40vw), session-ended overlay, ConnectionResetError suppression."
+  - "Word-segment cursor fix: tag-stack-aware tokenizer splits each .reading-line into <=15-word .word-segment spans; balanced <strong> open/close across segment boundaries prevents cursor-skip bug."
+  - "Tier A+B arbitrary file support: new scripts/plan-builder.py (~355 LOC). Resolves arbitrary paths, derives reading-id (<slug>-<6charhash>), classifies format, generates plan.json in state dir. .md chunked by H1/H2/H3 (tag-stack-aware, code-fence skip). Plain-text fallback (30-line windowing). build-page.py refactored to fall back to runtime plan when no static template exists."
+  - "Snappy explain redesign: E=default paraphrase (Haiku), S=simpler (Haiku), X=example (Opus — was exit), D=deeper (Opus), Q=quit (was X). Action buttons [Simpler] [Example] [Deeper] on each explanation entry. captureSelection recursive — selection inside .explanation-entry sets parent_id for follow-up nesting. Depth-indented CSS classes depth-1..depth-4. Mode badges (color-coded). gr-server.py _handle_cmd accepts mode + parent_id, validates modes, stores in state.json, threads through commands.jsonl."
+  - "Pre-warmed pool architecture (gr-pool.py, ~394 LOC): maintains 1 haiku + 1 opus claude subprocess in --input-format stream-json --output-format stream-json mode. Critical: each member requires a warmup message (sends {content:Reply only: ok} on startup, waits for result event) before marking ready. Pool listens on Unix socket state_dir/pool.sock. gr-server.py _handle_cmd dispatches to pool via Unix socket with fallback to commands.jsonl. Pool flushes paragraphs on </p> or \\n\\n. Restarts member after 20 turns. End-to-end: 8.5s pool warmup, 7s first explain, 5s subsequent. CLAUDE_BIN hardcoded to /Users/zee/.claude/local/claude."
+  - "Auto-expand fix: follow-up explanations (D button) at depth>0 were rendering collapsed. Added seenIds Set + mostRecentNewId tracker. Two-pass render: first pass identifies newly-arrived ids, second pass renders. New explanations always auto-expand regardless of depth. status=generating also auto-expands. User-toggled state wins via userToggled Map."
+
+files_modified:
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/SKILL.md"
+    changes: "Phase 0 routing (magic-string vs file-path vs directory), Phase 4 build+serve instructions, Phase 6 rewritten for pool dispatch + fallback + mode/parent_id event fields, key bindings table, MVP scope section."
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/scripts/build-page.py"
+    changes: "Plan resolution refactored: tries static template first (templates/mvp-plan-<id>.json), then runtime plan (<state-dir>/plan.json from plan-builder). Footer hint updated. ~362 LOC."
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/scripts/gr-server.py"
+    changes: "mode + parent_id support in _handle_cmd, pool spawn on startup, pool client helpers (build_prompt, dispatch_to_pool), mode-aware prompt templates, fallback path when pool unreachable. ~702 LOC."
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/scripts/gr-pool.py"
+    changes: "NEW FILE. Pre-warmed pool manager subprocess. ~394 LOC. Warmup-before-ready protocol, Unix socket, RESET_AFTER_TURNS=20, CLAUDE_BIN=/Users/zee/.claude/local/claude."
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/scripts/plan-builder.py"
+    changes: "NEW FILE. Arbitrary-file plan generator. ~355 LOC. Supports .md (heading-based chunking), plain-text fallback (30-line windowing). Tiers C/D/E not yet implemented."
+  - path: "/Users/zee/.claude/skills/acos-guided-reader/templates/page-template.html"
+    changes: "Extensive: keymap update (X=example, Q=quit), word-segment tokenizer + tag-stack logic, action buttons (Simpler/Example/Deeper), captureSelection recursion + parent_id, auto-expand logic (seenIds + mostRecentNewId two-pass), depth CSS classes, mode badges. ~1258 LOC."
+
+decisions_made:
+  - "Pool pre-warm uses a warmup message (not just process start) because claude --input-format stream-json requires a first conversation turn before emitting the init event."
+  - "CLAUDE_BIN hardcoded to /Users/zee/.claude/local/claude — no PATH resolution needed on Zee's machine."
+  - "explain speed floor accepted at ~5-7s for subscription path (API path is off-limits per feedback_subscription_not_api). Per-explain cost of Haiku ~$0.01 / Opus ~$0.05 is the only path below that floor; decision deferred pending user input."
+  - "X key rebound from exit to example; Q is the new quit key. This was a deliberate UX change requested to make example more accessible."
+  - "Pool members restart after 20 turns (RESET_AFTER_TURNS=20) to bound context size and keep TTFT stable."
+
+blockers:
+  - "Task #4 (browser end-to-end test): User has not yet done a full Zee-validated test of the complete keyboard map (E/S/X/D/Q + ?) and auto-expand behavior in a fresh session. All code changes are complete but unconfirmed by the user in the browser."
+  - "Task #5 (mark MVP done): Blocked on Task #4."
+  - "Tier C/D/E plan-builder (code, yaml, csv): Not started. plan-builder.py currently only handles .md and plain-text fallback."
+
+next_actions:
+  - "PRIORITY: Ask Zee to run a fresh browser session against a .md file and validate full keyboard map (E for explain, S for simpler, X for example, D for deeper, Q for quit, ? for help, arrow keys for cursor, F/B for forward/back). Confirm auto-expand works for D follow-ups."
+  - "Task #16 Tier C: Add code-file chunker to plan-builder.py — chunk on function/class boundaries for .py / .ts / .js / .sh."
+  - "Task #17 Tier D: Add .yaml/.yml chunker to plan-builder.py — chunk on top-level keys."
+  - "Task #18 Tier E: Add .csv chunker to plan-builder.py + new table renderer template variant."
+  - "Task #19 Tier F: Directory walking + multi-file plans — uses skill-type-detector.py + charter-detector.py."
+  - "Optionally: revisit feedback_subscription_not_api with Zee for the specific explain use-case if 5-7s is still frustrating; current pool delivers near-constant latency at that floor."
+
+context_for_next_session: |
+  The entire session's work lives at ~/.claude/skills/acos-guided-reader/ (global
+  skill — NOT in the ACOS 3.0 git repo; git status will show no changes for this
+  work). This is a multi-turn in-progress build with substantial complexity.
+
+  Architecture recap: gr-server.py is the HTTP server that handles browser
+  keypresses. On startup it spawns gr-pool.py as a subprocess. gr-pool.py
+  maintains two warm claude subprocesses (haiku for E/S modes, opus for X/D
+  modes) and listens on a Unix socket at state_dir/pool.sock. When the user presses
+  E/S/X/D in the browser, gr-server routes the explain request to the pool via
+  the socket; the pool member generates and POSTs paragraphs back to the server's
+  /internal/append-explain endpoint, which the browser picks up via SSE. The
+  fallback path (when pool unreachable) appends to commands.jsonl for the main
+  Claude session to handle.
+
+  The word-segment cursor logic is in page-template.html starting around line
+  1030. It tokenizes .reading-line innerHTML into <=15-word .word-segment spans
+  using a tag-stack-aware algorithm that prevents unclosed <strong> tags from
+  spanning segment boundaries. This was a hard-won fix for a cursor-skip bug.
+
+  The auto-expand fix (most recent change) is in page-template.html around lines
+  598–680. It uses a seenIds Set and mostRecentNewId to identify newly-arrived
+  explanation IDs in a first pass, then uses mostRecentNewId in a second pass to
+  unconditionally expand the newest entry. The userToggled Map records user-
+  overrides and is consulted before the auto-expand logic so manual
+  collapse/expand is sticky.
+
+  plan-builder.py currently handles .md (heading-based chunking with tag-stack-
+  aware code-fence skipping) and falls through to 30-line plain-text windowing
+  for anything else. .py/.ts/.js/.sh/.yaml/.csv are all TODO (Tiers C/D/E in
+  SKILL.md). The SUPPORTED_EXTENSIONS dict in plan-builder.py (line ~37) is
+  annotated with the pending tiers.
+
+  The ACOS 3.0 planning hierarchy (EPIC-003, STORY-003-001, SLICE-003-001-07)
+  is the visual-composer project (apps/visual-composer/) — completely separate
+  from this session. SLICE-003-001-07 (extract orchestration integration) was the
+  last committed slice (2026-05-28). That work is complete and unrelated to pick
+  up here.
+
+  Next session: start by asking Zee to test the guided reader in a fresh browser
+  tab before making any further code changes. Validation first.
+
+reconstruction_sources:
+  - "git status --short (ACOS 3.0 repo — confirmed no guided-reader changes tracked here)"
+  - "git log --oneline -20 (last 20 commits; most recent is eternity-protocol-resume fix 5278a73)"
+  - "git diff --stat HEAD~5..HEAD (last 5 commits diff)"
+  - "memory/handoffs/archive/2026-06-01-completion-handoff.yaml (earlier session: Gonzalez payoff, unrelated)"
+  - "/Users/zee/.claude/skills/acos-guided-reader/SKILL.md (lines 1-249: full Phase 0-6 protocol)"
+  - "/Users/zee/.claude/skills/acos-guided-reader/scripts/gr-server.py (grep: mode/parent_id/pool dispatch, 702 LOC)"
+  - "/Users/zee/.claude/skills/acos-guided-reader/scripts/gr-pool.py (lines 1-50: header + architecture)"
+  - "/Users/zee/.claude/skills/acos-guided-reader/scripts/plan-builder.py (lines 1-50: header + SUPPORTED_EXTENSIONS)"
+  - "/Users/zee/.claude/skills/acos-guided-reader/templates/page-template.html (grep: seenIds/mostRecentNewId/auto-expand/word-segment/depth CSS)"
+  - ".acos/state/ directory listing (runtime state files present, no active guided-reader session)"
+  - "planning/slices/ directory listing (all 7 slices dated 2026-05-26 to 2026-05-28; SLICE-003-001-07 most recent)"
+  - "User-provided critical context summary (six capability areas, pending tasks, file list)"

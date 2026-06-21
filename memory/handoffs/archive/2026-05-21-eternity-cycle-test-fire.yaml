@@ -1,0 +1,341 @@
+timestamp: "2026-05-21T07:05:51Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+# ── CYCLE INTENT ──────────────────────────────────────────────────────────────
+cycle_intent: |
+  MANUAL TEST FIRE — user Jason requested a pre-/acos-eternity-protocol-cycle handoff
+  to observe the full cycle end-to-end and verify two things:
+    (a) the newly-identified misleading-ERROR-message UX defect manifests live in
+        the post-clear new session (expected: YES — e3290ab did NOT touch Step 1's
+        exit path, so the defect is still present)
+    (b) commit e3290ab's frontmatter fix is visible to the new session's skill picker
+        (expected: YES — frontmatter description now reads --session-id, not --pid)
+  Current session is well below the 400k threshold; this is not an organic threshold
+  fire. The handoff is created manually to carry context across the /clear boundary.
+
+# ── SESSION IDENTIFICATION ────────────────────────────────────────────────────
+current_session_id: "c5756fcf-948e-427a-914d-c307468b2843"
+pre_clear_session: "c5756fcf-948e-427a-914d-c307468b2843"
+pid: "45454"
+pid_recorded: "Tue May 19 21:52:35 2026"
+active_branch: "main"
+
+prior_session_chain:
+  - "fd2a4f20-a039-4442-8cb5-5e2512a9228b  (first VERIFIED autonomous resume hop)"
+  - "4babaf0a-e5a6-4732-a679-1db0ff18a456  (prior session — hit 400k, fired eternity protocol, /clear'd; consumed/ artifacts confirm correct mv behavior)"
+  - "c5756fcf-948e-427a-914d-c307468b2843  (CURRENT SESSION — manually firing /clear as test)"
+
+# ── SESSION SUMMARY ───────────────────────────────────────────────────────────
+session_summary: |
+  This session (c5756fcf) started with a verified autonomous resume hop already
+  completed — the daemon's c5756fcf watcher injected /acos-eternity-protocol-resume
+  at startup (log lines 5-9: ORPHAN RESUME CLAIM from 4babaf0a, INJECT OK). The
+  session then landed commit e3290ab which closed the last stale-docs item from the
+  prior handoff (2026-05-21-emergency-handoff.yaml lines 152-159). e3290ab updated
+  two places in acos-eternity-protocol-resume/SKILL.md to remove stale --pid
+  references: frontmatter description and Step 3 header. No behavior change.
+  Additionally, a UX defect in Step 1 was identified (misleading ERROR message that
+  looks like failure but fires on success-equivalent state). A fix is designed but
+  not yet implemented. This handoff is the manual test-fire to carry all findings
+  into the post-clear session.
+
+# ── KEY FINDINGS THIS SESSION ────────────────────────────────────────────────
+key_findings:
+
+  ux_defect_step1_misleading_error:
+    severity: "low-to-medium (UX only, no data loss)"
+    status: "identified, fix designed, NOT YET IMPLEMENTED"
+    description: |
+      /acos-eternity-protocol-resume Step 1 conflates two outcomes into a single
+      error path at the final `test -s "$RESUME"` guard:
+
+        Outcome A (success-equivalent): "Nothing to inject because the daemon /
+        hook already did it." The consumed/ directory has a recently-archived
+        pending-resume for this project. The skill is a no-op — that is correct
+        behavior. But the current code emits:
+          ERROR: no pending resume found for this project (refusing cross-project fallback)
+          exit 1
+        This looks like a failure when the system worked perfectly.
+
+        Outcome B (genuine failure): "Nothing to inject AND no daemon evidence."
+        Same message, same exit code.
+
+      The defect was discovered when Jason saw the daemon-injected
+      /acos-eternity-protocol-resume in his terminal at session start and asked
+      "why did this happen?" — the ERROR made it look like the autonomous resume
+      system was broken when it had actually worked perfectly.
+
+    proposed_fix: |
+      After the failed `test -s "$RESUME"` check in Step 1, check
+      ~/Library/Application Support/acos-token-monitor/state/consumed/ for a
+      recently-archived resume (mtime within ~10 min) whose <sid> belongs to this
+      project's PROJECT_SESSIONS set. If found:
+        exit 0 with message:
+          "OK: auto-resume already completed for session <sid> at <timestamp> — nothing to do"
+      If not found OR stale: keep current ERROR + exit 1 path.
+
+    file: ".claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    location: "Step 1, line ~95: `test -s \"$RESUME\" || { echo \"ERROR: ...\" ; exit 1; }`"
+    effort: "~15 min"
+
+  commit_e3290ab_landed:
+    commit: "e3290ab"
+    message: "docs(acos-eternity-protocol-resume): remove stale --pid references in SKILL.md"
+    date: "2026-05-21T00:24:29-06:00"
+    changes:
+      - "Frontmatter description: 'uses inject-keystroke.py with --pid for precise targeting' → 'uses inject-keystroke.py with --session-id (AXTitle marker ACOS[<uuid>]) for precise targeting'"
+      - "Step 3 header: 'Read PID for targeted injection (PID-targeted ONLY)' → 'Liveness check — confirm session process is still alive' with explanatory paragraph clarifying PID read is kill -0 liveness check only, never passed to injector"
+    closes: "stale_frontmatter_description rough edge from 2026-05-21-emergency-handoff.yaml lines 152-159"
+    behavior_change: "none — documentation only"
+
+  corrected_mental_model: |
+    The /acos-eternity-protocol-resume slash command that appeared in Jason's terminal
+    at the start of c5756fcf was injected BY THE DAEMON via the cooperative
+    belt-and-suspenders path (orphan-claim logic), NOT typed by Jason. The daemon log
+    confirms this at lines 5-9:
+      "ORPHAN RESUME CLAIM: sibling session 4babaf0a ... — typing /acos-eternity-protocol-resume into my session"
+      "inject mode: CGEvent+AXRaise session_id=c5756fcf ... (orphan-claim from 4babaf0a)"
+      "INJECT OK (verification skipped) (orphan-claim from 4babaf0a)"
+    The UserPromptSubmit hook (eternity-resume-prepend.sh) then prepended resume content
+    as additionalContext AND moved artifacts to consumed/. The skill's Step 5 cleanup is
+    idempotent when the hook fires first. Both paths cooperate.
+
+# ── COMMIT CHAIN (this arc) ───────────────────────────────────────────────────
+commit_chain:
+  - sha: "6b3491b"
+    summary: "fix(acos-eternity-protocol): close hook rm-violation (Bug #5b) + verify autonomous daemon-resume hop end-to-end"
+    key_changes:
+      - "eternity-resume-prepend.sh (new file) — UserPromptSubmit hook, mv-to-consumed/ instead of rm -f"
+      - ".claude/skills/acos-eternity-protocol-resume/SKILL.md (new file) — Step 5 mv discipline"
+
+  - sha: "f639310"
+    summary: "fix(acos-eternity-protocol-resume): project-scope Step 1 fallback (Bug #5c)"
+    key_changes:
+      - "SKILL.md Step 1: fallback now scoped to PROJECT_SESSIONS (sanitized cwd), prevents cross-project resume injection"
+
+  - sha: "e3290ab"
+    summary: "docs(acos-eternity-protocol-resume): remove stale --pid references in SKILL.md"
+    key_changes:
+      - "Frontmatter + Step 3 header: --pid replaced with --session-id / AXTitle descriptions"
+
+# ── EVIDENCE STATE AT FIRE TIME ────────────────────────────────────────────────
+evidence_state_at_fire_time:
+  timestamp: "2026-05-21T07:05:51Z"
+
+  consumed_dir: "$HOME/Library/Application Support/acos-token-monitor/state/consumed/"
+  consumed_artifacts_present:
+    - "pending-resume-4babaf0a-e5a6-4732-a679-1db0ff18a456.txt  (mtime: 2026-05-21T00:12 — prior cycle consumed, proves Bug #5b mv-vs-rm fix operating)"
+    - ".resume-pending-4babaf0a-e5a6-4732-a679-1db0ff18a456     (mtime: 2026-05-21T00:12 — consumed marker)"
+    - ".compact-fired-4babaf0a-e5a6-4732-a679-1db0ff18a456      (mtime: 2026-05-21T00:06 — original fire timestamp)"
+    - "pending-resume-9dad2072-7fbc-4e30-943a-afd5389fa6c8.txt  (older, prior failed attempt)"
+    - ".resume-pending-9dad2072-7fbc-4e30-943a-afd5389fa6c8     (older, prior failed attempt)"
+
+  active_state_markers_for_c5756fcf:
+    - ".parse-offset-c5756fcf-948e-427a-914d-c307468b2843  (JSONL parse cursor, ephemeral)"
+    - "pid-c5756fcf-948e-427a-914d-c307468b2843  (PID=45454, Tue May 19 21:52:35 2026)"
+    - "NOTE: NO .compact-fired, NO pending-resume, NO .clear-fired for c5756fcf yet — clean state pre-fire"
+
+  no_pending_resume_for_c5756fcf: true
+  reason: |
+    The /acos-resume-prompt (Step 2 of /acos-eternity-protocol) has NOT been run for
+    this session — the current cycle has only produced this handoff file. The
+    pending-resume file for c5756fcf will be written when /acos-resume-prompt runs
+    in the next step of this cycle.
+
+  daemon_log_c5756fcf: "$HOME/Library/Application Support/acos-token-monitor/logs/c5756fcf-948e-427a-914d-c307468b2843.log"
+  daemon_log_summary: |
+    44 events logged as of evt=44 at 07:05:23Z. Session started at 06:13:33Z.
+    Lines 5-9 confirm autonomous resume claim at startup (ORPHAN RESUME CLAIM from 4babaf0a,
+    INJECT OK). Current token count at last observation: approx=121,077 — well below 400k,
+    confirming this is a manual/test-fire cycle, not an organic threshold event.
+    No threshold fire logged for this session.
+
+  daemon_heartbeat: "healthy — active events as recently as evt=44 (07:05:23Z)"
+
+  four_active_watcher_instances:
+    - "fd2a4f20  (~8h, verified-autonomous-hop session from prior arc)"
+    - "f3bd8a55  (~2h+ active session)"
+    - "4babaf0a  (~1h13m — consumed/ artifacts confirm prior-cycle completion)"
+    - "c5756fcf  (~48m — CURRENT session, this is the one being /clear'd)"
+
+# ── POST-CLEAR OBSERVATION CHECKLIST ─────────────────────────────────────────
+post_clear_observation_checklist: |
+  The post-clear new session MUST report on each of the following:
+
+  (a) Did the daemon's autonomous /acos-eternity-protocol-resume keystroke-injection
+      fire after /clear?
+      CHECK: Read $HOME/Library/Application Support/acos-token-monitor/logs/
+             c5756fcf-948e-427a-914d-c307468b2843.log (will show new events post-/clear
+             IF the same log continues, or the new session's log if the session ID changes)
+      EXPECTED: YES — the daemon should claim the orphan resume for c5756fcf via the same
+             orphan-claim path that worked for 4babaf0a (log lines 5-9 of c5756fcf.log confirmed this).
+
+  (b) Did the UserPromptSubmit hook (eternity-resume-prepend.sh) prepend resume content as
+      additionalContext on the new session's first prompt?
+      CHECK: Examine whether the new session's first turn has the resume context injected.
+      EXPECTED: YES — hook fires on first tool call when pending-resume file exists for project.
+
+  (c) Did the skill's Step 1 (with project-scoped fallback from f639310) correctly find the
+      pending-resume keyed to c5756fcf?
+      CHECK: Observe the skill's Step 1 output. If it found a file, which SID?
+      EXPECTED: Should find pending-resume-c5756fcf-*.txt (once /acos-resume-prompt writes it).
+
+  (d) Did the misleading-ERROR-message defect manifest in the new session?
+      CHECK: If the daemon/hook path fires FIRST (Outcome A), the skill will emit
+             "ERROR: no pending resume found for this project" + exit 1 despite the
+             system having worked correctly.
+      EXPECTED: YES — this is the defect we want to observe live. e3290ab did NOT touch
+             Step 1's exit path. This confirms the fix described in key_findings[0] is needed.
+
+# ── CURRENT WORK ──────────────────────────────────────────────────────────────
+current_work:
+  slice_id: "eternity-protocol-verification-and-hardening"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "arc complete; one UX defect identified, fix designed, pending implementation"
+
+# ── COMPLETED THIS SESSION ────────────────────────────────────────────────────
+completed_this_session:
+  - |
+    Commit e3290ab landed on main: removed stale --pid references from
+    acos-eternity-protocol-resume/SKILL.md (frontmatter + Step 3 header). Closes
+    stale_frontmatter_description rough edge from prior handoff.
+  - |
+    UX defect identified: Step 1 misleading-ERROR on Outcome A (success-equivalent).
+    Fix fully designed (consumed/ mtime check + exit 0 with OK message). Not yet
+    implemented — ~15 min of work.
+  - |
+    Corrected mental model documented: daemon-injected /acos-eternity-protocol-resume
+    at c5756fcf startup was NOT typed by Jason; it was the daemon's autonomous orphan-claim
+    for session 4babaf0a. Daemon log confirms INJECT OK at startup. This is the correct
+    belt-and-suspenders behavior per the verified path from fd2a4f20.
+  - |
+    Token state verified: c5756fcf at ~121k tokens (approx=121,077 at evt=44) — well
+    below 400k. This is explicitly a MANUAL test-fire cycle to observe the full eternity
+    protocol cycle end-to-end at Jason's request.
+
+# ── FILES MODIFIED ────────────────────────────────────────────────────────────
+files_modified:
+  - path: ".claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    changes: |
+      Commit e3290ab: two doc-only edits.
+      (1) Frontmatter description: --pid → --session-id (AXTitle marker 'ACOS[<uuid>]')
+      (2) Step 3 header: 'Read PID for targeted injection (PID-targeted ONLY)' →
+          'Liveness check — confirm session process is still alive' + explanatory paragraph.
+      No behavior change. 1 file changed, 9 insertions, 2 deletions.
+
+# ── DECISIONS MADE ────────────────────────────────────────────────────────────
+decisions_made:
+  - |
+    Do NOT commit the consumed/ artifacts or state/ ephemeral markers — they are
+    runtime state managed by the daemon and hooks, not ACOS git-tracked files.
+  - |
+    The UX defect fix should be implemented as a ~15 min follow-up in the next session
+    if Jason approves. It does not need a new slice — it is a targeted single-file
+    edit to SKILL.md Step 1.
+
+# ── BLOCKERS ─────────────────────────────────────────────────────────────────
+blockers: []
+
+# ── KNOWN ROUGH EDGES (unchanged from prior handoff except stale_frontmatter CLOSED) ──
+known_rough_edges:
+  step1_misleading_error_ux_defect:
+    file: ".claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    issue: |
+      Step 1 final guard emits ERROR + exit 1 when Outcome A (success-equivalent:
+      daemon/hook already consumed the artifacts) fires. Looks like failure when
+      system worked correctly. Fix: check consumed/ dir for recent mtime match
+      before erroring, exit 0 with OK message if found.
+    fix: "~15 min single-file edit to SKILL.md Step 1 (see key_findings.ux_defect_step1_misleading_error)"
+    effort: "~15 min"
+    status: "OPEN — fix designed, not implemented"
+
+  bin_manifest_regeneration:
+    file: "$HOME/Library/Application Support/acos-token-monitor/bin/bin-manifest.sha256"
+    issue: |
+      Must be manually regenerated after any edit to token-watcher.py or inject-keystroke.py.
+      Launcher refuses to start if manifest is stale. No pre-commit hook or automated guard.
+    fix: "Option A: pre-commit hook in acos-token-monitor install. Option B: document regeneration command in script headers."
+    effort: "~30 min"
+    status: "OPEN"
+
+  step_0_pid_race:
+    file: ".claude/skills/acos-eternity-protocol-resume/SKILL.md Step 0"
+    issue: |
+      Step 0 self-writes the PID file; daemon's SessionStart hook may write same PID file
+      concurrently. Race not observed in practice (both writes produce same PID value).
+    fix: "Document the race; add atomic write/lock only if observed."
+    effort: "low priority"
+    status: "OPEN (low priority)"
+
+  stale_frontmatter_description:
+    status: "CLOSED by commit e3290ab (2026-05-21)"
+
+# ── NEXT ACTIONS ─────────────────────────────────────────────────────────────
+next_actions:
+  primary:
+    - |
+      ~15 min: Implement the Step 1 success-vs-failure disambiguation fix in
+      .claude/skills/acos-eternity-protocol-resume/SKILL.md. After the failed
+      `test -s "$RESUME"` guard, check consumed/ for a recently-archived resume
+      (mtime within ~10 min) whose <sid> is in PROJECT_SESSIONS. If found:
+        printf 'OK: auto-resume already completed for session %s at %s — nothing to do\n' "$SID" "$(stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%SZ' consumed/pending-resume-$SID.txt 2>/dev/null)"
+        exit 0
+      Commit as: fix(acos-eternity-protocol-resume): disambiguate Outcome A vs Outcome B in Step 1
+
+  secondary:
+    - "~30 min: Add pre-commit hook for bin-manifest.sha256 regeneration"
+    - "Whatever Jason decides — the eternity-protocol verification + hardening arc is complete"
+
+# ── CONTEXT FOR NEXT SESSION ─────────────────────────────────────────────────
+context_for_next_session: |
+  This handoff crosses the /clear boundary of a MANUAL test-fire of the
+  /acos-eternity-protocol cycle, initiated by Jason at ~07:05Z on 2026-05-21.
+
+  THE ARC IS COMPLETE. The ACOS Eternity Protocol verification and hardening work that
+  ran across 2026-05-20 is done. Three commits are on origin/main:
+    6b3491b — Bug #5b (rm-to-mv): new eternity-resume-prepend.sh hook + SKILL.md with mv discipline
+    f639310 — Bug #5c (project-scope): SKILL.md Step 1 now scoped to PROJECT_SESSIONS
+    e3290ab — docs: SKILL.md frontmatter + Step 3 header updated to remove stale --pid references
+
+  The first verified end-to-end autonomous daemon-resume hop was session fd2a4f20. The
+  daemon log at $HOME/Library/Application Support/acos-token-monitor/logs/
+  fd2a4f20-a039-4442-8cb5-5e2512a9228b.log lines 5-10 is the authoritative proof.
+
+  c5756fcf (THIS SESSION) also demonstrates the autonomous hop correctly: daemon log lines
+  5-9 show ORPHAN RESUME CLAIM from 4babaf0a → INJECT OK at session startup. The consumed/
+  directory at $HOME/Library/Application Support/acos-token-monitor/state/consumed/ has
+  the 4babaf0a artifacts (pending-resume-4babaf0a.txt, .resume-pending-4babaf0a,
+  .compact-fired-4babaf0a) confirming the prior cycle's mv-based consumption.
+
+  ONE ACTIONABLE ITEM REMAINS: The Step 1 misleading-ERROR UX defect. After /clear, the
+  new session should observe this defect live (it will emit ERROR: no pending resume found
+  despite the system having worked), then implement the ~15 min fix described in
+  next_actions.primary above. The fix is a consumed/-directory check before the error exit.
+
+  The new session should use this handoff as its ground truth and NOT re-triage the
+  eternity protocol arc. The system works. The only thing left is the UX polish fix.
+
+  Key file paths:
+    .claude/skills/acos-eternity-protocol-resume/SKILL.md  (the file to edit for UX fix)
+    .claude/scripts/eternity-resume-prepend.sh              (hook — committed, do not modify)
+    .claude/skills/acos-eternity-protocol/SKILL.md          (main orchestrator — not modified this arc)
+    $HOME/Library/Application Support/acos-token-monitor/logs/c5756fcf-948e-427a-914d-c307468b2843.log
+    $HOME/Library/Application Support/acos-token-monitor/state/consumed/
+    $HOME/Library/Application Support/acos-token-monitor/bin/token-watcher.py
+    $HOME/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+reconstruction_sources:
+  - "git log --oneline -20 (confirmed e3290ab as HEAD, f639310, 6b3491b immediately prior)"
+  - "git show --stat e3290ab (confirmed SKILL.md +9/-2, documentation-only commit)"
+  - "$HOME/Library/Application Support/acos-token-monitor/logs/c5756fcf-948e-427a-914d-c307468b2843.log (read in full — 44 events, autonomous orphan-claim at startup confirmed lines 5-9, token count ~121k at evt=44)"
+  - "$HOME/Library/Application Support/acos-token-monitor/state/ (ls -la — confirmed .parse-offset and pid-c5756fcf present, NO .compact-fired or pending-resume for c5756fcf, confirming clean pre-fire state)"
+  - "$HOME/Library/Application Support/acos-token-monitor/state/consumed/ (ls -la — confirmed 4babaf0a artifacts correctly mv'd: pending-resume + .resume-pending + .compact-fired)"
+  - "$HOME/Library/Application Support/acos-token-monitor/state/pid-c5756fcf-948e-427a-914d-c307468b2843 (read — PID 45454, Tue May 19 21:52:35 2026)"
+  - "memory/handoffs/2026-05-21-emergency-handoff.yaml (read in full — prior-cycle handoff, 296 lines, confirmed rough edges list including stale_frontmatter_description)"
+  - ".claude/skills/acos-eternity-protocol-resume/SKILL.md (read lines 1-110 — confirmed frontmatter updated by e3290ab, Step 1 project-scoped fallback from f639310, final test-s guard at line ~95 still emits ERROR + exit 1 unconditionally)"
+  - "git status --short (confirmed working tree state: M files are pre-existing, no new modifications from this session)"
+  - "user-provided authoritative forensic context in handoff invocation prompt (cycle intent, defect description, proposed fix, evidence state, post-clear checklist, session metadata)"

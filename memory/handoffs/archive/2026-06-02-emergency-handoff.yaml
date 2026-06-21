@@ -1,0 +1,212 @@
+timestamp: "2026-06-02T00:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  STORY-003-001 (HTML ingest + parts-bin extractor) is fully complete. All 7 slices
+  passed their review swarms; the final slice (SLICE-003-001-07, extract() orchestration
+  + integration tests) closed 2026-05-28 after a security-REJECT feedback loop that
+  resolved two MAJOR findings (CWE-918 SSRF and CWE-79 SVG XSS). The parser module now
+  ships 124 green tests, 87.64% line coverage on src/parser/, and a public API frozen at
+  extract(html, opts?): Promise<ContainerRecord[]>. The project is sitting between stories
+  with current_story=null; the next planned work is STORY-003-002 (canvas + drag/drop +
+  corner gestures). Five forward-look findings (S1, F2-neg, BG3-audit, fixture-size,
+  bracket-comment) must be incorporated into STORY-003-002 planning before development
+  begins, along with a mandatory SVG sanitize-at-render acceptance criterion.
+
+current_work:
+  slice_id: "none — between stories"
+  story_id: "none — STORY-003-001 completed; STORY-003-002 not yet planned"
+  epic_id: "EPIC-003"
+  status: "ready_for_next_story"
+  note: >
+    project.yaml reflects: phase=in_progress, current_epic=EPIC-003,
+    current_story=null, current_slice=null, last_completed_story=STORY-003-001,
+    last_completed_slice=SLICE-003-001-07.
+
+completed_this_session:
+  - "SLICE-003-001-07: top-level extract() orchestration wired (walker + text/image + SVG + table + background + Brad enrichment pass)"
+  - "Integration tests added: brad-full-10pg.test.ts, brad-credit-memo.test.ts, generic-news-article.test.ts, xss-sandbox.test.ts, background-image-path.test.ts"
+  - "XSS sandbox fixture expanded: 8 hostile probes (SVG script/onload/javascript:, base-href, 4 SSRF backgrounds)"
+  - "Security REJECT resolved: Fix 1 (CWE-918 SSRF) — URL scheme allowlist + IPv4 CIDR denylist (isSafeBackgroundUrl, isDeniedHostname, parseIPv4 in background.ts); Fix 2 (CWE-79 SVG XSS) — Option B UNTRUSTED contract documented in SvgContent.rawMarkup + svg.ts; canvas owns sanitize-at-render"
+  - "F2 dual-discriminator invariant added to extract() (assertKindCoherent — throws on record.kind !== record.content.kind desync)"
+  - "ExtractOptions type added (opts.bradEnrichment defaulting true); public API frozen"
+  - "Test count: 122 baseline + 2 new security tests = 124 total; all green"
+  - "Coverage: 87.64% line coverage on apps/visual-composer/src/parser/ (story criterion was >=80%)"
+  - "Performance: 29.81-31.03ms median on brad-full-10pg.html (3000ms budget; ~100x headroom)"
+  - "STORY-003-001 marked completed in planning/stories/STORY-003-001-html-ingest-parts-bin-extractor.yaml"
+  - "Audit-trail handoff written to memory/handoffs/archive/2026-05-28-slice-003-001-07-and-story-001-completed.yaml"
+
+files_modified:
+  - path: "apps/visual-composer/src/parser/types.ts"
+    changes: "UNTRUSTED contract comment added to SvgContent.rawMarkup; domClasses? field added as enrichment side-channel; bradClass? field. File frozen after slice 07."
+  - path: "apps/visual-composer/src/parser/extractors/background.ts"
+    changes: "isSafeBackgroundUrl(), isDeniedHostname(), parseIPv4() added for CWE-918 SSRF fix; inline comment incorrectly states URL.hostname does NOT include brackets (bracket-strip code IS load-bearing — this is forward finding bracket-comment pending correction)."
+  - path: "apps/visual-composer/src/parser/extractors/svg.ts"
+    changes: "UNTRUSTED contract documentation + downstream sanitize-at-render guidance added for CWE-79 fix."
+  - path: "apps/visual-composer/src/parser/index.ts"
+    changes: "extract() finalized with opts.bradEnrichment, F2 invariant (assertKindCoherent), pipeline order enforced; public API surface locked; ExtractOptions exported."
+  - path: "apps/visual-composer/tests/fixtures/xss-sandbox.html"
+    changes: "8 hostile probes appended: SVG script injection, SVG onload, javascript: base-href, 4 SSRF background URLs."
+  - path: "apps/visual-composer/tests/integration/xss-sandbox.test.ts"
+    changes: "Per-record scheme + hostname denylist assertions added; 2 new security tests."
+  - path: "apps/visual-composer/tests/integration/brad-full-10pg.test.ts"
+    changes: "Integration test: parses brad-full-10pg.html in <3000ms; asserts >=1 of each NodeKind; F2 invariant loop."
+  - path: "apps/visual-composer/tests/integration/brad-credit-memo.test.ts"
+    changes: "Integration test: parses brad-credit-memo.html; non-empty result; F2 invariant loop."
+  - path: "apps/visual-composer/tests/integration/generic-news-article.test.ts"
+    changes: "Integration test: parses generic-news-article.html with bradEnrichment=false; no bradClass values."
+  - path: "apps/visual-composer/tests/integration/background-image-path.test.ts"
+    changes: "Integration test: exercises isSafeBackgroundUrl and isDeniedHostname against the hostile probe set."
+  - path: "planning/slices/SLICE-003-001-07-extract-orchestration-integration.yaml"
+    changes: "status set to completed; review_verdicts populated (all PASS after security feedback resolution); test_count, perf measurements, feedback_resolution_summary."
+  - path: "planning/stories/STORY-003-001-html-ingest-parts-bin-extractor.yaml"
+    changes: "status set to completed; completed_date 2026-05-28; final test count 124; public_api_frozen block; runtime_guarantees block."
+  - path: ".acos/config/project.yaml"
+    changes: "current_story=null, current_slice=null, last_completed_story=STORY-003-001, last_completed_slice=SLICE-003-001-07, last_reconciliation=2026-05-28."
+
+decisions_made:
+  - "SVG XSS fix chose Option B (UNTRUSTED contract + downstream sanitize-at-render) over Option A (strip-at-parse). Rationale: parser is a data layer; stripping at parse silently loses information. Canvas (STORY-003-002) owns render and must use DOMPurify (SVG profile) before any innerHTML insertion."
+  - "IPv4 CIDR denylist approach for SSRF: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 0.0.0.0 blocked. IPv6 ::1 blocked via bracket-strip. IPv4-mapped IPv6 (::ffff: prefix) left as known gap (S1 finding, deferred to STORY-003-002)."
+  - "F2 dual-discriminator invariant implemented as module-private assertKindCoherent() in index.ts, called before return inside extract(). Runtime guarantee, not just test assertion."
+  - "brad-full-10pg.html fixture is 18 KB (not ~30 KB as the planning artifact originally projected). Perf claim remains valid at ~100x headroom."
+  - "Public API includes enrich() and Brad taxonomy helpers (BRAD_CLASSES, BRAD_CLASS_SET, BRAD_CLASS_PRIORITY, BradClass) as explicit re-exports so STORY-003-002 canvas can inspect/override taxonomy without reaching into parser internals."
+
+blockers:
+  - "STORY-003-002 story plan does not yet exist — must be created via /acos-plan story before any development begins."
+  - "Mandatory SVG sanitize-at-render acceptance criterion must be added to STORY-003-002 story plan (ARCHITECT PREREQUISITE — flagged in audit-trail handoff)."
+
+next_actions:
+  - "Run /acos-plan story for STORY-003-002 (canvas + drag/drop + corner gestures). The story planner must incorporate:"
+  - "  MANDATORY AC: SVG rawMarkup must be sanitized via DOMPurify (SVG profile) or DOMParser-strip before any innerHTML/outerHTML/document.write insertion. Forbidden patterns explicitly listed."
+  - "  Forward finding S1: extend isDeniedHostname to handle IPv4-mapped IPv6 (::ffff: prefix parsed as IPv4 dotted-quad or hex pair) — add as prep tick or slice AC."
+  - "  Forward finding F2-neg: add one negative-path test for assertKindCoherent (hand-craft mismatched record via type-cast; assert toThrow(/dual-discriminator desync/)). ~15 min prep tick."
+  - "  Forward finding BG3-audit: at STORY-003-002 kickoff, run one real OKOA Brad doc through extract() and grep for comma-separated background-image rules. If multi-layer present, file hot-fix slice before canvas work."
+  - "  Forward finding fixture-size: re-validate perf claim against a real production-sized Brad doc (not the 18 KB hand-authored fixture). Recalibrate headroom number."
+  - "  Forward finding bracket-comment: next slice touching background.ts must correct the inline comment — URL.hostname DOES include brackets for IPv6 (e.g., [::1]); bracket-strip code is load-bearing."
+
+context_for_next_session: |
+  The session left the project cleanly between stories. STORY-003-001 is fully closed:
+  all 7 slices reviewed and passed, 124 tests green, 87.64% coverage, public API frozen.
+  The audit-trail artifact is at memory/handoffs/archive/2026-05-28-slice-003-001-07-and-story-001-completed.yaml
+  and contains the full review verdicts, acceptance criterion mapping, public API surface,
+  and runtime guarantees. That file is the authoritative STORY-003-001 closure record.
+
+  The parser module lives at apps/visual-composer/src/parser/. Its public surface:
+    extract(html: string, opts?: { bradEnrichment?: boolean }): Promise<ContainerRecord[]>
+  plus ContainerRecord, NodeKind, ComputedStyle, ContainerContent variants, enrich(),
+  EnrichOptions, BRAD_CLASSES, BRAD_CLASS_SET, BRAD_CLASS_PRIORITY, BradClass, ExtractOptions.
+  All internal helpers (walkDom, extractText, extractImage, extractSvgFromWalkedNode,
+  extractTableFromWalkedNode, extractBackground, assertKindCoherent, isSafeBackgroundUrl,
+  isDeniedHostname, parseIPv4, pickHighestPriority) are module-private and must not be
+  imported by downstream stories.
+
+  Key security contracts the STORY-003-002 canvas developer MUST respect:
+  1. SVG rawMarkup (SvgContent.rawMarkup) is UNTRUSTED. The canvas MUST sanitize via
+     DOMPurify (SVG profile) before any innerHTML insertion. Forbidden:
+       el.innerHTML = rec.content.rawMarkup
+       el.outerHTML = rec.content.rawMarkup
+       document.write(rec.content.rawMarkup)
+  2. Background URLs have already been filtered through the SSRF allowlist in background.ts.
+     The canvas can use them for CSS background-image without re-checking the scheme, but
+     note that IPv4-mapped IPv6 loopback (http://[::ffff:127.0.0.1]/) is a known bypass
+     (S1, deferred).
+
+  Five forward findings must make it into the STORY-003-002 plan (see next_actions above).
+  The most urgent are: the mandatory SVG sanitize-at-render AC (security prerequisite,
+  non-negotiable) and BG3-audit (run at kickoff before any canvas work — if multi-layer
+  backgrounds exist in production docs, the BackgroundContent type needs a hot-fix slice
+  before the canvas is built against it, otherwise it is a type-contract change in the
+  middle of STORY-003-002).
+
+  The prior session (2026-06-01) worked on the global acos-guided-reader skill (outside
+  the ACOS 3.0 repo entirely). That work is captured in memory/handoffs/2026-06-01-emergency-handoff.yaml
+  and is unrelated to EPIC-003. The guided-reader session ended with browser end-to-end
+  validation pending — if the user asks about the guided reader, refer to that handoff.
+
+  Stack context: apps/visual-composer uses Vite + React + TypeScript, pnpm, Vitest.
+  Test runner: `pnpm run test` (unit) + `pnpm run test:integration` + `pnpm run test:perf`.
+  Coverage report lives at apps/visual-composer/coverage/ (git-ignored).
+
+forward_findings_verbatim:
+  S1:
+    severity: LOW
+    source: "security-reviewer re-review 2026-05-28"
+    description: >
+      IPv4-mapped IPv6 loopback http://[::ffff:127.0.0.1]/ slips past isDeniedHostname.
+      URL.hostname normalizes to [::ffff:7f00:1] (hex); IPv4 dotted-quad parser does not
+      recognize the hex form.
+    action: >
+      Extend isDeniedHostname bracket-strip branch: parse ::ffff: suffix as IPv4
+      dotted-quad OR hex pair; feed recovered octets through CIDR checks. Also reject
+      any host containing '::' literal unless explicitly allowlisted.
+    target: "STORY-003-002 prep tick or first slice touching security"
+
+  F2-neg:
+    severity: LOW
+    source: "integration-reviewer slice 07"
+    description: >
+      assertKindCoherent throws on bad records but has no negative-path unit test.
+      Throw branch is uncovered.
+    action: >
+      Add one test that hand-crafts a mismatched record via type-cast and asserts
+      toThrow(/dual-discriminator desync/).
+    target: "STORY-003-002 prep tick (~15 min)"
+
+  BG3-audit:
+    severity: LOW
+    source: "Architect — story closure"
+    description: >
+      Multi-layer background MVP takes only the first url() layer. Hand-authored
+      fixtures don't exercise multi-layer; real OKOA Brad docs unverified.
+    action: >
+      STORY-003-002 kickoff: run one real Brad doc through extract() and grep source
+      CSS for comma-separated background-image rules. If present, file a hot-fix slice
+      to extend BackgroundContent (layers: string[]) before canvas work — this is a
+      type-contract change that must happen before STORY-003-002 slices build against
+      BackgroundContent.
+    target: "STORY-003-002 kickoff gate"
+
+  fixture-size:
+    severity: LOW
+    source: "performance-reviewer"
+    description: >
+      brad-full-10pg.html is 18 KB, not ~30 KB as documented. Perf claim is still
+      trivially satisfied; headroom number needs recalibration against real production
+      document size.
+    action: >
+      Re-validate extract() perf against a real Brad doc sized to actual production
+      output (typically 25-50 KB for a 10-page credit memo).
+    target: "STORY-003-002 prep or first integration run"
+
+  bracket-comment:
+    severity: LOW
+    source: "security-reviewer re-review"
+    description: >
+      background.ts inline comment incorrectly states URL.hostname does NOT include
+      brackets. Node (and browser) return [::1] with brackets; the bracket-strip code
+      is load-bearing, not redundant.
+    action: >
+      Correct the comment in the next slice that touches background.ts (or as a
+      standalone one-line fix before STORY-003-002 begins).
+    target: "Next slice touching background.ts"
+
+reconstruction_sources:
+  - "git status --short (working tree state; apps/visual-composer/ files confirmed untracked = post-STORY-003-001 state)"
+  - "git log --oneline -20 (last 20 commits; most recent visual-composer work was committed before the git history shown — files are all untracked/modified)"
+  - "git diff --stat HEAD~5..HEAD (last 5 commits; acos-dataroom-v2 and eternity-protocol work; no visual-composer commits visible — all VC work is in working tree)"
+  - "planning/epics/EPIC-003-html-to-pdf-visual-composer.yaml (full epic scope, story breakdown, tech notes)"
+  - "planning/stories/STORY-003-001-html-ingest-parts-bin-extractor.yaml (story status=completed; 124 tests; public_api_frozen; runtime_guarantees)"
+  - "planning/slices/SLICE-003-001-07-extract-orchestration-integration.yaml (slice status=completed; all 4 reviewer verdicts; feedback_resolution_summary; forward findings BG1-BG6 + F2)"
+  - "memory/handoffs/archive/2026-05-28-slice-003-001-07-and-story-001-completed.yaml (audit-trail handoff with full reviewer verdicts, public API surface, runtime guarantees, forward findings S1/MANDATORY/F2-neg/BG3-audit/fixture-size/bracket-comment)"
+  - "memory/handoffs/2026-06-01-emergency-handoff.yaml (prior session: acos-guided-reader work, unrelated to EPIC-003)"
+  - ".acos/config/project.yaml (phase=in_progress, current_epic=EPIC-003, current_story=null, last_completed_story=STORY-003-001)"
+  - "apps/visual-composer/src/parser/types.ts (ContainerRecord + all content type definitions; UNTRUSTED comment on SvgContent.rawMarkup)"
+  - "apps/visual-composer/src/parser/index.ts (lines 1-40: public API surface, import list, ExtractOptions, pipeline comment)"
+  - "apps/visual-composer/src/parser/ directory listing (all source files + extractors/)"
+  - "apps/visual-composer/tests/ directory listing (fixtures + integration + parser unit tests)"
+  - "planning/slices/ directory listing (all 7 SLICE-003-001-* files dated 2026-05-26 to 2026-05-28)"
+  - "planning/stories/ directory listing (STORY-003-001 only; STORY-003-002 not yet planned)"
+  - ".acos/evidence/ directory listing (most recent evidence: 2026-05-26)"
+  - "memory/decisions/ directory listing (ADR-001, ADR-002 from April; no new decisions from this session)"

@@ -1,0 +1,110 @@
+# Slice Plan — Hypercore client/adapter contract + fixture/mock backend (stubbed-until-access)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-02-adapter"
+story_id: "STORY-HCA-02"
+epic_id: "EPIC-HCA-02"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Hypercore client/adapter contract + fixture/mock backend (stubbed-until-access)"
+objective: |
+  Define the ONLY module that talks to Hypercore: a stable, read-only adapter
+  contract with a FixtureBackend (active now) and a stubbed LiveBackend (TODO).
+  Absence of credentials must degrade to an explicit NO_LIVE_DATA state — never
+  fabricate. In scope: the adapter contract surface (is_live, get_entity,
+  list_entities, get_schema, subscribe_events) per tech_prd §2; FixtureBackend
+  serving canned RawApiResponse JSON; LiveBackend raising the documented
+  NotImplementedError; NoLiveDataError; config/env-driven backend selection; a
+  read-only guard test; the initial fixture set (incl. paginated, truncated,
+  stale, drifted). Out of scope: real endpoints/auth (TBD until access); cache
+  persistence (slice-03); gates/consensus.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Adapter exposes exactly the read-only contract surface; NO mutating method exists — pass-condition: read-only guard test asserts no mutating verb (create/update/delete/post/put/patch/write/mutate) is callable (REQUIRED hard gate; fail = REJECT)"
+  - "[ ] FixtureBackend returns well-formed RawApiResponse-shaped dicts (endpoint, request_params, timestamp, http_status, cursor, reported_total, body, backend: 'fixture') for each modeled entity A1–A11 — artifact: fixtures/ + passing adapter test"
+  - "[ ] is_live() returns false absent creds; requesting live data while not live raises/returns NoLiveDataError cleanly — pass-condition: degradation test passes (no fabrication)"
+  - "[ ] LiveBackend is import-safe but raises the documented NotImplementedError('Hypercore live backend TODO — access not yet provisioned') if invoked — pass-condition: stub test passes"
+  - "[ ] Backend is selectable via config/env; default fixture — pass-condition: config-driven selection test"
+  - "[ ] Adversarial fixtures present and labeled (one paginated-list, one deliberately-truncated, one stale, one drifted) for downstream gate slices — artifact check"
+  - "[ ] No network call on the FixtureBackend path; LiveBackend network code (if any) is unreachable while is_live() is false (no urllib/http.client/requests/socket reachable) — pass-condition: QA grep"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-01-scaffold"
+      what_it_provides: "Skill scaffold, config.yaml (adapter.backend default + keys), and the evidence-bundle wiring the adapter plugs into"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-adapter.py"  # contract + FixtureBackend + stubbed LiveBackend + NoLiveDataError; stdlib only
+  - ".claude/skills/acos-hypercore-ask/fixtures/"  # canned RawApiResponse records (A1–A11 + paginated/truncated/stale/drifted)
+  - ".claude/skills/acos-hypercore-ask/schemas/"   # expected entity schemas (created here, validated in slice-05)
+  - ".claude/scripts/tests/test_hca_adapter.py"    # stdlib unittest incl. read-only guard test
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-02-adapter.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/skills/acos-hypercore-ask/SKILL.md"  # owned by scaffold/orchestration slices
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"      # Python 3 stdlib adapter contract + backends
+  - "testing"             # unittest incl. read-only guard test
+  - "security-audit"      # read-only-by-omission + guard, no-creds, TLS-on-live TODO
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-02-adapter.md"
+  - "This is the pillar that makes the whole skill buildable before API access: FixtureBackend active, LiveBackend stubbed behind is_live()."
+  - "Gotcha (hard gate): ANY mutating verb (create/update/delete/post/put/patch/write/mutate) on the contract = REJECT. Read-only is enforced by omission AND a guard test that introspects the contract."
+  - "Gotcha: no credential in repo, no real network call; absence of creds degrades to NoLiveDataError / NO_LIVE_DATA, never a fabricated record."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; typed RawApiResponse shape"
+  - "Contract implemented as a small class/protocol with read-only methods only; backends implement it"
+  - "FixtureBackend loads JSON from fixtures/, wraps each into the RawApiResponse shape with backend: 'fixture', supports cursor-based paging from fixture pages"
+  - "LiveBackend stubbed (NotImplementedError) and gated behind is_live() (checks env/secret presence — none now -> false)"
+  - "NoLiveDataError raised when live requested and not live"
+  - "Author expected entity schemas (slice-05 validates against them) and the adversarial fixtures (truncated/stale/drifted)"
+  - "TLS-on-live noted as TODO; no credential in repo"
+
+# Testing requirements
+testing_requirements:
+  - "QA independently introspects hca-adapter.py for any mutating-verb method name; ANY match = REJECT"
+  - "QA greps the module for network imports (urllib/http.client/requests/socket); FixtureBackend path must have no live network call; LiveBackend network code must be unreachable while is_live() is false"
+  - "QA re-authors at least the read-only guard test and confirms it fails loudly if a mutating method is added"
+  - "Confirm is_live() false with no creds and NoLiveDataError / NO_LIVE_DATA path triggers"
+  - "Confirm adversarial fixtures (truncated/stale/drifted) exist and are labeled"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # adapter is the credential/network boundary; read-only + no-creds + TLS posture
+
+# Effort estimate
+effort_estimate: "L"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-02-adapter.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-02 are PROPOSED — not yet formally planned via /acos-plan.

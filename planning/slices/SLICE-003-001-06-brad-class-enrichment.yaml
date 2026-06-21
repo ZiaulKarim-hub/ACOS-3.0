@@ -1,0 +1,143 @@
+# Slice Plan — Brad-class metadata enrichment pass
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-06"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  integration-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 2  # WalkedNode.domClasses optional weakness + fixture concessions for figcaption/hr
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-06/"
+test_count: 97  # 21 new enrichment + 76 inherited
+
+# Slice overview
+title: "Brad-class metadata enrichment pass"
+objective: |
+  Implement a separate semantic post-pass that tags ContainerRecord
+  values with brad_class metadata when an OKOA design-system class is
+  recognized. Keeps Brad knowledge out of every extractor (slices 02–05
+  are Brad-agnostic). Implemented as enrich(records, {enabled}) so
+  generic-HTML fallback mode is testable by passing enabled: false.
+
+  The Brad class taxonomy is read from a static lookup table maintained
+  in this slice — additions to the taxonomy happen here, not scattered
+  across extractors.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/brad-enrichment.ts exports enrich(records: ContainerRecord[], opts: { enabled: boolean }): ContainerRecord[]"
+  - "[ ] When opts.enabled === true, every record whose source element bears a known Brad class is tagged with bradClass = that class name"
+  - "[ ] When opts.enabled === false, no records are modified — output is structurally identical to input"
+  - "[ ] Brad class taxonomy lives in apps/visual-composer/src/parser/brad-taxonomy.ts as a const string array (or Set), at minimum 12 entries from the documented Brad design system (.heading-display, .heading-subhead, .body-lead, .body-default, .metric-grid, .metric-card, .chapter-divider, .pull-quote, .caption, .footnote, .data-table, .photo-break)"
+  - "[ ] Container records expose source-element class lists in some form (note: ContainerRecord.computedStyle or a new dom-classes field — defined in slice 01 or extended minimally here). If a new field is needed, types.ts is editable for this single addition."
+  - "[ ] Multiple Brad classes on one element: bradClass is set to the most specific match per a priority table (heading > metric > chapter > data > body > caption > footnote); ties broken by taxonomy order"
+  - "[ ] Unit tests in tests/parser/brad-enrichment.test.ts pass against tests/fixtures/brad-classed.html"
+  - "[ ] tests/fixtures/brad-classed.html exists: a Brad-style document with at least 8 different Brad classes applied across various elements"
+  - "[ ] Off-mode test: same fixture parsed with enabled: false produces records with all bradClass values === undefined"
+  - "[ ] Generic-HTML fallback test: a fixture WITHOUT any Brad classes, parsed with enabled: true, produces records with bradClass === undefined throughout (no false positives)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-02"
+      what_it_provides: "text + image records to enrich"
+      status: "complete"
+    - slice_id: "SLICE-003-001-03"
+      what_it_provides: "svg records to enrich"
+      status: "complete"
+    - slice_id: "SLICE-003-001-04"
+      what_it_provides: "table records to enrich"
+      status: "complete"
+    - slice_id: "SLICE-003-001-05"
+      what_it_provides: "background records to enrich"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"
+  - "apps/visual-composer/src/parser/brad-taxonomy.ts"
+  - "apps/visual-composer/src/parser/index.ts"                 # wire enrichment into extract()
+  - "apps/visual-composer/src/parser/types.ts"                 # MINIMAL extension if a dom-classes field is needed
+  - "apps/visual-composer/src/parser/dom-walker.ts"            # MINIMAL: capture el.classList during walk
+  - "apps/visual-composer/tests/parser/brad-enrichment.test.ts"
+  - "apps/visual-composer/tests/fixtures/brad-classed.html"
+  - "apps/visual-composer/tests/fixtures/generic-no-brad.html"
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/extractors/"              # No mutation of extractors — enrichment is a separate pass
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "DELIBERATE design: this is a SEPARATE pass, not inlined into extractors. Reason: keeps slices 02–05 Brad-agnostic, allows generic-HTML fallback to be tested by toggling one flag."
+  - "If ContainerRecord doesn't already carry the source element's class list, this slice can extend types.ts to add a `domClasses: string[]` field on the base ContainerRecord. Update dom-walker.ts to populate it. This is the only mid-story type extension permitted."
+  - "Priority table for resolving multi-class elements: const PRIORITY = ['heading-display', 'heading-subhead', 'metric-grid', 'metric-card', 'chapter-divider', 'data-table', 'photo-break', 'pull-quote', 'body-lead', 'body-default', 'caption', 'footnote']; first match in this list wins."
+  - "Brad taxonomy is documented in acos-document-design-brad. Use that as the source of truth for class names. If you can't find a documented list, the 12 entries in the acceptance criteria are sufficient for v1; expand later."
+  - "Off-mode determinism: enrich(records, { enabled: false }) MUST return records ===-equal to input. Do not even clone. The test asserts referential equality."
+  - "False-positive guard: only match exact Brad class names. Substring matches (.body matching .body-default) are NOT allowed. Use Set.has() lookup, not regex."
+
+# Technical requirements
+technical_requirements:
+  - "enrich is a pure function — no mutation of input records when enabled, returns new array of new records when modifying"
+  - "Taxonomy is a const data structure exported separately so reviewers can audit it without reading enrichment logic"
+  - "Type extension to ContainerRecord (if needed) is BACKWARD-COMPATIBLE: optional fields only"
+  - "Performance: enrich() on 200 records completes in <5ms (synchronous, in-memory)"
+
+# Testing requirements
+testing_requirements:
+  - "Test: every Brad class in taxonomy → corresponding record bears bradClass = class name"
+  - "Test: multi-class element resolves to highest-priority match"
+  - "Test: enabled=false → records unchanged (referential equality)"
+  - "Test: generic HTML (no Brad classes) → bradClass undefined throughout"
+  - "Test: false-positive guard — class 'body-paragraph' (not in taxonomy) does NOT match 'body-default' or 'body-lead'"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"   # type extension to ContainerRecord is a contract change worth reviewing
+
+# Effort estimate
+effort_estimate: "M"
+# Rationale: ~30min taxonomy + enrichment logic; ~15min priority resolution + type extension if needed;
+# ~30min walker minor update to expose domClasses; ~30min fixtures (Brad-classed and generic); ~30min tests.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  This separation is what makes the vision document's "OKOA-primary,
+  generic-fallback" promise auditable. The off-mode test in this slice
+  is the proof. Reviewer should run it explicitly.
+
+  If the Brad design system adds classes in the future, this is the
+  ONE file to update — taxonomy is centralized here intentionally.
+
+  Note that extractors (slices 02–05) are intentionally prohibited
+  from modification in this slice. If a downstream slice review reveals
+  a needed extractor change, that's a separate slice (or a re-spawn of
+  the upstream slice), not a scope expansion here.

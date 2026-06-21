@@ -1,0 +1,173 @@
+timestamp: "2026-05-15T09:30:00Z"
+status: "completed"
+type: "semantic-manual"
+trigger: "user-requested /clear+resume mid-Phase-3"
+
+session_summary: |
+  acos-dataroom-v2 production run on Wolfgramm Ascent Beehive Waldorf $30M loan.
+  This session: resumed at "Phase 3 ready", ran a human-approved spot-check of the
+  64 §4.5 default-EXCLUDED files (rescued 8), then began Phase 3 (Inclusion QA).
+  Phase 3 is IN PROGRESS — 40 of 182 batches complete. Continue from batch b0041.
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+dropbox_final_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+skill_version: "v2.0.0"
+
+# ============================================================
+# WHERE WE ARE — PHASE 3 IN PROGRESS
+# ============================================================
+
+phase3_state:
+  status: "IN PROGRESS — batched-dispatch forward sweep"
+  batches_completed: 40
+  total_batches: 182
+  next_batch: "b0041"
+  files_passed: 164
+  files_failed_iter1_wigum_pending: 31
+  files_reverted_spotcheck: 5
+  dataroom_count: 901   # post spot-check (898 + 8 rescues - 7 reverted... see below)
+
+  orchestrator: "phase3_orchestrator.py — lives in run_dir alongside run_state.json"
+  orchestrator_subcommands:
+    - "status              — progress summary"
+    - "next-batch          — prints next un-completed batch_id"
+    - "prep-batched <id>   — writes 3 lens-prompts (+ solo prompts for oversized files)"
+    - "consensus <id>      — reads QA outputs, computes per-file consensus, logs results"
+    - "list-fails          — lists Wigum-pending file_ids"
+
+  dispatch_mode: |
+    BATCHED dispatch (user-approved for 5x throughput). Per batch of 5 files:
+    spawn 3 dr2-inclusion-qa agents (opus/sonnet/opus) — instance_1 adversarial,
+    instance_2 completeness, instance_3 coherence. Each agent QAs ALL 5 files in
+    the batch under its single lens and writes one JSON verdict per file.
+    Files with extraction.json >450KB are split out for solo dispatch (3 dedicated
+    agents). prep-batched handles this automatically and reports solo files.
+
+  resume_procedure: |
+    cd run_dir
+    LOOP:
+      1. python3 phase3_orchestrator.py next-batch   -> e.g. b0041
+      2. python3 phase3_orchestrator.py prep-batched b0041
+      3. Read phase3/dispatches/b0041/dispatch_manifest.json
+      4. Spawn the batched_spawns (3 Task calls, subagent_type dr2-inclusion-qa,
+         models opus/sonnet/opus) — each prompt = "Read <prompt_path>, execute exactly,
+         return per-file one-line results". Also spawn any solo_spawns the same way.
+      5. python3 phase3_orchestrator.py consensus b0041
+      6. If a whole batch fails 2 lenses uniformly OR a FAIL looks suspicious,
+         read the FAIL reasonings (phase3/qa/<fid>/instance_*.json) before trusting.
+      7. Repeat until next-batch reports "(all batches complete)".
+    Then run the Wigum re-deliberation pass (see wigum_pending below).
+    Then update run_state.json: phase="3_inclusion_qa_clean", checkpoint="phase3_converged".
+
+# ============================================================
+# SPOT-CHECK OF §4.5 DEFAULT-EXCLUDES (done this session)
+# ============================================================
+
+spotcheck_outcome: |
+  Before Phase 3, user approved a spot-check of the 64 iter2 §4.5 default-EXCLUDED
+  files. 8 files were rescued into the dataroom (898 -> 906). Phase 3 QA then tested
+  the rescues (batches 1-2, ordered rescues-first to fail-fast). Result:
+    - 3 KEPT: Beehive Waldorf Payoff 20251201 / 20251215 / 20260320 (.docx) — PASSED.
+    - 5 REVERTED: 24-NY-260 Waldorf appraisal, HDC WAPC GCGR Estimate, HKS Concept,
+      PC Sale Comps Dalton, 45727cbb Pleasant Grove Warranty Deed. Phase 3 QA caught
+      all 5 as over-reaches (operating-Waldorf docs / wrong asset class / non-security
+      instruments). Removed from dataroom, logged to exclusion_log.csv.
+  Net dataroom count: 898 + 8 - 5 = 901.
+
+redaction_applied: |
+  The 3 surviving payoff .docx files contained unredacted OKOA wiring instructions
+  (Chase routing 021000021, account 755255160). All 3 were redacted (wiring block
+  replaced with a redaction notice) in BOTH the dataroom file AND extraction.json.
+  Pre-redaction backups in phase3/redaction_backups/. f_78b833081b30 was re-QA'd
+  against the redacted version and PASSED.
+
+# ============================================================
+# CRITICAL FIX THIS SESSION — STALE SUPERSESSION LISTING
+# ============================================================
+
+supersession_listing_fix: |
+  intermediate/dataroom_listing_for_supersession.txt (read by every coherence-lens
+  agent) was STALE — it had 87 phantom entries (Phase 2.5 quarantined privilege files
+  + payoff PDFs not in dataroom) and was missing 56 real dataroom files. The Phase 2.5
+  post-processor removed 104 files from dataroom but never updated this listing.
+  FIXED: regenerated the listing from actual dataroom contents. Stale copy backed up
+  as dataroom_listing_for_supersession.txt.stale-pre-phase3-2026-05-15.bak.
+  IMPORTANT: the orchestrator regenerates this listing after every revert. If you
+  remove/add dataroom files, regenerate it (sorted ls of dataroom/).
+
+# ============================================================
+# WIGUM-PENDING QUEUE — 31 files (handle AFTER forward sweep)
+# ============================================================
+
+wigum_pending: |
+  31 files failed Phase 3 iter1 (in phase3/state.json -> files_failed_iter1).
+  Composition:
+    - ~25 wrong-deal Texas title-work files (Stewart Title file numbers 25000330321
+      Waxahachie, 25000330330 Galveston/Wilderness Trail, 25000330331 Houston West Gray).
+      Adversarial lens flags out-of-scope; completeness sometimes accepts cross-collateral.
+      Genuinely borderline — Wigum re-deliberation should settle them.
+    - ~6 scattered: f_549935cf3bc3 (Sunset PHX Operating Agreement), f_8b3862c79db1
+      (Wolfgramm Properties LLC certificate), f_a8dec7195f51 (23-NY-556 appraisal "Final"
+      — supersession by "Final v2"), f_5c76a6b0a41b (unexecuted draft hotel-mgmt
+      assignment), plus 2 more.
+  HANDLING: standard Wigum loop = spawn 3 fresh dr2-inclusion-deliberator agents per
+  file (no QA feedback shared), INCLUDE -> re-QA / EXCLUDE -> remove from dataroom.
+  NOTE: supersession-type fails (23-NY-556, draft-vs-final) are NOT relevance questions
+  — Phase 2 re-deliberation will keep voting INCLUDE. Those need a dedup DECISION
+  (keep the canonical, drop the superseded sibling), not re-voting. Recommend triaging
+  the 31 into "relevance-borderline" (-> Wigum) vs "supersession/dedup" (-> manual
+  keep-canonical decision) before the re-deliberation pass.
+
+# ============================================================
+# KEY FILES
+# ============================================================
+
+key_files:
+  run_state: "<run_dir>/run_state.json — has phase3_progress block"
+  orchestrator: "<run_dir>/phase3_orchestrator.py"
+  phase3_state: "<run_dir>/phase3/state.json"
+  batch_queue: "<run_dir>/phase3/batch_queue.json (182 batches)"
+  qa_pass_log: "<run_dir>/phase3/qa_pass_log.csv"
+  qa_outputs: "<run_dir>/phase3/qa/<file_id>/instance_{1,2,3}.json"
+  dispatches: "<run_dir>/phase3/dispatches/<batch_id>/"
+  inclusion_log: "<run_dir>/phase2/inclusion_log.csv"
+  exclusion_log: "<run_dir>/phase2/exclusion_log.csv"
+  supersession_listing: "<run_dir>/intermediate/dataroom_listing_for_supersession.txt"
+  solidified_objective: "<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md"
+  inclusion_qa_agent: ".claude/agents/dr2-inclusion-qa.md"
+
+# ============================================================
+# PHASES AFTER PHASE 3
+# ============================================================
+
+phases_remaining:
+  - "Phase 3 Wigum pass — re-deliberate the 31 (and growing) failed files"
+  - "Phase 4a — dr2-taxonomy-designer x3 -> dr2-taxonomy-synthesizer -> TAXONOMY.json"
+  - "Phase 4b — dr2-placement-classifier x3 per file -> sort into sub-folders"
+  - "Phase 5  — dr2-placement-qa x3 per file"
+  - "Phase 6  — guide drafters/synth/QA + description drafters/QA, build Excel, copy to Dropbox"
+  - "PRE-DELIVERY: verify the 3 payoff .docx redactions survived into the shipped files;
+     scan other dataroom files for wiring instructions / account numbers."
+
+# ============================================================
+# DOMAIN CONTEXT (unchanged from prior handoff)
+# ============================================================
+
+domain_context:
+  asset: "The Ascent Park City (Tapestry Collection by Hilton), 4080 N Cooper Lane, Park City UT 84098"
+  borrower_spe: "Beehive Hospitality Ascent PC, LLC"
+  loan: "$30M Okoa senior construction loan; Nuveen/Greenworks C-PACE $27.5M statutory senior"
+  deal_mode: "workout / settlement / sale"
+  scope_rule: |
+    Only Ascent-deal documents belong. OTHER-DEAL collateral (Houston Reserve/Preserve,
+    Phoenix Sunset, Shreveport, West Gray, Wilderness Trails, Galveston, Waxahachie,
+    Tidwell) is OUT unless the file is a SECURITY instrument (deed of trust, title
+    policy, intercreditor) for cross-pledged collateral — operating appraisals,
+    estimates, OAs, and concepts do NOT qualify (this is §5 rule 11; it is the rule
+    that overturned 5 of the 8 spot-check rescues).
+  naming_warning: "'Waldorf' in filenames = LOAN FAMILY CODENAME, not the operating Waldorf-Astoria hotel."
+  user: "Zee (jason@okoacapital.com), Okoa Capital. Boss reviews ONLY the final dataroom + Excel — must be boss-criticism-proof on first cold look."
+
+prior_handoff: "memory/handoffs/2026-05-15-ascent-dataroom-v2-phase3-ready.yaml (pre-Phase-3 state)"

@@ -1,0 +1,229 @@
+# Slice Plan — Table extractor
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-04"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  performance-reviewer: PASS
+  integration-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 7  # 2 from QA (path-builder duplication, naturalWidth happy-dom limitation), 2 from integration (insideSkipZone unrealized, cosmetic), 3 from perf (comment overstatement, dead flag, computeMultiTagSet allocs)
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-04/"
+perf_measurements_independent:
+  wide_sibling_speedup: "283x (developer claimed 193x — conservative)"
+  brad_30kb_walk: "14ms median (214x headroom on slice 07's 3s budget)"
+  table_50x10_gate: "14.7ms median (13.6x headroom on 200ms budget)"
+  total_test_count: 55
+
+# Slice overview
+title: "Table extractor"
+objective: |
+  Capture every <table> element as a single ContainerRecord with
+  kind='table' and full structural metadata: row × column dimensions,
+  per-column natural widths (for the future column-handle UI in
+  STORY-003-002), cell text content, cell computed styles, and section
+  classification (thead vs tbody vs tfoot). Tables are NOT flattened
+  into per-cell containers — the table is one draggable unit.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/extractors/table.ts exports extractTable(el: HTMLTableElement): ContainerRecord with kind='table'"
+  - "[ ] ContainerRecord.content for kind='table' includes: rowCount, columnCount, columns ({ naturalWidth: number }[]), rows (TableRowRecord[]); each row has section ('thead'|'tbody'|'tfoot') and cells (TableCellRecord[])"
+  - "[ ] TableCellRecord includes: textContent (string), computedStyle (subset: font-family, font-size, color, background-color, padding, text-align), colSpan, rowSpan"
+  - "[ ] columnCount equals max number of effective cells in any row, accounting for colSpan"
+  - "[ ] columns[i].naturalWidth captures the rendered width of column i (sum of cell widths divided by row count, or first row's width as approximation)"
+  - "[ ] Walker (dom-walker.ts) dispatches <table> elements to extractTable() and does NOT descend into table internals (cells handled by extractor)"
+  - "[ ] <thead>/<tbody>/<tfoot> distinction preserved per row"
+  - "[ ] Unit tests in tests/parser/table.test.ts pass against tests/fixtures/brad-table.html (assertion: row/column counts match, cell text matches, sections labeled correctly)"
+  - "[ ] tests/fixtures/brad-table.html exists: a Brad-style document containing at least 2 tables — one simple 3×4 financial summary, one with thead/tbody/tfoot and colSpan in the footer"
+  - "[ ] Edge case: <table> with zero rows produces rowCount=0, columnCount=0, rows=[], columns=[] (no error)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-02"
+      what_it_provides: "walker pattern, dispatcher hook"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/extractors/table.ts"
+  - "apps/visual-composer/src/parser/dom-walker.ts"            # add table dispatch
+  - "apps/visual-composer/src/parser/index.ts"                 # wire extractor into extract()
+  - "apps/visual-composer/tests/parser/table.test.ts"
+  - "apps/visual-composer/tests/fixtures/brad-table.html"
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/extractors/text.ts"
+  - "apps/visual-composer/src/parser/extractors/image.ts"
+  - "apps/visual-composer/src/parser/extractors/svg.ts"
+  - "apps/visual-composer/src/parser/extractors/background.ts"
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"
+  - "apps/visual-composer/src/parser/types.ts"
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Tables in Brad documents are typically financial summaries — Sources & Uses, Cap Stack, Cash Flow. They are NEVER decorative; cell values are load-bearing."
+  - "colSpan and rowSpan matter: a financial footer often spans 3 columns with a 'Total' label. columnCount must account for the widest effective row, not just the literal cell count."
+  - "Per-column naturalWidth: in MVP, approximate by the FIRST <tr>'s cell widths (sum equals table width). Full pro-rata averaging across all rows is overkill for v1."
+  - "Walker dispatch: same pattern as SVG — early-return after extracting the table to prevent text extractor from re-emitting individual <td> contents as text records."
+  - "computedStyle on cells: only capture the small subset listed in acceptance criteria. Capturing every CSS property bloats the record by 100x."
+  - "Section detection: el.querySelector('thead'), el.querySelector('tbody'), el.querySelector('tfoot') — if absent, default all rows to 'tbody'."
+
+# Technical requirements
+technical_requirements:
+  - "extractTable is pure (no mutation)"
+  - "Single-pass per row, single-pass per cell — no nested re-traversal"
+  - "Walker dispatch adds at most 10 lines of code"
+  - "Performance: 20-row × 10-col table parses in <30ms"
+
+# Testing requirements
+testing_requirements:
+  - "Unit tests covering: simple table, table with thead/tbody/tfoot, table with colSpan, empty table"
+  - "Assertion on row count, column count, section labels, cell text, colSpan/rowSpan values"
+  - "Performance smoke: 20×10 table parses in <30ms"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+# Rationale: ~45min extractor with section/span handling; ~30min walker dispatch + tests setup;
+# ~45min Brad table fixture (2 tables, varied complexity); ~30min unit test cases.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Tables are the second-highest-fidelity element after SVG charts. A
+  cell value loss between parser and PDF is a v1 failure (because that
+  cell value is investor-facing).
+
+  Do NOT flatten tables into per-cell containers. The table is one
+  unit; cell-level layout adjustments are NOT supported in MVP.
+  Per-column width adjustments (in STORY-003-002) operate on the
+  columns metadata captured here, not on the cell records directly.
+
+# Plan addenda — added 2026-05-26 after SLICE-003-001-02 performance review
+# Source: SLICE-003-001-02 performance-reviewer MAJOR finding
+plan_addenda:
+  - finding_id: "P1"
+    severity: MAJOR
+    source: "SLICE-003-001-02 performance-reviewer (overall verdict PASS but algorithmic_complexity sub-score FAIL)"
+    description: |
+      The DOM walker shipped in slice 02 has a latent O(N · d · k) source-DOM
+      path builder. Empirically benchmarked:
+        - depth=800, 1 record → 242ms (4× scaling for 2× depth = O(d²) per emit)
+        - depth=20, siblings 50→100 → 168ms→580ms (~3.4× = super-linear fanout)
+      Brad-shaped real-world docs (depth ~10, modest fanout) ship safely:
+      30KB measured at 7ms median, 60KB at 12ms — far under STORY-003-001's
+      3-second budget. BUT this slice (table extractor) introduces exactly
+      the shape that exposes the quadratic: wide same-tag siblings. A 50-row
+      × 10-column table = 500 same-tag <td> children at <tr> level, plus
+      same-tag <tr> fanout at <tbody> level. The trap WILL be sprung if the
+      walker is not refactored before this slice's perf test runs.
+      The story-level 3-second budget at slice 07 has ~430× headroom on
+      Brad-shaped input, but a heavy-table fixture would consume that
+      headroom rapidly.
+    action: |
+      Before implementing table extraction, refactor the walker (file:
+      apps/visual-composer/src/parser/dom-walker.ts):
+        1. Replace recursive visit() with iterative DFS using an explicit
+           stack and a mutable shared parents array (push on descend, pop
+           on ascend). Eliminates the per-call parents.slice() / parents.
+           concat() allocations and the per-emit chain rebuild.
+        2. Build sourceDomPath incrementally: maintain a `pathSegments:
+           string[]` parallel to the parents stack. Push segmentFor()
+           result on descend, pop on ascend. Final path =
+           pathSegments.join(' > ').
+        3. Replace per-segment sibling re-scan with a per-parent
+           tag-counter that's O(1) amortized:
+             - On push, scan the parent's children once to compute the
+               current node's nth-of-type index, OR
+             - Maintain a per-tag counter on the parent during the walk
+               and consume it as each child is visited in order. The
+               latter is preferable: O(1) amortized per child.
+        4. Hoist an "inside-skip-zone" flag onto WalkedNode (set once
+           when walker crosses into <table>/<svg> subtree) so text/image
+           extractor dispatch can branch in O(1) instead of an O(d)
+           ancestor scan per node.
+      After refactor, re-verify slice 02's perf smoke test still passes
+      AND slice 04's new table fixture (50×10) completes in well under
+      the story-level 3-second budget. Recommended target: <200ms on a
+      50×10 table fixture.
+    additional_acceptance_criterion: |
+      "[ ] Walker is truly O(N) over visible elements (no super-linear scaling
+       with depth OR sibling fanout). Verified by re-running the slice 02
+       perf benchmark suite and an additional 50×10 table perf test."
+    files_allowed_addition:
+      - "apps/visual-composer/src/parser/dom-walker.ts"  # to enable the refactor
+
+  - finding_id: "P2"
+    severity: MINOR
+    source: "SLICE-003-001-02 performance-reviewer"
+    description: |
+      Walker triple-allocates parent chain per element (parents.slice() on
+      WalkedNode store, parents.concat(el) for recursive call, chain =
+      parents.concat(el) inside buildSourceDomPath). At Brad-typical depth
+      ~8 and ~260 records, this is 3 × 260 × 8 = 6240 allocations — fine
+      in absolute terms but eliminable.
+    action: |
+      Addressed automatically by the iterative-DFS refactor in P1 (one
+      shared parents stack mutated via push/pop replaces all three
+      allocations). If the P1 refactor is split out, capture this
+      cleanup with it.
+
+  - finding_id: "P3"
+    severity: MINOR
+    source: "SLICE-003-001-02 performance-reviewer"
+    description: |
+      extractText scans the full parent chain on every text-eligible
+      element to check SKIP_TEXT_INSIDE membership (O(d) per element).
+      This slice's table extractor will duplicate the ancestor check
+      from its own side, multiplying the per-element constant.
+    action: |
+      Addressed by P1 action item 4 (inside-skip-zone flag on
+      WalkedNode). If the P1 refactor is deferred, at minimum hoist
+      the SKIP_TEXT_INSIDE check out of the per-element extractor and
+      into the walker dispatch.
+
+  - finding_id: "P4"
+    severity: MINOR
+    source: "SLICE-003-001-02 performance-reviewer"
+    description: |
+      Slice 02's perf smoke test (text.test.ts:106-111) is a single
+      sample with no warm-up. Variance under CI load can flake-fail a
+      typical 5-10ms run over the 50ms threshold.
+    action: |
+      Slice 04 should land its own table-perf assertion as a
+      median-of-5 with one warm-up extract() call. If time permits,
+      retrofit the slice-02 perf smoke at the same time.
+    files_allowed_addition:
+      - "apps/visual-composer/tests/parser/text.test.ts"  # optional retrofit

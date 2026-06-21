@@ -137,15 +137,45 @@ Report to the user:
 - The filenames that were moved
 - Confirm that the next session will start with clean context
 
-### Step 8: Exit Session
+### Step 8: Exit Session (auto-typed `/exit`)
 
-After confirmation, automatically exit the session. The completion is the final action — there is no reason to continue after archiving.
+After confirmation, automatically close the session. The completion is the final
+action — there is no reason to continue after archiving.
 
+A skill cannot type `/exit` into its own terminal mid-turn — the same constraint
+the eternity protocol works around for `/clear`: cmux's socket only accepts
+connections from a process running *inside* a live pane, and the keystroke has to
+land *after* the current turn ends. So this step reuses the eternity in-pane
+injection mechanism. It does **not** shell out to `cmux send` directly; instead it
+writes a **surface-keyed request flag**, and the already-wired in-pane Stop hook
+(`eternity-cmux-inpane.sh`) does the actual `cmux send /exit` the moment this turn
+ends. (See that hook's "Priority 0" branch.)
+
+Run this as the **final action** of the skill:
+
+```bash
+MON="$HOME/Library/Application Support/acos-token-monitor"
+STATE="$MON/state"
+# cmux in-pane only: requires in-pane injection mode + a launched cmux surface.
+if [ -f "$STATE/.cmux-inpane-inject" ] && [ -n "${CMUX_SURFACE_ID:-}" ]; then
+  touch "$STATE/.exit-requested-surface-$CMUX_SURFACE_ID"
+  echo "Queued /exit — the in-pane Stop hook will type it when this turn ends."
+else
+  echo "Not a cmux in-pane session — type /exit to close."
+fi
 ```
-/exit
-```
 
-This ensures a clean boundary: `/acos-complete` means "we are done, close everything."
+Then end the turn normally with a one-line note that the session is closing. When
+this response completes, the Stop hook fires, types `/exit` into the surface, and
+the session exits — a clean boundary: `/acos-complete` means "we are done, close
+everything." Outside cmux in-pane mode (e.g. Warp, plain terminal) the flag is a
+no-op and the skill simply tells the user to type `/exit` themselves.
+
+> **Why a flag, not a direct `cmux send` here?** Injecting mid-turn races against
+> the active turn (typed-ahead input while Claude is generating is unreliable, and
+> `/exit` can't be live-tested without killing the session). Deferring to the Stop
+> hook guarantees post-turn timing and reuses the same battle-tested path that
+> types `/clear`.
 
 ---
 

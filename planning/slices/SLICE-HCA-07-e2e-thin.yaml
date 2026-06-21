@@ -1,0 +1,111 @@
+# Slice Plan — Thin end-to-end verified-answer path (Demo 1)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-07-e2e-thin"
+story_id: "STORY-HCA-07A"
+epic_id: "EPIC-HCA-07"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Thin end-to-end verified-answer path (Demo 1)"
+objective: |
+  Wire the thin deterministic-tier path end to end against fixtures, with zero live
+  API: NL question -> tier router -> stubbed/fixture adapter -> Tier-1 cache ->
+  provenance-bound value -> deterministic gates -> answer envelope with provenance +
+  confidence + freshness + tier. Also prove the no-live-data degradation path. This
+  is Demo 1. In scope: the orchestration glue in SKILL.md for the trivial-lookup
+  tier only; the answer envelope renderer (value + provenance + confidence +
+  freshness + tier); the NO_LIVE_DATA envelope; the REFUSED envelope (no binding /
+  gate fail); a demo script/walkthrough using a single-value fixture (UC1). Out of
+  scope: consensus (slice-06), report/aggregation orchestration (slice-08), feed
+  formats (slice-09).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] A single-value question (UC1) flows end-to-end on fixtures and returns an answer envelope containing value + >=1 resolvable provenance citation + confidence + freshness stamp + tier — pass-condition: Demo 1 walkthrough reproducible; envelope schema-complete"
+  - "[ ] With the adapter not live, the same question returns the explicit 'no live data — Hypercore access not yet provisioned' envelope and NEVER a fabricated number — pass-condition: no-live-data test (REQUIRED; fail = REJECT)"
+  - "[ ] A value that fails a gate or has no binding returns a REFUSED envelope with reason, not a guess — pass-condition: refusal test"
+  - "[ ] The path is non-bypassable: delivery cannot occur without passing binder + gates — pass-condition: bypass-attempt test fails to deliver"
+  - "[ ] No live API call anywhere in the path — pass-condition: QA confirms no network call"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-05-gates"
+      what_it_provides: "The deterministic gate suite (VerificationGateResult) the thin path runs values through before delivery; transitively brings adapter+cache+normalize+provenance"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-hypercore-ask/SKILL.md"  # add the trivial-tier orchestration walkthrough
+  - ".claude/scripts/hca-deliver.py"  # answer / refused / no-live-data envelopes — trivial tier
+  - ".claude/skills/acos-hypercore-ask/demos/demo1-thin-path.md"  # Demo 1 walkthrough
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-07-e2e-thin.md"  # learnings update only
+  # NOTE: existing scripts from slices 01-05 are READ/COMPOSE-ONLY (no scope-creep edits)
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/scripts/hca-route.py"       # compose-only (slice-01)
+  - ".claude/scripts/hca-adapter.py"     # compose-only (slice-02)
+  - ".claude/scripts/hca-cache.py"       # compose-only (slice-03)
+  - ".claude/scripts/hca-normalize.py"   # compose-only (slice-03)
+  - ".claude/scripts/hca-provenance.py"  # compose-only (slice-04)
+  - ".claude/scripts/hca-gates.py"       # compose-only (slice-05)
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"   # Python 3 stdlib delivery envelopes + orchestration glue
+  - "testing"          # happy-path / no-live-data / refusal / bypass-attempt tests
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-07-e2e-thin.md"
+  - "This is Demo 1: the first demo-able vertical — a verified single-value answer on fixtures with full provenance/confidence display, plus graceful no-live-data degradation."
+  - "Gotcha (hard gate): the no-live-data path must NEVER fabricate a number — REQUIRED, fail = REJECT. Flipping the adapter to not-live must yield the explicit NO_LIVE_DATA envelope."
+  - "Gotcha: the path is non-bypassable — delivery is impossible without passing the binder + gates. Existing slice 01-05 scripts are compose-only (no scope-creep edits)."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; no live API call; no creds"
+  - "Compose router -> adapter(fixture) -> cache -> normalize -> provenance -> gates -> deliver for the trivial tier"
+  - "hca-deliver.py envelopes: delivered, refused, no_live_data (value + provenance + confidence + freshness + tier)"
+  - "Demo 1 walkthrough hits a single-value fixture, then flips the adapter to not-live to show degradation"
+  - "Non-bypassable: delivery cannot occur without passing binder + gates"
+
+# Testing requirements
+testing_requirements:
+  - "QA reproduces Demo 1 independently and confirms the envelope carries a resolvable provenance citation (re-walks the path into the Tier-1 record)"
+  - "QA flips adapter to not-live; confirm the no-live-data envelope appears and no number is invented"
+  - "QA plants a value with a broken binding; confirm REFUSED, not delivered"
+  - "QA attempts to deliver bypassing gates/binder; confirm impossible (non-bypassable gate)"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # touches the adapter/no-live-data boundary; no-fabrication on missing creds
+
+# Effort estimate
+effort_estimate: "M"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-07-e2e-thin.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  Build order: dependency_order 7 (before slice-06 at order 8, despite the higher
+  numeric suffix). slice-06-consensus depends_on this slice.
+  VISION-HCA-01 / EPIC-HCA-07 are PROPOSED — not yet formally planned via /acos-plan.

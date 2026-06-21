@@ -1,0 +1,113 @@
+story_id: "STORY-002"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Brand-Asset Image Manifest + Internet Fallback"
+description: |
+  Auto-bootstrap a semantic manifest of a user-supplied brand-asset directory
+  using Claude vision. For each HTML photo slot, pick the best manifest entry
+  by semantic tag match; fall back to Unsplash/Pexels API for content not
+  matching any brand asset. Persist user feedback ('swap this image') to the
+  manifest so the skill avoids the same pick next time.
+
+user_story: |
+  As a user with a library of OKOA brand photos,
+  I want the skill to automatically pick the right photo for each content slot
+  (e.g., Ascent Park City for the cover of a document about Ascent) and fall
+  back to Unsplash when my library doesn't have a match,
+  So that I don't have to hand-place images for every document and can rely
+  on the system finding both brand-appropriate and aesthetically-suitable
+  images without my intervention.
+
+acceptance_criteria:
+  - "[ ] manifest-schema.yaml defines: file_hash, filename, description, semantic_tags[], deal_match, aesthetic_tags[], user_rejected_for[], date_analyzed"
+  - "[ ] scripts/bootstrap-manifest.py scans a brand-asset directory, hashes each image, spawns Claude vision agents in parallel to describe + tag each image, writes manifest.yaml keyed by file_hash. Idempotent — re-running only analyzes new/changed files."
+  - "[ ] scripts/match-image.py takes a photo slot (semantic tags + content context) and returns best manifest entry; falls back to Unsplash/Pexels API if no match above similarity threshold (configurable, default 0.6)."
+  - "[ ] scripts/fetch-image-fallback.py calls Unsplash or Pexels API with content-derived query, downloads HQ image to session cache, returns local path + attribution metadata."
+  - "[ ] User feedback handler: on user instruction 'swap the image on page N', the rejected entry gets user_rejected_for: [{context: 'page 5 of doc-id', reason: 'text from user'}] appended to manifest; on next match for similar context, this entry is excluded."
+  - "[ ] ATTRIBUTION.md auto-generated per run, listing source + credit for every image used (same shape as /Users/zee/Desktop/Private Credit Capabilities/v3/ATTRIBUTION.md)."
+  - "[ ] HTML photo slots are filled in-place — the emitter's output is modified to replace data-photo-slot placeholders with actual image paths (embedded as file:// URLs, NOT hotlinked remote URLs — Puppeteer needs local files for networkidle0 to work reliably)."
+  - "[ ] If UNSPLASH_ACCESS_KEY and PEXELS_API_KEY are unset, skill warns and falls back to brand-assets-only mode; document may have empty photo slots which the visual gate will catch."
+
+dependencies:
+  stories:
+    - story_id: "STORY-001"
+      what_it_provides: "HTML with empty photo slots marked by data-photo-slot attributes; semantic tags per slot."
+
+slices:
+  - slice_id: "SLICE-002-01"
+    title: "Manifest schema + bootstrap script"
+    description: "Define manifest-schema.yaml. Build scripts/bootstrap-manifest.py that: (a) globs brand-asset directory for image files; (b) for each new/changed file (by hash), spawns a Claude vision agent with the image and a description/tagging prompt; (c) collects results, writes/updates manifest.yaml. Prompt template: 'Describe this image in 2-3 sentences. Tag: subject, setting, mood, primary colors, real-estate-related tags (architecture/landscape/construction/portfolio/etc.), and any identifiable named entity (property name, location).' Model: sonnet (cost-effective for vision)."
+    effort: "M"
+    dependencies: []
+
+  - slice_id: "SLICE-002-02"
+    title: "Semantic match engine"
+    description: "scripts/match-image.py: for each photo slot, compute cosine similarity between slot tags and manifest entry tags (using simple token overlap + embedding if embeddings are cached; pure token overlap is acceptable v1). Returns sorted candidates. Filters out manifest entries where user_rejected_for includes similar context. If top score > threshold, use brand asset; else fall back to internet."
+    effort: "M"
+    dependencies: ["SLICE-002-01"]
+
+  - slice_id: "SLICE-002-03"
+    title: "Unsplash/Pexels fallback fetcher"
+    description: "scripts/fetch-image-fallback.py: reads UNSPLASH_ACCESS_KEY and PEXELS_API_KEY from env. Takes query string (from slot semantic tags). Calls Unsplash first, Pexels second. Downloads top result (landscape orientation, ≥2000px wide) to session cache. Returns {local_path, source, photographer, url}. If both APIs fail or keys missing, returns None and logs warning."
+    effort: "M"
+    dependencies: ["SLICE-002-01"]
+
+  - slice_id: "SLICE-002-04"
+    title: "Photo-slot filler + attribution writer"
+    description: "scripts/fill-photo-slots.py: reads emitted HTML, finds all data-photo-slot elements, calls match-image.py + fetch-image-fallback.py, substitutes each placeholder with a <img src='file://{local_path}' alt='{description}'> or updates background-image URL. Writes session ATTRIBUTION.md listing every image used with source + credit. Writes updated HTML."
+    effort: "M"
+    dependencies: ["SLICE-002-02", "SLICE-002-03"]
+
+  - slice_id: "SLICE-002-05"
+    title: "User feedback persistence"
+    description: "scripts/record-image-feedback.py: CLI tool called by the skill's wizard when user says 'swap image on page N'. Finds the manifest entry currently used for that slot in the latest session, appends user_rejected_for entry with context and reason, writes manifest.yaml. Next run's matcher excludes it."
+    effort: "S"
+    dependencies: ["SLICE-002-01"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-002-01"]
+  - phase: 2
+    slices: ["SLICE-002-02", "SLICE-002-03"]
+  - phase: 3
+    slices: ["SLICE-002-04"]
+  - phase: 4
+    slices: ["SLICE-002-05"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/templates/manifest-schema.yaml"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/match-image.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/fill-photo-slots.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/record-image-feedback.py"
+
+technical_notes: |
+  - Manifest location: brand-asset-directory/.acos-ultimate-designer-manifest.yaml
+    (hidden, inside the asset directory, not inside the skill).
+  - Cost control: vision-pass runs ONCE per image (keyed by file hash); re-runs
+    reuse cached descriptions. One-time cost of ~$0.01/image is expected and
+    acceptable.
+  - Image embedding strategy: download to session cache, use file:// URLs.
+    Do NOT hotlink remote URLs — Puppeteer's networkidle0 wait becomes
+    unreliable with remote loads, and the final PDF depends on the images
+    being local.
+  - Attribution format: exactly matches v3 ATTRIBUTION.md shape — markdown table
+    with Asset, Source, Used On columns + a human-readable credits section.
+
+review_focus:
+  - "Verify manifest is idempotent: run twice, second run should make no API calls for unchanged files"
+  - "Verify user feedback actually influences next match: reject image X for context Y, re-run with similar context Y, different image must be picked"
+  - "Verify fallback degrades gracefully: unset API keys, run, confirm warning + empty slots (not crash)"
+
+effort_estimate: "L"
+
+notes: |
+  This is the most LLM-cost-sensitive story. Keep the vision pass behind a file-hash
+  cache. If a user drops 100 new images, the bootstrap should take a few minutes
+  and cost ~$1. Every subsequent run is free text-matching against cached descriptions.

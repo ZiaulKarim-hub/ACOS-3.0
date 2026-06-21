@@ -1,0 +1,95 @@
+slice_id: "SLICE-004-02"
+story_id: "STORY-004"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "9 PPTX slide masters"
+objective: |
+  Build a base template.pptx via python-pptx scripting with 9 slide layouts
+  corresponding to the 9 HTML page templates — cover, two-column-narrative,
+  metric-grid, timeline, chapter-divider, product-detail, portfolio-grid,
+  photo-break, closing. Each layout has positioned placeholders (text frames
+  + image placeholders) matching the HTML composition. Template.pptx is
+  built once, committed as templates/template.pptx, and consumed by runtime
+  generation (SLICE-004-04) without being rebuilt.
+
+acceptance_criteria:
+  - "[ ] scripts/build-template-pptx.py exists, Python 3, executable — a ONE-TIME build script that generates template.pptx"
+  - "[ ] Running build-template-pptx.py produces templates/template.pptx"
+  - "[ ] template.pptx contains exactly 9 slide layouts, each with the names: cover_layout, two_column_narrative_layout, metric_grid_layout, timeline_layout, chapter_divider_layout, product_detail_layout, portfolio_grid_layout, photo_break_layout, closing_layout"
+  - "[ ] cover_layout: full-bleed image placeholder covering entire slide + dark scrim rect + title text frame (Cormorant Garamond, oversized) + eyebrow text frame (coral Plex Mono, top-left) + bottom metadata bar"
+  - "[ ] two_column_narrative_layout: eyebrow text frame + title frame + italic pull-quote frame + two body text frames (left, right)"
+  - "[ ] metric_grid_layout: 3×3 grid of card shapes, each card has coral accent rect + mono label frame + Cormorant value frame + body description frame"
+  - "[ ] timeline_layout: 5 row shapes, each with coral step number + day range text frame + italic subhead frame + body frame"
+  - "[ ] chapter_divider_layout: full-bleed image placeholder + 'PART N' eyebrow + oversized italic-accent title text frame + subtitle frame"
+  - "[ ] product_detail_layout: left column list + right column with hr-like divider lines between items"
+  - "[ ] portfolio_grid_layout: 2×2 card layout, each card has photo placeholder + eyebrow + title + location + body + small stat grid"
+  - "[ ] photo_break_layout: full-slide photo placeholder + caption label text frame"
+  - "[ ] closing_layout: two-column summary text frames + dark topographic panel shape (solid dark fill as approximation) + footer text frame + logo image placeholder (white variant)"
+  - "[ ] All text frames have fill.solid() applied with explicit background (Brad's Explicit Background Rule)"
+  - "[ ] Theme colors match pptx-design-spec.yaml from SLICE-004-01"
+  - "[ ] Theme fonts are set: heading=Cormorant Garamond, body=IBM Plex Sans, mono=IBM Plex Mono"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-004-01"
+      what_it_provides: "pptx-design-spec.yaml with dimensions + theme colors + fonts"
+      status: "complete"
+    - slice_id: "SLICE-001-03"
+      what_it_provides: "9 HTML page templates (as structural reference for PPTX layouts)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/build-template-pptx.py"
+  - "~/.claude/skills/acos-ultimate-designer/templates/template.pptx"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-design-spec.yaml"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/emit-pptx-content.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-pptx.sh"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/pptx-cleanup.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This is the HEAVIEST slice in the epic. Plan 2-3 focused sessions — each layout needs precise positioning, sizing, placeholder types set correctly."
+  - "python-pptx doesn't directly support slide LAYOUTS from scratch (it's geared toward consuming existing templates). Building layouts programmatically requires XML manipulation via lxml on the slideLayoutN.xml files inside the .pptx zip."
+  - "Alternative approach: use a minimal base template (empty blank layout), then for each page in content, add slides with shapes built programmatically — skip the 'layout master' abstraction. This is SLIGHTLY less 'proper' but dramatically simpler. Decide after reading data-to-pptx.py: if it wants layouts, build layouts; if it wants slides-with-shapes, use that."
+  - "Use scale as guide: each slide is 13.33×7.5 inches = 12192000×6858000 EMU. Positions in EMU. Brad's Carbon 16-col grid maps to: col_width = 12192000 / 16 = 762000 EMU per column."
+
+technical_requirements:
+  - "Python 3.9+; python-pptx 0.6.21+, lxml (for any direct XML manipulation needed)"
+  - "build-template-pptx.py must be idempotent — running it twice produces identical template.pptx (byte-compare — well, minus zip timestamps; byte-compare excluding timestamps)"
+  - "All EMU positions are integers (no floats)"
+
+testing_requirements:
+  - "Run build-template-pptx.py, open template.pptx in PowerPoint, verify all 9 layouts are listed in the slide master view"
+  - "Open in Keynote as well (cross-platform sanity check)"
+  - "For each layout: insert a new slide using that layout, type into each text frame, verify positioning matches the corresponding HTML page template"
+  - "Unit: python-pptx load template.pptx, iterate slide layouts, assert exactly 9 layouts with expected names"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "XL"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  HIGHEST RISK slice in the epic. python-pptx has sharp edges around slide
+  layouts — PowerPoint's "layout master" concept doesn't map cleanly to
+  python-pptx's API.
+
+  If this slice stalls (>2 sessions without convergence), the documented
+  fallback is STORY-004 Option 1: render HTML pages to PNGs and drop each
+  on a blank slide. Image-only PPTX is not editable but unblocks
+  end-to-end delivery. Only fall back after genuine attempt at Option 2.

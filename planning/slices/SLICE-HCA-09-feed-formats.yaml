@@ -1,0 +1,107 @@
+# Slice Plan — Downstream trusted-input feed formats + provenance/confidence display (Demo 3)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-09-feed-formats"
+story_id: "STORY-HCA-08"
+epic_id: "EPIC-HCA-08"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Downstream trusted-input feed formats + provenance/confidence display (Demo 3)"
+objective: |
+  Render verified deliverables in report / table / dataset (JSON/CSV) formats and a
+  trusted-input feed schema with embedded per-value provenance + confidence + a
+  manifest (source-of-truth pointers, freshness, schema version, completeness proof),
+  and demonstrate a downstream skill consuming it as a trusted input. This is Demo 3.
+  In scope: feed renderers (JSON + CSV) emitting per-value provenance/confidence;
+  the manifest schema + generator; a documented consumer contract; a Demo 3
+  walkthrough where a downstream skill (e.g. acos-dataroom-v2) ingests the dataset.
+  Out of scope: modifying downstream consumer skills' internals (only demonstrate
+  consumption via the documented contract); security hardening (slice-10); live API.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Dataset export in JSON and CSV where every value row carries its provenance + confidence — pass-condition: feed-render test; a sample row independently resolves to Tier-1 (fail = REJECT)"
+  - "[ ] Manifest generated and schema-valid: includes source-of-truth pointers, freshness, schema version, and a completeness proof (pagination-complete evidence) — pass-condition: manifest validates against feed-manifest.schema.json (REQUIRED; fail = REJECT)"
+  - "[ ] A downstream consumer ingests the feed via the documented contract and accepts it as a trusted input (Demo 3) — pass-condition: Demo 3 walkthrough reproducible"
+  - "[ ] CSV is well-formed (stdlib csv, quoted, no field corruption) and round-trips with the JSON — pass-condition: round-trip test"
+  - "[ ] Feed is PII-minimized (no borrower PII beyond need) — pass-condition: PII-scan of sample feed"
+  - "[ ] Completeness proof in the manifest is real (matches the pagination-completeness gate result), not a placeholder"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-08-orchestration"
+      what_it_provides: "The report-tier pipeline output (per-figure provenance + confidence + gate results) that the feed renderers and manifest serialize for downstream consumers"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-feed.py"  # report/table/dataset JSON+CSV renderers + manifest generator; stdlib only (json, csv)
+  - ".claude/skills/acos-hypercore-ask/schemas/feed-manifest.schema.json"  # manifest schema
+  - ".claude/skills/acos-hypercore-ask/feed-contract.md"  # consumer contract doc
+  - ".claude/skills/acos-hypercore-ask/demos/demo3-downstream-feed.md"  # Demo 3 walkthrough
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-09-feed-formats.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/skills/acos-dataroom-v2/"  # downstream consumer internals are off-limits (consume via contract only)
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"     # Python 3 stdlib json/csv renderers + manifest generator
+  - "api-documentation"  # consumer contract doc (feed-contract.md)
+  - "testing"            # feed-render / manifest-validate / round-trip / PII-scan tests
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-09-feed-formats.md"
+  - "This is Demo 3: a verified dataset exported with embedded provenance/confidence + a manifest, consumed by a downstream skill (e.g. acos-dataroom-v2) via the documented contract."
+  - "Gotcha (hard gates): every feed value must have resolvable provenance + confidence (fail = REJECT), and the manifest must be schema-valid with a REAL completeness proof matching the pagination-completeness gate result, not a placeholder (fail = REJECT)."
+  - "Gotcha: do NOT modify downstream consumer internals — demonstrate consumption via the documented contract only. Keep the feed PII-minimized; CSV must round-trip cleanly with JSON."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only (json, csv); no live API"
+  - "hca-feed.py renders JSON + CSV from the report-tier output, embedding provenance/confidence per value"
+  - "Generate the manifest (source pointers, freshness, schema version, completeness proof) and validate against feed-manifest.schema.json"
+  - "feed-contract.md documents how consumers read provenance/confidence/manifest"
+  - "CSV well-formed (quoted, no field corruption) and JSON<->CSV round-trips; feed PII-minimized"
+
+# Testing requirements
+testing_requirements:
+  - "QA takes a sample feed row, independently resolves its provenance to a Tier-1 record, and confirms the value + confidence"
+  - "QA validates the manifest against feed-manifest.schema.json and confirms the completeness proof is real (matches the pagination-completeness gate result), not a placeholder"
+  - "QA runs the Demo 3 consumption; confirm the downstream skill reads provenance/confidence correctly"
+  - "QA round-trips JSON<->CSV; confirm no data corruption"
+  - "QA scans the feed for borrower PII beyond need"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"           # Always
+  - "ACOS-security-reviewer"     # PII-minimized feed (no borrower PII beyond need)
+  - "ACOS-performance-reviewer"  # dataset/large-data serialization (JSON+CSV) + round-trip efficiency
+
+# Effort estimate
+effort_estimate: "M"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-09-feed-formats.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-08 are PROPOSED — not yet formally planned via /acos-plan.

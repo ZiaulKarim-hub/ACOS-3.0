@@ -1,0 +1,116 @@
+story_id: "STORY-004"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "PPTX Output Pipeline (Option 2 — editable slides)"
+description: |
+  Translate Brad's token system into a PPTX-native design-spec. Build a library
+  of 9 coffee-table slide masters corresponding to the 9 HTML page templates.
+  Emit a structured content YAML in parallel with HTML (Story 1 extension),
+  feed it to loan-doc's data-to-pptx.py with the new design-spec to produce
+  editable PPTX output — NOT image-only slides.
+
+user_story: |
+  As a user who needs the same coffee-table document as a slide presentation,
+  I want an editable PPTX file with the same visual identity, fonts, colors,
+  and layouts as the PDF,
+  So that I can make last-minute edits in PowerPoint/Keynote without losing
+  the design treatment.
+
+acceptance_criteria:
+  - "[ ] pptx-design-spec.yaml translates Brad's tokens into PPTX-native fields: theme_colors (using RGB hex), font_scheme (heading=Cormorant Garamond, body=IBM Plex Sans, mono=IBM Plex Mono), slide_dimensions (13.33×7.5 widescreen OR 10×7.5 standard — decide based on content), background_fills per layout"
+  - "[ ] 9 slide masters exist in templates/pptx-slide-masters/ as .pptx files — one per HTML page template. Each master has: OKOA logo placement, eyebrow text frame (coral Plex Mono), title text frame (Cormorant Garamond), body text frames, photo placeholder shapes"
+  - "[ ] scripts/emit-pptx-content.py extends Story 1's decomposer to ALSO emit a structured content YAML compatible with data-to-pptx.py input schema (parallel output to HTML — both come from same page-plan)"
+  - "[ ] scripts/render-pptx.sh wraps data-to-pptx.py with: the structured content YAML, the pptx-design-spec, a template.pptx (base with masters already loaded), output path. Output: {session_dir}/output.pptx"
+  - "[ ] Output PPTX opens in both PowerPoint and Keynote with: editable text (not images), all fonts visible (with fallback note for Cormorant Garamond if not installed), correct colors, correct logo placement"
+  - "[ ] Python-pptx theme-shadow bug fix applied (strip outerShdw from effectStyleLst; reset effectRef idx to 0) — same cleanup as loan-doc's phase3-design.md:48-68"
+  - "[ ] Cormorant Garamond font file is embedded in the PPTX (OOXML embedded fonts) — not just referenced. If embedding fails, a fallback advisory note is added to the final slide."
+  - "[ ] Shape.fill.solid() is called with explicit background on every text-containing shape (same Explicit Background Rule as Brad/loan-doc)"
+
+dependencies:
+  stories:
+    - story_id: "STORY-001"
+      what_it_provides: "Page-plan structure (shared input for both HTML and PPTX paths)"
+    - story_id: "STORY-002"
+      what_it_provides: "Images available as local file paths"
+
+slices:
+  - slice_id: "SLICE-004-01"
+    title: "PPTX design-spec schema"
+    description: "Define templates/pptx-design-spec.yaml with: slide_dimensions (EMU), theme_colors (mapping Brad token names to RGB hex), font_scheme (heading/body/mono family + fallback chain), background_fills per layout type (surface-white, surface-warm, surface-ink, surface-sage, surface-navy). Must be consumable by data-to-pptx.py — inspect that script's expected schema first and match it."
+    effort: "M"
+    dependencies: []
+
+  - slice_id: "SLICE-004-02"
+    title: "9 PPTX slide masters"
+    description: "Build a base template.pptx via python-pptx scripting with 9 slide layouts: (1) cover-layout — full-bleed image placeholder + dark scrim + title text + eyebrow text; (2) two-column-narrative-layout — header + italic pull quote + two body text frames; (3) metric-grid-layout — 3×3 text frame grid with coral rectangle accents; (4) timeline-layout — 5 row shapes; (5) chapter-divider-layout — full-bleed image + PART N + oversized title; (6) product-detail-layout — 2-column list; (7) portfolio-grid-layout — 2×2 cards with photo placeholder + text frames; (8) photo-break-layout — full-width photo + caption; (9) closing-layout — two-column text + dark topographic panel + footer. Produce via scripts/build-template-pptx.py — script writes the template.pptx once, checked in as templates/template.pptx."
+    effort: "XL"
+    dependencies: ["SLICE-004-01"]
+
+  - slice_id: "SLICE-004-03"
+    title: "Content-to-PPTX data adapter"
+    description: "scripts/emit-pptx-content.py extends decompose-content.py output: same page-plan structure, but outputs a YAML matching data-to-pptx.py's input schema. Each page-plan entry maps to a slide spec with layout_name + shape_content_dict (text values, image paths, etc.). Keep structural parallel with HTML — both paths consume the same page-plan, differ only in rendering backend."
+    effort: "L"
+    dependencies: ["SLICE-004-02"]
+
+  - slice_id: "SLICE-004-04"
+    title: "PPTX generation + post-build cleanup"
+    description: "scripts/render-pptx.sh: invoke python3 {loan_doc_scripts}/data-to-pptx.py with content YAML + design-spec + template. After generation, apply: (a) theme-shadow strip (remove outerShdw from effectStyleLst, reset effectRef idx=0); (b) explicit background verification (call shape.fill.solid() on any text shape with fill.type=None); (c) Cormorant Garamond embedding (try via python-pptx; if fails, add advisory note to final slide). Output to {session_dir}/output.pptx."
+    effort: "L"
+    dependencies: ["SLICE-004-03"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-004-01"]
+  - phase: 2
+    slices: ["SLICE-004-02"]
+  - phase: 3
+    slices: ["SLICE-004-03"]
+  - phase: 4
+    slices: ["SLICE-004-04"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/templates/pptx-design-spec.yaml"
+    - "~/.claude/skills/acos-ultimate-designer/templates/template.pptx (built once by build-template-pptx.py)"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/build-template-pptx.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/emit-pptx-content.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/render-pptx.sh"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/pptx-cleanup.py (theme-shadow strip + explicit background verification)"
+
+technical_notes: |
+  - This is the heaviest story in the epic. If time is constrained, the PDF
+    path (Story 3) should be shipped first and PPTX follows.
+  - data-to-pptx.py expects a specific YAML schema — read it first at
+    ~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py and
+    match that schema exactly.
+  - Template masters are built ONCE by build-template-pptx.py and committed
+    as templates/template.pptx. Runtime generation consumes the template,
+    doesn't rebuild it.
+  - Cormorant Garamond embedding: python-pptx does NOT directly support font
+    embedding (it's an OOXML feature that requires manipulating the .pptx
+    zip directly). Attempt embedding via lxml manipulation of /ppt/fonts/.
+    If that fails, degrade gracefully with a fallback note.
+  - Page-as-canvas translates cleanly to PPTX: every HTML page → one slide.
+    The 9 layouts map 1:1.
+
+review_focus:
+  - "Verify editability: open PPTX in PowerPoint, click on a text element, confirm it's a text frame not a rasterized image"
+  - "Verify palette match: extract RGB values from the PPTX theme and verify against Brad tokens (no drift)"
+  - "Verify no drop shadows on cards: the python-pptx theme bug causes default shadows; the cleanup must strip them"
+  - "Verify Cormorant rendering: install or uninstall the font locally, open the PPTX, confirm fallback behavior matches expectations"
+
+effort_estimate: "XL"
+
+notes: |
+  Biggest implementation risk in the epic. The 9 slide masters are substantial
+  work — each needs positioning, sizing, text frame configuration, placeholder
+  types set correctly. Plan 2-3 sessions for SLICE-004-02 alone.
+
+  If the PPTX path becomes a blocker, there's a documented fallback in the
+  epic planning discussion: "Option 1" — image-only PPTX via rendering HTML
+  pages to PNG and dropping each on a blank slide. NOT preferred (not editable)
+  but unblocks the end-to-end delivery if Option 2 stalls.

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>XSS Sandbox — SLICE-003-001-07</title>
+    <!-- Hostile inline script — DOMParser('text/html') must NOT execute. -->
+    <script>window.__pwned__ = 'head-script-ran'; alert('head-script');</script>
+    <style>
+      body { font-family: sans-serif; padding: 16px; }
+      .hostile-bg { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAAOklEQVR4nO3BMQEAAADCoPVPbQ8/oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOBpDM0AASKxBOMAAAAASUVORK5CYII='); height: 60px; }
+    </style>
+  </head>
+  <body onload="window.__pwned_onload__ = true; alert('body-onload');">
+    <!-- Hostile <base> with javascript: href. Adding to body (not head) to
+         keep the existing structure intact. The parser must not act on it
+         as a navigation directive. -->
+    <base href="javascript:alert(1)//" />
+
+    <!-- SVG with embedded <script>: DOMParser('text/html') must not execute
+         the inline script. SLICE-003-002 will eventually render rawMarkup;
+         this fixture forces test assertions that the parse pass is inert. -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+      <script>window.__pwned_svg_script__ = true; alert('svg-script');</script>
+      <rect width="10" height="10" />
+    </svg>
+
+    <!-- SVG with onload handler — same protection expected. -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="window.__pwned_svg_onload__=true; alert('svg-onload');">
+      <rect width="10" height="10" />
+    </svg>
+
+    <!-- SVG containing an <a href="javascript:..."> — text/html parsing must
+         not fire it; render-time sanitization is documented as required. -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+      <a href="javascript:window.__pwned_svg_jsa__=true; alert('svg-jsa');">click</a>
+    </svg>
+
+    <!-- Hostile backgrounds: probes the SSRF allowlist in background.ts.
+         Each of these resolved URLs must be rejected by isSafeBackgroundUrl
+         so the test assertions never see them as background records. -->
+    <div style="background-image: url('http://localhost:5432/probe'); width: 60px; height: 60px;">localhost probe</div>
+    <div style="background-image: url('file:///etc/passwd'); width: 60px; height: 60px;">file: probe</div>
+    <div style="background-image: url('javascript:alert(1)'); width: 60px; height: 60px;">javascript: probe</div>
+    <div style="background-image: url('http://192.168.1.1/admin'); width: 60px; height: 60px;">RFC1918 probe</div>
+
+    <h1>XSS Sandbox Document</h1>
+    <p>This document carries hostile content that the parser must safely ingest without executing.</p>
+
+    <!-- Inline event handler on an image element. Should NEVER fire in DOMParser. -->
+    <img src="x" onerror="window.__pwned_onerror__ = true; alert('img-onerror');" alt="bad image" />
+
+    <!-- javascript: URL in an anchor. Parser must not navigate or execute. -->
+    <a href="javascript:alert('anchor-href-js');window.__pwned_href__=true">click me</a>
+
+    <!-- iframe with javascript: src — same protection. -->
+    <iframe src="javascript:alert('iframe-src-js');window.__pwned_iframe__=true" title="bad iframe"></iframe>
+
+    <!-- Inline script tag in body. -->
+    <script>window.__pwned_body__ = 'body-script-ran'; alert('body-script');</script>
+
+    <!-- Onload handler on a div. -->
+    <div onload="window.__pwned_div_onload__ = true; alert('div-onload');">div with onload handler</div>
+
+    <!-- Hostile background image source. Use data: URI (NOT javascript:) — javascript:
+         URIs in CSS are explicitly malicious surface and would only be relevant to a
+         CSS-parsing attack vector, not the HTML XSS path under test. -->
+    <div class="hostile-bg">background div</div>
+
+    <!-- A class that pretends to be a Brad class but is hostile. The enrichment
+         pass treats classes as data, not code — verify it doesn't get clever. -->
+    <p class="heading-display" onclick="window.__pwned_click__ = true; alert('p-click');">Pretend Brad headline</p>
+  </body>
+</html>

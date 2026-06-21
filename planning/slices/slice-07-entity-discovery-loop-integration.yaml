@@ -1,0 +1,97 @@
+# Slice Plan — Entity discovery wiring + graph-expansion loop (Demo 1)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-07-entity-discovery-loop-integration"
+story_id: "STORY-APS-07"
+epic_id: "EPIC-APS-07"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Entity discovery wiring + graph-expansion loop integration (Demo 1)"
+objective: |
+  Wire SoS + OpenCorporates entity discovery into the graph
+  (person->officer/agent->entities->siblings) and integrate the full thin pipeline in
+  SKILL.md: compliance gate -> normalize -> identity -> entity discovery -> channels ->
+  swarm -> synthesizer, looping until dry. Produce a hedged thin Markdown report plus the
+  audit trail on a sample name. This is Demo 1 (the compliant thin slice end to end).
+  Out of scope: dedup (slice-08), scoring (slice-09), equity rollup (slice-10), full
+  dossier (slice-11).
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Entity discovery resolves a seed person to controlled entities (officers/agents/siblings) and feeds the graph, hub-guarded — pass: entity-discovery test"
+  - "[ ] The end-to-end thin loop runs gate->normalize->identity->discovery->channels->swarm->synthesizer and terminates — pass: e2e thin-path test on a sample fixture"
+  - "[ ] The report uses hedged language throughout ('likely controlled by'; 'owns' only with direct title) — pass: hedged-language test (REQUIRED)"
+  - "[ ] An audit trail (workspace/<sid>/round-NN/agent-NN/findings.md + synthesis/) is written and resumable — pass: audit-trail test"
+  - "[ ] Nothing runs while COMPLIANCE_BLOCKED — pass: gate-respect test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-06-swarm-synthesizer"
+      what_it_provides: "The per-round swarm + between-rounds synthesizer the loop drives"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/SKILL.md"                       # orchestration section
+  - ".claude/skills/acos-property-search/scripts/entity_discovery.py"    # stdlib only
+  - ".claude/skills/acos-property-search/scripts/tests/test_entity_discovery.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-07-entity-discovery-loop-integration.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/dedup.py"   # owned by slice-08
+  - ".claude/skills/acos-property-search/scripts/score.py"   # owned by slice-09
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-07-entity-discovery-loop-integration.md"
+  - "Demo 1: the compliant thin slice end to end. Entity discovery (SoS + OpenCorporates) is hub-guarded via slice-04 and cached via slice-02."
+  - "Gotcha (hard gate): hedged language throughout — any 'definitely owns' / bare 'owns' without title support = REJECT."
+  - "Gotcha: the loop is driven by the synthesizer's worklist until no new high-confidence nodes; the audit trail must be resumable."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only"
+  - "entity_discovery.py queries SoS + OpenCorporates (cached) and adds entity/officer/agent nodes + edges via the hub-guarded graph"
+  - "SKILL.md sequences the stages into the loop-until-dry pipeline; renders a thin hedged report; writes audit artifacts per round"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA runs the thin loop on a fresh sample fixture; confirm it terminates and writes the audit trail"
+  - "QA scans the report for un-hedged claims ('definitely owns' / bare 'owns' without title) — any = REJECT"
+  - "QA confirms entity discovery is hub-guarded (no sibling expanded through a commercial agent)"
+  - "QA confirms the gate blocks a run with no ComplianceRecord"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-07-entity-discovery-loop-integration.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

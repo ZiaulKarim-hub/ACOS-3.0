@@ -121,6 +121,24 @@ def main():
         from datetime import datetime, timezone
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+        # ── Eternity-protocol subordination (precedence over autopilot) ───────
+        # Per user spec 2026-06-15: do NOT auto-pick AskUserQuestion answers
+        # while eternity is in flight. Plain allow — let the prompt go through
+        # so eternity's flow proceeds normally. (Eternity-internal prompts may
+        # need real user attention; we don't want to auto-pick those.)
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from _autopilot_eternity import is_eternity_protocol_active, detect_eternity_marker
+            if is_eternity_protocol_active(cwd):
+                sid, marker = detect_eternity_marker(cwd)
+                audit(project_root,
+                      f"[{ts}] AUTOPILOT_ETERNITY_SUBORDINATE | hook=AskUQ | "
+                      f"tool={tool_name} | marker={marker} | sid={sid[:12] if sid else '?'}")
+                emit("allow")
+                return
+        except Exception:
+            pass
+
         if tool_name == "AskUserQuestion":
             questions = tool_input.get("questions", []) or []
             answers = synthesize_answers(questions)

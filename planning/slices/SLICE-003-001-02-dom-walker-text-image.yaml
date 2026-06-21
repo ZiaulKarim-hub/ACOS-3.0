@@ -1,0 +1,176 @@
+# Slice Plan — DOM walker + text + image extractors
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-02"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  performance-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 7  # 3 from QA (low/doc) + 4 from perf (1 major forward-looking, 3 minor)
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-02/"
+mid_slice_scope_expansion:
+  added_to_files_allowed: "apps/visual-composer/tests/parser/types.test.ts"
+  reason: "Slice-01 stub-test assertion invalidated by slice-02's walker wiring; architect patched the assertion to match new contract reality. Also strengthened with F2 (dual-discriminator) invariant inline."
+
+# Slice overview
+title: "DOM walker + text + image extractors (core)"
+objective: |
+  Implement the foundation walker that traverses an HTML document
+  parsed by sandboxed DOMParser and emits ContainerRecord values for
+  text-bearing and image elements. This slice establishes the walker
+  pattern that subsequent extractor slices (03, 04, 05) plug into.
+
+  Text extraction covers <p>, <h1>–<h6>, and <div>/<span> with direct
+  text content. Image extraction covers <img>. Hidden elements (display
+  none, visibility hidden, aria-hidden=true) are skipped. <script> and
+  <style> are skipped unconditionally.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/dom-walker.ts exports walkDom(doc: Document) that yields raw element + parent-chain references for downstream extractors"
+  - "[ ] apps/visual-composer/src/parser/extractors/text.ts exports extractText(el: Element): ContainerRecord | null that returns a 'text'-kind record for <p>, <h1>–<h6>, and text-bearing leaf <div>/<span>, or null when the element should not become a text container"
+  - "[ ] apps/visual-composer/src/parser/extractors/image.ts exports extractImage(el: HTMLImageElement): ContainerRecord that returns an 'image'-kind record with src, alt, intrinsic bounds (naturalWidth/Height), and computed styles"
+  - "[ ] Walker skips <script>, <style>, <noscript>, <template>, and elements with display: none, visibility: hidden, opacity: 0, or aria-hidden='true'"
+  - "[ ] Walker captures the source-DOM path as a CSS-selector-like path string (e.g., 'body > section:nth-of-type(2) > p:nth-of-type(3)') for each emitted record"
+  - "[ ] Computed styles captured per record: font-family, font-size (px), color, background-color, line-height, text-align, font-weight"
+  - "[ ] extract() in src/parser/index.ts now wires the walker + text + image extractors and returns a populated ContainerRecord[]"
+  - "[ ] Unit tests in tests/parser/text.test.ts pass against tests/fixtures/brad-minimal.html (assertion: ≥1 'text'-kind record per <p>, every <img> appears as 'image'-kind, no hidden elements emitted)"
+  - "[ ] Unit tests in tests/parser/image.test.ts pass against the same fixture"
+  - "[ ] tests/fixtures/brad-minimal.html exists: a hand-authored 50–150 line Brad-style document with at least 3 paragraphs, 2 headings, 1 visible <img>, 1 hidden <p> (display:none), and 1 <script> block"
+  - "[ ] Performance smoke: walker completes on brad-minimal.html in <50ms"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-01"
+      what_it_provides: "ContainerRecord type, project scaffolding, extract() stub to populate"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/dom-walker.ts"
+  - "apps/visual-composer/src/parser/extractors/text.ts"
+  - "apps/visual-composer/src/parser/extractors/image.ts"
+  - "apps/visual-composer/src/parser/index.ts"                 # wire walker + extractors into extract()
+  - "apps/visual-composer/src/parser/types.ts"                 # ONLY if a missing helper type is needed; minimize
+  - "apps/visual-composer/tests/parser/text.test.ts"
+  - "apps/visual-composer/tests/parser/image.test.ts"
+  - "apps/visual-composer/tests/fixtures/brad-minimal.html"
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/extractors/svg.ts"        # slice 03
+  - "apps/visual-composer/src/parser/extractors/table.ts"      # slice 04
+  - "apps/visual-composer/src/parser/extractors/background.ts" # slice 05
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"       # slice 06
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"    # DOM walking patterns
+  - "testing"
+  - "quality-gates"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "ContainerRecord is FROZEN — defined in slice 01 and referenced verbatim in STORY-003-001 technical_notes. Do not change its shape."
+  - "Use native browser DOMParser; do NOT introduce JSDOM, Cheerio, or any other parsing library — parser must run in-browser without a Node sidecar."
+  - "DOMParser('text/html') already disables script execution by default — verify this assumption with the XSS sandbox fixture (will be added in slice 07)."
+  - "Source-DOM path format: CSS-selector-like, derived by walking parent chain. Stable across re-ingest of the same HTML — must be deterministic, not random IDs."
+  - "Hidden detection: use window.getComputedStyle(el) (or the equivalent against a detached document); inline style/class can lie. Aria-hidden='true' counts as hidden."
+  - "Text-bearing detection: emit a 'text' record for an element only if it has non-empty trimmed direct text content (childNodes filtered to Node.TEXT_NODE). Skip text inside <table>/<svg> — those are handled by their own extractor slices."
+  - "Image natural dimensions: <img>.naturalWidth/naturalHeight are 0 if the image hasn't loaded. For the unit test, use data: URIs or local-file fixtures so dimensions are available synchronously."
+
+# Technical requirements
+technical_requirements:
+  - "All extractors are pure functions (no side effects, no mutation of input element)"
+  - "Walker is a single-pass tree traversal (O(n) over visible nodes)"
+  - "Hidden-element pruning happens at walker level — extractors never see hidden elements"
+  - "computedStyle capture uses window.getComputedStyle once per element, not per-property"
+  - "Source-DOM path is stable: re-running walker on the same input must produce identical path strings"
+
+# Testing requirements
+testing_requirements:
+  - "Vitest unit tests for each extractor + walker"
+  - "Fixture brad-minimal.html exercises: paragraphs, headings, images, hidden elements, script tags"
+  - "Type-narrowing test: switch on record.kind, ensure 'text' branch can access TextContent payload, 'image' branch can access ImageContent payload"
+  - "Edge case test: empty HTML string → walker returns empty array, no errors"
+  - "Edge case test: HTML with only hidden elements → walker returns empty array"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-performance-reviewer"  # walker perf budget matters; flag quadratic patterns
+
+# Effort estimate
+effort_estimate: "L"
+# Rationale: ~30min walker w/ hidden-element pruning; ~45min text + image extractors;
+# ~45min source-DOM path derivation; ~1.5hr fixture + unit tests; ~30min performance smoke + integration into extract().
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  This slice establishes the walker pattern. Slices 03/04/05 will follow
+  the same pattern: a pure extractor function that takes an element and
+  returns a ContainerRecord. The walker dispatches to the right extractor
+  based on element kind.
+
+  brad-minimal.html is a HAND-AUTHORED fixture, not exported from a real
+  Brad pipeline run. Keep it small and focused on the assertions in this
+  slice's tests. Real Brad documents come in slice 07.
+
+# Plan addenda — added 2026-05-26 after SLICE-003-001-01 completion review
+# Source: SLICE-003-001-01 reviewer findings F1 + F3
+plan_addenda:
+  - finding_id: F1
+    source: "SLICE-003-001-01 integration-reviewer (PASS, minor finding)"
+    description: |
+      vite.config.ts currently sets test.environment: 'node'. This slice
+      introduces DOM-walking code that requires window/Document at test
+      time. Pick one of these patterns:
+        (a) Add happy-dom or jsdom as a devDep and set test.environment:
+            'happy-dom' globally in vite.config.ts.
+        (b) Use a per-file pragma: `// @vitest-environment jsdom` at the
+            top of each walker test file, keeping the global env as 'node'
+            for pure-type tests.
+      Pattern (a) is simpler; pattern (b) keeps the type-only tests fast.
+      Architect recommends (a) — happy-dom over jsdom (3x faster startup,
+      sufficient API for DOMParser).
+    action: |
+      During slice 02 execution:
+        1. pnpm add -D happy-dom
+        2. Set test.environment: 'happy-dom' in vite.config.ts
+        3. Verify existing slice-01 types.test.ts still passes under the
+           new environment
+
+  - finding_id: F3
+    source: "SLICE-003-001-01 qa-reviewer (PASS, minor finding)"
+    description: |
+      apps/visual-composer/src/parser/index.ts line 33 has a stale
+      `// eslint-disable-next-line @typescript-eslint/no-unused-vars`
+      comment from the Vite template. No ESLint is configured. The
+      tsconfig's noUnusedParameters flag already handles the unused-var
+      concern via the leading-underscore convention (_html).
+    action: |
+      When wiring the walker + extractors into index.ts in this slice,
+      delete line 33's comment. No other change needed.

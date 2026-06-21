@@ -1,0 +1,244 @@
+{
+  "entries": [
+    {
+      "id": "EV-001",
+      "claim": "There is no free nationwide owner-name property search; ownership lives across ~3,100 counties under 48+ recording statutes, so 'widest net' means maximizing independent discovery channels and pivots and taking the union.",
+      "source_refs": ["PLAN.md §1 'The reality this plan is built around'", "PLAN.md §2"],
+      "tier": "T2",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Foundational premise of the whole design. Authoritative within PLAN.md (already-completed research).",
+      "lattice_node_ids": ["cq-01", "meth-union", "risk-nofree", "ent-parcel"]
+    },
+    {
+      "id": "EV-002",
+      "claim": "Property under ownership-or-control surfaces through 9 independent discovery channels (assessor owner-name, recorder grantor-grantee index, mailing-address pivot, entity graph, lien/judgment+UCC, bankruptcy A/B+SOFA, court records, people-search, concealment piercing); each catches what a direct owner-name assessor search misses.",
+      "source_refs": ["PLAN.md §2 table"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Channel completeness strategy. Recorder grantor-grantee index flagged highest-yield free channel.",
+      "lattice_node_ids": ["cq-02", "meth-union", "proc-channels", "ent-deed", "ent-lien", "ent-ucc", "ent-courtcase", "metric-channelcov"]
+    },
+    {
+      "id": "EV-003",
+      "claim": "Owner-search capability by jurisdiction drives routing: true statewide owner search = MD/MA/MT; owner-friendly county-by-county = FL/TX/AZ/NV; name-blocked (use recorder index) = CA (Gov. Code §7928.205), Cook County IL, NJ (Daniel's Law); everywhere else county-by-county.",
+      "source_refs": ["PLAN.md §2 'Owner-search capability by jurisdiction'", "references/owner-search-by-state.md (planned)"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 0,
+      "notes": "Portal availability is volatile (T2/empirical); routing matrix maintained in a reference file. Statute citations are T1-grade where cited.",
+      "lattice_node_ids": ["cq-03", "meth-routing", "std-ca7928", "std-njdaniels", "std-cook", "risk-nameblocked"]
+    },
+    {
+      "id": "EV-004",
+      "claim": "The recorder grantor-grantee name index is the highest-yield free channel and the workaround for name-blocked states; it catches LLC/trust transfers, roll lag, and name-suppressed owners.",
+      "source_refs": ["PLAN.md §2 channel 2", "PLAN.md §2 note"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Core discovery channel; design centers v1 on this plus channels 1,3,4.",
+      "lattice_node_ids": ["cq-04", "meth-recorderindex", "proc-channels", "ent-deed"]
+    },
+    {
+      "id": "EV-005",
+      "claim": "The mailing-address pivot (ArcGIS REST MAIL_ADDR LIKE, bulk-roll group-by, FL statewide cadastral layer) surfaces portfolios held under many entity names but billed to one back office.",
+      "source_refs": ["PLAN.md §2 channel 3", "PLAN.md scripts/arcgis_query.py"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 0,
+      "notes": "ArcGIS REST is a free queryable interface to many county/state parcel layers; FL exposes a statewide cadastral layer.",
+      "lattice_node_ids": ["cq-05", "meth-mailpivot", "ent-address", "ent-parcel"]
+    },
+    {
+      "id": "EV-006",
+      "claim": "The entity graph expands from a seed (person -> officer/agent -> entities -> sibling entities & people -> parcels) using SoS + OpenCorporates; nodes = {name, person, entity, address, agent, phone, email, parcel, loan, lien, deed, court-case, UCC} and edges = 'shares attribute X'.",
+      "source_refs": ["PLAN.md §4", "PLAN.md scripts/graph.py"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "The graph engine is the spine: it rediscovers its own worklist. SoS registries + OpenCorporates are free.",
+      "lattice_node_ids": ["cq-06", "meth-graph", "ent-entity", "ent-person", "ent-agent", "ent-phone", "ent-email", "proc-entitydisc"]
+    },
+    {
+      "id": "EV-007",
+      "claim": "Every edge stores temporal + provenance fields {source, source_url, confidence, date_first_seen, date_last_verified, effective_date, expiration_date, raw_evidence} because ownership is time-variant and an edge needs an 'as of'.",
+      "source_refs": ["PLAN.md §4 'Edge schema'"],
+      "tier": "T2",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Hard schema requirement; grounds the provenance NFR and auditability.",
+      "lattice_node_ids": ["cq-07", "meth-edgeschema", "ent-edge", "std-provenance", "metric-freshttl"]
+    },
+    {
+      "id": "EV-008",
+      "claim": "Edge strength order (strongest->noisiest): shared officer/member > shared mailing/principal address > shared phone > shared email/domain > shared filing batch/organizer > shared registered agent (only if non-commercial); inverse-frequency weighting separates signal from noise.",
+      "source_refs": ["PLAN.md §4 'Edge strength'", "PLAN.md §4 'Inverse-frequency weighting'"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "A value shared by 2 nodes is strong; shared by thousands is noise. Non-commercial agent on a few entities is a strong control link (inverse signal kept).",
+      "lattice_node_ids": ["cq-08", "meth-edgestrength", "meth-invfreq", "anti-hubexpand"]
+    },
+    {
+      "id": "EV-009",
+      "claim": "The hub-guard (registered-agent stop-list hub_agents.txt + dynamic hub detection at a frequency threshold, default 25 + bounded hops, default 2 degrees + inverse-frequency weighting + log-every-prune) prevents combinatorial blow-up while keeping coverage honest; CMRA/virtual-office/UPS-Store addresses flagged.",
+      "source_refs": ["PLAN.md §4 'Hub guards'", "PLAN.md §16 D7/D8", "references/hub_agents.txt (planned)"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Threshold 25 and hop 2 are defaults (Assumption/tunable per D7/D8). Logging every prune is mandatory for honest coverage.",
+      "lattice_node_ids": ["cq-09", "meth-hubguard", "meth-stoplist", "meth-dynhub", "meth-hoplimit", "anti-hubexpand", "anti-unboundedexp", "metric-prunect"]
+    },
+    {
+      "id": "EV-010",
+      "claim": "Swarm agents must be isolated/blind to each other; two agents independently landing on the same parcel is genuine corroboration, which makes 'Verified = 2+ independent isolated agents' meaningful rather than circular.",
+      "source_refs": ["PLAN.md §3 'Why swarm'", "PLAN.md §3 architecture diagram"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Adapted from acos-swarm-research. Isolation matters for correctness, not just speed.",
+      "lattice_node_ids": ["cq-10", "meth-blindswarm", "meth-corroboration", "term-verified", "metric-corrob"]
+    },
+    {
+      "id": "EV-011",
+      "claim": "The between-rounds synthesizer cross-references findings -> confidence, PRESERVES conflicts as manual-review flags (never silently harmonizes), hub-prunes + enforces the hop limit before seeding the next round, and emits newly discovered seeds; the loop stops when a round yields no new high-confidence nodes.",
+      "source_refs": ["PLAN.md §3 'BETWEEN-ROUNDS SYNTHESIZER'", "PLAN.md scripts/synthesize_round.py"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "The control point a generic swarm lacks; holds the hub stop-list + hop counter. Conflict preservation is a hard rule.",
+      "lattice_node_ids": ["cq-11", "meth-synthesizer", "meth-conflictpreserve", "proc-loop", "anti-harmonize", "ent-roundsynth"]
+    },
+    {
+      "id": "EV-012",
+      "claim": "Stage-1 identity resolution runs before entity discovery: expand aliases, maiden/Jr-Sr/middle-name variants, prior addresses, spouse/relatives/associates via free people-search (ThatsThem/TruePeopleSearch/FastPeopleSearch) as LEADS ONLY (corroborate against a primary record before scoring); require >=2 anchors for common names.",
+      "source_refs": ["PLAN.md §5", "PLAN.md §2 channel 8"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "People-search is leads-only; DOB/age used only as a disambiguation anchor subject to the compliance gate.",
+      "lattice_node_ids": ["cq-12", "proc-identity", "meth-anchors", "anti-leadasfact", "risk-commonname", "ent-person"]
+    },
+    {
+      "id": "EV-013",
+      "claim": "Concealed holdings are pierced via recorded instruments: land trusts (Collateral Assignment of Beneficial Interest + personal guaranty + IL 765 ILCS 405 public-disclosure register; FL 689.071 more opaque), nominees/series LLCs (mortgage/deed-of-trust signatories + guaranty + UCC debtor name + tax-bill mailing triangulation), trusts (search person as trustee + trust name), contract-for-deed/life estate/TIC (read the vesting clause). DBA/assumed-name filings work for us.",
+      "source_refs": ["PLAN.md §6 'Concealment-piercing playbook'"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 0,
+      "notes": "Channel 9. Phased to v2 for depth; flagged in v1. Statute citations (765 ILCS 405, FL 689.071) are T1-grade.",
+      "lattice_node_ids": ["cq-13", "meth-piercing", "std-illandtrust", "std-fllandtrust", "ent-deed", "ent-ucc", "ent-loan"]
+    },
+    {
+      "id": "EV-014",
+      "claim": "FinCEN BOI is NOT usable (non-public; the March 2025 interim final rule exempted virtually all US domestic entities so the data often does not exist); paid APIs / data brokers (ATTOM, CoreLogic, BatchData, RealEstateAPI, Middesk, TLO/IDI) are excluded by the free-only constraint.",
+      "source_refs": ["PLAN.md §6 'FinCEN BOI'", "PLAN.md §1 'Hard constraints'"],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Hard exclusions. BOI flag-only; free-sources-only is a locked constraint.",
+      "lattice_node_ids": ["cq-14", "std-freeonly", "anti-paidapi", "anti-boidep", "risk-boiunusable"]
+    },
+    {
+      "id": "EV-015",
+      "claim": "The merged scoring rubric assigns concrete points (+40 owner-of-record exact, +25 tax-mailing match, +25 manager/member/officer, +20 shared phone/email, +10 spouse/associate, +10 per independent corroborating channel capped +20; -40 registered-agent-only, -30 common-name-only, -20 hub/virtual-office mailing, -10 inactive/dissolved, -10 conflicting owner names; cap <=40 if the only link runs through a hub) and confidence tiers >=75 high / 50-74 candidate / <50 weak (tunable).",
+      "source_refs": ["PLAN.md §7 'Merged scoring rubric'", "PLAN.md §16 D6", "PLAN.md scripts/score.py"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Points and 75/50 cutoffs are tunable defaults (Assumption per D6). Drives score.py determinism + review flags.",
+      "lattice_node_ids": ["cq-15", "meth-scoring", "meth-tiers", "ent-confidence", "ent-reviewflag", "metric-fpr"]
+    },
+    {
+      "id": "EV-016",
+      "claim": "The manual-review flag taxonomy (common name, registered-agent-only match, inactive/dissolved entity, recently transferred, mailing addr law-firm/virtual-office/CMRA, trust ownership, no mortgage data found, conflicting owner names, data > 90 days) preserves uncertainty for human review.",
+      "source_refs": ["PLAN.md §7 'Manual-review flag taxonomy'", "references/review-flags.md (planned)"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Flags surface in the report; never silently resolved.",
+      "lattice_node_ids": ["cq-15", "ent-reviewflag", "meth-conflictpreserve", "anti-harmonize"]
+    },
+    {
+      "id": "EV-017",
+      "claim": "Per confirmed parcel, an estimated equity picture is computed from FREE data: assessed value (flag 'assessed, not market'), last sale price+date, original recorded mortgage/deed-of-trust amount+date with a stated amortization assumption for remaining balance, estimated equity = value - estimated encumbrances; 'no mortgage data found' flagged; true AVM/current payoff need paid sources and are stated as a limitation, never fabricated.",
+      "source_refs": ["PLAN.md §8 'Equity / value / debt rollup'", "PLAN.md scripts/rollup.py"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "Every figure labeled 'estimated'; fabricating AVM/payoff is an explicit anti-pattern.",
+      "lattice_node_ids": ["cq-16", "meth-rollup", "ent-equity", "anti-fabricate", "risk-equitymisread"]
+    },
+    {
+      "id": "EV-018",
+      "claim": "A BLOCKING compliance gate runs first every time: permissible purpose mapped to statute (DPPA 2721(b)(3) debt recovery / (b)(4) judgment enforcement; FCRA 1681b(a)(3)(A) for any credit pull; dossier flagged 'asset location / debt recovery - NOT for eligibility'); debt classification consumer vs. commercial (FDCPA applies to consumer only); GLBA anti-pretexting HARD BLOCK; scraping posture (official feeds/record APIs, public no-login pages, respect robots/rate limits, per-datum provenance).",
+      "source_refs": ["PLAN.md §10 'Compliance gate'", "PLAN.md §16 D3", "references/compliance.md (planned)"],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Blocking, non-bypassable. GLBA hard block has no general debt-collection exception. Statutes are T1; counsel sign-off out of scope (not legal advice).",
+      "lattice_node_ids": ["cq-17", "proc-compliancegate", "std-dppa", "std-fcra", "std-fdcpa", "std-glba", "std-scraping", "risk-legal", "ent-compliancerec"]
+    },
+    {
+      "id": "EV-019",
+      "claim": "A JSON cache wraps every external lookup keyed by person/entity/address/parcel/query with freshness TTLs (corporate ~30 d, property ~30-60 d, deed/transfer more often), handling rate limits + 403 blocks and making re-runs cheap and auditable; per-record freshness stamps surface in the report.",
+      "source_refs": ["PLAN.md §9 'Caching & freshness'", "PLAN.md scripts/cache.py"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 0,
+      "notes": "TTL numbers are PLAN.md suggestions (Assumption/tunable per matter).",
+      "lattice_node_ids": ["cq-18", "meth-cache", "ent-cacheentry", "metric-freshttl", "risk-block"]
+    },
+    {
+      "id": "EV-020",
+      "claim": "Output must use mandated hedged language ('likely controlled by', 'possible ownership connection via mailing address'); reserve 'owns' only where a title record directly supports it; never 'definitely owns' otherwise - for accuracy and legal control.",
+      "source_refs": ["PLAN.md §7 'Mandated hedged language'"],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Hard output rule; legal + accuracy control.",
+      "lattice_node_ids": ["meth-hedged", "std-hedged", "anti-overclaim", "ent-reportv1"]
+    },
+    {
+      "id": "EV-021",
+      "claim": "The skill is a project skill (disable-model-invocation: true, user-invocable: true) = methodology SKILL.md + small stdlib-only Python helpers + reference files, with no external infrastructure (no Neo4j/Elasticsearch/Postgres/billing); a full audit trail is written under workspace/<session-id>/round-NN/agent-NN/findings.md + synthesis/.",
+      "source_refs": ["PLAN.md §1 'Hard constraints'", "PLAN.md §14 file layout"],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Form-factor + no-infra are locked constraints; explicit-invocation chosen because skip tracing carries compliance weight.",
+      "lattice_node_ids": ["std-skillform", "std-stdlib", "std-noinfra", "ent-auditartifact", "proc-audit"]
+    },
+    {
+      "id": "EV-022",
+      "claim": "The skill composes existing skills: embedded adapted swarm (pattern from acos-swarm-research, v1), acos-loan-doc-generator-with-visual-verification (institutional render, v2), schedule (recurring monitoring/alerts, v2), testing (unit tests for helpers, v1), acos-decide (ADR for D1-D8, build time), fewer-permission-prompts/update-config (allowlist + swarm-isolation hook, build time), deep-research (optional depth).",
+      "source_refs": ["PLAN.md §13 'Skill composition map'", "PLAN.md §18 build steps"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 0,
+      "notes": "Skill-of-skills delegation. v1 embeds the swarm (Decision D1 default).",
+      "lattice_node_ids": ["meth-skillofskills", "meth-blindswarm", "proc-monitor"]
+    },
+    {
+      "id": "EV-023",
+      "claim": "Honest limitations stated in the skill: no free national owner search; ~3 statewide systems + a few friendly states else county-by-county; CA/NJ/Cook suppress owner names; big counties (LA/SF/King/Maricopa) gate the richest owner+mailing data behind purchase; document images often cost; many portals 403-block bots; FinCEN BOI unusable; people-search = leads only; equity figures are estimates not AVMs; not legal advice; nationwide 50-state PI/collector/data-broker licensing analysis out of scope.",
+      "source_refs": ["PLAN.md §17 'Honest limitations'"],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 0,
+      "notes": "Stated limitations are a first-class output requirement (coverage & limits footer).",
+      "lattice_node_ids": ["risk-nofree", "risk-nameblocked", "risk-biggate", "risk-block", "risk-licensing", "ent-reportv1"]
+    },
+    {
+      "id": "EV-024",
+      "claim": "PLAN.md records eight default decisions (D1 embed swarm; D2 Markdown v1 then doc-skill render v2; D3 hard blocking compliance gate; D4 channels 1-4 + recorder full, 5-9 phased; D5 v1 script set; D6 75/50 tiers; D7 hub threshold 25; D8 hop limit 2) that should be captured in an acos-decide ADR at build time.",
+      "source_refs": ["PLAN.md §16 'Decisions log'", "PLAN.md §18 step 1"],
+      "tier": "T1",
+      "confidence": 0.95,
+      "freshness_days": 0,
+      "notes": "Authoritative decision defaults; the diagnostic slice locks these via an ADR.",
+      "lattice_node_ids": ["pat-decisiondefaults", "proc-compliancegate", "meth-hubguard", "meth-tiers"]
+    }
+  ]
+}

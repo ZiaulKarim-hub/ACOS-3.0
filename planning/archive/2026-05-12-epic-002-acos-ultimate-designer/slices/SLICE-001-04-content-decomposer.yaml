@@ -1,0 +1,81 @@
+slice_id: "SLICE-001-04"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Content-to-page-plan decomposer"
+objective: |
+  Build scripts/decompose-content.py that takes user-supplied content (YAML or
+  markdown) and produces a page-plan — an ordered list of page spec objects
+  {template_id, content_dict, photo_slots, italic_accent_phrase}. Apply
+  coffee-table composition heuristics: first page = cover, last page = closing,
+  chapter_divider between each content.parts[], photo_break every 3 content
+  pages minimum.
+
+acceptance_criteria:
+  - "[ ] scripts/decompose-content.py exists, Python 3, executable (shebang + chmod +x)"
+  - "[ ] Reads input content from argv[1] — supports both .yaml and .md (front-matter markdown with YAML header)"
+  - "[ ] Writes page-plan to argv[2] as YAML — ordered list of page specs"
+  - "[ ] Heuristic: first page is always template_id=cover"
+  - "[ ] Heuristic: last page is always template_id=closing"
+  - "[ ] Heuristic: if content has multiple parts[], insert a chapter_divider page between them"
+  - "[ ] Heuristic: every 3 consecutive content pages without a photo page, insert a photo_break page (maintains coffee-table rhythm)"
+  - "[ ] Content-to-template mapping heuristic: metric-heavy content → metric-grid; timeline-shaped content (dated steps) → timeline; product/capability listings → product-detail; portfolio items → portfolio-grid; narrative prose → two-column-narrative"
+  - "[ ] italic_accent_phrase picked per page from section title's last 1-2 meaningful words (noun-carrying)"
+  - "[ ] photo_slots extracted from template metadata + content context — each slot has {slot_id, semantic_tags[], placement_context}"
+  - "[ ] Handles empty input gracefully (minimum viable output: cover + closing)"
+  - "[ ] --dry-run flag prints page plan without writing; --verbose flag logs per-page heuristic decisions"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-03"
+      what_it_provides: "9 page templates with metadata on photo slot requirements"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/decompose-content.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-qa-gate.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Input format is deliberately flexible — users may supply a structured YAML or a markdown file with front-matter. Both produce the same page-plan schema."
+  - "Coffee-table rhythm is the defining aesthetic: photos breathing between blocks of text. The 1-per-3 rule is the floor, not the ceiling."
+  - "Italic accent heuristic: in 'Flexible Capital.', 'Capital' is italicized. In 'Our Debt Solutions.', 'Solutions' is italicized. Generally the last noun or the key word that names the subject."
+  - "Content taxonomy recognition is heuristic, not ML. Simple rules: if content has {metric: value} shape → metric-grid; if content has date-stamped items → timeline; etc. Document the rules so users can shape input to match."
+
+technical_requirements:
+  - "Python 3.9+; uses only stdlib + pyyaml (already available in ACOS)"
+  - "Pure function: same input deterministically produces same page-plan"
+  - "Graceful errors for malformed input: print error, exit 1, do not partial-write"
+
+testing_requirements:
+  - "Unit test: feed a minimal 1-section YAML, verify output is [cover, two-column-narrative, closing]"
+  - "Unit test: feed 4+ content sections, verify a photo_break is inserted"
+  - "Unit test: feed content.parts with 2 parts, verify chapter_divider is inserted between them"
+  - "Edge: empty content input produces [cover, closing] (no crashes)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is the brain of Story 1. A bad decomposer yields visually-inconsistent
+  output even if templates are perfect. Spend extra time on the italic_accent
+  heuristic and on the content-to-template mapping — these are what make the
+  output feel authored rather than templated.

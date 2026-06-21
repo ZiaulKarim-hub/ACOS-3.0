@@ -1,0 +1,47 @@
+timestamp: "2026-06-01T00:00:00Z"
+status: "completed"
+session_summary: "Created an OKOA Mortgage Payoff Statement for the Gonzalez / NC FH LLC loan (488 Albert Avenue, Las Vegas) by reproducing the True American payoff PDF template pixel-exactly, then produced an editable MS Word variant of the same design as a reusable template."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Built a pixel-exact PDF payoff for NC FH LLC / 488 Albert Avenue from the True American template, populated with Gonzalez DOCX data (good-through June 18th 2026; $329,100.00; $140.00/diem; ZIP corrected 89ll9->89119)."
+  - "First attempt eyeballed the layout (Helvetica Neue, guessed sizes) and was rejected; corrected by extracting the template's EXACT spec (Inter font via pdffonts; per-span size/weight/color/baseline via PyMuPDF; band rects via get_drawings) and rebuilding as a coordinate-precise SVG -> PDF."
+  - "Bound fonts with explicit @font-face to local Inter TTFs so weight 300 resolves to Inter-Light (not Inter-Thin); verified embedded fonts = Inter Light/Regular/Medium/SemiBold."
+  - "Fixed the header OKOA wordmark dark-box bug: extract_image dropped the soft-mask (xref 11); rebuilt as white RGB + smask alpha so the logo is transparent on the green band."
+  - "Built an editable MS Word (.docx) variant matching the design: full-bleed green header/footer via zero-margin section + full-width shaded tables, padding via paragraph indents (not cell margins), coral hairline, beige metric panel w/ coral bar + dividers, gray wiring panel, footer band in Word page footer. Pre-filled with Gonzalez data, plain-editable. Verified via LibreOffice render."
+
+files_modified:
+  - path: "/Users/zee/Documents/OKOA/Gonzalez - Albert Ave Payoff/Albert_Ave_Payoff_OKOA.pdf"
+    changes: "Final pixel-exact payoff PDF (user renamed from NC_FH_LLC_488_Albert_Ave_Payoff_OKOA.pdf)."
+  - path: "/Users/zee/Documents/OKOA/Gonzalez - Albert Ave Payoff/OKOA_Payoff_Statement_TEMPLATE.docx"
+    changes: "New editable Word payoff template, pre-filled with Gonzalez data."
+  - path: "memory/feedback_template_match_extract_dont_eyeball.md"
+    changes: "New feedback memory: extract exact metrics, never eyeball, when matching a template."
+  - path: "memory/MEMORY.md"
+    changes: "Added index pointer for the new feedback memory."
+
+decisions_made:
+  - "Reproduce template via SVG at exact PDF coordinates rather than editing the flat PDF (no editable text layer; eyeballed flow layout could not match)."
+  - "Word full-bleed bands require section margins=0 + full-width shaded tables; padding via paragraph indents because cell margins render unshaded white at the page edge in some engines."
+  - "Word footer band placed in the actual page footer so it stays bottom-anchored as the user edits body text."
+  - "Two-decimal currency ($329,100.00 / $140.00) to match the template's presentation; flagged for user confirmation. ZIP 89119 correction flagged."
+
+blockers: []
+
+next_actions:
+  - "User to sanity-check the two flagged items: ZIP 89119 and the .00 currency formatting."
+  - "For new payoffs: open OKOA_Payoff_Statement_TEMPLATE.docx, overtype the values, Save As. Generate final PDF from the user's Mac to preserve Inter."
+
+context_for_next_session: |
+  Reusable generators live in /tmp (ephemeral): okoa_payoff_exact_generator.py (PDF via PyMuPDF
+  extraction + SVG + html-to-pdf.js) and okoa_payoff_docx_builder.py (python-docx). The OKOA payoff
+  template is set in Inter (not Helvetica): header/footer band #465D53, coral accent #FF795E, beige
+  metric panel #F5EEE4, gray wiring panel #F0ECE9. The white header wordmark is an embedded PNG
+  defined by a soft-mask (rebuild as white + smask-alpha). See memory
+  feedback_template_match_extract_dont_eyeball.md for the full method. This was an ad-hoc OKOA
+  document task, not an ACOS planning slice.

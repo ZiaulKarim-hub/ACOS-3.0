@@ -1,0 +1,83 @@
+timestamp: "2026-05-28T00:00:00Z"
+status: "completed"
+session_summary: |
+  Built the acos-fireflies-ask skill from scratch (SKILL.md + 3 Python scripts +
+  extract template), integrated Doppler-backed Fireflies API key resolution, pulled
+  all 765 Fireflies meeting transcripts into local cache (212 MB), generated
+  structured per-meeting extracts for all of them, and answered multiple substantive
+  deal-update queries for the Beehive Ascent Waldorf / Lux II portfolio.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Built /acos-fireflies-ask skill at ~/.claude/skills/acos-fireflies-ask/ (global scope)"
+  - "Three Python stdlib scripts: fireflies_client.py (setup/refresh/verify), fireflies_search.py (list/search), fireflies_extract.py"
+  - "Doppler integration: secret stored in project=acos-fireflies-ask config=dev_personal as FIREFLIES_API_KEY; resolver falls back to env var or local dotfile"
+  - "Hardened refresh to be resumable: uses disk-as-truth instead of manifest, non-fatal per-transcript errors with retry/skip, incremental manifest writes every 25 fetches"
+  - "Cached 765 transcripts from Fireflies (~212 MB at ~/.fireflies-cache/)"
+  - "Generated structured YAML extracts for all 765 meetings at ~/.fireflies-cache/extracts/"
+  - "Answered: 2-week deal update for Riverdale, Utah Shoe, Utah Shoe 3, Argent, Ascent Senior, Ascent Pref, Lux II"
+  - "Surfaced Ascent Weekly 2026-05-26 as the substantive Beehive Ascent Waldorf meeting (lawsuit-by-Wednesday decision against Phil)"
+  - "Traced the Lux II 'mini loan' history from 2026-02-10 origin (Park City golf trip, $2.2M Variant bridge) through current payment waterfall"
+  - "Identified Phil Wright (Wolfgramm sponsor) as the borrower with Stephanie as co-guarantor"
+
+files_modified:
+  - path: "~/.claude/skills/acos-fireflies-ask/SKILL.md"
+    changes: "Created. Doppler-recommended setup path; Phase 1-5 protocol; key resolution order documented"
+  - path: "~/.claude/skills/acos-fireflies-ask/scripts/fireflies_client.py"
+    changes: "Created. Setup/verify/refresh subcommands. Resumable refresh with non-fatal per-transcript errors and 4x retry with backoff on transient GraphQL errors."
+  - path: "~/.claude/skills/acos-fireflies-ask/scripts/fireflies_search.py"
+    changes: "Created. List + search subcommands; TF-IDF-ish ranking with title/keyword/body weights."
+  - path: "~/.claude/skills/acos-fireflies-ask/scripts/fireflies_extract.py"
+    changes: "Created. Per-meeting YAML extracts with attendees, action_items, bullet_gist, keywords, topics, and heuristic decision extraction (ai_filters.task OR decision-keyword regex)."
+  - path: "~/.claude/skills/acos-fireflies-ask/templates/extract-schema.yaml"
+    changes: "Created. Reference schema for extracts/<id>.yaml output."
+  - path: ".acos/state/model-session.yaml"
+    changes: "Set to premium profile for this session."
+
+decisions_made:
+  - "Skill scoped global (~/.claude/skills/) not project (.claude/skills/) — meetings span all projects, not ACOS-specific."
+  - "Named acos-fireflies-ask per user directive overriding initial fireflies-ask choice — consistent with user's personal skill namespacing convention (acos-electronics-repair, acos-grader, etc.)."
+  - "Doppler-backed key resolution as recommended path; local dotfile retained as fallback for non-Doppler machines."
+  - "Disk-as-truth for refresh resume rather than manifest-as-truth — survives mid-run crashes without re-downloading completed transcripts."
+  - "Per-transcript GraphQL errors are non-fatal — single bad transcript skipped, run continues, failed IDs reported at end."
+
+blockers: []
+
+next_actions:
+  - "Watch for newly-shared Beehive Ascent Waldorf meetings to propagate to user's Fireflies API — the Pace call (~5/19) that Tyler recapped on 5/21 is the most likely candidate"
+  - "Run /acos-fireflies-ask refresh after Wed 2026-05-28 to confirm whether the threatened Pref lawsuit actually got filed"
+  - "Optional: add a /acos-fireflies-ask schedule sub-command or wire to /loop for periodic auto-refresh"
+  - "Optional: extend skill with date-bounded search (e.g., 'last 30 days') as a first-class flag rather than post-filtering"
+
+context_for_next_session: |
+  This session's primary artifact is a working, populated retrieval-augmented Q&A
+  system over the user's complete Fireflies meeting history (765 meetings, going
+  back to 2022). The cache lives at ~/.fireflies-cache/ and is incrementally
+  refreshable via /acos-fireflies-ask refresh.
+
+  Doppler config: project=acos-fireflies-ask, config=dev_personal, secret=FIREFLIES_API_KEY.
+  Already verified working: `python3 ~/.claude/skills/acos-fireflies-ask/scripts/fireflies_client.py verify`
+  reports `source: doppler(acos-fireflies-ask/dev_personal)` and `OK: Fireflies API reachable`.
+
+  Active deal context the user is tracking (Beehive Ascent Waldorf cluster):
+  - Senior loan: Pace/Nuveen, Sean Ribble is the contact, $50M upsize verbally
+    agreed ~5/19, held until Hilton Curio brand locks in
+  - Pref equity: lawsuit decision threshold was Wed 2026-05-28; complaint partially
+    drafted; Russ Handy capital raise effectively dead (0.1% chance per team)
+  - Borrower: Phil Wright (likely Wolfgramm-affiliated), with Stephanie as
+    co-guarantor; sending false reassurance to investors about $4M senior paydown
+  - Lux II is the related Wolfgramm portfolio with the unsigned "mini loan" side
+    note from a Feb 2026 Park City golf weekend
+
+  Skill quirks worth knowing:
+  - Fireflies' diarization mistranscribes "Ascent" as "a cent" sometimes
+  - "Lux 2", "Lux II", and "Lux2" all appear; regex must handle all three
+  - Speaker ID is unreliable on phone-joined participants; "Jason" sometimes
+    appears as "j" (lowercase, single letter)
+  - "LK OKOA" (Cam Lambing + Alex Klein, the buyer-side entity on Ascent) is a
+    different organization from OKOA Capital (the user's firm)

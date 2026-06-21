@@ -1,0 +1,75 @@
+slice_id: "SLICE-001-01"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Skill directory scaffold"
+objective: |
+  Create the skill directory tree at ~/.claude/skills/acos-ultimate-designer/
+  with SKILL.md (frontmatter + Purpose + Protocol stub), and the empty
+  subdirectories phases/, templates/page-templates/, templates/pptx-slide-masters/,
+  scripts/, examples/. Skill must be discoverable by Claude after this slice.
+
+acceptance_criteria:
+  - "[ ] ~/.claude/skills/acos-ultimate-designer/SKILL.md exists with valid frontmatter: name, description (trigger text), disable-model-invocation: false, user-invocable: true, allowed-tools (Read, Write, Edit, Bash, Task, AskUserQuestion)"
+  - "[ ] SKILL.md has Purpose section (one-paragraph what-it-does) and Protocol section (stub pointing to phases/phase0-wizard.md to be filled by STORY-006)"
+  - "[ ] Empty subdirectories exist: phases/, templates/page-templates/, templates/pptx-slide-masters/, scripts/, examples/ (use .gitkeep if needed)"
+  - "[ ] Skill is discoverable: Claude's skill loader finds it in ~/.claude/skills/ AND via additionalDirectories path to ACOS 3.0 source (symlink if authored in source directory)"
+  - "[ ] Skill name matches canonical ACOS naming: 'acos-ultimate-designer' (kebab-case, acos- prefix)"
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/"
+  - "~/.claude/skills/acos-ultimate-designer/SKILL.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-slide-masters/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "~/.claude/skills/acos-ultimate-designer/examples/"
+
+files_prohibited:
+  - "~/.claude/skills/acos-document-design-brad/"
+  - "~/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-document-design-brad/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+
+skills_recommended:
+  - "bash"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The skill lives in ACOS 3.0 source (/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-ultimate-designer/) and is symlinked into ~/.claude/skills/ by acos-bootstrap.sh. Author in source, verify via symlink."
+  - "SKILL.md at this stage is a stub — the full Phase 0 wizard protocol is authored in SLICE-006-01."
+  - "Kebab-case directory names matter — ACOS skill loader matches on directory name."
+  - "Do not copy SKILL.md content from acos-document-design-brad or acos-loan-doc-generator. Write fresh."
+
+technical_requirements:
+  - "Frontmatter must use the YAML block format at top of SKILL.md delimited by --- lines"
+  - "name field must equal 'acos-ultimate-designer'"
+  - "description field must be trigger-shaped ('Use this skill when...') so Claude picks it up semantically"
+  - "allowed-tools must include Task (skill spawns visual-reviewer agent in Phase 5) and AskUserQuestion (wizard in Phase 0)"
+
+testing_requirements:
+  - "Manual: list ~/.claude/skills/ and confirm acos-ultimate-designer appears (directly or via symlink)"
+  - "Manual: invoke /acos-ultimate-designer in a test prompt — Claude should recognize it (may error at protocol stub, that's acceptable)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "S"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  First slice. Keep SKILL.md minimal — a proper wizard protocol is authored in
+  STORY-006. The goal here is structural scaffolding + discoverability, not
+  full functionality.

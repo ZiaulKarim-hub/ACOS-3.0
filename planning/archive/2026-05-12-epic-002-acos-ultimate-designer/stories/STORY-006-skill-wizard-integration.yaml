@@ -1,0 +1,107 @@
+story_id: "STORY-006"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Skill Wizard + End-to-End Integration"
+description: |
+  A Phase 0 interactive wizard collects user inputs: content source, output
+  format, brand-asset path, document type, special instructions. Orchestrates
+  Stories 1–5 end-to-end. Integration test regenerates the v3 Private Credit
+  Capabilities PDF from reverse-engineered content and verifies ≥90% visual
+  fidelity against the reference.
+
+user_story: |
+  As a user invoking /acos-ultimate-designer,
+  I want a short wizard that collects my content + preferences in <10 prompts
+  and then produces the final output without further input,
+  So that I can go from content to investor-book PDF in one command.
+
+acceptance_criteria:
+  - "[ ] Phase 0 wizard runs in SKILL.md protocol, collects: (1) content source (file path — YAML or markdown); (2) output format (pdf / pptx / both); (3) brand-asset directory path (optional — skill uses Unsplash-only if unset); (4) document type (editorial / technical / executive — maps to Brad's document-type templates); (5) special instructions (e.g., 'use dark cover', 'emphasize growth', optional)"
+  - "[ ] Wizard has Quick mode (3 prompts: content, format, asset path) and Detailed mode (adds document type, instructions, iteration ceiling override)"
+  - "[ ] Orchestration: wizard writes session manifest with all inputs; spawns Story 1 (HTML emit) → Story 2 (image fill) → Story 1.6 (HTML QA gate) → Story 3|4 (convert to PDF and/or PPTX) → Story 5 (visual verify + Wigum loop) → final output display"
+  - "[ ] Session workspace at .acos/ultimate-designer/sessions/{session_id}/ contains: manifest.yaml, page-plan.yaml, output.html, output.pdf / output.pptx, visual-audit/, ATTRIBUTION.md"
+  - "[ ] Integration test (scripts/test-v3-regen.sh): takes reverse-engineered v3 content, runs full pipeline, compares output PDF to v3 reference, verifies: page count match (±1), file size within ±30%, first-page perceptual hash >80%, Brad QA gate passes, visual verification passes in ≤3 iterations"
+  - "[ ] Failure modes handled gracefully: missing API keys → fallback mode with warning; Wigum loop hits ceiling → saves last-iteration output + detailed defect report; content file unparseable → clear error with schema hint"
+  - "[ ] Skill is symlinked into ~/.claude/skills/ after creation (acos-bootstrap.sh --force --all-skills OR manual symlink)"
+  - "[ ] User-invocable as /acos-ultimate-designer via slash command; Claude-invocable via semantic trigger ('generate a coffee-table PDF', 'create an investor book', 'make an OKOA-styled document')"
+
+dependencies:
+  stories:
+    - story_id: "STORY-001"
+      what_it_provides: "HTML emitter"
+    - story_id: "STORY-002"
+      what_it_provides: "Image sourcing"
+    - story_id: "STORY-003"
+      what_it_provides: "PDF pipeline"
+    - story_id: "STORY-004"
+      what_it_provides: "PPTX pipeline"
+    - story_id: "STORY-005"
+      what_it_provides: "Visual verification + Wigum loop"
+
+slices:
+  - slice_id: "SLICE-006-01"
+    title: "Phase 0 wizard in SKILL.md"
+    description: "Write the full SKILL.md protocol with frontmatter + Purpose + Phase 0 (wizard: quick/detailed modes with prompt sequences) + Phase 1–5 dispatch instructions + status/resume commands. Use AskUserQuestion where appropriate for option-based prompts (format selection, doc type). Use text prompts for paths and instructions. Store all inputs in .acos/ultimate-designer/sessions/{session_id}/manifest.yaml."
+    effort: "M"
+    dependencies: []
+
+  - slice_id: "SLICE-006-02"
+    title: "End-to-end orchestration"
+    description: "SKILL.md dispatches Phase 1-5 sequentially, passing session_id + manifest_path. Each phase is either: (a) an inline Bash invocation of a script, or (b) a Task(agent) for model-tier-appropriate work. Phase 1-2 can run in parallel within themselves (inline); Phase 3/4 run conditionally on output_format; Phase 5 is unconditional. Wigum loop in Phase 5 can re-enter Phase 1 with fix instructions."
+    effort: "M"
+    dependencies: ["SLICE-006-01"]
+
+  - slice_id: "SLICE-006-03"
+    title: "v3 regeneration integration test"
+    description: "scripts/test-v3-regen.sh: (1) read /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html; (2) reverse-engineer content into YAML (examples/v3-input-sample.yaml); (3) point brand asset path to /Users/zee/Desktop/Private Credit Capabilities/v3/images/; (4) run full skill pipeline; (5) diff output PDF against reference PDF on: page count, file size, first-page perceptual hash, palette presence. Report pass/fail per check with evidence."
+    effort: "M"
+    dependencies: ["SLICE-006-02"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-006-01"]
+  - phase: 2
+    slices: ["SLICE-006-02"]
+  - phase: 3
+    slices: ["SLICE-006-03"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/SKILL.md (complete, not stub)"
+    - "~/.claude/skills/acos-ultimate-designer/phases/phase1-html.md"
+    - "~/.claude/skills/acos-ultimate-designer/phases/phase2-images.md"
+    - "~/.claude/skills/acos-ultimate-designer/phases/phase3-convert.md"
+    - "~/.claude/skills/acos-ultimate-designer/phases/phase4-verify.md"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/test-v3-regen.sh"
+    - "~/.claude/skills/acos-ultimate-designer/examples/v3-input-sample.yaml"
+  modify:
+    - "~/.claude/skills/ (create symlink acos-ultimate-designer -> ACOS 3.0 skill)"
+
+technical_notes: |
+  - Session directory convention follows loan-doc skill:
+    .acos/ultimate-designer/sessions/{YYYYMMDD-HHMMSS-slug}/
+  - Resume support: if user re-invokes /acos-ultimate-designer resume, skill
+    reads the latest session, picks up at the last completed phase.
+  - Status command: /acos-ultimate-designer status shows session list with
+    verdict + iteration count for each.
+  - Symlink decision: after the skill is built in ACOS 3.0 source, user should
+    symlink it into ~/.claude/skills/ so it's available everywhere. SKILL.md
+    can note this.
+
+review_focus:
+  - "Verify wizard UX: <10 prompts in detailed mode, <5 in quick mode"
+  - "Verify session isolation: running two sessions in parallel doesn't collide"
+  - "Verify integration test produces a decisive pass/fail, not ambiguous output"
+  - "Verify end-to-end time: from /acos-ultimate-designer to final PDF should be <5 minutes for a 12-page document with all images cached"
+
+effort_estimate: "M"
+
+notes: |
+  This story is pure glue code — no new functionality, just wiring. Expect
+  to discover integration issues here that require touching earlier stories
+  (e.g., Story 1's emitter may need a 'fix context' parameter that wasn't
+  anticipated). Budget for iteration.

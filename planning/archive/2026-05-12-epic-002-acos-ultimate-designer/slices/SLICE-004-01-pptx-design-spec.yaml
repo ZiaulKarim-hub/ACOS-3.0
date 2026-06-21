@@ -1,0 +1,75 @@
+slice_id: "SLICE-004-01"
+story_id: "STORY-004"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "PPTX design-spec schema"
+objective: |
+  Define templates/pptx-design-spec.yaml — the PPTX-native translation of Brad's
+  token system. Captures slide_dimensions (EMU), theme_colors (Brad token names
+  mapped to RGB hex), font_scheme (heading/body/mono family + fallback chains),
+  and background_fills per layout type (surface-white, surface-warm, surface-ink,
+  surface-sage, surface-navy). Must be consumable by loan-doc's data-to-pptx.py.
+
+acceptance_criteria:
+  - "[ ] FIRST: read /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py to determine its expected design-spec schema. Match that schema exactly — this slice's output is INPUT to that script."
+  - "[ ] templates/pptx-design-spec.yaml exists, valid YAML"
+  - "[ ] slide_dimensions field: {width_emu: <int>, height_emu: <int>} — decide 13.33×7.5 widescreen OR 10×7.5 standard based on content density (lean toward widescreen unless v3 reference suggests standard)"
+  - "[ ] theme_colors block maps every Brad token used in page-templates to {name, rgb_hex, comment}. Examples: ink-100: 0A0A0A, coral-accent: E85D45, sage-50: A8B5A0, etc. — ALL tokens used in page-templates must be present"
+  - "[ ] font_scheme block: heading: {family: 'Cormorant Garamond', fallback_chain: ['Georgia', 'serif']}, body: {family: 'IBM Plex Sans', fallback_chain: ['Helvetica', 'Arial', 'sans-serif']}, mono: {family: 'IBM Plex Mono', fallback_chain: ['Courier New', 'monospace']}"
+  - "[ ] background_fills block: one entry per layout type — each maps to a Brad surface token"
+  - "[ ] Header comment in file: '# Translation of acos-document-design-brad tokens to PPTX format. Source of truth: acos-document-design-brad/SKILL.md + tokens.css'"
+  - "[ ] No design content from loan-doc is referenced or imported (hard constraint from epic)"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-02"
+      what_it_provides: "tokens.css (token values to translate)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-design-spec.yaml"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/templates/"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "EMU (English Metric Units): 914400 per inch. 13.33in wide = 12192000 EMU. This is OOXML's native unit."
+  - "The design-spec is the BRIDGE between Brad's design language (web tokens + classes) and python-pptx's expectation (RGB tuples + font names + layout params). Every token in tokens.css needs a translation row here."
+  - "data-to-pptx.py's expected schema is the ground truth — this file has to match what the script reads. Non-negotiable to inspect the script first."
+  - "If a Brad token has a clamp() font-size, pick the nominal (mid-point) pt size for PPTX — PPTX doesn't support responsive sizing."
+
+technical_requirements:
+  - "Valid YAML parseable by pyyaml.safe_load"
+  - "RGB hex values are 6-character lowercase"
+  - "EMU values are integers (not floats)"
+
+testing_requirements:
+  - "Unit: pyyaml-load the file, assert no errors"
+  - "Unit: every token name present in tokens.css also appears in design-spec theme_colors"
+  - "Integration: pass design-spec + a minimal content YAML to data-to-pptx.py, assert it runs without schema errors (even if output is minimal)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Gate for STORY-004. If data-to-pptx.py's schema turns out to be too
+  constrained for Brad's token system, the translation may need either
+  an adapter layer or a fork of the script. Decision deferred until
+  the schema is read.

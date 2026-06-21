@@ -694,6 +694,24 @@ def evaluate(tool_name, tool_input, cwd):
 
     threshold = config["threshold"]
 
+    # ── Eternity-protocol subordination (precedence over Oracle) ───────────────
+    # Per user spec 2026-06-15: Oracle Protocol is NEVER above Eternity Protocol.
+    # When any project-scoped in-flight eternity marker exists (daemon arming,
+    # pending-resume, clear-requested, compact-fired), Oracle stands down
+    # entirely — no threshold scoring, no autopilot logic, no destructive
+    # logging. Tool calls pass through with a plain allow. Oracle resumes its
+    # normal behavior as soon as the markers clear.
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _autopilot_eternity import is_eternity_protocol_active
+        if is_eternity_protocol_active(cwd):
+            return "allow", None, 0, threshold, ["eternity_subordinate"]
+    except Exception:
+        # Fail-open: if subordination check itself errors, proceed with
+        # normal Oracle logic. Better than locking out tool calls.
+        pass
+
     # ── Autopilot short-circuit ────────────────────────────────────────────────
     # When autopilot is active: log high-impact destructive patterns to
     # requested-destructive.log (audit trail for morning review) but still

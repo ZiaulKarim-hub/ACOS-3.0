@@ -1,0 +1,201 @@
+timestamp: "2026-05-19T07:10:40Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session built a full Playwright-based web crawler for HyperCore
+  (https://app.hypercore.ai), the loan-servicing SaaS that Okoa Capital uses to
+  manage its private-credit real estate book. The session captured 25 of 33 active
+  loans (the other 8 are "quiet" loans with no current notifications, making them
+  unreachable via the notification-driven discovery method), produced 91 screenshots
+  and 91 raw HTML files, extracted per-loan YAML data for all 25 loans, and
+  synthesized everything into a comprehensive reverse-engineered operational guide
+  (HYPERCORE_GUIDE.md) covering the portfolio dashboard, loan anatomy, and UI
+  navigation map. The deliverable is a standalone reference directory at
+  hypercore-learning/ — not yet converted to an ACOS skill, but that was the
+  stated next step.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+
+completed_this_session:
+  - "Built Playwright crawler suite: 6 numbered scripts (01_login.py through
+    06_full_crawl.py) plus lib/session.py with domain-allowlist and verb-blocklist
+    safety rails"
+  - "Captured 91 screenshots and 91 raw HTML files under data/screenshots/ and
+    data/html/ — dashboard, 25 per-loan overview pages, Loan 57 all 4 right-pane
+    tabs (Info/Terms/Notes/Files), Loan 167 tabs, 30+ nav probe pages"
+  - "Extracted structured per-loan YAML data for all 25 captured loans under
+    data/loans/ (loan_<id>.yaml each)"
+  - "Ran URL probe pass (04_recrawl_v2.py) against ~30 candidate paths; confirmed
+    /portfolio redirects to /loans, /reports resolves to
+    /reports?report=Management%20Dashboard, /settings resolves to /settings,
+    all other guesses bounce to /dashboard"
+  - "Wrote HYPERCORE_GUIDE.md — 400-line reverse-engineered operational manual with
+    three chapters: A (Portfolio KPIs and revenue chart analysis), B (Loan 57 deep
+    dive — all 7 UI regions, inferred data model schema), C (lifecycle, left-rail
+    nav map, 25-loan roster table)"
+  - "Authored safety guarantees section: domain allowlist, FORBIDDEN_VERBS blocklist,
+    no form interaction, read-only HTTP semantics, 0600 auth file permissions"
+  - "Documented re-run procedure (01_login.py → 06_full_crawl.py → 05_extract.py)"
+
+files_modified:
+  - path: "hypercore-learning/HYPERCORE_GUIDE.md"
+    changes: "Created from scratch — 400-line comprehensive guide, Chapters A/B/C
+      plus two appendices (Gaps table, Data Locations reference with all file paths)"
+  - path: "hypercore-learning/scripts/01_login.py"
+    changes: "Created — Playwright script that opens visible Chrome, waits for
+      manual Google OAuth login, saves cookies to .auth/auth_state.json"
+  - path: "hypercore-learning/scripts/02_crawl.py"
+    changes: "Created — first-pass crawler, followed notification links, captured
+      dashboard + sample loan tabs (Loan 57 all 4 tabs, Loan 167 tabs)"
+  - path: "hypercore-learning/scripts/03_recrawl.py"
+    changes: "Created — URL-probe recrawler, failed due to overly-aggressive probe
+      URL rejection (all probed paths bounced to /dashboard)"
+  - path: "hypercore-learning/scripts/04_recrawl_v2.py"
+    changes: "Created — fixed probe logic, ran 30 candidate paths, captured nav
+      probe screenshots and HTML, found /portfolio→/loans and /reports and /settings"
+  - path: "hypercore-learning/scripts/05_extract.py"
+    changes: "Created — HTML parser, produces per-loan YAML summaries from raw HTML
+      captures (heading, status badge, percentages, dates, key fields)"
+  - path: "hypercore-learning/scripts/06_full_crawl.py"
+    changes: "Created — streamlined comprehensive crawl using v3_inventory; captured
+      all 25 reachable loans in one pass with deduplication"
+  - path: "hypercore-learning/scripts/lib/session.py"
+    changes: "Created — shared helpers: load_session(), snapshot_page(), safe_to_click()
+      with FORBIDDEN_VERBS blocklist, domain allowlist enforcement"
+  - path: "hypercore-learning/data/loans/"
+    changes: "Created — 25 YAML files (loan_2.yaml through loan_171.yaml), one per
+      captured loan. Each contains file manifest and parsed summary fields."
+  - path: "hypercore-learning/data/screenshots/"
+    changes: "Created — 91 PNG files: dashboard, per-loan overviews, Loan 57/167
+      tab screenshots, nav probe captures (nav-settings, nav-reports, nav-portfolio, etc.)"
+  - path: "hypercore-learning/data/html/"
+    changes: "Created — 91 HTML files mirroring screenshot set, preserved for
+      offline re-extraction without re-crawling"
+  - path: "hypercore-learning/data/extracted/v3_inventory.yaml"
+    changes: "Created — final crawl manifest: 25 loan IDs, URL + title + file paths
+      for every capture"
+  - path: "hypercore-learning/data/extracted/coverage_analysis.yaml"
+    changes: "Created — 25-loan coverage summary (all seen loan IDs, total count)"
+  - path: "hypercore-learning/data/extracted/nav_probes.yaml"
+    changes: "Created — full results of URL probe pass: 30 candidate paths, final
+      resolved URLs, body previews"
+  - path: "hypercore-learning/.auth/auth_state.json"
+    changes: "Created (gitignored, mode 0600) — Playwright cookie jar from last
+      successful Google OAuth login on 2026-05-04. Likely expired; re-run
+      01_login.py to refresh."
+  - path: "hypercore-learning/.venv/"
+    changes: "Created — Python virtualenv with playwright installed"
+
+decisions_made:
+  - "Read-only safety rails implemented in lib/session.py rather than relying on
+    script-level discipline — FORBIDDEN_VERBS blocklist and domain allowlist are
+    enforced mechanically on every click/navigation"
+  - "Notification-driven loan discovery chosen as primary approach (vs. brute-force
+    ID enumeration) to avoid noisy requests — this is why only 25 of 33 loans were
+    captured"
+  - "Raw HTML preserved alongside screenshots to enable re-extraction without
+    re-crawling (session cookies are short-lived; HTML is persistent)"
+  - "No ACOS planning artifacts created — this was an ad-hoc exploration task, not
+    an ACOS slice. The hypercore-learning/ directory is a standalone artifact."
+
+blockers:
+  - "8 loans not captured: quiet loans with no active notifications cannot be
+    discovered via the notification-link method. Need the actual /loans portfolio
+    list URL to enumerate them. URL /portfolio redirects to /loans but the page
+    rendered 0 results in the nav probe (likely a Frontegg SPA timing issue —
+    the crawler didn't wait for the loan list to hydrate)."
+  - "Left-rail sidebar icons 4-10 URLs remain partially unknown: /portfolio probe
+    captured an empty loan list, /reports worked, /settings worked. The remaining
+    icons (Clients, Tasks, Funds/Capital Sources, Documents library) were not
+    successfully probed."
+  - ".auth/auth_state.json cookies almost certainly expired — last crawl was
+    2026-05-04. Must re-run 01_login.py before any new crawl."
+  - "Cap-stack data (Funding Sources table inside Info tab) only captured for
+    Loan 57 in detail. Bulk extraction of cap stack across all 25 loans from
+    existing HTML not yet done."
+  - "Schedule/Transactions tab data not parsed — those left-pane bottom tabs were
+    screenshotted but the table rows were not extracted into structured data."
+
+next_actions:
+  - "OPTION A — Deepen Chapter A (revenue spike attribution): Cross-reference the
+    Dec 2025 ($1.97M) and Mar 2026 ($2.62M) revenue spikes against loan maturity
+    dates in the 25 per-loan YAMLs. The dates are already in loan_57.yaml and
+    others; parse them to find which loans matured in those months."
+  - "OPTION B — Cap stack extraction across all loans: Run a targeted HTML-parsing
+    pass against the existing data/html/ files to extract Funding Sources tables
+    from every loan's Info tab HTML. No re-crawl needed."
+  - "OPTION C — Fill sidebar gaps: Ask Zee to manually visit HyperCore, click
+    each unresolved left-rail icon, and paste the resulting URLs. Then update
+    Chapter C with confirmed nav map. Specifically needed: Clients page URL,
+    Tasks URL, and the icon that Zee thinks might be Funds/Capital Sources."
+  - "OPTION D — Recover all 33 loans: Re-run 06_full_crawl.py after refreshing
+    auth (01_login.py), but this time add a wait for the /loans page SPA to
+    hydrate before extracting loan IDs (current probe got 0 results due to timing).
+    Add a page.wait_for_selector() on the loans table."
+  - "OPTION E — Convert to ACOS skill: Package the crawl+extract+guide workflow
+    as /acos-hypercore-explorer skill. Zee signaled interest in this."
+  - "OPTION F — Schedule re-crawl follow-up agent: Was offered at end of session
+    to set up a recurring context that re-crawls on demand to keep the guide
+    current. Not yet set up."
+
+context_for_next_session: |
+  The hypercore-learning/ directory is a self-contained exploration artifact at
+  /Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/. It is NOT part
+  of any ACOS slice and has no planning YAML. The deliverable was HYPERCORE_GUIDE.md,
+  which is now complete as a draft v1 and lives at that path.
+
+  The core discovery method relied on HyperCore's notification bell: because the
+  app is a React SPA, the crawler could not enumerate loans from the /loans list
+  page (SPA hydration timing issue — the page returned empty before JavaScript
+  populated the table). Instead, loans were discovered by following 95 notification
+  links in the notification panel. This is why only 25 of 33 active loans appear
+  — the missing 8 have no current alerts (no missed payments, no maturities within
+  30 days, no upcoming payments within 7 days).
+
+  The nav probe pass (04_recrawl_v2.py) discovered that /portfolio resolves to
+  /loans (confirmed URL in nav_probes.yaml), /reports resolves to
+  /reports?report=Management%20Dashboard (a pre-built "Management Dashboard" report
+  exists), and /settings resolves to /settings with sub-tabs General / Currency /
+  Floating Rates / Notifications / Historical Activity. These partial results
+  should be folded back into Chapter C of HYPERCORE_GUIDE.md as confirmed URLs.
+  The guide currently states all sidebar URLs are "unknown" which is now partially
+  wrong — /reports and /settings are confirmed.
+
+  For the next session, the highest-value quick wins are: (1) update Chapter C
+  to reflect the confirmed /reports and /settings URLs found in nav_probes.yaml,
+  (2) attempt a better /loans list capture by adding a SPA wait before snapshot
+  (this would unlock all 33 loans), (3) bulk-extract cap stack data from existing
+  HTML without re-crawling (the HTML files are all present).
+
+  Auth note: The .auth/auth_state.json last written 2026-05-04 is ~2 weeks old
+  and almost certainly expired. Before running any crawler script, Zee must run:
+    cd "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning"
+    .venv/bin/python scripts/01_login.py
+  This opens a visible Chrome window for manual Google OAuth login. Then run
+  06_full_crawl.py immediately before the session expires (~60 minutes).
+
+  The Python virtualenv is at hypercore-learning/.venv/. Playwright is installed
+  there. No other dependencies.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/HYPERCORE_GUIDE.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/loans/loan_57.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/extracted/v3_inventory.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/extracted/coverage_analysis.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/extracted/nav_probes.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/extracted/ (full directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/scripts/ (directory listing + file dates)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/screenshots/ (filename listing, 91 files)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/html/ (file count confirmed: 91 files)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/data/loans/ (25 YAML filenames)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/hypercore-learning/.auth/ (directory listing)"
+  - "git log --oneline -20 (ACOS 3.0 repo — hypercore-learning/ has no commits of its own)"
+  - "git status --short (confirms hypercore-learning/ is untracked in ACOS 3.0 repo)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (listing — no prior hypercore handoff exists)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ (listing — no hypercore decisions)"

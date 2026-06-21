@@ -1,0 +1,81 @@
+story_id: "STORY-003"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "PDF Output Pipeline"
+description: |
+  Convert the Brad-styled HTML (with photo slots filled) to PDF using Puppeteer,
+  with settings tuned for tear-sheet output matching the v3 example
+  (margin=0, networkidle0, document.fonts.ready await). Reuse loan-doc's
+  html-to-pdf.js as a library, wrapping it with coffee-table-appropriate options.
+
+user_story: |
+  As a user who just generated coffee-table HTML,
+  I want one command to produce a final PDF that visually matches the v3
+  reference,
+  So that I can deliver the file to investors/recipients without any
+  post-processing.
+
+acceptance_criteria:
+  - "[ ] scripts/render-pdf.sh wraps html-to-pdf.js (from loan-doc skill) with tear-sheet settings: margin=0, preferCSSPageSize=true, printBackground=true, emulateMediaType='print', waitUntil='networkidle0', explicit document.fonts.ready await"
+  - "[ ] Output PDF file size is comparable to v3 reference (20-30MB for a 12-page image-heavy document) — no quality loss, images embedded at source resolution"
+  - "[ ] PDF opens cleanly in Preview.app, Acrobat, and Chrome — no rendering errors, all fonts visible, no missing glyphs"
+  - "[ ] Regenerating the v3 input produces a PDF with page count matching the reference (12 pages) and the same structural elements (full-bleed cover, chapter dividers, mid-content photo bands)"
+  - "[ ] Fonts.ready await is NON-OPTIONAL — without it, Cormorant Garamond fails to load in time and falls back to Georgia, silently breaking the aesthetic"
+
+dependencies:
+  stories:
+    - story_id: "STORY-001"
+      what_it_provides: "Brad-styled HTML with coffee-table composition"
+    - story_id: "STORY-002"
+      what_it_provides: "HTML with all photo slots filled, images available as file:// URLs"
+
+slices:
+  - slice_id: "SLICE-003-01"
+    title: "Puppeteer PDF render adapter"
+    description: "scripts/render-pdf.sh: invokes node ~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js with the session HTML and output path. Passes args for margin=0, format=Letter, printBackground=true. BUT html-to-pdf.js may not support all these flags — inspect it first. If it doesn't, fall back to calling puppeteer directly via an inline node script that mimics the v3 render.mjs exactly. Include document.fonts.ready await. Use networkidle0 with 120s timeout."
+    effort: "M"
+    dependencies: []
+
+  - slice_id: "SLICE-003-02"
+    title: "PDF smoke test (v3 regeneration)"
+    description: "Write a test that: (1) uses the v3 content as input (extract from /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html — reverse-engineer content structure); (2) runs the full Story 1 + Story 2 + SLICE-003-01 pipeline; (3) compares the output PDF to /Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf. Comparison metrics: page count equality, file size within 20% tolerance, first-page screenshot perceptual hash similarity >80%."
+    effort: "M"
+    dependencies: ["SLICE-003-01"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-003-01"]
+  - phase: 2
+    slices: ["SLICE-003-02"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/scripts/render-pdf.sh"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/render-pdf.mjs (inline fallback if html-to-pdf.js lacks needed flags)"
+    - "~/.claude/skills/acos-ultimate-designer/examples/v3-input-sample.yaml (reverse-engineered content)"
+
+technical_notes: |
+  - The v3 render.mjs pattern is the reference implementation. Copy its:
+      page.emulateMediaType('print')
+      page.goto(url, { waitUntil: 'networkidle0', timeout: 120000 })
+      await page.evaluate(async () => { if (document.fonts && document.fonts.ready) { await document.fonts.ready; } })
+      page.pdf({ format: 'Letter', printBackground: true, preferCSSPageSize: true, margin: { top:0, right:0, bottom:0, left:0 } })
+  - loan-doc's html-to-pdf.js may already handle most of this but verify by reading it.
+  - networkidle0 is CRITICAL — images must finish loading before PDF snapshot.
+  - Do NOT reuse loan-doc's pdf-styles.css (flow-layout). This pipeline emits
+    page-as-canvas HTML with its own inline CSS.
+
+review_focus:
+  - "Verify font loading: if Cormorant Garamond is missing from the PDF, the document falls back to Georgia and the aesthetic collapses"
+  - "Verify margin=0 actually produces edge-to-edge pages matching the v3 reference"
+  - "Verify file size is reasonable — if too small, images are compressed; if too large, something isn't being deduplicated"
+
+effort_estimate: "M"
+
+notes: |
+  This is the lighter of the two output paths. If PDF doesn't work first, nothing
+  else matters — PPTX is more complex and depends on the content pipeline being stable.

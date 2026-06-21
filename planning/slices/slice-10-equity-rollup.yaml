@@ -1,0 +1,95 @@
+# Slice Plan — Estimated equity / value / debt rollup
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-10-equity-rollup"
+story_id: "STORY-APS-10"
+epic_id: "EPIC-APS-10"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Estimated equity / value / debt rollup"
+objective: |
+  Implement rollup.py: per confirmed parcel, compute an ESTIMATED equity picture from FREE
+  data — assessed value (flag 'assessed, not market; assessment ratio varies by state'),
+  last sale price + date, original recorded mortgage/deed-of-trust amount + date with a
+  STATED amortization assumption for the remaining balance, and estimated equity = value -
+  estimated encumbrances. Flag 'no mortgage data found' where relevant. Every figure is
+  labeled 'estimated'; true AVM / current payoff is stated as a limitation, never
+  fabricated. Roll up per portfolio.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Each figure (assessed value, last sale, mortgage, remaining balance, equity) is explicitly labeled 'estimated' — pass: labeling test (REQUIRED; an unlabeled figure = REJECT)"
+  - "[ ] Estimated equity = value - estimated encumbrances, using the stated amortization assumption — pass: equity-math test (hand-recomputed)"
+  - "[ ] A parcel with no mortgage data carries a 'no mortgage data found' flag (no fabricated debt) — pass: no-data flag test (REQUIRED)"
+  - "[ ] True AVM / current payoff is stated as a limitation, never produced — pass: no-AVM test"
+  - "[ ] Portfolio rollup sums per-parcel estimates with the same labeling — pass: portfolio test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-09-scoring-review-flags"
+      what_it_provides: "Scored + tiered confirmed parcels the rollup computes equity over"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/rollup.py"   # stdlib only
+  - ".claude/skills/acos-property-search/scripts/tests/test_rollup.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-10-equity-rollup.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/score.py"   # owned by slice-09
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-10-equity-rollup.md"
+  - "Equity is ESTIMATED from FREE data (assessed value + original recorded mortgage - amortization assumption). It is NOT an AVM."
+  - "Gotcha (hard gates): every figure must be labeled 'estimated' (an unlabeled figure = REJECT), and a no-mortgage parcel must be flagged with no fabricated debt (REJECT otherwise)."
+  - "Gotcha: never produce an AVM / current-payoff value — state it as a limitation."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only"
+  - "Per-parcel: assessed value + last sale + original mortgage; stated amortization assumption for remaining balance; equity = value - encumbrances"
+  - "Explicit 'estimated' labels + flags ('assessed, not market'; 'no mortgage data found'); portfolio rollup"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA scans every output figure for an 'estimated' label — any unlabeled figure = REJECT"
+  - "QA re-authors a no-mortgage parcel; confirm the 'no mortgage data found' flag and NO fabricated debt"
+  - "QA hand-recomputes estimated equity for one parcel"
+  - "QA confirms no AVM / current-payoff value is produced (only a stated limitation)"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-10-equity-rollup.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

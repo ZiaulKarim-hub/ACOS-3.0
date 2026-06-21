@@ -1,0 +1,79 @@
+slice_id: "SLICE-001-05"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "HTML emitter"
+objective: |
+  Build scripts/html-emit.py that takes a page-plan (from SLICE-001-04) plus
+  tokens.css (from SLICE-001-02) plus the 9 page templates (from SLICE-001-03)
+  and assembles ONE complete self-contained HTML file with @page rule, Google
+  Fonts link, inline tokens.css, inline OKOA logo SVG, and each page rendered
+  by substituting template variables. Photo slots emit as data-photo-slot
+  placeholders; SLICE-002-04 fills them.
+
+acceptance_criteria:
+  - "[ ] scripts/html-emit.py exists, Python 3, executable"
+  - "[ ] Reads page-plan from argv[1], writes output HTML to argv[2] (or {session_dir}/output.html by default)"
+  - "[ ] Output HTML is ONE self-contained file — tokens.css embedded in <style>, logo SVG inlined, no external CSS/JS dependencies except Google Fonts link"
+  - "[ ] <head> includes: charset, viewport, title (from page-plan.metadata.title), Google Fonts <link rel='preconnect'> + <link href='...Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap'>"
+  - "[ ] <style> block includes: @page {size: Letter; margin: 0;}, tokens.css contents, minimal body reset (margin:0, -webkit-print-color-adjust:exact)"
+  - "[ ] OKOA logo SVG is inlined in both white and dark variants, each with fill='none' on the outer <svg> and explicit fill attributes on paths"
+  - "[ ] Each page in page-plan is rendered by: loading the matching template, substituting {{var}} placeholders with values from content_dict, emitting data-photo-slot='{semantic_tags}' for each photo_slot"
+  - "[ ] Output is valid HTML5 (opens without errors in Chrome, passes W3C validator)"
+  - "[ ] Roman page numbers rendered in footer as 'I / IV', 'II / IV', etc. (computed from total page count)"
+  - "[ ] Coral mono eyebrow rendered in format 'NN SECTION NAME' with NN as zero-padded 2-digit page number"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-04"
+      what_it_provides: "page-plan structure (ordered list of page specs)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/decompose-content.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-qa-gate.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Self-contained single-file HTML is non-negotiable — Puppeteer with networkidle0 relies on no-further-requests, and remote CSS/JS makes that flaky."
+  - "Google Fonts is the one external load allowed — the <link> uses preconnect + display=swap, and SLICE-003-01's renderer awaits document.fonts.ready before snapshotting."
+  - "Template-variable substitution is simple string replacement for {{var_name}} and regex for {{photo_slot:slot_name|tags=...}}. Don't pull in Jinja2 for this — keep dependencies minimal."
+  - "Roman numeral page numbers: build a small helper (1→I, 2→II, 4→IV, 9→IX, etc.). Content documents are rarely more than 20 pages, so the helper only needs to cover 1–50."
+
+technical_requirements:
+  - "Python 3.9+; stdlib + pyyaml only"
+  - "Output HTML uses double-quoted attributes consistently (matches v3 reference)"
+  - "Indentation in output HTML: 2 spaces (matches v3 reference)"
+  - "Every text container in output has explicit background-color (Brad's rule — pass-through from templates)"
+
+testing_requirements:
+  - "Unit: emit from a 3-page plan, assert output has exactly 3 .page divs"
+  - "Unit: emit plan with photo_slots, assert output has matching data-photo-slot attributes"
+  - "Integration: emit full v3-shape content, open in Chrome, visually confirm no layout breakage"
+  - "Integration: render emitted HTML through Puppeteer with @page rule, confirm page boundaries align with .page divs"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is the assembly step. Bugs here manifest as broken HTML — easier to
+  catch than subtle design defects. The emitter should be nearly mechanical
+  once templates are well-formed and page-plan schema is clean.

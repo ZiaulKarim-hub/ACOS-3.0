@@ -1,0 +1,281 @@
+# Story Plan — HTML ingest + parts-bin extractor
+# Created by The Architect (Opus 4.7, /acos-plan story, premium profile)
+
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-24"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-28"
+completed_by: the-architect
+slice_count: 7  # 01..07 all PASS
+test_count_final: 124
+public_api_frozen:
+  - "extract(html: string, opts?: { bradEnrichment?: boolean }): Promise<ContainerRecord[]>"
+  - "ContainerRecord, NodeKind, ComputedStyle, ContainerContent + content variants"
+  - "enrich, EnrichOptions, BRAD_CLASSES, BRAD_CLASS_SET, BRAD_CLASS_PRIORITY, BradClass"
+runtime_guarantees:
+  - "Every record satisfies record.kind === record.content.kind (F2 invariant; throws on violation)"
+  - "Background URL scheme allowlist: data:/https:/http:/blob: only; rejects javascript:/file:/chrome:/etc and localhost/RFC1918/link-local hostnames"
+  - "SVG rawMarkup: UNTRUSTED — downstream consumers MUST sanitize before innerHTML (canvas owns sanitize-at-render per STORY-003-002 acceptance criterion)"
+perf_envelope:
+  brad_10pg_30kb: "~30-40ms median on happy-dom; budget 3000ms; ~85-100x headroom"
+  table_50x10: "~12-15ms median; budget 200ms; ~13-16x headroom"
+  walker_quadratic_fix: "P1 refactor delivered 283x speedup on wide-sibling shape"
+
+# Story overview
+title: "HTML ingest + parts-bin extractor"
+description: |
+  Pure data layer for the visual composer. A DOM walker takes an HTML
+  source string (parsed by sandboxed browser DOMParser with scripts
+  disabled), traverses every visible element, and produces a typed list
+  of ContainerRecord values — one per draggable unit. Each record carries
+  node-type (text | image | svg | table | background), source-DOM path,
+  computed styles, intrinsic dimensions, inner content, and optional
+  Brad-class metadata when an OKOA design-system class is recognized.
+
+  When this story is complete, the parser module exposes a single
+  extract(html: string) => ContainerRecord[] function that downstream
+  stories (canvas, polish pipeline, project file) consume as their
+  authoritative input. No editor UI in this story.
+
+# User story format
+user_story: |
+  As Zee (single user, OKOA Capital),
+  I want to open any HTML file (especially Brad-system OKOA documents)
+    and have every visible element extracted into a typed, queryable
+    list of ContainerRecord values,
+  So that I can hand those records to the editor canvas as drag-source
+    items in STORY-003-002 without doing any parsing work there.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] ContainerRecord type is defined and exported from apps/visual-composer/src/parser/types.ts; downstream consumers import it without referencing any internal parser symbol"
+  - "[ ] extract(html: string) returns ContainerRecord[] for any well-formed HTML input"
+  - "[ ] All visible elements in a reference OKOA Brad document are captured with zero significant omissions (verified by integration test fixture)"
+  - "[ ] Inline SVG, tables, and background images each produce distinct typed records (text | image | svg | table | background)"
+  - "[ ] Brad-class metadata is propagated when present; with enrichment disabled, generic HTML still produces valid container records"
+  - "[ ] ≥80% line coverage on the parser module via unit tests (Vitest)"
+  - "[ ] Integration test: a 10-page Brad document parses in <3 seconds"
+  - "[ ] Sandbox verified — no script execution from ingested HTML; XSS attempt fixture confirms scripts are skipped"
+  - "[ ] Public API surface limited to extract() + ContainerRecord (+ enum members); internal walker functions not exported"
+
+# Dependencies
+dependencies:
+  stories: []
+  slices: []  # Populated as slices are created — will be 7 slices in this story
+
+# Slice breakdown
+slices:
+  - slice_id: "SLICE-003-001-01"
+    title: "Project scaffolding + ContainerRecord type contract"
+    description: |
+      Vite + React + TypeScript project init at apps/visual-composer/.
+      Base folder structure (src/, src/parser/, tests/, fixtures/).
+      package.json, vite.config.ts, tsconfig.json, .gitignore.
+      Define and export the canonical ContainerRecord TypeScript type —
+      this is the API surface the entire epic builds against. No walker
+      logic; just the contract + an empty extract() stub.
+    effort: "S"
+    dependencies: []
+
+  - slice_id: "SLICE-003-001-02"
+    title: "DOM walker — text + image extractors (core)"
+    description: |
+      Foundation walker using sandboxed browser DOMParser. Visits every
+      visible element. Emits ContainerRecord for paragraphs (<p>, <h1>–<h6>),
+      images (<img>), and generic divs with text content. Skips <script>,
+      <style>, hidden elements (display:none, visibility:hidden, aria-hidden).
+      Computed styles captured (font-family, font-size, color, dimensions).
+      Unit tests against a minimal Brad fixture.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-001-01"
+
+  - slice_id: "SLICE-003-001-03"
+    title: "Inline SVG extractor"
+    description: |
+      Detects <svg> nodes and captures each as a single container with
+      raw SVG markup, viewBox-derived intrinsic dimensions, and aspect
+      ratio. SVGs are preserved verbatim (no traversal of internal
+      elements) for lossless vector preservation. Unit tests against a
+      Brad chart-output fixture.
+    effort: "S"
+    dependencies:
+      - "SLICE-003-001-02"
+
+  - slice_id: "SLICE-003-001-04"
+    title: "Table extractor"
+    description: |
+      Captures <table> nodes with full structural metadata: row count,
+      column count, per-column natural widths (for future column-handle
+      UI in STORY-003-002), cell text content, and cell computed styles.
+      <thead>/<tbody>/<tfoot> distinctions preserved. Unit tests against
+      a Brad table fixture.
+    effort: "S"
+    dependencies:
+      - "SLICE-003-001-02"
+
+  - slice_id: "SLICE-003-001-05"
+    title: "Background image extractor"
+    description: |
+      Detects background-image CSS on container elements. Loads each
+      background image (browser Image element) to read natural width
+      and height. Emits as a distinct 'background' container type so
+      downstream gesture logic knows to use cover-fit + focal-point
+      behavior. Unit tests on a Brad fixture with backgrounds.
+    effort: "S"
+    dependencies:
+      - "SLICE-003-001-02"
+
+  - slice_id: "SLICE-003-001-06"
+    title: "Brad-class metadata enrichment pass"
+    description: |
+      Separate semantic post-pass that tags ContainerRecord values with
+      brad_class metadata when a known OKOA design-system class is
+      detected (.heading-display, .metric-grid, .chapter-divider, and
+      the full Brad class taxonomy). Implemented as enrich(records,
+      {enabled: boolean}) so the 'generic-HTML fallback' mode is testable
+      by passing enabled: false. Unit tests verify Brad classes are
+      recognized and propagated, and that generic HTML still produces
+      valid records when enrichment is disabled.
+    effort: "S"
+    dependencies:
+      - "SLICE-003-001-02"
+      - "SLICE-003-001-03"
+      - "SLICE-003-001-04"
+      - "SLICE-003-001-05"
+
+  - slice_id: "SLICE-003-001-07"
+    title: "Top-level extract() orchestration + integration tests"
+    description: |
+      Top-level extract(html: string) => ContainerRecord[] function
+      that orchestrates walker (02), each specialized extractor (03–05),
+      and the enrichment pass (06). Integration tests using 2–3 real
+      OKOA Brad reference documents (different doc types). Performance
+      budget verified: a 30 KB Brad document parses in <3 seconds.
+      XSS-sandbox integration test confirms scripts in ingested HTML
+      are not executed. Public API frozen at extract() + ContainerRecord.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-001-02"
+      - "SLICE-003-001-03"
+      - "SLICE-003-001-04"
+      - "SLICE-003-001-05"
+      - "SLICE-003-001-06"
+
+# Execution order
+# Strict sequential for single-developer cadence. Slices 03/04/05 could run
+# in parallel if a second developer joins; documented but not enforced here.
+execution_order:
+  - phase: 1
+    slices: ["SLICE-003-001-01"]
+  - phase: 2
+    slices: ["SLICE-003-001-02"]
+  - phase: 3
+    slices: ["SLICE-003-001-03"]
+  - phase: 4
+    slices: ["SLICE-003-001-04"]
+  - phase: 5
+    slices: ["SLICE-003-001-05"]
+  - phase: 6
+    slices: ["SLICE-003-001-06"]
+  - phase: 7
+    slices: ["SLICE-003-001-07"]
+
+# Files involved
+files_involved:
+  create:
+    - "apps/visual-composer/package.json"
+    - "apps/visual-composer/vite.config.ts"
+    - "apps/visual-composer/tsconfig.json"
+    - "apps/visual-composer/.gitignore"
+    - "apps/visual-composer/src/parser/types.ts"
+    - "apps/visual-composer/src/parser/index.ts"
+    - "apps/visual-composer/src/parser/dom-walker.ts"
+    - "apps/visual-composer/src/parser/extractors/text.ts"
+    - "apps/visual-composer/src/parser/extractors/image.ts"
+    - "apps/visual-composer/src/parser/extractors/svg.ts"
+    - "apps/visual-composer/src/parser/extractors/table.ts"
+    - "apps/visual-composer/src/parser/extractors/background.ts"
+    - "apps/visual-composer/src/parser/brad-enrichment.ts"
+    - "apps/visual-composer/tests/parser/*.test.ts"
+    - "apps/visual-composer/tests/fixtures/brad-minimal.html"
+    - "apps/visual-composer/tests/fixtures/brad-chart.html"
+    - "apps/visual-composer/tests/fixtures/brad-table.html"
+    - "apps/visual-composer/tests/fixtures/brad-background.html"
+    - "apps/visual-composer/tests/fixtures/brad-full-10pg.html"
+    - "apps/visual-composer/tests/fixtures/xss-sandbox.html"
+  modify:
+    - ".gitignore"  # add apps/visual-composer/node_modules/, dist/, .vite/
+
+# UI/UX notes (if applicable)
+ui_notes: |
+  No UI in this story. The output of extract() is consumed by
+  STORY-003-002, which renders the parts-bin tree from ContainerRecord[].
+
+# Technical notes
+technical_notes: |
+  ContainerRecord type contract (drafted in SLICE-003-001-01; refined as
+  the canonical export):
+
+    type NodeKind = 'text' | 'image' | 'svg' | 'table' | 'background';
+
+    interface ContainerRecord {
+      id: string;                        // stable, derived from source-DOM path hash
+      kind: NodeKind;
+      sourceDomPath: string;             // CSS-selector path back to source
+      bounds: { width: number; height: number };  // intrinsic, at source render
+      computedStyle: ComputedStyle;      // subset: font-family, font-size, color, etc.
+      content: TextContent | ImageContent | SvgContent | TableContent | BackgroundContent;
+      bradClass?: string;                // populated by enrichment pass only
+    }
+
+  Each kind has a discriminated content payload. The type union is
+  exhaustive; downstream switch statements must compile-error on new kinds.
+
+  Sandboxing:
+    DOMParser('text/html') is used (scripts non-executing by default).
+    Background images are loaded via new Image() in the parser host page,
+    not by re-executing the source HTML. XSS sandbox test fixture
+    includes <script>alert(1)</script> and verifies no execution.
+
+  Performance:
+    Walker is a single-pass O(n) DOM traversal. Background images are
+    loaded in parallel via Promise.all. Brad enrichment is a single
+    array.map() over the produced records (no second DOM traversal).
+
+  Reuse / non-reuse:
+    DOMParser is browser-native, no library. Vitest is the test runner
+    (locked by the testing skill). No JSDOM in this story — kept native
+    so the parser can run in-browser without a Node sidecar.
+
+# Review considerations
+review_focus:
+  - "Type contract stability: ContainerRecord is THE epic-wide API; any change after SLICE-01 cascades. Reviewer should be paranoid about it."
+  - "Sandbox correctness: XSS fixture must not execute. No fetch() or eval() in any extractor."
+  - "Brad-class enrichment off-mode: explicit test that disabling enrichment still produces valid records (proves generic-HTML fallback)."
+  - "Performance: integration-test perf budget (<3s on 30KB doc) is a HARD gate; flakiness implies hidden quadratic behavior."
+  - "Public API surface: only extract() + ContainerRecord + NodeKind enum exported. No internal walker leaks. Reviewer verifies via the index.ts re-export list."
+
+# Effort estimate
+effort_estimate: "M"
+
+# Notes
+notes: |
+  Parent epic: EPIC-003 (HTML-to-PDF Visual Composer MVP).
+  Vision: VISION-HVC-01 / memory/source-of-truth/vision-document.md
+
+  Slice decomposition reviewed and approved by user before YAML save.
+  Brad-class enrichment is a SEPARATE slice (006) by explicit user
+  decision — keeps generic-HTML fallback auditable, decouples Brad
+  knowledge from extractor internals.
+
+  ContainerRecord is the most leveraged type in the epic. SLICE-003-001-01
+  is intentionally scoped to lock it down before any walker code exists,
+  so STORY-003-002 (the canvas) can begin design work against the type
+  without further parser-side negotiation.
+
+  Next step after this story file: /acos-plan slice (for SLICE-003-001-01)
+  to define the scaffolding + type-contract slice in implementation detail.

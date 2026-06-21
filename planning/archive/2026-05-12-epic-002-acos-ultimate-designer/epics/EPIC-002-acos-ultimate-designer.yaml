@@ -1,0 +1,208 @@
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+approved_date: "2026-04-23"
+approved_by: "user (team@okoacapital.com)"
+
+title: "acos-ultimate-designer — Coffee-table Brad-styled HTML → PDF/PPTX skill"
+description: |
+  A new user-invocable skill that produces institutional-grade documents in
+  either PDF or PPTX from arbitrary user-supplied content. Step 1 generates
+  HTML using acos-document-design-brad's OKOA design system in the coffee-table
+  book aesthetic demonstrated by the v3 Private Credit Capabilities reference
+  at /Users/zee/Desktop/Private Credit Capabilities/v3/. Step 2 converts that
+  HTML (and a parallel structured content YAML) to the requested output format
+  using the conversion machinery of acos-loan-doc-generator-with-visual-verification
+  — but WITHOUT loading any of that skill's saved design-library entries. Brad's
+  spec is the sole style source. Images are sourced from a brand-asset directory
+  (auto-bootstrapped manifest via Claude vision), with Unsplash/Pexels fallback
+  for content not matching any brand asset. Visual verification runs on every
+  output via screenshot review + Wigum loop.
+
+value_proposition: |
+  User already produces investor-grade documents by hand-composing HTML against
+  Brad's system (v3 Private Credit Capabilities took this shape). This skill
+  automates that workflow so ANY content can be transformed into the same
+  aesthetic without manual art direction each time. It also extends the
+  workflow to PPTX so the same visual identity can land in slide presentations.
+
+acceptance_criteria:
+  - "[ ] Skill scaffold exists at ~/.claude/skills/acos-ultimate-designer/ with SKILL.md, phases/, templates/, scripts/"
+  - "[ ] Skill is user-invocable via /acos-ultimate-designer and Claude-invocable via semantic match"
+  - "[ ] Running the skill with user content produces a PDF visually comparable to /Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf — same fonts, same colors, same coffee-table rhythm, full-bleed cover, chapter dividers, mid-content photo bands"
+  - "[ ] Running the skill with the same content but format=pptx produces an editable PPTX (not image-only slides) using the same design language, via Option 2 (translate Brad tokens → PPTX design-spec + data-to-pptx.py)"
+  - "[ ] Zero content from acos-loan-doc-generator-with-visual-verification's design-library/index.yaml is loaded — verified by inspecting agent prompts"
+  - "[ ] Brand-asset manifest is auto-generated on first run using Claude vision; user can drop new images into the asset directory and they're picked up on next run without hand-editing the manifest"
+  - "[ ] If no brand asset matches a content slot, Unsplash/Pexels API supplies an HQ image matched semantically to section content"
+  - "[ ] HTML QA gate runs before conversion — rejects output that violates Brad's QA checklist or coffee-table composition rules (missing photo break rhythm, missing chapter divider, wrong typography)"
+  - "[ ] Visual verification runs after conversion — every page rendered at 200 DPI PNG, agent reads each screenshot, any ERROR-severity defect triggers Wigum loop back to step 1 (ceiling: 5 iterations, hard ceiling: 10)"
+  - "[ ] User feedback on images (e.g., 'swap the image on page 5') is persisted to the manifest so the skill avoids the same pick next time"
+  - "[ ] Integration test: regenerating the v3 Private Credit Capabilities document from source content yields a PDF with ≥90% visual fidelity (same page count, same photo page rhythm, same color palette, same typography, same logo placement)"
+
+dependencies:
+  epics: []
+  external:
+    - "acos-document-design-brad (existing, read-only — source of truth for design system)"
+    - "acos-loan-doc-generator-with-visual-verification (existing — source of conversion scripts and visual-verification infrastructure, reused as library not template)"
+    - "Unsplash or Pexels API key (user must provide for fallback path; skill falls back to brand-asset-only mode if not set)"
+    - "Puppeteer (already installed via loan-doc skill's templates/package.json)"
+    - "python-pptx (for PPTX generation backend — data-to-pptx.py dependency)"
+
+stories:
+  - story_id: "STORY-001"
+    title: "HTML Emitter with Coffee-Table Composition"
+    description: "Emit a complete single-file HTML using Brad's tokens + page-as-canvas coffee-table composition. Content decomposition → page plan → rendered HTML with photo slots."
+    priority: "high"
+    effort: "L"
+    dependencies: []
+
+  - story_id: "STORY-002"
+    title: "Brand-Asset Image Manifest + Internet Fallback"
+    description: "Auto-bootstrap a manifest from a brand-asset directory using Claude vision. Fill HTML photo slots from the manifest; fall back to Unsplash/Pexels when no match. Persist user feedback."
+    priority: "high"
+    effort: "L"
+    dependencies: ["STORY-001"]
+
+  - story_id: "STORY-003"
+    title: "PDF Output Pipeline"
+    description: "Convert the Brad-styled HTML to PDF via Puppeteer, with tear-sheet-appropriate settings (margin=0, networkidle0, fonts.ready). Reuse loan-doc's html-to-pdf.js as library."
+    priority: "high"
+    effort: "M"
+    dependencies: ["STORY-001", "STORY-002"]
+
+  - story_id: "STORY-004"
+    title: "PPTX Output Pipeline (Option 2 — editable slides)"
+    description: "Translate Brad's token system into a PPTX design-spec. Build a coffee-table slide-master library (9 layouts matching HTML page templates). Emit parallel structured YAML from STORY-001's content pipeline, feed to data-to-pptx.py for editable PPTX output."
+    priority: "high"
+    effort: "XL"
+    dependencies: ["STORY-001", "STORY-002"]
+
+  - story_id: "STORY-005"
+    title: "Visual Verification + Wigum Loop"
+    description: "Render output to 200 DPI PNGs, read each via Read tool, evaluate against coffee-table visual checklist, feed defects back to Step 1 for Wigum iteration. Reuse render-doc-audit.py and adapt checklist; reuse iteration machinery from phase4-validate.md."
+    priority: "high"
+    effort: "M"
+    dependencies: ["STORY-003", "STORY-004"]
+
+  - story_id: "STORY-006"
+    title: "Skill Wizard + End-to-End Integration"
+    description: "Phase 0 interactive wizard collects content, output format, brand-asset path, document type, special instructions. Orchestrates Stories 1–5 end-to-end. Integration test regenerates v3 Private Credit Capabilities."
+    priority: "high"
+    effort: "M"
+    dependencies: ["STORY-001", "STORY-002", "STORY-003", "STORY-004", "STORY-005"]
+
+execution_order:
+  - phase: 1
+    stories: ["STORY-001"]
+    rationale: "Foundation — HTML emitter must exist before images can be inserted or conversion attempted."
+  - phase: 2
+    stories: ["STORY-002"]
+    rationale: "Image sourcing depends on HTML having photo slots to fill."
+  - phase: 3
+    stories: ["STORY-003", "STORY-004"]
+    rationale: "PDF and PPTX paths can be built in parallel once HTML is stable; they share nothing structurally."
+  - phase: 4
+    stories: ["STORY-005"]
+    rationale: "Visual verification needs actual output files to render and review."
+  - phase: 5
+    stories: ["STORY-006"]
+    rationale: "End-to-end wiring and integration test happen last."
+
+technical_notes: |
+  Architectural key decisions locked in during planning:
+
+  1. PAGE-AS-CANVAS COMPOSITION (not flow-layout). Matches v3 example.
+     - @page { size: Letter; margin: 0; }
+     - Each page is an 8.5×11in fixed-size .page div with page-break-after: always
+     - Each .page has its own art-directed layout template
+     - This differs from acos-loan-doc-generator's pdf-styles.css (flow-layout)
+     - 9 page templates: cover, two-column-narrative, metric-grid, timeline,
+       chapter-divider, product-detail, portfolio-grid, photo-break, closing
+
+  2. IMAGE SOURCING: Brand-first with Unsplash/Pexels fallback.
+     - Manifest auto-generated from a user-supplied brand-asset directory
+     - Claude vision describes each image once, writes description + tags
+       to manifest.yaml keyed by file hash
+     - Semantic match: content slot tags ↔ manifest entry tags (LLM-scored)
+     - Fallback: Unsplash/Pexels API with content-derived query
+     - User feedback ("swap this image") writes user_rejected: [page:5] flags
+       to prevent re-pick
+
+  3. DESIGN-LIBRARY EXCLUSION: Zero loan-doc design-library content loads.
+     - Agent prompts in this skill NEVER read design-library/index.yaml
+     - Agent prompts in this skill NEVER read *design-patterns.yaml or
+       *benchmark-criteria.yaml from loan-doc extractions
+     - Style source: acos-document-design-brad/SKILL.md (read by the emitter
+       agent) + locally-maintained tokens.css + coffee-table template library
+     - Brad's skill is referenced, not copied — the new skill reads it at runtime
+
+  4. REUSE FROM loan-doc skill (library-level, NOT template-level):
+     - Scripts: html-to-pdf.js, html-to-docx.py (optional), render-doc-audit.py,
+       check-pdf-layout.py, data-to-pptx.py
+     - Patterns: Wigum loop shape, iteration ceiling, visual checklist structure
+     - NOT reused: design library, benchmark criteria, doc-type-catalog,
+       recommendation matrix, phase orchestration agents
+
+  5. PPTX IS HARDER THAN PDF. Build PDF path first (STORY-003), get it working
+     end-to-end with visual verification, then tackle PPTX (STORY-004). The
+     PPTX design-spec translation is substantial work; having a working PDF
+     to compare against reduces risk.
+
+  6. VISUAL VERIFICATION MODEL: Pin to opus for screenshot review. Subtle
+     coffee-table defects (editorial spacing, photo rhythm, typographic
+     italic accents) need vision-model acuity. Do not inherit session-level
+     model config for this specific step.
+
+primary_files:
+  # Files to be CREATED by this epic
+  - "~/.claude/skills/acos-ultimate-designer/SKILL.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase1-html.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase2-images.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase3-convert.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase4-verify.md"
+  - "~/.claude/skills/acos-ultimate-designer/templates/tokens.css"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/ (9 files)"
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-design-spec.yaml"
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-slide-masters/ (9 files)"
+  - "~/.claude/skills/acos-ultimate-designer/templates/manifest-schema.yaml"
+  - "~/.claude/skills/acos-ultimate-designer/templates/visual-checklist.yaml"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-qa-gate.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-and-verify.sh"
+  - "~/.claude/skills/acos-ultimate-designer/examples/v3-input-sample.yaml"
+
+  # Files READ (read-only, not modified)
+  - "~/.claude/skills/acos-document-design-brad/SKILL.md (read for tokens + rules)"
+  - "~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js (reused)"
+  - "~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py (reused)"
+  - "~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/render-doc-audit.py (reused)"
+  - "~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/check-pdf-layout.py (reused)"
+  - "/Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html (reference only)"
+  - "/Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf (reference only)"
+
+review_focus:
+  - "Confirm zero design-library reads: grep the skill's agent prompts for 'design-library' — must return empty"
+  - "Confirm Brad compliance: the HTML QA gate runs the Brad QA checklist items (22 from Brad's SKILL.md); explicit hex values in hero/footer; explicit background-color on every text container; Google Fonts link in <head>; OKOA logo SVG with fill='none'"
+  - "Coffee-table rhythm: verify the visual checklist requires ≥1 full-bleed photo page per 3 content pages, at least one chapter divider between parts, Cormorant italic accents on every section title"
+  - "PPTX fidelity: editable text (not image-only), embedded Cormorant Garamond font or documented fallback behavior, palette matches Brad tokens exactly"
+  - "Manifest correctness: file-hash keyed, idempotent on re-scan, user feedback persisted with explicit reasoning"
+
+effort_estimate: "XL"
+
+notes: |
+  Implementation happens in a FRESH context window. The next session should:
+
+  1. Read this epic file first: /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/epics/EPIC-002-acos-ultimate-designer.yaml
+  2. Read the six story files in /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/ (STORY-001 through STORY-006)
+  3. Read the handoff from this session: /Users/zee/memory/handoffs/archive/2026-04-23-073005-session-handoff.yaml
+  4. Read the v3 example source: /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html
+  5. Read the v3 example PDF: /Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf
+  6. Execute stories in the phased order above via /acos-execute-story or manual slice execution
+
+  Do NOT attempt to regenerate Brad's skill or port it into this skill — reference
+  it at runtime. Do NOT attempt to enhance the loan-doc skill — reuse its scripts
+  only. This skill is a composition of existing infrastructure, not a rewrite.

@@ -1,0 +1,192 @@
+timestamp: "2026-04-23T09:54:23Z"
+status: "completed"
+
+session_summary: |
+  Emergency handoff written at end of third session on EPIC-002 (acos-ultimate-designer).
+  This session completed full plan materialization (23 slice YAMLs, vision document,
+  two ADRs). HOWEVER: a second invocation of /acos-start triggered acos-bootstrap.sh,
+  which RESET /Users/zee/.acos/config/project.yaml back to phase=not_started and
+  wiped /Users/zee/.acos/state/model-session.yaml. The on-disk plan is fully
+  materialized and valid — only the project.yaml status block is wrong. This handoff
+  exists solely to flag that mismatch and provide exact recovery instructions so the
+  next session does not misread phase=not_started as "no plan exists."
+
+  For the complete record of what was built this session, see:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-documents-materialized.yaml
+  For planning-session context, see:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-081259-plan-approved-pending.yaml
+
+current_work:
+  slice_id: null
+  story_id: "STORY-001"
+  epic_id: "EPIC-002"
+  status: "documents_materialized_project_yaml_reset_by_bootstrap"
+  notes: |
+    23 slice YAMLs are on disk under /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/slices/ (SLICE-001-01
+    through SLICE-006-03). Vision document and two ADRs are on disk. The plan is
+    ready for /acos-execute-story STORY-001. The ONLY thing wrong is that
+    project.yaml reports phase=not_started instead of planning_complete, and
+    model-session.yaml no longer exists. See blockers for recovery actions.
+
+completed_this_session:
+  - "See /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-documents-materialized.yaml for the full list of completions"
+  - "Key outcome: 23 slice YAMLs materialized, vision document written, ADR-001 and ADR-002 written"
+  - "Two superseded handoffs archived to /Users/zee/memory/handoffs/archive/"
+  - "Bootstrap reset then fired (second /acos-start invocation), resetting project.yaml and deleting model-session.yaml"
+
+files_modified:
+  - path: "/Users/zee/.acos/config/project.yaml"
+    changes: |
+      Bootstrap reset this file BACK to phase=not_started, current_epic=null,
+      current_story=null, current_slice=null. This is INCORRECT — plan is complete.
+      See RECOVERY ACTIONS in next_actions to fix.
+  - path: "/Users/zee/.acos/state/model-session.yaml"
+    changes: |
+      File was created this session (active_profile: premium) but was then
+      DELETED by the bootstrap reset. File does NOT exist on disk. Next /acos-start
+      will re-prompt the user for a model profile selection.
+
+files_created:
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-095423-emergency-state-recovery.yaml"
+    changes: "This file — emergency state-recovery handoff"
+
+decisions_made:
+  - decision: "Do NOT modify project.yaml to correct the reset"
+    rationale: |
+      User was informed of the bootstrap reset and told the system not to revert it.
+      Correction is deferred to the next session's operator. This handoff captures
+      the mismatch and provides the exact edits needed so the next session can
+      make an informed decision.
+  - decision: "Document model-session.yaml deletion explicitly"
+    rationale: |
+      The prior handoff (2026-04-23-documents-materialized.yaml) stated that
+      model-session.yaml existed and that next /acos-start would skip the profile
+      prompt. That is no longer true. This handoff corrects that claim.
+
+blockers:
+  - id: "BLOCKER-001"
+    severity: "high"
+    title: "project.yaml phase=not_started despite fully materialized plan"
+    description: |
+      /Users/zee/.acos/config/project.yaml currently shows:
+        status:
+          phase: not_started
+          current_epic: null
+          current_story: null
+          current_slice: null
+
+      The correct state is:
+        status:
+          phase: planning_complete
+          current_epic: "EPIC-002"
+          current_story: "STORY-001"
+          current_slice: null
+
+      Any agent or ACOS command that reads project.yaml to determine what to do
+      next will get a misleading signal. /acos-start reading phase=not_started
+      may initiate planning flows when execution is what is needed.
+
+      DO NOT start execution until this is corrected.
+
+  - id: "BLOCKER-002"
+    severity: "medium"
+    title: "model-session.yaml deleted by bootstrap — next session will re-prompt for model profile"
+    description: |
+      /Users/zee/.acos/state/model-session.yaml no longer exists on disk.
+      The user previously selected 'premium' (opus main) profile. Next /acos-start
+      will present the model selection prompt again. User should re-select
+      premium / opus profile to maintain continuity with the prior session's
+      configuration intent.
+
+next_actions:
+  - priority: 1
+    label: "RECOVERY ACTION — fix project.yaml phase mismatch"
+    description: |
+      Before doing anything else in the next session, apply this exact edit to
+      /Users/zee/.acos/config/project.yaml:
+
+      Change the status block from:
+        status:
+          phase: not_started
+          current_epic: null
+          current_story: null
+          current_slice: null
+
+      To:
+        status:
+          phase: planning_complete
+          current_epic: "EPIC-002"
+          current_story: "STORY-001"
+          current_slice: null
+
+      No other fields in project.yaml need to change.
+
+  - priority: 2
+    label: "RECOVERY ACTION — re-pin model session after /acos-start prompts"
+    description: |
+      When /acos-start prompts for model profile selection, choose premium (opus main).
+      This matches the profile active during plan materialization and is required for
+      the visual-verification steps in STORY-005 (opus hard-pinned per ADR constraint).
+
+  - priority: 3
+    label: "EXECUTION — begin /acos-execute-story STORY-001 after recovery"
+    description: |
+      Once project.yaml is corrected and model session is re-pinned, invoke
+      /acos-execute-story STORY-001. The first executable slice is
+      /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/slices/SLICE-001-01-skill-scaffold.yaml.
+      All 23 slice YAMLs are on disk and do not need to be re-materialized.
+
+  - priority: 4
+    label: "OPTIONAL — archive this handoff and 2026-04-23-documents-materialized.yaml after recovery is confirmed"
+    description: |
+      Once project.yaml is corrected and execution begins, both this handoff
+      and 2026-04-23-documents-materialized.yaml can be archived to
+      /Users/zee/memory/handoffs/archive/. The 081259 planning handoff may
+      remain active or be archived per operator judgment.
+
+context_for_next_session: |
+  STATE SUMMARY AT END OF THIS SESSION:
+
+  ON DISK (correct, fully materialized):
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/slices/                  — 23 slice YAMLs (SLICE-001-01 through SLICE-006-03)
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/                 — 6 story YAMLs (STORY-001 through STORY-006)
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/epics/EPIC-002-acos-ultimate-designer.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/source-of-truth/vision-document.md
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ADR-001-page-as-canvas-composition.md
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ADR-002-brand-first-image-sourcing.md
+
+  WRONG (needs manual correction before execution):
+    /Users/zee/.acos/config/project.yaml         — reports phase=not_started (INCORRECT)
+    /Users/zee/.acos/state/model-session.yaml    — DOES NOT EXIST (deleted by bootstrap reset)
+
+  ACTIVE HANDOFFS (do not archive until recovery confirmed):
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-095423-emergency-state-recovery.yaml  ← this file
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-documents-materialized.yaml           ← full completion record
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-081259-plan-approved-pending.yaml     ← planning context
+
+  ARCHIVED HANDOFFS (superseded, kept for audit trail):
+    /Users/zee/memory/handoffs/archive/2026-04-23-073005-session-handoff.yaml
+    /Users/zee/memory/handoffs/archive/2026-04-23-mechanical-stop-handoff.yaml
+
+  HARD CONSTRAINTS UNCHANGED (from 081259 handoff):
+    1. Zero content from loan-doc's design-library loads.
+    2. Style source: acos-document-design-brad SKILL.md + tokens.css.
+    3. Page-as-canvas composition (ADR-001).
+    4. Coffee-table rhythm: full-bleed cover, chapter divider between parts,
+       >= 1 photo page per 3 content pages, Cormorant italic accents on
+       section titles, roman page numbers in 'N / total' format.
+    5. Visual reviewer (STORY-005) pinned to opus, not session config.
+    6. Wigum loop ceiling: 5 default, 10 hard.
+
+  KEY REFERENCE FILES (unchanged from prior handoffs):
+    /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html
+    /Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf
+    /Users/zee/Desktop/Private Credit Capabilities/.build/render.mjs
+    /Users/zee/.claude/skills/acos-document-design-brad/SKILL.md
+    /Users/zee/.claude/skills/acos-loan-doc-generator-with-visual-verification/
+
+  ENVIRONMENT:
+    - Primary CWD: /Users/zee
+    - ACOS source: /Users/zee/Documents/Vibe Coding/ACOS 3.0/
+    - additionalDirectories permission: /Users/zee/Documents/Vibe Coding
+    - OS: darwin / zsh

@@ -1,0 +1,36 @@
+{
+  "_placeholder": true,
+  "_note": "PLACEHOLDER SYNTHETIC DATA shaped from the REAL Hypercore GraphQL `PaginatedLoans` type (introspected live 2026-06-18). OFFSET pagination model: list query takes skip/limit; the Paginated* return carries { totalFilteredRecords, pageItems }. This fixture represents a COMPLETE walk (fetched == reported_total, complete=true). NO real PII — synthetic values only.",
+  "_adversarial": "gql-paginated-complete",
+  "entity_type": "loan",
+  "list": true,
+  "endpoint": "https://api.hypercore.ai/graphql",
+  "request_params": {
+    "graphql_operation": "HCAListPaginatedLoans",
+    "filter": null,
+    "sortBy": null,
+    "limit": 50
+  },
+  "http_status": 200,
+  "cursor": null,
+  "reported_total": 3,
+  "timestamp": "2026-06-18T08:00:00Z",
+  "body": {
+    "data": [
+      { "id": "L-GQL-1", "refId": "REF-0001", "name": "PLACEHOLDER Bridge Facility", "status": "ACTIVE", "commitment": 5000000.0 },
+      { "id": "L-GQL-2", "refId": "REF-0002", "name": "PLACEHOLDER Construction Loan", "status": "ACTIVE", "commitment": 12000000.0 },
+      { "id": "L-GQL-3", "refId": "REF-0003", "name": "PLACEHOLDER Term Loan", "status": "CLOSED", "commitment": 1000000.0 }
+    ],
+    "reported_total": 3,
+    "fetched": 3,
+    "complete": true,
+    "pages": 1,
+    "provenance": {
+      "operation_name": "HCAListPaginatedLoans",
+      "query": "query HCAListPaginatedLoans($skip: Int, $limit: Int, $filter: LoansFilterInput, $sortBy: LoansSortByInput) { loans(skip: $skip, limit: $limit, filter: $filter, sortBy: $sortBy) { totalFilteredRecords pageItems { id refId name status commitment } } }",
+      "variables_template": { "limit": 50, "filter": null, "sortBy": null },
+      "response_json_path": "$.data.loans.pageItems",
+      "fetched_at": "2026-06-18T08:00:00Z"
+    }
+  }
+}

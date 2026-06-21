@@ -1,0 +1,25 @@
+handoff_id: "2026-05-26-slice-003-001-04-completed"
+handoff_type: "slice-completion-audit"
+created_date: "2026-05-26"
+status: "completed"
+slice_id: "SLICE-003-001-04"
+title: "Table extractor + walker refactor"
+outcome: PASS
+reviewer_verdicts:
+  qa-reviewer: { verdict: PASS, acceptance: "11/11", all_scores: PASS }
+  performance-reviewer: { verdict: PASS, speedup_verified: "283x", brad_headroom: "214x", all_scores: PASS }
+  integration-reviewer: { verdict: PASS, walker_contract: ADDITIVE_ONLY, all_scores: PASS }
+required_fixes: 0
+minor_findings_total: 7
+walker_refactor_outcome: |
+  P1 (iterative DFS + incremental path + per-parent tag counter): DELIVERED, verified by independent perf benchmarks
+  P2 (chain allocation cleanup): ABSORBED into P1
+  P3 (skip-zone flag): PLUMBED but inactive (skip-zone roots don't descend; functionally achieves goal differently)
+  P4 (text.test.ts perf smoke retrofit to median-of-5): DELIVERED
+test_count_total: 55  # 19 new table + 36 inherited
+key_findings_for_future_slices:
+  - "insideSkipZone field on WalkedNode is dead surface (always false). Architect decision: leave as forward-compat for now; remove if slice 05/06 don't consume it."
+  - "Comment in dom-walker.ts:19-20 overstates 'O(N) regardless of depth' — actually O(N·d) on pathological deep chains. Not real-world relevant. Soften in a cleanup slice."
+  - "extractTable() direct entry path uses different sourceDomPath builder than walker path. Production OK (walker is only live consumer); consolidate in cleanup."
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-04/"
+next_step: "/acos-execute-slice SLICE-003-001-05 (background extractor — flips extract() to async)"

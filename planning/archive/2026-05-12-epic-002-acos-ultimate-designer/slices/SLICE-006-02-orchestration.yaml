@@ -1,0 +1,88 @@
+slice_id: "SLICE-006-02"
+story_id: "STORY-006"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "End-to-end orchestration"
+objective: |
+  Wire Phase 1–5 in SKILL.md to dispatch sequentially, passing session_id +
+  manifest_path between phases. Each phase is either (a) an inline Bash
+  invocation of the right script, or (b) a Task(agent) spawn for model-tier-
+  appropriate work. Phase 1-2 can run internally-parallel; Phase 3/4 run
+  conditionally on output_format; Phase 5 is unconditional. Wigum loop in
+  Phase 5 re-enters Phase 1 with fix-instructions.yaml.
+
+acceptance_criteria:
+  - "[ ] Phase 1 dispatch (phase1-html.md): runs decompose-content.py → html-emit.py → html-qa-gate.py sequentially; exits on QA gate failure (with fix context if Wigum-triggered)"
+  - "[ ] Phase 2 dispatch (phase2-images.md): runs bootstrap-manifest.py (if asset dir exists + manifest stale) → fill-photo-slots.py; if asset dir is empty/unset, skips manifest and uses fetch-image-fallback.py only"
+  - "[ ] Phase 3 dispatch (phase3-convert.md): conditional on format — if pdf or both, runs render-pdf.sh; if pptx or both, runs emit-pptx-content.py + render-pptx.sh; parallel where possible"
+  - "[ ] Phase 4 dispatch (phase4-verify.md): runs render-and-verify.sh PER output format; spawns visual-reviewer Task with model='opus' hardcoded; on FAIL, invokes wigum-loop.py control"
+  - "[ ] Phase 5 dispatch (in SKILL.md final section): runs wigum-loop.py which wraps 1-4; on PASS, displays final output paths to user"
+  - "[ ] Inter-phase state: each phase reads session/manifest.yaml for inputs, writes phase-specific outputs to session/<phase_name>/"
+  - "[ ] Fail-fast behavior: any phase exit != 0 terminates orchestration with the phase name + exit code, saves state to session/FAILED_PHASE.txt"
+  - "[ ] Graceful degradation: missing API keys (UNSPLASH/PEXELS) → log warning, continue in brand-only mode; font embedding failure → log warning, continue with fallback note; render-and-verify partial failure (some PNGs missing) → abort"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-006-01"
+      what_it_provides: "SKILL.md frame with phase dispatch table + phase file stubs"
+      status: "complete"
+    - slice_id: "SLICE-005-03"
+      what_it_provides: "wigum-loop.py (the outer loop controlling Phase 1-4 re-entry)"
+      status: "complete"
+    - slice_id: "SLICE-004-04"
+      what_it_provides: "render-pptx.sh (terminal stage of Phase 3 for PPTX path)"
+      status: "complete"
+    - slice_id: "SLICE-003-01"
+      what_it_provides: "render-pdf.sh (terminal stage of Phase 3 for PDF path)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/SKILL.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase1-html.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase2-images.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase3-convert.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase4-verify.md"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Pure wiring — no new business logic. Every script/agent this phase invokes was built in earlier slices."
+  - "Parallel execution within phases: Phase 3 with format=both runs render-pdf.sh and (emit-pptx + render-pptx) in parallel via bash wait or & control."
+  - "Session state shape: session_dir/manifest.yaml holds user inputs; session_dir/phase1/, phase2/, etc. hold intermediate outputs; session_dir/output.pdf + output.pptx are final outputs."
+  - "Integration friction is likely here. Expect to discover that one script needs an argument it wasn't designed for (e.g., emit-pptx-content.py needs a page-plan path that SLICE-004-03 assumed was hardcoded). Budget iteration."
+
+technical_requirements:
+  - "Phase files are markdown with explicit bash/Task blocks — agents reading the phase file can execute directly"
+  - "Session dir paths are always passed explicitly — no implicit cwd assumptions"
+  - "Fail-fast: set -e in any bash blocks; explicit exit-code checks in multi-step sequences"
+
+testing_requirements:
+  - "Manual integration: run /acos-ultimate-designer with v3-input-sample.yaml + pdf format + v3 asset dir → expect clean phase-by-phase output + PASS verdict in ≤3 Wigum iterations"
+  - "Manual integration: run with format=both → expect both output.pdf AND output.pptx produced"
+  - "Manual integration: run with empty asset dir + no API keys → expect brand-only degrade warning + visible empty-slot placeholders in output (visual gate catches)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  All the real work has been done in prior slices. This slice's risk is
+  integration friction — paths, argument names, exit code handling across
+  scripts built at different times.

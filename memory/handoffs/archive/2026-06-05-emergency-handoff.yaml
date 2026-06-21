@@ -1,0 +1,187 @@
+timestamp: "2026-06-05T00:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session built the acos-font-forge skill from scratch — a complete browser-
+  paint-editor + programmatic pipeline for deriving a custom OFL-licensed font from
+  an existing typeface. The skill was then used live to create "Xyntax Titles" derived
+  from Cinzel Decorative Regular. The user hand-edited all 26 uppercase letters and
+  10 digits (36 glyphs total) in the browser editor; the font was built prematurely
+  before editing was complete. Two feature requests are pending and unimplemented:
+  an auto-spacing fix for touching letters, and a grouped side-pane in the editor
+  showing all character sets in the font (awaiting user's A/B scope answer).
+
+current_work:
+  slice_id: "N/A — personal font project, not in ACOS planning hierarchy"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+  project_path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/"
+  font_name: "Xyntax Titles (XyntaxTitles-Regular)"
+  base_font: "Cinzel Decorative Regular (CinzelDecorative-Regular.ttf)"
+  skill_path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/"
+  editor_url: "http://127.0.0.1:8787/editor.html (may need restart: bash scripts/serve.sh src/CinzelDecorative-Regular.ttf 8787)"
+  proof_url: "http://127.0.0.1:8791/proof.html (if still running)"
+
+completed_this_session:
+  - "Built acos-font-forge skill: SKILL.md + assets/editor.html + assets/proof.html + scripts/{glyphgeom,cut,strip_serifs,track,vectorize,rename_export,specimen,wire_astro,serve,proof}.{py,sh}. Validated end-to-end."
+  - "Symlinked acos-font-forge to ~/.claude/skills/acos-font-forge so it is available globally."
+  - "Stood up font-foundry working directory at /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/ with src/ (Cinzel TTFs + OFL), build/, editor/, xyntax/"
+  - "Ran live glyph paint editor at :8787; user hand-edited all 26 uppercase letters (A-Z) + all 10 digits (0-9); edits saved to editor/edits/glyph-edits.json (1.8 MB, 36 entries, all present on disk)"
+  - "Ran vectorize.py to rasterize edits -> outlines -> xyntax/build/_xyntax-edited.ttf"
+  - "Ran rename_export.py -> XyntaxTitles-Regular.ttf + XyntaxTitles-Regular.woff2 (premature — not all letters finalized)"
+  - "Ran proof.sh -> xyntax/build/_proof/proof.html + prooffont.woff2 (type proof in browser)"
+  - "Produced specimens: xyntax/specimens/proof.png, verify_sheet.png, current_state.png"
+  - "Added lowercase a-z to BOTH editors (acos-font-forge/assets/editor.html AND font-foundry/editor/editor.html LETTERS array now = A-Z + a-z + 0-9). User must refresh browser to see lowercase in pane."
+  - "NOTE: font was built PREMATURELY — user has not finished editing. Only uppercase + digits are done; lowercase a-z are unedited originals; some uppercase may still be original (see blockers)."
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/SKILL.md"
+    changes: "New file — complete skill definition with setup, two workflows, protocol, gotchas, quality checklist, reference instance pointer"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/assets/editor.html"
+    changes: "New file — browser glyph paint editor with pencil/eraser/line + three editable-polygon tools (erase-shape, fill-shape, copy-shape). LETTERS array updated to include a-z (added late in session)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/assets/proof.html"
+    changes: "New file — live type proof page (editable text, size/tracking sliders, tracking ladder, title/label/stat mockups, light+dark, alphabet, kern pairs)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/vectorize.py"
+    changes: "New file — raster edits -> real outlines via potrace + Shapely; metrics-preserving (advance + LSB kept); handles both JSON dataURL and PNG folder inputs"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/glyphgeom.py"
+    changes: "New file — shared geometry primitives: FlattenPen (cubic sampler), write_glyph (Shapely->TrueType outline writer, exterior CW / holes CCW)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/cut.py"
+    changes: "New file — true boolean stencil cuts via Shapely.difference (NOT FontForge removeOverlap which fills gaps)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/strip_serifs.py"
+    changes: "New file — foot-serif removal for clean-stem letters (A,F,H,I,K,M,N,P,R,T); per-letter, not one-rule-fits-all"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/rename_export.py"
+    changes: "New file — OFL-compliant rename: asserts new name does not contain reserved base name, keeps nameID 0 attribution, ships OFL + FONTLOG, emits TTF + WOFF2"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/serve.py"
+    changes: "New file — local dev server: serves editor.html at /editor.html, POST /save writes glyph-edits.json to disk. Required because web fonts cannot load over file://"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/serve.sh"
+    changes: "New file — wrapper: resolves editor path, launches serve.py at given port (default 8787)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/proof.sh"
+    changes: "New file — wrapper: launches proof server at given port (default 8791), opens proof.html with font embedded"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/track.py"
+    changes: "New file — programmatic tracking (FontForge embedded python)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/wire_astro.py"
+    changes: "New file — wires a custom WOFF2 into an Astro project (CSS variable, @font-face, optional --font-titling flag)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/specimen.py"
+    changes: "New file — before/after specimen PNG generator"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/setup.sh"
+    changes: "New file — pip-installs fonttools, shapely, brotli, Pillow; brew-installs fontforge + potrace"
+  - path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/editor/editor.html"
+    changes: "LIVE INSTANCE of editor — LETTERS array updated to include a-z at end (line 125: A-Z concat a-z concat 0-9). User must refresh browser tab to see lowercase in side pane."
+  - path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/editor/edits/glyph-edits.json"
+    changes: "LIVE EDITS FILE — 36 entries: all uppercase A-Z + digits 0-9, each ~34-79 KB base64 PNG dataURL. Lowercase a-z not present (not yet painted). Last written 13:45 Jun 5."
+  - path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/xyntax/build/XyntaxTitles-Regular.ttf"
+    changes: "PREMATURE BUILD — built from only uppercase+digits. Will be rebuilt once editing is complete."
+  - path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/xyntax/build/XyntaxTitles-Regular.woff2"
+    changes: "PREMATURE BUILD — same caveat."
+  - path: "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/xyntax/build/_xyntax-edited.ttf"
+    changes: "Intermediate — output of vectorize.py before OFL rename. Reflects current uppercase+digit edits only."
+
+decisions_made:
+  - "Font name chosen: 'Xyntax Titles' (family XyntaxTitles). Does not contain 'Cinzel' (reserved name). OFL-compliant."
+  - "Editor canvas: 1040x1000 px, --em 620, --baseline 740 (these MUST match vectorize.py args; hardcoded in serve.py and the current build pipeline)"
+  - "No OpenType alternate glyphs in Cinzel Decorative (GSUB is empty). No small-caps/titling/ligatures to worry about. Real glyph sets: uppercase 26+accented, lowercase 26+accented, digits 0-9+superscripts, punctuation ~86. ~350 total, accented are standalone not composite."
+  - "Uppercase + digits are the priority editing pass. Lowercase not yet designed (will inherit original Cinzel shapes unless user edits them)."
+  - "Grouping question: A or B scope for side-pane — (A) core Latin ~70 glyphs vs (B) all ~350 — sent to user but NOT yet answered. Blocked on their reply before building grouped side pane."
+  - "Auto-spacing plan: add --space option to vectorize.py (set each glyph advance = ink_width + 2*sidebearing) so no letters touch at rebuild time. NOT YET IMPLEMENTED."
+
+blockers:
+  - "AWAITING USER ANSWER: Side-pane scope A (core ~70) or B (all ~350). Last message in session asked this. Resume by receiving their A or B reply."
+  - "Lowercase a-z NOT edited at all — originals from Cinzel Decorative will be used unless user edits them. User may or may not want to edit these."
+  - "Some uppercase letters may still be original Cinzel shapes (the session context states only ~19 are 'actually edited'; B C D O S X Y are flagged as potentially un-edited). All 36 are present in glyph-edits.json but having a save entry does not guarantee the user painted anything — could be the original bitmap."
+  - "Auto-spacing fix NOT implemented: letters currently touch (e.g. 'HE'). Plan: --space flag in vectorize.py. Needs to be built, then rebuild pipeline re-run."
+  - "Font was built prematurely. After finishing edits, the full pipeline must be re-run: vectorize.py -> rename_export.py -> proof.sh -> final review."
+
+next_actions:
+  - "IMMEDIATE: Receive user's A/B answer on side-pane scope, then implement grouped collapsible side pane in editor (Uppercase / lowercase / Numbers / Punctuation sections, populated from a serve-time manifest introspecting the loaded font)"
+  - "IMMEDIATE: Implement --space option in vectorize.py: for each edited glyph, set advance = ink_width + 2*sidebearing. This fixes letters-touching issue without manual kerning."
+  - "THEN: User finishes editing remaining uppercase letters (B, C, D, O, S, X, Y if not yet done) and optionally lowercase a-z. Each edit: paint in browser, press Cmd+S to save."
+  - "THEN: Re-run vectorize.py with --space flag: python3 scripts/vectorize.py --base src/CinzelDecorative-Regular.ttf --edits editor/edits/glyph-edits.json --out xyntax/build/_xyntax-edited.ttf --em 620 --baseline 740 --space 80 (sidebearing value TBD, start with 80)"
+  - "THEN: Re-run rename_export.py to produce final XyntaxTitles-Regular.ttf/woff2"
+  - "THEN: Re-run proof.sh and review in browser at :8791 — tune tracking/spacing, iterate until it reads right"
+  - "THEN: Wire into Astro site if desired (wire_astro.py)"
+
+context_for_next_session: |
+  The session built a brand-new ACOS skill (acos-font-forge) and used it live to start
+  creating "Xyntax Titles," a custom display font for OKOA derived from Cinzel Decorative
+  Regular. The skill is fully built and symlinked globally. The live font foundry workspace
+  is at /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/.
+
+  EDITOR STATE: The live glyph paint editor was running at http://127.0.0.1:8787 via
+  serve.py. It may or may not still be running. To restart:
+    cd "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry"
+    python3 -m http.server 8787 --directory .   (simple version)
+    OR: bash /Users/zee/Documents/Vibe Coding/ACOS\ 3.0/.claude/skills/acos-font-forge/scripts/serve.sh src/CinzelDecorative-Regular.ttf 8787
+  The editor at editor/editor.html now shows A-Z, a-z, and 0-9 in the side pane (lowercase
+  was added at the end of the session). The user needs to REFRESH their browser tab.
+
+  GLYPH EDITS STATUS: All 36 entries (A-Z + 0-9) exist in glyph-edits.json (1.8 MB).
+  However, not all glyphs may have meaningful user paint — having a localStorage entry
+  does not guarantee the user actually altered the glyph. The session notes that ~19
+  uppercase letters are "actually edited" with B, C, D, O, S, X, Y potentially still
+  original. Lowercase a-z are BLANK (not yet in glyph-edits.json at all — user must
+  paint them in the refreshed editor to get custom lowercase).
+
+  TWO PENDING FEATURES (implement in this order once user provides A/B answer):
+  1. SIDE-PANE CATEGORIES: The editor side pane should show grouped collapsible sections
+     (Uppercase / lowercase / Numbers / Punctuation) generated from a serve-time manifest
+     that introspects the loaded font. Awaiting user's scope choice: (A) core Latin ~70
+     glyphs or (B) all ~350 glyphs including accented variants. When user answers, build
+     the manifest endpoint in serve.py and update the editor HTML to render collapsible
+     sections instead of a flat grid.
+  2. AUTO-SPACING FIX: Letters touch (e.g. "HE"). Add --space <sidebearing> option to
+     vectorize.py that sets each glyph's advance width = ink_bbox_width + 2*sidebearing
+     after tracing. This is applied at vectorize time so no manual kerning table is needed.
+     Then rebuild: vectorize -> rename_export -> proof.
+
+  PIPELINE COMMANDS (from font-foundry root):
+    # vectorize edits (add --space after implementing it)
+    python3 /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/skills/acos-font-forge/scripts/vectorize.py \
+        --base src/CinzelDecorative-Regular.ttf \
+        --edits editor/edits/glyph-edits.json \
+        --out xyntax/build/_xyntax-edited.ttf \
+        --em 620 --baseline 740
+    # rename + export
+    python3 /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/skills/acos-font-forge/scripts/rename_export.py \
+        --in xyntax/build/_xyntax-edited.ttf \
+        --family "Xyntax Titles" --reserved Cinzel \
+        --base "Cinzel Decorative" --author "Natanael Gama" \
+        --owner "Zee / Okoa Capital" --out-dir xyntax/build/ \
+        --mods "hand-sculpted uppercase+digits in browser paint editor" \
+        --ofl src/OFL.txt
+    # proof
+    bash /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/.claude/skills/acos-font-forge/scripts/proof.sh \
+        xyntax/build/XyntaxTitles-Regular.woff2 "Xyntax Titles" 8791
+
+  KEY TECHNICAL GOTCHAS (already in SKILL.md, repeat here for quick ref):
+  - FontForge removeOverlap fills empty regions -> use Shapely difference for cuts (cut.py)
+  - Center glyphs by INK not advance in editor (wide decorative glyphs spill outside metrics)
+  - Web fonts need localhost server (serve.py) — cannot load over file://
+  - Vectorize pixel->unit: --em 620 --baseline 740 MUST match editor canvas (hardcoded)
+  - WOFF2 needs brotli python module (in setup.sh)
+
+  USER WORKFLOW PREFERENCE: For visual/design decisions, render examples and iterate one
+  item at a time — do NOT present MCQ questions. Show in browser.
+
+  PREVIOUS SESSION CONTEXT (from 2026-06-04-emergency-handoff.yaml): The prior session
+  was an ACOS framework deficiency audit+fix sprint (ACOS-DEFICIENCY-ASSESSMENT-2026-06-04.md
+  is the living ledger; branch acos-deficiency-fixes-2026-06-04 has 8 commits, not yet merged
+  to main). That work is paused while this font project is active.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/SKILL.md — read in full"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/vectorize.py — read in full"
+  - "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/editor/editor.html — read lines 1-80, grep for LETTERS array (line 125)"
+  - "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/editor/edits/glyph-edits.json — parsed programmatically: 36 keys (A-Z, 0-9), each 34-79 KB string"
+  - "ls /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/ — directory structure confirmed"
+  - "ls /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/xyntax/build/ — premature XyntaxTitles-Regular.ttf + .woff2 confirmed, mtime Jun 5 13:49"
+  - "ls /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/xyntax/specimens/ — current_state.png, proof.png, verify_sheet.png"
+  - "ls /Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/editor/edits/ + /exports/ — edits JSON present, exports empty"
+  - "ls /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/scripts/ — all 13 scripts listed"
+  - "ls /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-font-forge/assets/ — editor.html + proof.html"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-06-04-emergency-handoff.yaml — prior session context (ACOS deficiency sprint)"
+  - "git log --oneline -20 (HEAD is 1076532 on main, recent commits are ACOS preeng/execute-component/review features)"
+  - "git status --short (acos-font-forge skill is untracked ??; no font-foundry files are in the ACOS repo)"
+  - "Session context injected by the handoff agent caller (most critical source for pending features + state)"

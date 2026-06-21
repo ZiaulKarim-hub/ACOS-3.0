@@ -1,0 +1,306 @@
+timestamp: "2026-05-20T16:37:44Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "43619f37-99e7-493f-a612-adb6443ba8bb"
+
+session_summary: |
+  Session 43619f37 is the live end-to-end test of the corrected ACOS Eternity Protocol
+  chain. The prior session (991a46bd) diagnosed two critical bugs: the 09:45 daemon
+  fire used fire_command="/clear" (bypassing handoff and resume-prompt creation entirely)
+  and CGEventPostToPid was a silent no-op against Node.js processes. Both bugs were
+  fixed: fire_command changed to "/acos-eternity-protocol" in config.yaml, and
+  inject-keystroke.py was fully rewritten to use CGEventPost(kCGHIDEventTap) with
+  osascript-based AXRaise. This session (43619f37) was started with threshold=50000
+  (lowered from 400000 to force an immediate test fire). The daemon fired at evt 27
+  (~61k approx tokens), injected /acos-eternity-protocol as designed, and this handoff
+  agent skill execution IS the confirmation that Step 1 of the protocol works correctly.
+
+current_work:
+  slice_id: "eternity-protocol-live-test-fire"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "step1_handoff_in_progress_test_fire"
+
+# ── WHAT THIS SESSION IS ABOUT ────────────────────────────────────────────────
+
+test_context: |
+  This is a deliberately triggered test fire. The sequence of events that led here:
+
+  1. 09:45 daemon fire FAILED silently — fire_command was "/clear", which typed /clear
+     directly into Warp. This bypassed the /acos-eternity-protocol skill entirely,
+     meaning no handoff was created and no resume prompt was written. The conversation
+     just cleared with no state preservation.
+
+  2. Diagnosis in this session: user ran /acos-eternity-protocol-threshold to raise
+     the threshold to 400000 (from 100000, the default at that point), then cleared
+     stale .compact-fired-* state files to allow re-arming.
+
+  3. Fix applied: config.yaml fire_command changed from "/clear" to "/acos-eternity-protocol".
+     This is the critical fix — the daemon now types the full skill command, which runs
+     the pre-clear orchestration (handoff + resume-prompt + inject /clear).
+
+  4. Threshold lowered to 50000 to force an immediate test fire.
+
+  5. Daemon fired at evt 27 (approx=61173, total=59136) at 2026-05-20T16:35:37Z.
+     The fire used the new fire_command="/acos-eternity-protocol", which caused this
+     skill to execute — and this handoff agent is running as Step 1 of that skill.
+
+  This handoff document IS the artifact proving Step 1 works correctly.
+
+# ── DAEMON STATE AT FIRE TIME ─────────────────────────────────────────────────
+
+daemon_fire_record:
+  session_id: "43619f37-99e7-493f-a612-adb6443ba8bb"
+  threshold_at_fire: 50000
+  fire_command: "/acos-eternity-protocol"
+  fired_at: "2026-05-20T16:35:37.5531Z"
+  fired_at_event: 27
+  approx_tokens: 61173
+  total_tokens: 59136
+  log_line: "# THRESHOLD CROSSED cycle=1 at evt 27: approx=61173 (total=59136) — fired /acos-eternity-protocol"
+  inject_result: "POSTED but UNVERIFIED (rc=5 class)"
+  inject_note: |
+    The daemon's post-injection JSONL verification timed out (3-second window) — this is
+    the known timing issue from cycle-3 of session 991a46bd. The skill DID execute
+    (this handoff agent is the proof). The UNVERIFIED status is a false negative from
+    the verification window being too short, not from injection failure.
+
+daemon_state_at_handoff:
+  heartbeat_unix: 1779295026
+  heartbeat_age_seconds: 7
+  heartbeat_status: "FRESH (within 90s threshold)"
+  config_file: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+  config_threshold: 50000
+  config_fire_command: "/acos-eternity-protocol"
+  pid_file: "/Users/zee/Library/Application Support/acos-token-monitor/state/pid-43619f37-99e7-493f-a612-adb6443ba8bb"
+  pid_file_contents: "45454 / Tue May 19 21:52:35 2026"
+  compact_fired_sentinel: "EXISTS — content: '2026-05-20T16:35:37.5533Z fired at evt 27 approx=61173 total=59136 cmd=/acos-eternity-protocol'"
+  arming_file: "ABSENT (no .resume-pending-43619f37-* file in state dir)"
+  pending_resume_file: "ABSENT (no pending-resume-43619f37-* file in state dir)"
+  cycle_counter: "1 (cycle-1 at this session)"
+  cycle_history: "[{\"cycle\": 1, \"fired_at\": 1779294937.554301, \"pre_total\": 59136, \"post_total\": null}]"
+
+# ── CRITICAL CONFIG STATE TO PRESERVE ────────────────────────────────────────
+
+critical_config_state:
+  config_yaml_path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+
+  fire_command:
+    current_value: "/acos-eternity-protocol"
+    prior_broken_value: "/clear"
+    status: "FIXED — keep this value. This is the whole point of the fix."
+
+  threshold:
+    current_value: 50000
+    intended_production_value: 400000
+    status: "TEST VALUE — MUST be restored to 400000 after this test is confirmed successful."
+    action_required: "After confirming the end-to-end chain works (handoff + resume-prompt + /clear
+      injection), run /acos-eternity-protocol-threshold and set threshold back to 400000.
+      OR edit config.yaml directly: change 'threshold: 50000' to 'threshold: 400000'.
+      The config is hot-reloaded — no daemon restart needed."
+
+  backup_files:
+    - path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml.bak"
+      threshold: 100000
+      fire_command: "/acos-eternity-protocol"
+      note: "Pre-May 20 original"
+    - path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml.bak2"
+      threshold: 100000
+      fire_command: "/clear"
+      note: "The broken version — threshold 100k, fire_command /clear"
+    - path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml.bak3"
+      threshold: 400000
+      fire_command: "/acos-eternity-protocol"
+      note: "After threshold was raised to 400k; fire_command still /acos-eternity-protocol"
+
+# ── WHAT WAS WORKED ON IN THIS SESSION (PRE-FIRE) ────────────────────────────
+
+completed_this_session:
+  - "Diagnosed the 09:45 daemon misfire: fire_command was '/clear' not '/acos-eternity-protocol'.
+    The daemon typed /clear directly, bypassing the skill entirely — no handoff, no resume prompt."
+  - "Raised threshold from 100000 to 400000 via /acos-eternity-protocol-threshold skill."
+  - "Cleared stale .compact-fired-* state files to allow daemon re-arming."
+  - "Edited config.yaml fire_command from '/clear' to '/acos-eternity-protocol' (the critical fix)."
+  - "Lowered threshold from 400000 to 50000 to force an immediate live test fire."
+  - "Daemon fired at evt 27 (~61k tokens) and typed '/acos-eternity-protocol' into Warp."
+  - "This /acos-handoff-agent execution IS the successful completion of test Step 1."
+
+files_modified:
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+    changes: |
+      fire_command changed from "/clear" to "/acos-eternity-protocol" (the critical fix).
+      threshold changed multiple times during this session:
+        100000 (original) -> 400000 (after /acos-eternity-protocol-threshold) ->
+        50000 (lowered for test fire). Current value: 50000 (TEST — restore to 400000).
+
+decisions_made:
+  - "fire_command='/acos-eternity-protocol' is the correct value. Never use '/clear' as the fire_command — that bypasses all state preservation."
+  - "Threshold 50000 is a test value only. Production threshold is 400000. Must be restored after test confirmation."
+
+blockers:
+  - "Threshold is 50000 (test value) — the daemon will fire again very quickly at this threshold.
+    The next session MUST restore it to 400000 immediately OR the daemon will keep firing on
+    every short conversation. Use /acos-eternity-protocol-threshold to restore."
+  - "UNVERIFIED inject status (rc=5) from cycle-1: the 3-second JSONL poll window in
+    verify_clear_in_jsonl() is too short. If the /clear did not actually fire, the post-clear
+    step will never happen. Verify by checking whether the conversation cleared after this
+    handoff agent completes."
+
+# ── NEXT ACTIONS ─────────────────────────────────────────────────────────────
+
+next_actions:
+  immediate:
+    - "RESTORE THRESHOLD: After confirming this test fire produced a full handoff + resume
+      prompt + /clear injection sequence, edit config.yaml threshold back to 400000.
+      Command: open '/Users/zee/Library/Application Support/acos-token-monitor/config.yaml'
+      and change threshold: 50000 to threshold: 400000. Hot-reloaded, no restart needed."
+    - "VERIFY END-TO-END: Check whether /clear actually fired (did the conversation clear
+      after this handoff was written?). If yes: the full protocol chain is proven working.
+      If no: the UNVERIFIED rc=5 is a real failure — investigate whether AXRaise succeeded
+      or the verification window (3s) needs extending to 8-10s."
+    - "VERIFY RESUME PROMPT: Check whether /acos-resume-prompt was called as part of this
+      skill execution (Step 2 of /acos-eternity-protocol). If this handoff was created but
+      no resume prompt exists in state/, the skill may have stopped after Step 1."
+    - "EXTEND JSONL VERIFICATION WINDOW: In inject-keystroke.py, change
+      verify_clear_in_jsonl(timeout_s=3.0) to timeout_s=8.0 or timeout_s=10.0.
+      File: /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+      Function: verify_clear_in_jsonl() (search for 'timeout_s=')"
+
+  pending_from_prior_sessions:
+    - "TCC csreq-pinning for Warp Accessibility permission (MEDIUM priority, preventive hardening).
+      Without this, a Warp auto-update will silently break keystroke injection.
+      Reference: /Users/zee/Documents/Vibe Coding/Warp-Disk-Access-Permanent-Fix.md"
+    - "Add --dry-run flag to eternity-resume-prepend.sh (LOW priority, testing hygiene).
+      File: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    - "Per-file disposition of orphan pending-resume files in state dir (LOW priority).
+      Files: pending-resume-c38121b3-*.txt (OKOA website), pending-resume.txt (May 6 legacy),
+      RESCUED-resume-ascent-dataroom-pii.txt, RESCUED-resume-from-smoke-test.txt.
+      Directive: NEVER auto-delete per feedback_preserve_pending_resumes.md — user decides."
+
+# ── ARCHITECTURAL CONTEXT: WHAT WAS BUILT ACROSS PRIOR SESSIONS ──────────────
+
+eternity_protocol_architecture:
+  inject_keystroke_py:
+    path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py"
+    size_lines: 438
+    last_modified: "2026-05-20T01:44Z"
+    architecture: |
+      1. Read claude PID from state file (session_id keyed)
+      2. Derive tty via 'ps -o tty=' on claude PID
+      3. Write OSC 2 title marker to /dev/<tty> just-in-time
+      4. Sleep 150ms for terminal to render title change
+      5. osascript finds Warp window matching session UUID via AXTitle, performs AXRaise
+      6. CGEventPost(kCGHIDEventTap) — HID layer injection, routes to frontmost window
+      7. Poll JSONL transcript for /clear evidence within 3 seconds (rc=5 if no evidence)
+    key_note: "CGEventPostToPid against Node.js is a silent no-op. CGEventPost(kCGHIDEventTap)
+      with AXRaise frontmost-window guarantee is the only working path. Proven by 10-agent
+      swarm research on 2026-05-20."
+
+  token_watcher_py:
+    path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    size_lines: 675
+    last_modified: "2026-05-20T01:21Z"
+    key_behavior: |
+      Watches per-session JSONL file. When approx tokens cross threshold, reads config.yaml
+      fire_command and injects it via inject-keystroke.py --session-id <sid>.
+      rc=5 (UNVERIFIED) preserves the pending-resume file for hook recovery.
+
+  register_session_pid_sh:
+    path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh"
+    size_lines: 121
+    last_modified: "2026-05-20T01:39Z"
+    b11_fix: "Replaced break-on-first-match with LAST_MATCH accumulator. Records outermost
+      claude process (long-lived Claude Code, PID 45454) not transient inner children."
+
+  eternity_resume_prepend_sh:
+    path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    role: "UserPromptSubmit hook. On user's first prompt in post-/clear session, detects
+      pending-resume-<session_id>-*.txt file, injects it as additionalContext, consumes file."
+
+  symlinks:
+    - global: "/Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md"
+      target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+    - global: "/Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+      target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    - global: "/Users/zee/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+      target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+    note: "All three symlinks confirmed live as of 2026-05-20. Created 2026-05-19 22:32–23:47."
+
+# ── CONTEXT FOR NEXT SESSION ──────────────────────────────────────────────────
+
+context_for_next_session: |
+  You are reading this in the post-/clear session (if /clear fired successfully) OR in
+  the same session that triggered this skill (if /clear is still pending).
+
+  THE CRITICAL FIX IS DONE. The config.yaml fire_command is now "/acos-eternity-protocol"
+  (was "/clear", which was the root cause of the 09:45 misfire). This session (43619f37)
+  was started at 50000 token threshold as a deliberate test. The daemon fired at ~61k tokens
+  and typed "/acos-eternity-protocol" into Warp, which triggered this skill execution. This
+  handoff document is the proof that Step 1 of the protocol (create handoff) is working.
+
+  URGENT ACTION — RESTORE THRESHOLD:
+  The threshold is currently 50000 (test value). It MUST be restored to 400000 before
+  normal use. Otherwise the daemon will fire on every short conversation. The config is
+  hot-reloaded — just edit the file:
+    /Users/zee/Library/Application Support/acos-token-monitor/config.yaml
+  Change "threshold: 50000" to "threshold: 400000".
+  OR use the skill: /acos-eternity-protocol-threshold
+
+  KNOWN LIMITATION — JSONL VERIFICATION TIMING:
+  The daemon logged "INJECT POSTED but UNVERIFIED" (rc=5) for this session's fire.
+  This is because verify_clear_in_jsonl() polls for 3 seconds — too short for the
+  /clear event to appear in JSONL. The injection IS working (proven by the skill
+  executing). The verification timeout should be extended to 8-10 seconds in:
+    /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+    Function: verify_clear_in_jsonl(timeout_s=3.0) — change to timeout_s=8.0
+
+  HANDOFF CHAIN (read for full history):
+    2026-05-20-eternity-protocol-fix-implemented.yaml — prior session (991a46bd), 3 cycles,
+      inject-keystroke.py rewrite, B11 fix, CGEventPostToPid vs CGEventPost diagnosis
+    2026-05-20-eternity-protocol-end-to-end-test-retry.yaml — B11 fix details (cycle 2)
+    2026-05-19-eternity-protocol-fixes.yaml — 8 atomic tasks, full implementation record
+    2026-05-19-eternity-protocol-end-to-end-test.yaml — first test attempt (cycle 1, dead PID)
+
+  The /acos-eternity-protocol skill is executing in the same session that triggered it.
+  Steps remaining after this handoff:
+    Step 2: /acos-resume-prompt — writes the resume prompt to state/
+    Step 3: Capture pre-clear total tokens
+    Step 4: Write .resume-pending-<session_id> arming file
+    Step 5: Inject /clear via inject-keystroke.py
+  After Step 5 the skill exits. The daemon then monitors for the token drop and injects
+  the resume prompt text. The UserPromptSubmit hook (eternity-resume-prepend.sh) is the
+  redundant fallback that fires on the user's first prompt in the new session.
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+
+reconstruction_sources:
+  - "User-provided context (authoritative): full session narrative — 09:45 /clear misfire,
+    threshold raise, state file clear, fire_command fix, threshold lowered to 50k, test fire"
+  - "git status --short (working tree state — 14 modified/deleted tracked files, many untracked)"
+  - "git log --oneline -20 (most recent commit: feat(acos-dataroom-v2): v2.0.0)"
+  - "git diff --stat HEAD~3..HEAD (acos-dataroom and acos-dataroom-v2 skills, ~80 files, 19k LOC)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml (read in full —
+    threshold: 50000, fire_command: '/acos-eternity-protocol')"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml.bak3 (read in full —
+    threshold: 400000, fire_command: '/acos-eternity-protocol' — confirmed production target)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/ (directory listing)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/state/ (filtered view —
+    .compact-fired-43619f37 confirmed, no arming file, no pending-resume-43619f37, heartbeat fresh)"
+  - "cat state/pid-43619f37-... = '45454 / Tue May 19 21:52:35 2026'"
+  - "cat state/.compact-fired-43619f37-... = '2026-05-20T16:35:37.5533Z fired at evt 27 ...
+    cmd=/acos-eternity-protocol'"
+  - "cat state/.cycle-history-43619f37-... = [{cycle:1, fired_at:1779294937.5, pre_total:59136}]"
+  - "cat state/heartbeat = 1779295026 (7s stale at read — fresh)"
+  - "cat logs/43619f37-*.log (read in full — 35 events, threshold crossed evt 27, inject POSTED
+    but UNVERIFIED, session kept running post-fire)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-fix-implemented.yaml (read in full —
+    authoritative record of inject-keystroke.py rewrite, B11 fix, cycle 1/2/3 from session 991a46bd)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-end-to-end-test-retry.yaml (read in full —
+    B11 fix record, arming state at that handoff)"
+  - "ls -lt memory/handoffs/ (confirmed no 2026-05-20-eternity-protocol-live-test-fire.yaml yet)"
+  - "ls -lt memory/decisions/ (no new decisions today — last ADR was Apr 23)"
+  - "ls -lt .acos/evidence/ (no evidence bundles today — last was Apr 21)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md
+    (first 50 lines — confirmed skill structure and fire_command description)"
+  - "date -u (timestamp for this handoff: 2026-05-20T16:37:44Z)"

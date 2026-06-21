@@ -180,6 +180,18 @@ mechanically verify a fresh handoff was written:
 # after the handoff, so without it ls -t binds $HANDOFF to the .resume.md.
 HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
 test -s "$HANDOFF" || { echo "ERROR: no handoff produced"; exit 1; }
+# 2026-06-21 FRESHNESS GUARD. `test -s` only proves a handoff EXISTS, not that
+# THIS fire wrote it. When the handoff-agent fails silently (observed live), the
+# line above binds $HANDOFF to a STALE prior handoff → the protocol would /clear
+# and resume the WRONG (old) work. Require the handoff to be <10 min old.
+# stat-based age, NOT `find -mmin` (find exits 0 even on no match → always-true).
+HO_MTIME=$(stat -f %m "$HANDOFF" 2>/dev/null || stat -c %Y "$HANDOFF" 2>/dev/null)
+if [[ -z "$HO_MTIME" ]] || [[ $(( ($(date +%s) - HO_MTIME) / 60 )) -gt 10 ]]; then
+    echo "ERROR: newest handoff ($HANDOFF) is STALE (not from this fire) — the"
+    echo "       handoff-agent likely failed to write. ABORTING before /clear so this"
+    echo "       session is NOT cleared and resumed with the wrong handoff."
+    exit 1
+fi
 ```
 
 ### Step 2: Generate the resume prompt
@@ -383,7 +395,22 @@ mv "$TMP" "$CLEAR_FLAG"
 chmod 600 "$CLEAR_FLAG" 2>/dev/null || true
 test -s "$CLEAR_FLAG" || { echo "ERROR: failed to write clear-request flag"; exit 1; }
 echo "Clear-request armed: $CLEAR_FLAG"
-echo "Daemon will fire /clear via cmux RPC on next kqueue tick (≤60s)."
+
+# ALSO arm a SURFACE-keyed flag (2026-06-19 fix for session-id churn). One cmux
+# pane cycles through MANY session ids (multiple transcripts, /clear cycles,
+# sometimes two written seconds apart with several panes open), so a sid-keyed
+# flag can miss the id the in-pane Stop hook actually receives. The surface is
+# STABLE per pane and both sides read CMUX_SURFACE_ID reliably; the hook
+# (eternity-cmux-inpane.sh Priority 1) prefers this flag. Match-by-surface is
+# sid-churn-proof. (Resume side is already project-scoped, so only the clear
+# trigger needed this.)
+MY_SURFACE="${CMUX_SURFACE_ID:-$CMUX_PANEL_ID}"
+if [[ -n "$MY_SURFACE" ]]; then
+    SURF_FLAG="$STATE/.clear-requested-surface-${MY_SURFACE}"
+    cp -f "$CLEAR_FLAG" "$SURF_FLAG" 2>/dev/null && chmod 600 "$SURF_FLAG" 2>/dev/null || true
+    echo "Surface-keyed clear-request armed: $SURF_FLAG"
+fi
+echo "In-pane Stop hook fires /clear on next turn-end (surface-keyed; sid-churn-proof)."
 ```
 
 ### Step 6: Exit cleanly

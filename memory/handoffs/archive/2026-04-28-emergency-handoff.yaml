@@ -1,0 +1,204 @@
+timestamp: "2026-04-28T00:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Multi-hour session built the complete Stage 1 design registry for a 100-page
+  Private Credit Presentation Design Reference PDF for fictional firm "Meridian
+  Credit Partners". All 100 designs (D001-D100) were specified, validated, and
+  confirmed passing with 0 failures. The session ended immediately after the user
+  directed a page-geometry change (from 13.33x7.5" to Letter landscape 11x8.5")
+  and defined a new per-page approval gating workflow. Phase A (geometry rebase)
+  has not yet started — the user invoked the handoff agent before giving the
+  final "go" to proceed.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  work_type: "external-design-project"
+  project_name: "Private Credit Presentation Design Reference (Meridian Credit Partners)"
+  project_path: "/Users/zee/Desktop/private_credit_design_reference/"
+  stage: "Stage 1 COMPLETE — awaiting user go-ahead for Phase A (geometry rebase)"
+
+completed_this_session:
+  - "12-agent swarm research completed — full synthesis at .acos/swarm/swarm-20260427-200223/synthesis/report.md (735-line document, 5,364 lines of agent findings)"
+  - "Built src/constants.py — page geometry, footer dimensions, WCAG thresholds, uniqueness axis definitions, build paths (CURRENTLY on old 959.76x540pt canvas — needs rebase)"
+  - "Built src/canonical.py — fixed Meridian Q4 2026 content: 10 KPIs, 5-row sector table, quarterly NAV series, capital structure, return waterfall, 5 insight variants; import-time sanity asserts"
+  - "Built src/palettes.py — 25 palettes with WCAG contrast metadata, CVD flags, screen_only flags"
+  - "Built src/typography.py — 15 pairings on 15 OFL/Apache-licensed fonts; substitution map for commercial → open-equivalent fonts; IBM Plex Mono mandate for all numeric text"
+  - "Built src/grids.py — 14 grid systems G-01..G-14 (currently parameterized on old canvas — needs rebase)"
+  - "Built src/layouts.py — 17 layout patterns LP-01..LP-17"
+  - "Built src/treatments.py — 60 chart treatments (9 types) + 12 KPI styles K-01..K-12 + 11 table treatments T-01..T-11 + 18 decorative treatments DT-01..DT-18"
+  - "Built src/registry.py — 100 design plan D001..D100 with full per-design specification (layout, grid, typography, palette, charts, KPI, table, decor, density, insight_variant)"
+  - "Built src/validate.py — uniqueness + WCAG + distribution validators; ~30ms runtime; pure stdlib"
+  - "Ran 5-iteration validation loop: 56 → 37 → 5 → 3 → 0 failures; registry now clean"
+  - "Wrote docs/validation_report.md — full distribution snapshot with confirmed 0-failure state"
+  - "Wrote README.md — project reference including font substitution log, module layout, reproducibility notes"
+  - "Confirmed validator still passes: `cd ~/Desktop/private_credit_design_reference && python3 -m src.validate` outputs ✓ ALL VALIDATIONS PASS"
+
+files_modified:
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/constants.py"
+    changes: "Created. Page geometry currently 959.76x540pt (old 13.33x7.5in canvas). MUST BE REBASED to 792x612pt (Letter landscape 11x8.5in) in Phase A. Footer strip and CONTENT_BBOX logic will need updating."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/canonical.py"
+    changes: "Created. Fixed Meridian Q4 2026 content. Sanity asserts at import time. Return waterfall components (1180+95+120-35-165=1195) intentionally don't tie to stated Net IRR (1360) — render as given per data integrity discipline."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/palettes.py"
+    changes: "Created. 25 palettes. Slate Institutional (#2) at cap=10."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/typography.py"
+    changes: "Created. 15 pairings. Substitution map for Helvetica/Arial/Georgia/Calibri/Avenir/Gotham/Garamond/Times → open equivalents. IBM Plex Mono mandatory on all numeric text."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/grids.py"
+    changes: "Created. 14 grids G-01..G-14. Parameterized on old canvas dimensions — MUST BE REBASED in Phase A."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/layouts.py"
+    changes: "Created. 17 layout patterns LP-01..LP-17."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/treatments.py"
+    changes: "Created. 60 chart treatments + 12 KPI styles + 11 table treatments + 18 decorative treatments. Note: synthesis report stated 63 charts; actual catalogue is 60 (verified per-type sum)."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/registry.py"
+    changes: "Created. THE 100-DESIGN PLAN. D001-D100 fully specified. Passes all 6 validators at 0 failures."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/src/validate.py"
+    changes: "Created. Uniqueness (6-axis ≥3-differ rule, 4,950 pairwise), WCAG 2.1 AA, palette overuse, chart distribution, insight rotation, category distribution validators."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/README.md"
+    changes: "Created. Full project reference."
+  - path: "/Users/zee/Desktop/private_credit_design_reference/docs/validation_report.md"
+    changes: "Created. Stage 1 validation report, 0-failure confirmation, distribution snapshot, iteration log."
+
+decisions_made:
+  - "ReportLab pure Canvas API as primary PDF renderer (from swarm Agent 12; Agent 9's WeasyPrint preference overridden by the IBM Plex Mono mandate for tabular data)"
+  - "matplotlib SVG → svglib → ReportLab Canvas embed for all charts"
+  - "pypdf for post-merge bookmark/font verification"
+  - "SHA-256 content hashing per page for resumable build cache at .build-cache/private-credit-deck/page-Dnnn-{hash16}.pdf"
+  - "RANDOM_SEED = 42 documented in src/constants.py and README.md"
+  - "9 of 60 chart treatments require custom matplotlib geometry: B-3 rounded bars, B-8 gradient bars, W-2 hairline waterfall, W-4 compact 2-col waterfall, W-6 gradient waterfall, SB-4 diverging stacked, SB-6 marimekko, SP-4 bullet chart, SM-5 ridgeline, H-4 geographic heatmap (needs geopandas)"
+  - "All KPI values and table cell numbers in IBM Plex Mono / Roboto Mono / JetBrains Mono — sidesteps ReportLab missing OpenType GSUB shaping"
+  - "Page geometry change: move from 13.33x7.5in (959.76x540pt) to Letter landscape 11x8.5in (792x612pt at 72pt/in)"
+  - "Remove metadata footer from design pages — design fills full canvas with margins only"
+  - "Add separate metadata page after each design page: two-column layout documenting design spec fields"
+  - "Final book structure: ~221 total pages (cover + TOC + 20 dividers + 100 design pages + 100 metadata pages + 2 indexes); est 22-28 MB"
+  - "Originality guardrails: master DO NOT MIMIC list established (Bloomberg amber-on-black, Stripe purple, Linear blue, Vercel near-black, Berkshire plain-text, Bridgewater all-text, Apollo dark-charcoal+serif, Oaktree fan-chart, Mesa West warm-sand, Starwood site-photo, Blackstone navy+gold, PGIM burgundy, Hermes illustration, FT salmon, NYT Cheltenham, Morningstar dark green, iLevel/Allvue covenant export, Capital IQ card UI, Trepp CRE dashboard, Müller-Brockmann specific Tonhalle posters)"
+  - "Generic safe descriptors agreed for Design Inspiration metadata field (13 approved descriptors)"
+
+blockers:
+  - "LAST OPEN QUESTION (must ask before starting Phase A): When user rejects a page and picks option (a) 'same design, different axes', should Claude propose 2-3 variants in a single render (faster comparison) or render one alternative at a time? USER HAS NOT YET ANSWERED."
+  - "User has not yet given final go-ahead to start Phase A — they paused for handoff"
+  - "fonts/ directory is empty — ~30 TTF files need to be vendored in Phase B1 (Inter, IBM Plex Sans/Mono, Source Serif 4 / Sans 3, Roboto Mono, EB Garamond, Manrope, DM Sans, Space Grotesk, JetBrains Mono, Lato, Montserrat, Libre Caslon)"
+  - "No render code exists yet — src/ has only data/registry/validation modules"
+  - "review/ directory does not exist yet — must be created at project root as destination for per-page PDF+PNG outputs"
+
+next_actions:
+  - "FIRST: Ask the open question about rejection handling — single batch render (2-3 variants) vs one at a time"
+  - "SECOND: Get user final go-ahead to begin Phase A"
+  - "Phase A — geometry rebase: update PAGE_W=792.0, PAGE_H=612.0 in src/constants.py; remove FOOTER_PCT/FOOTER_H/FOOTER_BBOX (no footer on design pages); recalculate CONTENT_BBOX with margin only; update CONTENT_W, CONTENT_H; rebase all 14 grids in src/grids.py to new canvas; re-run validators (axes are canvas-independent, should still pass cleanly)"
+  - "Phase B1 (with gate) — vendor fonts: download ~30 TTF files into fonts/; produce small showcase PDF+PNG to review/; await 'approved'"
+  - "Phase B2 (with gate) — palette swatch sheet: 25 palettes, hex chips, contrast ratios, CVD flags; produce to review/; await 'approved'"
+  - "Phase B3 (with gate) — typography samples: 15 pairings showing actual fonts with canonical Meridian content; produce to review/; await 'approved'"
+  - "Phase B4 (with gate) — grid wireframes: 14 grids as labeled boxes on Letter-landscape canvas; produce to review/; await 'approved'"
+  - "Phase B5 (with gate) — chart treatments showcase: ~9 sheets (one per chart type, all treatments side by side); produce to review/; await 'approved'"
+  - "Phase B6 (with gate) — KPI cards + Table + Decorative showcases (3 sheets); produce to review/; await 'approved'"
+  - "Phase B7 (with gate) — sample design page render (D001, full design, NO metadata); produce to review/; await 'approved'"
+  - "Phase B8 (with gate) — sample metadata page render (D001 documentation); produce to review/; await 'approved'"
+  - "Phase C — per-design review loop (100 designs, strict one-at-a-time D001 approved before D002)"
+  - "Phase D — final assembly: cover, TOC, 20 category dividers, 100 design+metadata page pairs interleaved, palette index, layout index, bookmarks, output to output/private_credit_design_reference_100.pdf"
+
+context_for_next_session: |
+  PROJECT: 100-page Private Credit Presentation Design Reference PDF.
+  Fictional firm: Meridian Credit Partners, Q4 2026 LP Update content.
+  Project root: /Users/zee/Desktop/private_credit_design_reference/
+
+  WHAT STAGE 1 BUILT: A fully validated Python-only design registry. 100 designs
+  (D001-D100) each carrying a complete spec: layout pattern (LP-01..LP-17), grid
+  system (G-01..G-14), typography pairing (1..15), palette (1..25), primary/secondary
+  chart treatment IDs, KPI style, table treatment, decorative treatment, density
+  (minimal/balanced/dense), and insight variant (V1..V5). All 6 validators pass
+  (uniqueness, WCAG 2.1 AA, palette overuse, chart distribution, insight rotation,
+  category distribution). Validator takes ~30ms and should be re-run after any
+  registry edit: `cd ~/Desktop/private_credit_design_reference && python3 -m src.validate`
+
+  CRITICAL GEOMETRY CHANGE (agreed at end of session, not yet implemented):
+  User changed canvas from 13.33x7.5in (959.76x540pt) to Letter landscape 11x8.5in
+  (792x612pt). The existing src/constants.py and src/grids.py still use old values.
+  Phase A must rebase these. Validators are canvas-independent (they check axis
+  diversity, not pixel coordinates) so they should still pass after the rebase.
+
+  METADATA PAGE ARCHITECTURE (agreed, not yet implemented):
+  - Design pages: full canvas, NO footer, margins only
+  - Each design page is immediately followed by a matching metadata page
+  - Metadata page: two-column clean documentation layout showing: Design #/Name/Category
+    title bar; Typography (6 font slots in actual fonts); Palette (5+ hex chips with
+    contrast ratios); Grid + Layout; Charts; Table; KPI/Decor/Density; Inspiration;
+    Best Use Case; Description (2-3 sentences)
+
+  PER-PAGE APPROVAL GATING (user's confirmed workflow):
+  - Every page rendered as BOTH PDF AND PNG, saved to review/ directory
+  - Tell user the path, wait for explicit "approved" word
+  - If rejected, offer TWO options: (a) same design retry with different axes OR
+    (b) replace design entirely with fresh spec
+  - STRICT one-at-a-time — D001 must be approved before D002
+  - Same gating INSIDE infrastructure phases (B1-B8) — showcase PDF+PNG before integrating
+
+  OPEN QUESTION (must ask before starting Phase A):
+  When user rejects a page and picks option (a) "same design, different axes",
+  should Claude propose 2-3 variants in a SINGLE render (faster comparison) or
+  render one alternative at a time? This was the last thing outstanding when the
+  user called for handoff.
+
+  SWARM RESEARCH SOURCE OF TRUTH:
+  /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/swarm/swarm-20260427-200223/synthesis/report.md
+  (735-line synthesis, 56,725 bytes). Contains: all 25 palettes, 15 typography
+  pairings, 14 grids, 17 layouts, 63 chart treatment IDs (catalogue trimmed to 60
+  in implementation), 12 KPI styles, 11 tables, 18 decoratives, originality
+  guardrails master list, full per-category 100-design plan.
+
+  CANONICAL CONTENT (from src/canonical.py — do NOT alter without re-running validator):
+  10 KPIs: Commitments $485.0M, Funded $327.5M, Coupon 11.8%, IRR 13.6%, MOIC 1.42x,
+    LTV 58.5%, DSCR 1.74x, Avg Loan $18.2M, Borrowers 28, Senior Secured 72%
+  Portfolio: 5 rows (CRE 96.5/29.5%/10.9%/risk 3, Specialty 74.2/22.7%/12.4%/2,
+    Healthcare 58.6/17.9%/11.7%/2, Business Services 51.3/15.7%/12.1%/3,
+    Consumer & Other 46.9/14.2%/13.3%/4); sectors sum to $327.5M = Funded Exposure KPI
+  NAV series: Q1 268.4, Q2 289.1, Q3 308.7, Q4 327.5
+  Capital structure: Senior Secured 72% / Unitranche 19% / Subordinated 9%
+  Return waterfall (bps): Coupon +1180, Fees +95, MTM +120, Realized −35, Expenses −165,
+    Net IRR 1360 (components don't tie — render as given)
+  5 insight variants verbatim from brief, rotated D001-D020=V1, D021-D040=V2,
+    D041-D060=V3, D061-D080=V4, D081-D100=V5
+
+  RENDERING STACK (not yet implemented — agreed decisions only):
+  - ReportLab pure Canvas API as primary PDF renderer
+  - matplotlib SVG → svglib → ReportLab Canvas for charts
+  - pypdf for post-merge bookmark/font verification
+  - SHA-256 page hashing for resumable build cache at .build-cache/private-credit-deck/
+  - 9 chart treatments need custom matplotlib geometry (B-3, B-8, W-2, W-4, W-6,
+    SB-4, SB-6, SP-4, SM-5, H-4) — H-4 needs geopandas
+  - IBM Plex Mono / Roboto Mono / JetBrains Mono mandatory for all numeric text
+
+  WHAT DOES NOT EXIST YET:
+  - fonts/ directory is empty — no TTF files vendored
+  - No render code: no src/fonts.py, src/charts.py, src/tables.py, src/kpi_cards.py,
+    src/decorative.py, src/metadata_footer.py, src/page.py, src/build.py
+  - review/ directory does not exist
+  - output/ directory is empty
+
+  RESUME SEQUENCE:
+  1. Ask the open rejection-handling question (single batch vs one-at-a-time render)
+  2. Get user's final "go" confirmation
+  3. Start Phase A: rebase constants.py and grids.py to 792x612pt; re-run validator
+
+reconstruction_sources:
+  - "/Users/zee/Desktop/private_credit_design_reference/src/constants.py"
+  - "/Users/zee/Desktop/private_credit_design_reference/src/registry.py (lines 1-60)"
+  - "/Users/zee/Desktop/private_credit_design_reference/README.md"
+  - "/Users/zee/Desktop/private_credit_design_reference/docs/validation_report.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-25T03-40-04Z-session-handoff.yaml"
+  - "git log --oneline -20 (ACOS 3.0 repo)"
+  - "git diff --stat HEAD~5..HEAD (ACOS 3.0 repo)"
+  - "git status --short (ACOS 3.0 repo)"
+  - "ls -la ~/Desktop/private_credit_design_reference/ (directory structure confirmation)"
+  - "ls -la ~/Desktop/private_credit_design_reference/src/ (module listing)"
+  - "ls -la ~/Desktop/private_credit_design_reference/docs/ + fonts/ + output/ (stage completion check)"
+  - "python3 -m src.validate from project root (live validator confirmation)"
+  - ".acos/swarm/swarm-20260427-200223/ directory listing (swarm existence confirmed)"
+  - ".acos/swarm/swarm-20260427-200223/synthesis/ listing (report.md size: 56,725 bytes)"
+  - ".acos/state/ directory listing (runtime state)"
+  - ".acos/evidence/ directory listing (no evidence for today's date)"
+  - "memory/decisions/ listing (no new decisions today)"
+  - "user-provided critical context injected into this handoff invocation"

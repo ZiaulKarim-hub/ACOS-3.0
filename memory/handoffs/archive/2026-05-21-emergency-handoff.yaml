@@ -1,0 +1,297 @@
+timestamp: "2026-05-21T06:09:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+# ── SESSION CHAIN ─────────────────────────────────────────────────────────────
+current_session_id: "4babaf0a-e5a6-4732-a679-1db0ff18a456"
+prior_session_chain:
+  - "9dad2072-7fbc-4e30-943a-afd5389fa6c8  (rerun-verification, 6th session of May-20 arc — Bug #5b fixed here)"
+  - "fd2a4f20-a039-4442-8cb5-5e2512a9228b  (FIRST VERIFIED AUTONOMOUS RESUME HOP — see below)"
+  - "4babaf0a-e5a6-4732-a679-1db0ff18a456  (current — eternity-protocol already fired, /clear pending)"
+
+# ── SESSION SUMMARY ───────────────────────────────────────────────────────────
+session_summary: |
+  The 2026-05-20/21 ACOS Eternity Protocol verification and hardening cycle is now
+  complete. Two commits landed on origin/main:
+
+  - 6b3491b (2026-05-20): "fix(acos-eternity-protocol): close hook rm-violation (Bug #5b)
+    + verify autonomous daemon-resume hop end-to-end". Committed eternity-resume-prepend.sh
+    (new file, UserPromptSubmit hook) and .claude/skills/acos-eternity-protocol-resume/SKILL.md
+    (new file). Both now use mv-to-consumed/ instead of rm -f (Bug #5b fix). The commit
+    message also anchors the first end-to-end verification — but that verification actually
+    occurred in the SUBSEQUENT session (fd2a4f20), NOT in 9dad2072. The 9dad2072 attempt
+    was a 3rd failure; 9dad2072 manually cleaned up the .clear-fired marker which caused
+    orphan-claim to skip.
+
+  - f639310 (2026-05-21 00:00Z): "fix(acos-eternity-protocol-resume): project-scope Step 1
+    fallback (Bug #5c)". Patched SKILL.md Step 1 fallback to be project-scoped (mirrors the
+    hook's pattern). Prevents foreign-project resume injection.
+
+  After those commits, session fd2a4f20 proved the first VERIFIED end-to-end autonomous
+  daemon-resume hop (fd2a4f20 log lines 5-10: all 5 markers present). The fd2a4f20 session
+  then continued doing handoff agent work, and session 4babaf0a was started. 4babaf0a is
+  the current session and the daemon has already fired /acos-eternity-protocol at evt=25
+  (approx 411k tokens, 2026-05-21T06:06:12Z). The .compact-fired marker is written;
+  the session is mid-eternity-protocol cycle right now.
+
+# ── CURRENT WORK ──────────────────────────────────────────────────────────────
+current_work:
+  slice_id: "eternity-protocol-verification-complete"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "completed — two commits on origin/main; current session 4babaf0a is mid-eternity-protocol cycle (daemon fired /acos-eternity-protocol at evt=25, awaiting /clear)"
+
+# ── COMPLETED THIS SESSION ────────────────────────────────────────────────────
+completed_this_session:
+  - |
+    Bug #5b fixed and committed (6b3491b): eternity-resume-prepend.sh and
+    acos-eternity-protocol-resume/SKILL.md Step 5 both now mv artifacts to
+    state/consumed/ instead of rm -f. Atomic, audit-preserving, mirrors the
+    preserve-pending-resumes invariant.
+  - |
+    Bug #5c fixed and committed (f639310): SKILL.md Step 1 fallback is now
+    project-scoped using sanitize(cwd) → PROJECT_DIR → PROJECT_SESSIONS pattern
+    (same as the hook). Defense-in-depth grep guard added to Step 5. Foreign-project
+    resume injection is no longer possible via the skill.
+  - |
+    FIRST VERIFIED END-TO-END AUTONOMOUS RESUME HOP (session fd2a4f20):
+    fd2a4f20 log shows all 5 required markers in sequence:
+      line 5:  "orphan .resume-pending-9dad2072: .clear-fired marker present — positive proof of /clear, claiming"
+      line 6:  "ORPHAN RESUME CLAIM: sibling session 9dad2072 ... — typing /acos-eternity-protocol-resume into my session"
+      line 7:  inject mode CGEvent+AXRaise session_id=fd2a4f20 ... orphan-claim from 9dad2072
+      line 8:  "INJECT OK (verification skipped) (orphan-claim from 9dad2072)"
+      line 9:  "orphan-claim slash command typed; resume skill will complete injection + cleanup"
+      line 10: ".clear-fired-9dad2072 marker cleaned up post-claim"
+    This satisfies the complete verification criteria. The autonomous daemon path works.
+  - |
+    Memory notes updated for:
+    - feedback_eternity_protocol_daemon_resume_unverified.md → rewritten as "VERIFIED by fd2a4f20"
+    - feedback_eternity_resume_stale_cross_contamination.md → marked FIXED with fix_commit: f639310
+    - MEMORY.md pointers updated for both
+    (These 3 files live under ~/.claude/projects/ outside the ACOS git repo and were NOT committed.)
+  - |
+    Corrected mental model documented: the "autonomous-vs-hook-fallback framing was wrong"
+    insight is captured. Post-fixes, daemon types /acos-eternity-protocol-resume; the hook
+    (eternity-resume-prepend.sh) prepends resume content as additionalContext AND moves
+    artifacts to consumed/. The skill's Step 5 is now an idempotent no-op when the hook
+    beats it to cleanup. Both paths are cooperative, not competing.
+  - |
+    Current session 4babaf0a: the user invoked /acos-handoff-agent to produce this handoff
+    as part of an /acos-eternity-protocol cycle. The daemon fired /acos-eternity-protocol
+    at 2026-05-21T06:06:12Z (evt=25, approx 411k tokens). The .compact-fired marker is
+    written. After this handoff completes, the user will run /acos-resume-prompt (Step 2),
+    arm flags, and the daemon will fire /clear. The post-clear session will be the next hop.
+
+# ── FILES MODIFIED ────────────────────────────────────────────────────────────
+files_modified:
+  - path: ".claude/scripts/eternity-resume-prepend.sh"
+    changes: |
+      New file committed in 6b3491b. UserPromptSubmit hook that prepends pending resume
+      content as additionalContext when a pending-resume file exists for this project.
+      Project-scoped (sanitize cwd → PROJECT_DIR → PROJECT_SESSIONS). Consumes via mv to
+      state/consumed/ (not rm). Hook artifact list: pending-resume-*.txt,
+      .resume-pending-*, .compact-fired-* (does NOT consume .clear-fired — that belongs
+      to the daemon's orphan-claim path).
+
+  - path: ".claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    changes: |
+      New file committed in 6b3491b (Step 5 mv-discipline fix) then further amended in
+      f639310 (Step 1 project-scope fix). Current state: Step 0 self-writes PID file;
+      Step 1 is project-scoped fallback with PROJECT_SESSIONS guard; Step 3 reads PID
+      file (no AppleScript fallback — aborts cleanly if missing); Step 4 targets by
+      AXTitle session-UUID via inject-keystroke.py --session-id --no-verify; Step 5
+      moves artifacts to state/consumed/ with defense-in-depth PROJECT_SESSIONS check.
+
+  - path: "memory/feedback_eternity_protocol_daemon_resume_unverified.md"
+    changes: |
+      Rewritten as VERIFIED. Not in ACOS git repo — lives in
+      ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/.
+      Now states: autonomous daemon-resume hop is verified by fd2a4f20 log lines 5-10.
+      Supersedes lineage notes from prior sessions.
+
+  - path: "memory/feedback_eternity_resume_stale_cross_contamination.md"
+    changes: |
+      Marked FIXED. Not in ACOS git repo. fix_commit: f639310. Notes that both the skill
+      and the hook are now project-scoped and share one failure-mode surface.
+
+  - path: "memory/MEMORY.md"
+    changes: |
+      Two feedback file pointers updated to reflect verified/fixed status.
+      Not in ACOS git repo.
+
+# ── DECISIONS MADE ────────────────────────────────────────────────────────────
+decisions_made:
+  - |
+    The "autonomous-vs-hook-fallback" framing is incorrect. The corrected model:
+    daemon types /acos-eternity-protocol-resume into Warp (autonomous injection);
+    the UserPromptSubmit hook (eternity-resume-prepend.sh) then runs when the skill
+    invokes any tool, prepending the resume content via additionalContext AND consuming
+    the artifacts. The skill's Step 5 cleanup is now idempotent when the hook fires first.
+    Both paths are cooperative. The hook is a safety net that also serves as the primary
+    delivery mechanism; the daemon's injection is the trigger that wakes up the skill.
+
+  - |
+    Do NOT commit the 3 memory/ files (feedback_eternity_protocol_daemon_resume_unverified.md,
+    feedback_eternity_resume_stale_cross_contamination.md, MEMORY.md) — they live outside
+    the ACOS git repo under ~/.claude/projects/ and are managed separately.
+
+  - |
+    Bug #6 framing correction: the "hook consumes .clear-fired before daemon sees it" framing
+    was wrong. The hook artifact list is .resume-pending, .compact-fired, and pending-resume —
+    NOT .clear-fired. The 9dad2072 rerun failure was caused by the user manually moving
+    .clear-fired to consumed/ during session setup, not a hook bug. The daemon found no
+    .clear-fired in state/ because it had been manually moved. This is NOT a code bug;
+    the correct procedure is to not manually move .clear-fired when setting up reruns.
+
+# ── BLOCKERS ──────────────────────────────────────────────────────────────────
+blockers: []
+
+# ── KNOWN ROUGH EDGES (future work, not blockers) ─────────────────────────────
+known_rough_edges:
+  stale_frontmatter_description:
+    file: ".claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    issue: |
+      The YAML frontmatter description still says "uses inject-keystroke.py with --pid for
+      precise targeting." Step 4 actually targets via AXTitle session-UUID marker (--session-id),
+      not --pid. Minor but misleading.
+    fix: "Update description field in SKILL.md frontmatter to remove --pid reference."
+    effort: "1-line edit"
+
+  bin_manifest_regeneration:
+    file: "$HOME/Library/Application Support/acos-token-monitor/bin/bin-manifest.sha256"
+    issue: |
+      bin-manifest.sha256 must be manually regenerated after any edit to token-watcher.py
+      or inject-keystroke.py. The launcher refuses to start if the manifest is stale.
+      There is no pre-commit hook or automated guard for this.
+    fix: |
+      Option A: add a pre-commit hook in the acos-token-monitor install that regenerates
+      the manifest on each bin/ edit. Option B: document the regeneration command prominently
+      in both script headers.
+    effort: "small"
+
+  step_0_pid_race:
+    file: ".claude/skills/acos-eternity-protocol-resume/SKILL.md Step 0"
+    issue: |
+      Step 0 self-writes the PID file before injection. There is a comment-acknowledged race:
+      the daemon's SessionStart hook may also be writing the same PID file concurrently.
+      The race has not been observed in practice (both writes produce the same PID value).
+    fix: "Document the race, add an atomic write or lock if ever observed."
+    effort: "low priority"
+
+  launcher_is_single_point_of_failure:
+    issue: |
+      If the launcher (token-watcher-launcher.py) fails to start (e.g., stale manifest,
+      Python error), there is no autonomous resume. The UserPromptSubmit hook (eternity-resume-prepend.sh)
+      is the safety net in this case, but it requires the user to type a prompt — it does
+      not fire autonomously. A launcher failure = no daemon = hook-only recovery.
+    fix: "Out of scope for now. Accept the limitation."
+
+# ── CURRENT SESSION STATE ─────────────────────────────────────────────────────
+current_session_state:
+  session_id: "4babaf0a-e5a6-4732-a679-1db0ff18a456"
+  daemon_log: "/Users/zee/Library/Application Support/acos-token-monitor/logs/4babaf0a-e5a6-4732-a679-1db0ff18a456.log"
+  daemon_status: "active — 29 events logged as of 2026-05-21T06:07:31Z"
+  tokens_at_threshold_fire: "approx=411,835 (total=401,502)"
+  threshold: "400,000"
+  eternity_protocol_fired_at_evt: 25
+  eternity_protocol_fired_at_time: "2026-05-21T06:06:12Z"
+  compact_fired_marker: "present — /Users/zee/Library/Application Support/acos-token-monitor/state/.compact-fired-4babaf0a-e5a6-4732-a679-1db0ff18a456"
+  inject_outcome: |
+    INJECT POSTED but UNVERIFIED: "no /clear evidence in JSONL — keeping pending-resume
+    state for hook recovery." This is normal — the eternity-protocol skill has not yet
+    completed and /clear has not been fired. The pending-resume file for this session
+    will be written when the eternity-protocol skill completes its Step 2 (/acos-resume-prompt).
+  pid: "45454"
+  next_step_in_current_cycle: |
+    1. /acos-resume-prompt (Step 2 of /acos-eternity-protocol) runs now — writes
+       pending-resume-4babaf0a.txt with the resume prompt content.
+    2. Arming flags written (.resume-pending-4babaf0a, .clear-requested-4babaf0a).
+    3. Daemon picks up .clear-requested → fires /clear → writes .clear-fired-4babaf0a.
+    4. New session starts. New watcher checks for orphan resume.
+    5. Watcher finds .resume-pending-4babaf0a + .clear-fired-4babaf0a → claims orphan
+       → types /acos-eternity-protocol-resume into Warp (verified path).
+    6. eternity-resume-prepend.sh hook fires on first tool call → prepends resume as
+       additionalContext AND moves artifacts to consumed/.
+    7. Post-clear session wakes up with full context of where this session left off.
+
+# ── NEXT ACTIONS ──────────────────────────────────────────────────────────────
+next_actions:
+  immediate:
+    - "The eternity-protocol cycle is in progress. The post-clear session should pick up that the verification + hardening work is complete."
+    - |
+      Stale frontmatter description fix (small, optional):
+        File: .claude/skills/acos-eternity-protocol-resume/SKILL.md
+        Change: frontmatter description from "uses inject-keystroke.py with --pid for precise
+        targeting" to "uses inject-keystroke.py with --session-id for AXTitle-targeted injection."
+        Commit when convenient.
+  optional:
+    - "bin-manifest.sha256 pre-commit hook — prevents launcher failure after token-watcher.py edits."
+    - "inject-keystroke.py: extend verify_clear_in_jsonl() timeout from 3s to 8s (open from prior sessions). Requires manifest regen after edit."
+    - "Prune state/consumed/ if it grows large — can be done with find consumed/ -mtime +30 -delete at any time."
+    - "Whatever Jason decides next — the eternity-protocol arc is complete."
+
+# ── CONTEXT FOR NEXT SESSION ──────────────────────────────────────────────────
+context_for_next_session: |
+  The ACOS Eternity Protocol verification and hardening cycle that ran across most of
+  2026-05-20 is now fully complete. Both code paths (the daemon's autonomous injection
+  and the UserPromptSubmit hook's safety-net delivery) are working correctly and
+  cooperatively. The corrected mental model: the daemon types /acos-eternity-protocol-resume
+  which triggers the skill; the hook then fires on the skill's first tool call, prepending
+  the resume content as additionalContext AND consuming the artifacts. The skill's Step 5
+  cleanup is now an idempotent no-op because the hook beats it to the artifacts.
+
+  Two commits were merged to origin/main:
+    6b3491b — Bug #5b (rm-to-mv) fix for both the hook script and the skill. New files:
+              eternity-resume-prepend.sh and acos-eternity-protocol-resume/SKILL.md.
+    f639310 — Bug #5c (project-scoped Step 1 fallback) fix for the skill. Prevents
+              foreign-project resume injection via the manual resume path.
+
+  The first ever verified autonomous daemon-resume hop is documented in the fd2a4f20
+  daemon log at /Users/zee/Library/Application Support/acos-token-monitor/logs/
+  fd2a4f20-a039-4442-8cb5-5e2512a9228b.log (lines 5-10 show all 5 required markers).
+
+  The CURRENT session (4babaf0a) hit the 400k token threshold and the daemon fired
+  /acos-eternity-protocol at 2026-05-21T06:06:12Z. This handoff is part of that cycle.
+  After the handoff, the session will write the resume prompt and arm the .clear-requested
+  flag. The daemon will then fire /clear and the autonomous hop will execute (following
+  the now-verified path).
+
+  The next session should pick up knowing:
+    1. The eternity-protocol verification and hardening arc is complete. No more debugging
+       of the basic hop mechanics — they work.
+    2. Three minor rough edges remain (stale frontmatter, bin-manifest pre-commit hook,
+       Step 0 race) — none are blocking.
+    3. The most immediately actionable cleanup is the 1-line frontmatter description fix
+       in SKILL.md (--pid → --session-id).
+    4. No ACOS planning slices are active. The next work unit is entirely up to Jason.
+
+  Key file paths:
+    - .claude/scripts/eternity-resume-prepend.sh (hook — committed 6b3491b)
+    - .claude/skills/acos-eternity-protocol-resume/SKILL.md (skill — committed f639310)
+    - .claude/skills/acos-eternity-protocol/SKILL.md (main orchestrator — read-only this arc)
+    - /Users/zee/Library/Application Support/acos-token-monitor/logs/ (daemon logs)
+    - /Users/zee/Library/Application Support/acos-token-monitor/state/ (markers + PIDs)
+    - /Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py (daemon)
+    - /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py (injector)
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+reconstruction_sources:
+  - "git log --oneline -20 (confirmed commits f639310 and 6b3491b as last two; no eternity work in prior commits)"
+  - "git show --stat f639310 (confirmed SKILL.md changed: +61/-9 lines)"
+  - "git show --stat 6b3491b (confirmed two new files: eternity-resume-prepend.sh +135, SKILL.md +139)"
+  - "git show f639310 (full commit message read — Bug #5c description, two verification methods, refs feedback file)"
+  - "git show 6b3491b (full commit message read — Bug #5b and 'first verified autonomous resume hop' anchor)"
+  - ".claude/scripts/eternity-resume-prepend.sh (read in full — confirmed mv-to-consumed/ artifact list, confirmed does NOT consume .clear-fired)"
+  - ".claude/skills/acos-eternity-protocol-resume/SKILL.md (read in full — confirmed Step 1 project-scoped, Step 4 AXTitle/session-id injection, Step 5 mv-to-consumed/ with PROJECT_SESSIONS guard)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-rerun-verification.yaml (read in full — 6th handoff of the day, describes 3rd failure of autonomous hop, Bug #6 analysis, open bugs, uncommitted files)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/logs/fd2a4f20-a039-4442-8cb5-5e2512a9228b.log (read in full — lines 1-10 confirm verified autonomous hop; 63 events, session active through 2026-05-21T06:07:04Z)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/logs/4babaf0a-e5a6-4732-a679-1db0ff18a456.log (head -20 + tail -60 — confirmed threshold fire at evt=25 at 2026-05-21T06:06:12Z, INJECT POSTED but UNVERIFIED, .compact-fired marker written)"
+  - "ls /Users/zee/Library/Application Support/acos-token-monitor/state/ grep 4babaf0a (confirmed state markers present)"
+  - "cat .compact-fired-4babaf0a (confirmed fire timestamp and cmd=/acos-eternity-protocol)"
+  - "cat pid-4babaf0a (confirmed PID 45454)"
+  - "ls /Users/zee/Library/Application Support/acos-token-monitor/state/ grep pending-resume (confirmed no session-specific pending-resume for 4babaf0a yet — skill has not yet written it)"
+  - "ls memory/handoffs/ (confirmed no 2026-05-21 handoff exists yet — safe to write this file)"
+  - "user-provided authoritative context in the handoff invocation prompt (commit SHAs, verified mental model, rough edges list, memory note updates)"
+</content>
+</invoke>

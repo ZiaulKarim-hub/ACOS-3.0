@@ -1,0 +1,99 @@
+# Slice Plan — Discovery channels 1-4 + recorder index
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-05-channels-arcgis-assessor-recorder"
+story_id: "STORY-APS-05"
+epic_id: "EPIC-APS-05"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Discovery channels 1-4 + recorder index (ArcGIS / assessor / recorder / mailing pivot)"
+objective: |
+  Implement the v1 discovery channels: arcgis_query.py (query county/state parcel layers
+  by OWNER or MAIL_ADDR LIKE), the assessor owner-name search (free states FL/TX/AZ/NV +
+  statewide MD/MA/MT), the recorder grantor-grantee index (highest-yield; the name-blocked
+  workaround), and the owner-search-by-state routing matrix. Name-blocked states
+  (CA 7928.205 / Cook / NJ Daniel's Law) route to the recorder index. All lookups go
+  through the slice-02 cache and respect the slice-01 gate. Out of scope: swarm (slice-06),
+  channels 5-9 (v2/v3).
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] ArcGIS REST query by OWNER and by MAIL_ADDR LIKE returns normalized parcel records (against a fixture layer) — pass: arcgis query test"
+  - "[ ] The owner-search-by-state router picks statewide / friendly / name-blocked correctly — pass: routing test (CA/NJ/Cook -> recorder; MD/MA/MT -> statewide; FL/TX/AZ/NV -> friendly)"
+  - "[ ] Name-blocked states use the recorder grantor-grantee index instead of owner-name search — pass: name-blocked-routing test (REQUIRED)"
+  - "[ ] Every returned parcel carries provenance (source_url) + a freshness stamp from cache — pass: provenance test"
+  - "[ ] Channels feed the graph (parcels + edges), not a flat list — pass: graph-integration test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-04-graph-hubguard"
+      what_it_provides: "The graph engine (edge schema + hub-guard) channel results feed into"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/arcgis_query.py"   # stdlib only (urllib for REST)
+  - ".claude/skills/acos-property-search/references/owner-search-by-state.md"
+  - ".claude/skills/acos-property-search/references/sources.md"
+  - ".claude/skills/acos-property-search/scripts/tests/test_arcgis_query.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-05-channels-arcgis-assessor-recorder.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/cache.py"   # owned by slice-02
+  - ".claude/skills/acos-property-search/scripts/graph.py"   # owned by slice-04
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-05-channels-arcgis-assessor-recorder.md"
+  - "Recorder grantor-grantee index is the highest-yield free channel and the workaround for name-blocked states."
+  - "Gotcha (hard gate): name-blocked states (CA/NJ/Cook) MUST route to the recorder index, not an owner-name search."
+  - "Gotcha: every parcel must carry source_url + freshness (from cache); no fabricated parcels. Free + cached + gated only."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only (urllib for ArcGIS REST)"
+  - "Build the REST where-clause for OWNER / MAIL_ADDR LIKE; parse features into normalized Parcel records; route through cache"
+  - "Router reads references/owner-search-by-state.md; name-blocked -> recorder"
+  - "Push parcels + provenance edges into the graph"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors a CA / NJ / Cook query; confirm it routes to the recorder index, NOT an owner-name search"
+  - "QA independently verifies the ArcGIS where-clause for a MAIL_ADDR LIKE pivot against a fixture"
+  - "QA confirms every parcel carries source_url + freshness; none fabricated"
+  - "QA confirms parcels land in the graph with provenance edges"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "L"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-05-channels-arcgis-assessor-recorder.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

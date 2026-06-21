@@ -1,0 +1,27 @@
+handoff_id: "2026-05-26-slice-003-001-06-completed"
+handoff_type: "slice-completion-audit"
+created_date: "2026-05-26"
+status: "completed"
+slice_id: "SLICE-003-001-06"
+title: "Brad-class enrichment pass"
+outcome: PASS
+reviewer_verdicts:
+  qa-reviewer: { verdict: PASS, acceptance: "10/10", all_scores: PASS }
+  integration-reviewer: { verdict: PASS, all_scores: PASS, issues: 0 }
+required_fixes: 0
+minor_findings: 2  # WalkedNode.domClasses optional, fixture <figcaption>/<hr> concessions
+test_count: 97  # 21 new + 76 inherited
+key_contract_change: |
+  ContainerRecord: +domClasses?: string[] (additive optional)
+  WalkedNode: +domClasses?: string[] (additive optional; walker always populates)
+  Public API: +enrich, +EnrichOptions, +BRAD_CLASSES, +BRAD_CLASS_SET, +BRAD_CLASS_PRIORITY, +BradClass
+key_design_decisions:
+  - "Side-channel: walker captures classList → orchestrator attaches to record post-construction → extractors untouched"
+  - "Off-mode referential equality preserved (return input array directly, not .map clone)"
+  - "Set.has() exact-match for false-positive guard (no regex/substring)"
+  - "BRAD_CLASS_PRIORITY typed as readonly BradClass[] — compile-time drift prevention"
+  - "Fixture concessions: <p class='caption'> not <figcaption>, <div class='chapter-divider'> not <hr> (extractor lockdown)"
+slice_07_audit_items:
+  - "Real Brad docs: check for <figcaption> or <hr> usage; if present, extend text extractor (separate hot-fix slice)"
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-06/"
+next_step: "/acos-execute-slice SLICE-003-001-07 (orchestration + integration + sandbox + perf — STORY-CLOSING SLICE)"

@@ -29,25 +29,39 @@ analysis you can. Consensus across the 3 outputs drives the downstream pipeline.
 
 You receive in your prompt:
 - The user's `--objective` brief verbatim
+- The user's `--deal-type` value verbatim (one of: `takeout-lender`,
+  `property-sale`, `loan-sale`, `loan-participation`, `foreclosure-auction`,
+  `lender-internal`)
+- The full contents of `references/deal_types.md` (the deal-type reference
+  with audience descriptions and categorical hard-exclusion lists). The active
+  deal type's block is your primary grounding for §3 Buyer profile and §5
+  Out-of-scope.
 - The contents of `<run_dir>/phase1/source_shape.json` (top-level folder names + file
   counts + high-signal sample filenames)
 - The path to write your output: `<run_dir>/phase1/proposals/<your_agent_id>.md`
 
 ## Research workflow
 
-1. **Read inputs carefully.** What is the asset? What is the transaction?
+1. **Read inputs carefully.** What is the asset? What is the transaction? **What
+   is the deal type?** The deal type tells you the AUDIENCE — read the matching
+   block in `references/deal_types.md` thoroughly. This grounds your §3 Buyer
+   profile and §5 Out-of-scope BEFORE you do any external research.
 2. **Web research.** Use WebSearch + WebFetch to ground your understanding:
    - Asset identity: name, location, type (hotel / multifamily / land / portfolio),
      prior ownership, recent transactions, market context
-   - Transaction nature: is this a property sale / participation / foreclosure auction
-     / note sale / lender package?
-   - Comparable transactions: what do diligence packages for similar deals contain?
-   - Asset-class-specific buyer expectations: a hotel buyer needs different docs than
-     a multifamily buyer
+   - Transaction nature: confirm the user's stated deal type is correct given the
+     source-folder shape (if the user says `loan-sale` but the source folder has
+     listing agreements and broker presentations, surface the tension)
+   - Comparable transactions: what do diligence packages for similar deals AT THIS
+     DEAL TYPE contain? (A `takeout-lender` package for a stalled construction
+     hotel has different conventions than a `property-sale` package for the same
+     asset.)
 3. **Cite every web source.** URLs in your output.
 4. **Identify out-of-scope content.** If the source folder has docs about other
    collateral properties / other deals / unrelated entities, flag them as out of
-   scope for THIS dataroom.
+   scope for THIS dataroom. Cross-reference the deal-type's `hard_exclusions`
+   list — anything matching a hard-exclusion is categorically out (don't relitigate
+   it in §5; just note "covered by categorical hard exclusion: <name>").
 
 ## Output schema
 
@@ -56,20 +70,28 @@ Write Markdown to `<run_dir>/phase1/proposals/<your_agent_id>.md` with these sec
 ```markdown
 # Objective Proposal — <agent_id>
 
+## 0. Deal type
+<active --deal-type value verbatim>
+
 ## 1. Asset identity
 <paragraph: what is the specific asset?>
 
 ## 2. Transaction nature
-<paragraph: type of transaction in institutional terminology>
+<paragraph: type of transaction in institutional terminology; confirm or
+challenge the user's stated deal type if source-folder shape contradicts it>
 
 ## 3. Buyer profile
-<paragraph: who is the likely buyer, what lens will they use?>
+<paragraph grounded in the deal-type's audience block from references/deal_types.md>
 
 ## 4. Relevant scope (what MUST be in the dataroom)
-<bulleted categories with rationale>
+<bulleted categories with rationale; cross-reference the deal-type's Relevant
+scope list as the spine, augment with asset-specific items>
 
 ## 5. Out-of-scope (what's in the source folder that's IRRELEVANT)
-<bulleted, with reasoning per item>
+<bulleted; for items matching a deal-type categorical exclusion, just cite
+"covered by categorical exclusion: <name>" rather than re-explaining. For
+asset-specific out-of-scope items (other properties, other deals in the
+source folder), explain per item.>
 
 ## 6. Web-sourced grounding
 - URL 1: <what you learned from it>
@@ -110,4 +132,6 @@ classification decisions with consistent context.
 
 ---
 
-*acos-dataroom-v2 Phase 1 obj-researcher. Blind. Cite everything. Be specific.*
+*acos-dataroom-v2 v2.1.0 Phase 1 obj-researcher. Blind. Cite everything. Be
+specific. Ground §3 Buyer profile and §5 Out-of-scope in the active deal type's
+audience block from references/deal_types.md.*

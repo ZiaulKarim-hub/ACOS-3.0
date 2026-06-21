@@ -1,0 +1,80 @@
+slice_id: "SLICE-004-03"
+story_id: "STORY-004"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Content-to-PPTX data adapter"
+objective: |
+  Build scripts/emit-pptx-content.py that extends SLICE-001-04's decomposer
+  output — takes the same page-plan structure but produces a YAML matching
+  loan-doc's data-to-pptx.py input schema. Each page-plan entry maps to a
+  slide spec with layout_name + shape_content_dict (text values + image
+  paths). Maintains parallel output with HTML path: both paths consume the
+  same page-plan, differ only in rendering backend.
+
+acceptance_criteria:
+  - "[ ] FIRST: read data-to-pptx.py input schema — document what fields per slide spec the script expects"
+  - "[ ] scripts/emit-pptx-content.py exists, Python 3, executable"
+  - "[ ] Input: page-plan YAML (from SLICE-001-04) + session asset resolution log (from SLICE-002-04, mapping page → image path)"
+  - "[ ] Output: pptx-content.yaml — list of slide specs conforming to data-to-pptx.py schema"
+  - "[ ] Layout mapping is 1:1 between HTML page templates and PPTX layouts: cover → cover_layout, two-column-narrative → two_column_narrative_layout, etc."
+  - "[ ] Shape content populated per layout: cover_layout needs {image_path, title_text, eyebrow_text, italic_accent_phrase, metadata_text}; two_column_narrative_layout needs {eyebrow, title, italic_accent, pull_quote, body_col_1, body_col_2}; etc. for all 9"
+  - "[ ] Roman page numbers in footer frames, same as HTML"
+  - "[ ] image_path values are absolute paths (not file:// URLs — python-pptx wants paths)"
+  - "[ ] Preserves the italic_accent_phrase from page-plan for use in PPTX run-level italic formatting (python-pptx supports runs within a text frame)"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-004-02"
+      what_it_provides: "template.pptx with 9 layouts to target"
+      status: "complete"
+    - slice_id: "SLICE-002-04"
+      what_it_provides: "image resolution log (which image went to which page)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/emit-pptx-content.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/decompose-content.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-pptx.sh"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/build-template-pptx.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/pptx-cleanup.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This slice is the PPTX-side analog of SLICE-001-05's HTML emitter — but the output is structured content (YAML), not rendered format. The actual PPTX generation is SLICE-004-04."
+  - "Keep structural parallel: the page-plan is the shared contract. Both html-emit.py and emit-pptx-content.py consume the same page-plan. No branching logic earlier in the pipeline."
+  - "Image resolution log from fill-photo-slots.py (SLICE-002-04) should record {page_number, slot_id, local_path, source, attribution} — this slice reads that to know which image goes on which slide."
+
+technical_requirements:
+  - "Python 3.9+; pyyaml, pathlib"
+  - "Deterministic output: same page-plan + same image-log produces identical pptx-content.yaml"
+  - "Path portability: emit absolute paths (not relative), so data-to-pptx.py can run from any cwd"
+
+testing_requirements:
+  - "Unit: feed a 3-page plan, verify output has 3 slide specs with correct layout_names"
+  - "Unit: page-plan entry has italic_accent_phrase='Solutions', verify output slide spec preserves it"
+  - "Unit: image log maps page 2 → /tmp/foo.jpg, verify slide spec 2's image_path is /tmp/foo.jpg"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Pure data transformation slice. No rendering, no side effects beyond writing
+  the output YAML. Should be fast to implement once data-to-pptx.py's input
+  schema is understood.

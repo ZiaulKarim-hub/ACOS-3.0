@@ -1,0 +1,270 @@
+---
+name: acos-eternity-protocol
+description: Auto-clear-and-resume orchestrator. Creates a handoff, generates a per-session resume prompt, fires /clear via PID-targeted keystroke injection, and arms the daemon to inject the resume prompt after /clear completes. Auto-fires when the token-watcher daemon detects context >= configured threshold (default 400k). Combines acos-handoff + acos-resume-prompt + keystroke injection.
+disable-model-invocation: false
+user-invocable: true
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill
+---
+
+# ACOS Eternity Protocol
+
+## Overview
+
+This is the master orchestrator that lets a Claude Code conversation effectively
+run forever by auto-clearing at a configurable token threshold and seamlessly
+resuming the prior work in the post-clear context.
+
+The skill itself runs only the **pre-clear** phase. The **post-clear** phase
+(injecting the resume prompt after /clear completes) is handled by the
+external `token-watcher.py` daemon — because the skill cannot survive its own
+`/clear` invocation.
+
+## Architecture
+
+```
+PRE-CLEAR (this skill)                 CLEAR + POST-CLEAR (daemon)
+──────────────────────────             ─────────────────────────────────────
+1. /acos-handoff                       6. Daemon polls .clear-requested-<sid>
+2. /acos-resume-prompt                    on every kqueue tick / 60s timeout
+3. Capture pre-clear total             7. Daemon fires /clear via fire_inject()
+4. Write .resume-pending-<sid>            (same injector path that already
+5. Write .clear-requested-<sid>           successfully types /acos-eternity-
+   then EXIT (do not keystroke /clear     protocol on threshold-cross)
+   from inside the running agent —     8. Daemon detects token drop >= 35%
+   Warp input is busy, keystrokes         (compaction confirmed)
+   drop or land at wrong moment)       9. Daemon types resume prompt + Return
+                                       10. Daemon clears all flags; fresh AI
+                                           receives resume prompt and continues
+```
+
+**2026-05-20 architecture note:** Step 5 was changed from "keystroke-inject
+/clear from the skill" to "write a flag and exit." The skill cannot reliably
+inject keystrokes into its own input field because the input field is busy
+with the skill's own tool output. The daemon, firing from outside the agent
+loop on an idle JSONL transcript, hits a ready input field. The flag-based
+handoff routes /clear injection through the only proven-working path.
+
+## Execution Policy (CRITICAL — READ FIRST)
+
+**This skill is designed to execute autonomously, end-to-end, without pausing.**
+
+The act of invoking this skill IS the user's authorization for the entire
+sequence — including the destructive `/clear` step. Do NOT seek confirmation
+between steps. Do NOT pause for user approval anywhere.
+
+**Hard rules:**
+- If pre-flight (Step 0) all pass → proceed silently to Step 1.
+- If pre-flight fails fatally (handoffs dir missing, injector missing) → ABORT
+  with a one-line error. Do NOT pause for input.
+- If pre-flight raises non-fatal warnings (daemon not running) → LOG and CONTINUE.
+- After /clear is injected (Step 5) → exit. Do NOT continue reasoning.
+
+## Configuration
+
+Configuration lives at `~/Library/Application Support/acos-token-monitor/config.yaml`:
+
+```yaml
+threshold: 400000              # daemon auto-fires this skill at this token count
+fire_command: "/acos-eternity-protocol"
+post_compact_drop_pct: 35      # daemon considers /clear done when total drops >= this %
+```
+
+To change threshold, use `/acos-eternity-protocol-threshold N`. Daemon
+hot-reloads on config-mtime change — no daemon restart needed.
+
+## Protocol
+
+### Step 0: Pre-flight checks
+
+```bash
+# Determine session_id early — needed for PID self-write and heartbeat check.
+SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
+JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
+SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
+
+# Self-write the PID file. The SessionStart hook may not have written one
+# (or wrote one for the wrong session ID), and the AppleScript-frontmost
+# fallback has been removed by design — so Step 5 must have a valid PID
+# file to inject /clear precisely. Idempotent overwrite is harmless.
+echo "{\"session_id\":\"$SESSION_ID\"}" | \
+    "$HOME/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh" 2>/dev/null || true
+
+# Heartbeat freshness: refuse to arm + /clear if the daemon has gone silent.
+# The daemon writes state/heartbeat every few seconds; >90s old means it is
+# stalled or dead, in which case nobody will inject the resume prompt
+# post-/clear and the user would lose their context cold.
+HEARTBEAT="$HOME/Library/Application Support/acos-token-monitor/state/heartbeat"
+if [[ -f "$HEARTBEAT" ]]; then
+    HB_AGE=$(( $(date +%s) - $(stat -f%m "$HEARTBEAT") ))
+    if [[ $HB_AGE -gt 90 ]]; then
+        echo "ERROR: daemon heartbeat is ${HB_AGE}s old (>90s) — refusing to fire /clear."
+        echo "  Daemon is likely stalled or dead; nobody would inject the resume prompt."
+        echo "  Restart: launchctl kickstart -k gui/\$UID/com.acos.token-monitor"
+        exit 1
+    fi
+else
+    echo "WARN: no heartbeat file found — daemon may have never started this session"
+fi
+
+# Daemon process running?
+pgrep -f "token-watcher.py" >/dev/null || echo "WARN: daemon not running — manual resume will be needed via /acos-eternity-protocol-resume"
+
+# Injector script present?
+test -f "$HOME/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py" || { echo "ERROR: injector missing"; exit 1; }
+
+# Handoff dir exists?
+test -d memory/handoffs || { echo "ERROR: memory/handoffs missing"; exit 1; }
+
+# PID file present after self-write? (sanity check)
+PID_FILE="$HOME/Library/Application Support/acos-token-monitor/state/pid-${SESSION_ID}"
+test -f "$PID_FILE" || { echo "ERROR: PID file still missing after self-write — claude ancestor not found in process tree"; exit 1; }
+```
+
+If heartbeat is stale or PID file cannot be written: ABORT (user gets a clear error, no silent corruption).
+If daemon process is not running but heartbeat is fresh: log warning and PROCEED.
+If injector or handoffs dir missing: ABORT.
+
+### Step 1: Create the handoff
+
+Invoke the existing `acos-handoff` skill (via the `Skill` tool). After it
+returns, mechanically verify a handoff was actually created:
+
+```bash
+HANDOFF=$(ls -t memory/handoffs/*.yaml 2>/dev/null | head -1)
+test -s "$HANDOFF" || { echo "ERROR: no handoff produced — aborting"; exit 1; }
+```
+
+### Step 2: Generate the resume prompt
+
+Invoke `acos-resume-prompt` (via the `Skill` tool). It reads the handoff and
+writes a per-session resume prompt to:
+
+`~/Library/Application Support/acos-token-monitor/state/pending-resume-<session_id>.txt`
+
+Mechanically verify the file exists and is non-empty:
+
+```bash
+SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
+JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
+SESSION_ID=$(basename "$JSONL" .jsonl)
+RESUME_FILE="$HOME/Library/Application Support/acos-token-monitor/state/pending-resume-${SESSION_ID}.txt"
+test -s "$RESUME_FILE" || { echo "ERROR: resume prompt missing or empty at $RESUME_FILE"; exit 1; }
+```
+
+### Step 3: Capture pre-clear total token count
+
+Read the latest `approx=` value from this session's watcher log:
+
+```bash
+WATCHER_LOG="$HOME/Library/Application Support/acos-token-monitor/logs/${SESSION_ID}.log"
+PRE_CLEAR_TOTAL=$(tail -50 "$WATCHER_LOG" 2>/dev/null | grep -oE 'approx=\s*[0-9,]+' | tail -1 | grep -oE '[0-9,]+' | tr -d ',')
+test -n "$PRE_CLEAR_TOTAL" || { echo "ERROR: could not read pre-clear total from $WATCHER_LOG"; exit 1; }
+```
+
+### Step 4: Arm the daemon
+
+Write `~/Library/Application Support/acos-token-monitor/state/.resume-pending-<session_id>`
+atomically (tmp + mv):
+
+```bash
+PENDING="$HOME/Library/Application Support/acos-token-monitor/state/.resume-pending-${SESSION_ID}"
+# project_dir_key: encoded Claude Code project dir name (the path component
+# under ~/.claude/projects/). This is how the post-/clear new watcher knows
+# which orphan resume is "theirs" — it matches its JSONL.parent.name against
+# this key. The encoding is Claude Code's own (slashes/spaces/dots → dashes),
+# treated opaquely.
+PROJECT_DIR_KEY=$(basename "$SESSION_DIR")
+TMP=$(mktemp "${PENDING}.XXXXXX")
+cat > "$TMP" <<EOF
+pre_compact_total: ${PRE_CLEAR_TOTAL}
+resume_prompt_file: ${RESUME_FILE}
+project_dir_key: ${PROJECT_DIR_KEY}
+armed_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+EOF
+mv "$TMP" "$PENDING"
+chmod 600 "$PENDING" 2>/dev/null || true
+```
+
+### Step 5: Request /clear via daemon-side flag (DO NOT keystroke-inject from here)
+
+**2026-05-20 architectural fix.** This skill CANNOT reliably fire `/clear` via
+`inject-keystroke.py` from inside its own running turn. Reason: Warp's input
+field is busy receiving the skill's tool output, so CGEventPost'd keystrokes
+either drop or queue and land at the wrong moment (after the skill returns,
+during the user's next prompt — wiping unintended work). The historically
+working `/acos-eternity-protocol` injection works precisely because the daemon
+fires from outside the agent loop, when Claude's input is idle.
+
+The fix: skill writes a `.clear-requested-<session_id>` flag and exits cleanly.
+The daemon polls the flag on every kqueue tick (including 60s idle-timeouts)
+and fires `/clear` via the same `fire_inject()` it already uses to type
+`/acos-eternity-protocol` itself.
+
+```bash
+CLEAR_FLAG="$HOME/Library/Application Support/acos-token-monitor/state/.clear-requested-${SESSION_ID}"
+TMP=$(mktemp "${CLEAR_FLAG}.XXXXXX")
+cat > "$TMP" <<EOF
+requested_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+session_id: ${SESSION_ID}
+requested_by: acos-eternity-protocol
+pre_clear_total: ${PRE_CLEAR_TOTAL}
+EOF
+mv "$TMP" "$CLEAR_FLAG"
+chmod 600 "$CLEAR_FLAG" 2>/dev/null || true
+test -s "$CLEAR_FLAG" || { echo "ERROR: failed to write clear-request flag"; exit 1; }
+echo "Clear-request flag armed: $CLEAR_FLAG"
+echo "Daemon will fire /clear on next kqueue tick (≤60s, usually <1s)."
+```
+
+**Why this works:** the daemon's `check_clear_request()` runs on every event
+including the 60s idle-timeout. When the skill exits, Claude finishes writing
+its assistant-turn-end marker → kqueue fires → daemon sees flag → fires
+`/clear` via `fire_inject()` → keystrokes land in Warp's now-idle input field.
+Same code path as the threshold-cross fire of `/acos-eternity-protocol` itself
+(which we know works).
+
+The daemon deletes the flag after firing (regardless of inject's self-reported
+success — leaving it would risk repeatedly firing /clear). If the inject
+genuinely failed, the JSONL won't show a new session_id and the user can
+manually fire `/acos-eternity-protocol-resume` from the (uncleared) session.
+
+### Step 6: Skill exits cleanly
+
+Print a short status line and exit. The post-skill assistant-turn-end JSONL
+write is what wakes the daemon to fire `/clear`. **Do NOT continue tool
+calls or reasoning after Step 5** — additional activity keeps Warp's input
+field busy and may delay the daemon's clean injection window.
+
+The post-clear AI has no memory of this skill running — that is correct.
+After `/clear` lands, the daemon's existing post-compact logic detects the
+≥35% token drop and injects the resume prompt into the new session.
+
+## Auto-Invocation
+
+The `token-watcher.py` daemon auto-fires this skill when its `approximate`
+reading crosses the configured threshold. Per-session fire-once flag is at
+`~/Library/Application Support/acos-token-monitor/state/.compact-fired-<session_id>`.
+Flag clears automatically when the post-clear resume injection completes.
+Stale flags age out after 600 seconds to prevent permanent session lockout.
+
+To restart the daemon manually after editing daemon code:
+
+```bash
+launchctl kickstart -k gui/$UID/com.acos.token-monitor
+```
+
+Do NOT manually invoke `python3 ~/Library/Application\ Support/acos-token-monitor/bin/token-watcher.py`
+— launchd manages the lifecycle. Use `kickstart -k` to reload.
+
+## Manual Invocation
+
+```
+/acos-eternity-protocol
+```
+
+Useful when you want to clear-and-resume on demand, regardless of token count.
+
+---
+
+*ACOS Eternity Protocol — sessions that effectively never end.*

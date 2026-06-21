@@ -1,0 +1,160 @@
+timestamp: "2026-05-08T07:08:34Z"
+status: "completed"
+completed_at: "2026-05-11T00:00:00Z"
+session_summary: |
+  Multi-day session building the new `acos-dataroom` skill from scratch and
+  validating it end-to-end on a real OKOA paid-off loan (Vaughn / Mora
+  Drive). Three major arcs: (1) initial skill build — 38 files including
+  SKILL.md, 5 deal-type-specific base checklists, 5 taxonomies, 7 Python
+  scripts, smoke-test fixture; (2) first real run on Vaughn_Mora Drive
+  surfacing PDF-extraction dependency gap (pdfplumber/pypdf/pytesseract
+  missing) and the design's API-key dependency conflict with the user's
+  Claude Code subscription; (3) major workbook redesign per user feedback
+  (4 worksheets, visual grouping, separate buyer/internal/QA artifacts) and
+  a layered no-hallucination verifier that distinguishes formatting
+  differences from real hallucinations via number-precision checks.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "skill-build complete; first real-run validated; awaiting next user direction (no active ACOS slice — this is skill-development work)"
+
+completed_this_session:
+  # Skill build (Phase 1)
+  - "Authored .claude/skills/acos-dataroom/ — 38 files: SKILL.md (orchestrator), config.json, README.md"
+  - "References: deal_types.md, excel_schema.md, evidence_bundle_spec.md, qa_checklists.md, risk_dashboards.md, extraction_recipes.md, vision_fallback.md, naming_convention.md, platform_local_dropbox.md"
+  - "5 base checklists (loan_sale 150 items, loan_participation 153 items, property_sale 151 items, foreclosure_auction 140 items, lender_package 182 items) — total 776 distinct outbound-diligence items"
+  - "5 taxonomies (matching deal types) — folder hierarchies for the data room"
+  - "7 Python scripts: utils.py, scan_folder.py, extract_text.py, ocr_and_vision.py, build_excel_guide.py, validate_guide.py, create_dataroom.py"
+  - "Synthetic test fixture (tests/fixtures/synthetic_loan/ — 7 files, no real data) + tests/test_smoke.py"
+
+  # First real run on Mora Drive (Phase 2)
+  - "Pre-flight test on /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/Vaughn_Mora Drive (196 files, 161 PDFs)"
+  - "Discovered: PDF libraries (pdfplumber, pypdf, pytesseract, pdf2image) MISSING from user's Python environment — extraction would have produced empty records for 82% of files"
+  - "Installed pdfplumber, pypdf, pytesseract, pdf2image via `pip install --user --break-system-packages` against Homebrew Python 3.14"
+  - "Tesseract 5.5.2 system binary already present"
+  - "Discovered: ocr_and_vision.py uses ANTHROPIC_API_KEY which user does NOT have/want (has $200/mo Claude Code Max subscription). Memory saved at ~/.claude/projects/.../memory/feedback_subscription_not_api.md"
+  - "Stratified-sample extraction on 19 representative files — 239 pages, 606K characters, 7 files used OCR fallback, 0 failures"
+  - "Successful PII catch: Drivers License .jpeg classified as critical/internal_only_pii with full identity recovery via OCR (Melvin Vaughn, DOB 04/07/1963, 10700 Mora Dr, Los Altos Hills CA)"
+  - "Spawned classification sub-agent (a6a727f56d3d0e647) with stub-write-first protocol after a previous agent (a33a6debac84130a1) hit tool-budget exhaustion before writing any output"
+  - "Built 19 evidence bundles + classifications.json + 8 supporting intermediate JSONs"
+
+  # Major workbook redesign per user feedback (Phase 3)
+  - "User rejected 13-tab workbook design as 'not human readable' — pushed for 2-worksheet design"
+  - "Negotiated final design through several iterations: 4-worksheet internal workbook + 2-worksheet sanitized buyer-facing workbook + standalone markdown QA report"
+  - "Internal: Cover, Files Included (9 cols), Files Excluded (8 cols), Risks & Missing Documents (combined)"
+  - "Buyer-facing: Cover (sanitized), Data Room Index (5 cols only — no reasoning, no confidence, no original filenames)"
+  - "Visual grouping pattern: primary subfolder appears only on first row of each group; Excel outline collapsing via outline_level=1; Sub-sub-folder column auto-hides when empty"
+  - "User feedback addressed: detailed per-folder summaries on Cover; risks moved off Cover to Worksheet 4; AI confidence summary removed from workbook entirely (lives in QA markdown only); Worksheet 4 cols 1-2 now use real category names from taxonomy parsing instead of just folder numbers"
+
+  # No-hallucination verifier (Phase 4)
+  - "Surfaced 86% claim verification rate after first run — initially treated as 'verifier too strict'"
+  - "On user prompt, built proper layered verifier: scripts/verify_no_hallucination.py with 4 acceptance layers (verbatim 1.0 / whitespace_normalized 0.97 / format_normalized 0.92 / paraphrase_likely 0.70-0.90) + 2 failure layers (number_mismatch / low_token_overlap)"
+  - "Number_mismatch is the strongest hallucination signal — claim citing numbers not present in source = automatic confidence 0.0 regardless of other matches"
+  - "Re-ran on Mora intermediates: 87.7% verified (50 of 57); 7 unverified split into 5 paraphrase-too-loose + 2 actual potential hallucinations (proposed order granting rfs.docx — 'Court Case No. 23-50562' not in source extraction)"
+  - "Tightened agent-prompt expectations in evidence_bundle_spec.md: snippet.text must be verbatim from source; never reformat numbers in snippet (claim text can paraphrase but snippet stays as-extracted)"
+
+  # Skill consistency verification
+  - "Wrote /tmp/verify_skill.py end-to-end test harness — 19 checks across 5 categories (static, evidence, intermediates, workbook, safety gates)"
+  - "Caught 3 import bugs from workbook redesign: validate_guide.py and create_dataroom.py both imported deleted TAB_SCHEMAS constant"
+  - "Refactored both scripts for the new 4-WS schema. validate_guide.py now writes diff log to intermediate/change_log.json (no more workbook tab). create_dataroom.py reads 'Files Included' worksheet, resolves source paths via file_manifest, reverses humanized folder names back to filesystem-safe form, and now invokes build_buyer_index.py automatically as part of Phase 11"
+  - "Final verification: 17 PASS / 0 FAIL / 2 PARTIAL (only PARTIAL is the layered verifier output — by design, surfaces real review-worthy items)"
+  - "All skill docs (SKILL.md, excel_schema.md, qa_checklists.md, evidence_bundle_spec.md) updated to match the latest implementation — no doc/code drift"
+
+files_modified:
+  # Skill source
+  - path: ".claude/skills/acos-dataroom/"
+    changes: "Brand new skill — entire directory tree (38 files: SKILL.md, README.md, config.json, references/, scripts/, tests/)"
+  - path: ".claude/skills/acos-dataroom/scripts/build_excel_guide.py"
+    changes: "Rewrote 3 times: (a) initial 13-tab production; (b) 4-WS internal workbook design; (c) added visual grouping + outline collapsing + sub-sub-folder hiding + taxonomy-based folder name lookup + per-folder summaries on Cover + WS 4 with risks-on-top + missing-below"
+  - path: ".claude/skills/acos-dataroom/scripts/build_buyer_index.py"
+    changes: "Wrote new. 2-WS sanitized buyer-facing workbook. Reads boss-finalized internal workbook 'Files Included' worksheet. Forward-fills visual-grouping suppressed values before sorting. Re-applies suppress + outline grouping for buyer-side consistency"
+  - path: ".claude/skills/acos-dataroom/scripts/build_qa_report.py"
+    changes: "Wrote new. Standalone markdown QA report with 7 sections (header / executive summary / pass-by-pass findings / no-hallucination check / rows flagged for attention / methodology notes / footer)"
+  - path: ".claude/skills/acos-dataroom/scripts/verify_no_hallucination.py"
+    changes: "Wrote new. Layered claim verifier — 4 acceptance + 2 failure layers. CLI: --run-dir <path> [--update-qa-report]. Writes intermediate/hallucination_check.json with per-claim audit"
+  - path: ".claude/skills/acos-dataroom/scripts/validate_guide.py"
+    changes: "Refactored for new 4-WS schema. Removed TAB_SCHEMAS dependency. Diff log goes to intermediate/change_log.json. Forward-fills visual-grouping columns before comparison. Backward-compat _migrate_snapshot_to_new_schema shim handles old snapshots"
+  - path: ".claude/skills/acos-dataroom/scripts/create_dataroom.py"
+    changes: "Refactored for new 4-WS schema. Reads 'Files Included' instead of 'Proposed_Data_Room_Index'. Resolves source paths via file_manifest.json + name lookup. Reverses humanized folder names ('01 — Default & NOD' → '01_Default_and_NOD') for filesystem use. Invokes build_buyer_index.py at end of Phase 11"
+  - path: ".claude/skills/acos-dataroom/SKILL.md"
+    changes: "Phase 6 rewritten with snippet authoring rules + verifier reference + number_mismatch policy. Phase 9 updated for 4-WS layout + visual grouping spec. Phase 11 updated for buyer-index step"
+  - path: ".claude/skills/acos-dataroom/references/excel_schema.md"
+    changes: "Full rewrite. Documents both internal + buyer-facing workbooks + standalone markdown QA report. New Visual-Grouping Pattern section. WS 4 documented as combined Risks + Missing"
+  - path: ".claude/skills/acos-dataroom/references/qa_checklists.md"
+    changes: "Pass #3 rewritten with the 6-layer verification model. Severity tiers — number_mismatch always triggers review_required. QA Report Aggregate section repointed from workbook tab to standalone markdown"
+  - path: ".claude/skills/acos-dataroom/references/evidence_bundle_spec.md"
+    changes: "No-hallucination rule replaced with layered matching table. Added Snippet Authoring Rules — verbatim source quotes preferred; never reformat numbers in snippet field"
+  - path: ".claude/skills/acos-dataroom/references/checklist_lender_package.md"
+    changes: "Reformatted from markdown tables to ### NN.NN heading-per-item format for consistency with other 4 checklists. 348 lines → 1389 lines (same 182 items, different format)"
+  - path: ".claude/skills/acos-dataroom/references/checklist_foreclosure_auction.md"
+    changes: "Expanded from 112 items to 140 items per user direction (target band 120-170). Added IRS §7425 notice, SCRA service-member check, PTFA analysis, anti-deficiency analysis, postponement records"
+
+  # Test artifacts on Mora Drive run
+  - path: "/Users/zee/Desktop/acos-dataroom-Vaughn_Mora_Drive-2026-05-06/working/"
+    changes: "Working directory for the Mora Drive test run — 19 evidence bundles, 11 intermediate JSONs, 2 dated workbook iterations (May-07 and May-08), 2 dated QA markdown reports, hallucination_check.json, classifications.json, file_manifest.json+csv (196 files), extraction/<file_id>/extraction.json for 19 sampled files"
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_subscription_not_api.md"
+    changes: "Created. Documents user's $200/mo Claude Code Max subscription vs API key billing distinction. Hard rule: never propose ANTHROPIC_API_KEY — use main-thread Read or sub-agent Task() for Claude work in scripts"
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_acos_dataroom.md"
+    changes: "Created. Project memory entry — skill location, v1 design flaw (ocr_and_vision.py API-key dependency must be refactored to main-thread Read or sub-agent path), first-run results, environment installs"
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Added pointer entries for new feedback + project memories"
+
+decisions_made:
+  - "Outbound-diligence orientation (NOT inbound origination) — confirmed with user during Step 0 checklist discovery. Existing OKOA DD checklists at /Users/zee/okoa-labs/okoa_ops/ are origination-side and only loaded as category vocabulary supplement, not as authoritative checklists for this skill"
+  - "Skill-internal base checklists (5 files) are the authoritative source. Per-deal Phase 7a tailoring marks items as in_scope/not_applicable/skill_added"
+  - "Two-workbook architecture: internal (4 WS, full reasoning + confidence) + buyer-facing (2 WS, sanitized 5-column index). Buyer is generated only after boss finalizes internal — by construction cannot leak internal data"
+  - "QA report as standalone markdown file (not workbook tab). Different audience (boss diagnostics vs data-room artifacts) → different file"
+  - "Visual grouping pattern (suppress repeats + Excel outline collapsing + auto-hide empty columns) applied uniformly to all 3 data worksheets"
+  - "No-hallucination verification uses layered matching, not strict substring. Number_mismatch is always confidence-0.0 regardless of other token matches — strongest hallucination guard"
+  - "Vision API path in ocr_and_vision.py is a v1 design flaw given user's subscription. v2 must refactor to main-thread Read of rendered PNG OR sub-agent Task() — never API key"
+
+blockers:
+  - "Smoke-test fixture has no PDF/DOCX/image files — entire fixture is text/CSV/Markdown. PDF extraction code path was never exercised during pre-deployment smoke test, which is what bit us when we first pointed the skill at real Mora Drive data. v2 fixture should include at least one PDF + one DOCX + one image"
+  - "Vision unavailable in this run (no API key — and per user feedback, never will be). 4 files in the Mora sample flagged in QA Pass #4 — parcel map upside-down, two image files near-zero OCR yield, driver's license (OCR-saved). For real production use, vision needs to be refactored through subscription channels"
+  - "ocr_and_vision.py current implementation calls anthropic.Anthropic(api_key=...) — breaks the user's billing model. Documented in feedback_subscription_not_api.md memory but the script itself still has the broken code path"
+
+next_actions:
+  - "DECIDE on next direction. The skill is now consistent and verified — the user has not yet given a next directive. Likely next steps: (a) refactor ocr_and_vision.py for subscription path, (b) extend smoke-test fixture with real binary file types, (c) re-run on a different real loan to validate generalization beyond Mora Drive, (d) finalize Mora workbook (boss edits) and run create-room to test Phase 11 end-to-end"
+  - "If user wants to clean up the Mora test artifacts: `rm -rf /Users/zee/Desktop/acos-dataroom-Vaughn_Mora_Drive-2026-05-06`. Originals in Dropbox were never touched. Pip libraries persist (useful generally, no removal needed)"
+  - "If continuing with skill iteration: address the v1 design flaw flagged in project_acos_dataroom.md memory — vision needs to use main-thread Read or sub-agent Task() instead of ANTHROPIC_API_KEY"
+
+context_for_next_session: |
+  This session built the entire `acos-dataroom` skill from scratch and
+  validated it on real Mora Drive loan data. The skill is now in a usable
+  state for a first-real-run on a small loan, but has known design gaps
+  worth addressing before broad use.
+
+  KEY LOCATIONS:
+    Skill source:        /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-dataroom/
+    Mora test working:   /Users/zee/Desktop/acos-dataroom-Vaughn_Mora_Drive-2026-05-06/working/
+    Source loan folder:  /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore/Vaughn_Mora Drive
+
+  KEY FACTS (Vaughn / Mora Drive deal):
+    Borrower: Melvin Vaughn (personal guarantor, DOB 04/07/1963)
+    Property: 10700 Mora Drive, Los Altos Hills, CA 94024 (also 10718 Mora Dr referenced — possibly two properties)
+    Loan: $11,500,000 at 12%, originated 2021-08-26
+    Outcome: borrower defaulted, bankruptcy reorg (Chapter 11, In re Mora House One LLC), property sold Feb 2024
+    Deal-type used for test: foreclosure_auction (note: the actual sale completed Feb 2024 — this was test fodder, not real auction prep)
+    User used this paid-off loan as test fodder, NOT real diligence
+
+  USER PREFERENCES (codified in memory):
+    - $200/mo Claude Code Max subscription. NEVER suggest ANTHROPIC_API_KEY (separate billing — would be double-charge)
+    - Direct, terse instructions. Trust prior summaries; don't re-triage on short follow-ups
+    - Spell out abbreviations in explanations
+    - Always provide clickable file links, not plain text paths
+    - Restate understanding before acting on multi-part instructions (Confirmation Gate)
+    - Chunked teaching — one small step at a time when explaining concepts
+
+  IMMEDIATE STATE OF THE WORKBOOK ON DISK:
+    Latest internal workbook: Vaughn_Mora_Drive_Foreclosure_Internal_Working_2026-05-08.xlsx
+    Latest QA markdown:        Vaughn_Mora_Drive_Foreclosure_QA_Report_2026-05-08.md
+    Per-claim audit:           hallucination_check.json (showing 87.7% verified, 2 number_mismatch flags worth review)
+    Buyer-facing workbook:     NOT YET GENERATED — Phase 11 not invoked. Will be auto-built during create-room
+
+  TOP TWO CALLED-OUT HALLUCINATION CANDIDATES (from layered verifier):
+    1. proposed order granting rfs.docx — claim cites Court Case No. 23-50562 / In re Mora House One LLC. Numbers 23 and 50562 not in extracted DOCX text. Either real hallucination, embedded image not extracted, or cross-contamination. Worth boss eyes
+    2. Second number_mismatch in hallucination_check.json — same pattern
+
+  WHEN RESUMING: read this handoff, then check the user's most recent prompt (if any) to see what direction they want next. If no recent prompt, the user was about to invoke /acos-eternity-protocol and may have wanted to continue iterating on the skill. Recommended next action is to address the v1 design flaw (ANTHROPIC_API_KEY in ocr_and_vision.py) since it's the most consequential remaining issue.

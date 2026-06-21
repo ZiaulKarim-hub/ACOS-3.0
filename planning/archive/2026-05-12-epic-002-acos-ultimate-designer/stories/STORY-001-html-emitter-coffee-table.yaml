@@ -1,0 +1,133 @@
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "HTML Emitter with Coffee-Table Composition"
+description: |
+  Produce a complete single-file HTML document using Brad's OKOA design system
+  tokens, page-as-canvas composition, and coffee-table book aesthetic rhythm
+  (full-bleed cover, chapter dividers, mid-content photo bands). HTML includes
+  empty photo slots with semantic tags — Story 2 fills them. HTML passes a
+  pre-conversion QA gate that verifies Brad compliance + coffee-table rules.
+
+user_story: |
+  As a user producing institutional-grade documents,
+  I want to hand the skill arbitrary content and have it emit a Brad-styled
+  HTML that matches the coffee-table aesthetic of the v3 Private Credit
+  Capabilities reference,
+  So that I can turn any narrative/data into investor-book output without
+  hand-composing pages each time.
+
+acceptance_criteria:
+  - "[ ] Skill directory exists at ~/.claude/skills/acos-ultimate-designer/ with SKILL.md + phases/ + templates/ + scripts/"
+  - "[ ] SKILL.md has valid frontmatter (name, description, user-invocable, allowed-tools) and is discoverable by Claude"
+  - "[ ] tokens.css extracted from Brad's palette, typography scale, and Carbon 16-column grid — referenced by all page templates"
+  - "[ ] 9 page templates exist in templates/page-templates/ — cover, two-column-narrative, metric-grid, timeline, chapter-divider, product-detail, portfolio-grid, photo-break, closing"
+  - "[ ] Each template is a standalone HTML fragment (one .page div) with @page-compatible layout, no cross-page dependencies"
+  - "[ ] Content decomposer takes user-supplied content (YAML or markdown) and produces a page-plan (ordered list of {template_id, content_dict, photo_slots})"
+  - "[ ] HTML emitter takes a page-plan + tokens.css + templates and produces one self-contained HTML file"
+  - "[ ] Emitted HTML uses @page { size: Letter; margin: 0; }, includes Google Fonts link, embeds tokens.css in <style>, has explicit background-color on every text container"
+  - "[ ] Each page has coral mono eyebrow label in format 'NN SECTION NAME', italic Cormorant accent on section title key phrase, running header, running footer with roman page number 'N / total'"
+  - "[ ] Coffee-table rhythm enforced: page plan includes at least 1 full-bleed photo page per 3 content pages, chapter divider between major parts (if multi-part), closing section with dark brand panel"
+  - "[ ] HTML QA gate (scripts/html-qa-gate.py) runs 22-item Brad checklist + 8-item coffee-table-specific checklist; reports pass/fail per item with evidence"
+
+dependencies:
+  stories: []
+  slices: []
+
+slices:
+  - slice_id: "SLICE-001-01"
+    title: "Skill directory scaffold"
+    description: "Create ~/.claude/skills/acos-ultimate-designer/ with SKILL.md (frontmatter + Purpose + Protocol stub), phases/, templates/page-templates/, templates/pptx-slide-masters/, scripts/, examples/. SKILL.md frontmatter: name, description (trigger text), disable-model-invocation: false, user-invocable: true, allowed-tools (Read/Write/Edit/Bash + Task agents as-needed)."
+    effort: "S"
+    dependencies: []
+
+  - slice_id: "SLICE-001-02"
+    title: "Extract Brad tokens into tokens.css"
+    description: "Read acos-document-design-brad/SKILL.md; extract full OKOA palette (:root CSS custom properties), full typography scale as CSS classes (.display-xl, .body-md, .mono-label, etc. — one class per token row in Brad's scale), full Carbon 16-col grid. Write to templates/tokens.css. Every color used in templates must be referenceable as var(--token-name). Typography classes must map 1:1 to Brad's scale tables."
+    effort: "M"
+    dependencies: ["SLICE-001-01"]
+
+  - slice_id: "SLICE-001-03"
+    title: "Coffee-table page template library (9 templates)"
+    description: "Build 9 HTML page-templates in templates/page-templates/, each a self-contained .page div. Reference the v3 tearsheet-v3.html structure at /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html as the gold-standard composition. Templates: (1) cover.html — full-bleed image + dark scrim + oversized Cormorant title with italic accent + eyebrow + bottom metadata bar; (2) two-column-narrative.html — eyebrow + section title + italic pull-quote + two columns; (3) metric-grid.html — 3×3 grid of cards with coral accent bar + mono label + Cormorant value; (4) timeline.html — numbered steps with coral number + day range + italic subhead + body; (5) chapter-divider.html — full-bleed image + 'PART N' eyebrow + oversized italic-accent title + subtitle; (6) product-detail.html — left-column product names + right-column descriptions with hr dividers; (7) portfolio-grid.html — 2×2 hero-photo cards with eyebrow + title + location + body + stat grid; (8) photo-break.html — full-width photo band with caption label; (9) closing.html — two-column summary + dark topographic panel + dark footer with logo."
+    effort: "L"
+    dependencies: ["SLICE-001-02"]
+
+  - slice_id: "SLICE-001-04"
+    title: "Content-to-page-plan decomposer"
+    description: "scripts/decompose-content.py takes user content (YAML or markdown) and produces a page-plan: ordered list of {template_id, content_dict, photo_slots, italic_accent_phrase}. Heuristics: first page always cover, last always closing, chapter dividers inserted between content.parts[], photo_break inserted every 3 content pages if not already present. italic_accent_phrase picked from section title (last 1-2 words that carry meaning)."
+    effort: "M"
+    dependencies: ["SLICE-001-03"]
+
+  - slice_id: "SLICE-001-05"
+    title: "HTML emitter"
+    description: "scripts/html-emit.py takes page-plan + tokens.css + templates and assembles one complete HTML file. Includes Google Fonts link, inline tokens.css, inline OKOA logo SVG (white + dark variants), @page rule, each page rendered by substituting template variables. Writes to {session_dir}/output.html with empty photo slots (data-photo-slot attributes with semantic tags)."
+    effort: "M"
+    dependencies: ["SLICE-001-04"]
+
+  - slice_id: "SLICE-001-06"
+    title: "HTML QA gate validator"
+    description: "scripts/html-qa-gate.py reads the emitted HTML and runs two checklists: (A) Brad's 22-item QA (Google Fonts present, explicit backgrounds, logo SVG fill='none', section labels use mono 11px uppercase coral, Cormorant clamp sizing, no --ink-40 on dark, no CSS var() in hero/footer, Carbon grid CSS present, etc.); (B) 8-item coffee-table checklist (≥1 full-bleed photo per 3 content pages, chapter divider between parts, running header/footer consistent, roman page numbers 'N / total', italic Cormorant accent on every section title, eyebrow 'NN NAME' format, closing dark panel present, ATTRIBUTION slot present). Returns pass/fail + evidence JSON."
+    effort: "M"
+    dependencies: ["SLICE-001-05"]
+
+execution_order:
+  - phase: 1
+    slices: ["SLICE-001-01"]
+  - phase: 2
+    slices: ["SLICE-001-02"]
+  - phase: 3
+    slices: ["SLICE-001-03"]
+  - phase: 4
+    slices: ["SLICE-001-04"]
+  - phase: 5
+    slices: ["SLICE-001-05"]
+  - phase: 6
+    slices: ["SLICE-001-06"]
+
+files_involved:
+  create:
+    - "~/.claude/skills/acos-ultimate-designer/SKILL.md"
+    - "~/.claude/skills/acos-ultimate-designer/templates/tokens.css"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/cover.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/two-column-narrative.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/metric-grid.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/timeline.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/chapter-divider.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/product-detail.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/portfolio-grid.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/photo-break.html"
+    - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/closing.html"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/decompose-content.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+    - "~/.claude/skills/acos-ultimate-designer/scripts/html-qa-gate.py"
+
+technical_notes: |
+  - Page-as-canvas composition: every page is `<div class="page">` with fixed
+    8.5in × 11in dimensions, page-break-after: always, overflow: hidden.
+    Do NOT use flow layout — this is NOT a web page that paginates.
+  - Use @page { size: Letter; margin: 0; } — zero margin. All margin work
+    happens inside the .page div.
+  - Cormorant italic accents: the v3 example uses phrases like "Flexible
+    Capital." (with Capital italicized), "Debt Solutions." (Solutions
+    italicized), "first dollar." (whole phrase italicized). The italic span
+    typically carries the key noun. The decomposer picks it heuristically.
+  - Photo slots are empty at this stage — Story 2 fills them. Emit with
+    data-photo-slot="{semantic_tags}" placeholder.
+  - Reference but do NOT copy the v3 tearsheet-v3.html — extract the
+    compositional ideas, rebuild cleanly using Brad's token system.
+
+review_focus:
+  - "Verify all 22 Brad QA items enforced by the gate"
+  - "Verify coffee-table rhythm rules are mechanically checked, not just documented"
+  - "Verify tokens.css doesn't duplicate Brad's spec — it EXTRACTS from it; Brad remains source of truth"
+
+effort_estimate: "L"
+
+notes: |
+  This story is the foundation. Stories 2–6 all consume its outputs. The
+  emitter must be clean and composable — later stories extend it, not rewrite it.

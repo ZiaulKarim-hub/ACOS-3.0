@@ -1,0 +1,342 @@
+timestamp: "2026-05-20T20:36:03Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "b498b8da-49df-4d07-8a7d-be50b2f13556"
+handoff_sequence: "5th handoff today (of 5); preceded by: eternity-protocol-end-to-end-test-retry, eternity-protocol-fix-implemented, eternity-protocol-live-test-fire, eternity-protocol-daemon-clear-arch"
+
+session_summary: |
+  This session (b498b8da) fixed three remaining bugs in the ACOS Eternity Protocol
+  resume flow and executed the first end-to-end verification attempt of the full
+  autonomous resume chain. Bug #1 (orphan-claim false positive): token-watcher.py's
+  claim_orphan_resume_if_any() was using JSONL mtime as a negative signal to decide
+  if the old session was still alive — it false-positived on trailing Claude writes
+  to the old JSONL right after /clear landed, causing the new watcher to skip the
+  orphan claim. Fixed by writing a positive .clear-fired-<sid> marker in
+  check_clear_request() and using that as authoritative proof in the orphan-claim
+  path. Bug #5 (Step 5 of /acos-eternity-protocol-resume deleting files): patched
+  to mv artifacts to state/consumed/ instead of rm. Bug #3 (cross-contamination by
+  stale pending-resume-c38121b3): moved to state/consumed/ manually and forensically
+  confirmed Bug #3 (skill not writing pending-resume.txt) was not the actual failure.
+  Token-watcher.py is now 908 lines (was 846 after the daemon-clear-arch session).
+  Daemon was redeployed: launcher pkill'd with pkill -P 34504, new watcher PIDs
+  58011–58016 running as of 2:18PM. The current session is b498b8da and the daemon
+  is watching it at approx 152k tokens (threshold 400000 — not close to firing).
+
+current_work:
+  slice_id: "eternity-protocol-bug-fixes-complete"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "in_progress — bugs patched, daemon redeployed, end-to-end autonomous resume unverified"
+
+# ── WHAT WAS DONE THIS SESSION ────────────────────────────────────────────────
+
+completed_this_session:
+  - "Bug #1 fixed: claim_orphan_resume_if_any() now uses .clear-fired-<sid> positive marker
+    as primary evidence that /clear landed. mtime heuristic retained as fallback only. The
+    mtime false-positive was observed in the live verification: new session b498b8da spawned
+    1 sec after inject, but old JSONL (43619f37) still had mtime < 60s from trailing writes,
+    so the claim was skipped and Jason had to manually fire /acos-eternity-protocol-resume
+    after a 58-minute gap."
+  - "Bug #1 corollary: check_clear_request() in token-watcher.py now writes .clear-fired-<sid>
+    marker after fire_inject('/clear') returns, even when rc=5 (UNVERIFIED). This is because
+    /clear empirically lands even when the 3-second JSONL poll doesn't catch it."
+  - "Bug #5 fixed: /acos-eternity-protocol-resume SKILL.md Step 5 patched from 'rm -f' to
+    'mv to state/consumed/ with unix-timestamp suffix on collision'. Smoke-tested with
+    bash -n. Consistent with feedback_preserve_pending_resumes.md invariant."
+  - "Cross-contamination cleanup: stale pending-resume-c38121b3 (OKOA website session from
+    May 18, unrelated project) moved from state/ to state/consumed/. This was interfering
+    with /acos-eternity-protocol-resume Step 1's ls -t | head -1 fallback."
+  - "Bug #3 forensically disproven: the skill writes pending-resume-*.txt correctly. The
+    earlier symptom (no pending-resume for session 43619f37 in state/) was caused by the
+    resume file being consumed by a prior manual resume invocation, not by a write failure."
+  - "New memory file written: feedback_orphan_resume_jsonl_mtime_false_positive.md at
+    /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/"
+  - "Existing memory file updated: feedback_eternity_resume_step5_violates_preserve.md
+    marked STATUS: FIXED 2026-05-20 PM."
+  - "MEMORY.md updated (timestamp 2026-05-20T12:35) — referenced new memory file."
+  - "Daemon redeployed: pkill -P 34504 killed old watchers, new watchers spawned.
+    New watcher PIDs: 58011 (b498b8da), 58012 (43619f37), 58013 (6314f667),
+    58014 (2264d70c), 58015 (8f1cee65), 58016 (4babaf0a). Launcher 34504 still alive."
+  - "bin-manifest.sha256 regenerated to match new token-watcher.py hash:
+    126e585edb709a52759417f9ec2503129ff557ef7f37320243bbfcd6f53028b5"
+  - "token-watcher.py backed up to:
+    /Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py.bak-pre-clear-fired-marker-20260520-123315"
+
+# ── END-TO-END VERIFICATION RESULT ────────────────────────────────────────────
+
+end_to_end_verification:
+  this_invocation_is_the_test: |
+    The user's context states this current /acos-eternity-protocol invocation (which
+    spawned this handoff agent) IS the end-to-end verification. If the daemon
+    successfully auto-injects the resume prompt into the post-/clear session without
+    the user manually firing /acos-eternity-protocol-resume, autonomous resume is
+    verified for the first time.
+  prior_attempt_outcome: |
+    The PRIOR attempt (session 43619f37, daemon-clear-arch session) confirmed /clear
+    fired via skill→flag→daemon path. But the orphan claim was skipped due to mtime
+    false-positive (Bug #1). Jason had to manually fire /acos-eternity-protocol-resume.
+    That was the observation that identified Bug #1. Bug #1 is now patched.
+  what_to_watch_for: |
+    After /clear fires: the new watcher for the post-/clear session should startup
+    and run claim_orphan_resume_if_any(). It will find the .resume-pending-<old_sid>
+    flag for this session. It will then check .clear-fired-<old_sid>. If the marker
+    is present, it will claim the orphan and type /acos-eternity-protocol-resume into
+    Warp without user intervention. That is the success condition.
+  failure_modes_to_distinguish:
+    - "Daemon fires /clear but orphan claim still skipped: means .clear-fired marker
+      was not written, or was written to wrong path. Check token-watcher.py line ~746."
+    - "Daemon fires /clear, orphan claim runs, /acos-eternity-protocol-resume typed, but
+      resume text not injected: the resume skill itself has an issue (Step 3 PID file or
+      Step 4 inject)."
+    - "Daemon does not fire /clear at all: check whether skill writes .clear-requested
+      flag correctly and whether daemon is still running (ps aux | grep token-watcher)."
+
+# ── FILES MODIFIED THIS SESSION ───────────────────────────────────────────────
+
+files_modified:
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: |
+      File size: 908 lines, 40942 bytes (was 846 lines / 36964 bytes post daemon-clear-arch).
+      Backup at: token-watcher.py.bak-pre-clear-fired-marker-20260520-123315
+      Key additions:
+        Line 70-77: Added CLEAR_FIRED constant (.clear-fired-<SESSION_ID>).
+        Lines 636-647: In claim_orphan_resume_if_any() — check .clear-fired marker as
+          primary proof; clean up marker after successful claim.
+        Lines 610-619: Updated orphan-check logic: if .clear-fired marker present, claim
+          immediately; only fall back to mtime heuristic if marker absent.
+        Lines 746-756: In check_clear_request() — write .clear-fired marker after
+          fire_inject('/clear'), even when success=False (rc=5 UNVERIFIED).
+      New manifest hash: 126e585edb709a52759417f9ec2503129ff557ef7f37320243bbfcd6f53028b5
+
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+    changes: |
+      Regenerated to match updated token-watcher.py. Full contents as of 2026-05-20:
+        inject-keystroke.py   c9d04772319a29f87a24f879ce79808e1ba7b261de72bfb7fd5e3667bbc53957
+        register-session-pid.sh  71af3ec0e488cb5b0504831968806fed1584b81ff02364899378df572b3770f2
+        resolve-session-pid.py  9bf21dbbb4e5584505543867b83e9326e3427b6720d55551488ddd1f72094207
+        token-watcher-launcher.py  5b11d21bd83d593438813a43236eb02f44fe4d74eb5ec6f3b8d1b9e6bcef2e84
+        token-watcher.py  126e585edb709a52759417f9ec2503129ff557ef7f37320243bbfcd6f53028b5
+
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    changes: |
+      Step 5 rewritten: from rm -f of three artifacts to mv into state/consumed/ with
+      unix-timestamp suffix on filename collision. Added 2026-05-20 (PM) fix preamble
+      explaining why rm was wrong and what the new behavior is. Bash -n verified.
+      File: 139 lines, last modified May 20 13:59.
+      Global symlink ~/.claude/skills/acos-eternity-protocol-resume/SKILL.md points here.
+
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/consumed/"
+    changes: |
+      Directory created (mkdir -p). Contains:
+        .compact-fired-43619f37-*.1779296011 (moved from state/ — cycle 1 record for session 43619f37)
+        pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt (moved from state/ — stale
+          OKOA website pending-resume that was causing cross-contamination)
+
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_orphan_resume_jsonl_mtime_false_positive.md"
+    changes: "New file. Documents the mtime false-positive root cause, observed failure, and fix recipe."
+
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_resume_step5_violates_preserve.md"
+    changes: "Updated: added STATUS: FIXED 2026-05-20 PM section with exact implementation details."
+
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Updated (timestamp 2026-05-20T12:35): linked feedback_orphan_resume_jsonl_mtime_false_positive.md."
+
+# ── DAEMON STATE AT HANDOFF ────────────────────────────────────────────────────
+
+daemon_state_at_handoff:
+  launcher_pid: 34504
+    watching: "ACOS 3.0 project directory"
+  launcher_pid_okoa: 75897
+    watching: "okoa-website worktree"
+  watcher_pids:
+    - pid: 58011
+      watching: "b498b8da (this session)"
+    - pid: 58012
+      watching: "43619f37"
+    - pid: 58013
+      watching: "6314f667"
+    - pid: 58014
+      watching: "2264d70c"
+    - pid: 58015
+      watching: "8f1cee65"
+    - pid: 58016
+      watching: "4babaf0a"
+  daemon_log_b498b8da:
+    last_event: "evt=12 at 2026-05-20T20:35:02Z"
+    total_at_evt12: "149,953"
+    approx_at_evt12: "153,082"
+    threshold: 400000
+    status: "NOT CLOSE TO FIRING (approx ~153k vs threshold 400k)"
+  config_state:
+    path: "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+    threshold: 400000
+    fire_command: "/acos-eternity-protocol"
+    post_compact_drop_pct: 35
+    status: "CORRECT — production values confirmed"
+
+# ── DECISIONS MADE ────────────────────────────────────────────────────────────
+
+decisions_made:
+  - "Positive .clear-fired marker is the authoritative proof that /clear landed. The
+    daemon writes it in check_clear_request() after calling fire_inject('/clear'),
+    regardless of inject's self-reported success (rc=5 is UNVERIFIED, not FAILED — /clear
+    typically lands even when the 3-second JSONL poll doesn't catch it)."
+  - "claim_orphan_resume_if_any() checks .clear-fired marker first. If present: claim
+    the orphan unconditionally (fire /acos-eternity-protocol-resume). If absent: fall
+    back to the 60-second mtime heuristic as a safety net for manual /clear flows."
+  - "pending-resume files are NEVER deleted, only moved to state/consumed/. This is a
+    standing invariant (feedback_preserve_pending_resumes.md). The consumed/ subdirectory
+    is the correct disposal target."
+
+# ── PENDING ITEMS ─────────────────────────────────────────────────────────────
+
+pending_items:
+  immediate:
+    - "Verify end-to-end autonomous resume in THIS cycle: if /clear fires correctly and
+      the daemon auto-injects /acos-eternity-protocol-resume, the protocol is fully
+      verified. Watch for daemon log entry showing orphan claim + slash command typed."
+    - "Extend verify_clear_in_jsonl() timeout from 3s to 8-10s in inject-keystroke.py.
+      File: /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+      Function: verify_clear_in_jsonl(timeout_s=3.0) — change to timeout_s=8.0.
+      After editing: regenerate bin-manifest.sha256."
+    - "Commit ACOS repo changes: .claude/skills/acos-eternity-protocol-resume/SKILL.md
+      and memory/ files. token-watcher.py and bin-manifest.sha256 live outside git."
+
+  medium_priority:
+    - "TCC csreq-pinning for Warp Accessibility + PostEvent permissions.
+      Warp auto-update will silently break keystroke injection without this.
+      Reference: /Users/zee/Documents/Vibe Coding/Warp-Disk-Access-Permanent-Fix.md"
+    - "Delete stale resolve-session-pid.py (no longer called by token-watcher.py):
+      /Users/zee/Library/Application Support/acos-token-monitor/bin/resolve-session-pid.py"
+
+  low_priority:
+    - "Add --dry-run flag to eternity-resume-prepend.sh (testing hygiene).
+      File: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    - "Dispose of remaining orphan files in state/ (user decides per file — NEVER auto-delete):
+        - RESCUED-resume-ascent-dataroom-pii.txt (May 18 17:17)
+        - RESCUED-resume-from-smoke-test.txt (May 18 17:15)
+        - pending-resume.txt (May 6 legacy non-UUID name)
+      Note: pending-resume-c38121b3-*.txt was already moved to state/consumed/ this session."
+
+# ── ARCHITECTURE SUMMARY (current state as of this handoff) ───────────────────
+
+architecture_current_state:
+  pre_clear_skill_path:
+    description: "Steps 1-5 in /acos-eternity-protocol skill, same session"
+    steps:
+      - "Step 1: /acos-handoff (creates handoff document)"
+      - "Step 2: /acos-resume-prompt (writes pending-resume-<sid>.txt to state/)"
+      - "Step 3: Capture pre-clear token total"
+      - "Step 4: Write .resume-pending-<sid> arming file"
+      - "Step 5: Write .clear-requested-<sid> flag and exit"
+  post_clear_daemon_path:
+    description: "Steps 6-10 in daemon, separate process"
+    steps:
+      - "Step 6: daemon's check_clear_request() sees .clear-requested flag"
+      - "Step 7: fire_inject('/clear') via inject-keystroke.py --session-id"
+      - "Step 8: Write .clear-fired-<sid> marker (positive proof /clear was attempted)"
+      - "Step 9: New session starts; new watcher runs claim_orphan_resume_if_any()"
+      - "Step 10: Orphan claim finds .clear-fired marker → types /acos-eternity-protocol-resume"
+  fallback_path:
+    description: "UserPromptSubmit hook as redundant fallback"
+    file: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    behavior: "On user's first prompt in post-/clear session, detects pending-resume-*.txt,
+      injects as additionalContext. Does not require daemon to have run the orphan claim."
+
+# ── CONTEXT FOR NEXT SESSION ──────────────────────────────────────────────────
+
+context_for_next_session: |
+  This session completed the three-bug fix arc on the ACOS Eternity Protocol resume flow.
+  The main achievement: token-watcher.py now writes a positive .clear-fired-<sid> marker
+  when the daemon fires /clear, and claim_orphan_resume_if_any() uses that marker as
+  authoritative evidence for the orphan claim — eliminating the JSONL mtime false-positive
+  that broke autonomous resume on the previous cycle. The SKILL.md for
+  /acos-eternity-protocol-resume was patched so Step 5 moves consumed artifacts to
+  state/consumed/ instead of deleting them.
+
+  The test of these fixes is this very session: the current /acos-eternity-protocol
+  invocation (b498b8da) is the intended end-to-end verification run. If the daemon
+  correctly fires /clear, writes the .clear-fired marker, and the new watcher auto-injects
+  /acos-eternity-protocol-resume — that is the first fully autonomous resume hop ever
+  confirmed for this system.
+
+  IF YOU ARE READING THIS IN A POST-/CLEAR SESSION:
+    1. Check whether /acos-eternity-protocol-resume was auto-injected. If yes: autonomous
+       resume is verified. Report to Jason in scorecard format: /clear fired Y/N, daemon
+       auto-injected resume Y/N, resume prompt appeared Y/N.
+    2. Check daemon log for the new session ID:
+       tail -50 "/Users/zee/Library/Application Support/acos-token-monitor/logs/<new_session_id>.log"
+       Look for: "orphan candidate .resume-pending-b498b8da", ".clear-fired marker present",
+       "ORPHAN RESUME CLAIM", and "slash command typed".
+    3. Extend verify_clear_in_jsonl() timeout from 3s to 8s in inject-keystroke.py and
+       regenerate bin-manifest.sha256.
+    4. Commit the ACOS repo changes (see files_to_commit below).
+
+  IF YOU ARE READING THIS IN THE SAME SESSION (b498b8da):
+    The /acos-eternity-protocol skill is currently executing. After this handoff, the skill
+    will continue with Step 2 (/acos-resume-prompt), then write the .resume-pending arming
+    file, then write .clear-requested flag and exit. The daemon will then fire /clear.
+
+  IMPORTANT — DO NOT CONFUSE THESE SESSIONS:
+    Session 43619f37 = prior cycle (daemon-clear-arch test). Its watcher is PID 58012.
+    Session b498b8da = THIS session (current bug-fix verification run). Watcher PID 58011.
+
+  FILES TO COMMIT (ACOS git repo only — token-watcher.py lives outside git):
+    - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md
+    - /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_orphan_resume_jsonl_mtime_false_positive.md
+    - /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_resume_step5_violates_preserve.md
+    - /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md
+    (memory/ files may live outside the ACOS repo — check git status to confirm which are tracked)
+
+  HANDOFF CHAIN TODAY (read in order for full repair arc):
+    memory/handoffs/2026-05-20-eternity-protocol-end-to-end-test-retry.yaml — B11 + CGEventPost fixes
+    memory/handoffs/2026-05-20-eternity-protocol-fix-implemented.yaml — inject-keystroke.py rewrite
+    memory/handoffs/2026-05-20-eternity-protocol-live-test-fire.yaml — first live fire (fire_command fix)
+    memory/handoffs/2026-05-20-eternity-protocol-daemon-clear-arch.yaml — skill→flag→daemon /clear arch
+    memory/handoffs/2026-05-20-eternity-protocol-bug-fixes-complete.yaml (this file) — mtime fix, Bug #5 fix
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+
+reconstruction_sources:
+  - "User-provided context (authoritative): Bug #1 (claim_orphan mtime false positive), Bug #5 (Step 5 rm),
+    Bug #3 disproven, cross-contamination cleanup, manifest regenerated, daemon redeployed PIDs 58011-58016,
+    memory files updated, this invocation IS the end-to-end verification"
+  - "memory/handoffs/2026-05-20-eternity-protocol-daemon-clear-arch.yaml (read in full — 4th handoff today,
+    describes check_clear_request() architecture, prior daemon state, post_clear_action_items)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-fix-implemented.yaml (read in full — inject-keystroke.py
+    rewrite, B11 fix, 3-cycle history from session 991a46bd)"
+  - "memory/handoffs/2026-05-20-eternity-protocol-live-test-fire.yaml (read in full — fire_command fix,
+    threshold=50000 test state, first successful /acos-eternity-protocol fire)"
+  - "ls -lt memory/handoffs/ (confirmed 4 prior 2026-05-20 handoffs; this is the 5th)"
+  - "Read .claude/skills/acos-eternity-protocol-resume/SKILL.md (full file, 139 lines — confirmed Step 5
+    mv implementation, 2026-05-20 PM fix annotation)"
+  - "Read /Users/zee/.claude/projects/.../memory/feedback_orphan_resume_jsonl_mtime_false_positive.md
+    (full file — confirmed mtime false-positive diagnosis, .clear-fired fix recipe, originSessionId b498b8da)"
+  - "Read /Users/zee/.claude/projects/.../memory/feedback_eternity_resume_step5_violates_preserve.md
+    (full file — confirmed STATUS: FIXED 2026-05-20 PM, exact implementation in skill)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/bin/ (token-watcher.py=40942 bytes
+    May 20 12:34, .bak file at 36964 May 20 12:33 — confirms pre/post patch file sizes)"
+  - "wc -l token-watcher.py = 908 lines (was 846 per daemon-clear-arch handoff)"
+  - "grep -n 'claim_orphan|CLEAR_FIRED|clear-fired' token-watcher.py — confirmed at lines 70,77,261,
+    416,424,426,427,527,543,547,552,553,585,591,596,597,602,608,609,610,611,613,618,619,636,644,645,647,
+    746,752,755,756,785,786"
+  - "grep -n 'check_clear_request|CLEAR_REQUESTED|clear-requested' token-watcher.py — confirmed at lines
+    67,68,709,712,714,718,721,726,732,756,830,835,897"
+  - "cat bin-manifest.sha256 — confirmed token-watcher.py hash 126e585e... (new post-patch value)"
+  - "ps aux | grep token-watcher — confirmed watcher PIDs 58011-58016 and launchers 34504, 75897"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/config.yaml — threshold=400000,
+    fire_command=/acos-eternity-protocol, post_compact_drop_pct=35 — all production correct"
+  - "tail -50 logs/b498b8da-*.log — confirmed this session at approx 153k tokens, daemon not fired,
+    watcher started 2026-05-20T20:18:28Z, 12 events observed"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/state/ — confirmed consumed/
+    directory exists (May 20 12:34), RESCUED-resume files still in state/, pending-resume.txt still
+    in state/, pid files for active sessions present"
+  - "ls -la state/consumed/ — confirmed .compact-fired-43619f37-*.1779296011 and
+    pending-resume-c38121b3-*.txt present (correctly moved this session)"
+  - "ls -lt memory/decisions/ (no new decisions today — last ADR was Apr 23)"
+  - "ls -lt .acos/evidence/ (no evidence bundles today — last was Apr 21)"
+  - "git status --short (modified/deleted tracked files include SKILL.md for loan-doc-generator,
+    CLAUDE.md, .gitignore, .acos/config/project.yaml; no new eternity-protocol files committed)"
+  - "git log --oneline -20 (most recent commit: feat(acos-dataroom-v2): v2.0.0 — no new commits today)"
+  - "date -u = 2026-05-20T20:36:03Z"

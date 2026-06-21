@@ -1,0 +1,310 @@
+# Slice Plan — extract() orchestration + integration tests + sandbox + perf budget
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-07"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-28"
+completed_by: the-architect
+review_verdicts:
+  qa-reviewer: PASS
+  integration-reviewer: PASS
+  performance-reviewer: PASS
+  security-reviewer: PASS  # was REJECT; resolved via feedback resolution (2026-05-28)
+  required_fixes: 0
+  total_findings: ~24  # mostly LOW; 1 MEDIUM (evidence-bundle backfill) addressed
+  major_findings_resolved: 2  # CWE-918 SSRF + CWE-79 SVG XSS — both fixed
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-07/"
+test_count: 124  # was 122 baseline + 2 new security tests
+perf_independent_reproductions:
+  qa-reviewer: "40.84ms median"
+  performance-reviewer: "29.81-31.03ms median"
+  developer_baseline: "35.77ms median"
+  budget: 3000ms  # all 3 reproductions ~85-100x under
+feedback_resolution_summary:
+  trigger: "security-reviewer REJECT with 2 MAJOR + 3 minor findings"
+  fixes_applied:
+    - "Fix 1 (CWE-918 SSRF): URL scheme allowlist + hostname denylist in extractBackground"
+    - "Fix 2 (CWE-79 SVG XSS): Option B — UNTRUSTED contract documentation in svg.ts + types.ts; canvas owns sanitize-at-render"
+    - "Fix 3: 8 hostile probes appended to xss-sandbox.html (SVG script/onload/javascript:, base-href, 4 SSRF backgrounds)"
+    - "Fix 4: per-record scheme + hostname denylist assertions in xss-sandbox.test.ts"
+  re_review_verdict: "PASS — both MAJOR resolved; 1 new LOW (IPv4-mapped IPv6 bypass) captured as STORY-003-002 prep"
+
+# Slice overview
+title: "extract() orchestration + integration tests + sandbox + perf budget"
+objective: |
+  Finalize the top-level extract(html: string, opts?: { bradEnrichment?:
+  boolean }): Promise<ContainerRecord[]> function. Wire walker (02),
+  text/image extractors (02), SVG (03), table (04), background (05),
+  and the Brad-enrichment pass (06) into a single pipeline. Add
+  integration tests against 2–3 real OKOA Brad reference documents.
+  Verify performance budget (<3s on a 30 KB document). Verify XSS
+  sandbox (no script execution from ingested HTML). Lock the public
+  API surface — only extract() and ContainerRecord (+ NodeKind) are
+  exported from the parser module.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/index.ts exports ONLY extract() and re-exports ContainerRecord, NodeKind from types.ts. Internal walker, individual extractors, and enrichment are NOT exported."
+  - "[ ] extract() accepts an optional opts argument: { bradEnrichment?: boolean }; default bradEnrichment = true. opts is optional for ergonomic happy-path; opts.bradEnrichment === false triggers generic-HTML fallback mode."
+  - "[ ] Pipeline order is documented and enforced: parse → walk → extract per element kind → await background loads → enrich → return"
+  - "[ ] Integration test: tests/integration/brad-full-10pg.test.ts parses tests/fixtures/brad-full-10pg.html (a real OKOA Brad reference document, ~30 KB) in <3 seconds; record count > 50; assert at least 1 of each NodeKind is produced"
+  - "[ ] Integration test: tests/integration/brad-credit-memo.test.ts parses tests/fixtures/brad-credit-memo.html (different doc type) and produces a valid, non-empty result"
+  - "[ ] Integration test: tests/integration/generic-news-article.test.ts parses tests/fixtures/generic-news-article.html (a generic web page, NOT Brad) with opts.bradEnrichment = false; result is non-empty; no bradClass values present"
+  - "[ ] Sandbox test: tests/integration/xss-sandbox.test.ts parses tests/fixtures/xss-sandbox.html (contains <script>alert(1)</script>, onload handlers, inline event listeners); window.alert is mocked and never called; no extracted record contains executable script source"
+  - "[ ] Performance test: extract() on brad-full-10pg.html completes in <3000ms (3-run average; flake tolerance: 2 of 3 runs must pass)"
+  - "[ ] Parser module has NO unused exports — verified by running tsc with --noUnusedLocals and the export-tree match against the public API list"
+  - "[ ] tests/fixtures/brad-full-10pg.html, tests/fixtures/brad-credit-memo.html, tests/fixtures/generic-news-article.html, tests/fixtures/xss-sandbox.html all exist"
+  - "[ ] All previously-written unit tests still pass; total test suite green"
+  - "[ ] Story-level acceptance criterion 'a 10-page Brad document parses in <3 seconds' is officially verified by the perf test in this slice"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-02"
+      what_it_provides: "walker + text + image extractors"
+      status: "complete"
+    - slice_id: "SLICE-003-001-03"
+      what_it_provides: "SVG extractor"
+      status: "complete"
+    - slice_id: "SLICE-003-001-04"
+      what_it_provides: "table extractor"
+      status: "complete"
+    - slice_id: "SLICE-003-001-05"
+      what_it_provides: "background extractor + async pipeline"
+      status: "complete"
+    - slice_id: "SLICE-003-001-06"
+      what_it_provides: "Brad-class enrichment pass"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/index.ts"                 # finalize orchestration + public API
+  - "apps/visual-composer/tests/integration/"                  # new directory for integration tests
+  - "apps/visual-composer/tests/fixtures/brad-full-10pg.html"
+  - "apps/visual-composer/tests/fixtures/brad-credit-memo.html"
+  - "apps/visual-composer/tests/fixtures/generic-news-article.html"
+  - "apps/visual-composer/tests/fixtures/xss-sandbox.html"
+  - "apps/visual-composer/package.json"                        # may add scripts: test:integration, test:perf
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/dom-walker.ts"            # frozen after slice 05
+  - "apps/visual-composer/src/parser/extractors/"              # frozen
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"       # frozen
+  - "apps/visual-composer/src/parser/brad-taxonomy.ts"         # frozen
+  - "apps/visual-composer/src/parser/types.ts"                 # frozen
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"
+  - "testing"
+  - "quality-gates"
+  - "bug-investigation"      # if perf budget is missed, this skill helps profile
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "FINAL slice in STORY-003-001. After this, the parser module is shipped — STORY-003-002 (canvas) will consume extract() as a black-box."
+  - "Real Brad fixtures: ask the user to provide 2–3 actual recently-produced Brad documents to copy into tests/fixtures/. If none are available, generate plausible-looking Brad-style HTML by hand (use acos-document-design-brad as a template) — flag this to the user as a known-limitation in the slice review."
+  - "Perf budget is a HARD gate. If it fails on real fixtures, do NOT cheat by reducing fixture size — profile and fix. Common culprit: synchronous getComputedStyle calls inside the walker (each one is a layout flush). Cache once per element."
+  - "XSS sandbox: DOMParser('text/html') already disables scripts. The test PROVES this contract. window.alert mock is the canary."
+  - "Public API enforcement: tsc --noUnusedLocals catches dead exports. The reviewer should also do a visual check of index.ts re-export list."
+  - "Generic-HTML fixture: a real news article (e.g., a saved BBC or NYT page) tests robustness against malformed markup, unfamiliar classes, and unexpected element trees. If the parser crashes, fail-soft (skip the bad element, log warning) — do not throw all the way up."
+
+# Technical requirements
+technical_requirements:
+  - "extract() is the only function exported from the parser module's public surface"
+  - "All internal helpers are NOT re-exported"
+  - "Integration tests use Vitest's vi.fn() to mock window.alert / scripts; assert call count === 0"
+  - "Performance test uses performance.now() before/after extract(), runs 3 times, asserts on median"
+  - "Fixture documents are NOT generated dynamically — they are static files. Real Brad fixtures may need to be redacted if they contain confidential OKOA data."
+
+# Testing requirements
+testing_requirements:
+  - "Integration test suite (separate from unit tests) — run with `pnpm run test:integration`"
+  - "Performance test — run with `pnpm run test:perf`"
+  - "Sandbox test — runs in integration suite"
+  - "All previous unit tests must still pass"
+  - "Aggregate coverage report: ≥80% line coverage on src/parser/ (story acceptance criterion)"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"   # XSS sandbox is the focus
+  - "ACOS-performance-reviewer" # 3-second budget is the focus
+  - "ACOS-integration-reviewer" # public API surface enforcement
+
+# Effort estimate
+effort_estimate: "L"
+# Rationale: ~30min orchestration wiring + public API lockdown; ~1hr 3 integration test files;
+# ~30min XSS sandbox test; ~30min perf test setup + tuning if budget tight; ~1hr fixture creation
+# or redaction (if real Brad docs provided); ~30min coverage report + acceptance verification.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  This is the slice that closes STORY-003-001. Story acceptance is
+  measured by this slice's tests passing — specifically the perf budget
+  and the sandbox confirmation.
+
+  After this slice:
+    - extract() is the FROZEN entry point for the parser module
+    - STORY-003-002 can begin (the canvas, which consumes extract())
+    - The parser module is consumable as a black-box dependency by all
+      downstream stories
+
+  If real Brad documents are not available, the slice can still ship
+  with high-fidelity hand-authored fixtures — but flag to the user that
+  the first integration verification against a real recent Brad doc is
+  deferred to STORY-003-002's setup phase.
+
+  Coverage requirement (80% line coverage on src/parser/) is a HARD
+  gate per story acceptance criterion. If coverage is short, write
+  additional unit tests in the EARLIER slices' test files (not new
+  files in this slice), and consider that a hot-fix on the upstream
+  slice — flag in the review.
+
+# Plan addenda — added 2026-05-26 after SLICE-003-001-01 completion review
+# Source: SLICE-003-001-01 integration-reviewer finding F2
+plan_addenda:
+  - finding_id: "BG1"
+    severity: LOW
+    source: "SLICE-003-001-05 perf-reviewer + integration-reviewer (forward-look)"
+    description: |
+      Background image load on 5s timeout doesn't cancel the underlying
+      Image bitmap decode (img.src = '' idiom not used). Wastes bandwidth +
+      CPU until GC. Worst case ~5MB wasted decode for 10 backgrounds on
+      slow CDN.
+    action: |
+      In slice 07, when running real-fixture integration tests, add a
+      one-line fix to background.ts loadNaturalDimensions: in the timeout
+      branch, set img.src = '' before settle(null). No-op in happy-dom;
+      cancels real-browser decode.
+    additional_acceptance_criterion: |
+      "[ ] Image load timeout cancels the underlying decode (img.src=''
+       idiom in background.ts loadNaturalDimensions timeout branch)"
+
+  - finding_id: "BG2"
+    severity: LOW
+    source: "SLICE-003-001-05 perf-reviewer (forward-look)"
+    description: |
+      Background extractor doesn't deduplicate identical URLs within a
+      single extract() call. Brad documents often reuse the same hero
+      background across multiple sections — current code triggers
+      independent loads + bitmap decodes for each reference.
+    action: |
+      Optional perf optimization for slice 07: memoize loadNaturalDimensions
+      by URL within a single extract() call (Map<string, Promise<{w,h}|null>>).
+      Defer if slice 07 perf benchmarks show no actual hot path.
+
+  - finding_id: "BG3"
+    severity: LOW
+    source: "SLICE-003-001-05 integration-reviewer (forward-look)"
+    description: |
+      MVP background extractor takes only the FIRST comma-separated url()
+      layer. Multi-layer backgrounds (texture-over-photo) are silently
+      dropped. Brad fixtures so far appear single-layer but unverified
+      against real reference documents.
+    action: |
+      Slice 07: audit the 2-3 real Brad reference documents for multi-layer
+      background-image rules. If present, either (a) emit one record per
+      layer with id suffix `bg-<hash>-l0`, `bg-<hash>-l1`, OR (b) extend
+      BackgroundContent with `layers: string[]`. (b) is a TYPE CONTRACT
+      CHANGE — must happen here in slice 07 before STORY-003-002 starts.
+
+  - finding_id: "BG4"
+    severity: LOW
+    source: "SLICE-003-001-05 qa-reviewer + integration-reviewer (forward-look)"
+    description: |
+      The new Image() general path is NEVER exercised under happy-dom
+      (Image is inert there). All slice 05 tests run through the data:
+      URI header sniffer. The real-browser image-load path will execute
+      for the first time during slice 07 integration tests if any
+      fixture uses http(s) URLs, AND during STORY-003-002 runtime.
+    action: |
+      Slice 07: add a real-browser integration test (Playwright or jsdom
+      with a tiny local fixture server) that exercises the new Image()
+      path against a known image. Verify load success + handler null-out
+      + timer clear. Without this, the production path is untested.
+    additional_acceptance_criterion: |
+      "[ ] New Image() general path in background.ts is exercised by at
+       least one integration test that uses an http(s) or local-server
+       URL (not data:)"
+
+  - finding_id: "BG5"
+    severity: LOW
+    source: "SLICE-003-001-05 qa-reviewer (forward-look)"
+    description: |
+      Malformed-URI no-throw test in background.test.ts uses Promise.race
+      against a 200ms fallback, so the 5s timeout branch is never actually
+      exercised end-to-end. Code-review confirmed it settles to null, but
+      runtime coverage is zero.
+    action: |
+      Slice 07: add a vi.useFakeTimers() test that advances 5001ms and
+      asserts the timeout path resolves to null (not throws or hangs).
+      Small but meaningful coverage addition.
+
+  - finding_id: "BG6"
+    severity: LOW
+    source: "SLICE-003-001-04 perf-reviewer (deferred from slice 04)"
+    description: |
+      dom-walker.ts comment at lines 19-20 claims "O(N) regardless of
+      depth or same-tag sibling fanout" but the per-emit pathSegments.join
+      + parents.slice() remain O(d). Total is O(N*d), effectively O(N)
+      for bounded depth but the comment overstates the guarantee.
+    action: |
+      Slice 07: soften comment to "O(N) for Brad-shaped documents
+      (shallow depth). Per-emit join/slice remain O(d); total work is
+      O(N*d), effectively O(N) when d is bounded."
+
+  - finding_id: F2
+    source: "SLICE-003-001-01 integration-reviewer (PASS, minor finding)"
+    description: |
+      ContainerRecord uses two parallel `kind` discriminators — one on
+      ContainerRecord itself, one on each ContainerContent variant.
+      TypeScript cannot enforce structural agreement between them, so
+      a buggy parser slice (02–05) could emit a record with mismatched
+      kinds (e.g., record.kind='text' paired with record.content.kind='image').
+      The smoke test in slice 01 documented this limitation but cannot
+      catch runtime drift.
+    action: |
+      Add a runtime invariant check to this slice's integration tests:
+
+        for (const record of result) {
+          expect(record.kind).toBe(record.content.kind);
+        }
+
+      Apply this assertion in EVERY integration test that runs extract()
+      against a real fixture (brad-full-10pg, brad-credit-memo,
+      generic-news-article). Catches any future parser-slice bug where
+      the two discriminators desync.
+
+      Alternative (preferred long-term): factor a helper
+        function assertKindCoherent(r: ContainerRecord): void
+      into a new src/parser/invariants.ts module and call it inside
+      extract() itself before returning. This makes the invariant a
+      runtime guarantee, not just a test assertion. Out of scope for
+      this slice if it pushes complexity — add to acceptance criteria
+      as optional.
+    additional_acceptance_criterion: |
+      "[ ] Every record returned by extract() satisfies record.kind ===
+       record.content.kind, asserted in every integration test (verified
+       by adding the assertion to the test loop or via a parser-internal
+       invariant helper)"

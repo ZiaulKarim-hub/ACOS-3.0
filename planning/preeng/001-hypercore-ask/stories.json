@@ -1,0 +1,367 @@
+{
+  "feature_id": "001-hypercore-ask",
+  "product_name": "acos-hypercore-ask",
+  "generated_by": "/preeng.tasks",
+  "preconditions_verified": {
+    "plan_md_exists": true,
+    "tech_prd_md_exists": true,
+    "planning_qa_status": "APPROVED",
+    "planning_qa_not_rejected": true
+  },
+  "notes": "Epic -> Story -> Slice backlog. Vertical slices, each a demo-able increment (Protocol 0.8). Each slice id is stable and used as the tasks/<slice-id>.md filename and as the ACOS bridge slice id. parent_story on each slice maps it to its story; parent_epic maps story to epic. Effort S/M/L. dependency_order is the global build order. Demos D0-D3 (plan.md sec 4).",
+  "epics": [
+    {
+      "epic_id": "EPIC-HCA-00",
+      "title": "Diagnostics + validation (problem-before-solution)",
+      "description": "Confirm symptoms/unknowns, lock the Python 3 stdlib decision, and lock the stubbed-access ground rules before any solution build. Validates hypothesis H1 (aggregation/units/currency/truncation dominate the trust failure, not raw text fabrication).",
+      "stories": [
+        "STORY-HCA-00"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-01",
+      "title": "Skill scaffold + ACOS integration",
+      "description": "Skill loader, NL command surface, evidence-bundle wiring, config surface, and the tier-router entry point.",
+      "stories": [
+        "STORY-HCA-01"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-02",
+      "title": "Hypercore client/adapter contract + fixture/mock backend (stubbed-until-access)",
+      "description": "Read-only adapter contract; FixtureBackend active now; LiveBackend stubbed/TODO; NoLiveDataError + is_live() degradation.",
+      "stories": [
+        "STORY-HCA-02"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-03",
+      "title": "Two-tier data model + raw-response cache",
+      "description": "Tier-1 RawApiResponse source-of-truth cache + Tier-2 NormalizedAnswerRecord derived view with per-field back-pointers.",
+      "stories": [
+        "STORY-HCA-03"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-04",
+      "title": "Provenance-binding engine (refuse-on-missing)",
+      "description": "Bind every delivered value to endpoint+request_params+timestamp+json_field_path+raw_response_id; refuse delivery when binding is missing.",
+      "stories": [
+        "STORY-HCA-04"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-05",
+      "title": "Deterministic gate suite",
+      "description": "schema validation, pagination-completeness, freshness window, cross-field reconciliation, unit/currency normalization, single-source confidence cap <= 0.7.",
+      "stories": [
+        "STORY-HCA-05"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-06",
+      "title": "Adversarial multi-model consensus orchestrator",
+      "description": "Dispatch N blind general-purpose agents via Task() (subscription-only); substance consensus; bounded re-dispatch then escalate; never a silent pick.",
+      "stories": [
+        "STORY-HCA-06"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-07",
+      "title": "NL question -> verified report/table/dataset pipeline + provenance/confidence display",
+      "description": "End-to-end orchestration in SKILL.md: question -> plan -> fetch -> verify -> answer; answer/refusal/no-live-data envelopes with mandatory provenance + confidence + freshness + tier.",
+      "stories": [
+        "STORY-HCA-07A",
+        "STORY-HCA-07B"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-08",
+      "title": "Downstream trusted-input feed formats for consumer skills",
+      "description": "report/table/dataset (JSON/CSV) feed format with embedded per-value provenance/confidence + manifest, consumable by acos-dataroom-v2 / acos-financial-statement / prospectus / legal-analyst.",
+      "stories": [
+        "STORY-HCA-08"
+      ]
+    },
+    {
+      "epic_id": "EPIC-HCA-09",
+      "title": "Security / PII / GDPR + secret handling + read-only enforcement hardening",
+      "description": "PII-scrubbed logs/evidence; env/secret-store credentials; structural read-only guard; completeness/freshness/schema-drift hardening.",
+      "stories": [
+        "STORY-HCA-09A",
+        "STORY-HCA-09B"
+      ]
+    }
+  ],
+  "stories": [
+    {
+      "story_id": "STORY-HCA-00",
+      "parent_epic": "EPIC-HCA-00",
+      "title": "As the team, confirm the trust-failure diagnosis and lock the build ground rules so the solution is built against the real problem.",
+      "user_value": "Prevents building the wrong gates: validates that aggregation/units/currency/truncation (not raw text fabrication) dominate the trust failure, and records the Python 3 stdlib + stubbed-access decisions.",
+      "demo": "Demo 0",
+      "slices": [
+        "slice-00-diagnostic"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-01",
+      "parent_epic": "EPIC-HCA-01",
+      "title": "As an OKOA associate, I can invoke the acos-hypercore-ask skill and have my question routed to the right verification tier.",
+      "user_value": "A single discoverable entry point exists; the skill loads, exposes the NL command surface, and classifies the question (trivial-lookup vs report/aggregation/analysis).",
+      "demo": "-",
+      "slices": [
+        "slice-01-scaffold"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-02",
+      "parent_epic": "EPIC-HCA-02",
+      "title": "As a developer, I can read Hypercore data through a stable read-only contract that works on fixtures today and swaps to live later without touching callers.",
+      "user_value": "The whole skill is buildable/testable before API access; the live backend is isolated and stubbed; absence of credentials degrades to an explicit no-live-data state.",
+      "demo": "-",
+      "slices": [
+        "slice-02-adapter"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-03",
+      "parent_epic": "EPIC-HCA-03",
+      "title": "As the verification pipeline, I can persist raw API truth and derive a token-efficient normalized view that always points back to its source.",
+      "user_value": "Provenance is structurally guaranteed: every normalized field carries a back-pointer to its Tier-1 raw response; the cache is the immutable source of truth.",
+      "demo": "-",
+      "slices": [
+        "slice-03-twotier-cache"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-04",
+      "parent_epic": "EPIC-HCA-04",
+      "title": "As a consumer of an answer, I can trust that any delivered value cites its exact raw source, or is refused.",
+      "user_value": "No value is delivered without a resolvable provenance binding; missing binding triggers refusal, not a guess.",
+      "demo": "-",
+      "slices": [
+        "slice-04-provenance"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-05",
+      "parent_epic": "EPIC-HCA-05",
+      "title": "As the verification pipeline, I can mechanically reject incomplete, stale, schema-invalid, unreconciled, or over-trusted values.",
+      "user_value": "Six deterministic gates (schema, pagination-completeness, freshness, reconciliation, unit/currency normalization, single-source cap <= 0.7) catch the dominant non-text failure modes before delivery.",
+      "demo": "-",
+      "slices": [
+        "slice-05-gates"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-06",
+      "parent_epic": "EPIC-HCA-06",
+      "title": "As an IC-grade consumer, I get report/aggregation answers only when N blind independent agents agree on substance.",
+      "user_value": "Adversarial multi-model consensus catches substance disagreement on math/aggregations; disagreement re-dispatches then escalates, never a silent pick.",
+      "demo": "Demo 2",
+      "slices": [
+        "slice-06-consensus"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-07A",
+      "parent_epic": "EPIC-HCA-07",
+      "title": "As an OKOA associate, I can ask a single-value question and get a verified answer (or an explicit no-live-data message) against fixtures, with zero live API.",
+      "user_value": "Demo 1: the thin end-to-end deterministic-tier path proves a verified answer with full provenance/confidence display and the graceful no-live-data degradation.",
+      "demo": "Demo 1",
+      "slices": [
+        "slice-07-e2e-thin"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-07B",
+      "parent_epic": "EPIC-HCA-07",
+      "title": "As an OKOA associate, I can ask a report/aggregation question and get a consensus-verified, gated, provenance-bound report/table.",
+      "user_value": "The full pipeline (router -> adapter -> cache -> normalize -> blind agents -> consensus -> gates -> binder -> deliver) produces an IC-grade report or refuses/escalates.",
+      "demo": "-",
+      "slices": [
+        "slice-08-orchestration"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-08",
+      "parent_epic": "EPIC-HCA-08",
+      "title": "As a downstream ACOS skill, I can consume a verified dataset with embedded provenance/confidence and a manifest as a trusted input.",
+      "user_value": "Demo 3: a verified dataset is exported in report/table/dataset (JSON/CSV) feed formats with a manifest and is consumed by a downstream skill (e.g. acos-dataroom-v2).",
+      "demo": "Demo 3",
+      "slices": [
+        "slice-09-feed-formats"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-09A",
+      "parent_epic": "EPIC-HCA-09",
+      "title": "As OKOA, I am assured sensitive loan data and credentials are handled safely and the adapter can never mutate Hypercore.",
+      "user_value": "PII-scrubbed logs/evidence, env/secret-store credentials, and a structural read-only guard make the skill safe to point at live data once provisioned.",
+      "demo": "-",
+      "slices": [
+        "slice-10-security-pii"
+      ]
+    },
+    {
+      "story_id": "STORY-HCA-09B",
+      "parent_epic": "EPIC-HCA-09",
+      "title": "As an IC-grade consumer, lists and reports are pagination-complete, fresh, and drift-checked under stress.",
+      "user_value": "Hardens completeness/freshness/schema-drift handling with adversarial fixtures (deliberately truncated, stale, drifted) so the gates demonstrably catch the failure modes.",
+      "demo": "-",
+      "slices": [
+        "slice-11-completeness-hardening"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "slice_id": "slice-00-diagnostic",
+      "parent_story": "STORY-HCA-00",
+      "parent_epic": "EPIC-HCA-00",
+      "objective": "Confirm symptoms/unknowns, validate hypothesis H1, and record the Python 3 stdlib + stubbed-access decisions before any solution code.",
+      "effort": "S",
+      "dependency_order": 1,
+      "demo": "Demo 0",
+      "depends_on": []
+    },
+    {
+      "slice_id": "slice-01-scaffold",
+      "parent_story": "STORY-HCA-01",
+      "parent_epic": "EPIC-HCA-01",
+      "objective": "Scaffold the acos-hypercore-ask skill (SKILL.md command surface) + config + tier-router entry point + evidence-bundle wiring.",
+      "effort": "M",
+      "dependency_order": 2,
+      "demo": "-",
+      "depends_on": [
+        "slice-00-diagnostic"
+      ]
+    },
+    {
+      "slice_id": "slice-02-adapter",
+      "parent_story": "STORY-HCA-02",
+      "parent_epic": "EPIC-HCA-02",
+      "objective": "Define the read-only Hypercore adapter contract with FixtureBackend (active) + stubbed LiveBackend + is_live()/NoLiveDataError degradation.",
+      "effort": "L",
+      "dependency_order": 3,
+      "demo": "-",
+      "depends_on": [
+        "slice-01-scaffold"
+      ]
+    },
+    {
+      "slice_id": "slice-03-twotier-cache",
+      "parent_story": "STORY-HCA-03",
+      "parent_epic": "EPIC-HCA-03",
+      "objective": "Implement the Tier-1 RawApiResponse cache (immutable source of truth) + Tier-2 NormalizedAnswerRecord derived view with per-field back-pointers.",
+      "effort": "L",
+      "dependency_order": 4,
+      "demo": "-",
+      "depends_on": [
+        "slice-02-adapter"
+      ]
+    },
+    {
+      "slice_id": "slice-04-provenance",
+      "parent_story": "STORY-HCA-04",
+      "parent_epic": "EPIC-HCA-04",
+      "objective": "Implement the provenance-binding engine that binds each value to its Tier-1 source and refuses delivery on any missing/unresolvable binding.",
+      "effort": "M",
+      "dependency_order": 5,
+      "demo": "-",
+      "depends_on": [
+        "slice-03-twotier-cache"
+      ]
+    },
+    {
+      "slice_id": "slice-05-gates",
+      "parent_story": "STORY-HCA-05",
+      "parent_epic": "EPIC-HCA-05",
+      "objective": "Implement the deterministic gate suite: schema, pagination-completeness, freshness, cross-field reconciliation, unit/currency normalization, single-source confidence cap <= 0.7.",
+      "effort": "L",
+      "dependency_order": 6,
+      "demo": "-",
+      "depends_on": [
+        "slice-04-provenance"
+      ]
+    },
+    {
+      "slice_id": "slice-07-e2e-thin",
+      "parent_story": "STORY-HCA-07A",
+      "parent_epic": "EPIC-HCA-07",
+      "objective": "Wire the thin end-to-end deterministic-tier path (NL -> stubbed client -> raw cache -> provenance-bound value -> gates -> display) plus the no-live-data degradation. Demo 1.",
+      "effort": "M",
+      "dependency_order": 7,
+      "demo": "Demo 1",
+      "depends_on": [
+        "slice-05-gates"
+      ]
+    },
+    {
+      "slice_id": "slice-06-consensus",
+      "parent_story": "STORY-HCA-06",
+      "parent_epic": "EPIC-HCA-06",
+      "objective": "Implement the blind adversarial-consensus orchestrator: N general-purpose Task() agents, substance consensus, bounded re-dispatch then escalate, single-source cap. Demo 2.",
+      "effort": "L",
+      "dependency_order": 8,
+      "demo": "Demo 2",
+      "depends_on": [
+        "slice-07-e2e-thin"
+      ]
+    },
+    {
+      "slice_id": "slice-08-orchestration",
+      "parent_story": "STORY-HCA-07B",
+      "parent_epic": "EPIC-HCA-07",
+      "objective": "Assemble the full question->plan->fetch->verify->answer orchestration in SKILL.md for the report/aggregation tier (router -> ... -> consensus -> gates -> binder -> deliver | refuse | escalate).",
+      "effort": "L",
+      "dependency_order": 9,
+      "demo": "-",
+      "depends_on": [
+        "slice-06-consensus"
+      ]
+    },
+    {
+      "slice_id": "slice-09-feed-formats",
+      "parent_story": "STORY-HCA-08",
+      "parent_epic": "EPIC-HCA-08",
+      "objective": "Render report/table/dataset (JSON/CSV) deliverables + the trusted-input feed schema (embedded provenance/confidence + manifest) and demonstrate downstream consumption. Demo 3.",
+      "effort": "M",
+      "dependency_order": 10,
+      "demo": "Demo 3",
+      "depends_on": [
+        "slice-08-orchestration"
+      ]
+    },
+    {
+      "slice_id": "slice-11-completeness-hardening",
+      "parent_story": "STORY-HCA-09B",
+      "parent_epic": "EPIC-HCA-09",
+      "objective": "Harden completeness/freshness/schema-drift with adversarial fixtures (truncated/stale/drifted) proving the gates catch each failure mode.",
+      "effort": "M",
+      "dependency_order": 11,
+      "demo": "-",
+      "depends_on": [
+        "slice-09-feed-formats"
+      ]
+    },
+    {
+      "slice_id": "slice-10-security-pii",
+      "parent_story": "STORY-HCA-09A",
+      "parent_epic": "EPIC-HCA-09",
+      "objective": "Harden security/PII/GDPR: PII-scrubbed logs/evidence, env/secret-store credential loading, and the structural read-only guard test.",
+      "effort": "M",
+      "dependency_order": 12,
+      "demo": "-",
+      "depends_on": [
+        "slice-08-orchestration"
+      ]
+    }
+  ],
+  "counts": {
+    "epics": 10,
+    "stories": 12,
+    "slices": 12
+  }
+}

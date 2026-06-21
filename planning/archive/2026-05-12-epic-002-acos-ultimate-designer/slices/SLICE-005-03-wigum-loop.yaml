@@ -1,0 +1,85 @@
+slice_id: "SLICE-005-03"
+story_id: "STORY-005"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Fix-feedback mapper + Wigum loop"
+objective: |
+  Build scripts/wigum-loop.py — the orchestrator that wraps the full pipeline
+  (Story 1 + 2 + 3|4 + 5). On each iteration: run Stories 1+2, render via
+  Story 3 or 4, verify via SLICE-005-02. If PASS: return success. If FAIL:
+  classify each defect (decomposer / emitter / image / template issue), emit
+  fix-instructions.yaml, re-run affected stages with fix context. Enforce
+  severity escalation rule. Terminate on PASS or iteration > 10.
+
+acceptance_criteria:
+  - "[ ] scripts/wigum-loop.py exists, Python 3, executable"
+  - "[ ] Accepts --content (path), --format (pdf|pptx), --session-dir (path), --max-iterations (default 5), --hard-ceiling (default 10)"
+  - "[ ] Main loop: for iteration in range(1, max_iterations+1): run pipeline; run render-and-verify.sh (SLICE-005-02); if PASS, break; else classify defects + build fix context + continue"
+  - "[ ] Defect classifier: given a visual-defects.yaml entry, route to one of {decomposer, emitter, template, image, qa-gate}. Routing rules: photo_rhythm defect → decomposer; typography defect → emitter or template; palette defect → template (tokens.css); photo_quality defect → image (fill-photo-slots); page_dimensions → render script"
+  - "[ ] Fix-context file: writes fix-instructions.yaml per iteration — {target_stage, specific_fixes: [list]}. Passed as context to the target stage when re-run."
+  - "[ ] Severity escalation: a defect marked WARNING on iteration N AND iteration N+1 with same (id, page) escalates to ERROR on iteration N+2. Implementation: track (criterion_id, page) across iterations."
+  - "[ ] Hard ceiling: if iteration > hard_ceiling, exit with code 2 + save all iteration outputs + print aggregated defects list + advise user to manually review"
+  - "[ ] PASS termination: on PASS verdict, copy output.{pdf|pptx} to session root + exit 0"
+  - "[ ] Resume support: --resume-from-iteration <N> picks up after iteration N (useful for debugging)"
+  - "[ ] Verbose logging: each iteration's start, end, defect count, and fix targets logged to session/wigum.log"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-005-02"
+      what_it_provides: "render-and-verify.sh producing visual-defects.yaml"
+      status: "complete"
+    - slice_id: "SLICE-001-06"
+      what_it_provides: "HTML QA gate (pre-conversion quality check)"
+      status: "complete"
+    - slice_id: "SLICE-003-02"
+      what_it_provides: "end-to-end PDF pipeline smoke test (reference for full pipeline shape)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/wigum-loop.py"
+
+files_prohibited:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The Wigum loop is the CORE QUALITY MECHANISM. Without it, every generated document is best-effort with hope. With it, every output is mechanically verified and iteratively improved."
+  - "Loop shape is inspired by loan-doc's phase4-validate.md, but this is a NEW implementation — feedback channels are different (loan-doc doesn't have a content decomposer). Re-implement, don't import."
+  - "Severity escalation solves a real failure mode: an LLM reviewer sometimes inconsistently flags the same defect as WARNING or ERROR. If a WARNING keeps appearing, it's real and the loop should force a fix."
+  - "Hard ceiling of 10 is a safety valve. In practice, well-designed pipelines converge in 2-3 iterations. Ceiling of 5 with hard ceiling of 10 gives room for occasional stubborn cases."
+  - "Fix-instruction routing to target stage lets the pipeline skip re-running stages that don't need to change. E.g., palette defect = re-run emitter only, not decomposer."
+
+technical_requirements:
+  - "Python 3.9+; pyyaml, subprocess (for invoking other stage scripts)"
+  - "Idempotent on success: running wigum-loop.py again on a completed session is a no-op (check for existing PASS verdict)"
+  - "Clean failure mode: on any exception, save all iteration state to session dir before exiting — user should be able to resume"
+
+testing_requirements:
+  - "Integration: simulate a known-bad content (e.g., only 2 pages, which breaks photo rhythm) — verify loop iterates, decomposer gets fix context, next iteration passes"
+  - "Unit: severity escalation — feed mock defects with (id, page) repeated 2 iterations as WARNING, verify iteration 3 escalates to ERROR"
+  - "Unit: hard ceiling — mock a never-passing pipeline, verify loop exits at iteration 10 with code 2"
+  - "Integration: run against v3 input, verify loop converges in ≤3 iterations with final output visually matching v3 reference"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-performance-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This closes STORY-005. With Wigum in place, end-to-end quality is no longer
+  a hope — it's mechanically enforced. The rest (STORY-006) is wiring + wizard.

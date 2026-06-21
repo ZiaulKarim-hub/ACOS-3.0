@@ -1,0 +1,96 @@
+# Slice Plan — Diagnostics + validation (problem-before-solution)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-00-diagnostic"
+story_id: "STORY-HCA-00"
+epic_id: "EPIC-HCA-00"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Diagnostics + validation (problem-before-solution)"
+objective: |
+  Confirm the trust-failure diagnosis and lock build ground rules BEFORE writing
+  any solution code. Validate hypothesis H1 (the dominant trust failure is
+  aggregation / units / currency / silent-truncation errors that look plausible —
+  not raw text fabrication), and record the Python 3 stdlib and stubbed-access
+  decisions. In scope: a written diagnostic record (symptoms S1–S4, affected
+  roles, current-vs-desired table, hypotheses H1–H3, unknowns U1–U5); a decision
+  log entry; a gate-priority recommendation derived from H1. Out of scope: any
+  solution code, adapter/cache/gate implementation, or Hypercore API call.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Diagnostic record produced covering symptoms (S1–S4), affected roles, current-vs-desired table, hypotheses (H1–H3), and unknowns (U1–U5) — artifact: diagnostic section in this slice's evidence bundle"
+  - "[ ] H1 explicitly marked confirmed or still-Assumption; if still-Assumption, a validation hook is pointed at SLICE-HCA-11-completeness-hardening — pass-condition: H1 status recorded with rationale"
+  - "[ ] Decision record written confirming Python 3 stdlib only (no third-party deps) and the stubbed-client-until-access ground rules — artifact: memory/decisions/<id>-hca-build-ground-rules.md"
+  - "[ ] Gate-priority recommendation recorded (ranked list of highest-leverage gates given H1) — pass-condition: ranked list present and consistent with H1"
+  - "[ ] No solution code written; NO files created under .claude/skills/acos-hypercore-ask/ or .claude/scripts/ (scope) — fail = REJECT"
+  - "[ ] Evidence bundle authentic (no fabricated logs); independent re-derivation of symptoms/hypotheses from spec.md §Diagnostics confirms the record invented no new claims"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices: []  # depends_on: [] — first slice, no upstream dependencies
+
+# File permissions
+files_allowed:
+  - "memory/decisions/"  # one new decision record: Python 3 stdlib + stubbed-access ground rules
+  - ".acos/evidence/"    # evidence bundle for this slice
+  - "planning/preeng/001-hypercore-ask/tasks/slice-00-diagnostic.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/skills/acos-hypercore-ask/"  # no solution code in this slice
+  - ".claude/scripts/"    # no solution code in this slice
+
+# Skills recommended
+skills_recommended:
+  - "document-processing"  # reading PRD/plan/research and producing a diagnostic record
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-00-diagnostic.md"
+  - "Problem-before-solution gate: this slice writes NO solution code — only a diagnostic record, a decision log, and a gate-priority ranking. QA rejects on any file under .claude/skills/ or .claude/scripts/."
+  - "Gotcha: if evidence is insufficient to confirm H1, mark it Assumption and route validation to SLICE-HCA-11-completeness-hardening — do not over-claim."
+  - "Cite the plan-time decisions (OQ5, OQ1) in the ground-rules decision record."
+
+# Technical requirements
+technical_requirements:
+  - "Lock the Python 3 stdlib-only decision (no third-party deps) for the whole feature"
+  - "Lock the stubbed-client-until-access ground rule (no live Hypercore API call until access provisioned)"
+  - "Evaluate H1 against the success metrics and risk register; confirm reconciliation + completeness + adversarial recompute outrank text-similarity checks"
+  - "Produce the 7-part Dev evidence bundle (summary, traceability S1–S4/H1/OQ1/OQ5, content quality, structural checks, security/compliance, operational, self-assessment)"
+  - "No-PII in the diagnostic record"
+
+# Testing requirements
+testing_requirements:
+  - "QA independently re-derives symptoms/hypotheses from spec.md §Diagnostics and verifies no invented claims"
+  - "QA verifies the decision record exists and unambiguously states Python 3 stdlib + stubbed-access"
+  - "QA verifies H1 status (confirmed vs Assumption) is justified and, if Assumption, validation is routed to slice-11"
+  - "QA spot-checks evidence bundle authenticity (no fabricated logs)"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "S"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-00-diagnostic.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-00 are PROPOSED — not yet formally planned via /acos-plan.

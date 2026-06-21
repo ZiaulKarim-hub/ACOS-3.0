@@ -1,0 +1,57 @@
+timestamp: "2026-06-10T00:00:00Z"
+status: "completed"
+session_summary: >
+  Built acos-preeng-unix (tertiary ACOS planning system) + its execution engine
+  acos-execute-unix from scratch: a Unix-philosophy component-decomposition pipeline that
+  replaces Vision→Epic→Story→Slice with a variable-depth tree of independently
+  human-testable, output-generating components, built bottom-up with an up→down→up repair
+  loop and operational cross-tree reuse. Validated end-to-end via a live dry run; all of the
+  user's original-vision requirements are implemented and tested.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Authored acos-preeng-unix planning engine (9 files): SKILL, README, runner+worker prompts, component-tree.schema.json, library.html template, render-library.py, verify-artifacts.sh, registry.py."
+  - "Authored acos-execute-unix execution engine (8 files): SKILL, README, STATE-MACHINE.md, builder/verifier/integrator prompts, next-ready.py, set-status.py. (Originally named acos-execute-component; renamed to acos-execute-unix externally — all cross-script refs verified resolving.)"
+  - "MUST tier: set-status.py (sole status writer, enforces parent-gating invariant exit 3), next-ready.py (resumable on-disk frontier + needs_human flags), human-verification gate for non-machine verifiers."
+  - "SHOULD tier (B1-B4): scope-hook guard (fail-open, stale active-slice warning), model resolution via resolve-agent-model.sh, evidence convention, formal STATE-MACHINE.md."
+  - "Operationalized cross-tree reuse: registry.py (publish/search/link) + project index planning/preeng-unix/_registry/; set-status auto-publishes reusable passes; planner pre-seeds search, worker references registry_ids, executor reuse-checks before building."
+  - "Live dry run on 001-isodate-cli: runner→worker→7 cmds→gate→Builder→Verifier→Integrator→DONE; working CLI built; committed as a worked example."
+  - "Dry run found a real bug (a leaf's human_test ran the un-built assembled CLI) — fixed durably via an ISOLATION RULE in worker.md §3.4."
+  - "Memory: project_acos_preeng_unix.md + MEMORY.md pointer."
+
+files_modified:
+  - path: ".claude/skills/acos-preeng-unix/**"
+    changes: "New planning skill (9 files)."
+  - path: ".claude/skills/acos-execute-unix/**"
+    changes: "New execution skill (8 files); renamed from acos-execute-component."
+  - path: "planning/preeng-unix/001-isodate-cli/**"
+    changes: "Worked-example dry-run artifacts + built CLI (33 files)."
+  - path: "planning/preeng-unix/_registry/registry.json"
+    changes: "Reuse registry seeded with the demo's 3 reusable components."
+
+decisions_made:
+  - "Tertiary planner — /acos-plan stays authoritative; preeng-unix is an alternative front-end with its OWN execution model (not the slice bridge)."
+  - "Every node testable in isolation (Unix Invariant) enforced mechanically by verify-artifacts.sh, not just prose."
+  - "Coverage gate target 100% of vision success criteria (stricter than classic's 95%)."
+  - "Reuse registry lives above any feature dir because reuse is inherently cross-tree."
+  - "Agents spawned as general-purpose with embedded prompts — zero new files in restricted .claude/agents/."
+
+blockers: []
+
+next_actions:
+  - "Optional: live human-gate run on a real physical/manual vision (rocket-style) — the only path proven by construction but not yet demonstrated end-to-end."
+  - "Optional polish: parallel intra-level builds; a single autonomous driver command; re-decompose-on-coverage-fail auto-loop."
+
+context_for_next_session: |
+  The full goal as the user originally stated it is COMPLETE and committed (6 commits on branch
+  acos-deficiency-fixes-2026-06-04: planner, MUST glue, isolation fix, demo, SHOULD tier, reuse
+  registry). The execution skill was renamed acos-execute-component → acos-execute-unix after the
+  commits; cross-script path refs (registry.py → acos-execute-unix/scripts/set-status.py;
+  set-status.py → acos-preeng-unix/scripts/{render-library,registry}.py) were verified resolving.
+  Nothing is blocked. Remaining items are genuinely optional enhancements, best built when a real
+  project demands one.

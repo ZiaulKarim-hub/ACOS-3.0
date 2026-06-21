@@ -1,0 +1,99 @@
+# Slice Plan — Entity graph engine + hub-guard
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-04-graph-hubguard"
+story_id: "STORY-APS-04"
+epic_id: "EPIC-APS-04"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Entity graph engine + hub-guard"
+objective: |
+  Implement graph.py: the entity-graph engine with the temporal/provenance edge schema on
+  EVERY edge, edge-strength ordering, inverse-frequency weighting, and the hub-guard —
+  registered-agent stop-list (hub_agents.txt) + dynamic hub detection (>=25, configurable)
+  + bounded hops (2, configurable) + log-every-prune. Keep the inverse signal: a
+  non-commercial agent on a few related entities is a strong control link. In scope:
+  scripts/graph.py + references/hub_agents.txt. Out of scope: channel lookups (slice-05),
+  swarm/round logic (slice-06).
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Every persisted edge carries the full temporal/provenance schema; an edge missing source/url/date is rejected — pass: edge-schema invariant test (REQUIRED; fail = REJECT)"
+  - "[ ] Expansion through a stop-listed registered agent is pruned and logged — pass: hub-prune test (REQUIRED); a sibling expanded through a hub = REJECT"
+  - "[ ] An agent/address at/over the frequency threshold (default 25) is detected as a hub and pruned — pass: dynamic-hub test"
+  - "[ ] Expansion never exceeds the hop limit (default 2); every prune is logged — pass: hop-limit + prune-log test"
+  - "[ ] A non-commercial agent on a few entities is kept as a strong link (inverse signal) — pass: inverse-signal test"
+  - "[ ] Edge-strength ordering + inverse-frequency weighting applied — pass: strength/weight test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-03-normalize-identity"
+      what_it_provides: "Normalized + classified seeds (person/entity + variants) the graph expands from"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/graph.py"          # stdlib only
+  - ".claude/skills/acos-property-search/references/hub_agents.txt" # the stop-list
+  - ".claude/skills/acos-property-search/scripts/tests/test_graph.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-04-graph-hubguard.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/arcgis_query.py"      # owned by slice-05
+  - ".claude/skills/acos-property-search/scripts/synthesize_round.py"  # owned by slice-06
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-04-graph-hubguard.md"
+  - "The graph is the spine and it must NOT explode: a commercial registered agent / shared address is a hub (one hub ~ N^2 false links)."
+  - "Gotcha (hard gates): the edge-schema invariant AND the hub-prune test are REQUIRED; fail = REJECT."
+  - "Gotcha: log EVERY prune so coverage stays honest. Keep the inverse signal — a lone individual agent on a few entities is a strong link, not a hub."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only"
+  - "add_edge rejects an edge missing source/source_url/date_last_verified (and the rest of the temporal/provenance schema)"
+  - "Hub detection: stop-list match OR frequency >= threshold; expansion skips hub edges and appends to the prune log"
+  - "Bound expansion to the hop limit from each seed; strength_rank + inverse-frequency weighting applied"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors a CT-Corporation-style hub; confirm siblings are NOT expanded through it and the prune is logged"
+  - "QA tries to persist an edge with no source_url; confirm rejection"
+  - "QA confirms expansion stops at the hop limit (a deep seed cannot reach 3+ hops)"
+  - "QA confirms a lone individual agent on 3 related entities is kept as a strong link"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "L"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-04-graph-hubguard.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

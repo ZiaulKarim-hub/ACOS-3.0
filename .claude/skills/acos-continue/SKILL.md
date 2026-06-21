@@ -124,6 +124,17 @@ mechanically verify a fresh handoff was written:
 # after the handoff, so without it ls -t binds $HANDOFF to the .resume.md.
 HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
 test -s "$HANDOFF" || { echo "ERROR: no handoff produced"; exit 1; }
+# 2026-06-21 FRESHNESS GUARD. `test -s` only proves a handoff EXISTS, not that
+# THIS run wrote it. If the handoff-agent fails silently, the line above binds
+# $HANDOFF to a STALE prior handoff → you'd hand off / resume the WRONG work.
+# Require <10 min old. stat-based age, NOT `find -mmin` (find exits 0 on no match).
+HO_MTIME=$(stat -f %m "$HANDOFF" 2>/dev/null || stat -c %Y "$HANDOFF" 2>/dev/null)
+if [[ -z "$HO_MTIME" ]] || [[ $(( ($(date +%s) - HO_MTIME) / 60 )) -gt 10 ]]; then
+    echo "ERROR: newest handoff ($HANDOFF) is STALE (not from this run) — the"
+    echo "       handoff-agent likely failed to write. ABORTING so you don't hand off"
+    echo "       with the wrong handoff."
+    exit 1
+fi
 ```
 
 ### Step 2: Generate the resume prompt

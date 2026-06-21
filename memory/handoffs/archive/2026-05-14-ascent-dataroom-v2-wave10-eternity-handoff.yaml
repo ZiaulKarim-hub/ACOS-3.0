@@ -1,0 +1,555 @@
+timestamp: "2026-05-14T19:15:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Deep continuation of the acos-dataroom-v2 production run on the Wolfgramm Ascent
+  Beehive Waldorf 30M loan folder (run_20260513_152429_e79c3aa1). Waves 1-9 are fully
+  post-processed (batches 1-62, 62 batches done). As of session-clear time, Wave 10
+  (batches 63-68, 18 spawns) was in flight: 25 of 60 files have all 3 votes on disk;
+  35 files are still awaiting 1-3 votes from background agents. wave10_post.py has NOT
+  been created or run. 28 batches (waves 11-15, batches 69-90) remain entirely undispatched.
+  Run state: 791 dataroom files, 727 exclusions, 63 unresolved splits.
+
+# ============================================================
+# RUN IDENTITY
+# ============================================================
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+objective: >
+  Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the
+  Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope.
+skill_version: "v2.0.0"
+dropbox_final_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+
+# ============================================================
+# CURRENT WORK
+# ============================================================
+
+current_work:
+  slice_id: "N/A — one-shot skill dogfood run, not a tracked ACOS slice"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+  description: |
+    Wave 10 (batches 63-68) is in flight with 25/60 votes complete at session-clear.
+    Agents were still writing results when the session was cleared. wave10_post.py
+    does NOT yet exist on disk. After Wave 10 completes, 28 batches (69-90) remain.
+
+# ============================================================
+# DISK TRUTH (verified from disk by handoff agent at 2026-05-14T19:15Z)
+# ============================================================
+
+disk_truth_at_handoff:
+  run_state_json_last_checkpoint: "phase2_tier3_wave9_batches_57-62_processed"
+  run_state_json_updated_at: "2026-05-14T17:53:01Z"
+  wave9_completed_at: "2026-05-14T17:53:01Z"
+  phase2_tier3_batches_done: 62
+  dataroom_file_count: 791
+  inclusion_log_rows: 791  # derived from run_state.json phase2_total_included_so_far
+  exclusion_log_rows: 727  # derived from run_state.json phase2_total_excluded_so_far
+  unresolved_splits_distinct_file_ids: 63
+  vote_directories_total: 692
+  wave_post_scripts_on_disk:
+    - wave1_post.py
+    - wave2_post.py
+    - wave3_post.py
+    - wave4_post.py
+    - wave5_post.py
+    - wave6_post.py
+    - wave7_post.py
+    - wave8_post.py
+    - wave9_post.py
+  wave10_post_exists: false  # DOES NOT EXIST — must create before running
+
+# ============================================================
+# WAVE 10 STATUS SNAPSHOT — CRITICAL IN-FLIGHT STATE
+# ============================================================
+
+wave10_status:
+  batches: [63, 64, 65, 66, 67, 68]
+  total_files: 60
+  complete_3_votes: 25
+  incomplete_votes: 35
+  verified_at: "2026-05-14T19:15Z"
+  note: >
+    35 files are still awaiting final votes from in-flight background agents.
+    DO NOT run wave10_post.py until all 60 files have 3 votes.
+    Agents were actively writing at session-clear — most recent vote dir was
+    f_5a06f61c09b4 (modified 13:15 MDT). Wait up to 10 minutes after resuming
+    before re-checking. If any files remain incomplete after 15 minutes,
+    re-dispatch those specific instances.
+
+  batch_63:
+    files: 10
+    complete: 5
+    incomplete:
+      - "f_3dedcc3dcd59 (text_A__23-NY-556_The Ascent Park City - Final v2 copy.txt): 2/3 — EXPECT EXCLUDE (duplicate text dump of _A_ PDF already in B59)"
+      - "f_ad99f12f725b (text_A__Abstractor's Certificate (LA) - 024-59597AC copy.txt): 2/3 — EXPECT EXCLUDE (text dump of _A_ copy)"
+      - "f_40b3b983f660 (text_A__Appraisal - The Ascent Park City.txt): 2/3 — EXPECT EXCLUDE (text dump)"
+      - "f_8aedb0c533a6 (text_A__Ascent Borrower Signed Docs combined copy.txt): 0/3 — EXPECT EXCLUDE (text dump)"
+      - "f_aa53190ff00e (text_A__Assignment and Subordination of Hotel Management Agreement - Ascent (FINAL 12.28.23) copy.txt): 0/3 — EXPECT EXCLUDE (text dump)"
+    complete_files:
+      - "f_50c60e2a263c (_B__Darwin Fielding COMPLAINT copy.pdf)"
+      - "f_c7bc7e9f6226 (_B__February Change Event Log copy.pdf)"
+      - "f_343e7487b726 (_B__Memorandum of Agreement copy.pdf)"
+      - "f_12a458f6169d (_B__Okoa Nuveen Guaranty signed notarized.pdf)"
+      - "f_5316ca14dd92 (_B__The Ascent Balance to Finish Budget Final copy.pdf)"
+
+  batch_64:
+    files: 10
+    complete: 10
+    status: "FULLY COMPLETE"
+    note: "All text_A__ dumps of Ascent loan docs — expect heavy EXCLUDE under text-dump dedup rule"
+    files_listed:
+      - "f_5d3dc04a181a (text_A__Assignment of Construction Documents - Ascent copy.txt)"
+      - "f_1a2f67beb0f7 (text_A__Assignment of Franchise Agreement copy.txt)"
+      - "f_02f46014575e (text_A__Assignment of Leases Rents and Purchase Agreements copy.txt)"
+      - "f_ffdbb73ccace (text_A__Assignment of Notice of Assessment Interest copy.txt)"
+      - "f_fa4d04690794 (text_A__Beehive 30 Environmental Indemnification copy.txt)"
+      - "f_cf815524a9de (text_A__Beehive 30 Exhibits copy.txt)"
+      - "f_6541334bb4da (text_A__Beehive 30 Inter-Creditor Agreement copy.txt)"
+      - "f_f6e9d6880f12 (text_A__Beehive 30 OKOA Loan Agreement copy.txt)"
+      - "f_a4032a0c2ea2 (text_A__Beehive 30 Payment Guaranty copy.txt)"
+      - "f_b4d7b894f011 (text_A__Beehive 30 Promissory Note copy.txt)"
+
+  batch_65:
+    files: 10
+    complete: 3
+    incomplete:
+      - "f_8f364fa598a5 (text_A__Contract between APCI and TS1 FINAL copy.txt): 2/3"
+      - "f_4692c1312fea (text_A__Deed of Trust - recorded copy.txt): 2/3"
+      - "f_ccf750299a5a (text_A__Financing Agreement - Ascent FINAL copy.txt): 2/3"
+      - "f_dc8a6c610632 (text_A__First Amendment to Second A&R LLC Agreement - BEEHIVE (3.31.25) copy.txt): 2/3"
+      - "f_228111cb8bb2 (text_A__Guaranty of Payment and Performance copy.txt): 2/3"
+      - "f_9948957916f4 (text_A__Hilton.FranchiseAgreement.Signed.12.15.18 copy.txt): 2/3"
+      - "f_227dd6772a05 (text_A__Intercreditor Okoa Pace copy.txt): 1/3"
+
+  batch_66:
+    files: 10
+    complete: 1
+    incomplete:
+      - "f_909704d9e464 (text_A__Notice of Assessment Interest copy.txt): 2/3"
+      - "f_94f1a9411ecd (text_A__PSA - Fully Executed copy.txt): 2/3"
+      - "f_7a6045e99e3d (text_A__Pref Equity Beehive Hospitality Ascent Pref Equity EXECUTED copy.txt): 2/3"
+      - "f_103855e839fb (text_A__TX Owner's Title Policy copy.txt): 2/3"
+      - "f_526b9ccd9885 (text_A__Texas DOT (Lone Star) copy.doc.txt): 2/3"
+      - "f_7c708cb445fa (text_A__Variant-Okoa participation(14041057.18).docx (2) copy.txt): 2/3"
+      - "f_919c1be26657 (text_A__Waldorf Ascent Extension Signed copy.txt): 2/3"
+      - "f_5c8159087262 (text_A__Waldorf Title Insurance Policy copy 2.txt): 2/3"
+      - "f_33e6de602554 (text_B__04 - Okoa Ascent LLC - Subscription Agreement - XL Ant LLC copy.txt): 2/3"
+
+  batch_67:
+    files: 10
+    complete: 0
+    incomplete:
+      - "f_f525bf0d78f0 (text_B__2.2025 Drawing Log The Ascent copy.txt): 2/3"
+      - "f_242c045ad64d (text_B__Balance To Finish Verity.txt): 2/3"
+      - "f_2999e0abfcc3 (text_B__Balance to finish verity2.txt): 2/3"
+      - "f_06c94469341a (text_B__Closing Summary - Ascent FINAL copy.txt): 1/3"
+      - "f_f69ba393f0aa (text_B__Darwin Fielding COMPLAINT copy.txt): 1/3"
+      - "f_3fa93e9d4e7e (text_B__February Change Event Log copy.txt): 1/3"
+      - "f_37eab5874d9b (text_B__Memorandum of Agreement copy.txt): 1/3"
+      - "f_ac02f857a943 (text_B__Okoa Nuveen Guaranty signed notarized.txt): 0/3"
+      - "f_35122c9c6a0e (text_B__The Ascent Balance to Finish Budget Final copy.txt): 0/3"
+      - "f_2b1500b2f27c (text_B__V2401 Pay Application 11(14) - March 2025 (1) copy.txt): 0/3"
+    note: "B67 is all text_B__ files — text dumps of _B_ PDFs. Expect heavy EXCLUDE under duplicate-detection rule."
+
+  batch_68:
+    files: 10
+    complete: 1
+    complete_files:
+      - "f_d43074101d21 (9.30 Lamming .docx): 1/10 confirmed — workout/strategy doc, privilege-sensitive"
+    incomplete:
+      - "f_9d07cba8f1e6 (Ascent-Strategy-Follow-Up-0e478a23-e875.pdf): 2/3 — privilege-sensitive workout doc"
+      - "f_efe807491933 (Aug 05, 12_33 PM Aug 05 2025.pdf): 2/3 — appears to be internal meeting notes"
+      - "f_038a9265602e (Aug 06, 03_57 PM Aug 06 2025.pdf): 2/3"
+      - "f_5a06f61c09b4 (Aug-05-12-33-PM-16ceb190-86f7.pdf): 1/3"
+      - "f_71c7552d79fe (Aug-06-03-57-PM-dd9daa33-8e17.pdf): 0/3"
+      - "f_1a3b69149b66 (Aug-06-03-57-PM-f191a39a-55e6.pdf): 0/3"
+      - "f_27a107177016 (Cam and Alex catchup. Many things show we are acting as fiduciaries.pdf): 0/3 — PRIVILEGE FLAG — fiduciary duty admission"
+      - "f_938b8c55d411 (OKOA WAR ROOM MEETING.pdf): 0/3 — PRIVILEGE FLAG — war room meeting notes"
+      - "f_f7fd193d0299 (Okoa Ascent Discussion Aug 07 2025.pdf): 0/3 — PRIVILEGE FLAG — internal discussion"
+    note: >
+      B68 contains workout strategy documents (Ascent-Strategy-Follow-Up, 9.30 Lamming)
+      and what appear to be internal Okoa meeting notes (Aug 2025 war room, fiduciary discussion).
+      These are PRIVILEGE-SENSITIVE. The agents will apply §5 criteria. Phase 2.5 privilege
+      scanner will also review any that make it to dataroom. Do NOT pre-judge — let the
+      3-agent consensus determine inclusion. The privilege scanner in Phase 2.5 is the safety net.
+
+# ============================================================
+# WAVE 10 COMPLETION VERIFICATION SCRIPT
+# ============================================================
+
+wave10_verification_script: |
+  Run this to check Wave 10 completion before creating wave10_post.py:
+
+  python3 -c "
+  import json
+  from pathlib import Path
+  RUN_DIR = Path('/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1')
+  votes_dir = RUN_DIR / 'phase2/votes'
+  total_complete = 0
+  total_files = 0
+  all_incomplete = []
+  for b in range(63, 69):
+      bpath = RUN_DIR / f'phase2/batches/batch_{b:03d}.json'
+      with open(bpath) as f:
+          bd = json.load(f)
+      for fobj in bd['files']:
+          total_files += 1
+          fid = fobj['file_id']
+          vdir = votes_dir / fid
+          instances = list(vdir.glob('instance_*.json')) if vdir.exists() else []
+          if len(instances) >= 3:
+              total_complete += 1
+          else:
+              all_incomplete.append({'fid': fid, 'name': fobj['file_name'], 'votes': len(instances), 'batch': b})
+  print(f'Wave 10 completion: {total_complete}/{total_files}')
+  if all_incomplete:
+      print(f'Still incomplete ({len(all_incomplete)} files):')
+      for x in all_incomplete:
+          print(f'  B{x[\"batch\"]} {x[\"fid\"]} ({x[\"name\"]}): {x[\"votes\"]}/3')
+  else:
+      print('ALL COMPLETE — safe to run wave10_post.py')
+  "
+
+# ============================================================
+# WAVE 10 POST-PROCESSING SCRIPT TO CREATE
+# ============================================================
+
+wave10_post_template: |
+  Create /Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave10_post.py
+  by copying wave9_post.py exactly and changing:
+    WAVE = 10
+    WAVE_BATCHES = list(range(63, 69))
+  All other logic is identical and idempotent.
+
+# ============================================================
+# CHAIN OF CUSTODY — PRIOR HANDOFFS
+# ============================================================
+
+prior_handoffs_chain:
+  - file: "memory/handoffs/2026-05-14-ascent-dataroom-v2-wave4-eternity-handoff.yaml"
+    timestamp: "2026-05-14T09:20:11Z"
+    covers: "Waves 1-4 complete (or nearly). Most comprehensive prior handoff. Contains full
+      key findings from Waves 1-4, including: Waldorf naming catalog, Nuveen C-PACE
+      confirmation, Variant participation numbers, title concerns, lien waivers corpus,
+      fraudulent transfer question on back-to-back warranty deeds."
+    note: "READ THIS for full chain of custody from Wave 1 forward."
+  - file: "memory/handoffs/2026-05-14-emergency-handoff.yaml"
+    timestamp: "2026-05-14T09:30:00Z"
+    covers: "End-of-Wave-3 state"
+  - file: "memory/handoffs/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml"
+    timestamp: "2026-05-14T07:25:00Z"
+    covers: "Pre-Wave-1 state — architectural setup and skill design"
+
+# ============================================================
+# COMPLETED THIS SESSION (cumulative Waves 5-9)
+# ============================================================
+
+completed_this_session:
+  - "Wave 5 (batches 33-38): dispatched, post-processed via wave5_post.py"
+  - "Wave 6 (batches 39-44): dispatched, post-processed via wave6_post.py (completed 2026-05-14T16:52:45Z)"
+  - "Wave 7 (batches 45-50): dispatched, post-processed via wave7_post.py (completed 2026-05-14T17:13:27Z)"
+  - "Wave 8 (batches 51-56): dispatched, post-processed via wave8_post.py (completed 2026-05-14T17:40:53Z)"
+  - "Wave 9 (batches 57-62): dispatched, post-processed via wave9_post.py (completed 2026-05-14T17:53:01Z)"
+  - "Wave 10 (batches 63-68): dispatched (18 background spawns); 25/60 files complete at session-clear"
+  - "Cumulative Tier-3 progress: 62 batches done of 90; 791 dataroom files; 727 excluded; 63 splits"
+  - "Supersession-aware prompt template added (Wave 5): includes path to dataroom_listing_for_supersession.txt"
+  - "Duplicate-detection rule added (Waves 8-9): text_A__/text_B__ files checked against canonical names"
+  - "Cross-collateral rule confirmed (Wave 8): existing-Waldorf SECURITY instruments IN; operating financials OUT"
+
+# ============================================================
+# MATERIAL FINDINGS FROM WAVES 4-9 (PRESERVED FOR PHASE 6)
+# ============================================================
+
+material_findings:
+  cross_collateral:
+    - finding: >
+        Existing operating Waldorf-Astoria Park City (2100 Frostwood Blvd) CONFIRMED
+        cross-pledged to the $30M Ascent loan. Definitive document: Title Policy
+        FTUT2400121-TJR ($36M ALTA Loan Policy, Fidelity National Title, March 5 2024,
+        Okoa Capital as insured, covers BOTH Ascent Park City 4080 Cooper AND Dakota
+        Mountain Lodge / Waldorf 2100 Frostwood as joint collateral).
+      triple_confirmed_by: "B41 i3, B42 i1+i2, B57 i1+i2+i3"
+      resolves: "Phase 1 §7 Open Question 4"
+
+  franchise:
+    - finding: >
+        Signed Hilton Tapestry Franchise Agreement for Hotel Ascent Park City (Dec 15 2018)
+        found in B61. Single instance in source folder.
+      resolves: "Phase 1 §7 Open Question 10"
+
+  pace_financing:
+    - finding: >
+        Greenworks Lending LLC IS the originator/servicer for Nuveen Green Capital C-PACE —
+        they are the same deal, not separate counterparties. C-PACE = $27.5M (Wave 7 findings)
+        at 4080 Cooper Lane. Payoff letter: $30,321,016.01.
+      note: "Capital stack numbers vary across docs; Phase 2.5 must reconcile."
+
+  construction_status:
+    - finding: >
+        Verity LLC GMP $21.5M, 72.67% complete, $6.66M balance to finish as of March 2025.
+        Per-diem default interest $16,533.46. Projected ~$33.4M outstanding as of May 2026.
+    - finding: >
+        Westland Construction (original GC) was terminated. Verity LLC replaced as GC with
+        $26M new GMP.
+
+  capital_stack:
+    - "Total project capital $90.5M; $82.1M disbursed as of March 2025"
+    - "Okoa Senior: $26.55M-$30M (numbers vary; Phase 2.5 to reconcile)"
+    - "Greenworks/Nuveen C-PACE: $27.5M-$30.3M (statutory senior — ahead of Okoa in waterfall)"
+    - "Combined senior claims exceed $60M against Ascent before equity recovery"
+
+  privilege_sensitive_docs_in_b68:
+    - "Cam and Alex catchup. Many things show we are acting as fiduciaries.pdf — PRIVILEGE FLAG"
+    - "OKOA WAR ROOM MEETING.pdf — PRIVILEGE FLAG"
+    - "Okoa Ascent Discussion Aug 07 2025.pdf — PRIVILEGE FLAG"
+    - "Ascent-Strategy-Follow-Up-0e478a23-e875.pdf — privilege-sensitive workout strategy"
+    - "9.30 Lamming .docx — workout strategy / Lamming is likely a workout advisor"
+    - "Phase 2.5 privilege scanner (3 independent agents, asymmetric — any FLAG removes) is the safety net"
+
+  important_exclusion_to_preserve:
+    - "MIDNIGHT_ATLAS AI agent system prompt file was CORRECTLY excluded in prior waves.
+      Keep this exclusion. It is an AI metadata artifact, not a loan document."
+
+# ============================================================
+# STANDING DECISIONS (DO NOT CHANGE WITHOUT ASKING USER)
+# ============================================================
+
+standing_decisions:
+  - id: SD-1
+    decision: "Batched-deliberator architecture: 3 agents × 10 files per spawn = 30 votes per batch. Cross-instance blindness preserved."
+  - id: SD-2
+    decision: "Wave size: 6 batches = 18 parallel Task() spawns. No re-ask required — proceed automatically."
+  - id: SD-3
+    decision: "Splits deferred: iter2 re-dispatch happens AFTER all 90 batches complete, not mid-wave. 63 splits pending."
+  - id: SD-4
+    decision: "Full Tier-3 path: complete batches 63-90, then Phase 2.5 → Phase 3 → Phase 4 → Phase 5 → Phase 6."
+  - id: SD-5
+    decision: "Post-processing drivers (waveN_post.py) DERIVE all counters from disk truth — never use incremental counters."
+  - id: SD-6
+    decision: "JSON-escaping reminder MUST appear in all wave dispatch prompts."
+  - id: SD-7
+    description: "Supersession-aware prompt template"
+    decision: >
+      All dispatch prompts MUST include path to supersession listing:
+      /Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/intermediate/dataroom_listing_for_supersession.txt
+      Agents should check this list before EXCLUDING a file to detect supersession cases.
+  - id: SD-8
+    description: "Duplicate-detection rule"
+    decision: >
+      Files with ' copy', '(OCR)', '_A_', '_B_', 'text_A__', 'text_B__' prefixes/suffixes
+      MUST be checked against canonical names in dataroom_listing_for_supersession.txt.
+      If the canonical file is already in the dataroom, the copy/text-dump gets EXCLUDED.
+  - id: SD-9
+    description: "Cross-collateral rule"
+    decision: >
+      Existing-Waldorf (2100 Frostwood Blvd) SECURITY instruments are IN per §5 rule 11.
+      Existing-Waldorf OPERATING financials and MARKETING photos are OUT per §5 rules 22/23.
+
+# ============================================================
+# BLOCKERS
+# ============================================================
+
+blockers:
+  - critical: "Wave 10 not complete: 35/60 files still awaiting votes. DO NOT run wave10_post.py until all 60 have 3 votes each."
+  - info: "wave10_post.py does not yet exist on disk. Must create (copy wave9_post.py, change WAVE=10, WAVE_BATCHES=range(63,69))."
+  - info: "No hard architectural blockers. 28 batches (69-90) await dispatch after Wave 10 completes."
+
+# ============================================================
+# NEXT ACTIONS — PRIORITY ORDER
+# ============================================================
+
+next_actions:
+  - priority: 1
+    action: >
+      READ this handoff AND memory/handoffs/2026-05-14-ascent-dataroom-v2-wave4-eternity-handoff.yaml
+      for full chain of custody and key findings from Waves 1-4.
+
+  - priority: 2
+    action: >
+      VERIFY WAVE 10 COMPLETION. Run the verification script in wave10_verification_script
+      section above. Wait up to 10 minutes for in-flight agents to finish writing.
+      At session-clear time: 25/60 complete; 35 files awaiting votes.
+      Re-dispatch instructions for any file still incomplete after 15 minutes:
+        For each incomplete file_id, spawn a new dr2-inclusion-deliberator agent with
+        that file only. Write result to phase2/votes/<file_id>/instance_X.json
+        where X = (existing count + 1).
+
+  - priority: 3
+    action: >
+      CREATE AND RUN wave10_post.py:
+        cp <run_dir>/wave9_post.py <run_dir>/wave10_post.py
+        Edit: WAVE = 10 and WAVE_BATCHES = list(range(63, 69))
+        Run: python3 <run_dir>/wave10_post.py
+      Expected output: heavy EXCLUDE on text_A__/text_B__ files (text-dump dedup rule),
+      mixed INCLUDE/EXCLUDE/SPLIT on _B_ PDF copies and B68 workout docs.
+      After running: verify run_state.json updates wave10_completed_at, batches_done=68,
+      checkpoint=phase2_tier3_wave10_batches_63-68_processed.
+
+  - priority: 4
+    action: >
+      DISPATCH WAVE 11 (batches 69-74). No re-ask per SD-2.
+      Same 18-spawn pattern: 3 dr2-inclusion-deliberator agents × 6 batches.
+      Read batch_069.json through batch_074.json for file lists.
+      Include in every prompt:
+        1. JSON-escaping reminder (SD-6)
+        2. Path to dataroom_listing_for_supersession.txt (SD-7)
+        3. Duplicate-detection rule for text_A__/text_B__/copy files (SD-8)
+        4. Cross-collateral rule for Waldorf 2100 Frostwood docs (SD-9)
+      After all spawns done: create wave11_post.py (WAVE=11, WAVE_BATCHES=range(69,75)) and run.
+
+  - priority: 5
+    action: "Continue WAVES 12-15 (batches 75-90) using same 6-batch wave pattern. No re-ask between waves."
+
+  - priority: 6
+    action: >
+      AFTER ALL 90 BATCHES COMPLETE: resolve 63+ unresolved splits via iter2 re-dispatch.
+      Per SD-3: all splits together after Tier-3, not mid-wave.
+      Notable guidance on key splits (from run_state.json unresolved_splits list):
+        - Shreveport/Waxahachie files (batch 12, 15, 16, 17) — likely EXCLUDE (wrong deal)
+        - Participation Agreement v2B (batch 25) — likely INCLUDE (Variant deal structure relevant)
+        - Variant Participation Structure.xlsx (batch 25) — likely INCLUDE
+        - WAPC P&L sheets (batch 55) — existing-Waldorf operating financials, likely EXCLUDE per SD-9
+        - WA Park City MA (Management Agreements, batch 55) — SECURITY instrument, likely INCLUDE per SD-9
+        - Payoff docs (batch 41) — likely INCLUDE (Beehive Waldorf payoffs directly relevant)
+        - _A__ copy PDFs (batch 59) — check against canonical dataroom listing per SD-8
+
+  - priority: 7
+    action: >
+      PHASE 2.5 PRIVILEGE SCANNER: Run dr2-privilege-scanner × 3 per file on all ~800+
+      dataroom/ files. Asymmetric consensus: ANY single FLAG removes file from dataroom.
+      Batch in groups of ~10. B68 files that made it through (if any) are especially important
+      to scan given the "fiduciary" and "war room" content.
+
+  - priority: 8
+    action: "PHASE 3: dr2-inclusion-qa × 3 per dataroom file (adversarial / completeness / coherence lenses). Wigum loop K=5."
+
+  - priority: 9
+    action: >
+      PHASE 4a: dr2-taxonomy-designer × 3 blind → dr2-taxonomy-synthesizer → TAXONOMY.json.
+      Phase 4b: dr2-placement-classifier × 3 per file → sort into taxonomy sub-folders.
+
+  - priority: 10
+    action: "PHASE 5: dr2-placement-qa × 3 per file."
+
+  - priority: 11
+    action: >
+      PHASE 6: dr2-guide-drafter × 3 → dr2-guide-synthesizer → dr2-guide-qa Wigum (cap=10).
+      dr2-description-drafter × 3 per file → dr2-description-qa.
+      Build Excel: python3 .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py
+      Build manual review markdown: python3 .claude/skills/acos-dataroom-v2/scripts/build_manual_review_md.py
+      Copy final dataroom to Dropbox: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/
+
+# ============================================================
+# KEY FILE PATHS
+# ============================================================
+
+key_files:
+  run_state: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json"
+  solidified_objective: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase1/SOLIDIFIED_OBJECTIVE.md"
+  inclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/inclusion_log.csv"
+  exclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/exclusion_log.csv"
+  disputed_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/disputed/"
+  votes_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/votes/<file_id>/instance_{1,2,3}.json"
+  batch_queue: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/batches/batch_{001..090}.json"
+  wave9_post_template: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave9_post.py"
+  wave10_post_to_create: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave10_post.py"
+  supersession_listing: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/intermediate/dataroom_listing_for_supersession.txt"
+  dataroom: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/dataroom/"
+  skill_scripts: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-dataroom-v2/scripts/"
+
+# ============================================================
+# DOMAIN CONTEXT — CRITICAL FOR AGENTS
+# ============================================================
+
+domain_context:
+  naming_catalog: >
+    "Waldorf" in filenames is the LOAN FAMILY CODENAME, NOT the operating Waldorf-Astoria hotel.
+    NEVER auto-exclude Waldorf-named files based on the name alone.
+    Read SOLIDIFIED_OBJECTIVE.md §2 (Naming Catalog) before dispatching any agents.
+  borrower_spe: "Beehive Hospitality Ascent PC, LLC"
+  property_address: "4080 N Cooper Ln, Park City UT 84098"
+  loan_amount: "$30M Okoa construction loan"
+  deal_mode: "workout / settlement / sale"
+  operating_waldorf: "2100 Frostwood Blvd, Park City UT — existing operating hotel, cross-pledged collateral"
+  objective_summary: >
+    Zee (jason@okoacapital.com) at Okoa Capital wants a buyer-ready dataroom to sell
+    the hotel asset. Boss (Okoa principal) will NOT review intermediate artifacts.
+    The final dataroom folder + Excel guide is the ONLY artifact he ever sees.
+    It must be boss-criticism-proof on first cold look.
+  why_v2_exists: >
+    v1 required boss to review an Internal Working Workbook mid-run. He refused.
+    The raw AI output became the deliverable. Verdict: 'AI is a piece of shit,
+    cancel subscriptions.' v2 removes ALL human pause gates.
+
+# ============================================================
+# CONTEXT FOR NEXT SESSION
+# ============================================================
+
+context_for_next_session: |
+  This is a live production run of acos-dataroom-v2 on the Wolfgramm Ascent Beehive
+  Waldorf $30M loan folder — approximately 2,285 source files from Dropbox.
+
+  WHERE WE ARE: Waves 1-9 are fully complete and post-processed (62 of 90 batches done,
+  791 files in the dataroom, 727 exclusions, 63 unresolved splits deferred to iter2).
+  Wave 10 (batches 63-68) was DISPATCHED but not completed — 25/60 files have votes on
+  disk at session-clear time. The 35 incomplete files are almost certainly still being
+  written by background agents; most have 1-2 votes already and are near completion.
+
+  FIRST THING TO DO: Wait a few minutes after resuming, then run the Wave 10 verification
+  script (Python one-liner in wave10_verification_script section). If all 60 are complete,
+  create wave10_post.py and run it. If some are still missing votes after 10-15 minutes,
+  re-dispatch those specific file_ids.
+
+  TEXT DUMP FILES (B63-B67): The majority of Wave 10 files are "text_A__" and "text_B__"
+  prefixed .txt files — these are plain-text extraction dumps of the corresponding "_A_"
+  and "_B_" suffix PDF files. Under the duplicate-detection rule (SD-8), most should be
+  EXCLUDED since the canonical PDFs are already in the dataroom from earlier waves. B64
+  is fully complete and almost certainly all-EXCLUDE. B63-B67 follow the same pattern.
+
+  B68 PRIVILEGE CAUTION: Batch 68 contains workout strategy documents and internal Okoa
+  meeting notes from August 2025 with names like "OKOA WAR ROOM MEETING", "Cam and Alex
+  catchup - acting as fiduciaries", and "Okoa Ascent Discussion Aug 07 2025". These are
+  PRIVILEGE-SENSITIVE. Let the 3-agent swarm decide on inclusion; Phase 2.5 privilege
+  scanner will catch anything that slips through.
+
+  PROMPT TEMPLATE REQUIREMENTS for Waves 11-15: Every batch dispatch must include all
+  four prompt ingredients: (1) JSON-escaping reminder, (2) supersession listing path,
+  (3) duplicate-detection rule for text_A__/text_B__ files, (4) cross-collateral rule
+  for 2100 Frostwood Waldorf security vs operating docs.
+
+  REMAINING WORK VOLUME: After Wave 10, 22 batches remain (waves 11-15, batches 69-90).
+  Then: iter2 split resolution (63+ splits), Phase 2.5 privilege scanner (~800 files × 3),
+  Phase 3 QA, Phase 4 taxonomy + placement, Phase 5 QA, Phase 6 Excel build. This will
+  require multiple additional sessions. The pipeline architecture is proven and stable.
+
+  MATERIAL FINDINGS TO FORWARD TO PHASE 6: The key facts accumulated (cross-collateral
+  Waldorf confirmation, Nuveen C-PACE $27.5-30.3M statutory senior position, Verity GC
+  replacement and construction status, capital stack $90.5M total/$82.1M disbursed,
+  Darwin Fielding lawsuit in B63, franchise agreement confirmation) must all be preserved
+  for the Phase 6 guide drafter. They are in the material_findings section of this handoff
+  and in the wave4-eternity-handoff.yaml.
+
+# ============================================================
+# RECONSTRUCTION SOURCES
+# ============================================================
+
+reconstruction_sources:
+  - "run_state.json — read in full; authoritative state, wave9_completed_at=2026-05-14T17:53:01Z, 62 batches done, 791 dataroom files, 63 splits, 727 exclusions"
+  - "phase2/votes/ directory listing — 692 total vote directories confirmed"
+  - "Python vote-count script — verified Wave 10: 25/60 complete, 35 incomplete; per-batch breakdown captured"
+  - "phase2/batches/batch_063-068.json — read via Python to enumerate all 60 Wave 10 file_ids and filenames"
+  - "phase2/votes/ ls -lt — most recent write was f_5a06f61c09b4 at 13:15 MDT (agents still active at handoff time)"
+  - "wave9_post.py — read in full; provides exact template for wave10_post.py"
+  - "run directory listing — confirmed wave1-9_post.py present, wave10_post.py ABSENT"
+  - "phase2/disputed/ listing — 27 batch_*_splits.json files through batch_062_splits.json"
+  - ".acos/state/ listing — only skipped-skills.txt; no ephemeral hook state"
+  - "memory/handoffs/2026-05-14-ascent-dataroom-v2-wave4-eternity-handoff.yaml — read in full for chain of custody"
+  - "git log --oneline -20 — most recent commit: 977d0f7 feat(acos-dataroom-v2): v2.0.0"
+  - "User-provided handoff context — relayed verbatim into material_findings and standing_decisions"

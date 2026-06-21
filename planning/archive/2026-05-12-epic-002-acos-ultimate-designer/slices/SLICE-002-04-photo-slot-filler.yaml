@@ -1,0 +1,78 @@
+slice_id: "SLICE-002-04"
+story_id: "STORY-002"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Photo-slot filler + attribution writer"
+objective: |
+  Build scripts/fill-photo-slots.py that reads the emitted HTML, finds every
+  data-photo-slot element, calls match-image.py (SLICE-002-02) then
+  fetch-image-fallback.py (SLICE-002-03) as needed, and substitutes each
+  placeholder with a <img> or background-image pointing at the local file.
+  Writes session ATTRIBUTION.md listing every image used with source + credit.
+
+acceptance_criteria:
+  - "[ ] scripts/fill-photo-slots.py exists, Python 3, executable"
+  - "[ ] Reads HTML from argv[1] (or stdin), writes filled HTML to argv[2] (or stdout)"
+  - "[ ] Uses bs4 to find all elements with data-photo-slot attribute"
+  - "[ ] For each slot: extracts slot_id + semantic_tags + content_context, calls match-image.py → manifest entry OR fallback signal; if fallback, calls fetch-image-fallback.py; substitutes placeholder with <img src='file://{local_path}' alt='{description}'> OR updates style='background-image: url(file://{local_path})' depending on element type (img vs div)"
+  - "[ ] Handles empty result gracefully — if both manifest match and fallback fail, leaves the slot with a visible placeholder (diagonal stripes + 'IMAGE MISSING' label) so the visual gate catches it"
+  - "[ ] Writes {session_dir}/ATTRIBUTION.md in same format as /Users/zee/Desktop/Private Credit Capabilities/v3/ATTRIBUTION.md: markdown table with Asset | Source | Photographer | Used On columns + human-readable credits section"
+  - "[ ] --session-dir arg specifies session output directory for the cache + ATTRIBUTION.md"
+  - "[ ] --verbose flag logs every slot's resolution (brand-match, unsplash, pexels, empty) with score/reasoning"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-002-02"
+      what_it_provides: "semantic matcher CLI"
+      status: "complete"
+    - slice_id: "SLICE-002-03"
+      what_it_provides: "internet fallback fetcher CLI"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fill-photo-slots.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/match-image.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "file:// URLs for local images. Puppeteer handles file:// + networkidle0 reliably; remote URLs don't."
+  - "Image caching: downloaded-from-API images go to {session_dir}/images/; brand asset images are referenced from their original path (no copy) — file:// works either way."
+  - "ATTRIBUTION.md format matches v3 reference exactly — the visual-verification gate will check for ATTRIBUTION presence in the session output."
+  - "Empty-slot placeholder: deliberately ugly (diagonal stripes + 'IMAGE MISSING' text) so STORY-005's visual gate flags it as ERROR severity, not silently produces a document with a white rectangle."
+
+technical_requirements:
+  - "Python 3.9+; bs4, subprocess (for calling match-image.py + fetch-image-fallback.py as subprocesses OR importing them as modules — either is fine)"
+  - "file:// URL construction: use pathlib.Path(...).resolve().as_uri() — handles spaces and special chars correctly"
+  - "Attribution table is markdown, lint-clean (aligned pipes preferred but not required)"
+
+testing_requirements:
+  - "Unit: 3 slots, 2 match brand, 1 falls back to Unsplash — verify all 3 resolved and ATTRIBUTION.md has all 3 rows"
+  - "Unit: slot can't be resolved (no match, no keys), verify visible placeholder appears in output HTML"
+  - "Unit: ATTRIBUTION.md format matches v3 reference (diff-compare columns)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is the integration point for STORY-002. If matcher + fetcher + filler
+  all work cleanly, Story 2 is done. Budget time for debugging file:// URL
+  handling on macOS (NFC/NFD normalization issues with asset paths).

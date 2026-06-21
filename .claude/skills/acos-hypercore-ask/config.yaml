@@ -1,0 +1,50 @@
+# acos-hypercore-ask — skill configuration
+# ----------------------------------------------------------------------------
+# Defaults from tech_prd.md §5. Values are configurable.
+#
+# SECRETS POLICY (LOCKED — see memory/decisions/2026-06-18-hca-build-ground-rules.md):
+#   NO credentials, API keys, tokens, passwords, or live URLs are stored here.
+#   They are read from the ENVIRONMENT at runtime ONLY. Doppler injects them via
+#   `doppler run --project hypercore-ask --config dev_personal`. The env var NAMES
+#   are declared below under `adapter.credentials_env` so the LiveBackend knows what
+#   to read — but the VALUES never live in this repo. Public (non-secret) endpoint
+#   URLs ARE stored here — they are global Hypercore constants, not credentials.
+# ----------------------------------------------------------------------------
+
+consensus:
+  default_quorum: "2-of-3"   # configurable per tier; reports/aggregations require >= 2-of-3
+  agent_count: 3             # N blind general-purpose extraction agents (Task(), subscription-only)
+  redispatch_retries: 1      # bounded blind re-dispatch on disagreement, then ESCALATE
+
+freshness_windows_days:      # per entity class; conservative defaults (Assumption, OQ3/U3)
+  balances_servicing: 1      # balances / servicing data — short window
+  payments_drawdowns: 1      # payments / drawdowns — short window
+  reference_static: 30       # static reference data — longer window
+
+confidence:
+  single_source_cap: 0.7     # single-source figures forced to confidence <= 0.7 and flagged
+
+adapter:
+  backend: "live"            # "live" (access verified 2026-06-18) | "fixture" (tests force this)
+  api_type: "graphql"        # Hypercore API is GraphQL: single endpoint, query-only for reads
+  graphql_url: "https://api.hypercore.ai/graphql"   # PUBLIC endpoint (not a secret)
+  read_only: true            # NEVER emit a GraphQL mutation — queries only (structural guarantee)
+  tls_min_version: "1.2"     # enforced on the live transport in LiveBackend
+  auth:                      # 3-step JWT handshake (verified live 2026-06-18)
+    token_url:      "https://auth.hypercore.ai/identity/resources/auth/v1/api-token"
+    refresh_url:    "https://auth.hypercore.ai/identity/resources/auth/v1/api-token/token/refresh"
+    demo_token_url: "https://demo-auth.hypercore.ai/identity/resources/auth/v1/api-token"
+    scheme: "jwt-bearer"          # POST {clientId, secret} -> accessToken; send Authorization: Bearer
+    trust_response_expiry: true   # use response.expiresIn (live measured 1800s); never hardcode TTL
+    refresh_skew_seconds: 60      # refresh ~60s before expiry
+  # ---- credential ENV VAR NAMES only (no values; Doppler injects the values) ----
+  credentials_env:
+    client_id:     "CLIENT_ID"          # OAuth client id
+    client_secret: "HYPERCORE_CLIENT_SECRET"  # OAuth client secret (Doppler var name)
+  doppler:                   # where the secrets live (values never stored here)
+    project: "hypercore-ask"
+    config:  "dev_personal"
+
+paths:
+  fixtures_dir: "fixtures"   # relative to this skill dir; canned RawApiResponse records
+  schemas_dir: "schemas"     # relative to this skill dir; expected entity schemas

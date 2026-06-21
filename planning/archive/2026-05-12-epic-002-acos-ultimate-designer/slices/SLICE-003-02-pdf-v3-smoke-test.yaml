@@ -1,0 +1,78 @@
+slice_id: "SLICE-003-02"
+story_id: "STORY-003"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "PDF smoke test (v3 regeneration)"
+objective: |
+  Build a smoke test that (1) uses v3 content as input (reverse-engineered from
+  /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html into a
+  YAML at examples/v3-input-sample.yaml), (2) runs the full STORY-001 +
+  STORY-002 + SLICE-003-01 pipeline, (3) compares the output PDF to the
+  reference PDF on page count, file size, and first-page perceptual hash.
+
+acceptance_criteria:
+  - "[ ] examples/v3-input-sample.yaml exists, reverse-engineered from tearsheet-v3.html — captures the content structure (title, subtitle, parts, sections, metrics, timeline, etc.) that when fed through the pipeline should produce a PDF matching v3"
+  - "[ ] scripts/test-pdf-smoke.sh exists, bash, executable"
+  - "[ ] Test orchestration: decompose-content.py (SLICE-001-04) → html-emit.py (SLICE-001-05) → fill-photo-slots.py (SLICE-002-04) with asset dir pointed at /Users/zee/Desktop/Private Credit Capabilities/v3/images/ → render-pdf.sh (SLICE-003-01) → comparison step"
+  - "[ ] Comparison: page count equality (MUST match ±0); file size within 20% of v3 reference (26MB ±5MB); first-page perceptual hash similarity >80% (using imagehash.phash or similar)"
+  - "[ ] Report output: scripts/test-pdf-smoke.sh prints pass/fail per metric with actual vs expected values"
+  - "[ ] Exit 0 on all passes, exit 1 on any failure"
+  - "[ ] --keep-output flag: preserves the generated PDF at a stable path (/tmp/smoke-output.pdf) for manual inspection"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-01"
+      what_it_provides: "render-pdf.sh (the last stage in the pipeline under test)"
+      status: "complete"
+    - slice_id: "SLICE-002-04"
+      what_it_provides: "photo slot filler (needed to produce a PDF with images)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/test-pdf-smoke.sh"
+  - "~/.claude/skills/acos-ultimate-designer/examples/v3-input-sample.yaml"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "/Users/zee/Desktop/Private Credit Capabilities/"
+
+skills_recommended:
+  - "testing"
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This is the first genuine end-to-end integration test. Up to this slice, components have been tested in isolation. Here the full pipeline is exercised against a known-good reference."
+  - "Reverse-engineering v3 content: read tearsheet-v3.html, extract every page's text into a structured YAML matching the page-plan schema. The goal isn't pixel-perfect — it's content-parity enough that the pipeline produces a structurally-equivalent PDF."
+  - "Perceptual hash (pHash) is the right comparison — it's tolerant to minor layout shifts but catches major differences in composition. 80% threshold is lenient enough to pass on valid re-renders but catches regressions (e.g., missing cover image, wrong typography)."
+  - "File size comparison is a sanity check: too small = images missing or low-res; too large = images uncompressed."
+
+technical_requirements:
+  - "bash 4+; requires python3 + pdftoppm (for PDF → image) or equivalent; imagehash pip package for pHash"
+  - "Assumes UNSPLASH_ACCESS_KEY / PEXELS_API_KEY are NOT needed — v3 images are all in brand asset dir, so matcher should find them all"
+  - "Self-contained test — doesn't depend on prior test state"
+
+testing_requirements:
+  - "Meta: the test itself doesn't need unit tests, but it IS a test of the entire pipeline"
+  - "Run manually: verify it produces a PDF visually similar to v3 reference (open both side-by-side in Preview)"
+  - "Verify: page count exactly 12 (or whatever v3 reference has)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  If this test passes, STORY-003 is DONE. If it fails, the failure message
+  tells you where — page count mismatch points at decomposer; file size
+  mismatch points at image pipeline; pHash mismatch points at rendering.

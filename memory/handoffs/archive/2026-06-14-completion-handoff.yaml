@@ -1,0 +1,48 @@
+timestamp: "2026-06-14T00:00:00Z"
+status: "completed"
+session_summary: "Framework-wide /acos-robust-code-review of all of ACOS v3.0 (5 subsystems) run to zero-findings convergence; ~300 bugs auto-fixed across 15 commits; fixed an autopilot goal-complete marker flush-race; then walked the user through the entire design/efficiency punch-list (27 items) one at a time and recorded per-item decisions. 21 items APPROVED but NOT YET IMPLEMENTED."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Robust code review converged across all 5 subsystems (hooks+scripts, core agents, orchestration skills, domain skills+agents, .acos config). ~300 bugs auto-fixed."
+  - "Commits 8e785c0 … 912722c on branch acos-deficiency-fixes-2026-06-04 (incl. ddc50f7, 2486838, c25c2fc, 2bf95ad, 1ef93ef, 57e01b9, 55d5d63, ca82190, e48af24, 741aa4d, 7fd0e00, 43ed867, 912722c)."
+  - "Fixed autopilot-stop-handler.py transcript flush-race (marker missed when Stop hook reads JSONL before final assistant text flushes) — commit 912722c, empirically replayed."
+  - "Resolved S1-P4 (hook-registration drift) and S4-P11 (preflight required dead hook) during Subsystem 5; rewrote CLAUDE.md Handoff/Oracle sections to autopilot reality; removed stale 2026-04-25 hooks block from ~/.claude/settings.local.json."
+  - "Delivered FINAL-REPORT.md + git-tracked consolidated punch-list (memory/decisions/2026-06-11-robust-review-punch-list.md)."
+  - "Walked user through all 27 punch-list items one-by-one; recorded decisions in .acos/robust-review/20260611-032000/APPROVALS.md."
+
+files_modified:
+  - path: ".claude/scripts/ (check-scope.sh, inject-agent-context.sh, oracle-evaluate.py, autopilot-activate.py, autopilot-stop-handler.py, post-write-evidence.sh, log-agent-spawn.sh, check-scope-bash.sh, +Subsystem fixes)"
+    changes: "Subsystem 1+5 bug fixes (committed)"
+  - path: ".claude/agents/ (10 core agents) + .claude/skills/ (orchestration + domain families)"
+    changes: "Subsystem 2/3/4 bug fixes (committed)"
+  - path: "CLAUDE.md"
+    changes: "Handoff & Continuation System + Oracle hook-ordering rewritten to autopilot reality (committed)"
+  - path: ".acos/robust-review/20260611-032000/APPROVALS.md"
+    changes: "Per-item punch-list decisions recorded (NOT git-tracked — under .acos/)"
+
+decisions_made:
+  - "Punch-list walkthrough: 21 items APPROVED, 4 decided no-change (S1-P3, S2-P1, S2-P2, S3-P8), 3 already-closed (S1-P4, S1-P5, S4-P11)."
+  - "Feedback saved to memory: approval-question explanations must be self-contained inside the AskUserQuestion text (feedback_approval_questions_self_contained.md)."
+
+blockers: []
+
+next_actions:
+  - "IMPLEMENT the 21 approved punch-list items. Full decision record: .acos/robust-review/20260611-032000/APPROVALS.md. Suggested grouping: (1) substantive behavior/safety fixes first as separate reviewable commits — S4-P1 build dataroom-v2 dedup, S1-P31 shlex scope guard, S1-P1 independence-wall path matching, S1-P8 out-of-repo daemon PID fix, S4-P5 mapper guardrail, S4-P6 number-leak barrier; then (2) consistency/cosmetic sweeps — S1-P6, S1-P9, S3-P1..P7, S4-P2/P3/P4/P7/P8/P9/P10, S1-P7."
+  - "S1-P8 edits a file OUTSIDE the repo (~/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh) — user already approved."
+  - "S1-P2 is verify-then-align (confirm live AskUserQuestion updatedInput schema before changing)."
+
+context_for_next_session: |
+  This session's deliverable was REVIEW + DECISIONS, not implementation. The 21
+  approved fixes are still pending. The authoritative decision record is
+  .acos/robust-review/20260611-032000/APPROVALS.md (per-item APPROVE/SKIP/option).
+  The punch-list detail for each item is in the git-tracked
+  memory/decisions/2026-06-11-robust-review-punch-list.md.
+  Branch: acos-deficiency-fixes-2026-06-04 (all review commits already pushed to local branch).
+  Note S3-P1 was approved (unify handoffs on .md) but is NOT yet implemented — this
+  very completion handoff is still .yaml per the current skill text.

@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>isodate CLI — Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+ :root{--bg:#f4f0e8;--panel:#fbfaf7;--ink:#2b2b28;--muted:#6f6857;--rule:#d8cfba;
+   --coral:#e8674c;--sage:#5f7a59;--navy:#33445c;--tan:#b8966a}
+ *{box-sizing:border-box}
+ html,body{margin:0;background:var(--bg);color:var(--ink);
+   font-family:ui-serif,Georgia,'Times New Roman',serif;line-height:1.6}
+ .doc{max-width:1180px;margin:0 auto;padding:0 28px 80px}
+ header.top{padding:34px 0 18px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+ h1{font-size:34px;margin:0 0 6px;font-weight:700;letter-spacing:-.4px}
+ h1 em{font-style:italic;color:var(--coral)}
+ .meta{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--muted)}
+ .badges{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+ .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;padding:6px 12px;
+   border:1px solid var(--rule);border-radius:3px;background:var(--panel)}
+ .badge b{color:var(--navy)}
+ .badge.ok{border-color:var(--sage);background:#eef3ec}
+ h2{font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;letter-spacing:1.4px;
+   text-transform:uppercase;color:var(--muted);margin:42px 0 8px;
+   padding-bottom:6px;border-bottom:1px solid var(--rule)}
+ h3{font-size:20px;margin:26px 0 6px}
+ p{margin:8px 0}
+ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.86em;
+   background:#efe9dc;padding:1px 5px;border-radius:3px;color:#4a4536}
+ table{border-collapse:collapse;width:100%;font-family:ui-sans-serif,system-ui,sans-serif;
+   font-size:13px;margin:10px 0}
+ th,td{border:1px solid var(--rule);padding:7px 9px;text-align:left;vertical-align:top}
+ th{background:#efe9dc;font-weight:600}
+ .diagram{background:var(--panel);border:1px solid var(--rule);border-radius:6px;
+   padding:14px;overflow:auto;margin:12px 0}
+ .legend{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0;
+   font-family:ui-sans-serif,system-ui,sans-serif;font-size:12.5px}
+ .legend .chip{display:flex;align-items:center;gap:7px;padding:5px 10px;
+   border:1px solid var(--rule);border-radius:3px;background:var(--panel)}
+ .sw{width:15px;height:15px;border-radius:2px;flex:none}
+ .line{width:26px;height:0;flex:none;border-top-width:2px;border-top-style:solid}
+ .howto{background:var(--panel);border-left:3px solid var(--navy);border-radius:3px;
+   padding:12px 16px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:13.5px}
+ .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;margin-top:12px}
+ .card{background:var(--panel);border:1px solid var(--rule);border-radius:4px;
+   padding:13px 15px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:12.5px;line-height:1.5}
+ .card.shared{border-left:3px solid var(--sage)}
+ .card.gate{border-left:3px solid var(--coral)}
+ .card.module{border-left:3px solid var(--navy)}
+ .card h4{margin:0 0 2px;font-size:14px}
+ .card .tag{display:inline-block;font-size:10px;letter-spacing:.6px;text-transform:uppercase;
+   color:var(--muted);border:1px solid var(--rule);border-radius:2px;padding:1px 6px;margin-left:6px}
+ .card dl{margin:7px 0 0;display:grid;grid-template-columns:auto 1fr;gap:2px 8px}
+ .card dt{color:var(--muted);font-weight:600}
+ .vision :is(h3,h4,h5){font-family:ui-sans-serif,system-ui,sans-serif}
+ .note{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;color:var(--muted);margin-top:6px}
+ footer{margin-top:50px;padding-top:14px;border-top:1px solid var(--rule);
+   font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted)}
+</style></head><body><div class="doc"><header class="top"><h1>isodate CLI — <em>Plan</em></h1><div class="meta">feature 001-isodate-cli · 4 components · generated 2026-06-15 19:57 UTC · acos-genesis-protocol</div><div class="badges"><div class="badge"><b>4</b> components (3 leaves / 1 intermediate)</div><div class="badge">max depth <b>1</b></div><div class="badge">shared units <b>3</b></div><div class="badge">success criteria <b>7</b></div><div class="badge ok">coverage gate <b>APPROVED</b></div></div></header><h2>1 · Vision</h2><div class="vision"><h3>Vision</h3>
+<p><code>isodate CLI</code> is a tiny, single-file Python 3 standard-library-only command-line tool</p>
+<p>(<code>isodate.py</code>) that prints the current date. With no arguments it prints the local date in</p>
+<p>ISO-8601 form (<code>YYYY-MM-DD</code>). The <code>--utc</code> flag prints the current UTC date instead; the</p>
+<p><code>--time</code> flag appends the current time as <code>HH:MM:SS</code>; the two flags compose freely. Unknown or</p>
+<p>malformed flags cause the tool to exit with a non-zero status and emit a usage message on</p>
+<p>stderr. All date/time logic is driven through an injectable clock so the behavior is fully</p>
+<p>deterministic under test.</p>
+<h4>Domain</h4>
+<p>Software — a command-line utility (CLI tool) implemented in Python 3 using only the standard</p>
+<p>library (<code>argparse</code>, <code>datetime</code>). No third-party runtime dependencies.</p>
+<h4>Success Criteria (testable)</h4>
+<ul>
+<li><strong>SC-01</strong> — <code>python3 build/isodate.py</code> (no flags) prints a single line matching <code>YYYY-MM-DD</code> (local date).</li>
+<li><strong>SC-02</strong> — <code>python3 build/isodate.py --utc</code> prints the current UTC date as <code>YYYY-MM-DD</code>.</li>
+<li><strong>SC-03</strong> — <code>python3 build/isodate.py --time</code> appends the current time as <code>HH:MM:SS</code> to the date output.</li>
+<li><strong>SC-04</strong> — <code>python3 build/isodate.py --utc --time</code> composes both behaviors: UTC date + UTC time.</li>
+<li><strong>SC-05</strong> — An unknown/bad flag causes exit status ≠ 0 with a usage message written to stderr.</li>
+<li><strong>SC-06</strong> — The implementation imports only Python 3 standard-library modules and is testable via shell/<code>unittest</code>.</li>
+<li><strong>SC-07</strong> — Date/time output is deterministic when a fixed clock is injected (same input clock → same output).</li>
+</ul>
+<h4>Verifier Vocabulary</h4>
+<ul>
+<li><strong>software-test</strong> — the system runs a named shell/test command and asserts exit code 0 plus</li>
+</ul>
+<p>  expected stdout/stderr; a human can run the identical command and read pass/fail. THIS is the</p>
+<p>  verifier type used by every node in this product (all nodes are software).</p>
+<ul>
+<li><strong>manual-only</strong> — present in the vocabulary for completeness but NOT used by any node in this</li>
+</ul>
+<p>  product; every node here is machine-verifiable.</p>
+<h4>Assumptions</h4>
+<ul>
+<li>Assumption: Test runner is plain-shell + Python stdlib <code>unittest</code> (invoked via <code>python3 -m unittest</code>), because <code>pytest</code> is not guaranteed to be installed; this keeps every auto_check runnable with zero extra dependencies from repo root.</li>
+<li>Assumption: Determinism is achieved by an injectable clock — a <code>now()</code> provider that accepts an optional fixed datetime — rather than monkeypatching <code>datetime</code>.</li>
+<li>Assumption: &quot;Local date&quot; uses the system local timezone via <code>datetime.now()</code>; <code>--utc</code> uses <code>datetime.now(timezone.utc)</code>.</li>
+<li>Assumption: Bad-flag behavior follows <code>argparse</code> defaults (exit code 2, usage on stderr), which satisfies &quot;exit non-zero with a usage message&quot;.</li>
+<li>Assumption: The component tree is kept to 4 components (root CLI + clock + formatter + arg parser) to honor the 3–5 target, with a single shared formatter and shared clock.</li>
+<li>Assumption: Build artifacts live under <code>build/</code> (<code>build/isodate.py</code>, <code>build/tests/test_isodate.py</code>); auto_check commands run from repo root referencing those paths.</li>
+</ul></div><h2>2 · Success Criteria</h2><table><tr><th>ID</th><th>Statement</th><th>How it is measured</th><th>Components</th></tr><tr><td><b>SC-01</b></td><td>Running `python3 build/isodate.py` with no flags prints a single line that is a valid local date in YYYY-MM-DD form.</td><td>stdout matches /^\d{4}-\d{2}-\d{2}$/ and exit code is 0.</td><td><code>C-003, C-001, C-002, C-000</code></td></tr><tr><td><b>SC-02</b></td><td>Running `python3 build/isodate.py --utc` prints the current UTC date as YYYY-MM-DD.</td><td>With a fixed UTC clock, stdout equals the expected UTC YYYY-MM-DD; exit code 0.</td><td><code>C-003, C-001, C-002, C-000</code></td></tr><tr><td><b>SC-03</b></td><td>Running `python3 build/isodate.py --time` appends the current time as HH:MM:SS to the date.</td><td>stdout matches /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/; exit code 0.</td><td><code>C-002, C-001, C-000</code></td></tr><tr><td><b>SC-04</b></td><td>Running `python3 build/isodate.py --utc --time` composes both: UTC date plus UTC time.</td><td>With a fixed clock, stdout equals expected UTC `YYYY-MM-DD HH:MM:SS`; exit code 0.</td><td><code>C-003, C-001, C-002, C-000</code></td></tr><tr><td><b>SC-05</b></td><td>An unknown or malformed flag causes a non-zero exit with a usage message on stderr.</td><td>`python3 build/isodate.py --bogus` exits non-zero and stderr contains 'usage'.</td><td><code>C-003, C-000</code></td></tr><tr><td><b>SC-06</b></td><td>Implementation is Python 3 standard-library-only and testable via shell/unittest.</td><td>Static check: only stdlib imports; `python3 -m unittest` over build/tests passes.</td><td><code>C-000, C-001, C-002, C-003</code></td></tr><tr><td><b>SC-07</b></td><td>Date/time output is deterministic when a fixed clock is injected.</td><td>Formatter/clock under a fixed datetime yields the same string every run.</td><td><code>C-001, C-002</code></td></tr></table><h2>3 · How the Components Connect</h2><p>Two complementary views of the same wiring. The <strong>pipeline data-flow</strong> (3.1) answers <em>"in what order does data move, stage to stage?"</em> — modules stacked top-to-bottom in build/pipeline order. The <strong>component connection diagram</strong> (3.2) answers <em>"how is each subsystem wired internally, and where are the gates and shared parts?"</em> — components grouped inside their subsystems with every connection drawn. Both are generated from <code>integration-map.json</code> + the component contracts.</p><h3>3.1 · Pipeline data-flow</h3><p>Stage view: each module is a band, its leaf components shown as chips. Read the solid navy arrows top-to-bottom to follow the main pipeline.</p><div class="legend"><div class="chip"><span class="sw" style="background:#ece6dc;border:1px solid #b8ab92"></span>External input</div><div class="chip"><span class="sw" style="background:#fbeee9;border:1px solid #e8674c"></span>Hard gate / choke point</div><div class="chip"><span class="sw" style="background:#cdd9c9;border:1px solid #7d9478"></span>Shared (◈) — many consumers</div><div class="chip"><span class="sw" style="background:#f7f3ea;border:1px solid #c9bfa6"></span>Module band</div><div class="chip"><span class="sw" style="background:#fbfaf7;border:1px solid #c5bba6"></span>Leaf chip</div><div class="chip"><span class="line" style="border-color:#33445c"></span>Data edge</div><div class="chip"><span class="line" style="border-color:#5f7a59"></span>Shared fan-out</div><div class="chip"><span class="line" style="border-color:#b8966a;border-top-style:dashed"></span>External in</div></div><div class="diagram"><svg viewBox="0 0 1320 646" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" role="img" aria-label="Auto-laid-out component data-flow diagram">
+<defs><marker id="ar-navy" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#33445c"/></marker></defs>
+<defs><marker id="ar-sage" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5f7a59"/></marker></defs>
+<defs><marker id="ar-tan" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#b8966a"/></marker></defs>
+<defs><marker id="ar-grey" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#a99f88"/></marker></defs>
+<path d="M 210.0 232.0 H 180.0 V 352.0 H 210.0" fill="none" stroke="#5f7a59" stroke-width="1.6" marker-end="url(#ar-sage)" opacity="0.85"/>
+<path d="M 420.0 89.0 H 1136.0 V 586.0 H 1110.0" fill="none" stroke="#b8966a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar-tan)" opacity="0.85"/>
+<path d="M 420.0 89.0 H 1166.0 V 472.0 H 1110.0" fill="none" stroke="#b8966a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar-tan)" opacity="0.85"/>
+<path d="M 628.0 89.0 H 1196.0 V 232.0 H 1110.0" fill="none" stroke="#b8966a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar-tan)" opacity="0.85"/>
+<path d="M 836.0 89.0 H 1226.0 V 232.0 H 1110.0" fill="none" stroke="#b8966a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar-tan)" opacity="0.85"/>
+<path d="M 1044.0 89.0 H 1256.0 V 352.0 H 1110.0" fill="none" stroke="#b8966a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar-tan)" opacity="0.85"/>
+<path d="M 660.0 266.0 V 558.0" stroke="#a99f88" stroke-width="1" stroke-dasharray="2 5" opacity="0.25" fill="none"/>
+<path d="M 660.0 386.0 V 558.0" stroke="#a99f88" stroke-width="1" stroke-dasharray="2 5" opacity="0.25" fill="none"/>
+<path d="M 660.0 506.0 V 558.0" stroke="#a99f88" stroke-width="1" stroke-dasharray="2 5" opacity="0.25" fill="none"/>
+<rect x="210.0" y="24.0" width="900.0" height="122.0" rx="8" fill="#f7f3ea" stroke="#c9bfa6" stroke-width="1.4" opacity="0.97"/>
+<text x="224.0" y="50.0" font-size="14" font-weight="700" fill="#6f6857">External inputs</text>
+<text x="224.0" y="68.0" font-size="11" fill="#6f6857" opacity="0.85">values entering the pipeline from outside</text>
+<rect x="224.0" y="68.0" width="196" height="42" rx="14" fill="#ece6dc" stroke="#b8ab92"/>
+<text x="322.0" y="90.0" font-size="11" fill="#3a3a36" text-anchor="middle">argv</text>
+<rect x="432.0" y="68.0" width="196" height="42" rx="14" fill="#ece6dc" stroke="#b8ab92"/>
+<text x="530.0" y="90.0" font-size="11" fill="#3a3a36" text-anchor="middle">utc</text>
+<rect x="640.0" y="68.0" width="196" height="42" rx="14" fill="#ece6dc" stroke="#b8ab92"/>
+<text x="738.0" y="90.0" font-size="11" fill="#3a3a36" text-anchor="middle">fixed</text>
+<rect x="848.0" y="68.0" width="196" height="42" rx="14" fill="#ece6dc" stroke="#b8ab92"/>
+<text x="946.0" y="90.0" font-size="11" fill="#3a3a36" text-anchor="middle">with_time</text>
+<rect x="210.0" y="198.0" width="900.0" height="68.0" rx="8" fill="#f7f3ea" stroke="#c9bfa6" stroke-width="1.4" opacity="0.97"/>
+<text x="224.0" y="224.0" font-size="14" font-weight="700" fill="#5a5340">C-001 · Clock provider</text>
+<text x="224.0" y="242.0" font-size="11" fill="#5a5340" opacity="0.85">Return the current instant as a datetime (local or UTC), honoring an injected fixed clock when…</text>
+<rect x="210.0" y="318.0" width="900.0" height="68.0" rx="8" fill="#f7f3ea" stroke="#c9bfa6" stroke-width="1.4" opacity="0.97"/>
+<text x="224.0" y="344.0" font-size="14" font-weight="700" fill="#5a5340">C-002 · Date/time formatter</text>
+<text x="224.0" y="362.0" font-size="11" fill="#5a5340" opacity="0.85">Turn a datetime plus a with_time flag into the correct output string.</text>
+<rect x="210.0" y="438.0" width="900.0" height="68.0" rx="8" fill="#f7f3ea" stroke="#c9bfa6" stroke-width="1.4" opacity="0.97"/>
+<text x="224.0" y="464.0" font-size="14" font-weight="700" fill="#5a5340">C-003 · Argument parser</text>
+<text x="224.0" y="482.0" font-size="11" fill="#5a5340" opacity="0.85">Parse argv into validated flags, or exit non-zero with a usage message on bad input.</text>
+<rect x="210.0" y="558.0" width="900.0" height="56.0" rx="8" fill="#33445c" stroke="#22303f"/>
+<text x="224.0" y="582.0" font-size="14" font-weight="700" fill="#ffffff">C-000 · isodate CLI (whole product) (whole-product)</text>
+<text x="224.0" y="600.0" font-size="11" fill="#ffffff" opacity="0.85">all modules compose here; verified end-to-end against the vision</text>
+</svg></div><div class="howto"><strong>How to read it.</strong> Follow the solid navy arrows top-to-bottom for the main pipeline. Green arrows are <em>shared components</em> fanning out to several consumers — built once, reused everywhere. Dashed tan arrows are values supplied from outside the system. The coral band is a <em>hard gate</em>: everything must pass through it. Faint dotted lines show every module composing into the whole-product root at the bottom.</div><h3>3.2 · Component connection diagram</h3><p>Connection view: components are grouped <em>inside</em> their subsystem boxes, with every data connection drawn. Use this to see internal wiring, the choke point (<strong>thick arrows</strong>), and how shared parts (◈) fan out.</p><div class="legend"><div class="chip"><span class="sw" style="background:#ece6dc;border:1px solid #b8ab92"></span>External input</div><div class="chip"><span class="sw" style="background:#e8674c"></span>Hard gate (thick arrows pass through)</div><div class="chip"><span class="sw" style="background:#cdd9c9;border:1px solid #7d9478"></span>Shared component (◈)</div><div class="chip"><span class="sw" style="background:#dfe6ee;border:1px solid #33445c"></span>Module hub</div><div class="chip"><span class="sw" style="background:#fbfaf7;border:1px solid #c5bba6"></span>Leaf component</div><div class="chip"><span class="line" style="border-color:#33445c"></span>Data edge</div><div class="chip"><span class="line" style="border-color:#b8966a;border-top-style:dashed"></span>External in</div></div><div class="diagram"><pre class="mermaid">
+flowchart TB
+classDef ext fill:#ece6dc,stroke:#b8ab92,color:#3a3a36,font-style:italic;
+classDef gate fill:#e8674c,stroke:#b5402a,color:#ffffff;
+classDef shared fill:#cdd9c9,stroke:#7d9478,color:#2f3a2c;
+classDef module fill:#dfe6ee,stroke:#33445c,color:#22303f;
+classDef leaf fill:#fbfaf7,stroke:#c5bba6,color:#2b2b28;
+X_argv(["argv"]):::ext
+X_utc(["utc"]):::ext
+X_fixed(["fixed"]):::ext
+X_with_time(["with_time"]):::ext
+C001["C-001<br/>Clock provider"]:::shared
+C002["C-002<br/>Date/time<br/>formatter"]:::shared
+C003["C-003<br/>Argument parser"]:::shared
+X_argv -.-> C003
+X_utc -.-> C001
+X_fixed -.-> C001
+X_with_time -.-> C002
+linkStyle 0,1,2,3 stroke:#b8966a,stroke-width:1.4px,stroke-dasharray:5 4;
+</pre></div><div class="cards"><div class="card shared"><h4>Shared components (◈, green)</h4><p><code>C-001</code>, <code>C-002</code>, <code>C-003</code> are each built <em>once</em> and consumed by several parents (you may see more than one arrow leaving them). Building them early (as leaves) means every consumer integrates against an already-verified dependency.</p></div><div class="card module"><h4>Reading the flow</h4><p>Modules are stacked in <strong>pipeline order</strong> (topologically sorted by their cross-module data edges). Solid navy arrows are the main data path; <strong>dashed tan</strong> arrows are values entering from outside the system.</p></div><div class="card"><h4>Composition into the product</h4><p>Every module ultimately composes into the whole-product root at the bottom, which is verified end-to-end against the vision — the final integration step of the build.</p></div></div><h2>4 · Build Plan (leaves-first)</h2><p>Built bottom-up in phases — each component verified in isolation before its parent composes it:</p><table><tr><th>Phase</th><th>Kind</th><th>Components</th></tr><tr><td>1 (depth 1)</td><td>leaf-build</td><td><code>C-001, C-002, C-003</code></td></tr><tr><td>2 (depth 0)</td><td>integrate</td><td><code>C-000</code></td></tr></table><p class="note">Linear build order: <code>C-001 → C-002 → C-003 → C-000</code></p><p><strong>Repair protocol.</strong> On a component failure, rework within scope and re-run its isolated verifier (max <code>5</code> iterations). On an integration failure, drill <em>down</em> to the likely-culprit children, rebuild, re-verify, re-compose, and climb again (up→down→up).</p><h2>5 · Wiring Table (every connection)</h2><table><tr><th>From</th><th>To (parent/consumer)</th><th>Data / note</th></tr><tr><td><code>C-003</code></td><td><code>C-000</code></td><td>C-003.flags (Namespace{utc,time}) feeds C-000's branch logic (which clock mode and whether to append time). — main() calls parse_args(argv) first; on bad flags argparse raises SystemExit (non-zero) before any other component runs.</td></tr><tr><td><code>C-001</code></td><td><code>C-000</code></td><td>C-001.now (datetime) supplies the instant to format. main() calls now(utc=flags.utc). — Clock mode is selected by the parsed --utc flag from C-003.</td></tr><tr><td><code>C-002</code></td><td><code>C-000</code></td><td>C-002.line (str) is the exact text main() prints to stdout. main() calls format_line(now, flags.time). — Formatter consumes C-001.now and C-003.flags.time; its output string is the product's stdout.</td></tr></table><h2>6 · Component Reference</h2><div class="cards"><div class="card shared"><h4>C-001 — Clock provider<span class="tag">LEAF · SHARED</span></h4><p>Supplies the current instant as a datetime. Accepts an optional fixed value so tests are deterministic. The single source of 'now' for the whole tool.</p><dl><dt>in</dt><dd><code>utc, fixed</code></dd><dt>out</dt><dd><code>now</code></dd><dt>verifier</dt><dd>software-test</dd><dt>build #</dt><dd>0</dd><dt>consumers</dt><dd><code>C-002, C-000</code></dd></dl></div><div class="card shared"><h4>C-002 — Date/time formatter<span class="tag">LEAF · SHARED</span></h4><p>Formats a datetime into the output string: always a YYYY-MM-DD date, optionally a space + HH:MM:SS time. Single shared formatter for default, --utc, --time and composed flags.</p><dl><dt>in</dt><dd><code>dt, with_time</code></dd><dt>out</dt><dd><code>line</code></dd><dt>verifier</dt><dd>software-test</dd><dt>build #</dt><dd>1</dd><dt>consumers</dt><dd><code>C-000</code></dd></dl></div><div class="card shared"><h4>C-003 — Argument parser<span class="tag">LEAF · SHARED</span></h4><p>Parses argv into a flags object {utc, time}. On unknown/bad flags it emits a usage message on stderr and forces a non-zero exit, per the argparse contract.</p><dl><dt>in</dt><dd><code>argv</code></dd><dt>out</dt><dd><code>flags, usage_error</code></dd><dt>verifier</dt><dd>software-test</dd><dt>build #</dt><dd>2</dd><dt>consumers</dt><dd><code>C-000</code></dd></dl></div><div class="card module"><h4>C-000 — isodate CLI (whole product)<span class="tag">ROOT</span></h4><p>The complete single-file command-line tool isodate.py. Wires argv -&gt; arg parser -&gt; clock -&gt; formatter -&gt; stdout, returning the correct exit code. End-to-end embodiment of the vision.</p><dl><dt>in</dt><dd><code>argv, parsed_flags, now, rendered_line</code></dd><dt>out</dt><dd><code>stdout_line, exit_code</code></dd><dt>verifier</dt><dd>software-test</dd><dt>build #</dt><dd>3</dd></dl></div></div><footer>Generated by acos-genesis-protocol · render-plan.py · §3.1 + content are offline; §3.2 renders via Mermaid v11 (CDN, needs network) · sources: component-tree.json, integration-map.json, build-plan.json, success-criteria.json, vision.md, connections.mmd</footer></div><script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose",flowchart:{curve:"basis",nodeSpacing:38,rankSpacing:52,padding:8},themeVariables:{fontFamily:"Inter,ui-sans-serif,system-ui,sans-serif",fontSize:"13px",lineColor:"#9a8f78",primaryColor:"#fbfaf7",primaryTextColor:"#2b2b28",primaryBorderColor:"#c5bba6"}});</script></body></html>

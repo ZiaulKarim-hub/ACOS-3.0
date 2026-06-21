@@ -1,0 +1,85 @@
+slice_id: "SLICE-003-01"
+story_id: "STORY-003"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Puppeteer PDF render adapter"
+objective: |
+  Build scripts/render-pdf.sh that renders the emitted HTML to PDF using
+  Puppeteer with tear-sheet-appropriate settings: margin=0, format=Letter,
+  printBackground=true, preferCSSPageSize=true, emulateMediaType='print',
+  waitUntil='networkidle0', and an explicit document.fonts.ready await.
+  Reuses loan-doc's html-to-pdf.js if its flags suffice; else a dedicated
+  inline render-pdf.mjs matching v3's render.mjs pattern.
+
+acceptance_criteria:
+  - "[ ] First: read ~/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js and determine whether its flag set supports: margin=0, printBackground=true, preferCSSPageSize=true, fonts.ready await, networkidle0 timeout override"
+  - "[ ] If html-to-pdf.js suffices: scripts/render-pdf.sh wraps it with required args + session HTML path + output path"
+  - "[ ] If html-to-pdf.js does NOT suffice: scripts/render-pdf.mjs is a new Puppeteer script that mimics /Users/zee/Desktop/Private Credit Capabilities/.build/render.mjs exactly (page.emulateMediaType('print') → page.goto(url, {waitUntil:'networkidle0', timeout:120000}) → page.evaluate(async()=>{if(document.fonts&&document.fonts.ready)await document.fonts.ready}) → page.pdf({format:'Letter', printBackground:true, preferCSSPageSize:true, margin:{top:0,right:0,bottom:0,left:0}})) and render-pdf.sh wraps IT"
+  - "[ ] Script accepts --input (HTML path), --output (PDF path), --timeout (default 120s)"
+  - "[ ] Exits 0 on success, non-zero with stderr message on failure"
+  - "[ ] Renders the v3-style input HTML at file size 20-30MB (consistent with v3 reference PDF of 26MB for 12 pages)"
+  - "[ ] All fonts (Cormorant Garamond, IBM Plex Sans, IBM Plex Mono) load before snapshot — verified by opening output in Preview and checking font names"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-05"
+      what_it_provides: "Emitted HTML (page-as-canvas, Google Fonts referenced)"
+      status: "complete"
+    - slice_id: "SLICE-002-04"
+      what_it_provides: "HTML with photo slots filled (images as local file:// URLs)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-pdf.sh"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-pdf.mjs"
+
+files_prohibited:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+
+skills_recommended:
+  - "frontend-coding"
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The v3 render.mjs at /Users/zee/Desktop/Private Credit Capabilities/.build/render.mjs is the proven reference implementation. It produced the v3 PDF we're trying to match. Copy its pattern exactly — this is not a place to innovate."
+  - "document.fonts.ready is non-optional. Without it, Cormorant Garamond doesn't load in time, Chrome falls back to Georgia, and the aesthetic silently collapses."
+  - "networkidle0 with 120s timeout handles image-heavy pages. 30s default is too tight for 20+ images."
+  - "Do NOT reuse loan-doc's pdf-styles.css — that's flow-layout CSS for a different output style. This pipeline emits its own page-as-canvas CSS inline."
+
+technical_requirements:
+  - "Node 18+; puppeteer already installed via loan-doc skill's package.json — reuse that node_modules (don't duplicate install)"
+  - "Script accepts file:// URLs or absolute paths for input HTML"
+  - "120s timeout on page.goto(); 180s total script timeout"
+  - "Stderr messages are actionable: 'network timeout' vs 'fonts.ready unavailable' vs 'goto failed' distinguished"
+
+testing_requirements:
+  - "Unit: render a 1-page HTML, verify PDF has 1 page at exactly 8.5×11in"
+  - "Unit: render HTML with Cormorant text, open PDF in Preview, verify font name is 'Cormorant Garamond' not 'Georgia'"
+  - "Integration: render v3-shape HTML, verify file size within 20% of v3 reference (26MB)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-performance-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  If html-to-pdf.js doesn't support preferCSSPageSize or doesn't await
+  fonts.ready, DO NOT modify it — it's owned by loan-doc. Instead ship a
+  dedicated render-pdf.mjs and treat html-to-pdf.js as off-limits.
+
+  This is the gateway slice — if PDF rendering doesn't work, nothing in STORY-005
+  works either.

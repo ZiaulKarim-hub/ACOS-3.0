@@ -1,0 +1,255 @@
+timestamp: "2026-04-22T22:16:34Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTE: This file supersedes 2026-04-22-emergency-handoff.yaml (same-session
+# predecessor). It incorporates a fresh disk scan and confirms the TCC blocker
+# remains active. The Lux2 slide redesign is still blocked.
+# ─────────────────────────────────────────────────────────────────────────────
+
+session_summary: |
+  Session 2026-04-22 ran two parallel tracks. Track 1 (primary, BLOCKED):
+  redesign of slide 9 in the Lux2 Variant Note Sale investor deck at
+  /Users/zee/Documents/Lux2-Variant-Note-Sale-CTB.pptx. Six design iterations
+  were completed before a macOS TCC inode re-grant issue prevented python3 from
+  opening the file. The blocker was confirmed still active at handoff time (python3
+  returns PermissionError errno=1 on the Documents copy; Desktop copy also blocked).
+  Track 2 (secondary, COMPLETE): three domain logic improvements were applied to
+  the ACOS loan-doc-generator skill as lessons from the Lux2 work — all changes
+  are in the working tree, uncommitted. No active ACOS planning slices exist;
+  EPIC-001 completed 2026-04-10.
+
+current_work:
+  slice_id: "N/A — client PPTX work, outside ACOS planning hierarchy"
+  story_id: "N/A"
+  epic_id: "N/A"
+  acos_epic_context: "EPIC-001 status: complete (commit 2eadfab, 2026-04-10). No active slices."
+  status: "blocked"
+  initiative: "Lux2 Variant Note Sale — slide 9 sage background redesign"
+  file: "/Users/zee/Documents/Lux2-Variant-Note-Sale-CTB.pptx"
+  backup_desktop: "/Users/zee/Desktop/Lux Variant Note Sale/Lux2-Variant-Note-Sale-CTB.pptx"
+  file_size_bytes: 21173365
+  file_last_modified: "2026-04-22 15:01:23"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BLOCKER — STILL ACTIVE AT HANDOFF TIME
+# ─────────────────────────────────────────────────────────────────────────────
+blockers:
+  - id: "TCC-INODE-REGRANT"
+    severity: "CRITICAL"
+    status: "CONFIRMED STILL ACTIVE"
+    description: |
+      macOS TCC inode re-grant issue. Keynote's save cycle replaced the inode of
+      Lux2-Variant-Note-Sale-CTB.pptx. The per-file TCC grant held by python3 was
+      inode-bound and is now invalid. python3 returns PermissionError: [Errno 1]
+      Operation not permitted on both:
+        /Users/zee/Documents/Lux2-Variant-Note-Sale-CTB.pptx
+        /Users/zee/Desktop/Lux Variant Note Sale/Lux2-Variant-Note-Sale-CTB.pptx
+      ls and stat see both files fine; only python3 open() is blocked.
+      The ACOS 3.0 project directory (/Users/zee/Documents/Vibe Coding/ACOS 3.0/)
+      retains python3 read/write access.
+    resolution_options:
+      - "Option A (EASIEST): Copy or move the file into ~/Documents/Vibe Coding/ACOS 3.0/
+         — python3 already has full access there. Then run the slide 9 script against that copy."
+      - "Option B: System Settings → Privacy & Security → Files and Folders → expand
+         Warp (or whichever terminal runs Claude Code) → enable 'Documents Folder' and
+         'Desktop Folder'. This grants the terminal app Documents-wide TCC access."
+      - "Option C: Run the python-pptx script from a different Python process that has
+         Documents access (e.g., a Jupyter kernel with the grant, if one exists)."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SLIDE 9 REDESIGN — APPROVED DESIGN DIRECTION (ready to execute)
+# ─────────────────────────────────────────────────────────────────────────────
+slide_9_design:
+  approved_option: "Option 1 — sage background"
+  approved_headline: "At par, the buyer earns 19–24% IRR."
+  current_shape_count: 12
+  current_background: "#161616 (dark editorial from Edit 3 — will be replaced with sage)"
+
+  preserved_font_sizes:
+    subtitle: "44pt Cormorant Garamond (user set manually in Keynote after Edit 3)"
+    hero_numbers: "88pt Cormorant Garamond (user set manually in Keynote after Edit 3)"
+    note: "DO NOT override these on rebuild — they are baked into the deck by the user"
+
+  brand_palette:
+    sage: "#465D53"
+    white: "#FFFFFF"
+    pale_sage: "#DCE7E1"
+    subtle_grey: "#C6C6C6"
+    coral: "#FF795E"
+
+  design_vocabulary: |
+    Matches editorial slides 2, 6, and 10 in the deck: dark/sage full-bleed
+    background, Cormorant Garamond serif headlines, IBM Plex Mono all-caps
+    captions, coral rule accent, sage footer band.
+
+  ready_to_execute_script_spec:
+    background: "sage #465D53, full-bleed"
+    layout_y_positions:
+      T_140: "narrative headline — 44pt Cormorant Garamond, white, 'At par, the buyer earns 19–24% IRR.'"
+      T_265: "horizontal coral rule accent — 2.2 inches wide, #FF795E"
+      T_278: "meta caption — IBM Plex Mono all-caps, pale sage, 'ANNUALISED IRR TO BUYER · BY RESOLUTION TIMING'"
+      T_350: "hero numbers — 88pt Cormorant Garamond, white — '19.2%' left, '23.8%' right"
+      T_545: "captions below numbers — IBM Plex Mono, pale sage — 'QUICK / 90 DAYS' left, 'BASE / 180 DAYS' right"
+      T_620: "methodology footnote — small IBM Plex Mono, subtle grey, blended-rate explanation"
+      T_720: "footer band — sage #465D53, full width"
+    text_colors:
+      headlines_and_hero: "#FFFFFF"
+      captions: "#DCE7E1 (pale sage)"
+      footnote: "#C6C6C6 (subtle grey)"
+    units: "all y-positions are in inches from top of slide; use python-pptx Inches() converter"
+    approach: "wipe slide 9 contents and rebuild from scratch — do not try to patch existing shapes"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOAN CONTEXT — VERIFIED NUMBERS (no recomputation needed)
+# ─────────────────────────────────────────────────────────────────────────────
+lux2_loan_context:
+  master_note_usd: "$57.0M"
+  coupon_rate: "14.0% (360-day compound)"
+  default_rate: "25.0% (monthly compound)"
+  maturity_date: "18 Jun 2026"
+  data_date: "2026-04-17"
+  current_payoff_at_data_date: "$59.6M"
+  sellers_pro_rata_share: "61.7%"
+  sellers_current_mark: "$36.8M"
+  sellers_upb: "$35.2M"
+  irr_90_day: "19.2% (blended: 14% pre-maturity 18 Jun, 25% post-maturity)"
+  irr_180_day: "23.8% (blended: 14% pre-maturity 18 Jun, 25% post-maturity)"
+  irr_math_status: "VERIFIED — no recomputation needed"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ACOS FRAMEWORK CHANGES MADE THIS SESSION (uncommitted working tree)
+# ─────────────────────────────────────────────────────────────────────────────
+completed_this_session:
+  - "phase2-analyze.md: Added DEFAULT STATUS VERIFICATION block — prevents inferring
+    formal default from draft letters alone; requires servicing system or user confirmation;
+    adds loan_status section to loan-data.yaml output schema."
+  - "phase2-analyze.md: Added MANDATORY VERIFICATION ROW for default status in the
+    verification table — confidence 0.0, type requires_confirmation, flags for user."
+  - "phase3-design.md: Added Step 3.0b PPTX post-build cleanup — strips python-pptx
+    theme shadows (outerShdw bug), verifies explicit background fills, adds Cormorant
+    Garamond font advisory."
+  - "phase3-design.md: Added coffee-table book detection block — triggers on keywords
+    in session manifest additional_instructions to activate editorial layout mode."
+  - "phase3-design.md: Added rate selection rule — use coupon rate unless
+    loan_status.default_confirmed is true, which guards against defaulted-rate IRR errors."
+  - "doc-type-catalog.yaml: Added anonymize_seller flag to participation-interest-offering
+    doc type — replaces seller/fund entity names with 'Seller' for blind participation offerings."
+  - "data-to-pptx.py: Updated font roles to IBM Plex Mono/Sans (Okoa brand fonts);
+    updated DEFAULT_COLORS to Okoa brand palette (sage #465D53 primary, coral #FF795E accent,
+    navy #104473 secondary); added CarbonGrid class (16-column grid mirroring CSS layout)."
+  - "html-to-docx.py: Updated (exact diff in working tree)."
+  - "CLAUDE.md: Added legal-analyst agent entry to Agent Roster."
+  - "Evidence bundle recorded at .acos/evidence/2026-04-21/design-lessons-lux2/ (git-diff.patch
+    + modified-files.txt) — captured 2026-04-21 before the session extended into Apr 22."
+
+files_modified:
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md"
+    changes: "Added DEFAULT STATUS VERIFICATION block (+16 lines) and MANDATORY VERIFICATION ROW (+15 lines)"
+  - path: ".claude/skills/acos-loan-doc-generator/phases/phase3-design.md"
+    changes: "Added Step 3.0b PPTX post-build cleanup, coffee-table detection block, rate selection rule (+61 lines net)"
+  - path: ".claude/skills/acos-loan-doc-generator/templates/doc-type-catalog.yaml"
+    changes: "Added anonymize_seller flag + anonymization instructions to participation-interest-offering (+9 lines)"
+  - path: ".claude/scripts/data-to-pptx.py"
+    changes: "Font roles → IBM Plex Mono/Sans; DEFAULT_COLORS → Okoa brand palette; added CarbonGrid class (+60 lines net)"
+  - path: ".claude/scripts/html-to-docx.py"
+    changes: "Updates (see git diff HEAD)"
+  - path: "CLAUDE.md"
+    changes: "Added legal-analyst agent to Agent Roster (+1 line)"
+
+decisions_made:
+  - "Sage #465D53 background chosen for slide 9 over black #161616 (user rejected black: 'not working')"
+  - "Narrative headline chosen: 'At par, the buyer earns 19–24% IRR.' (over data-table format)"
+  - "User's manual Keynote font sizes preserved: 44pt subtitle, 88pt hero — DO NOT override on rebuild"
+  - "AT PAR / 100% bid as sole scenario; two resolution timings only (90-day and 180-day)"
+  - "IRR blended rate: 14% coupon pre-maturity (18 Jun 2026), 25% default post-maturity"
+  - "data-to-pptx.py updated to Okoa brand palette for all future generated slides"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEXT SESSION — IMMEDIATE ACTIONS IN ORDER
+# ─────────────────────────────────────────────────────────────────────────────
+next_actions:
+  - "1. RESOLVE TCC BLOCKER FIRST: Copy Lux2-Variant-Note-Sale-CTB.pptx into
+       /Users/zee/Documents/Vibe Coding/ACOS 3.0/ (easiest fix). Then confirm
+       python3 can open it: python3 -c \"import zipfile; print(zipfile.ZipFile('Lux2-Variant-Note-Sale-CTB.pptx').namelist()[:3])\""
+  - "2. BUILD SLIDE 9: Write and run a python-pptx script per the ready_to_execute_script_spec
+       above. Wipe slide 9 completely, rebuild with sage background and the approved layout.
+       Use Inches() for all y-positions. Set background via fill.solid() not theme inheritance."
+  - "3. VERIFY RENDER: Check that hero numbers show as 88pt Cormorant Garamond white,
+       subtitle shows 44pt, coral rule is present, footer band is sage."
+  - "4. MATCH EDITORIAL VOCABULARY: Compare visually against slides 2, 6, and 10 in the deck."
+  - "5. COMMIT ACOS CHANGES (optional, can defer): Stage and commit the uncommitted working
+       tree changes with message: 'chore: apply Lux2 domain lessons to loan-doc-generator skill'"
+  - "6. MARK HANDOFF COMPLETE: Run /acos-complete to archive all active handoffs after slide work done."
+
+context_for_next_session: |
+  This session's primary goal was redesigning slide 9 of the Lux2 Variant Note Sale
+  investor deck (/Users/zee/Documents/Lux2-Variant-Note-Sale-CTB.pptx). The slide
+  started life as a 43-shape 3x3 sensitivity grid. It was rebuilt through three
+  programmatic edits into a clean 12-shape dark editorial IRR statement slide, then
+  the user manually adjusted font sizes in Keynote (subtitle to 44pt, hero numbers
+  to 88pt Cormorant Garamond).
+
+  The session reached the point of a complete, tested script spec ready to execute
+  the final sage redesign, but was blocked by macOS TCC: Keynote's save cycle replaced
+  the file inode, invalidating python3's TCC grant. The block was confirmed still
+  active at handoff time — python3 returns PermissionError errno=1 on both the
+  Documents and Desktop copies of the file.
+
+  The single action required to unblock is moving or copying the file into the ACOS
+  project directory where python3 already has access, then executing the sage rebuild
+  script. All design decisions are finalized (sage background, narrative headline,
+  preserved user font sizes, no discount scenario). All IRR math is verified — no
+  recomputation needed. 90-day = 19.2%, 180-day = 23.8%.
+
+  As a side product, three domain logic improvements were applied to the ACOS
+  loan-doc-generator skill: (1) default status verification rules in phase2-analyze.md
+  preventing incorrect default inference from draft letters, (2) PPTX post-build
+  cleanup step 3.0b in phase3-design.md to strip python-pptx shadow bugs and verify
+  background fills, and (3) anonymize_seller flag in doc-type-catalog.yaml for blind
+  participation offerings. Additionally, data-to-pptx.py was updated with Okoa brand
+  colors and IBM Plex fonts, and a CarbonGrid layout class was added.
+
+  All ACOS working tree changes are safe to commit as a single 'chore:' commit. The
+  ACOS project has no active planning slices — EPIC-001 completed on 2026-04-10.
+  Model profile is premium (set 2026-04-14 by acos-start).
+
+  The acos-grader skill was used on 2026-04-21 (grader-paper agents spawned for a
+  UVU Finance class cohort, session c42dd5ff). Legal-analyst agent was also active
+  on 2026-04-20. These are unrelated to the current slide work but indicate recent
+  active use of both skills.
+
+acos_project_state:
+  epic_001_status: "complete (commit 2eadfab, 2026-04-10)"
+  active_slices: "none (SLICE-001 status: superseded)"
+  active_stories: "none"
+  model_profile: "premium"
+  last_commit: "2eadfab — chore: PPTX addendum, first /acos-learn sweep, and handoff archive cleanup"
+  uncommitted_changes: |
+    8 files in the working tree with uncommitted improvements (156 insertions, 25 deletions net).
+    All are safe improvements, not in-flight work. Recommended commit message:
+    'chore: apply Lux2 domain lessons to loan-doc-generator skill + Okoa brand in data-to-pptx'
+  predecessor_handoff: "memory/handoffs/2026-04-22-emergency-handoff.yaml (same-session, superseded by this file)"
+
+reconstruction_sources:
+  - "git status --short (working tree, 8 modified files, 30+ untracked new skills/agents)"
+  - "git log --oneline -20 (commit history, last commit 2eadfab 2026-04-10)"
+  - "git log --format timestamp (confirmed last commit 2026-04-10 13:29 MDT)"
+  - "git diff --stat HEAD~5..HEAD (38 files changed in last 5 commits)"
+  - "git diff --name-only HEAD~3..HEAD (36 files changed in last 3 commits)"
+  - "git diff HEAD -- .claude/scripts/data-to-pptx.py (font roles + colors + CarbonGrid)"
+  - "git diff HEAD -- .claude/skills/acos-loan-doc-generator/phases/phase2-analyze.md (default status rules)"
+  - "git diff HEAD -- CLAUDE.md (legal-analyst addition)"
+  - "git diff --stat HEAD (8 files, 156 insertions, 25 deletions uncommitted)"
+  - "planning/epics/EPIC-001-loan-doc-generator-v2.yaml (status: complete)"
+  - "planning/slices/SLICE-001-design-library-one-sample-per-design.yaml (status: superseded)"
+  - ".acos/evidence/2026-04-21/design-lessons-lux2/modified-files.txt (evidence from Apr 21)"
+  - ".acos/state/model-session.yaml (active_profile: premium, set 2026-04-14)"
+  - ".acos/state/oracle-audit.log tail (last entries: Apr 21 copy to Desktop, Apr 22 Lux slide9 audit)"
+  - ".acos/state/agent-lifecycle.log tail (handoff-agent spawned 3 times Apr 22; grader-paper Apr 21; legal-analyst Apr 20)"
+  - "memory/handoffs/2026-04-22-emergency-handoff.yaml (predecessor handoff, same session)"
+  - "stat /Users/zee/Documents/Lux2-Variant-Note-Sale-CTB.pptx (exists, 21.2MB, modified Apr 22 15:01)"
+  - "stat /Users/zee/Desktop/Lux Variant Note Sale/Lux2-Variant-Note-Sale-CTB.pptx (exists, 21.2MB, modified Apr 22 12:12)"
+  - "python3 TCC test (PermissionError errno=1 confirmed on Documents copy at handoff time)"

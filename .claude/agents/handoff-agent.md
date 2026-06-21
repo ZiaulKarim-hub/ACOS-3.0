@@ -5,7 +5,7 @@ tools: Read, Write, Glob, Grep, Bash
 disallowedTools: Task, WebSearch, WebFetch, Edit
 model: sonnet
 permissionMode: acceptEdits
-maxTurns: 20
+maxTurns: 45
 ---
 
 # ACOS Handoff Agent
@@ -25,6 +25,49 @@ Ensure ACOS directories exist:
 ```bash
 bash .claude/scripts/acos-preflight.sh 2>/dev/null || true
 ```
+
+### Step 1.5: Write a STUB handoff FIRST (safety net — BEFORE gathering)
+
+**Why this is first (2026-06-21):** on a large repo, the Step 2 gather can
+exhaust your turn budget before you reach Step 4, leaving NO handoff written —
+which silently breaks the eternity protocol (it has nothing to resume from, or
+worse, falls back to a stale prior handoff). So write a MINIMAL valid handoff
+NOW, then enrich it. A fresh stub always beats no file. This realizes the
+"Always produce a handoff file, even if minimal" constraint mechanically rather
+than hoping you reach the end.
+
+Choose the handoff path (deterministic by date) and REMEMBER it — Step 4 writes
+the full handoff to this SAME path, overwriting this stub (Write replaces the
+file; you are not Editing):
+
+```bash
+mkdir -p memory/handoffs
+HO="memory/handoffs/$(date +%F)-emergency-handoff.yaml"
+[ -e "$HO" ] && HO="memory/handoffs/$(date +%F)-emergency-handoff-2.yaml"
+echo "STUB_PATH=$HO"   # remember this exact path for Step 4
+```
+
+Immediately `Write` a minimal, schema-valid stub to that path:
+
+```yaml
+timestamp: "[ISO 8601 now]"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+session_summary: |
+  STUB — enrichment in progress. If this text survives, the handoff agent was
+  cut off before finishing; treat git state as the source of truth.
+current_work:
+  status: "unknown"
+next_actions:
+  - "Re-derive current work from git status / git log / planning artifacts."
+reconstruction_sources: []
+```
+
+Then proceed to Step 2. The freshness-guarded consumers accept this stub because
+its mtime is current; Step 4's overwrite upgrades it to the full handoff.
 
 ### Step 2: Gather State from Disk
 
@@ -154,16 +197,14 @@ reconstruction_sources:
 
 **On `session_id` and `estimated_tokens`:** `context-monitor.sh` greps the top-level `session_id:` and `estimated_tokens:` fields to correlate a handoff to its originating session and assess staleness. Always emit BOTH fields so your handoff is schema-compatible with that tooling. You run in your own context and usually do NOT know the parent's session_id — in that case write `session_id: "unknown"` (the date/recent-mtime fallback path still finds the handoff) rather than omitting the field. Set `estimated_tokens: 0` (an emergency handoff is created out-of-band, not at a measured token threshold).
 
-### Step 4: Save
+### Step 4: Save (overwrite the Step 1.5 stub)
 
-Write the handoff to:
-
-```
-memory/handoffs/[YYYY-MM-DD]-emergency-handoff.yaml
-```
-
-Use today's date. If a file with that name already exists, append a counter:
-`[YYYY-MM-DD]-emergency-handoff-2.yaml`
+`Write` the full handoff to the **SAME path you used for the stub in Step 1.5**
+(the `STUB_PATH` you echoed). Write replaces the file, so this upgrades the stub
+in place — do NOT create a second file. If you somehow lost the path, recompute
+it deterministically: `memory/handoffs/[YYYY-MM-DD]-emergency-handoff.yaml` for
+today's date (with the `-2` counter only if that base name pre-existed BEFORE
+this run).
 
 ### Step 5: Confirm
 

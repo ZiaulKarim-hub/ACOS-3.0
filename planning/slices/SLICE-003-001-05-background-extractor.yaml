@@ -1,0 +1,144 @@
+# Slice Plan — Background image extractor
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-05"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  performance-reviewer: PASS
+  integration-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 9  # 3 from QA, 3 from perf, 3 from integration — all LOW
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-05/"
+key_design_choices:
+  - "extract() flipped from sync to async (Promise<ContainerRecord[]>)"
+  - "Walker NOT modified; background dispatch lives in index.ts orchestrator loop"
+  - "Dual-path: header sniffer for data: URIs (test + real-browser fast path); new Image() for http(s) URLs"
+  - "Two-record case: same element with text + background yields distinct ids (text-* vs bg-* prefix)"
+test_count: 76  # 21 new background + 55 inherited (all migrated to await)
+
+# Slice overview
+title: "Background image extractor"
+objective: |
+  Detect elements whose computed style includes a background-image
+  (CSS url() reference), load each background image to read its natural
+  dimensions, and emit a ContainerRecord with kind='background'. The
+  separate 'background' kind tells downstream gesture logic to use
+  cover-fit + focal-point drag-inside-container behavior (vs the
+  aspect-locked scale used by <img>).
+
+  Brad documents use background-image for full-bleed cover photos,
+  section dividers, and decorative spreads. They must be draggable
+  onto the canvas as separate units, distinct from inline <img>.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/src/parser/extractors/background.ts exports extractBackground(el: Element): Promise<ContainerRecord | null>; returns null if the element's computed background-image is 'none' or empty"
+  - "[ ] ContainerRecord.content for kind='background' includes: url (string, the resolved image URL), naturalWidth (number), naturalHeight (number), backgroundSize ('cover'|'contain'|'auto'|string), backgroundPosition (string)"
+  - "[ ] Image natural dimensions are read by constructing `new Image(); img.src = url; await load`. Failures (404, CORS, malformed URL) resolve to null with a warning log, not an exception"
+  - "[ ] Walker (dom-walker.ts) is updated to call extractBackground on every visited element AFTER the kind-specific dispatch. Same element CAN be both a text container AND a background container (e.g., a styled <div> with background and text inside)"
+  - "[ ] When the same element produces both a text record and a background record, both are emitted with distinct ids (e.g., 'el-7-text' and 'el-7-bg')"
+  - "[ ] Walker accumulates background-extraction Promises and awaits them in parallel via Promise.all at the end of the walk — does NOT serialize"
+  - "[ ] Unit tests in tests/parser/background.test.ts pass against tests/fixtures/brad-background.html"
+  - "[ ] tests/fixtures/brad-background.html exists: a Brad-style document with at least 3 elements bearing background-image — one full-bleed div, one with background-size: cover, one with explicit background-position. Backgrounds reference local fixture image files (apps/visual-composer/tests/fixtures/img/*.png)"
+  - "[ ] Edge case: data: URI backgrounds are handled (e.g., a tiny inline PNG)"
+  - "[ ] Performance: a page with 5 background images parses in <500ms (bottlenecked by image load, run in parallel)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-003-001-02"
+      what_it_provides: "walker pattern, dispatcher hook, async-aware walk capability"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/src/parser/extractors/background.ts"
+  - "apps/visual-composer/src/parser/dom-walker.ts"            # add background detection pass
+  - "apps/visual-composer/src/parser/index.ts"                 # wire async extractor into extract()
+  - "apps/visual-composer/tests/parser/background.test.ts"
+  - "apps/visual-composer/tests/fixtures/brad-background.html"
+  - "apps/visual-composer/tests/fixtures/img/"                 # PNG fixtures
+
+files_prohibited:
+  - "apps/visual-composer/src/parser/extractors/text.ts"
+  - "apps/visual-composer/src/parser/extractors/image.ts"
+  - "apps/visual-composer/src/parser/extractors/svg.ts"
+  - "apps/visual-composer/src/parser/extractors/table.ts"
+  - "apps/visual-composer/src/parser/brad-enrichment.ts"
+  - "apps/visual-composer/src/parser/types.ts"
+  - "memory/"
+  - "planning/"
+  - ".acos/config/"
+  - ".claude/"
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"
+  - "document-processing"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "ASYNC: this is the first async extractor. extract() in index.ts must become async to await background image loads. Update its return type to Promise<ContainerRecord[]>. This is a deliberate API change for this slice."
+  - "Promise.all parallelism: collect all background extraction promises during the walk, await them once at the end. Do NOT await mid-walk — that serializes loads and kills perf."
+  - "Background-image URL extraction: getComputedStyle(el).backgroundImage returns 'url(\"…\")' or 'none' (literal string). Strip the url(\"…\") wrapper with a regex; unquote; resolve relative to document base URL."
+  - "Multiple backgrounds per element (CSS spec allows comma-separated) — for MVP, take only the first. Add a TODO comment for future multi-background support."
+  - "Same-element-both-kinds case is real: a Brad <section class=\"hero\"> has background-image AND text inside. Both must appear in parts bin so user can drag them independently."
+  - "Failure mode: image fails to load (404, CORS) — return null and log info. Do not throw. The user might still want to drag the OTHER containers from the document."
+  - "data: URIs: should work transparently with new Image(); use one in the fixture to prove it."
+
+# Technical requirements
+technical_requirements:
+  - "extractBackground is async, pure (no DOM mutation)"
+  - "Walker accumulates background promises, awaits via Promise.all at end of walk"
+  - "extract() signature changes: extract(html: string): Promise<ContainerRecord[]> (was sync in slices 01–04; this slice flips it to async)"
+  - "Image load timeout: 5 seconds. On timeout, resolve to null with warning."
+  - "URL resolution: relative URLs in CSS resolve against the document base URL (typically file:// or http://localhost during dev); use new URL(rawUrl, baseUrl) to compute"
+
+# Testing requirements
+testing_requirements:
+  - "Unit tests covering: cover-fit, contain-fit, with background-position, data: URI, missing image (404 simulation)"
+  - "Same-element-two-kinds test: a div with background-image + text content produces both a text record and a background record"
+  - "Performance test: 5 backgrounds load in parallel in <500ms"
+  - "Async correctness: extract() returns a Promise that resolves after all background loads complete"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-performance-reviewer"  # async parallelism + load-time perf budget
+  - "ACOS-integration-reviewer"  # extract() signature change is a downstream-API event
+
+# Effort estimate
+effort_estimate: "M"
+# Rationale: ~45min extractor w/ async + parallel-load logic; ~30min walker async-aware update +
+# extract() signature flip; ~30min fixtures (PNG files + HTML); ~30min tests covering happy path + failure modes.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Signature change is intentional. After this slice, extract() is
+  async — slices 06 and 07 will keep it async. STORY-003-002 (canvas)
+  will treat extract() as a Promise from day one; the type contract
+  defined in slice 01 already accommodates this (return type is the
+  same array shape; only the wrapping Promise is new).
+
+  data: URI test is important — Brad's pipeline sometimes inlines
+  small backgrounds (gradients, textures) as data: URIs to avoid
+  extra HTTP requests.

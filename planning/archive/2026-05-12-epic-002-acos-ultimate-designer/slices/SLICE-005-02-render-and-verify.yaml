@@ -1,0 +1,81 @@
+slice_id: "SLICE-005-02"
+story_id: "STORY-005"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Render-and-verify pipeline"
+objective: |
+  Build scripts/render-and-verify.sh that (1) runs loan-doc's render-doc-audit.py
+  on the output file to produce 200 DPI PNGs per page in session visual-audit/
+  directory, (2) spawns a Task(visual-reviewer) agent hard-pinned to model=opus
+  with the visual-checklist.yaml + paths to all PNGs, (3) agent reads every PNG
+  via Read tool, evaluates every criterion, produces visual-defects.yaml, (4)
+  returns PASS/FAIL verdict with defect list.
+
+acceptance_criteria:
+  - "[ ] scripts/render-and-verify.sh exists, bash, executable"
+  - "[ ] Invokes: python3 /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/render-doc-audit.py <output_file> --output-dir <session>/visual-audit/iteration-<N>/ --dpi 200"
+  - "[ ] On render success, spawns a Claude Task agent with: model='opus' (HARDCODED — not inherited from session config), prompt template referencing visual-checklist.yaml + all PNG paths + iteration context"
+  - "[ ] Agent prompt instructs: 'Read every PNG via Read tool. For each criterion in visual-checklist.yaml, assess pass/fail. If fail, note page number + specific observation + use fix_instruction_template. Output YAML: {iteration: N, criteria_results: [{id, page, status, severity, observation, fix_instruction}], verdict: pass|fail, failed_items: []}'"
+  - "[ ] Agent output written to <session>/visual-audit/iteration-<N>/visual-defects.yaml"
+  - "[ ] render-and-verify.sh prints verdict to stdout, exit 0 if PASS, exit 1 if FAIL"
+  - "[ ] --iteration flag specifies which iteration number this is (for Wigum loop coordination)"
+  - "[ ] --format flag (pdf|pptx) routes to the right render-doc-audit.py invocation (different flags per format)"
+  - "[ ] --checklist flag (optional) lets user override the default visual-checklist.yaml path"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-005-01"
+      what_it_provides: "visual-checklist.yaml with ~25 coffee-table criteria"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-and-verify.sh"
+
+files_prohibited:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/render-doc-audit.py"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/wigum-loop.py"
+
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Opus pinning is CRITICAL. Sonnet misses subtle coffee-table defects: editorial spacing, photo rhythm cadence, italic accent consistency. Documented in story notes — this is a hard requirement, not a preference."
+  - "The Task() agent spawn is the point where model pinning happens. Look at how loan-doc's phase4-validate.md spawns its visual reviewer — use the same mechanism, but replace the checklist with ours and do NOT import any benchmark-criteria.yaml content."
+  - "render-doc-audit.py is reused at the script level — invoked, not imported, not modified."
+  - "Iteration naming: iteration-01/, iteration-02/, etc. The Wigum loop (SLICE-005-03) consumes the iteration number and decides whether to loop back."
+  - "Screenshot-only evaluation: the agent prompt must NOT include any path to the source HTML. The reviewer only sees pixels."
+
+technical_requirements:
+  - "bash 4+; python3, imagemagick (pdftoppm alternative) for PDF render if render-doc-audit.py uses it"
+  - "Task() agent spawn uses explicit model='opus' argument — verified by grepping the spawned prompt or by reading the script's Task() call"
+  - "Agent token budget per iteration: realistic estimate ~50k tokens (25 criteria × all pages × ~1k tokens each including screenshot references)"
+
+testing_requirements:
+  - "Integration: run render-and-verify.sh on a known-bad PDF (e.g., missing italic accents), verify defects yaml flags the typography criterion"
+  - "Integration: run on a known-good PDF (v3 reference), verify verdict is PASS"
+  - "Unit: spawn-agent call in the script includes model='opus' — grep the script, this must be a literal string not a config-lookup"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This slice is the central nervous system of STORY-005. The wiring here
+  — render → PNG → agent → defects YAML — is what makes the whole Wigum
+  loop possible. Budget time for debugging the agent prompt; the first
+  draft will produce ambiguous or overconfident assessments.

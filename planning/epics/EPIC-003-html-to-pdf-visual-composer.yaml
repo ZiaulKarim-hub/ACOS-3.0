@@ -1,0 +1,260 @@
+# Epic Plan — HTML-to-PDF Visual Composer MVP
+# Created by The Architect (Opus 4.7, /acos-plan epic, premium profile)
+
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-23"
+created_by: the-architect
+status: "planning"
+
+# Epic overview
+title: "HTML-to-PDF Visual Composer MVP"
+description: |
+  A single-user, browser-hosted visual editor that ingests an HTML file,
+  decomposes it into a freeform "parts bin" of draggable containers
+  (text, images, tables, inline SVG charts, background images), and lets
+  the user lay them out across multi-page PDF canvases. A four-stage AI
+  polish pipeline (snap-to-grid → typography harmonization → sizing
+  equalization → Opus 4.7 vision review) auto-corrects approximate
+  placements into a finished PDF that meets institutional quality
+  standards.
+
+  When this epic is complete, the editor replaces the current
+  hand-composed HTML → Puppeteer-rendered PDF workflow at Okoa Capital.
+  Brad's design system remains the source of style; the editor handles
+  the layout, composition, and quality-assurance steps that are
+  currently manual.
+
+# Why this epic matters
+value_proposition: |
+  The current OKOA document workflow requires Zee to hand-compose HTML
+  against Brad's design system and run html-to-pdf.js, performing all
+  layout decisions manually inside the HTML source. This is slow and
+  error-prone — a 10-page report can take hours, and small layout
+  inconsistencies (font sizes drifting by 0.3pt, image widths off by
+  4px, gutters of unequal width) are common.
+
+  This epic delivers a tool where the layout step is visual, gestural,
+  and AI-polished. Single-user benefit: 10-page Brad-style reports
+  composed in 15 minutes that ship to credit-committee / investor /
+  counterparty audiences without further edits.
+
+# Acceptance criteria for the entire epic
+acceptance_criteria:
+  - "[ ] Opening an OKOA Brad-style HTML report exposes every visible element as a draggable container in the parts bin (hierarchical tree + search)"
+  - "[ ] Drag-and-drop placement and corner-resize on the multi-page Letter portrait canvas behave per the gesture model: text reflows, images/SVG scale aspect-locked, tables scale uniformly, backgrounds cover-fit with focal-point control"
+  - "[ ] Numeric font-size input + keyboard shortcuts (+/-) function on selected text containers"
+  - "[ ] Snap-to-grid (8px) plus magnetic inter-container alignment guides render during drag"
+  - "[ ] Saving a .layoutproj file and reopening it restores layout state, container positions/sizes, font-size overrides, polish-pipeline log, and brand-deviation flags with identical fidelity"
+  - "[ ] Clicking 'Finalize' executes the 4-stage polish pipeline (snap → typography → sizing → Opus vision loop) end-to-end without errors on a 10-page document"
+  - "[ ] Brand-deviation sidebar populates from polish-pipeline log and accurately shows each deviation, its delta, and rationale"
+  - "[ ] PDF export via Node sidecar (reusing existing html-to-pdf.js) produces output at fidelity equivalent to the current baseline"
+  - "[ ] PRIMARY SUCCESS GATE: a real OKOA 10-page Brad-style report is laid out in ≤15 minutes and ships to stakeholders without further edits"
+  - "[ ] QUALITY GATE: output PDF scores ≥95/100 average on the acos-doc-design-qa 10-dimension rubric for the v1 acceptance document"
+
+# Dependencies
+dependencies:
+  epics: []
+  external:
+    - "Brad design system (acos-document-design-brad skill) — source of typographic scale, palette, spacing grid"
+    - "html-to-pdf.js Puppeteer pipeline — reused as Node sidecar for final PDF export"
+    - "acos-doc-design-qa skill engine — reused as the stage-4 Opus vision-review loop"
+    - "Anthropic Messages API (Claude Opus 4.7, subscription auth via Claude Code Max plan)"
+    - "Node.js runtime + Vite dev server + Chrome/Safari (already in user environment)"
+
+# Story breakdown
+stories:
+  - story_id: "STORY-003-001"
+    title: "HTML ingest + parts-bin extractor"
+    description: |
+      Pure data layer. DOM walker that takes an HTML file path, parses
+      with browser DOMParser (sandboxed, scripts disabled), and emits a
+      typed list of "container" records — one per visible element. Each
+      record carries node-type (text/image/svg/table/bg), source-DOM
+      path, computed styles (font-size, family, color, dimensions),
+      inner content, and Brad-class metadata when present. No UI in
+      this story; testable via unit tests on Brad fixture HTML.
+    priority: "high"
+    effort: "M"
+    dependencies: []
+
+  - story_id: "STORY-003-002"
+    title: "Two-pane shell + canvas + drag-drop + corner gestures"
+    description: |
+      Core editor UI. Vite + React + TypeScript shell. Right pane
+      renders the parts-bin hierarchy with collapse + search +
+      thumbnail previews. Left pane renders multi-page US Letter
+      portrait canvas. react-rnd (or Konva fallback) provides
+      draggable + corner-resizable boxes with the five gesture
+      variants: text-reflow, image-scale (aspect-locked),
+      SVG-scale-vector, table-scale-uniform-with-column-handles,
+      background-cover-fit-with-focal-point. State managed by Zustand
+      or Redux Toolkit (chosen in slice planning).
+    priority: "high"
+    effort: "L"
+    dependencies:
+      - "STORY-003-001"
+
+  - story_id: "STORY-003-003"
+    title: "Numeric font controls + snap-grid + magnetic guides + project file persistence"
+    description: |
+      Polish UX layer. Per-container numeric font-size input in right
+      sidebar with +/- keyboard shortcuts. Background 8px grid toggle
+      and snap-to-grid behavior on drag. Magnetic alignment guides
+      that render when edges/centers align with other containers or
+      page edges. JSON project file format (.layoutproj) with schema
+      versioning, save-as-explicit + open-by-path, source-HTML SHA-256
+      hash for re-ingest detection.
+    priority: "high"
+    effort: "M"
+    dependencies:
+      - "STORY-003-002"
+
+  - story_id: "STORY-003-004"
+    title: "Four-stage polish pipeline (snap → typography → sizing → Opus vision loop)"
+    description: |
+      The product's magic moment. Triggered by a "Finalize" button.
+      Stage 1 (deterministic, instant): snap-to-grid and edge
+      alignment. Stage 2 (heuristic, fast): typography harmonization
+      across same-class containers per page. Stage 3 (heuristic,
+      fast): sizing equalization for same-class image containers.
+      Stage 4 (Opus 4.7 vision review): reuses the acos-doc-design-qa
+      engine — screenshot each page, score 10 dimensions, loop until
+      100/100 per page or 5 iterations. Pipeline log captured for the
+      deviation sidebar in STORY-003-005.
+    priority: "high"
+    effort: "L"
+    dependencies:
+      - "STORY-003-003"
+
+  - story_id: "STORY-003-005"
+    title: "Brand-deviation sidebar + PDF export integration"
+    description: |
+      Final mile. Renders the polish-pipeline log as a "Brand drift"
+      sidebar: each deviation from Brad's design tokens, its delta
+      magnitude, the visual-score rationale, and Approve / Snap-back
+      controls per deviation. PDF export wiring: serializes finalized
+      layout to a print-stylesheet HTML and invokes the existing
+      html-to-pdf.js Puppeteer sidecar via Node child process. Output
+      PDF saved alongside the project file. This is the shipping gate
+      — when this story completes, the MVP is shippable end-to-end.
+    priority: "high"
+    effort: "M"
+    dependencies:
+      - "STORY-003-004"
+
+# Execution order
+execution_order:
+  - phase: 1
+    stories: ["STORY-003-001"]
+  - phase: 2
+    stories: ["STORY-003-002"]
+  - phase: 3
+    stories: ["STORY-003-003"]
+  - phase: 4
+    stories: ["STORY-003-004"]
+  - phase: 5
+    stories: ["STORY-003-005"]
+
+# Technical considerations
+technical_notes: |
+  Tech stack (locked by vision document):
+    - Frontend: Vite + React + TypeScript
+    - State: Zustand or Redux Toolkit (decide in STORY-003-002 slice planning)
+    - Canvas + interaction: react-rnd as primary; Konva/react-konva as fallback
+      if richer canvas needs surface; interact.js if multi-touch becomes relevant
+    - HTML parsing: native browser DOMParser (sandboxed)
+    - Charts: inline SVG preserved as-is; html2canvas at 2x DPI as third-party
+      fallback
+    - PDF export: existing html-to-pdf.js Puppeteer pipeline invoked as Node
+      sidecar via child process
+    - AI vision polish: Anthropic Messages API (Opus 4.7) via Claude Code Max
+      subscription auth (no separate API key)
+    - Project file: JSON, schema-versioned, sibling of source HTML
+
+  Polish pipeline ordering is load-bearing:
+    Deterministic stages (snap, edge alignment) MUST run before heuristic
+    stages (typography harmonization, sizing equalization), which MUST run
+    before vision review. Vision review on an un-snapped page produces noisy,
+    contradictory feedback; running it last gives it clean input.
+
+  Parallelization opportunities (deferred unless a second developer joins):
+    STORY-003-005's PDF export wiring is largely independent of polish-pipeline
+    completion — could overlap with the tail of STORY-003-004 if needed. The
+    deviation-sidebar piece of 005 does need 004 done first.
+
+  Reuse over rebuild:
+    - acos-doc-design-qa engine is the stage-4 brain transplant; do NOT
+      reimplement vision-review-loop logic
+    - html-to-pdf.js is the export pipeline; do NOT reimplement Puppeteer
+      orchestration
+    - Brad design tokens drive polish hints; do NOT re-derive typographic
+      scale, palette, or spacing grid
+
+  Risk surfaces (rank-ordered):
+    1. Text-container reflow performance — re-laying 100+ text boxes on every
+       drag frame must stay under 16ms; may require requestAnimationFrame
+       throttling or virtual-scroll-style culling of off-page containers
+    2. SVG-to-PDF fidelity in the existing html-to-pdf.js pipeline — must
+       verify charts render at full vector fidelity, not rasterized
+    3. Opus vision-review cost in real time — 10-page document = 5-15 min
+       wall-clock; UX must communicate progress clearly to avoid "did it
+       freeze?" anxiety
+    4. JSDOM/DOMParser behavior on third-party HTML — generic web pages may
+       contain malformed markup; sandbox must fail-soft, not crash the editor
+
+  Out of scope for this epic (vision document Phase 2 / Future / Excluded):
+    - Threaded text containers (manual continuation only in MVP)
+    - Custom page geometry (Letter portrait only)
+    - Polish-pipeline toggles (always runs all 4 stages)
+    - Brand-deviation batch snap-back
+    - Undo/redo
+    - Alternative-format export (DOCX, EPUB)
+    - Multi-document templates
+    - Live HTML-source sync
+    - AI auto-layout suggestions
+
+# Files likely to be involved
+primary_files:
+  - "apps/visual-composer/"
+  - "apps/visual-composer/src/"
+  - "apps/visual-composer/src/parser/"
+  - "apps/visual-composer/src/editor/"
+  - "apps/visual-composer/src/polish/"
+  - "apps/visual-composer/src/export/"
+  - "apps/visual-composer/sidecar/"
+  - "apps/visual-composer/package.json"
+  - "apps/visual-composer/vite.config.ts"
+  - "apps/visual-composer/tsconfig.json"
+
+# Review considerations
+review_focus:
+  - "Performance: drag latency on text containers (target <16ms / 60fps)"
+  - "Reuse discipline: acos-doc-design-qa and html-to-pdf.js consumed as black-box dependencies, not reimplemented"
+  - "Polish-pipeline ordering: deterministic before heuristic before vision; never reorder"
+  - "Brand-deviation sidebar accuracy: every logged deviation must reproduce on user click-through"
+  - "Sandboxing: scripts disabled on all HTML ingest; no XSS surface"
+  - "Project-file schema versioning: forward-compatibility on reopen"
+  - "PDF export fidelity: must match or exceed current html-to-pdf.js baseline on a Brad reference document"
+
+# Effort estimate
+effort_estimate: "XL"
+
+# Notes
+notes: |
+  Vision basis: memory/source-of-truth/vision-document.md (VISION-HVC-01,
+  created 2026-05-23 via /acos-interview, 4 rounds, Architect-satisfied exit).
+
+  Story decomposition reviewed and approved by user before YAML save.
+  Sequential execution order chosen for single-developer cadence; can be
+  parallelized later if a second developer joins (see technical_notes).
+
+  Scope explicitly excludes all Phase-2/Future/Excluded items from the
+  vision document. User confirmed strict MVP-only scope discipline.
+
+  Polish-pipeline stage 4 reuses Opus 4.7 with no cost ceiling per user's
+  explicit "quality wins" decision in Round 4. Estimated polish cost per
+  10-page document: $5–$30 in Anthropic inference (covered by subscription).
+
+  Next step after this epic file: /acos-plan story (for STORY-003-001) to
+  decompose the HTML ingest + parts-bin extractor into atomic slices.

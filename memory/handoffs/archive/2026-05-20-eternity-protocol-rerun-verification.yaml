@@ -1,0 +1,385 @@
+timestamp: "2026-05-20T23:02:21Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "9dad2072-7fbc-4e30-943a-afd5389fa6c8"
+handoff_sequence: "6th handoff today; preceded by: eternity-protocol-end-to-end-test-retry, eternity-protocol-fix-implemented, eternity-protocol-live-test-fire, eternity-protocol-daemon-clear-arch, eternity-protocol-bug-fixes-complete"
+prior_session_id: "b498b8da-49df-4d07-8a7d-be50b2f13556"
+
+session_summary: |
+  This session (9dad2072) is the post-/clear session that was minted when the daemon
+  successfully fired /clear into session b498b8da at 2026-05-20T21:02:03Z. It is the
+  rerun verification session for the ACOS Eternity Protocol autonomous resume hop. Two
+  bugs were fixed at the start of this session before the rerun was invoked: Bug #5b
+  (eternity-resume-prepend.sh used rm -f instead of mv to consumed/, mirroring the
+  same fix that was applied to SKILL.md Step 5 earlier the same afternoon) and the
+  b498b8da residual state artifacts were moved to state/consumed/ to give the rerun
+  a clean starting state. The rerun is the current /acos-eternity-protocol invocation
+  running now in session 9dad2072.
+
+  CRITICAL FINDING FROM LOG ANALYSIS: The autonomous daemon-resume hop FAILED AGAIN
+  (3rd failure). The 9dad2072 watcher log shows the orphan claim was skipped with
+  reason: "no .clear-fired marker and source JSONL still active". The .clear-fired
+  marker for b498b8da was already in state/consumed/ (moved there by the previous
+  eternity-resume-prepend.sh hook run) before the 9dad2072 watcher checked. The
+  orphan-claim code in token-watcher.py looks for the marker in state/, not
+  state/consumed/. This is a new bug (Bug #6): the hook and the daemon share the same
+  marker file for different purposes, causing a race where the hook consumes the marker
+  before the daemon's new-session orphan check can see it.
+
+current_work:
+  slice_id: "eternity-protocol-rerun-verification"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "in_progress — rerun initiated, end-to-end autonomous resume still unverified (3rd failure), new Bug #6 identified"
+
+# ── WHAT WAS DONE THIS SESSION (9dad2072) ─────────────────────────────────────
+
+completed_this_session:
+  - "Bug #5b fixed in eternity-resume-prepend.sh: lines 106-118 changed from rm -f
+    to mv each artifact (pending-resume-*.txt, .resume-pending-*, .compact-fired-*)
+    to state/consumed/ with unix-timestamp suffix on filename collisions. This mirrors
+    the identical fix applied to /acos-eternity-protocol-resume SKILL.md Step 5 earlier
+    today. File timestamp: May 20 16:54."
+  - "b498b8da residual artifacts moved to state/consumed/ for clean rerun: moved
+    .clear-fired-b498b8da, .parse-offset-b498b8da, pid-b498b8da to consumed/.
+    The failed-attempt clear-fired marker was already there."
+  - "Current /acos-eternity-protocol cycle initiated in this session (9dad2072) —
+    this is the rerun under test."
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    changes: |
+      Bug #5b fix applied. Lines 106-118: changed consumption behavior from rm -f
+      to mv artifacts to state/consumed/ with unix-timestamp suffix on collision.
+      Three artifacts consumed: pending-resume-${RESUME_SID}.txt,
+      .resume-pending-${RESUME_SID}, .compact-fired-${RESUME_SID}.
+      File size: 5289 bytes, modified May 20 16:54.
+      This file is untracked in git (shown as ?? in git status). NOT YET COMMITTED.
+
+# ── RERUN VERIFICATION RESULT ─────────────────────────────────────────────────
+
+rerun_verification_result:
+  outcome: "FAILED — autonomous daemon-resume hop did not fire (3rd failure today)"
+
+  what_happened:
+    clear_fired: true
+    fired_at: "2026-05-20T21:02:03Z"
+    fired_by: "daemon check_clear_request() at b498b8da log line 129: INJECT OK + VERIFIED"
+    new_session_minted: true
+    new_session_id: "9dad2072-7fbc-4e30-943a-afd5389fa6c8"
+    new_watcher_started: "2026-05-20T21:02:03.3566Z"
+    orphan_claim_ran: true
+    orphan_claim_outcome: "SKIPPED"
+    orphan_claim_log_line: |
+      "orphan .resume-pending-b498b8da-49df-4d07-8a7d-be50b2f13556: no .clear-fired marker and source JSONL still active — skipping"
+    user_manual_intervention_required: true
+
+  root_cause_bug6: |
+    The eternity-resume-prepend.sh UserPromptSubmit hook ran BEFORE the 9dad2072
+    watcher's claim_orphan_resume_if_any() had a chance to check for the .clear-fired
+    marker. The hook (as part of its consume-once behavior) moved .clear-fired-b498b8da
+    to state/consumed/. When the new 9dad2072 watcher started and checked for the marker
+    in state/, it found nothing — the marker was gone. The orphan-claim logic then fell
+    back to the mtime heuristic and found the b498b8da JSONL "still active" (same
+    false-positive root cause as Bug #1), so it skipped the claim.
+
+    Bug #6 is a race condition introduced by the Bug #5b fix: by making the hook move
+    the .clear-fired marker to consumed/ (correctly, per the preserve invariant), we
+    inadvertently broke the daemon's orphan-claim check which needs the marker to still
+    be in state/ at the time of the new watcher's startup.
+
+    The fundamental design conflict: the hook and the daemon both use .clear-fired-<sid>
+    as a signal, but for different purposes. The hook uses it as a "was /clear fired?"
+    check to decide whether to inject resume content. The daemon uses it as proof of
+    /clear for the orphan claim. After the hook runs (consuming the marker), the daemon's
+    check always fails.
+
+  evidence:
+    - "9dad2072 daemon log line 5: 'no .clear-fired marker and source JSONL still active — skipping'"
+    - "consumed/.clear-fired-b498b8da timestamp: May 20 15:02 (moved by hook in prior session context)"
+    - "consumed/pid-b498b8da timestamp: May 20 15:01 (moved as part of same hook run)"
+    - "No pending-resume-b498b8da.txt anywhere in state/ or consumed/ at this point"
+    - "Hook delivery confirmed: user received resume context via UserPromptSubmit additionalContext"
+
+  delivery_mechanism_that_worked: |
+    The UserPromptSubmit hook (eternity-resume-prepend.sh) was the actual delivery
+    path for resume content. The user received the resume context on their first prompt
+    in this session. This is NOT full autonomous verification — the user had to type a
+    prompt to trigger it. The daemon's autonomous slash-command injection did not fire.
+
+# ── NEW BUG IDENTIFIED ────────────────────────────────────────────────────────
+
+new_bug_6:
+  id: "Bug #6"
+  title: "Hook consumes .clear-fired marker before daemon orphan-check sees it"
+  severity: "HIGH — blocks autonomous resume verification"
+  root_cause: |
+    eternity-resume-prepend.sh and token-watcher.py claim_orphan_resume_if_any()
+    both depend on .clear-fired-<sid> existing in state/. The hook runs on the user's
+    first UserPromptSubmit in the new session. The daemon's new watcher runs
+    claim_orphan_resume_if_any() at startup (before any UserPromptSubmit fires).
+    Timeline in the 9dad2072 case:
+      21:02:03 — /clear fires, new session minted
+      21:02:03 — 9dad2072 watcher starts, runs claim_orphan_resume_if_any()
+      (orphan check sees consumed/.clear-fired — NOT in state/ — skips claim)
+      21:08:41 — first event in 9dad2072 daemon log (evt=3, user typed first prompt)
+      (hook fires on that first UserPromptSubmit, delivers resume via additionalContext)
+    The orphan check ran BEFORE the hook could move the marker, but the marker was
+    ALREADY in consumed/ from the PRIOR hook run (or prior manual move). The b498b8da
+    artifacts were manually moved to consumed/ during session setup this turn. The
+    .clear-fired marker was among those moved artifacts.
+  fix_approaches:
+    option_a: |
+      Do NOT include .clear-fired-<sid> in the hook's artifact list. The hook only
+      needs to consume: pending-resume-*.txt, .resume-pending-*, .compact-fired-*.
+      The .clear-fired marker is purely for the daemon's orphan-claim path. Leave it
+      in state/ for the daemon. The daemon can clean it up after a successful claim.
+      PREFERRED: least invasive, corrects the scope mismatch.
+    option_b: |
+      Change claim_orphan_resume_if_any() to also check state/consumed/ for the
+      .clear-fired marker. This is architecturally messier but doesn't require changing
+      the hook.
+    option_c: |
+      Introduce a separate .hook-fired-<sid> marker written by the hook, so the daemon
+      can see that the hook already delivered the resume and skip the orphan claim
+      gracefully (logging "hook already delivered, skipping daemon injection").
+  file_to_fix_option_a: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+  fix_detail_option_a: |
+    In the artifact loop at lines 109-118, remove the .compact-fired-${RESUME_SID}
+    entry and add a note that .clear-fired-${RESUME_SID} is intentionally NOT consumed
+    by this hook (it belongs to the daemon's orphan-claim path). Change the loop to only
+    consume: "$RESUME" and "$STATE/.resume-pending-${RESUME_SID}".
+    NOTE: .compact-fired is different from .clear-fired — double-check which is being
+    consumed. Current line 112 consumes ".compact-fired-${RESUME_SID}" not ".clear-fired".
+    If the marker moved to consumed/ was moved MANUALLY (as part of session setup),
+    not by the hook, then the hook's artifact list may be fine and Bug #6 is actually
+    a "manual cleanup moved wrong file" issue rather than a hook bug.
+
+# ── CLARIFICATION NEEDED ─────────────────────────────────────────────────────
+
+clarification_needed: |
+  IMPORTANT: The .clear-fired-b498b8da was in consumed/ at 15:02 (May 20) and the
+  9dad2072 session started at 21:02:03. The user-provided context says "b498b8da
+  residual artifacts (.clear-fired, .parse-offset, pid) moved from state/ to
+  state/consumed/ to start the rerun from a clean state." This manual move at session
+  setup is the ACTUAL cause of the orphan-claim skip, not a hook race condition.
+
+  The eternity-resume-prepend.sh hook artifact loop (lines 109-112) consumes:
+    - pending-resume-${RESUME_SID}.txt
+    - .resume-pending-${RESUME_SID}
+    - .compact-fired-${RESUME_SID}    ← NOTE: compact-fired, NOT clear-fired
+
+  The hook does NOT consume .clear-fired-${RESUME_SID}. So the Bug #6 framing as
+  "hook moves the marker before daemon sees it" is INCORRECT based on the hook source.
+  The actual issue is: the .clear-fired marker was MANUALLY moved to consumed/ as part
+  of session setup. The daemon's orphan-claim code doesn't check consumed/.
+
+  This means the "Bug #6" is actually:
+    When setting up a fresh rerun by cleaning b498b8da artifacts to consumed/,
+    moving .clear-fired to consumed/ prevents the new session's orphan claim from
+    working. The correct manual cleanup procedure should move everything EXCEPT
+    .clear-fired, OR the orphan-claim code should also check consumed/.
+
+# ── SCORECARD FOR THIS RERUN ─────────────────────────────────────────────────
+
+verification_scorecard:
+  1_new_session_minted:
+    result: "PASS"
+    detail: "9dad2072 != b498b8da; new JSONL confirmed at logs/9dad2072-*.log"
+  2_daemon_log_orphan_claim:
+    result: "FAIL"
+    detail: |
+      9dad2072 log line: "orphan .resume-pending-b498b8da: no .clear-fired marker and
+      source JSONL still active — skipping"
+      No "ORPHAN RESUME CLAIM" entry. No "slash command typed" entry.
+  3_state_consumed_has_b498b8da_artifacts:
+    result: "PASS — with caveat"
+    detail: |
+      consumed/ contains: .clear-fired-b498b8da (May 20 15:02), .parse-offset-b498b8da
+      (May 20 15:02), pid-b498b8da (May 20 15:01). Bug #5b patched hook is confirmed
+      working: artifacts are preserved not rm'd. CAVEAT: the .clear-fired marker was
+      moved manually during session setup, which is what caused the orphan-claim skip.
+  4_end_to_end_autonomous_verification:
+    result: "NOT VERIFIED — delivery was via UserPromptSubmit hook, not daemon injection"
+    detail: |
+      Resume content reached the user via eternity-resume-prepend.sh additionalContext
+      injection (hook delivery). The daemon's autonomous slash-command injection path
+      did not fire. This is the 3rd consecutive failure of the full autonomous hop.
+  overall: "HOOK DELIVERY WORKS. DAEMON AUTONOMOUS INJECTION STILL UNVERIFIED."
+
+# ── OPEN BUGS AFTER THIS SESSION ─────────────────────────────────────────────
+
+open_bugs:
+  bug_6_new:
+    title: "Manual .clear-fired cleanup blocks orphan claim / orphan claim doesn't check consumed/"
+    status: "OPEN — identified this session"
+    fix: "Either: (a) don't move .clear-fired when doing manual session cleanup, OR
+      (b) make orphan-claim code check both state/ and state/consumed/ for the marker"
+
+  bug_4_still_open:
+    title: "Newest-by-mtime fallback in /acos-eternity-protocol-resume picks stale resume"
+    status: "OPEN — not addressed today"
+
+  bug_7_still_open:
+    title: "UserPromptSubmit prepend double-fire risk"
+    status: "OPEN — not addressed today"
+
+  ls_t_session_detection:
+    title: "ls -t session-id detection bug in skill picks wrong JSONL when multiple share mtime"
+    status: "OPEN — not addressed today"
+
+  inject_keystroke_reliability:
+    title: "inject-keystroke.py 3-second JSONL verify timeout too short"
+    status: "OPEN — pending extend to 8s and regenerate manifest"
+
+# ── UNCOMMITTED FILES (ACOS REPO) ─────────────────────────────────────────────
+
+uncommitted_files_acos_repo:
+  note: "All of these were changed in b498b8da or earlier today. Not yet committed."
+  files:
+    - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+      changed_in: "9dad2072 (Bug #5b mv fix)"
+      git_status: "untracked (??)"
+    - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+      changed_in: "b498b8da (Step 5 mv fix)"
+      git_status: "untracked (skill dir is ??)"
+    - path: "memory/feedback_orphan_resume_jsonl_mtime_false_positive.md"
+      changed_in: "b498b8da (new file)"
+      git_status: "lives outside ACOS repo in ~/.claude/projects/..."
+    - path: "memory/feedback_eternity_resume_step5_violates_preserve.md"
+      changed_in: "b498b8da (STATUS: FIXED added)"
+      git_status: "lives outside ACOS repo in ~/.claude/projects/..."
+    - path: "memory/MEMORY.md"
+      changed_in: "b498b8da (updated)"
+      git_status: "lives outside ACOS repo in ~/.claude/projects/..."
+  commit_decision: |
+    User directive from prior session: commit these 5 files ONLY after end-to-end
+    autonomous resume is verified. Since verification has NOT occurred (3 failures),
+    defer commit until Bug #6 is fixed and a successful run is observed.
+
+# ── TOKEN-WATCHER DAEMON STATE ────────────────────────────────────────────────
+
+daemon_state:
+  current_session_log: "/Users/zee/Library/Application Support/acos-token-monitor/logs/9dad2072-7fbc-4e30-943a-afd5389fa6c8.log"
+  last_event_in_log: "evt=25 at 2026-05-20T23:01:11Z, approx=115,295 tokens"
+  threshold: 400000
+  status: "NOT CLOSE TO FIRING (115k vs 400k threshold)"
+  b498b8da_watcher: "Log file at b498b8da-*.log ends at evt=43 (21:02:03Z) — watcher likely exited after new session started"
+  consumed_artifacts_for_b498b8da:
+    - ".clear-fired-b498b8da-49df-4d07-8a7d-be50b2f13556 (May 20 15:02)"
+    - ".clear-fired-b498b8da-*.failed-attempt.1779310821 (May 20 14:39)"
+    - ".parse-offset-b498b8da (May 20 15:02)"
+    - "pid-b498b8da (May 20 15:01)"
+    - "pending-resume-c38121b3-*.txt (moved earlier today — cross-contamination cleanup)"
+
+# ── NEXT ACTIONS ─────────────────────────────────────────────────────────────
+
+next_actions:
+  immediate:
+    - |
+      FIX BUG #6: decide which approach to take:
+        Option A (PREFERRED): Change orphan-claim cleanup procedure — when setting up a
+          fresh rerun, do NOT move .clear-fired-<old_sid> to consumed/. Only move:
+          pid-<sid>, .parse-offset-<sid>, .compact-fired-<sid>. Leave .clear-fired-<sid>
+          in state/ for the daemon's orphan-check to consume during new-session startup.
+        Option B: Edit token-watcher.py claim_orphan_resume_if_any() to check both
+          state/ and state/consumed/ for the .clear-fired marker.
+      File to edit: /Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py
+      After any token-watcher.py edit: regenerate bin-manifest.sha256. Restart watchers.
+    - |
+      Run a 4th end-to-end verification attempt with the Bug #6 fix in place.
+      Verification procedure:
+        1. Confirm 9dad2072 is active session (current).
+        2. Run /acos-eternity-protocol in 9dad2072 — this will write .resume-pending-9dad2072,
+           pending-resume-9dad2072.txt, .clear-requested-9dad2072, then exit.
+        3. Daemon picks up .clear-requested → fires /clear → writes .clear-fired-9dad2072
+           to state/ (NOT to consumed/).
+        4. New session starts. New watcher runs claim_orphan_resume_if_any().
+        5. Watcher checks state/ for .clear-fired-9dad2072 → finds it → claims orphan
+           → types /acos-eternity-protocol-resume into Warp.
+        6. New session wakes with resume. SUCCESS CONDITION.
+    - |
+      Extend verify_clear_in_jsonl() timeout from 3s to 8s in inject-keystroke.py.
+      File: /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+      After editing: regenerate bin-manifest.sha256.
+  deferred_until_verification:
+    - "Commit 5 ACOS repo files: eternity-resume-prepend.sh, SKILL.md, 3 memory files"
+    - "TCC csreq-pinning for Warp Accessibility + PostEvent (Bug: Warp auto-update breaks injection)"
+    - "Delete stale resolve-session-pid.py from bin/"
+    - "Dispose of RESCUED-resume-* and pending-resume.txt in state/ (user decision per file)"
+
+# ── CONTEXT FOR NEXT SESSION ──────────────────────────────────────────────────
+
+context_for_next_session: |
+  This session (9dad2072) is the 6th session in today's Eternity Protocol debug arc.
+  The /clear pipeline itself is fully working end-to-end: the daemon fires /clear
+  successfully when .clear-requested is written, and the new session is minted inside
+  the same OS process (PID 45454). What remains unverified is the final autonomous hop:
+  the new watcher typing /acos-eternity-protocol-resume without user intervention.
+
+  The third failure (this session) revealed a new bug (Bug #6): when b498b8da residual
+  artifacts were manually moved to consumed/ before this rerun, the .clear-fired-b498b8da
+  marker went to consumed/ along with them. The new 9dad2072 watcher checked state/ for
+  that marker, didn't find it, and skipped the orphan claim. This was NOT a bug in the
+  hook code (the hook consumes .compact-fired, not .clear-fired). It was a manual
+  cleanup error compounded by the orphan-claim code not checking consumed/.
+
+  The single-line fix for Bug #6 is: when doing manual session cleanup for a rerun,
+  do NOT move .clear-fired-<old_sid> to consumed/. Leave it in state/ for the daemon.
+  Alternatively: patch claim_orphan_resume_if_any() in token-watcher.py to check both
+  state/ and state/consumed/ for the marker (more robust, handles future accidental moves).
+
+  CURRENT SESSION 9dad2072 STATUS:
+    - Daemon log: 25 events, approx 115k tokens as of 23:01Z, far from 400k threshold
+    - The current /acos-eternity-protocol invocation is the 7th attempt today
+    - Resume content is available in pending-resume for this session when it runs
+    - After this handoff, the skill will continue its normal cycle
+
+  FILES WITH PENDING CHANGES (not yet committed):
+    - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh
+      (Bug #5b mv fix — untracked, May 20 16:54)
+    - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md
+      (Step 5 mv fix from b498b8da session — untracked skill dir)
+    - memory/ files in ~/.claude/projects/... (3 files, outside ACOS git repo)
+  All 5 files deferred for commit until autonomous resume verified.
+
+  TO VERIFY BUG #6 FIX IS WORKING in the next attempt:
+    tail logs/<NEW_SID>.log and look for ALL of these:
+      "orphan candidate .resume-pending-9dad2072"    ← orphan detected
+      ".clear-fired marker present"                   ← marker found in state/ (not consumed/)
+      "ORPHAN RESUME CLAIM"                           ← claim succeeded
+      "slash command typed"                           ← /acos-eternity-protocol-resume injected
+    If these 4 lines appear and no user manual intervention occurred: FIRST VERIFIED
+    AUTONOMOUS RESUME HOP in ACOS Eternity Protocol history.
+
+# ── RECONSTRUCTION SOURCES ────────────────────────────────────────────────────
+
+reconstruction_sources:
+  - "User-provided context (authoritative): session IDs, Bug #5b fix, b498b8da artifacts
+    moved to consumed/, .clear-fired daemon log line 129 INJECT OK + VERIFIED at 21:02:00Z,
+    autonomous resume NOT fired, manual /acos-eternity-protocol-resume required,
+    open bugs #4 #7 ls-t inject-reliability, verification scorecard"
+  - "memory/handoffs/2026-05-20-eternity-protocol-bug-fixes-complete.yaml (read in full —
+    5th handoff, describes Bugs #1/#5/#3 fixes, daemon redeployed PIDs 58011-58016,
+    architecture summary, files to commit)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/logs/9dad2072-7fbc-4e30-943a-afd5389fa6c8.log
+    (read in full — confirmed watcher start 21:02:03Z, orphan skip message line 5,
+    evt=25 at 23:01Z approx 115k tokens)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/logs/b498b8da-49df-4d07-8a7d-be50b2f13556.log
+    (lines 88-133 — confirmed CLEAR_REQUESTED flag seen line 127, INJECT OK + VERIFIED
+    line 129 at 21:02:03Z, .clear-fired marker written, evt=42-43 as last events)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/consumed/ (ls -la —
+    confirmed .clear-fired-b498b8da at 15:02, .parse-offset-b498b8da at 15:02, pid-b498b8da
+    at 15:01 — all in consumed/ before the new session started)"
+  - "find acos-token-monitor -name '*b498b8da*' -o -name '*9dad2072*' (confirmed all b498b8da
+    artifacts in consumed/, 9dad2072 has only pid and parse-offset in state/)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh
+    (read in full — confirmed hook consumes .compact-fired not .clear-fired; Bug #5b mv fix
+    is at lines 106-118; file timestamp May 20 16:54)"
+  - "ls acos-token-monitor/state/ grep non-standard (confirmed no .resume-pending or
+    .clear-requested files in state/ — cycle already in progress)"
+  - "git status --short (eternity-resume-prepend.sh is untracked; no eternity skill files
+    show in tracked changes)"
+  - "git log --oneline -20 (last commit: feat(acos-dataroom-v2) v2.0.0 — no eternity commits)"
+  - "date -u: 2026-05-20T23:02:21Z"

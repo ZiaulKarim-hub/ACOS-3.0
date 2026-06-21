@@ -1,0 +1,100 @@
+# Slice Plan — Report + coverage/limits footer + dry-run hardening (Demo 3)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-11-report-coverage-dryrun"
+story_id: "STORY-APS-11"
+epic_id: "EPIC-APS-11"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Report + coverage/limits footer + dry-run hardening (Demo 3)"
+objective: |
+  Render the full Markdown dossier and harden the pipeline with a real-name dry run. The
+  dossier: compliance header -> High-confidence tier -> Candidate tier -> per-parcel
+  {APN, county/state, situs, owner-of-record, mailing, matched-through evidence chain,
+  confidence score + signals, per-record freshness, source URLs} -> estimated portfolio
+  value/debt/equity -> "Coverage & limits" footer (counties searched, hops reached, hubs
+  pruned, stated limitations incl. licensing-out-of-scope) -> manual-review flags, with
+  hedged language throughout. The dry run probes real portal availability and the
+  false-positive rate at the 75/50 cutoffs, validates the audit trail, and re-validates
+  H1/H2/H3.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] The dossier renders all required sections (compliance header -> tiers -> per-parcel chain -> estimated portfolio -> coverage/limits footer -> review flags) — pass: structure test"
+  - "[ ] Hedged language is used throughout; 'owns' only with direct title support — pass: hedged-language test (REQUIRED)"
+  - "[ ] The coverage/limits footer reports counties searched, hops reached, hubs pruned, and stated limitations (incl. licensing-out-of-scope) — pass: coverage-footer test (REQUIRED)"
+  - "[ ] Per-record freshness + source URLs appear on every parcel — pass: provenance/freshness test"
+  - "[ ] A documented real-name dry run records portal availability + the false-positive rate at 75/50 and re-validates H1/H2/H3 — pass: dry-run findings recorded"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-10-equity-rollup"
+      what_it_provides: "Per-parcel + portfolio estimated equity figures the dossier reports"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/SKILL.md"   # report-render + coverage-footer section
+  - ".claude/skills/acos-property-search/scripts/tests/test_report.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-11-report-coverage-dryrun.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/rollup.py"   # owned by slice-10
+  - ".claude/skills/acos-property-search/scripts/score.py"    # owned by slice-09
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-11-report-coverage-dryrun.md"
+  - "Demo 3: the full ranked dossier. Hedged language throughout; every equity figure labeled estimated."
+  - "Gotcha (hard gates): hedged-language and coverage/limits-footer tests are REQUIRED — any over-claim, or a footer missing the counts + stated limitations, = REJECT."
+  - "The dry run probes REAL portal availability + the false-positive rate at the 75/50 cutoffs (the empirical unknowns routed here from slice-00) and re-validates H1/H2/H3."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only render"
+  - "Assemble slice-09 scores + slice-10 equity + flags + coverage stats into the Markdown dossier; enforce hedged language"
+  - "Coverage/limits footer from the synthesizer prune log + counties/hops + stated limitations (PLAN.md sec 17: no-free-national-search, name-blocked states, big-county gating, estimates-not-AVMs, licensing out of scope)"
+  - "Documented real-name dry run recording portal availability + false-positive rate; re-validate H1/H2/H3"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA scans the rendered dossier for un-hedged claims — any 'definitely owns' / bare 'owns' without title = REJECT"
+  - "QA confirms the coverage/limits footer reports counties/hops/hubs-pruned AND the stated limitations"
+  - "QA independently confirms every parcel row carries source URLs + freshness"
+  - "QA reviews the dry-run findings: portal availability + false-positive rate recorded, H1/H2/H3 re-validated"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-11-report-coverage-dryrun.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).
+  This is Demo 3 (the final ranked dossier) for the v1 MVP.

@@ -1,0 +1,263 @@
+timestamp: "2026-05-12T18:57:55Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This is the second handoff written on 2026-05-12 for the OKOA Private Credit Income
+  Fund Prospectus V003 project. The first handoff (2026-05-12-emergency-handoff.yaml)
+  captured Stage 1 (data accuracy pass, ~90 edits, ~20 page doc). This handoff
+  captures Stage 3+ layout and positional QA work performed after that point.
+  Eight layout/visual fixes were applied to V003.html across pages 3, 6, 8, 11, 17, and
+  20. Three Unsplash case-study photos were embedded in case-study sidebars (pages
+  13-15) after an initial script bug required a fix. Four page-16 design variants were
+  generated and rendered as PNGs/PDF in /tmp — the user has NOT yet selected one.
+  The working file is now 6.4 MB (up from 4.8 MB at Stage 1) due to embedded photos.
+  The last PDF render (OKOA_Prospectus_WIP.pdf, 7.0 MB) was written at 12:55 today.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+project_context:
+  name: "OKOA Private Credit Income Fund — Prospectus Q2 2026"
+  working_file: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.html"
+  working_file_size_bytes: 6394151
+  pdf_output: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus_WIP.pdf"
+  pdf_size_bytes: 7027488
+  pdf_last_rendered: "2026-05-12 ~12:55 local"
+  page_count: 20
+  render_command: >
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome
+    --headless=new --no-pdf-header-footer
+    --user-data-dir=/tmp/chrome-headless-okoa-$$
+    --disable-gpu
+    --print-to-pdf="/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus_WIP.pdf"
+    "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.html"
+  render_notes: >
+    Sleep 20-25s after launching Chrome (5.5MB+ HTML needs the longer wait).
+    Then pkill -9 -f "Google Chrome.*print-to-pdf" + pkill -9 GoogleUpdater.
+    Check stderr "X bytes written to file" — that is the authoritative success
+    signal, not the exit code.
+  path_warning: >
+    Desktop is TCC-blocked. ALL file I/O must use
+    /Users/zee/Documents/OKOA/OKOA Prospectus/ as working directory.
+    Never reference ~/Desktop/ paths.
+  backups:
+    - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage2-pre-map.html"
+    - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage3-pre-imgswap.html"
+  prior_backups_stage1:
+    - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage1.html"
+    - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage1-pass1.html"
+    - through pass5
+
+authoritative_numbers:
+  founded: "2021"
+  hq: "Park City, UT"
+  address: "1441 West Ute Blvd #130, Park City, UT 84098"
+  phone: "(702) 582-5456"
+  pref_return: "8%"
+  mgmt_fee: "1.5% per annum"
+  initial_lockup: "1 year"
+  target_fund_size: "$300,000,000"
+  committed: "$172M"
+  outstanding: "$164.72M"
+  active_loans: 32
+  paid_off_loans: 86
+  total_originated: 118
+  geographic_scope: "US-wide (11 states + Puerto Rico; 118 loans · 86 paid-off · 30 active · 2 in process)"
+
+completed_this_session:
+  - "Page 3 overflow fix: card body text trimmed to eliminate overflow below page boundary"
+  - "Page 6 font consistency: first body paragraph changed from body-lg (font-weight 300) to body-md (font-weight 400)"
+  - "Page 6 Firm Snapshot grid decongested: grid columns 0.7fr/1.3fr, 12px row padding, 26/28px outer padding, address split to 2 clean lines"
+  - "Page 8 team bio baselines aligned: .team-card { display:flex; flex-direction:column } + .team-summary { flex-grow:1 } to equalize bio card heights across the grid"
+  - "Page 11 map title overlap fixed: regenerated okoa_loan_map.png without matplotlib title overlay (build_loan_map.py revised); added HTML title above img tag (Cormorant Garamond serif '118 loans · 11 states + Puerto Rico' + IBM Plex Mono subtitle '86 paid-off · 30 active · 2 in process')"
+  - "Page 17 Key Terms table: padding reduced 10px→7px, 2px heavier border on last row, 0.25in bottom margin added"
+  - "Page 20 footer: logo shrunk to 92×24px, mono font 8.5px, letter-spacing 0.6px, right-aligned 2-line layout, 12px padding-top"
+  - "Pages 13/14/15 case-study photos embedded in spec sidebars (Unsplash, commercial license):"
+  - "  CS01 (page 13, Murdock-Oberland): cs01_utah_home_Xpc6kTZkGzo.jpg (Chandler Cruttenden — Utah residential with Wasatch backdrop)"
+  - "  CS02 (page 14, Lux Portfolio): cs02_infinity_pool_MA82mPIZeGI.jpg (Roberto Nickson — tropical luxury resort with infinity pool)"
+  - "  CS03 (page 15, Capella English Hotel): cs03_clocktower_town_M6PkXg4q2uo.jpg (Olivia Hutcherson — Park City Main St brick + ski hill)"
+  - "  Photos inserted between .case-specs and .case-outcome divs with flex-grow:1 wrapper, min-height:2.2in, object-fit:cover"
+  - "  NOTE: embed_case_photos.py had a batch-write bug — CS03 anchor mismatch raised RuntimeError before the write, so CS01/CS02 inserts from that script were never persisted. Fixed by a per-operation write follow-up script. CS01, CS02, CS03 all confirmed embedded."
+  - "Page 16 design variants: 4 variants generated as /tmp/page16_variants.html (4-page self-contained HTML), /tmp/page16_variants.pdf, /tmp/v16-1.png through /tmp/v16-4.png"
+
+files_modified:
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.html"
+    changes: "8 layout/positional fixes + 3 case-study photo embeds; file grew from 4.8 MB to 6.4 MB due to base64-encoded photos"
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/build_loan_map.py"
+    changes: "Revised to suppress matplotlib title overlay on the map PNG"
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/okoa_loan_map.png"
+    changes: "Regenerated at 12:09 — clean map, no title text rendered by matplotlib"
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/embed_case_photos.py"
+    changes: "Written this session — buggy batch-write version; kept for reference but DO NOT re-run as-is"
+
+session_assets:
+  directory: "/Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/"
+  files:
+    - "build_loan_map.py — revised map generator (no title overlay)"
+    - "embed_bleed_image.py — generic image-index swapper"
+    - "embed_case_photos.py — buggy batch version; DO NOT re-run"
+    - "edit_page3_thesis.py — page 3 data edit script"
+    - "edit_page5_benchmarks.py — page 5 benchmark comparison script"
+    - "okoa_loan_map.png — current map (no title overlay)"
+    - "loan_inventory.csv — 118-loan dataset (11 states)"
+    - "us-states.json — GeoJSON for map rendering"
+    - "swap_imgs/mountain_VQcn7hnJbjE.jpg — Danny Burke (page 7 bleed)"
+    - "swap_imgs/cs01_utah_home_Xpc6kTZkGzo.jpg"
+    - "swap_imgs/cs02_infinity_pool_MA82mPIZeGI.jpg"
+    - "swap_imgs/cs03_clocktower_town_M6PkXg4q2uo.jpg"
+    - "swap_imgs/PROVENANCE.txt — photo licensing provenance"
+
+tmp_files:
+  note: "/tmp files will be lost on system reboot"
+  page16_variants:
+    html: "/tmp/page16_variants.html"
+    pdf: "/tmp/page16_variants.pdf"
+    v1_png: "/tmp/v16-1.png"
+    v2_png: "/tmp/v16-2.png"
+    v3_png: "/tmp/v16-3.png"
+    v4_png: "/tmp/v16-4.png"
+    build_script: "/tmp/build_page16_variants.py"
+  case_study_renders:
+    new_render: "/tmp/cs2-13.png, /tmp/cs2-14.png, /tmp/cs2-15.png (pages 13-15 AFTER photo embed — rendered at 12:56)"
+    old_render: "/tmp/cs_render-13.png, /tmp/cs_render-14.png, /tmp/cs_render-15.png (BEFORE photo embed — rendered at 12:43; CS01/CS02 show empty sidebar middles due to embed script bug)"
+  other: "/tmp/v003_round2-*.png (spot-check renders from earlier in session), /tmp/v003_qa-*.png (full-page QA render from earlier)"
+
+page16_variants_detail:
+  status: "PENDING USER SELECTION — user has NOT yet picked one"
+  V1_capital_flow:
+    style: "warm/light vertical timeline"
+    issue: "bottom overflow — needs text compression or padding reduction before swap into V003.html"
+  V2_two_block:
+    style: "warm/light data-sheet"
+    fit: "fits cleanly"
+    notes: "dark feature cards at bottom"
+  V3_editorial:
+    style: "warm/light typography-driven magazine spread"
+    issue: "bottom overflow — same overflow fix needed before swap into V003.html"
+  V4_refined_dark:
+    style: "dark mode polished, 2-column: LP+Manager stacked left, 2x2 Deployment grid right"
+    fit: "fits cleanly"
+  next_step: >
+    User selects variant. If V1 or V3, fix overflow (trim feature text or reduce padding)
+    before swapping. Apply selected variant HTML into V003.html replacing current page 16.
+    Re-render and verify.
+
+decisions_made:
+  - "Page 11 map: matplotlib title removed from PNG; HTML title added above img tag instead"
+  - "Case study photo embed: per-operation write pattern required (batch-write script had bug); embed_case_photos.py is kept but flagged DO NOT RE-RUN"
+  - "Photo sizing: flex-grow:1 + min-height:2.2in + object-fit:cover — may need review (CS03 may be oversized)"
+  - "User has standing autonomous-execution authorization: no confirmations needed, go with recommendation on any design decision"
+
+blockers:
+  - "User must select one of 4 page 16 variants before that page can be applied to V003.html"
+  - "/tmp files will be lost on reboot — page16_variants files and cs render PNGs live there"
+  - "CS03 photo sizing may be oversized: cs2-15.png was just rendered but user has not yet reviewed it; flex-grow:1 + min-height:2.2in may produce an overly tall photo section on page 15"
+  - "cs2-13/14/15.png renders (new, post-embed) have not yet been seen or confirmed by user"
+
+open_items:
+  - id: "OI-1-CRITICAL"
+    description: "User to select page 16 variant (V1/V2/V3/V4)"
+    files: "/tmp/v16-1.png through /tmp/v16-4.png, /tmp/page16_variants.pdf"
+    action: "After selection, apply to V003.html and re-render"
+
+  - id: "OI-2-HIGH"
+    description: "Verify cs2-13/14/15.png renders (post-embed case study pages)"
+    action: >
+      User or next session should read /tmp/cs2-13.png, /tmp/cs2-14.png, /tmp/cs2-15.png
+      to confirm all 3 photos appear in sidebars with appropriate sizing. Compare against
+      old /tmp/cs_render-*.png (empty sidebar middles) to confirm fix is visible.
+      If CS03 photo looks oversized on page 15, reduce min-height from 2.2in to ~1.6in
+      or remove min-height and let flex-grow control sizing.
+
+  - id: "OI-3-HIGH"
+    description: "Apply selected page 16 variant to V003.html"
+    action: >
+      Extract the selected variant's HTML (one of 4 in /tmp/page16_variants.html).
+      If V1 or V3: fix overflow first by trimming feature-card text or reducing padding.
+      Locate current page 16 section in V003.html and replace.
+      Re-render to PDF and verify visually.
+
+  - id: "OI-4-MEDIUM"
+    description: "Residual 'Western US' language audit"
+    action: >
+      Grep V003.html for 'Western' (case-insensitive) and 'Salt Lake City'.
+      Some phrases like 'Western mountain markets' may remain.
+      Replace with US-wide equivalents per established pattern.
+      Script /tmp/fix_western_remnants.py exists in /tmp (written earlier session).
+
+  - id: "OI-5-LOW"
+    description: "Final full-PDF render and 20-page visual spot-check"
+    action: >
+      After OI-1 through OI-4 complete, render final PDF.
+      Run pdftoppm at 130 DPI across all 20 pages and read each PNG to confirm
+      no overflow, no missing content, no photo sizing issues.
+
+next_actions:
+  - "FIRST: Show user /tmp/cs2-13.png, /tmp/cs2-14.png, /tmp/cs2-15.png to confirm 3 case-study photos are embedded correctly (OI-2)"
+  - "SECOND: Show user /tmp/v16-1.png through /tmp/v16-4.png and ask them to pick a variant (OI-1)"
+  - "THIRD: Apply selected variant to V003.html (with overflow fix if V1 or V3) and re-render (OI-3)"
+  - "FOURTH: Residual Western US / SLC grep sweep (OI-4)"
+  - "FIFTH: Full 20-page final render and visual check (OI-5)"
+
+context_for_next_session: |
+  The OKOA Prospectus V003.html is now at 6.4 MB (was 4.8 MB after Stage 1 data
+  accuracy pass; grew due to three Unsplash photos base64-encoded into the case-study
+  sidebar sections on pages 13-15). The PDF renders at 7.0 MB, 20 pages. All Stage 1
+  data accuracy edits plus all 8 Stage 3 layout/positional fixes have been applied.
+
+  The single biggest open item is that the user has not yet seen or chosen among the
+  four page 16 design variants. These are rendered as v16-1.png through v16-4.png in
+  /tmp. The next session should open with showing those images and asking for a
+  selection — do not proceed with page 16 work until the user picks one.
+
+  The second open item is the case study photo renders. /tmp/cs2-13.png, cs2-14.png,
+  cs2-15.png were rendered at 12:56, AFTER the photo embed was confirmed complete.
+  The earlier /tmp/cs_render-*.png files (12:43) show empty sidebars from before the
+  bug fix. The new renders should show the photos, but the user has not yet seen them.
+  CS03 may appear oversized (2.2in min-height combined with flex-grow is aggressive
+  for a smaller photo area). If so, reduce min-height to ~1.6in.
+
+  Editing pattern: read the target section of V003.html (it is too large to read in
+  full — always read a targeted range or use Python grep to locate the section), craft
+  a Python str.replace() or regex substitution, write back, re-render, pdftoppm the
+  affected page(s), visually confirm. Do NOT do bulk rewrites.
+
+  Autonomous execution is authorized for this project. The user has explicitly said
+  "Don't ask for any permissions, all granted; if a decision is needed, go with your
+  recommendation." This covers design decisions, photo selection, copy trimming, and
+  layout choices within the established brand system.
+
+  Critical path warning: /tmp files are ephemeral. If the system reboots between
+  sessions, page16_variants.html/.pdf and v16-*.png must be regenerated from
+  /tmp/build_page16_variants.py. The build script itself is also in /tmp — if /tmp is
+  cleared, the script must be reconstructed. The session_assets directory at
+  /Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/ is persistent and
+  contains the map PNG, loan CSV, and GeoJSON which are sufficient to regenerate
+  the map if needed.
+
+reconstruction_sources:
+  - "User-provided context block in the handoff invocation message (primary source — all stage 3+ details)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-12-emergency-handoff.yaml (stage 1 handoff, read in full)"
+  - "git status --short output (working tree state)"
+  - "git log --oneline -20 (recent commits; most recent: fix(acos-dataroom) v1.2.0)"
+  - "ls -lt /Users/zee/Documents/OKOA/OKOA Prospectus/ (confirmed V003.html 6394151 bytes, WIP.pdf 7027488 bytes, last modified timestamps)"
+  - "ls -lt /Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/ (confirmed session assets present and timestamps)"
+  - "ls -lt /Users/zee/Documents/OKOA/OKOA Prospectus/_session_assets/swap_imgs/ (confirmed all 4 swap images present)"
+  - "ls -lt /tmp/*.png /tmp/*.html /tmp/*.pdf /tmp/*.py (confirmed all variant files and render PNGs present in /tmp)"
+  - "stat -f sizes of V003.html and OKOA_Prospectus_WIP.pdf (file size confirmation)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/ directory listing"
+  - "ACOS CLAUDE.md (handoff format, lifecycle rules)"
+
+confidence: "high"
+confidence_notes: |
+  All completed-work details came directly from the user's context block in the
+  handoff invocation message. File existence and timestamps were verified against
+  disk. The working HTML (6.4 MB) and PDF (7.0 MB) timestamps confirm the render
+  pattern. All /tmp variant files and case-study render PNGs were confirmed present.
+  The only uncertainty is whether CS03 photo sizing is visually acceptable — that
+  requires the user to view cs2-15.png before making a determination.

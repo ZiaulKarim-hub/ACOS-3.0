@@ -1,0 +1,374 @@
+timestamp: "2026-05-14T09:20:11Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Continuation of the acos-dataroom-v2 production run on the Wolfgramm Ascent Beehive
+  Waldorf 30M loan folder (2,285 source files, Dropbox). Phases 1 and 2 preprocessing
+  are long complete. Phase 2 Tier-3 batch deliberation is in progress: Waves 1-3 fully
+  post-processed (batches 1-26, 553 files in dataroom), Wave 4 (batches 27-32) has all
+  spawns done but 3 files in B32 are still awaiting their third vote as of handoff
+  creation. Wave 4 post-processing has NOT yet been run. This handoff captures the
+  exact disk state so the next session can verify Wave 4 completion, run wave4_post.py,
+  and proceed to Wave 5 (batches 33-38).
+
+# ============================================================
+# RUN IDENTITY
+# ============================================================
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+objective: >
+  Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the
+  Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope.
+skill_version: "v2.0.0"
+
+# ============================================================
+# CURRENT WORK
+# ============================================================
+
+current_work:
+  slice_id: "N/A — one-shot skill dogfood run, not a tracked ACOS slice"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+  description: |
+    Wave 4 (batches 27-32) spawns are all done or nearly done. Wave 4 post-processing
+    (wave4_post.py) has NOT been run. Once run, Wave 5 (batches 33-38) should be
+    dispatched immediately per standing user policy (no re-ask needed).
+
+# ============================================================
+# DISK TRUTH (verified by handoff agent from disk)
+# ============================================================
+
+disk_truth_at_handoff:
+  dataroom_file_count: 553
+  inclusion_log_rows: 553
+  exclusion_log_rows: 637
+  unresolved_splits_distinct_file_ids: 32
+  disputed_batch_files: 15  # batch_001, 011-020, 022-025
+  vote_directories: 332
+  run_state_json_last_checkpoint: "phase2_tier3_wave3_batches_21-26_processed"
+  run_state_json_updated_at: "2026-05-14T09:04:14Z"
+
+# ============================================================
+# WAVE 4 STATUS SNAPSHOT (batches 27-32)
+# ============================================================
+
+wave4_status:
+  batches: [27, 28, 29, 30, 31, 32]
+  total_files: 60
+  complete_3_votes: 52
+  incomplete_votes: 8
+  note: "8 files (5 in B32, 2 in B31's ambiguous state, 1 in B31) have 1-2 votes. All
+    are trending toward UNANIMOUS verdicts from existing votes — no splits expected.
+    Resumer should re-check before running wave4_post.py."
+
+  batch_27:
+    result: "10/10 unanimous INCLUDE — all lien waivers"
+    status: "COMPLETE"
+  batch_28:
+    result: "10/10 unanimous INCLUDE — all lien waivers"
+    status: "COMPLETE"
+  batch_29:
+    result: "9 unanimous INCLUDE + 1 unanimous EXCLUDE (DOCUMENT_REPORT.md — AI meta-artifact)"
+    status: "COMPLETE"
+    notable: "f_689cfd348d1a (DOCUMENT_REPORT.md) correctly identified as AI run artifact, not a loan document"
+  batch_30:
+    result: "10/10 unanimous INCLUDE — Nuveen $30.3M C-PACE payoff letter + 9 GC lien waivers"
+    status: "COMPLETE"
+  batch_31:
+    files_complete: 10
+    status: "COMPLETE (all 10 have 3 votes)"
+    verdicts:
+      f_cc8ba947951d: "3/3 INCLUDE — WESTLAND Lien Waiver Progress Payment GC28 - OWING.pdf"
+      f_a9032a3a9b3e: "3/3 EXCLUDE — 30M Ascent Collateral Assignment of Declarant Rights (BTJD 2.8.24).docx (DRAFT)"
+      f_9b711bf53efe: "3/3 INCLUDE — 30M Ascent - Escrow Instructions.docx"
+      f_011925dd5032: "3/3 INCLUDE — 30M Ascent - Initial Draw Request.docx"
+      f_deec83df5331: "2I-1E SPLIT — 30M Ascent Intercreditor Agreement (2.8.24) (BTJD).docx"
+      f_8e82fd7e4d1b: "3/3 EXCLUDE — 30M Ascent Deed of Trust (Construction Loan) (BTJD 2.8.24).docx (DRAFT — signed is in dataroom)"
+      f_09f3f88a9eba: "3/3 EXCLUDE — 30M Ascent Environmental Indemnity Agreement (BTJD 2.8.24).docx (DRAFT)"
+      f_801063e97f6c: "3/3 EXCLUDE — 30M Ascent Promissory Note (Construction Loan) (BTJD 2.8.24).docx (DRAFT)"
+      f_8e0a1d76a812: "3/3 EXCLUDE — 30M Ascent Payment Guaranty (Construction Loan) (BTJD 2.8.24).docx (DRAFT)"
+      f_24cdad30b10d: "3/3 EXCLUDE — 30M Ascent Construction Loan Agreement (BTJD clean 1.31.24 vx).docx (DRAFT)"
+    note: "B31 Intercreditor Agreement is the one new split from Wave 4 in B31. Supersession-doctrine
+      territory: DRAFT loan docs unanimously excluded since signed PDFs already in dataroom (Waves 1-3)."
+  batch_32:
+    files_complete: 5
+    files_incomplete: 5
+    status: "PARTIAL — 5 files have 1-2 votes; 3rd vote in flight"
+    complete_verdicts:
+      f_b09433ea499b: "3/3 EXCLUDE — 30M Ascent Construction Loan Agreement (BTJD clean 2.5.24).docx (DRAFT)"
+      f_4dee23389aa2: "3/3 EXCLUDE — 30M Ascent Construction Loan Agreement (BTJD clean 2.8.24).docx (DRAFT)"
+      f_f8acdeb171a1: "3/3 INCLUDE — 30M Ascent Construction Loan Agreement (BTJD redline 1.31.24 vx).docx (REDLINE — negotiation record)"
+      f_18d897aa23f4: "3/3 INCLUDE — Ascent Bridge Loan Modification and Forbearance Agreement.docx"
+      f_1bbdbaf417e5: "3/3 EXCLUDE — (Old) Waldorf 30M Loan Docs -- GSB rdl.docx (pre-deal draft)"
+    partial_verdicts_awaiting_3rd_vote:
+      f_474dbe881f37: "2/3 EXCLUDE EXCLUDE — (Old) Waldorf 30M Loan Docs.docx — expect unanimous EXCLUDE"
+      f_b4107d52a8c7: "2/3 INCLUDE INCLUDE — 30M Hotel Manager Security Agreement (Construction Loan) (BTJD 1.31.24).docx — expect unanimous INCLUDE"
+      f_5c76a6b0a41b: "2/3 INCLUDE INCLUDE — 30M Ascent - Assignment and Subordination of Hotel Management Agreement (Construction Loan) (BTJD 1.31.24).docx — expect unanimous INCLUDE"
+      f_e95ae2ad27f9: "2/3 EXCLUDE EXCLUDE — 30M Ascent - Collateral Assignment of Declarant Rights (BTJD 1.29.24).docx — expect unanimous EXCLUDE"
+      f_7d58a466b51e: "1/3 EXCLUDE — 30M Ascent - Collateral Assignment of Declarant Rights (BTJD 1.31.24).docx — expect unanimous EXCLUDE"
+
+# ============================================================
+# CHAIN OF CUSTODY — PRIOR HANDOFFS
+# ============================================================
+
+prior_handoffs_chain:
+  - file: "memory/handoffs/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml"
+    timestamp: "2026-05-14T07:25:00Z"
+    covers: "Pre-Wave-1 state. Waves 1-3 were executed AFTER this handoff was written."
+  - file: "memory/handoffs/2026-05-14-emergency-handoff.yaml"
+    timestamp: "2026-05-14T09:30:00Z"
+    covers: "End-of-Wave-3 state. Written by prior handoff agent. Wave 4 NOT yet started at time of writing.
+      This handoff (wave4-eternity) CONTINUES from there and captures Wave 4 execution state."
+
+# ============================================================
+# COMPLETED THIS SESSION (cumulative since prior handoffs)
+# ============================================================
+
+completed_this_session:
+  - "Wave 1 post-processed (batches 1-8): wave1_post.py written and run"
+  - "Wave 2 post-processed (batches 9-20): wave2_post.py written and run"
+  - "Wave 3 post-processed (batches 21-26): wave3_post.py written and run"
+  - "run_state.json updated through wave3_completed_at = 2026-05-14T09:04:14Z"
+  - "553 files in dataroom, 637 exclusions, 32 splits accumulated at end of Wave 3"
+  - "Wave 4 (batches 27-32): all 18 spawns (3 agents × 6 batches) dispatched; 52/60 file votes complete; 8 files awaiting 3rd vote (all trending unanimous)"
+
+# ============================================================
+# KEY FINDINGS FROM WAVES 1-4 (PHASE 2.5 AMMUNITION)
+# ============================================================
+
+key_findings_for_phase25:
+  deal_structure:
+    - "Waldorf Astoria Park City CONFIRMED cross-pledged — verbatim text from LK Cap Ascent Preso Dec 2025 (resolves Phase 1 OPEN_QUESTION 4)"
+    - "Nuveen Green Capital confirmed as C-PACE lender (statutory senior position), NOT senior construction lender (resolves Phase 1 §7 OPEN_QUESTION 3)"
+  payoff_numbers:
+    - "Okoa $30M loan redemption: $34,154,656.03 due 2026-06-30"
+    - "Nuveen C-PACE payoff: $30,321,016.01 (senior by statute)"
+    - "Combined senior claims: ~$64.5M against Ascent before equity recovery"
+    - "LK Cap takeout: $33M acquisition LOI + $53M new senior loan"
+  cap_table:
+    - "Variant participation: 37.43% ($30M loan exposure)"
+    - "Nichols: $1.5M (5%)"
+    - "Team Pond: $150K (0.5%)"
+    - "Variant wire instructions: 2024 entity name DIFFERS from 2019 entity name — entity check required"
+    - "Variant v4 Schedule I is BLANK — executed version with Ascent-specific terms missing (dataroom gap)"
+    - "Variant blackline footnote: 'Okoa conceded material terms under time pressure' — PRIVILEGE FLAG"
+    - "Variant payment default visible from June 2025"
+  title_and_deed_concerns:
+    - "Sept 2025 back-to-back warranty deeds (Beehive -> DML HOA -> DML Hotel Co for $10, same day 1/26/2026) — FRAUDULENT TRANSFER question"
+    - "Title Abstract LA flagged 3 issues: Shelby Savings Bank prior mortgage NOT cancelled; tax commission judgment Sept 2024; BOTH LA SPEs INACTIVE"
+    - "Ascent permit covers FRSTW-AM-F2-B parcel (120-unit condo hotel); Ascent_F3B_Title_Findings refers to F3-B vacant parcel (different sub-parcel in same SPA)"
+  lien_exposure:
+    - "18+ mechanic's lien-exposure subcontractors in lien-waiver corpus: Geneva Rock, FOR-SHOR, Rydalch Electric, Atlas Sheet Metal, Frontline Concrete, JT Steel, Superior Insulation, Think Architecture, Shamrock Plumbing, Metro Tile, Sunbelt Rentals, JRock Construction, Ron Peterson, IMS Masonry, Advanced Shoring, LKL/Monsen Exteriors, APS, CED, Consolidated Electrical"
+    - "Recorded lien Entry numbers present for several subcontractors"
+  site_and_permit:
+    - "Phase I ESA: Ascent site at 2050 W Frostwood Blvd, NO RECs, adjacent to Waldorf — CONFIRMED"
+    - "Site Plan Condition 10 limits Ascent dining to hotel patrons only — CONFLICTS with LKCap F&B revenue projections (underwriting flag)"
+  miscellaneous_flags:
+    - "Mis-filed file: 'Shreveport OKOA Signed Appraisal Agreement.pdf' is actually JLL Waxahachie TX engagement letter"
+    - "LOI 4/8/26: blank Okoa countersignature; Purchase Price reduction tied to Waldorf proceeds"
+    - "f_6c24f730b842 (30M Ascent Hotel-Payment Guaranty): filename says Ascent but body references TS1 LLC/$20M/Scott Smithson — FILENAME-vs-CONTENT MISMATCH"
+    - "Loan doc DRAFTS (B31/B32) unanimously excluded under supersession doctrine (signed PDFs already in dataroom from Waves 1-3) — this is consistent and correct"
+
+# ============================================================
+# STANDING DECISIONS (DO NOT CHANGE WITHOUT ASKING USER)
+# ============================================================
+
+standing_decisions:
+  - id: SD-1
+    decision: "Batched-deliberator architecture: 3 agents × 10 files per spawn = 30 votes per batch. Cross-instance blindness preserved."
+  - id: SD-2
+    decision: "Wave size: 6 batches = 18 parallel Task() spawns. Confirmed across Waves 1, 2, 3."
+  - id: SD-3
+    decision: "Splits deferred: iter2 re-dispatch happens AFTER Tier 3 is fully complete, not mid-wave."
+  - id: SD-4
+    decision: "Full Tier-3 path: continue through batches 27-90, then Phase 2.5 privilege scanner, Phase 3 QA, Phase 4 taxonomy, Phase 5 placement QA, Phase 6 Excel build."
+  - id: SD-5
+    decision: "Post-processing drivers (waveN_post.py) DERIVE counters from disk truth — never use incremental counters for state that survives across runs."
+  - id: SD-6
+    decision: "JSON-escaping reminder must appear in all future wave dispatch prompts (one Wave 3 agent emitted malformed JSON in instance_2.json of f_8fc460c74e2a)."
+
+# ============================================================
+# BLOCKERS
+# ============================================================
+
+blockers:
+  - "Wave 4 is not yet 100% complete: 5 files in B32 and possibly 2 in B31 (re-verify) still await their 3rd vote. Do NOT run wave4_post.py until all 60 Wave 4 files have 3 votes each. Check phase2/votes/<fid>/ for instance_3.json presence."
+  - "No hard blockers. The 8 incomplete files are all trending toward unanimous verdicts so no splits are expected from them."
+
+# ============================================================
+# NEXT ACTIONS — PRIORITY ORDER
+# ============================================================
+
+next_actions:
+  - priority: 1
+    action: "READ THIS HANDOFF and memory/handoffs/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml for full chain-of-custody before doing anything."
+  - priority: 2
+    action: |
+      VERIFY WAVE 4 COMPLETION. For each of the 60 file_ids in batches 27-32, confirm
+      3 vote files exist under phase2/votes/<file_id>/. Run:
+
+        python3 -c "
+        import json, os
+        from pathlib import Path
+        RUN_DIR = Path('/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1')
+        votes_dir = RUN_DIR / 'phase2/votes'
+        incomplete = []
+        for b in range(27, 33):
+            bpath = RUN_DIR / f'phase2/batches/batch_{b:03d}.json'
+            with open(bpath) as f:
+                bd = json.load(f)
+            for fobj in bd['files']:
+                fid = fobj['file_id']
+                vdir = votes_dir / fid
+                instances = list(vdir.glob('instance_*.json')) if vdir.exists() else []
+                if len(instances) < 3:
+                    incomplete.append(f'{fid} ({fobj[\"file_name\"]}): {len(instances)}/3')
+        print('Incomplete:', incomplete if incomplete else 'NONE — Wave 4 fully done')
+        "
+
+      If any files still incomplete: wait 5-10 minutes and re-check — the background
+      spawns were still writing at handoff creation time. If incomplete after 15 minutes,
+      the missing instances need re-dispatch.
+  - priority: 3
+    action: |
+      CREATE AND RUN wave4_post.py. Model on wave3_post.py (already in run_dir — read it).
+      Key changes from wave3_post.py:
+        WAVE = 4
+        WAVE_BATCHES = list(range(27, 33))
+      All other logic is identical. The script is idempotent — safe to re-run.
+      Expected results: ~50-55 unanimous INCLUDE (lien waivers + Nuveen payoff letter +
+      ALTAs + ESA + payoff statement + Keri analyses + redline + Bridge Forbearance +
+      Escrow Instructions + Initial Draw Request + Hotel Mgmt Security Agreement +
+      Assignment of Hotel Mgmt Agreement) + ~10-12 unanimous EXCLUDE (loan doc DRAFTS +
+      DOCUMENT_REPORT.md + Old Waldorf docs + Declarant Rights drafts) + possibly 1-2
+      splits (Intercreditor Agreement from B31 is a confirmed split; B32 may produce none).
+      After running, verify: run_state.json should update wave4_completed_at,
+      phase2_tier3_batches_done to 32, dataroom count to ~600+, last_completed_checkpoint
+      to 'phase2_tier3_wave4_batches_27-32_processed'.
+  - priority: 4
+    action: |
+      DISPATCH WAVE 5 (batches 33-38). Do NOT re-ask the user — standing policy (SD-2)
+      is confirmed for 6-batch waves. Same 18-spawn pattern (3 agents per batch × 6 batches).
+      Read each batch_033.json through batch_038.json to get file lists, then spawn
+      3 dr2-inclusion-deliberator agents per batch using the same prompt template used
+      for Waves 1-4. Include JSON-escaping reminder (SD-6) in prompts.
+      After spawns complete, write wave5_post.py (WAVE=5, WAVE_BATCHES=range(33,39)) and run it.
+  - priority: 5
+    action: "Continue waves 6-15 (batches 39-90) using same 6-batch wave pattern until Tier-3 complete."
+  - priority: 6
+    action: |
+      AFTER ALL 90 BATCHES COMPLETE: resolve 32+ unresolved splits via iter2 re-dispatch.
+      Standing policy (SD-3): all splits dispatched together after Tier-3, not mid-wave.
+      Notable split guidance (see unresolved_splits detail in this handoff and prior handoffs).
+  - priority: 7
+    action: |
+      PHASE 2.5 PRIVILEGE SCANNER: Run dr2-privilege-scanner × 3 on every file in
+      dataroom/ (expected ~600-700+ files by then). Asymmetric consensus: ANY single FLAG
+      removes file. Batch in groups of ~10 same as Phase 2.
+  - priority: 8
+    action: "PHASE 3: dr2-inclusion-qa × 3 per dataroom file (adversarial / completeness / coherence lenses). Wigum loop K=5."
+  - priority: 9
+    action: "PHASE 4a: dr2-taxonomy-designer × 3 blind → dr2-taxonomy-synthesizer → TAXONOMY.json. Phase 4b: dr2-placement-classifier × 3 per file → sort into taxonomy sub-folders."
+  - priority: 10
+    action: "PHASE 5: dr2-placement-qa × 3 per file."
+  - priority: 11
+    action: |
+      PHASE 6: dr2-guide-drafter × 3 → dr2-guide-synthesizer → dr2-guide-qa Wigum (cap=10).
+      dr2-description-drafter × 3 per file → dr2-description-qa.
+      Build Excel: python3 .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py
+      Build manual review markdown (conditional): python3 .claude/skills/acos-dataroom-v2/scripts/build_manual_review_md.py
+      Copy final dataroom to: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)/../Ascent_Park_City_Dataroom/
+
+# ============================================================
+# KEY FILE PATHS
+# ============================================================
+
+key_files:
+  run_state: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json"
+  solidified_objective: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase1/SOLIDIFIED_OBJECTIVE.md"
+  inclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/inclusion_log.csv"
+  exclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/exclusion_log.csv"
+  disputed_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/disputed/"
+  votes_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/votes/<file_id>/instance_{1,2,3}.json"
+  batch_queue: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/batches/batch_{001..090}.json"
+  wave1_post: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave1_post.py"
+  wave2_post: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave2_post.py"
+  wave3_post: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave3_post.py"
+  wave4_post_to_create: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave4_post.py"
+  dataroom: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/dataroom/"
+
+# ============================================================
+# CONTEXT FOR NEXT SESSION
+# ============================================================
+
+context_for_next_session: |
+  This session is deep into the first production run of acos-dataroom-v2 on the
+  Wolfgramm Ascent Beehive Waldorf 30M loan folder — a ~2,285-file Dropbox corpus for
+  the Ascent Park City Tapestry Collection hotel at 4080 N Cooper Lane, Park City UT.
+  The deal is a $30M Okoa construction loan in workout/settlement/sale mode. Zee (Okoa
+  Capital, jason@okoacapital.com) wants a buyer-ready dataroom to sell the hotel asset.
+
+  WHY V2 EXISTS: acos-dataroom-v1 was rejected by the boss because it required him to
+  review an Internal Working Workbook mid-run. He refused, and the raw AI output became
+  the deliverable. Verdict: "AI is a piece of shit, cancel subscriptions." v2 removes all
+  human pause gates — the final folder + Excel is the ONLY artifact the boss ever sees.
+
+  WHERE WE ARE: 26 batches fully post-processed (Waves 1-3). Wave 4 spawns are done or
+  nearly done but wave4_post.py has not been run yet. 553 files in the dataroom. 64
+  batches (33-90) remain in the queue after Wave 4 post-processing completes. The
+  pipeline is working well — Waves 1-3 were clean with no errors. The main challenge
+  is simply executing the remaining 64 batches (64 × 18 spawns = 1,152 Task() invocations
+  remaining after Wave 4) across multiple sessions.
+
+  CRITICAL DOMAIN CONTEXT: "Waldorf" in filenames is the LOAN FAMILY CODENAME, NOT the
+  operating Waldorf-Astoria hotel. Never auto-exclude Waldorf-named files. The actual
+  operating Waldorf-Astoria is at 2100 Frostwood Blvd — a different property that is
+  cross-pledged collateral. Borrower SPE: Beehive Hospitality Ascent PC, LLC. Read
+  SOLIDIFIED_OBJECTIVE.md §2 (Naming Catalog) and §5 (Relevance Criteria) before
+  dispatching any agents.
+
+  LOAN DOC DRAFTS: Wave 4 (B31/B32) processed a cluster of DRAFT loan documents (.docx
+  files). Nearly all were unanimously excluded — correct, since signed PDF versions are
+  already in the dataroom from Waves 1-3 (supersession doctrine). The exceptions are
+  redlines and modification agreements (which are negotiation-record documents and should
+  be included). This pattern will likely continue in later batches.
+
+  SPLIT ACCUMULATION: 32 splits from Waves 1-3 plus at least 1 new split from B31
+  (Intercreditor Agreement — f_deec83df5331, 2I-1E). All splits are deferred to after
+  Tier-3 completes. Do not chase iter2 mid-wave. Notable split guidance: the 12
+  Shreveport/Waxahachie files are likely EXCLUDE (wrong Wolfgramm deal — Louisiana/Texas
+  hotels). The Participation Agreement v2B and Variant Participation Structure.xlsx are
+  likely INCLUDE (Variant deal structure is directly relevant to the Ascent sale).
+
+  THE NUVEEN CONFIRMATION is important for Phase 2.5: Nuveen is a C-PACE lender with
+  statutory senior position, not a construction lender. Their $30.3M payoff is AHEAD of
+  Okoa's $34.2M in any sale waterfall. Combined senior claims exceed $60M against Ascent.
+  The LK Cap $33M acquisition LOI plus $53M new senior loan implies they believe they can
+  clear this — but the title issues and the blank Okoa countersignature on the LOI are
+  significant flags.
+
+# ============================================================
+# RECONSTRUCTION SOURCES
+# ============================================================
+
+reconstruction_sources:
+  - "memory/handoffs/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml — prior handoff, pre-Wave-1 state, read in full"
+  - "memory/handoffs/2026-05-14-emergency-handoff.yaml — prior handoff, end-of-Wave-3 state, read in full"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json — authoritative run state JSON, read in full; confirms wave3_completed_at=2026-05-14T09:04:14Z, 26 batches done, 553 dataroom files, 32 splits, 637 exclusions"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/wave3_post.py — read in full; provides exact template for wave4_post.py"
+  - "_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/ — directory listing; confirmed wave1-3_post.py present, no wave4_post.py yet"
+  - "phase2/votes/ listing — confirmed 332 vote directories; Python script counted 52/60 Wave 4 files complete, 8 incomplete"
+  - "phase2/batches/batch_027-032.json — read via Python to enumerate all 60 Wave 4 file_ids and filenames"
+  - "phase2/votes/<fid>/instance_*.json — read via Python for B27-B32 vote verdicts; sourced all per-file verdict data in wave4_status section above"
+  - "phase2/disputed/ listing — confirmed 15 batch_*_splits.json files; Python counted 32 distinct file_ids"
+  - "phase2/inclusion_log.csv — line count: 554 lines (553 data rows + header)"
+  - "phase2/exclusion_log.csv — line count: 638 lines (637 data rows + header)"
+  - "dataroom/ listing — confirmed 553 files"
+  - ".acos/state/ listing — confirmed agent-lifecycle.log updated 2026-05-14T03:19 (Wave 4 spawns still active)"
+  - "git log --oneline -20 — most recent commit: 977d0f7 feat(acos-dataroom-v2): v2.0.0"
+  - "git status — confirms _acos_dataroom_v2_output/ untracked/git-ignored; no staged changes"

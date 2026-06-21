@@ -1,0 +1,112 @@
+timestamp: "2026-05-07T09:30:00Z"
+status: "completed"
+session_summary: |
+  Resumed via acos-eternity-protocol from a prior cover-design session and
+  delivered three new batches of OKOA Capital LinkedIn cover banners (1584×396):
+
+  • v2 — 4 reference-driven covers (plexus, sculptural cube, navy abstract,
+    navy + champagne folds), each interpreting one of four user-supplied
+    reference images. Iterated 5 passes; key fight was making a fake
+    photographic specular highlight on Cover 4 — eventually dropped it because
+    pure-SVG/PIL can't fake studio physics. Final composition reads cleaner
+    without the smudge.
+  • v2 typography pass — applied reference-#5 typographic system: corner
+    labels (OKOA CAPITAL top-left, SINCE 2019 top-right) and tagline
+    "CAPITAL TO BUILD ON" across all four covers, while preserving each
+    cover's unique design DNA.
+  • v3 — 20 cover variants (4 themes × 5 palette variants) keyed to the
+    okoa-design system tokens: voltage / japandi-dark / japandi-mauve /
+    japandi-warm / japandi-sage / japandi-ocean / ridgeline / studio-nordost
+    / datum-tech / nordic-tech. Iterated 2 passes after visual review of the
+    contact sheet and 5 specific outliers.
+
+  Two engineering bugs surfaced and got fixed:
+  1. The user's installed ~/Library/Fonts/Inter-VariableFont.ttf was actually
+     an HTML error page (curl had silently saved an HTTP error response under
+     the .ttf extension in the prior session). PIL was failing to load it for
+     the entire prior session. Replaced with real Inter static TTFs from the
+     official Inter v4 release, plus JetBrains Mono statics. Crispiness of
+     all small text in v3 is downstream of this fix.
+  2. The plexus + navy-abstract renderers had algorithms calibrated for dark
+     backgrounds (bokeh + glow + low-alpha slashes). On light-bg variants
+     (covers 04, 05, 14, 15) they produced visual junk — coral bloodstain
+     bokeh, dark smudges instead of network nodes, invisible warm-on-warm
+     slashes. Fixed by branching on `is_light` per renderer: dark bg keeps
+     the bloom treatment; light bg uses sharp lines + crisp nodes + stronger
+     slash alphas.
+
+  Late-session edits:
+  • Updated tagline on ~/Desktop/OKOA Cover Designs/OKOA-Cover-07-hairline-
+    minimalist.{svg,jpg} from "Selectively allocated. Patiently deployed." to
+    "Capital to Build On." (preserved Cormorant Garamond italic + coral
+    hairline geometry).
+  • Saved a separate copy of v3 cover 17 with the entire left fold composition
+    removed → 17-folds-coral-ridgeline-no-fold.jpg.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed (open-ended design exploration — not ACOS slice work)"
+
+completed_this_session:
+  - "v2 batch — 4 covers, 5 render iterations, visual-verified each"
+  - "v2 typography pass — corner labels + new tagline applied to all 4 covers"
+  - "v3 batch — 20 covers spanning 4 themes × 5 okoa-design palettes, with contact sheet"
+  - "Diagnosed Inter-VariableFont.ttf as HTML error page; downloaded + installed real Inter static TTFs (Thin/Light/Regular/Medium/SemiBold) and JetBrains Mono statics"
+  - "Pinned the okoa-design typography system for the cover series: Inter Medium 11pt @ 0.16em tracking for corner labels, Inter Regular 13pt for taglines"
+  - "Identified and fixed two algorithmic blind spots in the v3 renderer: plexus rendering inversion polarity (dark bloom vs sharp blueprint), navy-abstract slash alpha for light backgrounds"
+  - "Updated OKOA-Cover-07-hairline-minimalist tagline → 'Capital to Build On.' (both SVG and JPG)"
+  - "Saved no-fold variant of cover 17"
+
+files_modified:
+  - path: "~/Library/Fonts/"
+    changes: "Removed broken Inter-VariableFont.ttf (was HTML); installed Inter-{Thin,Light,Regular,Medium,SemiBold,Bold}.ttf (Inter v4 release) + JetBrainsMono-{Light,Regular,Medium}.ttf (v2.304 release)"
+  - path: "~/Desktop/OKOA Cover Designs Inspired v2/"
+    changes: "4 cover JPGs + contact sheet — final state has corner labels + 'CAPITAL TO BUILD ON' tagline applied"
+  - path: "~/Desktop/OKOA Cover Designs Inspired v3/"
+    changes: "20 cover JPGs + 00-contact-sheet.jpg + 17-folds-coral-ridgeline-no-fold.jpg variant"
+  - path: "~/Desktop/OKOA Cover Designs/OKOA-Cover-07-hairline-minimalist.{svg,jpg}"
+    changes: "Tagline text changed in SVG; JPG re-rendered via cairosvg + PIL"
+  - path: "/tmp/okoa_inspired_v2.py"
+    changes: "v2 renderer (kept on disk; same /tmp may be cleared)"
+  - path: "/tmp/okoa_inspired_v3.py /tmp/okoa_inspired_v3_contact.py /tmp/okoa_17_no_left.py"
+    changes: "v3 renderer + contact sheet builder + one-off variant script"
+
+decisions_made:
+  - "Drop attempts to render a photographic specular highlight on Cover 4 (v2). Multiple iterations produced smudges or UFO halos. Cleaner result without it. Lesson: pure SVG/PIL can't fake studio lighting physics — the gold edge stroke alone carries enough metallic feel for institutional brand work."
+  - "Branch plexus renderer on is_light. On dark bg keep bloom + bokeh; on light bg use sharp lines + crisp nodes only. Bokeh is a 'light bleeding through dark' phenomenon with no analog on light bg."
+  - "Bump cover 17 cube_top from #1A2433 → #3F5078 so the navy cube separates from the near-black bg."
+  - "Use Inter Medium 11pt @ 0.16em tracking instead of Helvetica Neue Thin 11pt @ 0.40em for the typographic chrome. Inter Medium reads crisply at small sizes; thin weight + wide tracking compounded to hazy on dark bgs."
+  - "Reuse okoa-design palette tokens (voltage / japandi-* / ridgeline / studio-nordost / datum-tech) directly rather than inventing per-cover palettes. Keeps the 20-variant series on-brand and lets the user pick covers seasonally without brand voice fragmenting."
+
+blockers: []
+
+next_actions:
+  - "If user picks one or two winners from v3, lock in canonical version and optionally export at FB cover dimensions (1640×624) and Twitter/X header (1500×500)"
+  - "If next session wants to push design further: install Cormorant Garamond static TTFs so cairosvg renders deterministic Cormorant italic on hairline-minimalist series (currently falls back to Baskerville/Times)"
+  - "If user wants the dot-cluster motif from reference #5 added to existing covers, the v3 renderer's helpers compose cleanly — would be a small add to add_corner_chrome (or a new add_dot_cluster helper)"
+
+context_for_next_session: |
+  All cover renderers are pure-Python (cairosvg + PIL). No external API calls,
+  no MCP servers required. Subscription-only — no API key path.
+
+  Output folders on Desktop (in order of recency):
+   • OKOA Cover Designs Inspired v3/  — 20 covers + contact sheet (most recent)
+   • OKOA Cover Designs Inspired v2/  — 4 covers + contact sheet
+   • OKOA Cover Designs/              — Vol 1 (10 strict-brand covers including
+     hairline-minimalist with new "Capital to Build On." tagline)
+   • OKOA Cover Designs Vol 2/        — 17 cover-16 family + reference-inspired
+   • OKOA Cover 16 Variants/          — 5 design-locked palette variants
+
+  Renderer scripts live in /tmp/. If /tmp is cleared, next session can rebuild
+  from the okoa-design tokens at:
+    ~/Documents/Vibe Coding/website-design-okoa/okoa-design/<variant>/v1/README.md
+
+  Logo: ~/Desktop/OKOA Logo Vector (no extension; SVG, viewBox 864×224, fill
+  #231F20). Render via cairosvg.svg2png after string-replacing the fill colour.
+
+  Cover 17 v3 has a "no-fold" sibling at
+  ~/Desktop/OKOA Cover Designs Inspired v3/17-folds-coral-ridgeline-no-fold.jpg
+  per user request to remove the left ridgeline composition while keeping the
+  rest of the brand chrome.

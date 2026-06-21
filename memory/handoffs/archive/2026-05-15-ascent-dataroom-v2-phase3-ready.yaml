@@ -1,0 +1,538 @@
+timestamp: "2026-05-15T05:54:51Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Live production run of acos-dataroom-v2 on Wolfgramm Ascent Beehive Waldorf $30M loan
+  folder (run_20260513_152429_e79c3aa1). Phases 1, 2, and 2.5 are FULLY COMPLETE. The
+  dataroom is locked at 898 files. All 14 Tier-3 waves (90 batches), iter2 split resolution
+  (137 splits — 57 INCLUDE / 16 EXCLUDE / 64 default-EXCLUDE per §4.5), and the Phase 2.5
+  privilege scanner (119 files × 3 = 357 scans; 104 FLAGGED and quarantined, 15 KEPT)
+  have all been post-processed. The run_state.json checkpoint is "phase2_5_privilege_processed".
+  The next phase is Phase 3 — dr2-inclusion-qa × 3 per file on all 898 dataroom files.
+
+# ============================================================
+# RUN IDENTITY
+# ============================================================
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+dropbox_final_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+objective: >
+  Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the
+  Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope.
+skill_version: "v2.0.0"
+
+# ============================================================
+# CURRENT WORK
+# ============================================================
+
+current_work:
+  slice_id: "N/A — one-shot skill dogfood run, not a tracked ACOS slice"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "in_progress"
+  description: |
+    Phase 3 (Inclusion QA Wigum Loop) is the next phase. The dataroom/ directory
+    contains 898 files (locked, post-privilege-scan). Each file needs dr2-inclusion-qa
+    × 3 instances (adversarial / completeness / coherence lenses). Output goes to
+    phase3/qa/<file_id>/<agent_id>.json. Failures loop back through Phase 2 deliberation
+    (no QA feedback shared — preserves independence wall). Cap K=5; persistent failures
+    logged to phase3/qa_failed_unconverged.csv.
+
+# ============================================================
+# PIPELINE STATE — AUTHORITATIVE (from run_state.json, read 2026-05-15T05:53Z)
+# ============================================================
+
+pipeline_state:
+  run_state_json_path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json"
+  phase: "2_5_privilege_complete"
+  last_completed_checkpoint: "phase2_5_privilege_processed"
+  run_state_updated_at: "2026-05-15T05:52:36Z"
+
+  phase1:
+    status: "COMPLETE"
+    convergence_pct: 85
+    confidence: 82
+    open_questions_count: 10
+    completed_at: "2026-05-13T22:24:43Z"
+    artifact: "phase1/SOLIDIFIED_OBJECTIVE.md"
+
+  phase2_preprocessing:
+    status: "COMPLETE"
+    canonical_queue_size: 1858
+    extraction_files: 1854
+    ocr_files: 329
+    vision_bridge_in_scope: 76
+    vision_bridge_skipped: 135
+    completed_at: "2026-05-14T06:42:56Z"
+
+  phase2_tier1:
+    status: "COMPLETE"
+    excluded: 345
+
+  phase2_tier2:
+    status: "COMPLETE"
+    sampled: 12
+    bulk_excluded: 265
+
+  phase2_tier3_waves:
+    status: "COMPLETE — all 90 batches done"
+    total_batches: 90
+    batches_done: 90
+    tier3_deterministic_arch_included: 340
+    tier3_includes: 535
+    tier3_excludes: 153
+    wave_timestamps:
+      wave1: "2026-05-14T08:35:31Z"
+      wave2: "2026-05-14T08:49:57Z"
+      wave3: "2026-05-14T09:04:14Z"
+      wave4: "2026-05-14T09:30:15Z"
+      wave5: "2026-05-14T10:34:05Z"
+      wave6: "2026-05-14T16:52:45Z"
+      wave7: "2026-05-14T17:13:27Z"
+      wave8: "2026-05-14T17:40:53Z"
+      wave9: "2026-05-14T17:53:01Z"
+      wave10: "2026-05-14T19:28:53Z"
+      wave11: "2026-05-14T20:05:10Z"
+      wave12: "2026-05-14T21:34:02Z"
+      wave13: "2026-05-15T01:55:52Z"
+      wave14: "2026-05-15T02:44:38Z"
+
+  phase2_iter2:
+    status: "COMPLETE"
+    splits_entering: 137
+    resolved_includes: 57
+    resolved_excludes: 16
+    still_split_after_iter2: 64
+    still_split_disposition: "default-EXCLUDE per §4.5 (K=5 cap exhausted)"
+    completed_at: "2026-05-15T03:21:33Z"
+    still_split_file: "phase2/iter2_still_split.json"
+
+  phase2_totals:
+    total_excluded: 855  # tier1(345) + tier2_bulk(265) + tier3_excludes(153) + iter2_resolves(16) + section_4_5_defaults(64) + tier2_sample(12) ≈ 855
+    dataroom_files_before_2_5: 1002
+
+  phase2_5_privilege:
+    status: "COMPLETE"
+    files_scanned: 119
+    scans_total: 357  # 119 × 3
+    files_flagged: 104
+    files_kept: 15
+    flagged_quarantine_dir: "phase2_5/flagged_manual_review/"
+    flagged_log: "phase2_5/flagged_log.csv"
+    kept_log: "phase2_5/kept_log.csv"
+    gap_batches: "phase2_5/gap_batches/ (gap_i1.json, gap_i2.json, gap_i2_sub01-05.json)"
+    completed_at: "2026-05-15T05:52:36Z"
+    note: >
+      Phase 2.5 scanned a subset (119) of the dataroom for privilege markers.
+      The 104 quarantined files are in phase2_5/flagged_manual_review/ and are
+      NOT in dataroom/. They require human review before any potential re-inclusion.
+      The 15 KEPT files passed all 3 scanners and remain in dataroom/.
+
+  phase3_inclusion_qa:
+    status: "NOT STARTED"
+    input: "dataroom/ — 898 files"
+    output_dir: "phase3/qa/<file_id>/<agent_id>.json"
+    pass_log: "phase3/qa_pass_log.csv"
+    fail_log: "phase3/qa_failed_unconverged.csv"
+
+  phase4_through_6:
+    status: "NOT STARTED"
+
+  final_dataroom_count: 898
+  exclusions_total: 959  # 855 (Phase 2) + 104 (Phase 2.5 privilege)
+
+# ============================================================
+# PHASE 2.5 ITER2 STILL-SPLIT FILES (64 default-EXCLUDED by §4.5)
+# ============================================================
+
+iter2_still_split_64_files: |
+  These 64 files exhausted iter2 resolution and were default-EXCLUDED per §4.5.
+  They are NOT in the dataroom. Key groups:
+  - Shreveport/Louisiana hotel files (Residence Inn Airport, appraisals, mortgage statement):
+    CORRECT exclusion — Louisiana Wolfgramm deal, wrong property
+  - f_01c078d10ef5 (24-NY-260_Waldorf Astoria Park City.pdf): borderline — evaluate in Phase 3 if it surfaces
+  - Wolfgramm Portfolio BOV[2]: borderline — could be relevant to sale context
+  - Integrity RS LLC Amended OA: likely wrong-deal entity doc
+  - Beehive Waldorf Payoff docs (20251201, 20251215, 20260320): IMPORTANT — payoff schedules
+    for the Waldorf loan may be highly relevant to the sale. These being defaulted-OUT is a
+    potential gap. Flag for human review if Phase 3 surfaces incomplete picture on payoffs.
+  - HKS Concept drawings: Ascent architectural concept — likely should be IN
+  - Foreclosure Referral Checklist: privilege concern — default-OUT is correct
+  - OKOA ASCENT LLC 2024 1065 K1: tax return — likely relevant to buyer diligence
+  - Internal Okoa discussion docs (Aug 2025, meeting transcripts, Phil W call): correct exclusion
+  - Phoenix/Houston/Reserve/Preserve title/entity docs: wrong deal — correct exclusion
+  - Lone Star West Gray LLC formation docs: wrong deal — correct exclusion
+  - West Gray appraisal, Madison on West Gray certificates: wrong deal — correct exclusion
+  - PC Sale Comps, Dalton comps: could be relevant to sale valuation — consider for Phase 3
+  - Purchase Contract Preserve / Reserve: wrong deal — correct exclusion
+  - Wiring Instructions PNC COM: privilege/operational — correct exclusion
+  - Mark Carmen Conflict Discussion Transcript: privilege — correct exclusion
+  - Castor Call Attorney Privilege transcript: privilege — correct exclusion
+  - OKOA-v-Wolfgramm Attorney Fact Brief: litigation privilege — correct exclusion
+  - Sale Comps Courtyard Marriott Phoenix: wrong deal — correct exclusion
+  - SURVEY DATED 11-1-2023: may be relevant (could be Ascent property survey)
+  Full list in: /Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/iter2_still_split.json
+
+# ============================================================
+# POST-PROCESSOR SCRIPTS ON DISK
+# ============================================================
+
+post_processor_scripts:
+  location: "run_dir/ (alongside run_state.json)"
+  all_present:
+    - wave1_post.py through wave14_post.py  # all 14 exist — confirmed from ls
+    - iter2_post.py
+    - phase25_post.py
+  all_run: true
+  all_idempotent: true
+  note: >
+    All post-processors are complete and idempotent. Do NOT re-run them — they will
+    produce no harm but will also produce no new work. The run_state.json is authoritative.
+
+# ============================================================
+# PHASE 3 — HOW TO EXECUTE (CRITICAL FOR NEXT SESSION)
+# ============================================================
+
+phase3_execution_guide:
+  agent: "dr2-inclusion-qa"
+  agent_def: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/dr2-inclusion-qa.md"
+  input_directory: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/dataroom/"
+  output_directory: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase3/qa/"
+  files_to_process: 898
+
+  instance_lenses:
+    instance_1: "adversarial — strongest case this file is wrong for the dataroom"
+    instance_2: "completeness — does this serve the sale objective"
+    instance_3: "coherence — does this fit the dataroom as a whole (gets full dataroom listing as context)"
+
+  output_format: "phase3/qa/<file_id>/<agent_id>.json"
+
+  wigum_loop:
+    all_3_pass: "File confirmed → log to phase3/qa_pass_log.csv"
+    any_fail: >
+      File re-enters Phase 2 deliberation with FRESH 3-agent instances.
+      NO QA feedback shared with re-deliberators (preserves independence wall).
+      Re-deliberated verdict may be INCLUDE (re-confirmed, try Phase 3 again) or EXCLUDE
+      (removed from dataroom/ — log to phase2/exclusion_log.csv).
+    cap: "K=5 iterations per file"
+    cap_exceeded: "Log to phase3/qa_failed_unconverged.csv (manual review bucket)"
+
+  batching_recommendation: >
+    898 files × 3 agents = 2,694 spawns. Do NOT attempt all at once.
+    Batch in groups of ~20-30 files (60-90 agent spawns per wave).
+    After each batch: collect results, run consensus, update qa_pass_log.csv.
+    Estimated wall time: 8-15 hours across multiple sessions.
+
+  phase3_solidified_objective: "phase1/SOLIDIFIED_OBJECTIVE.md — agents must read this"
+  phase3_dataroom_listing: "intermediate/dataroom_listing_for_supersession.txt (898-line canonical list for coherence-lens context)"
+
+  update_run_state_when_complete:
+    phase: "3_inclusion_qa_clean"
+    last_completed_checkpoint: "phase3_converged"
+
+# ============================================================
+# PHASES AFTER PHASE 3
+# ============================================================
+
+phases_remaining_after_3:
+  phase4a_taxonomy:
+    description: "dr2-taxonomy-designer × 3 blind → dr2-taxonomy-synthesizer → TAXONOMY.json"
+    output: "phase4/TAXONOMY.json"
+
+  phase4b_placement:
+    description: "dr2-placement-classifier × 3 per file → sort into taxonomy sub-folders"
+    output: "dataroom/ organized into sub-folders per TAXONOMY.json"
+
+  phase5_placement_qa:
+    description: "dr2-placement-qa × 3 per file"
+    output: "phase5/qa/<file_id>/"
+
+  phase6_deliverable:
+    description: |
+      dr2-guide-drafter × 3 → dr2-guide-synthesizer → dr2-guide-qa Wigum (cap=10)
+      dr2-description-drafter × 3 per file → dr2-description-qa
+      Build Excel: python3 .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py
+      Build manual review md: python3 .claude/skills/acos-dataroom-v2/scripts/build_manual_review_md.py
+      Copy final dataroom to Dropbox destination
+    dropbox_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+
+# ============================================================
+# MATERIAL FINDINGS — PRESERVE FOR PHASE 6 GUIDE
+# ============================================================
+
+material_findings:
+  cross_collateral:
+    finding: >
+      Existing operating Waldorf-Astoria Park City (2100 Frostwood Blvd) is CONFIRMED
+      cross-pledged to the $30M Ascent loan. Definitive document: Title Policy
+      FTUT2400121-TJR ($36M ALTA Loan Policy, Fidelity National Title, March 5 2024,
+      Okoa Capital as insured, covers both Ascent Park City 4080 Cooper AND Dakota
+      Mountain Lodge / Waldorf 2100 Frostwood as joint collateral).
+    triple_confirmed_by: "Batches 41, 42, 57"
+    resolves: "Phase 1 §7 Open Question 4"
+
+  franchise:
+    finding: >
+      Signed Hilton Tapestry Franchise Agreement for Hotel Ascent Park City (Dec 15 2018)
+      confirmed in batch 61. Single instance in source folder.
+    resolves: "Phase 1 §7 Open Question 10"
+
+  pace_financing:
+    finding: >
+      Greenworks Lending LLC IS the originator/servicer for Nuveen Green Capital C-PACE —
+      same deal, not separate counterparties. C-PACE = $27.5M at 4080 Cooper Lane.
+      Payoff letter amount: $30,321,016.01.
+
+  construction_status:
+    - "Westland Construction (original GC) was terminated. Verity LLC replaced as GC with $26M new GMP."
+    - "Verity GMP $21.5M, 72.67% complete, $6.66M balance to finish as of March 2025."
+    - "Per-diem default interest $16,533.46. Projected ~$33.4M outstanding as of May 2026."
+
+  capital_stack:
+    - "Total project capital $90.5M; $82.1M disbursed as of March 2025"
+    - "Okoa Senior: $26.55M-$30M (numbers vary across docs)"
+    - "Greenworks/Nuveen C-PACE: $27.5M-$30.3M (statutory senior — ahead of Okoa in waterfall)"
+    - "Combined senior claims exceed $60M against Ascent before equity recovery"
+
+  litigation:
+    - "Darwin Fielding COMPLAINT PDF found in batch 63 — active or resolved lawsuit against the project"
+
+  privilege_notes:
+    - "104 files quarantined in phase2_5/flagged_manual_review/ — includes Aug 2025 war room meeting notes, fiduciary discussion, workout strategy docs, attorney call transcripts"
+    - "These files are NOT in the buyer dataroom — correct and intentional"
+    - "phase2_5/flagged_log.csv has the full list with triggered markers"
+
+# ============================================================
+# STANDING DECISIONS (DO NOT CHANGE WITHOUT ASKING USER)
+# ============================================================
+
+standing_decisions:
+  - id: SD-1
+    decision: "Batched-deliberator architecture: 3 agents × 10 files per spawn = 30 votes per batch. Cross-instance blindness preserved."
+  - id: SD-2
+    decision: "Wave size: 6 batches = 18 parallel Task() spawns. No re-ask required — proceed automatically."
+  - id: SD-3
+    decision: "Splits deferred: iter2 re-dispatch after all 90 batches complete. DONE."
+  - id: SD-4
+    decision: "Full Tier-3 path → Phase 2.5 → Phase 3 → Phase 4 → Phase 5 → Phase 6. No human pause gates."
+  - id: SD-5
+    decision: "Post-processing drivers derive all counters from disk truth — never use incremental counters."
+  - id: SD-6
+    decision: "JSON-escaping reminder MUST appear in all agent dispatch prompts."
+  - id: SD-7
+    decision: >
+      All dispatch prompts MUST include path to supersession listing:
+      run_dir/intermediate/dataroom_listing_for_supersession.txt
+      Agents check this list to detect supersession cases.
+  - id: SD-8
+    decision: >
+      Duplicate-detection rule: files with ' copy', '(OCR)', '_A_', '_B_', 'text_A__', 'text_B__'
+      prefixes/suffixes MUST be checked against canonical names in supersession listing.
+  - id: SD-9
+    decision: >
+      Cross-collateral rule: 2100 Frostwood Waldorf SECURITY instruments are IN (§5 rule 11).
+      Operating financials and marketing photos for 2100 Frostwood are OUT (§5 rules 22/23).
+  - id: SD-10
+    decision: >
+      Boss at Okoa will NOT review intermediate artifacts. The final dataroom folder +
+      Excel guide is the ONLY artifact he sees. Must be boss-criticism-proof on first cold look.
+
+# ============================================================
+# KEY FILE PATHS
+# ============================================================
+
+key_files:
+  run_state: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/run_state.json"
+  solidified_objective: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase1/SOLIDIFIED_OBJECTIVE.md"
+  dataroom: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/dataroom/"
+  phase3_qa_output: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase3/qa/"
+  phase3_pass_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase3/qa_pass_log.csv"
+  phase3_fail_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase3/qa_failed_unconverged.csv"
+  inclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/inclusion_log.csv"
+  exclusion_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/exclusion_log.csv"
+  iter2_still_split: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/iter2_still_split.json"
+  flagged_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2_5/flagged_log.csv"
+  kept_log: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2_5/kept_log.csv"
+  flagged_manual_review: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2_5/flagged_manual_review/"
+  supersession_listing: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/intermediate/dataroom_listing_for_supersession.txt"
+  votes_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2/votes/"
+  phase2_5_scans: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase2_5/scans/"
+  skill_design: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-dataroom-v2/DESIGN.md"
+  skill_md: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-dataroom-v2/SKILL.md"
+  inclusion_qa_agent: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/dr2-inclusion-qa.md"
+
+# ============================================================
+# DOMAIN CONTEXT — CRITICAL FOR AGENTS
+# ============================================================
+
+domain_context:
+  asset_name: "The Ascent Park City (Tapestry Collection by Hilton)"
+  asset_address: "4080 N Cooper Lane, Park City UT 84098"
+  loan_amount: "$30M Okoa construction loan"
+  borrower_spe: "Beehive Hospitality Ascent PC, LLC"
+  deal_mode: "workout / settlement / sale"
+  operating_waldorf: "2100 Frostwood Blvd, Park City UT — existing operating hotel, cross-pledged collateral"
+  naming_warning: >
+    'Waldorf' in filenames is the LOAN FAMILY CODENAME, not the operating Waldorf-Astoria hotel.
+    Do NOT auto-exclude 'Waldorf'-named files based on the name alone.
+    Read SOLIDIFIED_OBJECTIVE.md §2 (Naming Catalog) before dispatching any agents.
+  user_context: >
+    Zee (jason@okoacapital.com) at Okoa Capital. Boss at Okoa (principal) will NOT review
+    intermediate artifacts. The final dataroom folder + Excel guide is the ONLY artifact
+    he ever sees. It must be boss-criticism-proof on first cold look. This is why
+    acos-dataroom-v2 exists — v1 failed when boss refused to review the Internal Working
+    Workbook and the raw AI output became the deliverable ("AI is a piece of shit").
+
+# ============================================================
+# NEXT ACTIONS — PRIORITY ORDER
+# ============================================================
+
+next_actions:
+  - priority: 1
+    action: >
+      VERIFY DATAROOM COUNT. Quick sanity check before starting Phase 3:
+        ls /Users/zee/Documents/Vibe\ Coding/ACOS\ 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/dataroom/ | wc -l
+      Expected: 898 files. If different, read run_state.json to reconcile.
+
+  - priority: 2
+    action: >
+      START PHASE 3 — Inclusion QA Wigum Loop.
+      Read dr2-inclusion-qa.md agent definition and SKILL.md §7 for full spec.
+      Batch the 898 dataroom files into groups of ~20-30 files per wave.
+      For each file spawn dr2-inclusion-qa × 3 (adversarial / completeness / coherence lenses).
+      Output: phase3/qa/<file_id>/<agent_id>.json with PASS or FAIL + reasoning.
+      After each batch: collect results, compute consensus (all-PASS vs any-FAIL),
+      log passing files to phase3/qa_pass_log.csv,
+      send failing files back to Phase 2 re-deliberation (NO QA context shared),
+      update run_state.json with progress.
+      When ALL 898 files have passed all 3 instances:
+        run_state.json: phase="3_inclusion_qa_clean", checkpoint="phase3_converged"
+
+  - priority: 3
+    action: >
+      PHASE 4a — Taxonomy Design.
+      Build phase4/dataroom_inventory.json (filenames + content summaries for all 898 files).
+      Spawn dr2-taxonomy-designer × 3 blind. Each writes proposals/agent_N.json.
+      Spawn dr2-taxonomy-synthesizer → TAXONOMY.json.
+
+  - priority: 4
+    action: >
+      PHASE 4b — Placement Classification.
+      For each of 898 dataroom files, spawn dr2-placement-classifier × 3.
+      Consensus placement → sort files into sub-folders per TAXONOMY.json.
+
+  - priority: 5
+    action: "PHASE 5 — Placement QA: dr2-placement-qa × 3 per file."
+
+  - priority: 6
+    action: >
+      PHASE 6 — Final Deliverable.
+      dr2-guide-drafter × 3 → dr2-guide-synthesizer → dr2-guide-qa Wigum (cap=10).
+      dr2-description-drafter × 3 per file → dr2-description-qa.
+      python3 .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py
+      python3 .claude/skills/acos-dataroom-v2/scripts/build_manual_review_md.py
+      Copy dataroom/ to Dropbox destination.
+
+# ============================================================
+# CONTEXT FOR NEXT SESSION
+# ============================================================
+
+context_for_next_session: |
+  This is the acos-dataroom-v2 production run on the Wolfgramm Ascent Beehive Waldorf
+  $30M loan folder — a 2,285-file Dropbox corpus for the Ascent Park City Tapestry
+  Collection hotel (4080 N Cooper Lane, Park City UT). Okoa Capital (Zee, jason@okoacapital.com)
+  wants a buyer-ready dataroom to sell the hotel asset. The boss will NOT review any
+  intermediate artifacts — the final folder + Excel is the only output he ever sees.
+
+  WHERE WE ARE: Phases 1, 2, and 2.5 are completely finished. The dataroom is locked at
+  898 files. All 14 Tier-3 waves (90 batches) ran and were post-processed. The 137 iter2
+  splits were resolved: 57 included, 16 excluded, 64 defaulted-EXCLUDE under §4.5. The
+  Phase 2.5 privilege scanner processed 119 files × 3 agents = 357 scans, quarantining
+  104 privilege-sensitive files into phase2_5/flagged_manual_review/ (NOT in the buyer
+  dataroom) and keeping 15. run_state.json checkpoint: "phase2_5_privilege_processed".
+
+  NEXT PHASE IS PHASE 3 — INCLUSION QA. Each of the 898 dataroom files needs dr2-inclusion-qa
+  × 3 (adversarial / completeness / coherence lenses). All 3 must PASS per file; any FAIL
+  sends the file back through Phase 2 re-deliberation (fresh agents, no QA context — preserves
+  independence wall). Cap is K=5 iterations; persistent failures go to qa_failed_unconverged.csv
+  (manual review bucket). Output accumulates in phase3/qa/<file_id>/ — the directory is empty
+  and ready. With 898 files × 3 agents, this is 2,694 spawns total. Batch in groups of 20-30
+  files per wave to manage context budget. Expect multiple sessions.
+
+  IMPORTANT DOMAIN NOTES FOR PHASE 3 AGENTS:
+  - 'Waldorf' in filenames = LOAN FAMILY CODENAME. Read SOLIDIFIED_OBJECTIVE.md §2 before dispatching.
+  - Borrower SPE: Beehive Hospitality Ascent PC, LLC.
+  - Cross-collateral: 2100 Frostwood Waldorf is pledged collateral — its SECURITY instruments
+    belong in the dataroom; its operating financials do not.
+  - The 64 iter2 default-EXCLUDED files are permanently out (iter2_still_split.json). If Phase 3
+    QA surfaces a major gap in coverage (e.g. missing payoff schedules), flag it explicitly.
+    The Beehive Waldorf Payoff docs (20251201, 20251215, 20260320) were in the default-EXCLUDE
+    group — this may be a gap worth noting in Phase 3 completeness analysis.
+  - 104 privilege-flagged files are quarantined in flagged_manual_review/ — Phase 3 agents
+    should not be given these. They are NOT part of the 898-file input.
+
+  MATERIAL FACTS ACCUMULATED (forward to Phase 6 guide):
+  - Cross-collateral confirmed (title policy FTUT2400121-TJR covers both 4080 Cooper + 2100 Frostwood)
+  - Nuveen/Greenworks C-PACE: $27.5M statutory senior lien (payoff $30.3M)
+  - Combined senior claims exceed $60M before equity recovery
+  - Verity LLC replaced Westland as GC; $26M new GMP; 72.67% complete as of March 2025
+  - Darwin Fielding COMPLAINT present in dataroom (active litigation)
+  - Hilton Tapestry franchise agreement confirmed (Dec 15 2018)
+  - Estimated $33.4M outstanding Okoa balance as of May 2026
+
+  ALL POST-PROCESSORS ARE DONE. wave1-14_post.py, iter2_post.py, phase25_post.py all exist
+  in run_dir and have been executed. Do not re-run them unless debugging.
+
+# ============================================================
+# CHAIN OF CUSTODY — PRIOR HANDOFFS
+# ============================================================
+
+prior_handoffs_chain:
+  - file: "memory/handoffs/archive/2026-05-14-ascent-dataroom-v2-wave10-eternity-handoff.yaml"
+    timestamp: "2026-05-14T19:15:00Z"
+    covers: "Waves 1-10, 35 in-flight votes at session-clear, priority wave verification instructions, full B68 privilege-file catalog, material findings from Waves 4-9"
+    note: "MOST DETAILED prior handoff — read for full findings chain from Waves 1-10"
+
+  - file: "memory/handoffs/archive/2026-05-14-ascent-dataroom-v2-wave4-eternity-handoff.yaml"
+    timestamp: "2026-05-14T09:20:11Z"
+    covers: "Waves 1-4 complete, full key findings Waves 1-4, Waldorf naming catalog, Nuveen C-PACE confirmation, Variant participation, title concerns, fraudulent transfer question on back-to-back warranty deeds"
+
+  - file: "memory/handoffs/archive/2026-05-14-emergency-handoff.yaml"
+    timestamp: "2026-05-14T09:30:00Z"
+    covers: "End-of-Wave-3 state"
+
+  - file: "memory/handoffs/archive/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml"
+    timestamp: "2026-05-14T07:25:00Z"
+    covers: "Pre-Wave-1 state — architectural setup, skill design, Phase 1 findings"
+
+# ============================================================
+# RECONSTRUCTION SOURCES
+# ============================================================
+
+reconstruction_sources:
+  - "run_state.json — read in full; authoritative state, last_checkpoint=phase2_5_privilege_processed, updated_at=2026-05-15T05:52:36Z"
+  - "run_dir/ listing — confirmed wave1-14_post.py, iter2_post.py, phase25_post.py all present"
+  - "phase2_5/ directory listing — confirmed scans/ (119 dirs × 3 instance jsons), flagged_manual_review/ (104 files), gap_batches/ (7 files)"
+  - "phase2_5/flagged_log.csv — 105 lines (1 header + 104 flagged files)"
+  - "phase2_5/kept_log.csv — 16 lines (1 header + 15 kept files)"
+  - "phase2/iter2_still_split.json — read: still_split_count=64, full 64-file list captured"
+  - "phase3/ directory — empty, confirmed ready for Phase 3 output"
+  - "dataroom/ ls | wc -l — confirmed 898 files"
+  - "phase2/votes/ ls | wc -l — 908 vote directories (all iter1 + iter2 votes)"
+  - "phase2/iter2_batches/ listing — 14 batch files (iter2_batch_001-014.json)"
+  - "phase25_post.py — header read; confirms asymmetric consensus logic and idempotence"
+  - "iter2_post.py — header read; confirms iter2 vote reading pattern"
+  - "intermediate/dataroom_listing_for_supersession.txt — 929 lines (898 files + 31 header/blank lines)"
+  - "memory/handoffs/archive/2026-05-14-ascent-dataroom-v2-wave10-eternity-handoff.yaml — read in full"
+  - "memory/handoffs/archive/2026-05-14-emergency-handoff.yaml — read in full"
+  - "memory/handoffs/archive/2026-05-14-ascent-dataroom-v2-resume-handoff.yaml — first 50 lines"
+  - "SKILL.md §7 (Phase 3 spec) — read for Phase 3 execution protocol"
+  - "git log --oneline -20 — most recent commit: 977d0f7 feat(acos-dataroom-v2): v2.0.0"
+  - "git status --short — run output at _acos_dataroom_v2_output/ is untracked (git-ignored); no staged changes"
+  - ".acos/state/ listing — agent-lifecycle.log (134KB), oracle-audit.log; no ephemeral hook state files"
+  - "memory/decisions/ — listing: ADR-001, ADR-002 (both Apr 23); no new decisions from this run session"
+  - "User-provided context in invocation prompt — relayed into pipeline_state, iter2 counts, Phase 2.5 counts"

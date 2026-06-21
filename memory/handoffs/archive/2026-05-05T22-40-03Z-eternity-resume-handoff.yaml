@@ -1,0 +1,174 @@
+timestamp: "2026-05-05T22:40:03Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session executed the ACOS token-cleanup workstream, a systematic effort to reduce
+  session-start token overhead from ~50k down toward a target of 20k. The session reached
+  ~328k tokens before /acos-eternity-protocol was fired manually. Key completed work includes:
+  removing the dead auto-load-handoff.sh hook, trimming MEMORY.md from 258 to 101 lines,
+  rewriting the CLAUDE.md Auto-Handoff section to reflect accurate state, archiving 4 active
+  handoffs, removing legacy inter-agent handoff scaffolding directories, and surveying ~63
+  skills across the project for a pruning proposal (Tier 1 through Tier 5). The floor-test
+  workstream (measuring Claude Code's platform baseline token cost) was explained to the user
+  but Step 1 had not yet been confirmed complete before the protocol fired.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  work_type: "acos-infrastructure"
+  description: "ACOS token-cleanup workstream — reduce session-start token overhead"
+
+completed_this_session:
+  - "Diagnosed root cause of session-start token bloat: auto-load-handoff.sh was documented
+    as a SessionStart hook but was never registered in any settings.json — dead code for the
+    entire life of the auto-handoff system."
+  - "MEMORY.md trimmed from 258 lines (8,912 bytes, silently truncated) to 101 lines — full
+    file now loads without truncation. User subsequently added two more entries:
+    user_zed_learning.md and feedback_chunked_teaching.md (now at ~104 lines)."
+  - "Deleted auto-load-handoff.sh from both ~/.claude/scripts/ and
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/ — dual-mirror removed."
+  - "Rewrote the 'Auto-Handoff System' section of project CLAUDE.md (was 19 lines of false
+    claims about the hook being registered) with a 7-line accurate 'Handoff System' section
+    noting the hook was never registered and was removed Apr 2026."
+  - "Archived 4 active handoffs to memory/handoffs/archive/ (status: completed):
+    (1) 2026-04-25T03-40-04Z-session-handoff.yaml — Rubin counsel-bundle session;
+    (2) 2026-04-28-emergency-handoff.yaml — emergency handoff from Apr 28;
+    (3) 2026-03-16-epic001-phase1-progress.yaml — from auto-memory archive;
+    (4) 2026-03-17-epic001-all-stories-complete.yaml — from auto-memory archive."
+  - "Removed 4 legacy inter-agent handoff scaffolding directories from memory/handoffs/:
+    architect-to-developer/, developer-to-architect/, developer-to-reviewer/,
+    reviewer-to-architect/. These contained only .template.yaml and .gitkeep stubs."
+  - "Produced a full Skills Inventory + Pruning Proposal covering ~63 unique skills across
+    project (.claude/skills/), global (~/.claude/skills/), and standalone locations.
+    Organized as Tier 1 (low-risk cuts), Tier 2 (consolidation candidates), Tier 3 (keep
+    but rationalize), Tier 4 (keep), Tier 5 (actively used). USER HAS NOT YET ACTED on
+    the proposal."
+  - "Explained the floor-test workstream to the user: Step 1 = create empty scratch dir at
+    /tmp/acos-floor-test/, Step 2 = open new Claude Code session there and run /context,
+    Step 3 = record the baseline token number, Step 4 = compare against post-cleanup
+    project session. Delivered instructions; user had not yet replied 'ready' before the
+    eternity protocol fired."
+
+files_modified:
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Trimmed from 258 to 101 lines. Removed bloated 'Framework Enhancements',
+      'Global Skills', 'Auto-Handoff System', '/acos-update Improvements', 'The Oracle',
+      'Model Profile System', 'SEOS Credit Memo Skill', and 'Loan Document Finder Skill'
+      sections. Replaced with condensed single-line summaries. Added accurate 'Auto-Handoff
+      System (REMOVED Apr 2026)' section. User later added user_zed_learning.md and
+      feedback_chunked_teaching.md entries."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/CLAUDE.md"
+    changes: "Replaced 19-line 'Auto-Handoff System' section with 7-line 'Handoff System'
+      section. Old section falsely claimed auto-load-handoff.sh was a registered SessionStart
+      hook. New section accurately states the hook was never registered and was removed Apr 2026.
+      Creation hooks (context-monitor.sh, context-watchdog.sh) and token-gate.sh are documented
+      as still active."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/auto-load-handoff.sh"
+    changes: "DELETED. Was a dead SessionStart hook — never registered in any settings.json."
+  - path: "~/.claude/scripts/auto-load-handoff.sh"
+    changes: "DELETED. Mirror of the project-level script, also dead."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/"
+    changes: "4 handoffs moved here with status: completed (see completed_this_session for list)."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/architect-to-developer/"
+    changes: "DELETED directory (contained only .template.yaml stub)."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/developer-to-architect/"
+    changes: "DELETED directory (contained only .gitkeep)."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/developer-to-reviewer/"
+    changes: "DELETED directory (contained only .template.yaml stub)."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/reviewer-to-architect/"
+    changes: "DELETED directory (contained only .template.yaml stub)."
+
+decisions_made:
+  - "auto-load-handoff.sh was confirmed as never-registered dead code and removed from both
+    locations. The SessionStart auto-load behavior never existed in production."
+  - "MEMORY.md must stay under 200 lines (its documented limit) to avoid silent truncation
+    at session-start. It was at 258 lines and being truncated for the entire recent period."
+  - "Session-start token target: user's goal is 20k, realistic estimate is 28-35k best-case
+    due to Claude Code platform floor. Told user this directly."
+  - "Skills Pruning Proposal produced but not yet acted on — pending user review and
+    floor-test results before proceeding with any deletions."
+
+blockers:
+  - "Floor-test not yet started: user needs to create /tmp/acos-floor-test/, open a new
+    Claude Code session there, and run /context to establish the platform baseline token cost.
+    This result will bound how aggressive the token-reduction can be."
+  - "Skills Pruning Proposal awaiting user decision: Tier 1 cuts (acos-credit-memo-generator
+    deletion, security-review-ultimate duplication resolution) are low-risk but not yet
+    authorized. Tier 2 cuts (loan-doc-* family consolidation) require more analysis."
+
+next_actions:
+  - "FIRST: Confirm with the user whether Step 1 of the floor-test is done (empty
+    /tmp/acos-floor-test/ directory created). Guide step-by-step per feedback_chunked_teaching.md
+    (one small step at a time, pause for confirmation before each next step)."
+  - "Step 2 of floor-test: have user open a new Claude Code session in /tmp/acos-floor-test/
+    and run /context. Record the 'approximate tokens' baseline number."
+  - "Step 3 of floor-test: compare the baseline to current ACOS 3.0 session-start token count.
+    The delta is what ACOS-specific content is costing at session-start."
+  - "After floor-test: share results with user and decide which Tier 1/Tier 2 pruning actions
+    to execute, in priority order."
+  - "Tier 1 actions (pending user approval): delete acos-credit-memo-generator skill from
+    project (replaced by acos-loan-doc-generator per MEMORY.md); resolve security-review-ultimate
+    duplication between project standalone and global standalone."
+  - "Tier 2 actions (pending analysis): review loan-doc-* skill family for consolidation
+    (acos-loan-doc-generator, acos-loan-doc-generator-with-visual-verification, acos-loan-doc-mapper,
+    acos-loan-doc-finder, acos-loan-doc-sorter)."
+
+context_for_next_session: |
+  We were mid-way through a focused workstream to reduce ACOS session-start token overhead.
+  The user's goal is to get from ~50k to ~20k tokens at session-start. My honest estimate
+  (shared with the user) is that 28-35k is more realistic — Claude Code itself has a platform
+  floor that accounts for a large portion of session tokens regardless of project content.
+
+  All the easy/safe wins were completed this session: dead hook removed, MEMORY.md trimmed,
+  CLAUDE.md corrected, stale handoffs archived, legacy scaffolding deleted. These changes
+  should be reflected immediately in the next session's token count.
+
+  The workstream that was queued but not started is the FLOOR TEST. The user was about to
+  create /tmp/acos-floor-test/ as an empty scratch directory, open a fresh Claude Code
+  session there, and run /context to get the platform's baseline token number. This is the
+  essential measurement before we know how much headroom exists for further cuts.
+
+  Skills pruning is also queued (Tier 1 through Tier 5 inventory was produced in the parent
+  session) but should not proceed until the floor-test result is known.
+
+  KEY BEHAVIORAL NOTE: The user has feedback_chunked_teaching.md — they prefer to receive
+  one step at a time with a pause for "ready" or questions before the next step. Do NOT
+  dump the full floor-test procedure at once. Ask: "Is the /tmp/acos-floor-test/ directory
+  created?" first. Then wait. Then give Step 2. And so on.
+
+  IMPORTANT INFRASTRUCTURE NOTES:
+  - auto-load-handoff.sh is GONE — no auto-load of handoffs on session start. The next
+    session will NOT auto-load this handoff. User must manually invoke /acos-handoff or
+    reference this file directly.
+  - The eternity-protocol daemon (token-watcher.py) was running during this session. Its
+    config is at ~/Library/Application Support/acos-token-monitor/config.yaml with threshold
+    400000. The daemon watches the JSONL and auto-fires /acos-eternity-protocol at 400k
+    tokens. This is how the current handoff was triggered.
+  - The new canonical location for eternity-protocol state is
+    ~/Library/Application Support/acos-token-monitor/ (NOT .acos/state/). The config.yaml
+    there is the hot-reload source; .acos/config/eternity-protocol.yaml is the in-repo mirror.
+  - memory/handoffs/ currently has no active handoff files (all moved to archive/).
+    This file is the one to load.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/CLAUDE.md (lines 1-80 read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/config/eternity-protocol.yaml"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/config.yaml"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/logs/token-watcher.log"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/ (empty — no resume pending)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-resume-prompt/SKILL.md"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-04-28-emergency-handoff.yaml (first 40 lines)"
+  - "git status --short (full output)"
+  - "git log --oneline -20"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "ls -lt memory/handoffs/ and memory/handoffs/archive/"
+  - "ls -la .acos/state/ and .acos/config/"
+  - "ls -la ~/Library/Application Support/acos-token-monitor/"
+  - "ls -lt .acos/evidence/ and memory/decisions/"
+  - "Parent session context block (passed by caller)"

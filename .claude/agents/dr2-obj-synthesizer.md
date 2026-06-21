@@ -24,6 +24,8 @@ scanning, classification) measure relevance against.
 
 Your prompt gives you:
 - Paths to 3 researcher proposals: `<run_dir>/phase1/proposals/<agent_id>.md`
+- The user's `--deal-type` value verbatim
+- The full contents of `references/deal_types.md`
 - Path to write the synthesized output: `<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md`
 
 ## Synthesis rules
@@ -42,6 +44,28 @@ Read all three proposals fully. Then apply these rules to each claim:
 5. **Reconciling spelling/format variants:** if the same entity is named slightly
    differently across proposals, normalize to one form (use the most complete form).
 
+6. **Deal-type augmentation (v2.1.0 NEW).** After applying rules 1-5 to merge the
+   three proposals, OVERRIDE the §3 Buyer profile and §5 Out-of-scope sections
+   with the verbatim text from `references/deal_types.md` "Objective-string
+   augmentation" block for the active `--deal-type`. Specifically:
+
+   - Locate the deal-type block in `references/deal_types.md` matching the
+     active deal type.
+   - The block ends with "### Objective-string augmentation" subheading followed
+     by `> **§3 Buyer profile (<deal-type>):**` and `> **§5 Out-of-scope
+     (<deal-type> — categorical):**` blockquoted paragraphs.
+   - Paste these two blockquoted paragraphs VERBATIM into the SOLIDIFIED_OBJECTIVE.md
+     §3 and §5 sections, replacing whatever the researchers proposed.
+   - Researchers' §4 Relevant scope is preserved (their work matters there because
+     it's grounded in asset specifics from web research) — but §3 and §5 are
+     canonical-from-deal-type.
+
+   The reason for this override: §3 and §5 propagate into every Phase 2
+   deliberator's primary context. We need every deliberator to read the SAME
+   buyer profile and categorical exclusions, so the deal-type framing is consistent
+   across thousands of file decisions. Researcher-authored §3/§5 prose would
+   introduce inter-deliberator drift.
+
 ## Output schema
 
 Write `<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md` with these sections:
@@ -51,6 +75,7 @@ Write `<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md` with these sections:
 
 ## Metadata
 - source_folder: <path>
+- deal_type: <active --deal-type value>
 - objective_brief_from_user: <verbatim>
 - synthesis_date: <ISO date>
 - substance_convergence_percent: <N>%
@@ -60,19 +85,26 @@ Write `<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md` with these sections:
 <paragraph — convergent claims only, supplementary-tagged where appropriate>
 
 ## 2. Transaction nature
-<paragraph>
+<paragraph — confirm or surface tension with stated deal type>
 
 ## 3. Buyer profile
-<paragraph>
+<VERBATIM PASTE of deal-type Objective-string augmentation §3 from references/deal_types.md>
 
 ## 4. Relevant scope — what MUST be in the dataroom
-<bulleted categories>
+<bulleted categories — researcher-synthesized; spine from deal-type's Relevant
+scope, augmented with asset-specific items>
 
 ## 5. Out-of-scope — what's IRRELEVANT
-<bulleted>
+<VERBATIM PASTE of deal-type Objective-string augmentation §5 from references/deal_types.md
+PLUS researcher-flagged asset-specific out-of-scope items (other properties in
+source folder, other deals, unrelated entities)>
 
 ## 6. Asset-name slug (for output directory)
 <kebab-case, ASCII-safe; used to construct DataRoomName>
+
+## 6b. Asset-name pretty-cased (for final-folder filesystem name)
+<Title Case With Spaces — e.g., "Ascent Park City"; appended with " Dataroom"
+to form the final folder name>
 
 ## 7. Open questions
 <bulleted; empty if substance convergence is high>
@@ -106,4 +138,7 @@ re-run of the 3 researchers.
 
 ---
 
-*acos-dataroom-v2 Phase 1 synthesizer. Merge blindly-produced proposals into one canonical objective.*
+*acos-dataroom-v2 v2.1.0 Phase 1 synthesizer. Merge blindly-produced proposals
+into one canonical objective. §3 Buyer profile and §5 Out-of-scope are VERBATIM
+paste from `references/deal_types.md` for the active deal type — researcher
+prose for those sections is overridden to ensure inter-deliberator consistency.*

@@ -1,0 +1,144 @@
+timestamp: "2026-04-23T08:12:59Z"
+status: "completed"
+session_summary: |
+  Planning session. User asked for a new skill (acos-ultimate-designer) that
+  combines Brad's design system with the loan-doc-generator's visual
+  verification machinery. After scope/interface confirmation, a complete
+  ACOS-style plan was written to planning/ (1 epic + 6 stories, 23 slices
+  decomposed inline). Plan is AWAITING USER APPROVAL. On approval, user
+  intends to start a fresh session in /Users/zee/ and invoke
+  /acos-execute-story STORY-001 to begin implementation.
+
+  This handoff supersedes the earlier one from this same session
+  (2026-04-23-073005-session-handoff.yaml) — both remain active until
+  /acos-complete is run.
+
+current_work:
+  slice_id: null
+  story_id: "STORY-001"
+  epic_id: "EPIC-002"
+  status: "plan_approved_ready_for_execution"
+  approved_at: "2026-04-23T08:15Z"
+  notes: |
+    Plan APPROVED by user on 2026-04-23. Fresh session can proceed directly
+    to execution with /acos-execute-story STORY-001. No further planning
+    required. Epic status updated to "approved" in
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/epics/EPIC-002-acos-ultimate-designer.yaml.
+
+completed_this_session:
+  - "Extended session from earlier: evaluated both acos-document-design-brad and acos-loan-doc-generator-with-visual-verification skills, clarified symlink discovery mechanism"
+  - "Symlinked acos-loan-doc-generator-with-visual-verification into ~/.claude/skills/ per user request"
+  - "Designed acos-ultimate-designer skill after extensive back-and-forth on scope, input shape, output formats, image sourcing, and PPTX approach"
+  - "Analyzed v3 Private Credit Capabilities reference (12-page editorial PDF + its source HTML) to lock in coffee-table aesthetic requirements: page-as-canvas composition, full-bleed photo cover, chapter dividers every ~4 pages, Cormorant italic accents, roman page numbers"
+  - "Wrote complete ACOS plan: EPIC-002 + 6 stories (STORY-001 through STORY-006), 23 slices decomposed inline in story YAMLs"
+  - "Locked architectural decisions: page-as-canvas not flow-layout; brand-first image sourcing with vision-bootstrapped manifest; zero loan-doc design-library content loaded; visual reviewer pinned to opus; PDF path before PPTX"
+
+files_modified: []
+
+files_created:
+  - path: "/Users/zee/.claude/skills/acos-loan-doc-generator-with-visual-verification"
+    changes: "Symlink into curated skills directory (was latently discoverable via additionalDirectories only)"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/epics/EPIC-002-acos-ultimate-designer.yaml"
+    changes: "Complete epic definition with acceptance criteria, story breakdown, execution phases, architectural notes, and next-session bootstrap instructions"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-001-html-emitter-coffee-table.yaml"
+    changes: "6 slices: skill scaffold, tokens.css extraction, 9 page templates, content decomposer, HTML emitter, HTML QA gate"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-002-brand-asset-manifest.yaml"
+    changes: "5 slices: manifest schema + vision bootstrap, semantic match, Unsplash/Pexels fallback, photo-slot filler, user feedback persistence"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-003-pdf-pipeline.yaml"
+    changes: "2 slices: Puppeteer render adapter (margin=0, fonts.ready), v3 regen smoke test"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-004-pptx-pipeline.yaml"
+    changes: "4 slices (HIGHEST RISK): PPTX design-spec, 9 slide masters, content-to-PPTX adapter, generation + cleanup + font embedding"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-005-visual-verification.yaml"
+    changes: "3 slices: coffee-table visual checklist (~25 items), render-and-verify pipeline (opus-pinned), Wigum loop orchestrator"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-006-skill-wizard-integration.yaml"
+    changes: "3 slices: Phase 0 wizard, end-to-end orchestration, v3 regeneration integration test"
+  - path: "/Users/zee/memory/handoffs/2026-04-23-073005-session-handoff.yaml"
+    changes: "Earlier handoff capturing the two skill evaluations + skill discovery clarification (still active — both handoffs load at next session)"
+
+decisions_made:
+  - decision: "Write ONE master plan (1 epic + 6 story YAMLs) instead of 22 separate slice YAMLs"
+    rationale: "Context budget. Slice YAMLs can be materialized at execution time by /acos-execute-slice. Story-level files contain enough slice detail to drive execution."
+  - decision: "Page-as-canvas composition (not flow-layout-with-page-breaks)"
+    rationale: "v3 reference example uses @page margin:0 + fixed 8.5×11in .page divs. This is architecturally different from Brad's general skill and from loan-doc's pdf-styles.css. Locked into this approach because it matches the visual target exactly."
+  - decision: "Brand-first image sourcing with auto-bootstrapped manifest via Claude vision"
+    rationale: "User (b): prefer brand assets, fall back to internet. User explicitly said they do not want to hand-maintain a manifest. Vision-keyed-by-hash means one-time cost per image, zero ongoing maintenance."
+  - decision: "Zero loan-doc design-library content loads"
+    rationale: "User's hard constraint. Loan-doc skill is reused at the SCRIPT level (html-to-pdf.js, data-to-pptx.py, render-doc-audit.py) and at the PATTERN level (Wigum loop shape, visual checklist structure) — never at the design-content level. Enforced by acceptance criterion: grep agent prompts for 'design-library' must return empty."
+  - decision: "PDF path before PPTX (Story 3 before Story 4)"
+    rationale: "PPTX is the heaviest work (9 slide masters in python-pptx, font embedding, theme-shadow cleanup). Better to have end-to-end PDF working and verified before adding PPTX complexity."
+  - decision: "Visual reviewer model hard-pinned to opus"
+    rationale: "Learning from prior loan-doc evaluation: sonnet misses subtle coffee-table defects (editorial spacing, italic accent patterns, photo rhythm). Documented in story file; not inherited from session config."
+
+blockers: []
+
+next_actions:
+  - "USER: review the plan files listed above and reply 'approved' or request revisions"
+  - "USER: start a FRESH session in /Users/zee/ (context is at 146k — too heavy to continue here)"
+  - "NEW SESSION: first read this handoff + the earlier handoff + EPIC-002 + all 6 story YAMLs + v3 reference HTML/PDF"
+  - "NEW SESSION: invoke /acos-execute-story STORY-001 to begin Phase 1 (HTML emitter + 9 coffee-table page templates)"
+  - "NEW SESSION: execute phases 1-5 in order per epic execution_order"
+
+context_for_next_session: |
+  CRITICAL — read the plan files before doing anything:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/epics/EPIC-002-acos-ultimate-designer.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-001-html-emitter-coffee-table.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-002-brand-asset-manifest.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-003-pdf-pipeline.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-004-pptx-pipeline.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-005-visual-verification.yaml
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/planning/stories/STORY-006-skill-wizard-integration.yaml
+
+  KEY REFERENCE FILES (read once, keep paths handy):
+    /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html
+      — The visual target. Page-as-canvas composition using Brad tokens.
+    /Users/zee/Desktop/Private Credit Capabilities/OKOA Capital - Private Credit Capabilities (v3 — expanded).pdf
+      — Rendered output the new skill must match.
+    /Users/zee/Desktop/Private Credit Capabilities/.build/render.mjs
+      — Reference Puppeteer invocation (margin:0, networkidle0, fonts.ready).
+      This is exactly the pattern STORY-003 SLICE-003-01 must implement.
+    /Users/zee/.claude/skills/acos-document-design-brad/SKILL.md
+      — Source of truth for design tokens. READ, DO NOT COPY.
+    /Users/zee/.claude/skills/acos-loan-doc-generator-with-visual-verification/
+      — Source of scripts to REUSE at library level:
+        html-to-pdf.js, data-to-pptx.py, render-doc-audit.py, check-pdf-layout.py
+      — DO NOT read its design-library/, doc-type-catalog.yaml, phase*-design.md
+        design content. Those are specifically EXCLUDED by user requirement.
+
+  HARD CONSTRAINTS:
+    1. Zero content from loan-doc's design-library loads. Agent prompts must
+       never mention "design-library", "design-patterns.yaml", "benchmark-criteria.yaml",
+       or any per-sample extracted style.
+    2. The style source is Brad's SKILL.md + the locally-emitted tokens.css.
+    3. Page-as-canvas composition: @page { size: Letter; margin: 0; } + fixed
+       8.5×11in .page divs. No flow layout.
+    4. Coffee-table rhythm: full-bleed cover, chapter divider between parts,
+       ≥1 photo page per 3 content pages, Cormorant italic accents on section
+       titles, roman page numbers in "N / total" format.
+    5. Visual reviewer (Story 5) pinned to opus, not session config.
+    6. Wigum loop ceiling: 5 default, 10 hard.
+
+  USER COMMUNICATION STYLE (from this session):
+    - Explanatory output style is active — use insight blocks for educational points
+    - User is sophisticated and pushes back when evaluations miss the point
+    - User pushed back once this session about evaluating AI skills as prompts
+      vs. code infrastructure — carry that framing forward
+    - User confirms single decisions explicitly, does NOT want ambiguity
+    - CLAUDE.md Confirmation Gate is active — restate and confirm before
+      multi-step or ambiguous tasks
+    - Model profile session state NOT set; user was offered but declined
+      earlier in session. Next session will be re-prompted on /acos-start
+
+  PPTX FALLBACK (if Story 4 Option 2 stalls):
+    User preferred Option 2 (editable PPTX via design-spec translation).
+    If SLICE-004-02 (9 slide masters) becomes a blocker, Option 1 is
+    documented as a fallback: render HTML pages to PNG and drop each on a
+    blank slide. NOT preferred (not editable) but unblocks end-to-end delivery.
+    Only use if Option 2 is confirmed infeasible after genuine attempt.
+
+  ENVIRONMENT CONTEXT:
+    - Primary CWD: /Users/zee (ACOS-bootstrapped home, phase=not_started)
+    - ACOS source: /Users/zee/Documents/Vibe Coding/ACOS 3.0/
+    - Model session: none active (user declined profile selection)
+    - additionalDirectories permission: /Users/zee/Documents/Vibe Coding
+      (allows scripts in ACOS 3.0 source to be invoked without symlink)
+    - OS: darwin / zsh / Opus 4.7 1M

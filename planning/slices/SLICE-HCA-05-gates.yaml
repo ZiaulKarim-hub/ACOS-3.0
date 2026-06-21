@@ -1,0 +1,107 @@
+# Slice Plan — Deterministic gate suite
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-05-gates"
+story_id: "STORY-HCA-05"
+epic_id: "EPIC-HCA-05"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Deterministic gate suite"
+objective: |
+  Implement the six deterministic gates that sit underneath consensus and run on
+  the consensus-agreed value(s) before binding/delivery. Any hard failure => REFUSE.
+  Gates: (1) schema validation, (2) pagination-completeness, (3) freshness window,
+  (4) cross-field reconciliation, (5) unit/currency normalization, (6) single-source
+  confidence cap <= 0.7. In scope: hca-gates.py producing a VerificationGateResult
+  (schema_ok, pagination_complete, freshness_ok, reconciliation_ok,
+  normalization_applied, confidence_capped, outcome, failures[]) + a ConfidenceRecord;
+  uses the expected schemas (slice-02) and config.yaml freshness windows +
+  single_source_cap. Out of scope: consensus dispatch (slice-06); schema-drift
+  detection hardening (slice-11; basic schema validation here); delivery rendering.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Schema gate validates the source record against the expected entity schema; invalid => fail — pass-condition: positive + failing-fixture tests"
+  - "[ ] Pagination-completeness gate reconciles fetched count / cursor exhaustion against reported_total; mismatch => fail — pass-condition: passes on complete fixture, FAILS on the deliberately-truncated fixture (REQUIRED; no silent truncation)"
+  - "[ ] Freshness gate checks Tier-1 timestamp within the configured per-entity-class window; stale => fail/flag-refresh — pass-condition: passes fresh fixture, FAILS the stale fixture (REQUIRED); window comes from config not a hardcoded value"
+  - "[ ] Reconciliation gate checks related fields agree (e.g. drawdowns - repayments vs outstanding; sum-of-parts vs reported total) — pass-condition: passes consistent fixture, fails a planted inconsistency"
+  - "[ ] Unit/currency normalization applied before any comparison/aggregation; mixed units normalized — pass-condition: normalization test"
+  - "[ ] Single-source confidence cap forces confidence <= 0.7 and flags single-source values regardless of agent self-confidence — pass-condition: cap test"
+  - "[ ] VerificationGateResult.outcome == refuse whenever any hard gate fails; failures[] names the gate(s) — pass-condition: aggregate refusal test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-04-provenance"
+      what_it_provides: "The provenance-bound value(s) and refuse-on-missing contract the gates run on before binding/delivery; gates feed REFUSE into the same delivery path"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-gates.py"  # the six gates + ConfidenceRecord; stdlib only
+  - ".claude/skills/acos-hypercore-ask/schemas/"  # read; may extend expected schemas
+  - ".claude/scripts/tests/test_hca_gates.py"     # one positive + one failing fixture per gate
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-05-gates.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/scripts/hca-provenance.py"  # owned by slice-04
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"   # Python 3 stdlib pure-function gates
+  - "testing"          # one positive + one failing fixture per gate
+  - "security-audit"   # no-silent-truncation / no-stale-serve as integrity controls
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-05-gates.md"
+  - "These six deterministic gates catch the dominant non-text failure modes (aggregation/units/currency/truncation) that H1 names; they run on consensus-agreed values."
+  - "Gotcha (hard gates): pagination gate must FAIL the deliberately-truncated fixture (no silent truncation) and freshness gate must FAIL the stale fixture; both REQUIRED. Freshness window must come from config, not a hardcoded value."
+  - "Gotcha: implement each gate as a pure function returning (ok, detail); compose into run_gates(...) -> VerificationGateResult with outcome=refuse if any hard gate fails. Reuse the truncated/stale/drifted fixtures from slice-02."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; each gate a pure function returning (ok: bool, detail: str)"
+  - "Compose into run_gates(value, source, schema, config) -> VerificationGateResult; outcome = refuse if any hard gate fails"
+  - "Unit/currency normalization (canonical currency + scale) reused from hca-normalize.py, applied before any comparison/aggregation"
+  - "ConfidenceRecord with single-source cap from config (single_source_cap: 0.7)"
+  - "Pagination gate cannot pass when fetched_count < reported_total; freshness uses per-entity-class window from config"
+
+# Testing requirements
+testing_requirements:
+  - "For each of the six gates, run the failing fixture and confirm the gate fails and outcome == refuse; QA re-authors the truncated and stale fixtures independently"
+  - "QA adversarially crafts a near-miss to confirm pagination gate cannot pass when fetched_count < reported_total"
+  - "QA confirms freshness gate uses the per-entity-class window from config, not a hardcoded value"
+  - "QA confirms a single-source value's confidence is never > 0.7 regardless of agent self-confidence"
+  - "QA confirms reconciliation catches a planted arithmetic inconsistency"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"           # Always
+  - "ACOS-performance-reviewer"  # pagination-completeness over multi-page/cursor + normalization over large data
+
+# Effort estimate
+effort_estimate: "L"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-05-gates.md. If /acos-plan is later
+  run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-05 are PROPOSED — not yet formally planned via /acos-plan.

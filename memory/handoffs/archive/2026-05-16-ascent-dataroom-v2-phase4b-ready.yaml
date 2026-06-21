@@ -1,0 +1,161 @@
+timestamp: "2026-05-16T02:30:00Z"
+status: "completed"
+type: "semantic-eternity"
+trigger: "eternity-protocol auto-fire (token threshold) mid-Phase-4"
+
+session_summary: |
+  acos-dataroom-v2 production run on Wolfgramm Ascent Beehive Waldorf $30M loan.
+  This session: resumed at Phase 3 batch b0041, completed the entire Phase 3
+  forward sweep (182 batches), then — per explicit user decisions — removed all
+  Phase 3 QA failures, ran a NEW quick exclusion-only QA pass over the survivors,
+  removed its failures too, and completed Phase 4a (taxonomy design).
+  Phase 4b (per-file placement into sub-folders) is THE NEXT STEP — not started.
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+dropbox_final_destination: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Ascent_Park_City_Dataroom/"
+skill_version: "v2.0.0"
+
+# ============================================================
+# WHAT HAPPENED THIS SESSION — THE FILE-COUNT FUNNEL
+# ============================================================
+
+funnel: |
+  901  dataroom at start of Phase 3 (post §4.5 spot-check)
+  -99  Phase 3 inclusion-QA failures removed   -> 802
+  -157 quick exclusion-QA removals             -> 645   <- CURRENT dataroom
+  Total removed this session: 256. All quarantined (recoverable), all logged.
+
+phase3_complete: |
+  Phase 3 forward sweep: ALL 182 batches done. 802 PASS / 99 FAIL of 901.
+  USER DECISION (2026-05-15): a Phase 3 QA failure is FINAL — no Wigum
+  re-deliberation. All 99 failures removed from dataroom -> quarantined to
+  phase3/removed_phase3_fails/ (99 files), logged to phase2/exclusion_log.csv
+  (method=phase3_qa_fail).
+
+exclusion_qa_complete: |
+  USER DECISION (2026-05-15): after removing the 99, run a SECOND stricter pass —
+  a quick "exclusion-only" QA over the 802 survivors with an inverted bar:
+  KEEP only if ~99.99% certain in-scope; ANY doubt -> EXCLUDE.
+  Implementation: 81 batches of ~10 files, ONE adversarial dr2-inclusion-qa agent
+  (sonnet) per batch, single pass, no consensus loop. Result: 645 KEEP / 157
+  EXCLUDE. The 157 removed -> quarantined to phase3/removed_exclusion_qa/ (157
+  files), logged to exclusion_log.csv (method=phase3_exclusion_qa).
+  157 breakdown: 57 wrong-deal/other-property, 31 duplicate/superseded/draft,
+  29 extraction/unverifiable, 28 lender-internal/privilege, 12 other borderline.
+  NOTE: the 29 extraction/unverifiable cuts are genuine in-scope Ascent drawings
+  excluded only because image-heavy PDFs gave thin text extraction — user
+  accepted this calibration tradeoff. They sit intact in quarantine.
+  Exclusion-QA artifacts: phase3/exclusion_qa/ — one <file_id>.json verdict per
+  file, batch_queue.json (81 batches), AGENT_PROMPT.md (the shared bar prompt),
+  xqa.py (helper: `list`/`status`/`check` subcommands).
+
+phase4a_complete: |
+  Taxonomy designed. 3 dr2-taxonomy-designer (opus) -> dr2-taxonomy-synthesizer
+  (opus) -> phase4/TAXONOMY.json. VALIDATED: 14 folders, sequential 1..14 no
+  gaps, no semantic duplicates, <=15, all-encompassing. Designer proposals in
+  phase4/proposals/instance_{1,2,3}.json.
+  The 14 folders:
+    1  Property Overview And Marketing
+    2  Borrower And SPE Entity Documents
+    3  Title, Survey And Land Records
+    4  Architectural Drawings
+    5  Engineering And MEP Drawings
+    6  Construction Status Reports
+    7  Construction Draws And Lien Waivers
+    8  Loan And Security Documents
+    9  Capital Stack And Intercreditor
+    10 Brand, Franchise And Hotel Management
+    11 Appraisals, Financial Models And Payoff
+    12 Workout, Default And Settlement
+    13 Sponsor And Guarantor Financials
+    14 Sale Process And Cross-Collateral
+
+# ============================================================
+# NEXT STEP — PHASE 4b: PER-FILE PLACEMENT (NOT STARTED)
+# ============================================================
+
+phase4b_procedure: |
+  Per SKILL.md §8.2 of acos-dataroom-v2:
+  1. Create sub-folder skeleton inside dataroom/:
+       for each folder in TAXONOMY.json: mkdir dataroom/NN_Folder_Name
+       (NN = zero-padded num; pick a safe filesystem name from the folder name)
+  2. For each of the 645 files currently in dataroom/ flat root, decide its
+     folder via dr2-placement-classifier x3 (models opus/sonnet/opus). Each
+     classifier gets the file content (extraction/<file_id>/extraction.json) +
+     filename + TAXONOMY.json, and picks ONE folder number.
+       - Unanimous (3/3 same folder): move the file into that sub-folder.
+       - Split: blind re-dispatch, cap K=5.
+       - Still split after K=5: move to dataroom/00_Pending_Classification/ + log.
+     Apply (2)/(3) filename suffixes on intra-folder name collisions.
+  3. Checkpoint run_state.json: phase="4_classification",
+     last_completed_checkpoint="phase4_placement_complete".
+
+  EFFICIENCY — USE BATCHED DISPATCH (do NOT spawn 3 agents per single file —
+  that is 1935 spawns). Mirror the Phase 3 / exclusion-QA pattern that worked
+  all session: chunk the 645 files into batches of ~10-12; per batch spawn 3
+  dr2-placement-classifier agents (opus/sonnet/opus); each agent independently
+  classifies ALL files in its batch and writes one verdict per file
+  (e.g. phase4/placement/<file_id>.json with {file_id, filename, folder_num}).
+  Then compute per-file consensus from the 3 verdicts. ~54 batches x 3 = ~162
+  spawns. Build a small helper script like phase3/exclusion_qa/xqa.py.
+  VERIFY verdicts on disk before trusting agent return text — agents repeatedly
+  mis-reported "all written" this session; consensus/move must read the JSON.
+
+phases_remaining:
+  - "Phase 4b — placement (next; see phase4b_procedure above)"
+  - "Phase 5 — placement QA: dr2-placement-qa x3 per file; ANY FAIL -> re-place
+     (K=5); if >20% fail, revise taxonomy and re-place all."
+  - "Phase 6 — WS1 guide (dr2-guide-drafter x3 -> synthesizer -> QA) + WS2
+     descriptions (dr2-description-drafter x3 -> QA), then build the 2-worksheet
+     Excel via .claude/skills/acos-dataroom-v2/scripts/build_dataroom_guide_excel.py,
+     then copy dataroom -> dropbox_final_destination."
+  - "PRE-DELIVERY: re-verify the 3 payoff .docx wiring-redactions survived;
+     scan shipped files for stray account/routing numbers. NOTE: the exclusion
+     QA already caught + removed several files with unredacted account numbers
+     (DISB draws, a Verity invoice) — good, but still do a final scan."
+
+# ============================================================
+# KEY FILES
+# ============================================================
+
+key_files:
+  run_state: "<run_dir>/run_state.json — final_dataroom_count=645"
+  taxonomy: "<run_dir>/phase4/TAXONOMY.json — 14 folders, validated"
+  inventory: "<run_dir>/phase4/dataroom_inventory.json — 645 files: filename + file_id + content summary"
+  dataroom: "<run_dir>/dataroom/ — 645 files, still FLAT (no sub-folders yet)"
+  taxonomy_proposals: "<run_dir>/phase4/proposals/instance_{1,2,3}.json"
+  exclusion_qa: "<run_dir>/phase3/exclusion_qa/ — verdicts, batch_queue.json, AGENT_PROMPT.md, xqa.py"
+  exclusion_log: "<run_dir>/phase2/exclusion_log.csv — 99 phase3_qa_fail + 157 phase3_exclusion_qa rows appended this session"
+  inclusion_log: "<run_dir>/phase2/inclusion_log.csv — maps file_id->dataroom filename via 'Copied to:' in reasoning col (fallback: basename(relative_path))"
+  quarantine: "<run_dir>/phase3/removed_phase3_fails/ (99) + <run_dir>/phase3/removed_exclusion_qa/ (157)"
+  supersession: "<run_dir>/intermediate/dataroom_listing_for_supersession.txt — regenerated, 645 entries"
+  skill_procedure: ".claude/skills/acos-dataroom-v2/SKILL.md §8.2 (Phase 4b), §9 (Phase 5), §10 (Phase 6)"
+  placement_agents: ".claude/agents/dr2-placement-classifier.md, dr2-placement-qa.md"
+
+file_id_mapping_note: |
+  There is no single clean file_id<->dataroom-filename index. Build it from
+  phase2/inclusion_log.csv: each row has file_id, relative_path, reasoning.
+  The dataroom filename is the 'Copied to: <name>' tail of the reasoning column;
+  if absent (deterministically-included files), use basename(relative_path).
+  extraction.json for any file is at extraction/<file_id>/extraction.json.
+
+# ============================================================
+# DOMAIN CONTEXT
+# ============================================================
+
+domain_context:
+  asset: "The Ascent Park City (Tapestry Collection by Hilton), 4080 N Cooper Lane, Park City UT 84098"
+  borrower_spe: "Beehive Hospitality Ascent PC, LLC"
+  loan: "$30M Okoa senior construction loan; Nuveen/Greenworks C-PACE $27.5M statutory senior"
+  deal_mode: "workout / settlement / sale"
+  naming_warning: "'Waldorf' in filenames = LOAN FAMILY CODENAME, not the operating Waldorf-Astoria hotel."
+  user: "Zee (jason@okoacapital.com), Okoa Capital. Boss reviews ONLY the final dataroom + Excel — must be boss-criticism-proof on first cold look."
+  user_decisions_this_session: |
+    (1) Phase 3 QA failure = final exclusion, no Wigum re-deliberation.
+    (2) After removing failures, run an additional quick exclusion-only QA at a
+        99.99%-certainty bar; exclude on any doubt; accept that this shrinks the
+        dataroom and may cut legitimate-but-ambiguous files.
+
+prior_handoff: "memory/handoffs/2026-05-15-ascent-dataroom-v2-phase3-batch40.yaml (Phase 3 in progress — now superseded)"

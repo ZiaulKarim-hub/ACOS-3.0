@@ -1,0 +1,109 @@
+# Conversion Matrix — Tool selection for each source→target pair
+# Used by Phase 2 to select the optimal conversion strategy
+# Quality: lossless | lossy | impossible
+
+documents:
+  docx:
+    pdf: { tool: "libreoffice", quality: "lossless", cmd: "soffice --headless --convert-to pdf" }
+    html: { tool: "pandoc", quality: "lossless", cmd: "pandoc -f docx -t html" }
+    md: { tool: "pandoc", quality: "lossy", losses: ["images", "complex formatting"] }
+    txt: { tool: "pandoc", quality: "lossy", losses: ["all formatting", "images", "tables"] }
+    rtf: { tool: "libreoffice", quality: "lossless" }
+    odt: { tool: "pandoc", quality: "lossless" }
+    epub: { tool: "pandoc", quality: "lossy", losses: ["page layout", "headers/footers"] }
+  pdf:
+    docx: { tool: "libreoffice", quality: "lossy", losses: ["font substitution", "layout drift", "table alignment"] }
+    html: { tool: "libreoffice", quality: "lossy", losses: ["layout precision"] }
+    txt: { tool: "pypdf", quality: "lossy", losses: ["all formatting", "images", "tables"] }
+    md: { tool: "pypdf+manual", quality: "lossy", losses: ["all formatting", "images"] }
+  html:
+    pdf: { tool: "puppeteer", quality: "lossless", fallback: "weasyprint" }
+    docx: { tool: "pandoc", quality: "lossy", losses: ["complex CSS", "scripts"] }
+    md: { tool: "pandoc", quality: "lossless" }
+    txt: { tool: "pandoc", quality: "lossy", losses: ["all formatting"] }
+  md:
+    pdf: { tool: "pandoc+puppeteer", quality: "lossless" }
+    docx: { tool: "pandoc", quality: "lossless" }
+    html: { tool: "pandoc", quality: "lossless" }
+    txt: { tool: "pandoc", quality: "lossy", losses: ["formatting markers"] }
+  txt:
+    pdf: { tool: "html+puppeteer", quality: "lossless" }
+    docx: { tool: "pandoc", quality: "lossless" }
+    html: { tool: "pandoc", quality: "lossless" }
+    md: { tool: "native", quality: "lossless" }
+  rtf:
+    docx: { tool: "textutil", quality: "lossless", fallback: "pandoc" }
+    pdf: { tool: "libreoffice", quality: "lossless" }
+    html: { tool: "pandoc", quality: "lossless" }
+  odt:
+    docx: { tool: "pandoc", quality: "lossless", fallback: "libreoffice" }
+    pdf: { tool: "libreoffice", quality: "lossless" }
+    html: { tool: "pandoc", quality: "lossless" }
+
+spreadsheets:
+  xlsx:
+    csv: { tool: "openpyxl", quality: "lossy", losses: ["formulas→values", "multiple sheets", "formatting", "charts"] }
+    tsv: { tool: "openpyxl", quality: "lossy", losses: ["formulas→values", "multiple sheets", "formatting"] }
+    ods: { tool: "libreoffice", quality: "lossless" }
+    pdf: { tool: "libreoffice", quality: "lossy", losses: ["interactivity", "formulas"] }
+    json: { tool: "openpyxl+json", quality: "lossy", losses: ["formulas", "formatting", "charts"] }
+  csv:
+    xlsx: { tool: "openpyxl", quality: "lossless" }
+    json: { tool: "csv+json", quality: "lossless" }
+    tsv: { tool: "native", quality: "lossless" }
+    yaml: { tool: "csv+yaml", quality: "lossless" }
+  ods:
+    xlsx: { tool: "libreoffice", quality: "lossless" }
+    csv: { tool: "libreoffice", quality: "lossy", losses: ["formulas", "sheets", "formatting"] }
+    pdf: { tool: "libreoffice", quality: "lossy" }
+
+presentations:
+  pptx:
+    pdf: { tool: "libreoffice", quality: "lossy", losses: ["animations", "transitions", "speaker notes optional"] }
+    odp: { tool: "libreoffice", quality: "lossless" }
+  odp:
+    pptx: { tool: "libreoffice", quality: "lossless" }
+    pdf: { tool: "libreoffice", quality: "lossy", losses: ["animations", "transitions"] }
+
+images:
+  png:
+    jpg: { tool: "pillow", quality: "lossy", losses: ["transparency→white", "compression artifacts"], options: { quality: 95 } }
+    tiff: { tool: "pillow", quality: "lossless" }
+    webp: { tool: "pillow", quality: "lossless", options: { lossless: true } }
+    bmp: { tool: "pillow", quality: "lossless" }
+    svg: { tool: "pillow", quality: "lossy", losses: ["not true vector — embedded raster"] }
+  jpg:
+    png: { tool: "pillow", quality: "lossless", note: "no quality recovery from JPG compression" }
+    tiff: { tool: "pillow", quality: "lossless" }
+    webp: { tool: "pillow", quality: "lossless" }
+    bmp: { tool: "pillow", quality: "lossless" }
+  svg:
+    png: { tool: "pillow", quality: "lossy", losses: ["resolution-dependent"], options: { dpi: 300 } }
+    jpg: { tool: "pillow", quality: "lossy", losses: ["resolution-dependent", "transparency"] }
+  tiff:
+    png: { tool: "pillow", quality: "lossless" }
+    jpg: { tool: "pillow", quality: "lossy" }
+  webp:
+    png: { tool: "pillow", quality: "lossless" }
+    jpg: { tool: "pillow", quality: "lossy" }
+
+data:
+  json:
+    yaml: { tool: "python", quality: "lossless" }
+    xml: { tool: "python", quality: "lossless" }
+    toml: { tool: "python", quality: "lossy", losses: ["nested arrays/objects may not map cleanly"] }
+    csv: { tool: "python", quality: "lossy", losses: ["nested structures flattened"] }
+  yaml:
+    json: { tool: "python", quality: "lossless" }
+    toml: { tool: "python", quality: "lossy", losses: ["anchors/aliases lost", "complex nesting may fail"] }
+    xml: { tool: "python", quality: "lossless" }
+  xml:
+    json: { tool: "python", quality: "lossy", losses: ["attributes vs elements ambiguity", "ordering"] }
+    yaml: { tool: "python", quality: "lossy", losses: ["attributes vs elements ambiguity"] }
+  toml:
+    json: { tool: "python", quality: "lossless" }
+    yaml: { tool: "python", quality: "lossless" }
+  csv:
+    json: { tool: "python", quality: "lossless" }
+    yaml: { tool: "python", quality: "lossless" }
+    xlsx: { tool: "openpyxl", quality: "lossless" }

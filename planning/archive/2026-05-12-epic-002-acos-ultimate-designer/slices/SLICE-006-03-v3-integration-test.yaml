@@ -1,0 +1,82 @@
+slice_id: "SLICE-006-03"
+story_id: "STORY-006"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "v3 regeneration integration test"
+objective: |
+  Build scripts/test-v3-regen.sh — the definitive end-to-end integration test.
+  Reads /Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html,
+  reverse-engineers content into examples/v3-input-sample.yaml, points brand
+  asset path at v3/images/, runs the full skill pipeline, and diffs output
+  PDF against the reference PDF on: page count (±1), file size (±30%),
+  first-page perceptual hash (>80% similarity), palette presence. Reports
+  pass/fail per check with evidence.
+
+acceptance_criteria:
+  - "[ ] scripts/test-v3-regen.sh exists, bash, executable"
+  - "[ ] examples/v3-input-sample.yaml exists — a reverse-engineered YAML representing the content structure of v3 (title, subtitle, parts, sections, metrics, timeline, etc.). This file is created if SLICE-003-02 didn't already create it; else reused."
+  - "[ ] Test workflow: (1) invoke /acos-ultimate-designer in non-interactive/scripted mode (or simulate wizard inputs) with content=examples/v3-input-sample.yaml, format=pdf, asset_dir=/Users/zee/Desktop/Private Credit Capabilities/v3/images/; (2) wait for completion or timeout (15 min)"
+  - "[ ] Comparison checks: (a) page count MATCHES reference ±1 page; (b) file size within 30% of reference; (c) first-page perceptual hash similarity >80%; (d) palette presence — extract unique colors from both PDFs (via pdftoppm + color-histogram), assert Brad tokens dominate in both"
+  - "[ ] Report format: markdown table with Check | Expected | Actual | Status | Evidence columns"
+  - "[ ] Exit code 0 if all checks pass, exit 1 if any fails"
+  - "[ ] --verbose flag: prints every phase's logs during execution (for debugging)"
+  - "[ ] --keep-session flag: preserves the session directory for manual inspection"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-006-02"
+      what_it_provides: "Full orchestrated skill pipeline (everything this test exercises)"
+      status: "complete"
+    - slice_id: "SLICE-003-02"
+      what_it_provides: "PDF smoke test + v3-input-sample.yaml (reusable)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/test-v3-regen.sh"
+  - "~/.claude/skills/acos-ultimate-designer/examples/v3-input-sample.yaml"
+
+files_prohibited:
+  - "/Users/zee/Desktop/Private Credit Capabilities/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+
+skills_recommended:
+  - "testing"
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This is the ACCEPTANCE test for the whole epic. If this passes, the skill is done. The epic's top-level acceptance criterion ('≥90% visual fidelity when regenerating v3') is verified here."
+  - "Non-interactive invocation: the skill must support a scripted mode where all wizard inputs are pre-supplied via CLI args or env vars. This might require a small addition to SLICE-006-01's wizard (supporting --content/--format/--asset-dir flags that skip prompts). If not supported yet, add it here."
+  - "80% pHash threshold is lenient — good enough that valid re-renders always pass, tight enough that major regressions fail (missing cover image, wrong typography, broken layout)."
+  - "Palette dominance check: use pdftoppm to render first page as PNG, then extract top 10 colors via histogram, assert ≥5 are Brad tokens. This catches palette drift."
+
+technical_requirements:
+  - "bash 4+; python3 (for hash + histogram), pdftoppm (from poppler-utils), imagehash pip pkg"
+  - "Timeout: 15 minutes for full pipeline including Wigum iterations — kill and report if exceeded"
+  - "Cleanup: on test fail or success, session dir remains (--keep-session default); on --clean, remove session dir after reporting"
+
+testing_requirements:
+  - "The test IS the test — meta-testing it is not required. Run it. If pass: ship. If fail: diagnose from the report."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  FINAL SLICE of the epic. When this passes, the skill is shipped. If it
+  fails, the failure report tells you which earlier slice to revisit.
+
+  Note: examples/v3-input-sample.yaml is expected to exist from SLICE-003-02.
+  If it doesn't, this slice creates it. Either way, it's the shared fixture
+  for both smoke test and integration test.

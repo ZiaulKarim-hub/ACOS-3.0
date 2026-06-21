@@ -1,0 +1,73 @@
+slice_id: "SLICE-005-01"
+story_id: "STORY-005"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Coffee-table visual checklist"
+objective: |
+  Author templates/visual-checklist.yaml — ~25 visual criteria an opus-model
+  agent will evaluate against each page screenshot of the rendered PDF/PPTX.
+  Categories: page_rhythm, typography, palette, photo_quality, logo,
+  cross_page_consistency, brad_inherited. Every criterion is evaluable from
+  pixels alone — no reference to source HTML or markup.
+
+acceptance_criteria:
+  - "[ ] templates/visual-checklist.yaml exists, valid YAML"
+  - "[ ] Contains ~25 criteria organized by category"
+  - "[ ] Each criterion has fields: {id, category, description, severity_default (ERROR|WARNING), pass_condition, fail_condition, fix_instruction_template}"
+  - "[ ] Category page_rhythm (~5 items): (1) ≥1 full-bleed photo per 3 content pages; (2) chapter divider between parts if content has multiple parts; (3) closing dark panel on last page; (4) photo-break pages have full-width image; (5) cover has full-bleed image"
+  - "[ ] Category typography (~5 items): (1) Cormorant italic accent on every section title; (2) coral mono eyebrow in 'NN NAME' format; (3) roman page numbers 'N / total' in footer; (4) headings use serif (Cormorant), body uses sans (Plex Sans), labels use mono (Plex Mono); (5) no text is clipped by page edges or overflow"
+  - "[ ] Category palette (~3 items): (1) only Brad token colors visible in output; (2) sufficient contrast on text (body vs background ≥4.5:1 WCAG AA); (3) coral accent color consistent across pages"
+  - "[ ] Category photo_quality (~3 items): (1) every photo visible (not a placeholder); (2) no pixelation or blur; (3) photos fit slot (not stretched or letterboxed badly)"
+  - "[ ] Category logo (~3 items): (1) OKOA logo present on every page (or appropriate subset per design); (2) white variant on dark backgrounds, dark variant on light; (3) logo scale consistent within same page role"
+  - "[ ] Category cross_page_consistency (~3 items): (1) running header identical across content pages; (2) running footer identical (except page number); (3) margin/spacing identical between content pages"
+  - "[ ] Category brad_inherited (~3 items): top brad-items that only manifest visually — e.g., dark panels have explicit background (not transparent), eyebrow color matches coral token, page dimensions 8.5×11 (verified by aspect ratio)"
+  - "[ ] fix_instruction_template is specific + actionable: 'Add a full-bleed photo between page {N} and page {N+1}' — NOT 'fix rhythm'"
+  - "[ ] Each criterion description phrased in screenshot-only language: 'A full-bleed photo occupies all 4 edges of at least one page in every 3-page window' — not 'page template is photo-break'"
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/templates/visual-checklist.yaml"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This checklist is the VISUAL QUALITY FLOOR. The reviewer agent reads pages + checklist, flags ERRORs, and triggers Wigum iteration."
+  - "Screenshot-only means the reviewer cannot assume knowledge of HTML source. 'Section title has italic accent' must be verifiable by looking at pixels (e.g., part of the title is rendered in italic Cormorant glyphs)."
+  - "Severity: ERROR must be fixed; WARNING is a yellow flag but doesn't block. WARNINGs that persist 2 iterations escalate to ERROR on iteration 3 (severity stability rule from epic)."
+  - "Do NOT import criteria from loan-doc's benchmark-criteria.yaml (hard constraint). Write these fresh for the coffee-table context."
+
+technical_requirements:
+  - "Valid YAML parseable by pyyaml.safe_load"
+  - "Criterion IDs are stable: PR-01, PR-02 (page_rhythm); TY-01, TY-02 (typography); etc. — so fix-mapper can route"
+
+testing_requirements:
+  - "Unit: load the file, assert ≥20 criteria total, assert all categories present"
+  - "Unit: each criterion has all required fields (id, category, description, severity_default, pass_condition, fail_condition, fix_instruction_template)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  The quality of this checklist directly determines output quality. Time spent
+  crafting specific, measurable criteria pays off dramatically — vague criteria
+  produce vague reviewer output and bad Wigum feedback loops.

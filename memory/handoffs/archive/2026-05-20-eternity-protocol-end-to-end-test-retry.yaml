@@ -1,0 +1,271 @@
+timestamp: "2026-05-20T06:14:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "991a46bd-23de-4726-be90-0b5da6631e8b"
+
+session_summary: |
+  This is the RETRY handoff for the ACOS Eternity Protocol end-to-end test
+  (session 991a46bd, started ~21:30 local on 2026-05-19, now ~02:14 local
+  on 2026-05-20, uptime 2h20m+). The first attempt today failed at Step 5 —
+  /clear keystroke injection was targeted at PID 63321 (dead), because
+  register-session-pid.sh's ancestor walk stopped at the first claude match
+  (a transient inner subprocess), not the outermost long-lived claude process
+  (PID 45454). The failure was graceful: session intact, no destruction.
+  This retry sequence diagnosed root cause B11, patched register-session-pid.sh
+  to walk the full ancestor chain and record the outermost match, regenerated
+  the TOFU manifest, verified PID 45454 is alive (uptime 2h20m), and
+  re-invoked /acos-eternity-protocol. This handoff is the artifact for the retry cycle.
+
+current_work:
+  slice_id: "eternity-protocol-end-to-end-test-retry"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "test_cycle_retry_in_progress"
+
+bug_fix_this_session:
+  id: "B11"
+  title: "register-session-pid.sh recorded transient inner claude child, not outermost Claude Code process"
+  root_cause: |
+    The ancestor-walk loop in register-session-pid.sh iterated from the current
+    process upward toward the terminal. On the first match of a process whose
+    comm was `claude` (or matched the argv pattern), the old code immediately
+    broke the loop and wrote that PID to the state file. However, Claude Code
+    spawns transient inner claude subprocesses per tool call — these processes
+    exist only for the duration of the tool call and die immediately after.
+    As a result, the script was recording the inner child's PID (e.g., 63321),
+    which was dead by the time any downstream code tried to use it, while the
+    real long-lived Claude Code process (PID 45454) was further up the ancestor
+    chain and was never seen.
+  fix: |
+    Changed the inner loop to record each claude match into LAST_MATCH_PID /
+    LAST_MATCH_START but KEEP WALKING instead of breaking. After the loop
+    completes, writes LAST_MATCH_PID (the outermost — i.e., longest-lived —
+    claude process in the chain). Header comment updated with B11 reference
+    and 2026-05-20 dating.
+  file: "/Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh"
+  verification: "Ran script manually; pid file went from 63321 (dead) → 45454 (alive, 2h19m uptime). Confirmed via ps -p 45454."
+  syntax_check: "bash -n passed"
+
+completed_this_session:
+  - "Diagnosed B11: register-session-pid.sh inner-loop break-on-first-match caused dead PID
+    recording. Traced to the distinction between transient inner claude children vs. the
+    outermost long-lived Claude Code process."
+  - "Patched register-session-pid.sh: outermost-match logic (LAST_MATCH walk) now written.
+    File at /Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh"
+  - "Verified fix manually: pid-991a46bd-... went from 63321 to 45454. PID 45454 confirmed
+    alive with uptime 2h20m as of 00:14 local."
+  - "Regenerated bin-manifest.sha256 via TOFU after script edit broke the integrity check.
+    rm bin-manifest.sha256 + launchctl kickstart -k gui/$UID/com.acos.token-monitor +
+    .okoa variant. New manifest written at 00:11 local (440 bytes, 5 files)."
+  - "Verified daemon restarted: new watcher PIDs 64461 and 64462 spawned at 12:11AM.
+    PID 64462 watches session 991a46bd JSONL. Heartbeat fresh (7s after kickstart)."
+  - "Re-invoked /acos-eternity-protocol (the retry). Step 0 confirmed pid file contains
+    45454 (alive). Resume prompt written to state dir. Daemon armed via
+    .resume-pending-991a46bd-... arming file. /clear injection targeted at PID 45454."
+
+daemon_state_at_handoff:
+  heartbeat_unix: 1779257591
+  heartbeat_staleness_seconds: 1
+  heartbeat_status: "FRESH (within 90s threshold)"
+  pid_file: "/Users/zee/Library/Application Support/acos-token-monitor/state/pid-991a46bd-23de-4726-be90-0b5da6631e8b"
+  pid_file_contents: "45454 / Tue May 19 21:52:35 2026"
+  pid_45454_alive: true
+  pid_45454_comm: "/Users/zee/.clau (claude)"
+  pid_45454_elapsed: "02:20:40 (alive since ~21:52 local May 19)"
+  watcher_pid: 64462
+  watcher_watches: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/991a46bd-23de-4726-be90-0b5da6631e8b.jsonl"
+  launcher_pid: 64444
+  okoa_launcher_pid: 64447
+  okoa_watcher_pid: 64461
+  bin_manifest: "regenerated May 20 00:11, 440 bytes, 5 files"
+  bin_manifest_path: "/Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+  last_log_event: "evt=9 total=202,578 approx=206,967 at 06:12:48Z (watcher restarted at 06:11:10Z)"
+
+resume_state_at_handoff:
+  arming_file: "/Users/zee/Library/Application Support/acos-token-monitor/state/.resume-pending-991a46bd-23de-4726-be90-0b5da6631e8b"
+  arming_file_contents: |
+    pre_compact_total: 169466
+    resume_prompt_file: /Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-991a46bd-23de-4726-be90-0b5da6631e8b.txt
+    armed_at: "2026-05-20T06:01:10Z"
+  pending_resume_file: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-991a46bd-23de-4726-be90-0b5da6631e8b.txt"
+  pending_resume_size_bytes: 2686
+  pending_resume_created: "May 20 00:00"
+  pending_resume_content_summary: |
+    Resume prompt for session 991a46bd. References the first-attempt handoff
+    (2026-05-19-eternity-protocol-end-to-end-test.yaml) for full context.
+    Lists 3 open decisions (Accessibility csreq-pinning, --dry-run flag,
+    pending-resume file fate). Explains what a successful test result means.
+    Targeted at PID 63321 in that prompt (stale — superseded by this retry
+    which targets PID 45454 directly). The UserPromptSubmit hook will fire
+    regardless of PID target — it uses its own session_id matching, not PIDs.
+
+files_modified:
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh"
+    changes: |
+      Replaced break-on-first-match inner loop with LAST_MATCH accumulator that
+      keeps walking the full ancestor chain, then writes the outermost (last)
+      match after the walk completes. This fixes B11 where a transient inner
+      claude subprocess was recorded instead of the long-lived Claude Code process.
+      Header comment updated with B11 + 2026-05-20 dating. File is 102 lines,
+      3648 bytes, modified at 00:10 local.
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+    changes: |
+      Deleted (was stale after register-session-pid.sh edit, was blocking daemon
+      restart) and regenerated via TOFU. New manifest: 440 bytes, 5 files
+      (inject-keystroke.py, register-session-pid.sh, resolve-session-pid.py,
+      token-watcher-launcher.py, token-watcher.py). Written at 00:11 local.
+
+symlinks_status:
+  - global: "/Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md"
+    target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+    status: "symlink confirmed live (created May 19 22:32)"
+  - global: "/Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    status: "symlink confirmed live (created May 19 22:32)"
+  - global: "/Users/zee/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+    target: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+    status: "symlink confirmed live (created May 19 23:47)"
+
+first_attempt_record:
+  handoff_file: "memory/handoffs/2026-05-19-eternity-protocol-end-to-end-test.yaml"
+  failure_mode: "Step 5 /clear injection returned rc=3 — CGEventPostToPid failed because target PID 63321 was already dead"
+  root_cause: "B11 — register-session-pid.sh recorded transient inner claude child, not outermost process"
+  failure_grade: "GRACEFUL — session intact, no work lost, all state preserved"
+  expected_outcome: "PID 45454 injection (this retry) should succeed"
+  retain: true
+
+open_decisions:
+  accessibility_csreq_pinning:
+    title: "Apply csreq-pinning to Accessibility (kTCCServiceAccessibility) TCC permission for Warp"
+    status: "PENDING — awaiting user decision"
+    context: |
+      Warp-Disk-Access-Permanent-Fix.md documents csreq-pinning for Full Disk Access
+      (kTCCServiceSystemPolicyAllFiles) to survive Warp updates. The same recipe can
+      protect kTCCServiceAccessibility (governs CGEventPostToPid keystroke injection
+      used by inject-keystroke.py). Without this, a Warp update could silently kill
+      keystroke injection even when the daemon heartbeat and PID files are healthy.
+    recommendation: "Apply the same csreq-pinning recipe to Accessibility for symmetric protection"
+    reference_doc: "/Users/zee/Documents/Vibe Coding/Warp-Disk-Access-Permanent-Fix.md"
+    severity: "MEDIUM — daemon currently working; this is preventive hardening only"
+
+  dry_run_mode_for_hook:
+    title: "Add --dry-run / DRY_RUN=1 env var to eternity-resume-prepend.sh"
+    status: "PENDING — carried forward from prior sessions (Issue #4, eternity-protocol-fixes handoff)"
+    context: |
+      Smoke tests without --dry-run consumed real pending-resume state (three files
+      consumed during verification in the fixes session). DRY_RUN=1 would let the hook
+      print what it would inject without consuming the file or emitting hookSpecificOutput.
+    file: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    severity: "LOW — testing hygiene only; does not affect production use"
+
+  pending_resume_files_fate:
+    title: "Per-file decision on orphan pending-resume files in state dir"
+    status: "PENDING — user directive says NEVER DELETE, but user may want per-file disposition"
+    files_to_review:
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt"
+        size_bytes: 1794
+        created: "May 18 20:10"
+        content_summary: "OKOA website crane experiment (session c38121b3). Will auto-inject in OKOA project sessions matching that session_id."
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume.txt"
+        size_bytes: 2970
+        created: "May 6 01:27"
+        content_summary: "Eternity Protocol Cycle 2 from May 6. Legacy non-UUID filename (pre-UUID keying). Ancient history. Archived handoff at memory/handoffs/archive/2026-05-06T07-24-49Z-eternity-cycle-2.yaml."
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-ascent-dataroom-pii.txt"
+        size_bytes: 1596
+        created: "May 18 17:17"
+        note: "RESCUED prefix — never auto-injected by hook (hook only reads pending-resume-*.txt)"
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-from-smoke-test.txt"
+        size_bytes: 1514
+        created: "May 18 17:15"
+        note: "RESCUED prefix — never auto-injected by hook"
+    directive: "Per feedback_preserve_pending_resumes.md — NEVER auto-delete any of these"
+    severity: "LOW — hygiene; none block the end-to-end test"
+
+end_to_end_test_expected_outcome: |
+  After this handoff is written, the retry sequence proceeds:
+    Step: write resume prompt → already written (pending-resume-991a46bd-*.txt, 2686 bytes, May 20 00:00)
+    Step: capture pre-clear total → already captured in arming file (169466 tokens)
+    Step: arm daemon → already done (arming file .resume-pending-991a46bd-... written 06:01:10Z)
+    Step: fire /clear via inject-keystroke.py --pid 45454
+
+  If /clear fires successfully (PID 45454 is alive and Warp has Accessibility permission),
+  the post-clear session starts. On the user's next prompt, eternity-resume-prepend.sh
+  (UserPromptSubmit hook) detects pending-resume-991a46bd-*.txt, injects it as
+  additionalContext, and consumes the file. The post-clear AI reading the resume prompt
+  IS the confirmation that the full end-to-end cycle worked.
+
+  Independently: the token-watcher daemon (PID 64462) also watches for the token drop
+  >= 35% that signals compaction, and will attempt its own injection of the resume prompt
+  into PID 45454 if its .resume-pending arming file is present. Both paths (hook + daemon)
+  are redundant; the hook fires first since it fires on every user prompt.
+
+success_criteria:
+  - "pending-resume-991a46bd-*.txt is consumed (no longer exists in state dir)"
+  - "Post-clear AI reports receiving context from the UserPromptSubmit hook or daemon"
+  - "The acos-eternity-protocol-resume skill runs cleanly in the post-clear session"
+
+context_for_next_session: |
+  If you are reading this via the UserPromptSubmit hook injection (which means
+  eternity-resume-prepend.sh fired on your first prompt post-/clear), the end-to-end
+  test SUCCEEDED. The B11 fix worked: register-session-pid.sh correctly recorded the
+  outermost claude process (PID 45454), inject-keystroke.py targeted it successfully,
+  and the hook caught you as designed.
+
+  Check whether pending-resume-991a46bd-*.txt was consumed:
+    ls "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-991a46bd-"*
+  If the file is gone, the hook fired and consumed it. That is the success state.
+
+  If you are reading this via manual /acos-handoff invocation (something went wrong),
+  check the daemon log for what actually happened:
+    /Users/zee/Library/Application Support/acos-token-monitor/logs/991a46bd-23de-4726-be90-0b5da6631e8b.log
+
+  KEY HISTORICAL CHAIN: the prior handoff from the first attempt
+  (memory/handoffs/2026-05-19-eternity-protocol-end-to-end-test.yaml) contains the
+  full list of what was done in the earlier part of the session (symlinks, daemon
+  recovery, etc.) and remains the authoritative record for that work. This retry
+  handoff covers ONLY the B11 diagnosis and fix, manifest regeneration, and the
+  retry invocation.
+
+  After confirming the test result, the three open decisions remain:
+  1. Accessibility csreq-pinning for Warp (medium priority, preventive hardening)
+  2. --dry-run flag for eternity-resume-prepend.sh (low priority, testing hygiene)
+  3. Per-file disposition of orphan pending-resume / RESCUED-resume files (low priority)
+
+  Implementation file paths for reference:
+  - /Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh (patched in this session — B11 fix)
+  - /Users/zee/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+  - /Users/zee/Library/Application Support/acos-token-monitor/bin/token-watcher.py
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md (via symlink)
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md (via symlink)
+  - /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh
+  - /Users/zee/Documents/Vibe Coding/Warp-Disk-Access-Permanent-Fix.md (reference for Accessibility csreq-pinning decision)
+
+prior_handoffs_chain:
+  - "memory/handoffs/2026-05-19-eternity-protocol-end-to-end-test.yaml — first attempt handoff (full session narrative, symlink creation, daemon recovery, end-to-end test initiation)"
+  - "memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml — full implementation record for the prior fix session (8 atomic tasks)"
+  - "memory/handoffs/2026-05-19-eternity-protocol-mid-decision.yaml — housekeeping decisions checkpoint"
+  - "memory/handoffs/2026-05-19-emergency-handoff-2.yaml — homebrew installs + eternity thread status"
+
+reconstruction_sources:
+  - "User-provided context: full session narrative, B11 diagnosis, PID 45454, fix description, retry sequence"
+  - "memory/handoffs/2026-05-19-eternity-protocol-end-to-end-test.yaml (read in full — prior attempt handoff)"
+  - "git status --short (working tree state)"
+  - "git log --oneline -20 (recent commits)"
+  - "ls -lt memory/handoffs/ (handoff directory listing with timestamps)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/state/ (full state dir listing)"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/state/pid-991a46bd-... = '45454 / Tue May 19 21:52:35 2026'"
+  - "ps -p 45454 -o pid,comm,etime = alive, elapsed 02:20:40"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/state/heartbeat = 1779257591 (1s stale)"
+  - "date +%s = 1779257592"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/state/.resume-pending-991a46bd-... (arming file, pre_compact_total 169466, armed_at 06:01:10Z)"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-991a46bd-....txt (read in full, 2686 bytes)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256 (440 bytes, May 20 00:11)"
+  - "cat /Users/zee/Library/Application Support/acos-token-monitor/bin-manifest.sha256 (5 files listed)"
+  - "ps aux | grep token-watcher (PIDs 64444, 64447, 64461, 64462 confirmed live)"
+  - "cat .../logs/991a46bd-....log | tail -40 (daemon log — last 27 events, watcher restarted 06:11:10Z)"
+  - "Read /Users/zee/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh (full 102 lines — patched outermost-match logic confirmed)"
+  - "ls -la /Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md (symlink, target ACOS 3.0 project copy)"
+  - "ls -la /Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md (symlink)"
+  - "ls -la /Users/zee/.claude/skills/acos-eternity-protocol-threshold/SKILL.md (symlink)"
+  - "ls -la /Users/zee/Library/Application Support/acos-token-monitor/bin/ (5 files, register-session-pid.sh modified May 20 00:10)"

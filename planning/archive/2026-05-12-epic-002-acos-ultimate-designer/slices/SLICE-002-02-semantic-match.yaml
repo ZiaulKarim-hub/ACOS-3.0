@@ -1,0 +1,77 @@
+slice_id: "SLICE-002-02"
+story_id: "STORY-002"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Semantic match engine"
+objective: |
+  Build scripts/match-image.py that, given a photo slot (semantic tags + content
+  context from the page-plan), computes similarity against every manifest entry
+  and returns the best-matching brand asset — or a signal to fall back to
+  Unsplash/Pexels if no entry exceeds the configurable similarity threshold
+  (default 0.6). Filters out manifest entries where user_rejected_for includes
+  similar context.
+
+acceptance_criteria:
+  - "[ ] scripts/match-image.py exists, Python 3, executable"
+  - "[ ] Accepts --slot (JSON: {slot_id, semantic_tags, content_context, page_number}) and --manifest (path) and --threshold (float, default 0.6)"
+  - "[ ] Computes similarity score per manifest entry using: token overlap between slot tags and manifest tags (Jaccard or weighted overlap) + named-entity bonus (if content_context contains a named entity matching manifest.deal_match, +0.3 bonus)"
+  - "[ ] Excludes any manifest entry where user_rejected_for contains a context similar to current (string-match on context, case-insensitive)"
+  - "[ ] Returns sorted list of (manifest_entry, score) — top entry used if score > threshold"
+  - "[ ] If no entry exceeds threshold, returns a fallback signal (e.g., {\"action\": \"fallback\", \"query\": <derived_unsplash_query>})"
+  - "[ ] Outputs decision as JSON to stdout: {source, file_path OR fallback_query, score, reasoning}"
+  - "[ ] --verbose flag logs per-entry score and which won/why"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-002-01"
+      what_it_provides: "manifest.yaml with entries + schema"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/match-image.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fill-photo-slots.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "V1 similarity is PURE TOKEN OVERLAP + named-entity bonus. Do not reach for embeddings yet — token overlap handles most of the coverage for a well-tagged 50-image brand library."
+  - "Embedding upgrade path (future): cache sentence-transformers embeddings per manifest entry, use cosine similarity. Not needed for v1."
+  - "The deal_match field is a load-bearing signal — if content talks about 'Ascent' and a manifest entry has deal_match: 'Ascent Park City', that entry should almost always win."
+  - "user_rejected_for filtering is how the system learns — if a user rejects entry X for slot context 'cover of Ascent document', that entry must never win for a similar context again."
+
+technical_requirements:
+  - "Python 3.9+; stdlib + pyyaml"
+  - "Pure function: same inputs produce same output (deterministic scoring)"
+  - "Context similarity for user_rejected_for match: simple case-insensitive substring + token overlap — don't overfit"
+
+testing_requirements:
+  - "Unit: 3-entry manifest, slot matching entry-2 exactly (tags), entry-2 wins"
+  - "Unit: slot content mentions 'Ascent', entry has deal_match 'Ascent Park City', that entry wins even if tag overlap is lower"
+  - "Unit: slot context matches user_rejected_for on entry-1, entry-1 is excluded even if it has best score"
+  - "Unit: all entries score below threshold, returns fallback signal with query"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Keep it simple. The hard problem (good tags) was solved in SLICE-002-01 by
+  having the vision model tag each image richly. Matching against rich tags
+  with plain token overlap yields ~90th-percentile picks; embedding-based
+  matching might get to ~95th. Ship v1, iterate if quality is insufficient.

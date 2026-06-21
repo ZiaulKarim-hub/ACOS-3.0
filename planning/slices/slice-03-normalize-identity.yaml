@@ -1,0 +1,91 @@
+# Slice Plan — Normalize/classify + Stage-1 identity resolution
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-03-normalize-identity"
+story_id: "STORY-APS-03"
+epic_id: "EPIC-APS-03"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Normalize/classify + Stage-1 identity resolution"
+objective: |
+  Implement normalize.py (person-vs-entity classification; alias / maiden / Jr-Sr /
+  middle-name variants; deterministic fuzzy match) and Stage-1 identity resolution:
+  expand aliases, prior addresses, spouse/relatives/associates from free people-search as
+  LEADS ONLY (corroborate against a primary record before scoring), and require >=2
+  anchors for common names. Reconcile the existing scripts/normalize.py stub to this.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Person vs. entity classified correctly across a fixture set — pass: classification test"
+  - "[ ] Alias / maiden / Jr-Sr / middle-name variants generated; fuzzy match deterministic — pass: variant + fuzzy test"
+  - "[ ] People-search-derived seeds are tagged leads_only and NOT scorable until corroborated — pass: leads-only test (REQUIRED; a lead used as a fact = REJECT)"
+  - "[ ] A common name without >=2 anchors is refused / down-ranked, not broadly searched — pass: anchor-enforcement test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-02-cache-fetch-posture"
+      what_it_provides: "Cached lookups for the people-search leads identity resolution consumes"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/normalize.py"   # stdlib only; reconcile the stub
+  - ".claude/skills/acos-property-search/scripts/tests/test_normalize.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-03-normalize-identity.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/graph.py"   # owned by slice-04
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-03-normalize-identity.md"
+  - "People-search results are LEADS ONLY: corroborate against a primary record before they can be scored."
+  - "Gotcha (hard gate): the leads-only test is REQUIRED — a lead used as a fact = REJECT."
+  - "Gotcha: common names need >=2 anchors (name + city + company), not name + state. DOB/age is an anchor only, gate-bound."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; deterministic fuzzy match (e.g., difflib / explicit ratio — no external libs)"
+  - "Identity-resolution seeds carry leads_only=True + a provenance ref until corroborated"
+  - ">=2-anchor enforcement for common names"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors an uncorroborated people-search lead; confirm it cannot be scored as a fact"
+  - "QA feeds a common name with one anchor; confirm it is refused/down-ranked, not broadly searched"
+  - "QA independently verifies variant generation + fuzzy determinism on fresh inputs"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-03-normalize-identity.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

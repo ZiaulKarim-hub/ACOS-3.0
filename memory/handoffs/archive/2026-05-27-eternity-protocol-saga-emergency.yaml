@@ -1,0 +1,131 @@
+handoff_id: "2026-05-27-eternity-protocol-saga-emergency"
+handoff_type: "emergency-mid-session"
+created_date: "2026-05-27"
+created_by: "session f3c79025-2861-4447-a307-f359821ccc30"
+status: "completed"
+trigger: "user-invoked /acos-eternity-protocol at ~466k tokens after 6 hours of saga debugging"
+
+session_summary: |
+  Started as eternity-protocol bug investigation. Branched into product-vision
+  + naming exploration mid-session (saved to /Users/zee/Project One/
+  product-vision-and-naming-exploration.md). Returned to the protocol problem
+  and discovered the bug is much bigger than the original 75254de0 incident —
+  it's affecting ALL active sessions silently. Attempted tmux integration as
+  the architectural workaround; landed all patches but blocked at the final
+  mile by a Warp/Claude-Code compatibility issue caused by the user pinning
+  their Warp version (to preserve Full Disk Access granted via Safe Mode).
+
+critical_findings:
+  - finding: "Universal injection failure across all active sessions"
+    detail: |
+      35 fires across 6 sessions, ZERO successes. All refused with
+      'AXTitle marker not found in 1 windows: [Eternity Protocol Debugging]'
+      (or the current Claude task description for each pane).
+      Sessions affected: f3c79025 (THIS session, 5 fires), 75254de0 (14 fires —
+      session was lost, user /exit'd at 12:46 MDT), 5e64ad16 (2), 0fd2b551 (5),
+      87755fdd (7 fires/8 fails — one extra fail), 9fd5f7e8 (2).
+    root_cause: |
+      2026-05-21 patches correctly closed the cross-session misfire vector by
+      removing the OK_SOLE_WINDOW fallback in inject-keystroke.py's osascript.
+      Side effect: any session where Claude Code overwrites the window title
+      with task-description text loses the AXTitle marker race. Stamp → Claude
+      overwrites → AXRaise scans → marker not found → refuse. Universal.
+
+  - finding: "New claude launches SIGKILLed (exit 137) in user's Warp"
+    detail: |
+      User cannot start NEW claude sessions in any Warp pane. Tested:
+      - claude --version → 137
+      - env -i bare binary /Users/zee/.claude/local/claude → killed
+      - fresh Warp window (Cmd+N) → 137
+      9 existing claude panes work fine (predates the issue).
+    root_cause: |
+      User stopped Warp updates because each update revoked Full Disk Access
+      (granted via Safe Mode reboot). Newer Claude Code binary is incompatible
+      with the pinned older Warp version. New launches get SIGKILLed (likely
+      by Warp's launch-integration layer detecting protocol mismatch).
+    workarounds_available:
+      - Use one of 8 alive existing claude panes for work (no fix needed)
+      - Switch to iTerm2 or Ghostty (terminal change, ~30min)
+      - Update Warp + redo Safe Mode FDA dance (~30-60min)
+      - Roll back Claude Code to compatible version (hacky)
+
+  - finding: "tmux integration landed but cannot be tested"
+    detail: |
+      All patches in place and syntactically validated:
+      - ~/.tmux.conf (NEW, 50 lines, Ctrl-x prefix, 100k history, true-color)
+      - ~/.zshrc appended (acos / acos-list / acos-attach functions; v4 is the
+        bare `tmux new-session -s NAME` that drops user at shell prompt)
+      - register-session-pid.sh patched (lines 78-110, detects $TMUX, writes
+        tmux-session-<sid>; benign when not in tmux)
+      - inject-keystroke.py patched (get_tmux_session_for_session() +
+        inject_via_tmux() with CGEventPost fallback; verified syntax + smoke
+        test confirms None return for non-tmux sessions = correct fallback)
+      - SKILL.md acos-eternity-protocol-resume Step 1 consumed-probe
+        disambiguation (commit 5278a73 on main)
+      - bin-manifest.sha256 currently missing (will TOFU-regenerate on next
+        launcher restart)
+    blocked_by: "Cannot launch new claude inside tmux (same SIGKILL as above)"
+
+immediate_state:
+  this_session: "f3c79025-2861-4447-a307-f359821ccc30"
+  this_session_tokens_approx: 466415
+  this_session_pid: 45454
+  this_session_tty: "ttys000"
+  this_session_fires: "5 cycles, all INJECT FAILED rc=4"
+  alive_warp_panes: 9
+  alive_warp_panes_with_watchers: 3
+  daemons_alive:
+    - launcher_pid: 37968
+      uptime: "4d 8h"
+      role: "com.acos.token-monitor (ACOS 3.0 project)"
+    - launcher_pid: 37970
+      role: "com.acos.token-monitor.okoa"
+    - watcher_pids: [15651, 86819, 91613]
+      watching: ["710f7bda", "f3c79025", "4225d7bd"]
+  stale_pid_files_to_sweep:
+    - "pid-6314f667-* → DEAD PID 50158"
+    - "pid-75254de0-* → DEAD PID 91096 (the session lost today)"
+    - "pid-8a8636f0-* → DEAD PID 39884"
+    - "pid-b34b8160-* → DEAD PID 30705"
+  persistent_orphan_resume:
+    file: ".resume-pending-ee1cb8e6-31b5-4144-ba03-a15589ad321d"
+    issue: "daemon claims it on every startup but resume_prompt_file is missing (mv'd to consumed/ in May 21 cleanup)"
+
+decision_tree_for_next_session:
+  immediate:
+    - "Sweep 4 dead-PID pid-* files (safe, fast cleanup)"
+    - "Clean the persistent ee1cb8e6 orphan-resume marker"
+  short_term:
+    - "Use existing 8 alive Warp panes for work; eternity protocol will fail silently for each but session work continues"
+    - "Each pane will need manual /acos-handoff + /exit + reopen when approaching 700k+"
+  medium_term_options_for_real_fix:
+    option_A: "Update Warp + redo Safe Mode FDA dance (best long-term, 30-60min)"
+    option_B: "Switch to iTerm2 or Ghostty (terminal change, has working IPC API for free, ~30min setup)"
+    option_C: "Revert the 2026-05-21 OK_SOLE_WINDOW removal (accepts misfire risk back to before May 21, restores convenience)"
+    option_D: "Architectural fix: record Warp window-ID at registration time, target by window-ID instead of AXTitle marker. 3-5 days of code. Doesn't require terminal switch."
+
+related_artifacts:
+  product_vision_doc: "/Users/zee/Project One/product-vision-and-naming-exploration.md (~3500 words, naming exploration: Iva/Zaria/Mira/Yeshfa finalists, 'advocate' positioning insight)"
+  recent_commits:
+    - hash: "5278a73"
+      message: "fix(acos-eternity-protocol-resume): Step 1 consumed-probe disambiguates daemon-resume happy path"
+      branch: "main"
+      date: "2026-05-22"
+  memory_entries_saved:
+    - "memory/feedback_cross_session_keystroke_misfire.md (May 21 fix)"
+    - "memory/feedback_tmux_ipc_integration.md (May 26 tmux work)"
+
+git_status_snapshot: "branch: main; many uncommitted edits from earlier in the saga; safe to ignore for handoff continuity"
+
+what_the_next_session_should_do_first:
+  1: "Read this handoff. Understand the 3-axis problem: (a) injection failure universal, (b) new claude launches SIGKILLed by Warp version mismatch, (c) tmux integration code in place but untestable until launches work."
+  2: "Confirm with user which path they want: tactical (use existing panes) or strategic (Warp update / terminal switch / architectural fix)."
+  3: "Do NOT re-attempt the same debugging that already happened tonight — re-read this handoff and the saved memory entries for context first."
+
+closeout_note: |
+  The user is fatigued after hours of debugging tonight. The eternity protocol
+  is broken in a way that the user cannot easily fix tonight without
+  significant systems-level work (Warp update + Safe Mode reboot, or terminal
+  switch). Recommend immediate path of least resistance: use existing alive
+  claude panes for tonight's actual work; defer the architectural fix to a
+  fresh session when the user has time + energy.

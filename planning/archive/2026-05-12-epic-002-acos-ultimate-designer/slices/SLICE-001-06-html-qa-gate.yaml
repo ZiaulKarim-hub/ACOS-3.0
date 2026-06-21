@@ -1,0 +1,81 @@
+slice_id: "SLICE-001-06"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "HTML QA gate validator"
+objective: |
+  Build scripts/html-qa-gate.py that reads emitted HTML and runs two checklists:
+  (A) Brad's 22-item QA checklist from acos-document-design-brad/SKILL.md;
+  (B) an 8-item coffee-table-specific checklist. Returns pass/fail per item
+  with evidence, plus an overall verdict. Runs BEFORE PDF/PPTX conversion —
+  any failure blocks conversion unless --force is passed.
+
+acceptance_criteria:
+  - "[ ] scripts/html-qa-gate.py exists, Python 3, executable"
+  - "[ ] Reads HTML from argv[1], writes qa-report.yaml to argv[2] (or stdout by default)"
+  - "[ ] Implements 22-item Brad QA checklist: (1) Google Fonts link in <head>; (2) every text container has explicit background-color; (3) OKOA logo SVG fill='none' on outer <svg>; (4) section eyebrow uses mono 11px uppercase coral; (5) Cormorant headlines use clamp() sizing; (6) no --ink-40 on dark backgrounds; (7) no raw CSS var() calls in hero/footer (raw hex preferred there per Brad); (8) Carbon 16-col grid CSS is present; (9) @page {size: Letter; margin: 0;} present; (10-22) remaining Brad items extracted from SKILL.md QA section"
+  - "[ ] Implements 8-item coffee-table checklist: (1) ≥1 full-bleed photo page per 3 content pages; (2) chapter divider present if content has multiple parts; (3) running header identical across content pages; (4) running footer identical across content pages; (5) roman page numbers in 'N / total' format; (6) italic Cormorant accent on every section title; (7) eyebrow uses 'NN NAME' format with zero-padded number; (8) closing page has dark brand panel"
+  - "[ ] Output format: yaml with {brad_qa: [{id, description, status, evidence}], coffee_table_qa: [{id, description, status, evidence}], verdict: 'pass'|'fail', failed_items: []}"
+  - "[ ] Exit code 0 on pass, exit code 1 on fail"
+  - "[ ] --force flag: reports failures but exits 0 (for debugging pipeline without blocking on QA)"
+  - "[ ] --verbose flag: prints per-item evaluation with regex/query used"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-05"
+      what_it_provides: "Emitted HTML to validate"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-qa-gate.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/decompose-content.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/html-emit.py"
+
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The Brad QA checklist items are in acos-document-design-brad/SKILL.md — read that file to extract the exact 22 items. This slice must match Brad's checklist 1:1."
+  - "HTML parsing: use BeautifulSoup (bs4) if available, else lxml. Both are common enough that dependencies aren't a concern. Avoid regex-only parsing for structural checks — brittle and error-prone."
+  - "The coffee-table checklist is where this skill extends Brad. It's NEW — Brad's checklist doesn't enforce photo rhythm or roman page numbers."
+  - "This gate runs BEFORE conversion. It's the first quality filter. STORY-005's visual verification runs AFTER conversion and catches defects that only show up in rendered pixels."
+
+technical_requirements:
+  - "Python 3.9+; bs4 (beautifulsoup4) for parsing"
+  - "Each check must produce EVIDENCE — e.g., 'checked: <head> has <link href=\"...fonts.googleapis.com...\"> → found at line 12' — not just 'passed'"
+  - "Checks must be deterministic — same HTML input produces same report"
+  - "Do NOT load any content from acos-loan-doc-generator/design-library/ or loan-doc's benchmark-criteria.yaml (hard constraint from epic)"
+
+testing_requirements:
+  - "Unit: feed valid HTML, assert all 30 checks pass"
+  - "Unit: feed HTML missing Google Fonts link, assert Brad-01 fails with evidence"
+  - "Unit: feed HTML with only 1 photo page and 6 content pages, assert coffee-table-01 fails (should require ≥2 photos)"
+  - "Unit: feed HTML with mixed italic accents (some missing), assert coffee-table-06 fails with list of offending pages"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This slice completes STORY-001. After this, the HTML emitter path is fully
+  validated end-to-end: content → page-plan → HTML → QA verdict. Stories 2-5
+  extend this with images, output formats, and visual verification.
+
+  The Brad checklist extraction is manual work — go read Brad's SKILL.md, find
+  the QA section, write one check per item. Don't automate this extraction —
+  it's a one-time read.

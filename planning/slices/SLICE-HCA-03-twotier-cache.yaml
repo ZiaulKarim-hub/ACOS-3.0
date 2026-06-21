@@ -1,0 +1,107 @@
+# Slice Plan — Two-tier data model + raw-response cache
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-03-twotier-cache"
+story_id: "STORY-HCA-03"
+epic_id: "EPIC-HCA-03"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Two-tier data model + raw-response cache"
+objective: |
+  Implement the two-tier data model: Tier-1 RawApiResponse cache = immutable
+  source of truth keyed for provenance lookup, and the Tier-2 NormalizedAnswerRecord
+  derived view where every normalized field carries a back-pointer (raw_response_id
+  + json_field_path) to its Tier-1 source. This is what makes provenance
+  structurally guaranteed. In scope: hca-cache.py (persist/lookup Tier-1 records
+  keyed by raw_response_id; immutable once written); hca-normalize.py (build Tier-2
+  records from Tier-1, typed projection, with per-field bindings — unit/currency
+  normalization wiring stubbed here, fully implemented in slice-05); the on-disk
+  cache store. Out of scope: provenance refusal logic (slice-04), the gate suite
+  math (slice-05), consensus.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Tier-1 cache writes immutable RawApiResponse records (re-write of same key is rejected or no-op) and looks them up by raw_response_id — pass-condition: immutability + lookup tests pass"
+  - "[ ] Tier-2 NormalizedAnswerRecord built from Tier-1 with field_bindings mapping each field -> {raw_response_id, json_field_path} and derived_from[] — pass-condition: 100% of Tier-2 field bindings resolve to a real Tier-1 source + correct path (binding-resolution test); any unresolvable binding = REJECT"
+  - "[ ] Each agent can be handed a minimal Tier-1 slice (scoping helper) rather than the full cache — artifact: scoping helper + test verifying no full-cache dump and no extra PII (PII/token minimization)"
+  - "[ ] Cache is durable/resumable (re-run finds prior Tier-1 without re-fetch) — pass-condition: resume test"
+  - "[ ] Cache dir under .acos/state/hca-cache/ is git-ignored and PII-minimized; no secrets persisted — pass-condition: scope/PII check"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-02-adapter"
+      what_it_provides: "The read-only adapter contract + FixtureBackend producing RawApiResponse-shaped records that Tier-1 caches and Tier-2 normalizes"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-cache.py"      # Tier-1 store; stdlib only
+  - ".claude/scripts/hca-normalize.py"  # Tier-2 derivation + field bindings
+  - ".acos/state/hca-cache/"            # cache dir; git-ignored; PII-minimized
+  - ".claude/scripts/tests/test_hca_cache.py"
+  - ".claude/scripts/tests/test_hca_normalize.py"
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-03-twotier-cache.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/scripts/hca-adapter.py"  # owned by slice-02
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"      # Python 3 stdlib cache + normalize
+  - "database-design"     # write-once keyed store + immutable Tier-1 design
+  - "testing"             # immutability/lookup/binding/scoping/resume tests
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-03-twotier-cache.md"
+  - "Tier-1 is the immutable source of truth; Tier-2 is a derived view whose every field carries a back-pointer to Tier-1 (this is what makes provenance structural)."
+  - "Gotcha (hard gate): 100% of Tier-2 field bindings must resolve to a real Tier-1 record at the correct json_field_path; any unresolvable binding = REJECT."
+  - "Gotcha: never mutate a Tier-1 record after write (write-once); minimize PII in cache; persist no secrets; cache dir is git-ignored."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; immutability enforced (write-once JSON store keyed by raw_response_id; reject silent overwrite)"
+  - "hca-cache.py provides get(raw_response_id) and put(raw_api_response)"
+  - "hca-normalize.py walks a Tier-1 body, projects typed fields, records json_field_path for each (e.g. $.data[3].outstanding_principal), sets derived_from"
+  - "Scoping helper extracts the minimal Tier-1 slice for a given value/question (PII/token minimization)"
+  - "Cache durable/resumable; AES-256-at-rest noted as posture TODO"
+
+# Testing requirements
+testing_requirements:
+  - "QA attempts to mutate a written Tier-1 record via the API; confirm rejected (immutability)"
+  - "QA independently resolves every field_bindings entry of a sample Tier-2 record back to a real Tier-1 record and verifies json_field_path points at the value; any unresolvable binding = REJECT"
+  - "QA confirms the scoping helper returns only the minimal slice (no full-cache dump, no extra PII)"
+  - "QA confirms resume finds cached Tier-1 without re-fetch (durability)"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"           # Always
+  - "ACOS-security-reviewer"     # PII-minimized cache, no secrets persisted, AES-at-rest posture
+  - "ACOS-performance-reviewer"  # caching + minimal-slice scoping (token/data efficiency)
+
+# Effort estimate
+effort_estimate: "L"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-03-twotier-cache.md. If /acos-plan
+  is later run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-03 are PROPOSED — not yet formally planned via /acos-plan.

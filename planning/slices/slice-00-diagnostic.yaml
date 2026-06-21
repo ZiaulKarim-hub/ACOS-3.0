@@ -1,0 +1,89 @@
+# Slice Plan — Diagnostics + decision lock (problem-before-solution)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-00-diagnostic"
+story_id: "STORY-APS-00"
+epic_id: "EPIC-APS-00"
+vision_id: "VISION-APS-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Diagnostics + decision lock (problem-before-solution)"
+objective: |
+  Lock the problem before any build. Confirm symptoms/hypotheses/unknowns from spec.md
+  Diagnostics; validate H1 (widest net = union of channels/pivots, not one search),
+  H2 (blind isolation makes "Verified = 2+ sources" non-circular), H3 (no hub-guard
+  => N^2 blow-up); and record PLAN.md decisions D1-D8 plus the free-only / stdlib-only /
+  blocking-compliance / hedged-language ground rules in an acos-decide ADR. No solution code.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] H1/H2/H3 explicitly confirmed (or refined) against PLAN.md, each with a written verdict"
+  - "[ ] An acos-decide ADR records D1-D8 with chosen defaults + at least one alternative each"
+  - "[ ] Free-only / stdlib-only / blocking-compliance / hedged-language ground rules recorded"
+  - "[ ] Open unknowns (portal availability, false-positive rate at the 75/50 cutoffs) routed to slice-11"
+  - "[ ] No scripts / SKILL.md / reference files produced and no network call made (scope respect)"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices: []
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - "planning/preeng/002-acos-property-search/tasks/slice-00-diagnostic.md"  # learnings update
+  - ".acos/evidence/"
+  # plus the ADR file produced by acos-decide (its own conventional location)
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/"   # no code in this slice
+  - ".claude/skills/acos-property-search/SKILL.md"   # no skill logic in this slice
+  - "review-rules/"                                   # framework-restricted
+  - ".claude/agents/"                                 # framework infrastructure
+
+# Skills recommended
+skills_recommended:
+  - "acos-decide"   # author the D1-D8 ADR
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-00-diagnostic.md"
+  - "Demo 0. Problem-before-solution (Protocol 0.3): validate the hypotheses before building anything."
+  - "Gotcha: this is a no-code slice — producing any script/SKILL.md or making a network call fails scope."
+
+# Technical requirements
+technical_requirements:
+  - "Written verdict per hypothesis grounded in PLAN.md (not hand-waving)"
+  - "acos-decide ADR capturing D1 (embed swarm), D2 (Markdown v1/render v2), D3 (hard gate), D4 (channels 1-4 + recorder), D5 (v1 scripts), D6 (75/50), D7 (25), D8 (2)"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA confirms each of H1/H2/H3 has a written verdict grounded in PLAN.md"
+  - "QA confirms the ADR lists all eight decisions with default + alternative"
+  - "QA confirms no code/SKILL.md/reference files or network calls were produced"
+  - "QA confirms the empirical unknowns are routed to slice-11"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "S"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-00-diagnostic.md.
+  This planning record runs in PARALLEL with the actual acos-property-search skill-file
+  build (both derive from PLAN.md). VISION-APS-01 / EPIC-APS-00 are PROPOSED — not yet
+  formally planned via /acos-plan; if /acos-plan later conflicts, it is authoritative.

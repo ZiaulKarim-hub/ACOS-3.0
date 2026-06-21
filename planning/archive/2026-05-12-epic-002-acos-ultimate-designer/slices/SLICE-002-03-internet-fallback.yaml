@@ -1,0 +1,80 @@
+slice_id: "SLICE-002-03"
+story_id: "STORY-002"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Unsplash/Pexels fallback fetcher"
+objective: |
+  Build scripts/fetch-image-fallback.py that, given a semantic query string,
+  calls Unsplash API first and Pexels API second, downloads the top landscape-
+  oriented result (≥2000px wide) to the session image cache, and returns
+  {local_path, source, photographer, url} for attribution. Degrades gracefully
+  if API keys are unset or both APIs fail.
+
+acceptance_criteria:
+  - "[ ] scripts/fetch-image-fallback.py exists, Python 3, executable"
+  - "[ ] Reads UNSPLASH_ACCESS_KEY and PEXELS_API_KEY from env"
+  - "[ ] Accepts --query (str), --orientation (default 'landscape'), --min-width (default 2000), --cache-dir (path)"
+  - "[ ] Calls Unsplash /search/photos API first; if no results or key missing, calls Pexels"
+  - "[ ] Downloads top result's full-resolution URL to {cache_dir}/<hash-of-url>.jpg"
+  - "[ ] Returns JSON on stdout: {local_path, source: 'unsplash'|'pexels', photographer, photographer_url, image_url, query, attribution_string}"
+  - "[ ] If both APIs fail or both keys missing: logs warning to stderr, returns {action: 'empty_slot', reason: <cause>}, exit code 0 (skill wizard decides whether to fail)"
+  - "[ ] Respects API rate limits (Unsplash: 50/hour demo, 5000/hour production; Pexels: 200/hour free)"
+  - "[ ] Caches query → URL mapping so identical queries within a session don't hit the API twice"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-002-01"
+      what_it_provides: "manifest-schema (shared attribution field shape)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/match-image.py"
+
+skills_recommended:
+  - "backend-coding"
+  - "security-audit"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Both APIs require attribution. v3 ATTRIBUTION.md at /Users/zee/Desktop/Private Credit Capabilities/v3/ATTRIBUTION.md shows the canonical attribution format — match it."
+  - "Remote image downloads MUST hit local disk before Puppeteer renders — networkidle0 + remote image loads = flaky render timing."
+  - "Unsplash first because image quality is consistently higher; Pexels as backup when Unsplash query returns nothing."
+  - "API keys missing is a common user state. Skill should warn + continue; the visual gate will catch empty slots downstream."
+
+technical_requirements:
+  - "Python 3.9+; requests (for HTTP), hashlib (stdlib)"
+  - "HTTPS only for API calls + image downloads (never http://)"
+  - "User-Agent header identifies the skill: 'acos-ultimate-designer/0.1'"
+  - "Never log API keys; log requests with [REDACTED] substituted"
+  - "Handle timeouts gracefully: 30s connect, 60s read; on timeout, try next provider"
+
+testing_requirements:
+  - "Unit (mocked): feed query 'mountain sunset', assert call order is Unsplash → Pexels"
+  - "Unit (mocked): API returns 401, assert function falls through to next provider"
+  - "Unit: unset both keys, assert empty_slot response + warning (no crash)"
+  - "Integration (live, opt-in): one real call per provider to verify shape — keep behind a TEST_FETCH_LIVE=1 guard"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Two security concerns: (1) never log API keys; (2) only trust image URLs
+  returned by the APIs (don't follow redirects to arbitrary hosts). Both
+  Unsplash and Pexels serve from their own CDNs, so restrict downloads to
+  *.unsplash.com and *.pexels.com hosts.

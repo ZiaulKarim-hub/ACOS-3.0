@@ -1,0 +1,73 @@
+slice_id: "SLICE-002-05"
+story_id: "STORY-002"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "User feedback persistence"
+objective: |
+  Build scripts/record-image-feedback.py — a CLI tool invoked by the skill's
+  wizard when a user says 'swap the image on page N'. It finds the manifest
+  entry currently used for that slot in the latest session, appends a
+  user_rejected_for record with context + reason to the manifest, and writes
+  the manifest back. The next run's matcher (SLICE-002-02) excludes it.
+
+acceptance_criteria:
+  - "[ ] scripts/record-image-feedback.py exists, Python 3, executable"
+  - "[ ] Accepts --session-id (str), --page (int), --reason (str, optional)"
+  - "[ ] Reads {session_dir}/image-resolution.log (written by fill-photo-slots.py) to find which manifest entry fulfilled the slot for page N"
+  - "[ ] Loads manifest.yaml, finds the entry by file_hash, appends to user_rejected_for: [{context: <from session_manifest.doc_type + page_N description>, reason: <arg or 'user rejection, no reason given'>, timestamp: <iso8601>, session_id: <session_id>}]"
+  - "[ ] Writes manifest atomically (tempfile + rename)"
+  - "[ ] Prints confirmation: 'Recorded feedback: {filename} will not be used for contexts similar to {context}'"
+  - "[ ] --list flag: shows all user_rejected_for entries across manifest for review"
+  - "[ ] Handles case: session doesn't have image-resolution.log → exits 1 with helpful error"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-002-01"
+      what_it_provides: "manifest schema with user_rejected_for field"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/record-image-feedback.py"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/bootstrap-manifest.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/match-image.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fetch-image-fallback.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/fill-photo-slots.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This slice makes the manifest a LEARNING artifact. Without feedback persistence, the user has to hand-curate matches forever. With it, the skill gets better per user over time."
+  - "Context string for user_rejected_for should be derived from the session — e.g., 'cover of Ascent Park City document' — so SLICE-002-02's matcher can filter by substring on similar future contexts."
+  - "The SKILL.md wizard (STORY-006) is the caller of this script. Here we only build the CLI — integration happens in SLICE-006-02."
+
+technical_requirements:
+  - "Python 3.9+; pyyaml, stdlib"
+  - "Atomic manifest write — never leave it partial"
+  - "Append-only to user_rejected_for (never delete or edit prior entries)"
+
+testing_requirements:
+  - "Unit: session log has page 5 = image_hash_abc, record rejection, verify manifest entry for abc has new user_rejected_for entry"
+  - "Unit: re-run record for same page, verify TWO entries appended (append-only, not dedupe)"
+  - "Unit: session-id doesn't exist, assert exit 1 with clear error"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "S"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Smallest slice in the epic. Deliberately narrow in scope: CLI tool + manifest
+  write. Integration with the wizard (user prompt → this CLI) is STORY-006 work.

@@ -1,0 +1,113 @@
+# Slice Plan — Full question->plan->fetch->verify->answer orchestration (report tier)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-08-orchestration"
+story_id: "STORY-HCA-07B"
+epic_id: "EPIC-HCA-07"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Full question->plan->fetch->verify->answer orchestration (report tier)"
+objective: |
+  Assemble the full report/aggregation-tier pipeline in SKILL.md: question -> plan ->
+  fetch (fixture adapter) -> Tier-1 cache -> normalize -> N blind agents -> consensus
+  -> deterministic gate suite -> provenance binder -> deliver | refuse | escalate.
+  This is the complete state machine RECEIVED -> TIER_ROUTED -> FETCH_OR_CACHE ->
+  RAW_CACHED -> EXTRACT -> CONSENSUS -> GATES -> BOUND -> DELIVERED | REFUSED |
+  ESCALATED | NO_LIVE_DATA. In scope: the report-tier orchestration composing
+  slices 02-06; the full state machine with checkpointing/resume; the report/table
+  answer envelope (per-figure provenance + confidence); escalate/refuse/no-live-data
+  terminal states for the report tier. Out of scope: downstream feed formats +
+  manifest (slice-09), PII/security hardening (slice-10), completeness stress-fixtures
+  (slice-11) — basic versions exist from upstream slices.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] An aggregation question (UC3, e.g. 'total committed vs funded across the construction book by borrower') runs the full report-tier pipeline on fixtures and returns a report where every figure carries its own resolvable provenance + confidence — pass-condition: report-pipeline walkthrough; per-figure provenance resolves (fail = REJECT)"
+  - "[ ] Report tier REQUIRES consensus: a figure without quorum is escalated/refused, not delivered — pass-condition: consensus-required test (REQUIRED; fail = REJECT)"
+  - "[ ] The full gate suite runs on consensus-agreed figures; any hard gate failure refuses that figure (while others may proceed) — pass-condition: gate-integration test"
+  - "[ ] State machine is checkpointable: re-run resumes from the last persisted Tier-1 cache without re-fetch — pass-condition: resume test"
+  - "[ ] Terminal states (DELIVERED/REFUSED/ESCALATED/NO_LIVE_DATA) all reachable and correct — pass-condition: state-coverage test"
+  - "[ ] No live API call; no report figure delivered without per-figure provenance — pass-condition: QA re-resolves provenance + re-does arithmetic"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-06-consensus"
+      what_it_provides: "The blind adversarial-consensus engine (ConsensusResult, quorum, re-dispatch, escalate) that the report tier requires; transitively brings adapter/cache/normalize/gates/binder/deliver"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-hypercore-ask/SKILL.md"  # the report-tier orchestration + state machine
+  - ".claude/scripts/hca-deliver.py"  # extend for report/table envelopes with per-figure provenance
+  - ".claude/skills/acos-hypercore-ask/demos/demo-report-pipeline.md"
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-08-orchestration.md"  # learnings update only
+  # NOTE: existing upstream scripts are COMPOSE-ONLY
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+  - ".claude/scripts/hca-consensus.py"  # compose-only (slice-06)
+  - ".claude/scripts/hca-gates.py"      # compose-only (slice-05)
+  - ".claude/scripts/hca-provenance.py" # compose-only (slice-04)
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"   # state machine orchestration + report/table envelope extension
+  - "testing"          # full happy-path / consensus-required / gate-integration / resume / state-coverage tests
+  - "api-documentation"  # SKILL.md state-machine + report-tier pipeline documentation
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-08-orchestration.md"
+  - "This is the full report/aggregation-tier state machine in SKILL.md, composing slices 02-06 end to end with checkpointing/resume."
+  - "Gotcha (hard gates): every delivered report figure must have resolvable PER-FIGURE provenance (fail = REJECT), and the report tier REQUIRES consensus — a figure without quorum is escalated/refused, never delivered (fail = REJECT)."
+  - "Gotcha: a single figure's gate failure refuses that figure while others may proceed; state machine must be checkpointable so a re-run resumes from the last Tier-1 cache without re-fetch. No live API."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; no live API call"
+  - "Implement the state machine in SKILL.md orchestration composing router/adapter/cache/normalize/consensus/gates/binder/deliver"
+  - "Extend hca-deliver.py for report/table envelopes (per-figure provenance + confidence + freshness + tier)"
+  - "Checkpointable/resumable: re-run resumes from the last persisted Tier-1 cache without re-fetch"
+  - "All four terminal states reachable: DELIVERED / REFUSED / ESCALATED / NO_LIVE_DATA"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs the aggregation demo, independently re-resolves provenance into Tier-1 for several figures and re-does the arithmetic to confirm numbers + citations are real"
+  - "QA plants a figure that fails to reach quorum; confirm escalated/refused, never delivered"
+  - "QA plants a gate failure (e.g. stale source) on one figure; confirm that figure is refused while others may proceed"
+  - "QA kills mid-pipeline and resumes; confirm no re-fetch and consistent result"
+  - "QA confirms all four terminal states are reachable"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"           # Always
+  - "ACOS-security-reviewer"     # consensus/Task() dispatch boundary + no-live-API + per-figure integrity
+  - "ACOS-performance-reviewer"  # full multi-figure aggregation pipeline + checkpoint/resume over large data
+
+# Effort estimate
+effort_estimate: "L"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-08-orchestration.md. If /acos-plan
+  is later run and conflicts with this skeleton, /acos-plan is authoritative.
+  Note: both SLICE-HCA-09-feed-formats and SLICE-HCA-10-security-pii depend_on this
+  slice (parallel downstream branches).
+  VISION-HCA-01 / EPIC-HCA-07 are PROPOSED — not yet formally planned via /acos-plan.

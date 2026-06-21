@@ -1,0 +1,112 @@
+timestamp: "2026-05-26T14:30:00-06:00"
+status: "completed"
+type: "discussion-handoff"
+focus: "Design patterns extracted from Ascent Park City rebuild — meta-discussion, not build work"
+
+session_summary: |
+  The Ascent Park City Lender Memorandum build work is COMPLETE — both FINAL PDFs
+  (A-verbatim and B-corrected, ridgeline variant) are shipped. The remainder of the
+  session shifted to a meta-discussion about which design patterns from this work
+  are reusable for future projects.
+
+  User explicitly liked the "fixes that make auto-generated designs look more
+  natural" — specifically the three renderer mechanics in category 6 below. Wants
+  to continue this discussion in the next session, with category 6 fresh in mind.
+
+deliverables_already_complete:
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.FINAL.pdf"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.B-corrected.FINAL.pdf"
+  - both 24 pages, ridgeline variant + V1 minimal weights, ~6.7 MB each
+
+discussion_arc_so_far:
+  - "User asked: what skills did I use this session? Honest answer: only /acos-handoff, formally. Everything else was direct tool work + the visual-verification methodology that mirrors acos-doc-design-qa without invoking it."
+  - "User asked: what tools/techniques from this work are NOT in any existing design skill? I gave 19 patterns in 6 categories: (1) document architecture, (2) editorial mechanics, (3) multi-page section handling, (4) visual/data integrity, (5) page architecture conventions, (6) renderer mechanics that aren't visible but matter."
+  - "User clarified: drop the A/B duality (deal-specific), focus on reusable DESIGN aspects only. I re-presented filtered patterns across 6 cleaner categories: (1) variant architecture, (2) compositional layout system, (3) multi-page section handling, (4) editorial discipline, (5) page architecture conventions, (6) renderer mechanics."
+  - "User said: categories 5 & 6 are most intriguing. Asked for category 6 explained in simple language."
+  - "I explained the 3 mechanics in category 6 with simple analogies (drinks-at-a-party, heavy-book-on-shelf, chapter-headers-in-a-book). User responded that they really like these 'fixes that make auto-generated designs look more natural' and want to continue from here in a new session."
+
+CRITICAL_NOTES_category_6_mechanics:
+  description: |
+    These are the three "renderer mechanics that aren't visible but matter"
+    patterns the user explicitly wants to continue exploring. Keep these
+    front-and-center when resuming.
+
+  pattern_6a_inter_table_breathing:
+    name: "Inter-table breathing via adjacent-sibling CSS selector"
+    css: ".t + .t { margin-top: 6mm; }   .t-note + .t { margin-top: 6mm; }"
+    problem: "Two stacked tables crash into each other; naive 'top margin on every table' also pushes the first table down from its section title."
+    solution: "CSS + selector targets only elements that come after another of the same kind. First table doesn't match → no margin. Second/third tables match → automatic 6mm gap."
+    simple_analogy: "Like handing out coasters at a party: only people who arrive second-or-later get one, because there's nothing before them to protect from."
+    generalizes_to: "Any stack of repeated elements (testimonials, footnotes, photo cards, bullet groups)."
+    where_used: "Page 17 (Financial Analysis) — 3 tables now have visible breathing room."
+
+  pattern_6b_flex_column_bottom_pinning:
+    name: "Flex-column page-body with margin-top: auto for bottom-pinning"
+    css: ".page-body { display: flex; flex-direction: column; }   .bottom-treatment { margin-top: auto; }"
+    problem: "Want some element to pin to page bottom when content above is short, sit inline when content above is tall. Absolute positioning causes overlap; static positioning leaves gaps."
+    solution: "Convert page-body to flex column. The magic value `margin-top: auto` on a child converts ALL available empty space above it into margin — element naturally pins to bottom when there's space, sits inline when there isn't."
+    simple_analogy: "Like a heavy book on a shelf with other books on top: if there are 2 books above, the heavy one falls until it touches the shelf; if there are 20 books above, no room left to fall through."
+    generalizes_to: "Footer captions, contact strips, copyright notices, key-takeaway panels — anything that should pin-to-bottom-when-possible."
+    where_used: "Built for the (later reverted) anchor-panel work. Mechanism still in the renderer, ready to reuse."
+
+  pattern_6c_eyebrow_folding:
+    name: "Eyebrow folding for continuation pages"
+    pattern: |
+      Page 1: eyebrow "07 PROPERTY DESCRIPTION" + big title "Property Amenities & Features"
+      Page 2: eyebrow "07 PROPERTY DESCRIPTION — Floor Plans" (NO big title)
+    problem: "Multi-page sections redundantly repeat the big section-title element, wasting ~25mm of vertical space on continuation pages."
+    solution: "Fold the page-specific subject into the eyebrow text. Drop the big title element. Section identity preserved (eyebrow still says §07), page subject communicated ('— Floor Plans'), but ~25mm of vertical real estate reclaimed."
+    simple_analogy: "Like chapter headers in a book — first page of Chapter 7 has the big CHAPTER SEVEN banner, but pages 2/3/4 just have a small running header 'Chapter 7 · Title' at the top."
+    generalizes_to: "Any multi-page section (long appendices, dense data sections, multi-page TOCs)."
+    where_used: "Page 11 of the rebuild — the Floor Plans continuation page of §07 Property Description."
+    why_it_matters: "Eyebrow is cheap real estate (12pt all-caps). Section-title is expensive real estate (32pt italic display). Trade expensive for cheap when the title would be redundant."
+
+next_session_topics_user_wants_to_explore:
+  high_priority:
+    - "Deeper dive into category 5 (page architecture conventions): page chrome triad (eyebrow + title + body), coral accent rule, sage chrome footer, .narrative 2-col body via column-count, italic gray captions at 7pt"
+    - "Whether the discussed mechanics warrant their own dedicated skill — e.g., an acos-editorial-variant-system or acos-deck-refactor skill"
+    - "How to capture these as reusable patterns the user can apply outside the Ascent rebuild"
+  medium_priority:
+    - "Other categories from the original 6: variant architecture (token-set inheritance, italic-override, V1 minimal-weights), compositional layout system (per-page layout flags, raw_html escape hatch, named layouts like comparison_cards/pillars/horizontal_steps)"
+    - "Multi-page section handling primitives (section spans pages, reorder by YAML reorder, merging to reduce page count)"
+  meta:
+    - "Should the user start codifying these patterns into a new skill they own? Or keep them as personal techniques applied per-project?"
+
+key_files_for_context:
+  rebuild_directory: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/"
+  renderer: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/business-report-build.py"
+  yamls:
+    - "ascent-park-city.A-verbatim.yaml"
+    - "ascent-park-city.B-corrected.yaml"
+  final_pdfs:
+    - "ascent-park-city.A-verbatim.FINAL.pdf"
+    - "ascent-park-city.B-corrected.FINAL.pdf"
+  reconciliation_notes: "RECONCILIATION-NOTES.md"
+  image_catalog: "IMAGE-CATALOG.md (note: contains stale labels — some 'mkt-*' bindings point at paper-texture extracts, not real photos. Verified during session.)"
+
+user_context_for_resume:
+  identity: "Zee, associate at Okoa Capital (PE real estate lender)"
+  comm_style: "Direct, opinionated, prefers concrete examples and simple language over jargon"
+  beginner_signal: "Asked for category 6 explained 'in simple language' — appreciates analogies and accessible explanations"
+  current_mood: "Engaged, intellectually curious, recognizes these patterns as valuable abstractions"
+  do_not_repeat:
+    - "Don't re-summarize the full 19-pattern list — user already saw it twice"
+    - "Don't pitch a skill creation unless user asks (they may or may not want to formalize)"
+    - "Don't redo the deal-specific A/B duality discussion — explicitly out of scope"
+
+blockers: []
+
+what_NOT_to_change_when_resuming:
+  - "The FINAL PDFs are DONE. Do not regenerate, modify, or iterate on them unless user explicitly asks."
+  - "The renderer (business-report-build.py) and YAMLs are in their final state. Touch only if user requests a specific build-side change."
+  - "The discussion is the deliverable now, not more building."
+
+related_handoffs:
+  - "2026-05-26-emergency-handoff.yaml — the full session handoff written by handoff-agent earlier in this session. Read it for build-side context, but the current conversation is meta-discussion only."
+  - "2026-05-26-ascent-park-city-business-report.yaml — handoff from the SESSION BEFORE this one (Ridgeline V1 + Stillness V1 PDFs first built). Reference for renderer evolution history."
+
+related_memories:
+  - "[[feedback_chunked_teaching]] — user appreciates step-by-step pacing when teaching technical concepts"
+  - "[[feedback_no_abbreviations]] — spell out terms; don't assume jargon is understood"
+  - "[[feedback_clickable_links]] — always provide clickable file links when referencing files"
+  - "[[project_okoa_marketing_prospectus]] — broader context on OKOA's design pipeline that this work fits into"

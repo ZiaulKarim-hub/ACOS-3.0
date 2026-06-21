@@ -1,0 +1,112 @@
+handoff_id: "2026-05-28-slice-003-001-07-and-story-001-completed"
+handoff_type: "slice-and-story-completion-audit"
+created_date: "2026-05-28"
+status: "completed"
+
+slice_id: "SLICE-003-001-07"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+title: "extract() orchestration + integration + sandbox + perf — STORY CLOSING"
+outcome: PASS
+
+reviewer_verdicts:
+  qa-reviewer: { verdict: PASS, acceptance: "17/17", coverage: "87.64%" }
+  integration-reviewer: { verdict: PASS, contract_diff: ADDITIVE_ONLY, story_002_readiness: PASS }
+  performance-reviewer: { verdict: PASS, perf_median_ms: "29.81-31.03", budget_ms: 3000, headroom: "~100x" }
+  security-reviewer: { verdict: PASS, was: REJECT, both_majors_resolved: true }
+required_fixes: 0
+final_test_count: 124  # was 122 baseline + 2 new security tests after feedback resolution
+
+feedback_resolution_loop:
+  iteration_1:
+    trigger: "security-reviewer REJECT 2 MAJOR + 3 minor"
+    fixes:
+      - "CWE-918 SSRF: URL scheme allowlist + IPv4 CIDR denylist (isSafeBackgroundUrl, isDeniedHostname, parseIPv4)"
+      - "CWE-79 SVG XSS: Option B UNTRUSTED contract + downstream sanitize-at-render mandate"
+      - "xss-sandbox fixture: 8 hostile probes appended"
+      - "xss-sandbox tests: per-record scheme + hostname denylist assertions"
+    outcome: "Security re-review PASS; 1 new LOW (IPv4-mapped IPv6 bypass) captured for STORY-003-002 prep"
+
+story_completion:
+  story_id: "STORY-003-001"
+  slices_completed: 7
+  total_test_count: 124
+  coverage: "87.64%"
+  story_acceptance_criteria_met:
+    - "ContainerRecord type defined and exported"
+    - "extract(html, opts?) returns Promise<ContainerRecord[]>"
+    - "All visible elements captured (verified by brad-full-10pg fixture)"
+    - "SVG, tables, backgrounds each distinct typed records"
+    - "Brad-class metadata propagated when enrichment enabled; absent when disabled"
+    - ">=80% coverage on parser module (87.64% achieved)"
+    - "10-page Brad document parses in <3s (30-40ms median achieved, ~85-100x headroom)"
+    - "Sandbox verified — no script execution from ingested HTML; XSS sandbox test passes"
+    - "Public API surface limited to extract() + ContainerRecord + Brad helpers"
+
+public_api_frozen:
+  extract_signature: "extract(html: string, opts?: { bradEnrichment?: boolean }): Promise<ContainerRecord[]>"
+  exports_from_index_ts:
+    - "extract (function)"
+    - "ContainerRecord, NodeKind, ComputedStyle, ContainerContent (types)"
+    - "TextContent, ImageContent, SvgContent, TableContent, BackgroundContent (types)"
+    - "TableRowRecord, TableCellRecord (types)"
+    - "enrich (function), EnrichOptions (type)"
+    - "BRAD_CLASSES, BRAD_CLASS_SET, BRAD_CLASS_PRIORITY (constants)"
+    - "BradClass (type)"
+    - "ExtractOptions (NEW slice 07)"
+  internal_helpers_NOT_exported:
+    - "walkDom, WalkedNode (dom-walker.ts module-private)"
+    - "extractText, extractImage, extractSvg, extractSvgFromWalkedNode, extractTable, extractTableFromWalkedNode, extractBackground (extractors/* module-private)"
+    - "assertKindCoherent (index.ts module-private)"
+    - "isSafeBackgroundUrl, isDeniedHostname, parseIPv4 (background.ts module-private)"
+    - "pickHighestPriority (brad-enrichment.ts module-private)"
+
+runtime_guarantees:
+  - "F2 dual-discriminator invariant: every record satisfies r.kind === r.content.kind (throws on violation)"
+  - "SSRF allowlist: data:/https:/http:/blob: only; rejects javascript:/file:/chrome:/about:/ftp:/gopher:/view-source:/ws:/wss:"
+  - "Hostname denylist: localhost, ::1, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 0.0.0.0"
+  - "SVG rawMarkup UNTRUSTED contract documented; downstream (canvas) must sanitize before innerHTML"
+  - "Brad enrichment off-mode returns input array reference unchanged"
+
+forward_findings_for_story_003_002:
+  - finding_id: "S1"
+    severity: LOW
+    source: "security-reviewer re-review 2026-05-28"
+    description: "IPv4-mapped IPv6 loopback http://[::ffff:127.0.0.1]/ slips past denylist. URL.hostname normalizes to [::ffff:7f00:1] (hex); IPv4 dotted-quad parser doesn't recognize."
+    action: "Extend isDeniedHostname's bracket-strip branch: parse ::ffff: suffix as IPv4 dotted-quad OR hex pair; feed recovered octets through CIDR checks. Also reject any host containing '::' literal unless explicitly allowlisted."
+    target: "future security touch-up slice or STORY-003-002 prep"
+  - finding_id: "MANDATORY"
+    severity: MAJOR (planning)
+    source: "Architect — story closure prerequisite"
+    description: "STORY-003-002 (canvas) MUST include explicit acceptance criterion: 'SVG rawMarkup is sanitized via DOMPurify (SVG profile) or DOMParser-strip pattern before being inserted into the live DOM via innerHTML or equivalent. Forbidden insertions: el.innerHTML = rec.content.rawMarkup; el.outerHTML = rec.content.rawMarkup; document.write(rec.content.rawMarkup).'"
+    action: "Add to STORY-003-002 acceptance_criteria block when story planning begins."
+  - finding_id: "F2-neg"
+    severity: LOW
+    source: "integration-reviewer slice 07"
+    description: "assertKindCoherent throws on bad records but has no negative-path unit test. Throw branch untested."
+    action: "Add a one-line test that hand-crafts a mismatched record via type-cast and asserts toThrow(/dual-discriminator desync/)."
+    target: "STORY-003-002 prep tick (15 min)"
+  - finding_id: "BG3-audit"
+    severity: LOW
+    source: "Architect — story closure"
+    description: "Multi-layer background MVP behavior: only first url() layer captured. Hand-authored fixtures don't use multi-layer; real OKOA Brad docs may."
+    action: "STORY-003-002 kickoff: run ONE real Brad doc through extract() and grep source CSS for comma-separated background-image rules. If absent, freeze is safe. If present, file hot-fix slice to extend BackgroundContent before canvas work."
+  - finding_id: "fixture-size"
+    severity: LOW
+    source: "performance-reviewer"
+    description: "brad-full-10pg.html is 18 KB, not ~30 KB as documented. Story-level perf claim still trivially satisfied; headroom recalibration."
+    action: "STORY-003-002 prep: re-validate against real-Brad fixture sized to actual production document."
+  - finding_id: "bracket-comment"
+    severity: LOW
+    source: "security-reviewer re-review"
+    description: "background.ts inline comment incorrectly states URL.hostname does NOT include brackets. Node returns [::1] with brackets; bracket-strip code is load-bearing, not redundant."
+    action: "Comment correction in next slice that touches background.ts."
+
+residual_risks_accepted:
+  - "IPv6 coverage beyond ::1 absent (RFC4193 fc00::/7, link-local fe80::/10, site-local fec0::/10 not enumerated). Bounded by dimension-only oracle constraint."
+  - "DNS rebinding not addressed — parser-layer impossible; would require Pin-to-IP at fetch time (canvas/render layer concern)."
+  - "No rawMarkup size cap. Multi-MB hostile SVG would inflate record memory. Falls under EPIC-003 resource-limits work, not parser scope."
+
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-07/"
+next_step: "STORY-003-002 (canvas + drag/drop + corner gestures) planning. Must include S1, F2-neg, BG3-audit, fixture-size, bracket-comment items + mandatory SVG sanitize-at-render acceptance criterion."

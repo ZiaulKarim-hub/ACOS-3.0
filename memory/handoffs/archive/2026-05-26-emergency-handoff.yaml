@@ -1,0 +1,407 @@
+timestamp: "2026-05-26T12:30:00-06:00"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session was a full layout polish pass on the Ascent Park City Lender
+  Memorandum renderer, starting from the 8-PDF milestone captured in the prior
+  handoff (2026-05-26-ascent-park-city-business-report.yaml, stamped 01:31 AM).
+  The session expanded the renderer's dispatch logic, rewired several pages to
+  use richer layouts (pillars, comparison-cards, horizontal-steps, prose_2col,
+  raw_html photo injections), and produced new FINAL PDFs at 12:05 PM: two
+  24-page ridgeline V1 PDFs (~6.7 MB each), replacing the earlier 25-page
+  BUSINESS-REPORT.V1 series as the authoritative deliverables.
+
+project:
+  name: "Ascent Park City Lender Memorandum"
+  client_context: "Lamming Klein Capital — OKOA Capital lender review"
+  working_directory: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/"
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed — FINAL PDFs rendered and in hand; awaiting user verdict on
+    whether to ship A-verbatim, B-corrected, or both"
+
+# --------------------------------------------------------------------------
+# Per-page change log (this session)
+# --------------------------------------------------------------------------
+# Page numbering is in the rendered PDF (ridgeline FINAL, 24 pages).
+# Layout terminology:
+#   pillars          = 3-col full-height card grid for Credit Thesis
+#   comparison_cards = 2-scenario hero card layout for Transaction Summary
+#   horizontal steps = steps-timeline rendered as row of columns instead of vertical stack
+#   prose_layout: two_col = CSS column-count:2 for Market Overview prose extensions
+#   raw_html         = escape hatch block injected after main body content
+# --------------------------------------------------------------------------
+
+per_page_changes:
+  - page: 3
+    section: "Transaction Summary"
+    change: >
+      Switched the Transaction Summary table to layout: comparison_cards.
+      Renderer renders two side-by-side scenario hero cards (Preferred / Alternative)
+      with shared collateral band, sponsor footnote, and _shrink_dollar() abbreviation.
+      Dispatch wiring: render_comparison_cards() called when tbl['layout'] ==
+      'comparison_cards'; otherwise falls through to standard render_table().
+
+  - page: 5
+    section: "Credit Thesis"
+    change: >
+      Added layout: pillars to YAML. Renderer dispatches to render_pillars_body()
+      which produces a large-type claim line ("Any one pillar substantially covers
+      the loan.") above a 3-col grid of full-height pillar cards (numeral in
+      coral accent, hero value, hero sub, frame separator, rationale text).
+      CSS: .pillars-claim, .pillars-grid, .pillar-card, .pillar-numeral,
+      .pillar-hero, .pillar-frame, .pillar-rationale all already in css().
+
+  - page: 6
+    section: "Capital Stack"
+    change: >
+      Pages 5 and 6 were swapped. In the prior version, Capital Stack (tables)
+      came before Credit Thesis (pillars) in the part. The YAML section order was
+      reordered so Credit Thesis (pillars) is section 03 (page 5) and Capital Stack
+      is section 04 (page 6). Now the pillars page introduces the three repayment
+      sources before the stack details.
+
+  - page: 7
+    section: "Key Credit Strengths"
+    change: >
+      Added raw_html image injection: memo-007-015.jpg (Porte-cochère — winter)
+      at 85mm height, full-width, after the callout block. The raw_html field
+      in the YAML follows the existing callout: block. Caption reads "Porte-cochère
+      arrival, winter — Canyons Village base."
+
+  - page: 10
+    section: "Property Description (page 1 of 2)"
+    change: >
+      Property Description was previously one page with a dense items grid that
+      made floor plans too small. This session dropped the items grid from the
+      rendered output (render_property_combined_pages suppresses it) and replaced
+      it with a floorplans-stacked layout showing Unit A and Unit B at full body
+      width. Body text + brand note still render above the plans.
+
+  - page: 11
+    section: "Property Description (page 2 of 2 — Floor Plans)"
+    change: >
+      The section now spans 2 pages sharing one section number. Page 11 is
+      purely a floor-plans continuation: Unit C&D + Lobby & Offices + FF&E in a
+      floorplans-3up (vertical stack, max-height 62mm each). Previously these
+      were crammed into a 2-up grid on a shared page with the amenities content.
+      Dispatch: render_property_combined_pages() returns [page1, page2] and both
+      are extend()ed into the pages list.
+
+  - page: 12
+    section: "Location & Construction"
+    change: >
+      Location (formerly its own section) and Construction Status (formerly its
+      own section) were merged into a single "Location & Construction" section
+      with body_col_1 (location) / body_col_2 (construction status) / Drive Times
+      table. The raw_html block injects a 3-up photo row at the bottom:
+      v7-013-052.jpg (location map), v7-011-040.jpg (aerial Canyons Village),
+      v7-014-063.jpg (construction progress) each at 105mm height in a 1/3 grid.
+
+  - page: 13
+    section: "Deal Background"
+    change: >
+      Added raw_html image injection: memo-007-016.jpg (ridge view) at 78mm height
+      after the pull quote. Caption: "Ridge view — the asset in its Canyons Village
+      landscape. The project is substantially complete and in good condition; only
+      the sponsor entity is distressed."
+
+  - page: 17
+    section: "Financial Analysis"
+    change: >
+      Added analysis: prose extension field to the YAML. Renderer picks it up via
+      PROSE_EXT_KEYS list and renders it as a labeled prose block after the tables.
+      Text: LKCap underwriting carries hotel from $1.73M NOI Year 1 to $3.23M at
+      Month 52; collateral holds through −49% pricing decline.
+
+  - page: 18
+    section: "Repayment Plan"
+    change: >
+      Added steps_layout: horizontal to YAML. The waterfall steps (4 steps: Sales
+      Costs / Operating Shortfall / Interest / Senior Principal) now render as a
+      horizontal row of columns (CSS .steps-timeline.horizontal) instead of a
+      vertical stack, freeing vertical space for the three tables below (PACE
+      Release Mechanics, Cash Flow Timeline, Breakeven Analysis).
+      Also: trimmed the Breakeven table — intermediate scenarios (−10%, −30%) were
+      removed for brevity; note added that collateral holds through −49%.
+
+  - page: 19
+    section: "Hotel Operations & Franchise"
+    change: >
+      Added raw_html image injection: memo-007-018.jpg (interior — bedroom/vanity
+      area) at 78mm height. Caption reads "Interior — guest bedroom." NOTE: image
+      may actually depict a vanity/finish area rather than a full guest bedroom —
+      caption may need updating or image may need swapping to memo-007-020.jpg
+      (living/kitchen) or memo-007-019.jpg (courtyard terrace) on next review.
+
+  - page: 20
+    section: "Market Overview (Part 03 divider photo area)"
+    change: >
+      Part 03 divider (page before Market Overview) photo logical_id was previously
+      pointing at mkt-town-aerial binding which mapped to v7-031-157.jpg — a
+      diagonal paper-texture extract, NOT a real photo. This was corrected in the
+      prior session (source_file changed to v7-031-158.jpg, Park City town aerial
+      at sunset, 1221 KB). This session confirmed the fix is live in both YAMLs.
+
+  - page: 21
+    section: "Condo Sales Strategy (Competitive Set table + prose)"
+    change: >
+      The Competitive Set table was previously keyed as tables_2: in the YAML
+      (a secondary table list). The renderer only reads section.get('tables'),
+      not tables_2. This means the Competitive Set table is NOT currently being
+      rendered on page 21 — it is silently skipped. The tables_2: key needs to
+      be renamed to tables: (and the existing Unit Mix table moved to a separate
+      YAML key or the Competitive Set appended to the tables: list) to fix this.
+      The 2-col prose fix (prose_layout: two_col on Market Overview, not Condo
+      Sales) also landed in this session: render_prose_extensions() wraps blocks
+      in .prose-2col div when section.get('prose_layout') == 'two_col'.
+
+  - page: 23
+    section: "Sponsorship"
+    change: >
+      Added portfolio_note: "The six properties above are the ARCHITECT's (Think
+      Architecture) portfolio — NOT the sponsor's." This note is rendered by
+      render_portfolio() as a .portfolio-note div after the 6 portfolio cards.
+      The attribution clarification was flagged in RECONCILIATION-NOTES.md §3
+      (Think Architecture portfolio, not LKCap). Added to both A-verbatim and
+      B-corrected YAMLs.
+
+# --------------------------------------------------------------------------
+# Renderer additions this session
+# --------------------------------------------------------------------------
+
+renderer_changes:
+  dispatch_additions:
+    - "layout: pillars dispatch in render_data_spread() -> render_pillars_body()"
+    - "layout: comparison_cards dispatch in render_table() -> render_comparison_cards()"
+    - "steps_layout: horizontal dispatch in render_data_spread() -> render_steps(layout='horizontal')"
+    - "prose_layout: two_col dispatch in render_prose_extensions() -> <div class='prose-2col'>"
+    - "raw_html field: escape hatch rendered last in body_blocks, unescaped"
+
+  css_additions:
+    - ".pillars-claim, .pillars-grid, .pillar-card, .pillar-numeral, .pillar-hero,
+       .pillar-hero-sub, .pillar-frame, .pillar-rationale — Credit Thesis layout"
+    - ".steps-timeline.horizontal and child overrides — horizontal waterfall layout"
+    - ".prose-2col, .prose-2col .subblock-title, .prose-2col .narrative-single — 2-col prose"
+    - ".cmp-cards, .cmp-card, .cmp-context, .cmp-hero, .cmp-row, .cmp-sponsor — comparison cards"
+
+  note: >
+    The editorial italic variant (T_EDITORIAL token set) was added during this
+    session and is fully functional via --variant editorial. It extends T_RIDGELINE
+    with italic-light display voice on cover title, section titles, pillar numerals,
+    metric values, etc. via _editorial_overrides_css(). The EDITORIAL.V1 PDFs
+    (rendered 05:22 AM) predate the per-page layout polish and are an earlier state.
+
+# --------------------------------------------------------------------------
+# Deliverables
+# --------------------------------------------------------------------------
+
+deliverables:
+  final_pdfs:
+    - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.FINAL.pdf"
+      variant: "ridgeline"
+      weights: "V1 minimal (3 fonts)"
+      pages: 24
+      size_mb: "~6.7"
+      mtime: "2026-05-26 12:05"
+      notes: "Verbatim MEMO numbers as printed; three tables do not foot."
+
+    - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.B-corrected.FINAL.pdf"
+      variant: "ridgeline"
+      weights: "V1 minimal (3 fonts)"
+      pages: 24
+      size_mb: "~6.7"
+      mtime: "2026-05-26 12:05"
+      notes: "Three tables corrected to foot; see RECONCILIATION-NOTES.md §4."
+
+  superseded_pdfs:
+    - "ascent-park-city.{A,B}.BUSINESS-REPORT.V1.pdf (25 pages, 01:09 AM) — pre-layout-polish"
+    - "ascent-park-city.{A,B}.EDITORIAL.V1.pdf (25 pages, 05:22 AM) — editorial variant, pre-polish"
+    - "ascent-park-city.{A,B}.STILLNESS.V1.pdf (25 pages, 01:10 AM) — Cormorant display, pre-polish"
+
+  source_files:
+    - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/business-report-build.py"
+      lines: 2496
+      description: "Single-file renderer. Token sets (T_RIDGELINE, T_STILLNESS, T_EDITORIAL),
+        _minimize_weights(), PART_CONFIGS, SECTION_PHOTOS, CURATED_PHOTOS, 7 render_*
+        functions, build_html() dispatcher, main() CLI."
+
+    - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.yaml"
+      description: "Content model — MEMO numbers verbatim. 751 lines."
+
+    - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.B-corrected.yaml"
+      description: "Content model — three tables corrected to foot. Same structure as A."
+
+    - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js"
+      description: "Puppeteer renderer. Patched last session: page.goto(file://) instead
+        of setContent(). --margin 0 --no-footer flags prevent blank trailing page."
+
+# --------------------------------------------------------------------------
+# Known issues and outstanding items
+# --------------------------------------------------------------------------
+
+known_issues:
+  - id: "ISSUE-01"
+    severity: "low — caption accuracy"
+    page: 19
+    section: "Hotel Operations & Franchise"
+    description: >
+      raw_html injects memo-007-018.jpg with caption "Interior — guest bedroom."
+      The image (per IMAGE-CATALOG.md) is listed as "Interior — bedroom" but may
+      actually show a vanity/finish area based on visual inspection. Caption should
+      either be updated to accurately describe the space, or the image should be
+      swapped for memo-007-019.jpg (courtyard terrace) or memo-007-020.jpg
+      (living/kitchen with fireplace) which are unambiguously identifiable.
+      MEMO PDF page 7 is the source; confirm by viewing the raw extract.
+
+  - id: "ISSUE-02"
+    severity: "medium — silent render omission"
+    page: 21
+    section: "Condo Sales Strategy"
+    description: >
+      The Competitive Set comparison table is defined under tables_2: in both
+      YAMLs (line 460 in both A and B). The renderer reads section.get('tables'),
+      not tables_2, so the Competitive Set table is silently dropped from the
+      rendered PDF. Fix: rename tables_2: to tables: and append the Competitive Set
+      to the existing tables list (after Unit Mix & Projected Pricing). Verify the
+      page doesn't overflow after adding the second table — the Condo Sales
+      Strategy section already has Unit Mix, body text, and prose extensions.
+
+  - id: "ISSUE-03"
+    severity: "deal-team / out of scope for renderer"
+    section: "Use of Proceeds tables (A-verbatim) + Repayment structures"
+    description: >
+      Even after Version B's arithmetic corrections, neither Use of Proceeds
+      table balances to the stated loan amounts ($57M preferred / $88M alternative).
+      Preferred: corrected total $63,396,061 vs. $57M loan. Alternative: corrected
+      total $87,377,363 vs. $88M loan. A true sources-and-uses statement would
+      balance to zero. This is a deal-team issue — the line items and the loan
+      amounts reflect different scopes or assumptions that must be reconciled by
+      LKCap before the memo goes to lenders. The renderer correctly renders whatever
+      numbers are in the YAML; this is a content issue, not a rendering bug.
+
+  - id: "ISSUE-04"
+    severity: "low — image audit needed"
+    description: >
+      IMAGE-CATALOG.md note: "v7 diagonal-line page textures, small masks and
+      gradient fills (the ~124 sub-60 KB streams that are not in the page-14 photo
+      grid)" are labeled ignore-category. However, several mkt-* logical_id bindings
+      in the YAML point to files in the 60-100 KB range from v7 pages 21-30 that
+      have not been visually verified. v7-021-104.jpg (mkt-autumn-town, 1025 KB)
+      and v7-024-117.jpg (mkt-ski-panorama, 1025 KB) are large and likely real
+      photos, but v7-026-132.jpg (mkt-deer-valley, 553 KB), v7-027-141.jpg
+      (mkt-skiers, 247 KB), v7-028-145.jpg (mkt-mtn-biking, 588 KB), and
+      v7-030-153.jpg (mkt-egyptian, 605 KB) have not been opened and confirmed.
+      mkt-autumn-town and mkt-ski-panorama are the only mkt-* images currently
+      used as PART_CONFIGS divider photos or SECTION_PHOTOS; the others are
+      declared in the YAML images: block but not routed to any render call.
+      The Part 03 divider (mkt-town-aerial → v7-031-158.jpg, 1221 KB) was
+      already confirmed correct last session.
+
+# --------------------------------------------------------------------------
+# Renderer rebuild quick-start
+# --------------------------------------------------------------------------
+
+context_for_next_session: |
+  The renderer is stable and the FINAL PDFs are in hand. The next session
+  should open by asking Zee which variant/version to ship and whether any of
+  the four outstanding items above need action before the document goes out.
+
+  Build command (from rebuild/ directory):
+
+    ~/Documents/OKOA/.venv-design/bin/python3 business-report-build.py \
+      --input ascent-park-city.A-verbatim.yaml \
+      --output ascent-park-city.A-verbatim.FINAL.html \
+      --scope all --variant ridgeline --minimal-weights
+
+    node "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js" \
+      ascent-park-city.A-verbatim.FINAL.html \
+      ascent-park-city.A-verbatim.FINAL.pdf \
+      --margin 0 --no-footer
+
+  Repeat for B-corrected with --input ascent-park-city.B-corrected.yaml.
+
+  For visual QA (safe under 2000px cap):
+    pdftoppm -r 130 -png ascent-park-city.A-verbatim.FINAL.pdf .qa-A/page
+    # produces .qa-A/page-NN.png, ~1430px tall
+
+  Page-to-section map (ridgeline FINAL, 24 pages):
+    01  Cover
+    02  Part 01 divider (plate-2-driveway photo, loan amounts + collateral metrics)
+    03  Transaction Summary (comparison_cards layout)
+    04  Executive Summary
+    05  Credit Thesis (pillars layout)
+    06  Capital Stack & Sources / Uses
+    07  Key Credit Strengths (+ porte-cochère raw_html photo)
+    08  Part 02 divider (aerial-map-close photo, construction + units + avg SF metrics)
+    09  Property Renderings (3-photo spread: plate-1 hero, plate-6 + interior-living secondary)
+    10  Property Description p.1 (amenities + brand note + Unit A/B stacked floor plans)
+    11  Property Description p.2 / Floor Plans (Unit C&D + Lobby + FF&E in 3-up)
+    12  Location & Construction (3-up photo row raw_html: location map + aerial + site)
+    13  Deal Background (+ ridge-view raw_html photo)
+    14  Part 03 divider (mkt-town-aerial photo, sellout + PSF + interest list metrics)
+    15  Business Plan & Execution (4 vertical steps)
+    16  Condo Sales Strategy (Unit Mix table + body text + prose extensions)
+         NOTE: Competitive Set table missing — tables_2 bug (ISSUE-02)
+    17  Financial Analysis (3 tables + analysis: prose extension)
+    18  Repayment Plan (horizontal waterfall steps + PACE Release + Cash Flow + Breakeven tables)
+    19  Hotel Operations & Franchise (+ interior photo raw_html — caption QA needed, ISSUE-01)
+    20  Part 04 divider (architect-portfolio photo — currently v7-030-153.jpg Egyptian Theatre)
+    21  Market Overview (dense 1-col; prose_layout: two_col active for prose extensions)
+    22  Risks & Mitigants (risk-card grid, R1–R5)
+    23  Sponsorship (body + alignment + portfolio cards + portfolio_note attribution)
+    24  Closing
+
+  Key architecture decisions (do not change without understanding the cascades):
+  - render_property_combined_pages() emits 2 pages for "Property Description"
+    section — both pages share section_number but increment page_no. The Floor
+    Plans original section in the YAML is no longer mapped separately (it was
+    absorbed). If Floor Plans is ever re-split, the page count increases by 1
+    and the TOTAL_TOKEN substitution in build_html() handles it automatically.
+  - tables_2: is a dead YAML key (renderer ignores it). Competitive Set is missing
+    from the PDF as a result (ISSUE-02). Fix by renaming to tables: and ensuring
+    both tables fit on the Condo Sales Strategy page.
+  - raw_html fields are rendered unescaped and last in body_blocks — they trail
+    any structured content. They do not participate in the photo-sidebar layout
+    (data-with-photo). They are 1-off custom injections.
+  - PART_CONFIGS[3]["photo"] is "architect-portfolio" which binds to v7-030-153.jpg
+    (Egyptian Theatre / Historic Main Street, 605 KB). This was a late swap from
+    v7-032-166.jpg (low-res portfolio thumbnail) per note in the YAML images block.
+    The Part 04 divider is correct; verify visually if the Egyptian Theatre photo
+    is the right aesthetic for the Sponsorship divider (it reads as market/lifestyle,
+    not strictly architecture portfolio).
+
+  User profile: Zee (OKOA Capital associate). Direct communicator, highly
+  opinionated on design. If something looks wrong, he says so immediately.
+  Respond to corrections quickly, minimal explanation. He will invoke /compact
+  or a new session when context is consumed. This document is for lender review;
+  quality bar is institutional — no visible layout bugs acceptable.
+
+decisions_made:
+  - "ridgeline + V1 minimal weights is the current FINAL variant — EDITORIAL and
+    STILLNESS variants exist as PDFs (05:22 AM) but are not the designated FINAL"
+  - "tables_2: key left in YAML as-is; fix deferred (ISSUE-02 documents the bug)"
+  - "Competitive Set and Unit Mix share the Condo Sales Strategy section rather
+    than being split — both tables on one page is the design intent"
+  - "Footing-error caveat blocks suppressed from rendered output in both A and B
+    — the footing_error: YAML key is retained for audit history only"
+  - "3-up location photo row (page 12) uses raw_html rather than a new renderer
+    template — keeps the renderer lean for a one-off layout"
+  - "portfolio_note on page 23 clarifies Think Architecture attribution; this was
+    already in the YAML per RECONCILIATION-NOTES.md §3 but now renders visibly"
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-26-ascent-park-city-business-report.yaml"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/business-report-build.py (full read, 2496 lines)"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.yaml (full read, 751 lines)"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/RECONCILIATION-NOTES.md"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/IMAGE-CATALOG.md"
+  - "git log --oneline -20 (ACOS repo — confirms no commits since the dataroom v2 series)"
+  - "ls -lt /Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ (file mtimes)"
+  - "grep patterns: tables_2, mkt-*, portfolio_note, attribution in YAML files"
+  - "Session context provided by user (per-page change list + known issues)"

@@ -1,0 +1,140 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ACOS v3.0 — LEGAL ANALYST TRIGGER RULES
+# ═══════════════════════════════════════════════════════════════════════════
+# HUMAN-EDITABLE ONLY — No agent may read or modify.
+#
+# The legal-analyst is an analysis agent (not a review agent in the adversarial
+# QA sense), so this file primarily controls WHEN it is auto-suggested as part
+# of a review — not whether it can PASS / REJECT. It is included when file
+# paths or code patterns indicate loan-doc / IP / legal work is involved.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: ACOS-legal-analyst
+description: "Real estate lending diligence and copyright/IP infringement analysis"
+always_required: false
+
+# ── Slice-level triggers (all OR'd) ─────────────────────────────────────
+# Covers: loan documents, title, entity formation, IP/copyright artifacts,
+# cease-and-desist / takedown correspondence, license files
+
+trigger_file_paths:
+  # Lending — loan docs
+  - "loan"
+  - "note"
+  - "promissory"
+  - "mortgage"
+  - "deed_of_trust"
+  - "deed-of-trust"
+  - "security_agreement"
+  - "guaranty"
+  - "guarantor"
+  - "environmental_indemnity"
+  - "loan_agreement"
+  - "loan-agreement"
+  # Lending — title & liens
+  - "title_commitment"
+  - "title-commitment"
+  - "title_policy"
+  - "pro_forma"
+  - "ucc"
+  - "lien"
+  - "mechanics_lien"
+  - "judgment_lien"
+  - "tax_lien"
+  - "schedule_b"
+  # Lending — entity
+  - "operating_agreement"
+  - "operating-agreement"
+  - "articles_of_organization"
+  - "articles-of-organization"
+  - "certificate_of_formation"
+  - "certificate_of_good_standing"
+  - "authorizing_resolution"
+  - "ein_letter"
+  # Lending — real estate
+  - "deed"
+  - "warranty_deed"
+  - "quitclaim"
+  - "grant_deed"
+  - "survey"
+  - "zoning"
+  - "certificate_of_occupancy"
+  - "estoppel"
+  - "snda"
+  - "rent_roll"
+  - "intercreditor"
+  - "subordination"
+  - "standstill"
+  # Regulatory / Insurance
+  - "phase_i"
+  - "phase_ii"
+  - "asbestos"
+  - "environmental"
+  - "flood"
+  - "insurance_cert"
+  # IP / Copyright
+  - "copyright"
+  - "trademark"
+  - "registration_cert"
+  - "license"
+  - "licenses"
+  - "LICENSE"
+  - "cease_and_desist"
+  - "cease-and-desist"
+  - "demand_letter"
+  - "dmca"
+  - "takedown"
+  - "counter_notice"
+  - "work_for_hire"
+  - "assignment_agreement"
+  - "infringement"
+
+trigger_code_patterns:
+  # Lending
+  - "promissory note"
+  - "deed of trust"
+  - "mortgage"
+  - "loan agreement"
+  - "guaranty"
+  - "guarantor"
+  - "title insurance"
+  - "title commitment"
+  - "schedule b"
+  - "lien priority"
+  - "intercreditor"
+  - "subordination"
+  - "spe"
+  - "single purpose entity"
+  - "single-purpose entity"
+  - "operating agreement"
+  - "bad boy"
+  - "carve-out"
+  - "carveout"
+  # IP / Copyright
+  - "copyright"
+  - "© "
+  - "(c) "
+  - "infringement"
+  - "fair use"
+  - "17 U.S.C."
+  - "17 USC"
+  - "DMCA"
+  - "takedown"
+  - "registered trademark"
+  - "work made for hire"
+  - "work-made-for-hire"
+  - "cease and desist"
+  - "substantial similarity"
+  - "statutory damages"
+
+# ── Higher-level rules ──────────────────────────────────────────────────
+story_always: false
+epic_always: false
+vision_always: false
+
+# ── Notes ───────────────────────────────────────────────────────────────
+# - The legal-analyst is primarily a skill-invoked agent (via /acos-legal-analysis).
+#   This trigger file exists so that slices touching legal artifacts get a
+#   diligence pass automatically attached to review bundles.
+# - The agent is NOT a gate keeper — its outputs are diligence findings, not
+#   PASS/REJECT verdicts. Human counsel must be engaged for actual legal advice.

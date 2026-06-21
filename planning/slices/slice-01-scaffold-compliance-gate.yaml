@@ -1,0 +1,101 @@
+# Slice Plan — Skill scaffold + BLOCKING compliance gate
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-01-scaffold-compliance-gate"
+story_id: "STORY-APS-01"
+epic_id: "EPIC-APS-01"
+vision_id: "VISION-APS-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Skill scaffold + BLOCKING compliance gate"
+objective: |
+  Scaffold the project skill (SKILL.md, explicit-invocation-only:
+  disable-model-invocation:true / user-invocable:true) and implement the BLOCKING
+  compliance gate. Until a complete, valid ComplianceRecord is captured the run state is
+  COMPLIANCE_BLOCKED and NO external lookup is permitted; GLBA anti-pretexting is a HARD
+  block. The record maps permissible purpose to statute (DPPA 2721(b)(3)/(b)(4); FCRA
+  1681b; dossier flagged "asset location — NOT for eligibility"), classifies debt
+  (consumer/commercial -> FDCPA scope), captures the GLBA acknowledgment, and sets the
+  scraping posture. In scope: SKILL.md skeleton, references/compliance.md, aps_compliance.py.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] Skill frontmatter sets disable-model-invocation:true + user-invocable:true — pass: frontmatter assertion test"
+  - "[ ] An incomplete/absent ComplianceRecord leaves state COMPLIANCE_BLOCKED and refuses all downstream work — pass: negative-case block test (REQUIRED; fail = REJECT)"
+  - "[ ] A complete record transitions out of the blocked state — pass: positive-case test"
+  - "[ ] A GLBA-pretexting request is refused outright — pass: GLBA hard-block negative test (REQUIRED; fail = REJECT)"
+  - "[ ] references/compliance.md documents the statute mapping + per-run record schema"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-00-diagnostic"
+      what_it_provides: "Locked D1-D8 defaults + the free-only/stdlib-only/blocking-compliance ground rules (ADR)"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/SKILL.md"               # scaffold only
+  - ".claude/skills/acos-property-search/references/compliance.md"
+  - ".claude/scripts/aps_compliance.py"                          # stdlib only
+  - ".claude/scripts/tests/test_aps_compliance.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-01-scaffold-compliance-gate.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/"   # channel/graph/cache code (later slices)
+  - "review-rules/"                                   # framework-restricted
+  - ".claude/agents/"                                 # framework infrastructure
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"   # Python 3 stdlib gate validator
+  - "testing"          # positive + the two REQUIRED negatives
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-01-scaffold-compliance-gate.md"
+  - "Core guarantee: the compliance gate is BLOCKING. Nothing external runs until the ComplianceRecord is complete; GLBA pretexting is refused outright."
+  - "Gotcha (hard gates): the blocked-state negative test AND the GLBA hard-block negative test are REQUIRED; fail = REJECT. QA re-authors them."
+  - "Skip tracing carries compliance weight — hence explicit-invocation-only frontmatter."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only"
+  - "Gate-first orchestration: the compliance validator runs before any external lookup"
+  - "is_cleared(record) is the only path out of COMPLIANCE_BLOCKED; no caller can skip it"
+  - "GLBA-pretexting purpose is refused outright"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors the negatives: empty + partial (missing GLBA ack) records MUST stay COMPLIANCE_BLOCKED; any downstream work permitted = REJECT"
+  - "QA re-authors a GLBA-pretexting purpose; confirm refused outright"
+  - "QA confirms explicit-invocation-only frontmatter"
+  - "QA attempts to reach a downstream step without clearing the gate; confirm impossible"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # compliance / legal-control gate
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-01-scaffold-compliance-gate.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).
+  VISION-APS-01 / EPIC-APS-01 PROPOSED — not yet planned via /acos-plan.

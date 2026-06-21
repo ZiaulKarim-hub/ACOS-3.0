@@ -1,0 +1,84 @@
+timestamp: "2026-05-14T22:00:00Z"
+status: "completed"
+type: "completion"
+trigger: "user-invoked /acos-complete"
+
+session_summary: |
+  Drafted Version 2 of the Wright Thurston Promissory Note (the $2.2M / $2.53M
+  "mini loan" sitting under the Lux 2 Extension folder, dated 12/23/2025) to add
+  a stepped Additional Fee structure per OKOA boss instruction: 1% of the
+  $2,530,000 Repayment Amount every 30 days from Dec 23, 2025 through Jun 17,
+  2026, stepping up to 2% per 30 days from Jun 18, 2026 onward. Also capitalized
+  Section 5's late-charge wording to "Five Percent (5%)". Diagnosed a Section 27
+  page-break orphan and recommended a manual page break in Word.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+  context: "OKOA Capital business work (loan document modification) — not ACOS framework work"
+
+completed_this_session:
+  - "Investigated /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Thurston Lux 2/Lux 2 Extension folder; identified the 12/23/2025 'mini loan' as Wright Thurston Promissory Note 20251223.docx"
+  - "Identified the $330,000 'fee' as the embedded spread between $2,200,000 funded and $2,530,000 Repayment Amount — not a separate line item"
+  - "Clarified ambiguities with user via Q1-Q3 confirmation gate: fee anchored to original principal ($2,530,000), simple/flat (not compounding), 1% from Dec 23 2025, 2% from Jun 18 2026, edit applied to draft (file not yet signed)"
+  - "Drafted complete Section 3 rewrite: renamed 'Interest; Loan Fee' to 'Loan Fee; Additional Periodic Fee'; added definition of Repayment Amount as bolded inline defined term; added sub-paragraphs (a) and (b) for the stepped 1% / 2% accrual tiers; added closing 'in addition to, not in lieu of' stacking clause"
+  - "Removed the original 'Borrower shall not be responsible for paying any monthly interest' sentence because it would have conflicted with the new periodic fee and given borrower counsel a re-characterization argument"
+  - "Implemented edits via python-docx + lxml: cleared and rebuilt Section 3's runs, inserted four sub-paragraphs after Section 3 with non-numbered pPr so auto-list numbering for Section 4 onward was preserved, then run-by-run replaced 'five percent' → 'Five Percent' in Section 5"
+  - "Discovered and disclosed to user that the original Section 5 wording was 'five percent (5%)' (lowercase), not 'three percent (5%)' as my initial pandoc extraction had reported — no typo existed; the boss's instruction was a capitalization change"
+  - "Verified end-to-end via pandoc re-render: Sections 1-15 numbering integrity preserved, new Section 3 reads cleanly, Section 5 shows 'Five Percent (5%)'"
+  - "Answered user question on numbering indent — confirmed no legal significance, surfaced the template artifact cause (list-level indent override fighting paragraph-level indent override), user elected to keep indent as-is"
+  - "Diagnosed Section 27 ('Additional Acknowledgments Regarding Default Rate and Late Charges') page break: section 27 uses hand-typed numbers (sections 16-27 are not auto-numbered like 1-15); identified that section contains two borrower 'Initial Here:' boxes, making the cross-page split structurally significant (not just cosmetic)"
+  - "Recommended manual Cmd+Enter page break before Section 27 over programmatic 'Keep with next' approach because document is heading to signing rather than further heavy editing"
+
+files_modified:
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Thurston Lux 2/Lux 2 Extension/Wright Thurston Promissory Note 20251223 - Version 2.docx"
+    changes: "NEW FILE — copy of original 12/23/2025 draft with Section 3 rewritten to add stepped Additional Fee and Section 5 wording capitalized to 'Five Percent (5%)'"
+
+files_created_ephemeral:
+  - path: "/tmp/edit_promnote.py"
+    purpose: "python-docx + lxml script that rewrote Section 3 and inserted sub-paragraphs"
+  - path: "/tmp/fix_section5.py"
+    purpose: "follow-up script that capitalized 'five percent' → 'Five Percent' across runs in Section 5"
+
+decisions_made:
+  - "Use python-docx + direct lxml manipulation rather than pandoc for the edit, because pandoc lossy-converts to/from .docx and would have lost the auto-list numbering and Times New Roman formatting"
+  - "Insert Section 3 sub-paragraphs WITHOUT numPr (no auto-list assignment) so Word's auto-numbering counter for Section 4 onward is not bumped — verified Section 4 still renders as '4. Payments'"
+  - "Hard-code dollar amounts ($25,300, $50,600) in the document rather than expressing as formulas, because Word does not evaluate inline arithmetic reliably and removing the math also removes any rounding-ambiguity attack vector for borrower counsel"
+  - "Name the new defined term 'Repayment Amount' instead of 'Principal' because $2,530,000 is the loan-fee-inclusive amount due at repayment, not principal in the strict sense ($2,200,000 was funded)"
+  - "Save as 'Version 2' rather than overwriting original — matches existing 'Version 1B / Version 3 / Version 3B' naming convention used elsewhere in the Lux 2 Extension folder; preserves diff capability for the user"
+  - "Recommend manual page break for Section 27 rather than 'Keep with next' / 'Keep lines together' because the document is heading to execution, not further upstream editing"
+
+surprises_and_corrections:
+  - surprise: "Initial pandoc plain-text extraction of Section 5 misread the docx as 'three percent (5%)' — actual content was 'five percent (5%)' lowercase"
+    resolution: "Disclosed correction transparently to user before they relayed the change to their boss, so they would not represent this as a typo fix when it was a capitalization change"
+  - surprise: "Document has 27 sections but only 15 are auto-numbered — sections 16-27 use hand-typed numbers (e.g., '16.Application of Payments') with no numPr"
+    resolution: "Documented for future reference; flagged that this template inconsistency is why Section 27 needed to be located by content search rather than by index"
+
+blockers: []
+
+next_actions:
+  - "User to open Wright Thurston Promissory Note 20251223 - Version 2.docx in Word and verify rendered Section 3 / Section 5 visually before sending up to boss"
+  - "User to add manual Cmd+Enter page break before 'Section 27. Additional Acknowledgments Regarding Default Rate and Late Charges' to keep that section (with its two Initial Here boxes) entirely on page 6"
+  - "User to circulate Version 2 to boss for review and then to borrower for execution"
+
+context_for_next_session: |
+  No active loan-document work to resume. This was a self-contained OKOA business
+  request that produced a final deliverable.
+
+  If the user returns to discuss the Wright Thurston note: the file is at
+  /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Thurston Lux 2/Lux 2 Extension/Wright Thurston Promissory Note 20251223 - Version 2.docx
+  and the original (unmodified) draft sits next to it.
+
+  Key facts to remember about the note (so a fresh session does not re-derive them):
+  - Lender: OKOA Capital LLC. Borrowers: Midway Farms 715/2795 LLLPs, Sundance Farms 3060/3070/3093 LLLPs, Skywalker Farms LLC/2/3, 1520 Sunset Farms LLLP, Beach Farms LLC, plus Wright Thurston and Stephanie Mae Thurston individuals.
+  - $2,200,000 funded; $2,530,000 Repayment Amount; $330,000 implied loan fee = the spread.
+  - Maturity: earlier of March 23, 2026 or trust-asset release.
+  - Sister document is Loan Modification Agreement Version 3B (extends the big $57M Lux 2 loan to June 18, 2026 for a $1.71M extension fee).
+  - This mini loan sits alongside (not under) the main Lux 2 Extension.
+
+  Memory updates that may be worth saving in a future session if the topic recurs:
+  - Pandoc plain-text extraction can mis-render lowercase 'f' for 't' in some
+    .docx files — when verifying typos, always cross-check with python-docx
+    run-by-run before reporting to the user.

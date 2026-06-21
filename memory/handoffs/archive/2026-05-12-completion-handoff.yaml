@@ -1,0 +1,71 @@
+timestamp: "2026-05-12T18:00:00Z"
+status: "completed"
+session_summary: "Full ACOS Underwriting Pipeline run on Lattice Red Line Development (Salt Lake City multifamily hotel-to-apartment conversion). 6 phases executed from raw loan folder ingestion through to 11 institutional-grade PDFs. Final recommendation: NEED MORE INFO with 5 blocker questions for sponsor."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+  deal_name: "Lattice Red Line"
+  loan_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Lattice Red Line Development"
+
+completed_this_session:
+  - "Phase 1 — Setup & inventory: 10 documents catalogued across 4 subdirectories"
+  - "Phase 2 — Document triage: 6 parallel agents read ~520 pages and produced individual YAML extractions"
+  - "Phase 2.5 — Reconciliation: surfaced 3 critical contradictions (two-tower complex, OKOA not named, $43.3M existing equity vs $41.2M acquisition)"
+  - "Phase 3 — Underwriting math: dual-track (Track A $36.6M conventional vs Track B $83.94M bonds), stress tests, sponsor vs OKOA-adjusted NOI scenarios"
+  - "Phase 4 — Sponsor + risk assessment + web research: surfaced Point on Flamingo $6M undisclosed loss + Six South Residential Tower phantom at same address"
+  - "Phase 5 — Synthesis: UNDERWRITING_PACKAGE.yaml + UNDERWRITING_SUMMARY.md as master files"
+  - "Phase 6a — 4 IC documents generated (Internal Credit Memo 38pp, Term Sheet 13pp, Deal Memo 16pp, Executive Summary 2pp) with explicit gap and assumed-number highlighting"
+  - "Phase 6b — 4 visual dashboards from YAMLs (Deal Overview, Metrics, Risk/Sponsor, Market/Triage), each 5pp with charts/heatmaps/callouts"
+  - "Phase 6c — 3 short visually-verified briefs (Underwriting Package, Risk, Market) at 3pp each with render-pdftoppm-Read-PNG verification loop"
+  - "Memory: added feedback_puppeteer_bottom_margin.md documenting Puppeteer's 1.25in hardcoded bottom-margin fix"
+
+files_modified:
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Lattice Red Line Development/underwriting-zee/"
+    changes: "Created underwriting workspace with 11 YAML data files (inventory, DEAL_INFO, UNDERWRITING_PACKAGE, underwriting-metrics, risk-assessment, sponsor-evaluation, market-context, triage-master, data-gaps-and-assumptions, generation-manifest + 6 raw triage subfiles), UNDERWRITING_SUMMARY.md, and compute-metrics.py"
+  - path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Lattice Red Line Development/underwriting-zee/generated-documents/"
+    changes: "11 PDFs (98 pages total) + 4 DOCX equivalents for the IC document set + HTML sources"
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_puppeteer_bottom_margin.md"
+    changes: "New feedback memory: Puppeteer hardcoded 1.25in bottom margin requires @page CSS override or shrunk page height; saved after 5 agents independently hit the issue"
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Added pointer to feedback_puppeteer_bottom_margin.md under Feedback section"
+
+decisions_made:
+  - "Recommendation: NEED_MORE_INFO (not decline) — deal has merit on market fundamentals (98.4% South Tower occupancy as same-parcel proof) but package is fundamentally incomplete"
+  - "Track A is OKOA-viable; Track B (UNPHC bonds at 122% LTV against appraisal) is structurally incompatible with private credit"
+  - "OKOA-adjusted NOI ($4.0M @ 35% expense ratio) vs sponsor proforma ($4.58M @ 26.7% ratio) — sponsor opex ratio implausibly low vs T-12 actual 46.8%"
+  - "Recommend OKOA counter-rate 9.0-9.5% (vs sponsor proforma 8.0%) to align with private credit construction target yields"
+  - "Skipped /acos-loan-doc-generator full pipeline in favor of direct document-composition agents — Phase 1 (design extraction) cached, Phase 2 (loan analysis) richer than skill would re-extract, dispatching 4 parallel composers was more efficient"
+  - "Visual verification loop (render → pdftoppm → Read PNG → inspect → iterate) added for short PDFs; caught Puppeteer margin issue that would have shipped silently"
+
+blockers:
+  - "Five blocker questions outstanding for sponsor before term sheet can issue: (1) capital stack election Track A/B, (2) Six South Residential Tower / 6 South Master Plan relationship, (3) Banc of California / Fannie Mae loan payoff status, (4) sponsor cash co-invest commitment, (5) Point on Flamingo $6M loss disposition statement"
+
+next_actions:
+  - "Send 5 blocker questions to broker/sponsor; await written responses"
+  - "On favorable response: order new OKOA-addressed appraisal, full PCA on North Tower, Phase I environmental"
+  - "On favorable response: obtain personal financial statements + 3yr tax returns for Justin Earl and at least one other principal"
+  - "On favorable response: obtain RL QOZB Owner LLC subsidiary balance sheet (where construction debt sits)"
+  - "On unfavorable response (Q1/Q2): decline with rationale"
+
+context_for_next_session: |
+  The Lattice Red Line underwriting is complete through analysis and document production but the deal is paused awaiting sponsor responses to 5 blocker questions. All 11 PDFs are in /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Lattice Red Line Development/underwriting-zee/generated-documents/.
+
+  Key files for resumption:
+  - UNDERWRITING_PACKAGE.yaml — master data
+  - UNDERWRITING_SUMMARY.md — readable summary
+  - data-gaps-and-assumptions.yaml — drives all gap/assumption highlighting
+  - triage-master.yaml — aggregated triage findings
+
+  When sponsor responds:
+  - If Track A confirmed and Six South clarified favorably: proceed to formal underwriting, order third-party reports, refine term sheet
+  - If unfavorable: decline letter using existing risk-assessment.yaml as rationale
+
+  Pipeline learnings for next deal:
+  - acos-underwriting-pipeline skill works end-to-end as designed (6 phases)
+  - Parallel triage agents (one per subdirectory) is the right partition strategy when loan folder is pre-organized
+  - Splitting agents by document weight matters (heavy PDFs like 156-page appraisal need their own agent to avoid context exhaustion)
+  - Visual verification loop should be added to dashboard generation by default, not just short briefs
+  - Always include @page { size: letter; margin: 0; } in CSS-paginated PDF work (saved to memory)

@@ -1,0 +1,1773 @@
+{
+  "nodes": [
+    {
+      "id": "cq-01",
+      "label": "Hypercore read API surface (endpoints/schemas/auth/pagination)",
+      "type": "cq",
+      "description": "Exact Hypercore read endpoints, request/response schemas, auth model, pagination scheme (once docs are in hand).",
+      "source_ids": [
+        "EV-001",
+        "EV-002"
+      ],
+      "confidence": 0.35,
+      "tier": "T3"
+    },
+    {
+      "id": "cq-02",
+      "label": "Entity/field mapping to OKOA concepts",
+      "type": "cq",
+      "description": "Which Hypercore entities/fields map to OKOA loan/borrower/facility/drawdown/payment/fee/interest/amortization/covenant/collateral/investor-allocation concepts.",
+      "source_ids": [
+        "EV-002",
+        "EV-003"
+      ],
+      "confidence": 0.5,
+      "tier": "T3"
+    },
+    {
+      "id": "cq-03",
+      "label": "Provenance binding to each delivered value",
+      "type": "cq",
+      "description": "How provenance (endpoint + request params + timestamp + JSON field path) is bound to each value and stored as truth.",
+      "source_ids": [
+        "EV-004",
+        "EV-010"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-04",
+      "label": "Substance consensus and quorum N per tier",
+      "type": "cq",
+      "description": "What constitutes substance consensus among N blind agents and the N/quorum threshold per verification tier.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-05",
+      "label": "Single-source confidence cap (<=0.7)",
+      "type": "cq",
+      "description": "How the single-source confidence cap is computed and surfaced to the user.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-06",
+      "label": "Freshness policy / never-serve-stale",
+      "type": "cq",
+      "description": "Live vs cached vs webhook-invalidated freshness policy; how stale data is prevented from silent serving.",
+      "source_ids": [
+        "EV-006",
+        "EV-002"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "cq-07",
+      "label": "Pagination-completeness verification",
+      "type": "cq",
+      "description": "How pagination-completeness is verified so no records are silently truncated.",
+      "source_ids": [
+        "EV-007"
+      ],
+      "confidence": 0.65,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-08",
+      "label": "Schema-drift detection/handling",
+      "type": "cq",
+      "description": "How schema drift on Hypercore's side is detected and handled.",
+      "source_ids": [
+        "EV-008"
+      ],
+      "confidence": 0.6,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-09",
+      "label": "Aggregation/unit/currency error catching",
+      "type": "cq",
+      "description": "How aggregation, unit, and currency errors are caught via cross-field reconciliation + adversarial recomputation.",
+      "source_ids": [
+        "EV-009",
+        "EV-005"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-10",
+      "label": "Stubbed client/adapter with fixtures",
+      "type": "cq",
+      "description": "How the isolated client/adapter lets the whole skill be built/tested on fixtures before access.",
+      "source_ids": [
+        "EV-011"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-11",
+      "label": "Graceful no-live-data degradation",
+      "type": "cq",
+      "description": "How the skill degrades gracefully and signals 'no live data' rather than fabricate when credentials absent.",
+      "source_ids": [
+        "EV-011",
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-12",
+      "label": "PII/GDPR/RBAC discipline",
+      "type": "cq",
+      "description": "How borrower PII/financial data is kept out of logs/evidence beyond need while honoring RBAC and GDPR.",
+      "source_ids": [
+        "EV-012",
+        "EV-002"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-13",
+      "label": "Downstream trusted-input feed shaping",
+      "type": "cq",
+      "description": "How verified extracts are shaped to be consumable as trusted inputs by downstream skills.",
+      "source_ids": [
+        "EV-013"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-14",
+      "label": "Two-tier data model boundary",
+      "type": "cq",
+      "description": "The boundary between raw cached API truth and the normalized derived answer layer.",
+      "source_ids": [
+        "EV-010"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "cq-15",
+      "label": "Tiered verification routing",
+      "type": "cq",
+      "description": "When deterministic-gate-only suffices (trivial lookups) vs when full adversarial consensus is mandatory (reports/aggregations).",
+      "source_ids": [
+        "EV-005",
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-loan",
+      "label": "Loan / Facility",
+      "type": "entity",
+      "description": "Loan/facility record (term, revolver, mezzanine, bridge, construction, syndicated, hybrid).",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-borrower",
+      "label": "Borrower / Entity",
+      "type": "entity",
+      "description": "Borrowing party / legal entity.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-drawdown",
+      "label": "Drawdown / Funding",
+      "type": "entity",
+      "description": "Funding/drawdown events on a facility.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-payment",
+      "label": "Payment / Repayment",
+      "type": "entity",
+      "description": "Repayment / payment records.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-fee",
+      "label": "Fee",
+      "type": "entity",
+      "description": "Fee records (origination, exit, etc.).",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-interest",
+      "label": "Interest Accrual",
+      "type": "entity",
+      "description": "Interest accrual records.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-amort",
+      "label": "Amortization Schedule",
+      "type": "entity",
+      "description": "Amortization schedule for a facility.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-covenant",
+      "label": "Covenant / Compliance Check",
+      "type": "entity",
+      "description": "Covenants and compliance check results.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-collateral",
+      "label": "Collateral",
+      "type": "entity",
+      "description": "Collateral securing a facility.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-investor",
+      "label": "Investor Allocation",
+      "type": "entity",
+      "description": "Investor allocation / participation records.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-document",
+      "label": "Document",
+      "type": "entity",
+      "description": "Loan documents in the repository.",
+      "source_ids": [
+        "EV-003"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "ent-rawresp",
+      "label": "RawApiResponse (Tier-1 truth)",
+      "type": "entity",
+      "description": "Cached raw API JSON response: endpoint, request params, timestamp, body. Source of truth.",
+      "source_ids": [
+        "EV-010"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-provbind",
+      "label": "ProvenanceBinding",
+      "type": "entity",
+      "description": "Value -> endpoint + request params + timestamp + JSON field path.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-consensus",
+      "label": "ConsensusResult",
+      "type": "entity",
+      "description": "Per-agent blind extractions + quorum/threshold + agreement status.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-gateresult",
+      "label": "VerificationGateResult",
+      "type": "entity",
+      "description": "Schema/pagination/freshness/reconciliation/normalization/confidence-cap outcomes.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-confidence",
+      "label": "ConfidenceRecord",
+      "type": "entity",
+      "description": "Per-value confidence + single-source flag <=0.7.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-normrec",
+      "label": "NormalizedAnswerRecord (Tier-2 derived)",
+      "type": "entity",
+      "description": "Token-efficient normalized derived view over raw responses.",
+      "source_ids": [
+        "EV-010"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "ent-bundle",
+      "label": "EvidenceBundle",
+      "type": "entity",
+      "description": "Per-slice evidence aggregate for ACOS.",
+      "source_ids": [
+        "EV-014"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-intake",
+      "label": "NL question intake + tier routing",
+      "type": "process",
+      "description": "Receive NL question; route to verification tier.",
+      "source_ids": [
+        "EV-013",
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-acquire",
+      "label": "Read-only data acquisition (adapter)",
+      "type": "process",
+      "description": "Acquire data via stubbed read-only client/adapter; live calls TODO.",
+      "source_ids": [
+        "EV-011",
+        "EV-015"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-cache",
+      "label": "Raw-response caching",
+      "type": "process",
+      "description": "Persist raw responses to Tier-1 truth store keyed for provenance lookup.",
+      "source_ids": [
+        "EV-010"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-extract",
+      "label": "Blind multi-agent extraction",
+      "type": "process",
+      "description": "Independent blind agents extract values; no shared context.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-consensus",
+      "label": "Consensus evaluation",
+      "type": "process",
+      "description": "Evaluate substance agreement; quorum; re-dispatch/escalate on disagreement.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-gate",
+      "label": "Deterministic gating",
+      "type": "process",
+      "description": "Run the deterministic gate suite under consensus.",
+      "source_ids": [
+        "EV-004",
+        "EV-007",
+        "EV-008",
+        "EV-009"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-bind",
+      "label": "Provenance binding + refuse-on-missing",
+      "type": "process",
+      "description": "Bind provenance to each value; refuse if missing.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-deliver",
+      "label": "Delivery / refusal / no-live-data",
+      "type": "process",
+      "description": "Emit answer envelope, refusal, or no-live-data state.",
+      "source_ids": [
+        "EV-004",
+        "EV-011"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-feed",
+      "label": "Downstream feed emission",
+      "type": "process",
+      "description": "Emit verified extract as a trusted-input feed + manifest.",
+      "source_ids": [
+        "EV-013"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "proc-invalidate",
+      "label": "Cache invalidation (webhook/polling)",
+      "type": "process",
+      "description": "Invalidate cache on webhook events or polling to preserve freshness.",
+      "source_ids": [
+        "EV-006"
+      ],
+      "confidence": 0.55,
+      "tier": "T3"
+    },
+    {
+      "id": "meth-adapter",
+      "label": "Contract-first client/adapter isolation",
+      "type": "method",
+      "description": "Isolate live API behind a contract/adapter with a fixture/mock backend.",
+      "source_ids": [
+        "EV-011",
+        "EV-015"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-twotier",
+      "label": "Two-tier data model (LEARN-ARCH-002)",
+      "type": "method",
+      "description": "Raw cached truth + normalized derived view; agents get only the tier they need.",
+      "source_ids": [
+        "EV-010"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-pregate",
+      "label": "Pre-generation verification gate",
+      "type": "method",
+      "description": "Non-bypassable gate between extraction and delivery.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-consensus",
+      "label": "Adversarial multi-model consensus",
+      "type": "method",
+      "description": "Blind independent agents + asymmetric/quorum gating before acceptance.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-prov",
+      "label": "Provenance discipline",
+      "type": "method",
+      "description": "Exact numeric/name/date preservation; per-field citation; no fabrication.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-tiered",
+      "label": "Tiered verification routing",
+      "type": "method",
+      "description": "Deterministic-only for trivial lookups; full consensus for reports/aggregations.",
+      "source_ids": [
+        "EV-005",
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-subonly",
+      "label": "Subscription-only model dispatch",
+      "type": "method",
+      "description": "Model work via Read / Task(); never ANTHROPIC_API_KEY.",
+      "source_ids": [
+        "EV-016"
+      ],
+      "confidence": 0.95,
+      "tier": "T1"
+    },
+    {
+      "id": "meth-degrade",
+      "label": "Graceful degradation",
+      "type": "method",
+      "description": "Explicit 'no live data' state vs fabrication.",
+      "source_ids": [
+        "EV-011",
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-recon",
+      "label": "Cross-field reconciliation + adversarial recompute",
+      "type": "method",
+      "description": "Reconcile related fields; independent recomputation catches aggregation/unit/currency errors.",
+      "source_ids": [
+        "EV-009",
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-normalize",
+      "label": "Unit/currency normalization",
+      "type": "method",
+      "description": "Normalize units/currency before comparison/aggregation.",
+      "source_ids": [
+        "EV-009"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-pagecheck",
+      "label": "Pagination-completeness check",
+      "type": "method",
+      "description": "Reconcile expected vs fetched record counts / cursor exhaustion.",
+      "source_ids": [
+        "EV-007"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-schemaval",
+      "label": "Schema validation + drift detection",
+      "type": "method",
+      "description": "Validate against expected entity schemas; detect and surface drift.",
+      "source_ids": [
+        "EV-008"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-freshpolicy",
+      "label": "Freshness-window policy",
+      "type": "method",
+      "description": "Stated configurable freshness window; never serve stale silently.",
+      "source_ids": [
+        "EV-006"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "meth-piiscrub",
+      "label": "PII-scrubbed logging/evidence",
+      "type": "method",
+      "description": "Need-to-know handling; scrub sensitive data from logs/evidence.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "meth-feedfmt",
+      "label": "Trusted-input feed format + manifest",
+      "type": "method",
+      "description": "JSON/CSV report/table/dataset with embedded provenance/confidence + manifest.",
+      "source_ids": [
+        "EV-013"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "std-tls",
+      "label": "TLS 1.2+ in transit",
+      "type": "standard",
+      "description": "Encryption in transit.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-aes",
+      "label": "AES-256 at rest",
+      "type": "standard",
+      "description": "Encryption at rest.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-rbac",
+      "label": "RBAC",
+      "type": "standard",
+      "description": "Role-based access control.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-soc2",
+      "label": "SOC 2 Type II",
+      "type": "standard",
+      "description": "SOC 2 Type II controls.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-gdpr",
+      "label": "GDPR",
+      "type": "standard",
+      "description": "EU data-protection regulation.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-mfasso",
+      "label": "MFA + SSO",
+      "type": "standard",
+      "description": "Multi-factor auth + single sign-on.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.7,
+      "tier": "T3"
+    },
+    {
+      "id": "std-secretstore",
+      "label": "Secrets in env/secret store",
+      "type": "standard",
+      "description": "No credentials in repo; env/secret store only.",
+      "source_ids": [
+        "EV-012",
+        "EV-016"
+      ],
+      "confidence": 0.85,
+      "tier": "T1"
+    },
+    {
+      "id": "std-readonly",
+      "label": "Read-only access constraint",
+      "type": "standard",
+      "description": "No write/mutate against Hypercore API.",
+      "source_ids": [
+        "EV-015"
+      ],
+      "confidence": 0.95,
+      "tier": "T1"
+    },
+    {
+      "id": "std-icgrade",
+      "label": "IC-grade / boss-criticism-proof",
+      "type": "standard",
+      "description": "Deliverables must be defensible on first cold look.",
+      "source_ids": [
+        "EV-014"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-fab",
+      "label": "Fabrication rate (0% target)",
+      "type": "metric",
+      "description": "Share of delivered values that are fabricated.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-provcov",
+      "label": "Provenance coverage (100% target)",
+      "type": "metric",
+      "description": "Share of delivered values with a provenance binding.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-consensus",
+      "label": "Consensus pass / disagreement / escalation",
+      "type": "metric",
+      "description": "Consensus outcomes counts.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-pagecomplete",
+      "label": "Pagination-completeness %",
+      "type": "metric",
+      "description": "Share of lists/aggregates proven complete.",
+      "source_ids": [
+        "EV-007"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-freshwin",
+      "label": "Freshness-within-window %",
+      "type": "metric",
+      "description": "Share of deliveries within the freshness window.",
+      "source_ids": [
+        "EV-006"
+      ],
+      "confidence": 0.6,
+      "tier": "T3"
+    },
+    {
+      "id": "metric-sscap",
+      "label": "Single-source cap correctness",
+      "type": "metric",
+      "description": "Share of single-source figures correctly capped <=0.7.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-refusal",
+      "label": "Refusal rate (health signal)",
+      "type": "metric",
+      "description": "Share of queries refused for missing provenance / failed gate.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "metric-ttva",
+      "label": "Time-to-verified-answer",
+      "type": "metric",
+      "description": "Latency to a verified answer vs manual baseline.",
+      "source_ids": [
+        "EV-014"
+      ],
+      "confidence": 0.6,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-apiunknown",
+      "label": "Unknown API surface",
+      "type": "risk",
+      "description": "API surface unknown until access; risk of hard-coupling.",
+      "source_ids": [
+        "EV-001"
+      ],
+      "confidence": 0.8,
+      "tier": "T3"
+    },
+    {
+      "id": "risk-stale",
+      "label": "Stale data served silently",
+      "type": "risk",
+      "description": "Serving outdated data without a freshness check.",
+      "source_ids": [
+        "EV-006"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-truncation",
+      "label": "Silent pagination/rate-limit truncation",
+      "type": "risk",
+      "description": "Partial result delivered as complete.",
+      "source_ids": [
+        "EV-007"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-drift",
+      "label": "Schema drift",
+      "type": "risk",
+      "description": "Hypercore changes its schema underneath.",
+      "source_ids": [
+        "EV-008"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-aggerr",
+      "label": "Aggregation/unit/currency errors",
+      "type": "risk",
+      "description": "Plausible-looking math/unit/currency mistakes.",
+      "source_ids": [
+        "EV-009"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-pii",
+      "label": "PII/GDPR leakage",
+      "type": "risk",
+      "description": "Borrower PII/financials leaking into logs/evidence.",
+      "source_ids": [
+        "EV-012"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-overtrust",
+      "label": "User over-trust",
+      "type": "risk",
+      "description": "Users treat answers as gospel without provenance.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-consensuscost",
+      "label": "Consensus instability / cost",
+      "type": "risk",
+      "description": "Consensus is unstable or too costly if applied indiscriminately.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.7,
+      "tier": "T2"
+    },
+    {
+      "id": "risk-fabricate",
+      "label": "Fabrication when no provenance",
+      "type": "risk",
+      "description": "Guessing a value when provenance is missing.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "pat-refuse",
+      "label": "Refuse-on-missing-citation",
+      "type": "pattern",
+      "description": "No provenance binding -> refuse, never guess.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "pat-blindredispatch",
+      "label": "Blind re-dispatch on disagreement",
+      "type": "pattern",
+      "description": "On consensus disagreement, re-dispatch blind agents then escalate.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "pat-fixturefirst",
+      "label": "Fixture-first development",
+      "type": "pattern",
+      "description": "Build/test against fixtures behind the adapter before access.",
+      "source_ids": [
+        "EV-011"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "anti-silenttrunc",
+      "label": "Silent truncation (anti-pattern)",
+      "type": "anti_pattern",
+      "description": "Delivering a partial list as complete.",
+      "source_ids": [
+        "EV-007"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "anti-singletrust",
+      "label": "Single-model trust (anti-pattern)",
+      "type": "anti_pattern",
+      "description": "One model extraction with no consensus/provenance.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "anti-guess",
+      "label": "Guess-on-missing (anti-pattern)",
+      "type": "anti_pattern",
+      "description": "Fabricating when provenance is missing.",
+      "source_ids": [
+        "EV-004"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    },
+    {
+      "id": "anti-apikey",
+      "label": "ANTHROPIC_API_KEY usage (anti-pattern)",
+      "type": "anti_pattern",
+      "description": "Using separate API billing instead of subscription.",
+      "source_ids": [
+        "EV-016"
+      ],
+      "confidence": 0.95,
+      "tier": "T1"
+    },
+    {
+      "id": "term-substance",
+      "label": "Substance consensus",
+      "type": "term",
+      "description": "Agreement on the value/answer substance (normalized numbers/names/dates).",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.75,
+      "tier": "T2"
+    },
+    {
+      "id": "term-tier",
+      "label": "Verification tier",
+      "type": "term",
+      "description": "Trivial-lookup vs report/aggregation classification.",
+      "source_ids": [
+        "EV-005"
+      ],
+      "confidence": 0.8,
+      "tier": "T2"
+    },
+    {
+      "id": "term-nolivedata",
+      "label": "No-live-data state",
+      "type": "term",
+      "description": "Explicit state when credentials/API absent.",
+      "source_ids": [
+        "EV-011"
+      ],
+      "confidence": 0.85,
+      "tier": "T2"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e001",
+      "from": "cq-01",
+      "to": "ent-rawresp",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e002",
+      "from": "cq-01",
+      "to": "meth-adapter",
+      "relation": "uses"
+    },
+    {
+      "id": "e003",
+      "from": "cq-01",
+      "to": "risk-apiunknown",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e004",
+      "from": "cq-01",
+      "to": "std-readonly",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e005",
+      "from": "meth-adapter",
+      "to": "pat-fixturefirst",
+      "relation": "implements"
+    },
+    {
+      "id": "e006",
+      "from": "meth-adapter",
+      "to": "risk-apiunknown",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e010",
+      "from": "cq-02",
+      "to": "ent-loan",
+      "relation": "part_of"
+    },
+    {
+      "id": "e011",
+      "from": "cq-02",
+      "to": "meth-twotier",
+      "relation": "uses"
+    },
+    {
+      "id": "e012",
+      "from": "cq-02",
+      "to": "meth-schemaval",
+      "relation": "uses"
+    },
+    {
+      "id": "e013",
+      "from": "cq-02",
+      "to": "ent-normrec",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e014",
+      "from": "ent-loan",
+      "to": "ent-borrower",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e015",
+      "from": "ent-loan",
+      "to": "ent-drawdown",
+      "relation": "part_of"
+    },
+    {
+      "id": "e016",
+      "from": "ent-loan",
+      "to": "ent-payment",
+      "relation": "part_of"
+    },
+    {
+      "id": "e017",
+      "from": "ent-loan",
+      "to": "ent-fee",
+      "relation": "part_of"
+    },
+    {
+      "id": "e018",
+      "from": "ent-loan",
+      "to": "ent-interest",
+      "relation": "part_of"
+    },
+    {
+      "id": "e019",
+      "from": "ent-loan",
+      "to": "ent-amort",
+      "relation": "part_of"
+    },
+    {
+      "id": "e020",
+      "from": "ent-loan",
+      "to": "ent-covenant",
+      "relation": "part_of"
+    },
+    {
+      "id": "e021",
+      "from": "ent-loan",
+      "to": "ent-collateral",
+      "relation": "part_of"
+    },
+    {
+      "id": "e022",
+      "from": "ent-loan",
+      "to": "ent-investor",
+      "relation": "part_of"
+    },
+    {
+      "id": "e023",
+      "from": "ent-loan",
+      "to": "ent-document",
+      "relation": "part_of"
+    },
+    {
+      "id": "e030",
+      "from": "cq-03",
+      "to": "meth-prov",
+      "relation": "uses"
+    },
+    {
+      "id": "e031",
+      "from": "cq-03",
+      "to": "ent-provbind",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e032",
+      "from": "ent-provbind",
+      "to": "ent-rawresp",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e033",
+      "from": "meth-prov",
+      "to": "pat-refuse",
+      "relation": "implements"
+    },
+    {
+      "id": "e034",
+      "from": "meth-prov",
+      "to": "metric-provcov",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e035",
+      "from": "cq-03",
+      "to": "risk-fabricate",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e036",
+      "from": "proc-bind",
+      "to": "ent-provbind",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e040",
+      "from": "cq-04",
+      "to": "meth-consensus",
+      "relation": "uses"
+    },
+    {
+      "id": "e041",
+      "from": "cq-04",
+      "to": "term-substance",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e042",
+      "from": "cq-04",
+      "to": "ent-consensus",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e043",
+      "from": "meth-consensus",
+      "to": "metric-consensus",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e044",
+      "from": "meth-consensus",
+      "to": "pat-blindredispatch",
+      "relation": "implements"
+    },
+    {
+      "id": "e045",
+      "from": "meth-consensus",
+      "to": "anti-singletrust",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e046",
+      "from": "cq-04",
+      "to": "risk-consensuscost",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e050",
+      "from": "cq-05",
+      "to": "ent-confidence",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e051",
+      "from": "cq-05",
+      "to": "meth-pregate",
+      "relation": "uses"
+    },
+    {
+      "id": "e052",
+      "from": "cq-05",
+      "to": "metric-sscap",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e053",
+      "from": "cq-05",
+      "to": "risk-overtrust",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e054",
+      "from": "meth-pregate",
+      "to": "ent-gateresult",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e060",
+      "from": "cq-06",
+      "to": "meth-freshpolicy",
+      "relation": "uses"
+    },
+    {
+      "id": "e061",
+      "from": "cq-06",
+      "to": "proc-invalidate",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e062",
+      "from": "cq-06",
+      "to": "risk-stale",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e063",
+      "from": "meth-freshpolicy",
+      "to": "metric-freshwin",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e064",
+      "from": "meth-freshpolicy",
+      "to": "proc-gate",
+      "relation": "part_of"
+    },
+    {
+      "id": "e070",
+      "from": "cq-07",
+      "to": "meth-pagecheck",
+      "relation": "uses"
+    },
+    {
+      "id": "e071",
+      "from": "cq-07",
+      "to": "risk-truncation",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e072",
+      "from": "meth-pagecheck",
+      "to": "metric-pagecomplete",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e073",
+      "from": "meth-pagecheck",
+      "to": "anti-silenttrunc",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e074",
+      "from": "meth-pagecheck",
+      "to": "proc-gate",
+      "relation": "part_of"
+    },
+    {
+      "id": "e080",
+      "from": "cq-08",
+      "to": "meth-schemaval",
+      "relation": "uses"
+    },
+    {
+      "id": "e081",
+      "from": "cq-08",
+      "to": "risk-drift",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e082",
+      "from": "meth-schemaval",
+      "to": "proc-gate",
+      "relation": "part_of"
+    },
+    {
+      "id": "e083",
+      "from": "meth-schemaval",
+      "to": "ent-gateresult",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e090",
+      "from": "cq-09",
+      "to": "meth-recon",
+      "relation": "uses"
+    },
+    {
+      "id": "e091",
+      "from": "cq-09",
+      "to": "meth-normalize",
+      "relation": "uses"
+    },
+    {
+      "id": "e092",
+      "from": "cq-09",
+      "to": "risk-aggerr",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e093",
+      "from": "meth-recon",
+      "to": "meth-consensus",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e094",
+      "from": "meth-recon",
+      "to": "proc-gate",
+      "relation": "part_of"
+    },
+    {
+      "id": "e095",
+      "from": "meth-normalize",
+      "to": "proc-gate",
+      "relation": "part_of"
+    },
+    {
+      "id": "e100",
+      "from": "cq-10",
+      "to": "meth-adapter",
+      "relation": "uses"
+    },
+    {
+      "id": "e101",
+      "from": "cq-10",
+      "to": "pat-fixturefirst",
+      "relation": "implements"
+    },
+    {
+      "id": "e102",
+      "from": "cq-10",
+      "to": "proc-acquire",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e103",
+      "from": "cq-10",
+      "to": "risk-apiunknown",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e110",
+      "from": "cq-11",
+      "to": "meth-degrade",
+      "relation": "uses"
+    },
+    {
+      "id": "e111",
+      "from": "cq-11",
+      "to": "term-nolivedata",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e112",
+      "from": "cq-11",
+      "to": "risk-fabricate",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e113",
+      "from": "meth-degrade",
+      "to": "anti-guess",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e114",
+      "from": "meth-degrade",
+      "to": "proc-deliver",
+      "relation": "part_of"
+    },
+    {
+      "id": "e120",
+      "from": "cq-12",
+      "to": "meth-piiscrub",
+      "relation": "uses"
+    },
+    {
+      "id": "e121",
+      "from": "cq-12",
+      "to": "std-gdpr",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e122",
+      "from": "cq-12",
+      "to": "std-rbac",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e123",
+      "from": "cq-12",
+      "to": "risk-pii",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e124",
+      "from": "meth-piiscrub",
+      "to": "std-soc2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e125",
+      "from": "cq-12",
+      "to": "std-tls",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e126",
+      "from": "cq-12",
+      "to": "std-aes",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e127",
+      "from": "cq-12",
+      "to": "std-mfasso",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e128",
+      "from": "cq-12",
+      "to": "std-secretstore",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e130",
+      "from": "cq-13",
+      "to": "meth-feedfmt",
+      "relation": "uses"
+    },
+    {
+      "id": "e131",
+      "from": "cq-13",
+      "to": "proc-feed",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e132",
+      "from": "cq-13",
+      "to": "std-icgrade",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e133",
+      "from": "meth-feedfmt",
+      "to": "meth-prov",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e134",
+      "from": "proc-feed",
+      "to": "ent-bundle",
+      "relation": "part_of"
+    },
+    {
+      "id": "e140",
+      "from": "cq-14",
+      "to": "meth-twotier",
+      "relation": "uses"
+    },
+    {
+      "id": "e141",
+      "from": "cq-14",
+      "to": "ent-rawresp",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e142",
+      "from": "cq-14",
+      "to": "ent-normrec",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e143",
+      "from": "meth-twotier",
+      "to": "proc-cache",
+      "relation": "implements"
+    },
+    {
+      "id": "e150",
+      "from": "cq-15",
+      "to": "meth-tiered",
+      "relation": "uses"
+    },
+    {
+      "id": "e151",
+      "from": "cq-15",
+      "to": "term-tier",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e152",
+      "from": "cq-15",
+      "to": "proc-intake",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e153",
+      "from": "meth-tiered",
+      "to": "meth-consensus",
+      "relation": "uses"
+    },
+    {
+      "id": "e154",
+      "from": "meth-tiered",
+      "to": "meth-pregate",
+      "relation": "uses"
+    },
+    {
+      "id": "e155",
+      "from": "meth-tiered",
+      "to": "risk-consensuscost",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e160",
+      "from": "proc-intake",
+      "to": "proc-acquire",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e161",
+      "from": "proc-acquire",
+      "to": "proc-cache",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e162",
+      "from": "proc-cache",
+      "to": "proc-extract",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e163",
+      "from": "proc-extract",
+      "to": "proc-consensus",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e164",
+      "from": "proc-consensus",
+      "to": "proc-gate",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e165",
+      "from": "proc-gate",
+      "to": "proc-bind",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e166",
+      "from": "proc-bind",
+      "to": "proc-deliver",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e167",
+      "from": "proc-acquire",
+      "to": "std-readonly",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e168",
+      "from": "proc-extract",
+      "to": "meth-subonly",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e169",
+      "from": "meth-subonly",
+      "to": "anti-apikey",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e170",
+      "from": "meth-pregate",
+      "to": "metric-fab",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e171",
+      "from": "proc-deliver",
+      "to": "metric-ttva",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e172",
+      "from": "proc-deliver",
+      "to": "metric-refusal",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e173",
+      "from": "meth-consensus",
+      "to": "meth-prov",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e174",
+      "from": "proc-acquire",
+      "to": "ent-rawresp",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e180",
+      "from": "cq-02",
+      "to": "metric-provcov",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e181",
+      "from": "cq-02",
+      "to": "risk-drift",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e182",
+      "from": "cq-02",
+      "to": "std-icgrade",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e183",
+      "from": "meth-schemaval",
+      "to": "metric-fab",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e184",
+      "from": "meth-recon",
+      "to": "metric-fab",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e185",
+      "from": "meth-degrade",
+      "to": "metric-fab",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e186",
+      "from": "cq-11",
+      "to": "std-icgrade",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e187",
+      "from": "cq-13",
+      "to": "risk-overtrust",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e188",
+      "from": "meth-twotier",
+      "to": "metric-provcov",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e189",
+      "from": "cq-14",
+      "to": "risk-fabricate",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e190",
+      "from": "cq-15",
+      "to": "std-icgrade",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e191",
+      "from": "meth-tiered",
+      "to": "metric-consensus",
+      "relation": "measured_by"
+    }
+  ]
+}

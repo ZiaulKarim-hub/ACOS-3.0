@@ -1,0 +1,109 @@
+# Slice Plan — Security / PII / GDPR + secret handling + read-only enforcement hardening
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-10-security-pii"
+story_id: "STORY-HCA-09A"
+epic_id: "EPIC-HCA-09"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Security / PII / GDPR + secret handling + read-only enforcement hardening"
+objective: |
+  Harden the safety posture so the skill is safe to point at live data once
+  provisioned: PII-scrubbed logs/evidence, credentials loaded ONLY from env/secret
+  store, and a structural read-only guard that makes Hypercore mutation impossible.
+  Honor TLS 1.2+, AES-256 at rest, RBAC, GDPR. In scope: a PII-scrubber applied to
+  all logs + evidence-bundle writes; env/secret-store credential loader (no creds in
+  repo); the read-only guard test elevated to a CI/quality-gate; AES-256-at-rest note
+  + least-privilege on the Tier-1 cache; RBAC scope pass-through hook on the adapter
+  (TBD specifics behind contract). Out of scope: live auth scheme (TBD until access);
+  feed formats (slice-09); consensus.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] PII scrubber redacts borrower PII / financials in logs + evidence bundles to need-to-know — pass-condition: PII-scrub test on a sample containing planted PII (REQUIRED; nothing leaks; fail = REJECT)"
+  - "[ ] Credentials read only from env/secret store; absence yields a clear error and the NO_LIVE_DATA path, never a crash that leaks or a fabricated answer — pass-condition: secrets-loader test; grep proves no credential string in repo (REQUIRED; fail = REJECT)"
+  - "[ ] Read-only guard test elevated so adding any mutating verb to the adapter fails the gate — pass-condition: guard test fails on a planted mutating method"
+  - "[ ] AES-256-at-rest + least-privilege documented for the Tier-1 cache; RBAC scope pass-through hook present (TBD behind contract) — artifact: security notes + hook"
+  - "[ ] Subscription-only re-confirmed: no ANTHROPIC_API_KEY anywhere — pass-condition: repo grep gate"
+  - "[ ] hca-secrets.py never logs the secret; no mutating adapter method added"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-08-orchestration"
+      what_it_provides: "The full report-tier pipeline + logs/evidence/ledgers and the adapter that this slice hardens (PII-scrub all writes, secret-load creds, elevate read-only guard)"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-pii.py"      # PII scrubber for logs/evidence; stdlib only
+  - ".claude/scripts/hca-secrets.py"  # env/secret-store loader; clear error if absent; NEVER logs the secret
+  - ".claude/scripts/hca-adapter.py"  # add RBAC-scope pass-through hook + reinforce read-only guard (minimal, no contract change)
+  - ".claude/scripts/tests/test_hca_pii.py"
+  - ".claude/scripts/tests/test_hca_secrets.py"
+  - ".claude/scripts/tests/test_hca_readonly_guard.py"
+  - ".acos/config/quality-gates.yaml"  # register read-only guard + PII-scan as gates (if project convention allows)
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-10-security-pii.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+
+# Skills recommended
+skills_recommended:
+  - "security-audit"   # PII scrubbing, secret handling, read-only enforcement, GDPR/TLS/AES posture
+  - "backend-coding"   # Python 3 stdlib scrubber + secrets loader + adapter hardening
+  - "testing"          # PII-scrub / secrets-present-absent / guard / repo-grep tests
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-10-security-pii.md"
+  - "Dependency note: depends_on is SLICE-HCA-08-orchestration (NOT slice-09) — its build order is 12, AFTER slice-11 (order 11), despite slice-10's lower numeric suffix. slice-10 and slice-11 are independent downstream branches of slice-08/09."
+  - "Gotcha (hard gates): no PII leak into logs/evidence (REQUIRED = REJECT) and no credential / ANTHROPIC_API_KEY anywhere in the repo (REQUIRED = REJECT). hca-secrets.py must never print the secret."
+  - "Gotcha: secrets-absent must degrade cleanly to NO_LIVE_DATA (clear error, no crash/leak/fabrication); adding a mutating verb to the adapter must fail the elevated read-only guard gate."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only"
+  - "hca-pii.py redacts known PII fields (legal_name, contact, financial detail) before any log/evidence write; default-deny unknown fields flagged sensitive"
+  - "hca-secrets.py reads HYPERCORE_API_* from env/secret store; never prints; clear error on absence -> NO_LIVE_DATA"
+  - "Reinforce the slice-02 read-only guard into a standing gate; add RBAC pass-through hook (minimal, no contract change, no mutating method)"
+  - "Document AES-256-at-rest / least-privilege / TLS 1.2+ posture; no credential committed to repo"
+
+# Testing requirements
+testing_requirements:
+  - "QA plants PII in a log + evidence write; confirm the scrubber redacts it everywhere it lands (logs, evidence, consensus/gate ledgers); any leak = REJECT"
+  - "QA greps the entire repo for credential-looking strings and ANTHROPIC_API_KEY; must find none"
+  - "QA adds a mutating method to the adapter in a scratch copy; confirm the elevated guard gate fails"
+  - "QA runs the secrets loader with vars absent; confirm clear error + NO_LIVE_DATA, no crash/leak/fabrication"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # the whole point of the slice: PII/secrets/read-only/GDPR/TLS/AES hardening
+
+# Effort estimate
+effort_estimate: "M"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-10-security-pii.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  Dependency taken from depends_on (SLICE-HCA-08-orchestration), NOT the numeric
+  suffix; build order is 12 (after slice-11 at order 11).
+  VISION-HCA-01 / EPIC-HCA-09 are PROPOSED — not yet formally planned via /acos-plan.

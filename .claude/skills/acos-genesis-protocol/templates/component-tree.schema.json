@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "acos-genesis-protocol/component-tree",
+  "title": "ACOS Pre-Engineering (Unix) — Component Tree",
+  "description": "A recursive tree of independently human-testable, output-generating components that, wired together through their contracts, fulfill the product vision. Every node — leaf AND intermediate — is a real functional unit with its own acceptance criteria and verifier. Variable depth: a branch stops only when a component is atomic-testable (small enough to build directly while still producing an observable, independently checkable output).",
+  "type": "object",
+  "required": ["feature_id", "product_name", "vision_ref", "verifier_vocabulary", "nodes"],
+  "properties": {
+    "feature_id": { "type": "string", "description": "<NNN>-<slug>" },
+    "product_name": { "type": "string" },
+    "vision_ref": { "type": "string", "description": "Path to vision.md for this feature." },
+    "generated_by": { "type": "string", "enum": ["unix.decompose"] },
+    "verifier_vocabulary": {
+      "type": "array",
+      "description": "The closed set of verifier types this product uses. Domain-agnostic — pick what fits the product. New types may be added here, but every node.verifier.type MUST be one of these.",
+      "items": { "type": "string" },
+      "default": [
+        "software-test",
+        "document-render",
+        "blueprint-constraint",
+        "data-schema",
+        "visual-diff",
+        "measurement",
+        "manual-only"
+      ]
+    },
+    "hardening": {
+      "type": "object",
+      "description": "Config for the per-component code-hardening gate run by /acos-synthesis-protocol. The gate embeds a SCOPED acos-robust-code-review loop on each eligible leaf BEFORE it is marked passed, so latent code defects (silent failures, edge cases, security) are removed at the leaf — where they are cheapest — instead of being composed into parents. Optional: when absent the runtime applies the documented defaults, so trees generated before this field existed still build.",
+      "properties": {
+        "code_verifier_types": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["software-test", "data-schema"],
+          "description": "Which verifier types denote CODE artifacts that get the review gate. Non-code types (document-render, blueprint-constraint, visual-diff, measurement, manual-only) are never code-reviewed — this is what preserves the skill's domain-agnostic claim."
+        },
+        "default_max_rounds": {
+          "type": "integer",
+          "default": 2,
+          "description": "Review → fix → re-review rounds per component before remaining sub-gate findings are escalated to the punch-list. Small by design: a single component artifact converges fast."
+        },
+        "default_severity_gate": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "TRIVIAL"],
+          "default": "MEDIUM",
+          "description": "Block integration until zero findings AT OR ABOVE this severity. Findings strictly below it are routed to the punch-list instead of hard-blocking the climb on cosmetics."
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/component" }
+    }
+  },
+  "definitions": {
+    "component": {
+      "type": "object",
+      "required": [
+        "id", "path", "name", "depth", "parent", "children",
+        "purpose", "single_responsibility", "output_artifact",
+        "contract", "verifier", "acceptance_criteria", "reuse", "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "description": "Stable unique id, e.g. C-014. Never reused across rebuilds." },
+        "path": { "type": "string", "description": "Slash path from root, e.g. rocket/engine/gimbal/servo-motor. Human-readable lineage." },
+        "name": { "type": "string" },
+        "tier_label": { "type": "string", "description": "Human-friendly level label (e.g. 'module', 'part', 'sub-part'). FREE-FORM and variable — the tree is NOT fixed to 4 levels. Purely cosmetic; depth is authoritative." },
+        "depth": { "type": "integer", "minimum": 0, "description": "0 = root (the Product itself)." },
+        "parent": { "type": ["string", "null"], "description": "Mother-component id. null only for the depth-0 root." },
+        "children": { "type": "array", "items": { "type": "string" }, "description": "Child component ids. Empty array = LEAF (atomic-testable; built directly, not decomposed further)." },
+
+        "purpose": { "type": "string", "description": "What this component IS and is supposed to DO — one or two sentences." },
+        "single_responsibility": { "type": "string", "description": "The ONE thing this component does well (Unix philosophy). If you cannot state it in one clause, the component is doing too much — split it." },
+
+        "output_artifact": {
+          "type": "object",
+          "description": "The observable thing a human can SEE/RUN to judge this component. Every node must produce one — this is the invariant that bans 'mindless parts'.",
+          "required": ["kind", "description"],
+          "properties": {
+            "kind": { "type": "string", "description": "Domain-agnostic output kind, e.g. software | document | blueprint | data | media | hardware-spec | service | other." },
+            "description": { "type": "string", "description": "Concretely, what does running/building this component yield that a human inspects?" },
+            "location_hint": { "type": "string", "description": "Where the built artifact is expected to land (path, URL, physical spec doc). Optional at plan time." }
+          }
+        },
+
+        "contract": {
+          "type": "object",
+          "description": "The component's interface — its 'pipes'. Defines composability and how it plugs into the mother component.",
+          "required": ["inputs", "outputs", "connects_to_parent_via"],
+          "properties": {
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "type", "description"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string", "description": "Logical type/shape of the input (domain-appropriate)." },
+                  "description": { "type": "string" },
+                  "from_component": { "type": "string", "description": "id of a sibling/child component that supplies this input, if any." }
+                }
+              }
+            },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "type", "description"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "connects_to_parent_via": { "type": "string", "description": "Plain-language: how this component's output plugs into the mother component. For the root, describe how the assembled outputs realize the vision." }
+          }
+        },
+
+        "verifier": {
+          "type": "object",
+          "description": "PLUGGABLE per-component test. The type drives both the auto-check the runtime attempts and the human-test instructions the Component Library renders.",
+          "required": ["type", "auto_check", "human_test"],
+          "properties": {
+            "type": { "type": "string", "description": "MUST be a member of verifier_vocabulary." },
+            "auto_check": {
+              "type": "object",
+              "description": "What the system runs without a human. If the verifier type cannot be machine-checked, set runnable=false and rely on human_test.",
+              "required": ["runnable"],
+              "properties": {
+                "runnable": { "type": "boolean" },
+                "method": { "type": "string", "description": "Command, script path, render call, schema-validate, dimensional check, etc. Concrete enough to execute. Empty if runnable=false." },
+                "expected": { "type": "string", "description": "The pass condition the auto-check asserts." }
+              }
+            },
+            "human_test": {
+              "type": "object",
+              "description": "How a human picks this component at random and verifies it themselves. ALWAYS present, even when auto_check.runnable=true (defense in depth).",
+              "required": ["procedure", "expected_observation", "pass_criteria"],
+              "properties": {
+                "procedure": { "type": "array", "items": { "type": "string" }, "description": "Ordered steps a non-author can follow." },
+                "expected_observation": { "type": "string" },
+                "pass_criteria": { "type": "string", "description": "Objective, measurable yes/no." }
+              }
+            }
+          }
+        },
+
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific, measurable, independently checkable. Each must be judgeable against THIS component's output alone — not the whole product."
+        },
+
+        "reuse": {
+          "type": "object",
+          "required": ["reusable", "tags"],
+          "properties": {
+            "reusable": { "type": "boolean", "description": "Can this component be reused by other parents / other products?" },
+            "tags": { "type": "array", "items": { "type": "string" }, "description": "Capability tags for a reuse search, e.g. ['motor','actuator','pid-loop']." },
+            "known_consumers": { "type": "array", "items": { "type": "string" }, "description": "Component ids (possibly in other trees) that already reuse this." }
+          }
+        },
+
+        "build_order_index": { "type": ["integer", "null"], "description": "Filled by unix.buildplan. Lower = built earlier (leaves first). null until buildplan runs." },
+
+        "hardening": {
+          "type": "object",
+          "description": "Per-component override + result record for the code-hardening gate. 'enabled'/'max_rounds'/'severity_gate' are optional plan-time overrides; 'state'/'rounds'/'open_findings'/'punchlist_ref' are written at run time by set-status.py. Absent ⇒ runtime derives eligibility (leaf AND verifier.type ∈ hardening.code_verifier_types).",
+          "properties": {
+            "enabled": { "type": ["boolean", "null"], "description": "Force the gate on/off for this component. null/absent ⇒ runtime derives." },
+            "max_rounds": { "type": ["integer", "null"] },
+            "severity_gate": { "type": ["string", "null"], "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "TRIVIAL", null] },
+            "state": { "type": "string", "enum": ["pending", "clean", "punchlist", "skipped"], "description": "Run-time result. clean = zero findings at/above the gate. punchlist = gate-severity clean with lower findings deferred. skipped = not eligible (non-code artifact or a composing parent)." },
+            "rounds": { "type": "integer" },
+            "open_findings": { "type": "integer", "description": "Count of unresolved findings AT OR ABOVE the severity gate at the time of the verdict (should be 0 for clean/punchlist)." },
+            "punchlist_ref": { "type": ["string", "null"], "description": "Path (relative to feature-dir) of the deferred sub-gate findings, if any." }
+          }
+        },
+
+        "status": {
+          "type": "string",
+          "enum": ["planned", "building", "passed", "failed", "untested"],
+          "description": "Lifecycle status, updated by /acos-synthesis-protocol. 'planned' at decompose time. 'passed' requires its verifier to have asserted pass AND — for a hardening-eligible code leaf — the hardening gate to have reached state clean|punchlist (set-status enforces this; exit 4 otherwise). A parent cannot pass until all children passed AND its own composed verifier passed."
+        },
+
+        "evidence_ref": { "type": ["string", "null"], "description": "Path to the evidence bundle recorded when this component was built/verified. null until built." }
+      }
+    }
+  }
+}

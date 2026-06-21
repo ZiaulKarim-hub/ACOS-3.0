@@ -1,0 +1,95 @@
+slice_id: "SLICE-001-03"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Coffee-table page template library (9 templates)"
+objective: |
+  Build 9 self-contained HTML page templates in templates/page-templates/, each
+  a single .page div with fixed 8.5×11in dimensions and its own art-directed
+  layout. Templates: cover, two-column-narrative, metric-grid, timeline,
+  chapter-divider, product-detail, portfolio-grid, photo-break, closing.
+  Templates reference tokens.css from SLICE-001-02; no cross-page dependencies.
+
+acceptance_criteria:
+  - "[ ] 9 files exist in templates/page-templates/: cover.html, two-column-narrative.html, metric-grid.html, timeline.html, chapter-divider.html, product-detail.html, portfolio-grid.html, photo-break.html, closing.html"
+  - "[ ] Each template is a standalone HTML fragment — a single <div class='page'> with 8.5in × 11in dimensions, page-break-after: always, overflow: hidden"
+  - "[ ] cover.html: full-bleed background image + dark scrim + oversized Cormorant title with italic accent span + coral mono eyebrow + bottom metadata bar"
+  - "[ ] two-column-narrative.html: eyebrow + section title (with italic accent) + italic pull-quote + two body columns"
+  - "[ ] metric-grid.html: 3×3 grid of cards, each card has coral accent bar + mono label + large Cormorant value + small body description"
+  - "[ ] timeline.html: 5 rows with coral step number + day range + italic subhead + body"
+  - "[ ] chapter-divider.html: full-bleed image + 'PART N' eyebrow + oversized italic-accent title + subtitle"
+  - "[ ] product-detail.html: left column product names + right column descriptions separated by <hr> dividers"
+  - "[ ] portfolio-grid.html: 2×2 hero-photo cards with eyebrow + title + location + body + stat grid per card"
+  - "[ ] photo-break.html: full-width photo band with caption label bottom-left"
+  - "[ ] closing.html: two-column summary + dark topographic panel + dark footer with OKOA logo (white variant)"
+  - "[ ] Every text container has an explicit background-color style (Brad's Explicit Background Rule)"
+  - "[ ] All colors reference tokens.css via var(--token-name); no raw hex values in templates"
+  - "[ ] Each template has template-variable placeholders in a consistent syntax (e.g., {{title}}, {{eyebrow}}, {{photo_slot:cover_image|tags=city,sunset,architecture}}) that the emitter (SLICE-001-05) will substitute"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-02"
+      what_it_provides: "tokens.css with palette + typography + grid"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/cover.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/two-column-narrative.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/metric-grid.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/timeline.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/chapter-divider.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/product-detail.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/portfolio-grid.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/photo-break.html"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/closing.html"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/pptx-slide-masters/"
+  - "/Users/zee/Desktop/Private Credit Capabilities/v3/tearsheet-v3.html"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The v3 tearsheet-v3.html at /Users/zee/Desktop/Private Credit Capabilities/v3/ is the gold-standard composition reference. READ it to understand layout decisions; do NOT copy its code verbatim."
+  - "Every page is a canvas, not a flowable web page. Fixed dimensions; no media queries; no responsive behavior."
+  - "Cormorant italic accents carry the key noun: 'Flexible Capital.' (Capital italicized), 'Debt Solutions.' (Solutions italicized). The template gets an {{italic_accent_phrase}} placeholder; the decomposer (SLICE-001-04) picks the word."
+  - "Photo slots are empty at this stage — use data-photo-slot='{semantic_tags}' as a placeholder attribute. SLICE-002-04 fills them."
+
+technical_requirements:
+  - ".page div fixed at 8.5in × 11in with page-break-after: always"
+  - "overflow: hidden on .page to prevent runaway content"
+  - "Every <div>, <section>, <article> containing text must have background-color set explicitly (even if white)"
+  - "Each template must render standalone when wrapped in <html><body>...</body></html> with tokens.css loaded — no dependencies on surrounding pages"
+
+testing_requirements:
+  - "Manual: open each template wrapped in a minimal HTML shell in Chrome, verify layout is correct and dimensions are 8.5×11in at 100% zoom"
+  - "Manual: render template via Puppeteer with @page {size: Letter; margin: 0;} and verify edge-to-edge page"
+  - "Manual: compare visual hierarchy to the corresponding page type in v3 PDF reference"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is the largest single slice in the epic. Each template needs careful
+  attention to typography, spacing, color choice, photo slot positioning.
+  Budget real time — do NOT rush. If a template's aesthetic misses the mark,
+  every downstream output will carry the defect.
+
+  Template-variable syntax proposal: use {{var_name}} for simple substitution
+  and {{photo_slot:slot_name|tags=tag1,tag2}} for photo slots. Keep it parseable
+  by a simple regex in SLICE-001-05's emitter.

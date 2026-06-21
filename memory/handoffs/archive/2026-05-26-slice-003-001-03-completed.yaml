@@ -1,0 +1,19 @@
+handoff_id: "2026-05-26-slice-003-001-03-completed"
+handoff_type: "slice-completion-audit"
+created_date: "2026-05-26"
+status: "completed"
+slice_id: "SLICE-003-001-03"
+title: "Inline SVG extractor"
+outcome: PASS
+reviewer_verdicts:
+  qa-reviewer: { verdict: PASS, acceptance: "9/9", scope: PASS, evidence: PASS, code_quality: PASS, walker_dispatch: PASS }
+required_fixes: 0
+minor_findings: 4  # all LOW carryover/cosmetic
+test_count_total: 36  # 15 new SVG + 21 inherited
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-03/"
+key_implementation_notes:
+  - "extractSvg uses el.outerHTML for byte-faithful rawMarkup preservation"
+  - "Walker emit-then-skip pattern: out.push() at line 58, early-return at line 65 — SVG captured, subtree skipped"
+  - "aspectRatio fallback chain: viewBox → width/height attrs → 1.0 + console.warn"
+  - "FNV-1a id hash matches existing text/image extractor conventions (deterministic)"
+next_step: "/acos-execute-slice SLICE-003-001-04 (table extractor + WALKER REFACTOR per P1 addendum)"

@@ -1,0 +1,582 @@
+# Story Plan — Two-pane shell + canvas + drag-drop + corner gestures
+# Created by The Architect (Opus 4.7, /acos-plan story, premium profile)
+
+story_id: "STORY-003-002"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-06-04"
+created_by: the-architect
+status: "planning"
+
+# Story overview
+title: "Two-pane shell + canvas + drag-drop + corner gestures"
+description: |
+  Core editor UI for the visual composer. A Vite + React + TypeScript
+  shell with a two-pane layout: right pane renders the parts-bin
+  hierarchy populated from extract() output (STORY-003-001 public API),
+  left pane renders a multi-page US Letter portrait canvas. Users drag
+  ContainerRecord items from the parts-bin onto the canvas, where each
+  becomes a draggable + corner-resizable box. Corner-handle resize
+  dispatches per-kind into five gesture variants (text-reflow,
+  image-scale aspect-locked, svg-scale-vector aspect-locked,
+  table-scale-uniform with column handles, background-cover-fit with
+  focal-point). State is held in a Zustand store. No snap-to-grid,
+  magnetic guides, font numeric controls, or polish pipeline in this
+  story — those land in STORY-003-003 and STORY-003-004.
+
+  This is the FIRST story in EPIC-003 to write into the live DOM. It
+  therefore inherits the consumer-side half of the SVG security contract
+  established in STORY-003-001 (SvgContent.rawMarkup is UNTRUSTED): every
+  SVG render path MUST sanitize before any innerHTML insertion. This is
+  enforced both as a story-level acceptance criterion and as an
+  automated grep-based unit test that fails CI on violation.
+
+# User story format
+user_story: |
+  As Zee (single user, OKOA Capital),
+  I want to open the editor, see every ContainerRecord from a Brad
+    document in a searchable parts-bin tree, drag them onto a multi-page
+    canvas, and resize each one with the per-kind gesture that matches
+    its content type (text reflows, images stay aspect-locked, tables
+    scale uniformly with column handles, background photos cover-fit
+    with a focal point),
+  So that I can lay out a 10-page report in a few minutes of visual,
+    gestural composition instead of hand-editing HTML.
+
+# Acceptance criteria
+acceptance_criteria:
+  # ── SECURITY (MANDATORY, NON-NEGOTIABLE — inherited from STORY-003-001) ──
+  - "[ ] **SECURITY (MANDATORY):** Every SVG render path sanitizes `SvgContent.rawMarkup` via DOMPurify (SVG profile) or an equivalent DOMParser-strip pipeline BEFORE inserting into the live DOM. The following patterns are forbidden anywhere in `apps/visual-composer/src/editor/`: `el.innerHTML = rec.content.rawMarkup`, `el.outerHTML = rec.content.rawMarkup`, `document.write(rec.content.rawMarkup)` (and any variable-bound equivalent). An automated test (`tests/editor/forbidden-patterns.test.ts`) grep-asserts the absence of these patterns across the editor source tree and fails CI on match."
+
+  # ── FORWARD FINDINGS from STORY-003-001 close-out ──
+  - "[ ] FORWARD FINDING S1: `isDeniedHostname` in `apps/visual-composer/src/parser/extractors/background.ts` extended to deny IPv4-mapped IPv6 (`::ffff:` prefix parsed as IPv4 dotted-quad OR hex pair; recovered octets fed through existing CIDR checks). Hostile probe added to xss-sandbox fixture and asserted denied."
+  - "[ ] FORWARD FINDING F2-neg: one negative-path test added for `assertKindCoherent` — hand-crafts a mismatched record via type-cast and asserts `toThrow(/dual-discriminator desync/)`."
+  - "[ ] FORWARD FINDING bracket-comment: inline comment in `background.ts` corrected to reflect that `URL.hostname` DOES return brackets for IPv6 (e.g., `[::1]`); the bracket-strip code is load-bearing, not redundant."
+  - "[ ] FORWARD FINDING fixture-size: `extract()` perf re-validated against a real production-sized Brad doc (target 25–50 KB for a 10-page credit memo); the recalibrated headroom number is recorded in this story's `notes` block AND in `planning/stories/STORY-003-001-*.yaml#perf_envelope`."
+  - "[ ] FORWARD FINDING BG3-audit (KICKOFF GATE): one real OKOA Brad doc was scanned for comma-separated multi-layer `background-image:` rules; outcome (`single-layer-only` OR `multi-layer-present`) is recorded in `.acos/evidence/.../SLICE-003-002-01/bg3-audit-outcome.md`. If `multi-layer-present`, `SLICE-003-002-01b` (BackgroundContent.layers extension) shipped BEFORE any canvas slice consumed BackgroundContent."
+
+  # ── FUNCTIONAL (the user-visible epic story) ──
+  - "[ ] Two-pane shell renders: left pane multi-page US Letter portrait canvas (page count configurable via store; default 1), right pane parts-bin tree."
+  - "[ ] Parts-bin tree renders all `ContainerRecord` values returned by `extract()` for a Brad reference document, grouped hierarchically by source-DOM path, with collapse/expand per group and a debounced text search input."
+  - "[ ] Each parts-bin tree leaf displays a small thumbnail preview (per-kind: text snippet, image thumbnail, SVG inline at small scale, table mini-table, background image thumbnail)."
+  - "[ ] Drag from a parts-bin leaf onto the canvas places a draggable container at the drop-point page coordinates."
+  - "[ ] Drag gesture on a canvas-resident container repositions it within the page (no snap-to-grid yet — that's STORY-003-003)."
+  - "[ ] Corner-handle resize implements all 5 per-kind gesture variants: (a) text-reflow — width-only handles, height auto, text reflows; (b) image-scale — aspect-locked from any corner; (c) svg-scale-vector — aspect-locked from any corner, preserves viewBox; (d) table-scale-uniform — uniform scale from corner handles + per-column drag handles on the column edges; (e) background-cover-fit — covers the container box with focal-point pointer drag inside the box to reposition the focal area."
+  - "[ ] Selection model: clicking a canvas container selects it; selection highlight rendered; corner handles visible only on selected container."
+  - "[ ] State managed by Zustand (selected over Redux Toolkit for single-user editor ergonomics + smaller bundle; rationale documented in this story's `technical_notes`)."
+  - "[ ] Parser public API surface unchanged — only additive helper(s) introduced in `background.ts` for S1; no exported signature broken."
+
+  # ── PERFORMANCE & RENDER CORRECTNESS ──
+  - "[ ] Drag latency: dragging a single text container on a canvas populated with ≥100 text containers stays under 16ms per frame (60fps target). Measured by a Vitest perf bench OR a manual `performance.now()` smoke recorded in slice evidence."
+  - "[ ] Drag-frame state updates do not re-render the parts-bin pane (verified via React DevTools Profiler snapshot OR a render-counter test)."
+  - "[ ] Integration test: load a Brad reference HTML, programmatically place one container of each `NodeKind` on the canvas, exercise each resize variant, assert final placement geometry — all green."
+
+# Dependencies
+dependencies:
+  stories:
+    - story_id: "STORY-003-001"
+      what_it_provides: |
+        Frozen public API:
+          extract(html: string, opts?: { bradEnrichment?: boolean }): Promise<ContainerRecord[]>
+          ContainerRecord, NodeKind, ComputedStyle, ContainerContent + content variants
+          enrich, EnrichOptions, BRAD_CLASSES, BRAD_CLASS_SET, BRAD_CLASS_PRIORITY, BradClass
+          ExtractOptions
+        Runtime guarantees:
+          F2 dual-discriminator invariant; SSRF URL scheme allowlist;
+          hostname denylist; UNTRUSTED SVG rawMarkup contract.
+  slices: []  # populated below
+
+# Slice breakdown
+slices:
+  - slice_id: "SLICE-003-002-01"
+    title: "Parser prep tick: S1 + F2-neg + bracket-comment + fixture-size + BG3-audit"
+    description: |
+      All five forward findings from STORY-003-001 closure bundled as one
+      parser-side prep slice. No canvas work yet. Must land before any
+      slice in this story consumes the parser. Tasks:
+        - S1: extend `isDeniedHostname` in background.ts to handle IPv4-mapped
+          IPv6 (::ffff: prefix). Append a hostile probe to xss-sandbox.html
+          (e.g., `background-image: url('http://[::ffff:127.0.0.1]/')`); add
+          a unit test asserting denial.
+        - F2-neg: one negative-path test for `assertKindCoherent` — hand-craft
+          a mismatched record via `as unknown as ContainerRecord` cast; assert
+          `toThrow(/dual-discriminator desync/)`.
+        - bracket-comment: correct the inline comment in background.ts —
+          URL.hostname DOES return brackets for IPv6; bracket-strip is
+          load-bearing.
+        - fixture-size: locate or generate a real production-sized Brad doc
+          (target 25–50 KB) and add as `tests/fixtures/brad-real-production.html`;
+          re-time extract() against it; record the recalibrated headroom
+          number in this story's notes AND in STORY-003-001's perf_envelope.
+        - BG3-audit: run extract() on the real Brad doc; grep source CSS
+          (and computed-style snapshots of walked records' backgroundImage)
+          for comma-separated multi-layer `background-image:` rules. Write
+          outcome to `.acos/evidence/.../SLICE-003-002-01/bg3-audit-outcome.md`
+          with the literal verdict `single-layer-only` OR `multi-layer-present`
+          plus the offending rule(s) if any.
+      Exit gate: BG3-audit outcome captured. If `multi-layer-present`,
+      SLICE-003-002-01b MUST execute before SLICE-003-002-02 begins.
+    effort: "S"
+    dependencies: []
+
+  - slice_id: "SLICE-003-002-01b"
+    title: "(CONDITIONAL) Extend BackgroundContent with layers[] — fires only if BG3-audit finds multi-layer"
+    description: |
+      Conditional contingency slice. Fires only if SLICE-003-002-01 BG3-audit
+      outcome == `multi-layer-present`. Otherwise this slice is marked
+      `not-required` in its evidence and skipped.
+
+      Scope when it fires:
+        - Add `layers: string[]` to `BackgroundContent` in types.ts (the
+          existing `url: string` field stays as the first layer for backward
+          compatibility; document the relationship in a JSDoc comment).
+        - Refactor `extractBackground` in background.ts to capture all
+          comma-separated url() layers (apply the existing isSafeBackgroundUrl
+          filter to EACH layer; record the filtered layer set; intrinsic
+          dimensions of the first surviving layer remain the BackgroundContent
+          naturalWidth/Height).
+        - Update fixtures: append a multi-layer background fixture; tests
+          assert per-layer denial / pass-through semantics.
+        - Bump STORY-003-001 public_api_frozen to additive-only note: layers[]
+          is an additive field; no break.
+
+      This slice MUST land before SLICE-003-002-02 (which begins canvas work
+      that consumes BackgroundContent) — otherwise canvas code is written
+      against an out-of-date type contract and forces a mid-story rewrite.
+    effort: "S"
+    dependencies:
+      - "SLICE-003-002-01"
+    fires_when: "SLICE-003-002-01 BG3-audit outcome == multi-layer-present"
+
+  - slice_id: "SLICE-003-002-02"
+    title: "Editor shell + Zustand store + parts-bin tree + multi-page canvas frame"
+    description: |
+      App shell wiring. The visible product after this slice: open an HTML
+      file via a file picker, see the parts-bin tree on the right with
+      hierarchical grouping + debounced search, see a multi-page US Letter
+      portrait canvas frame on the left (empty pages — no containers
+      rendered yet). No drag, no rendering of records onto canvas, no
+      gestures. Tasks:
+        - Install dependencies: `zustand`, `react-rnd` (or konva if slice
+          planning re-decides). DOMPurify install deferred to slice 03.
+        - `src/editor/App.tsx`: two-pane layout, file-picker that calls
+          extract(html) and seeds the store.
+        - `src/editor/store/index.ts`: Zustand store. Initial shape:
+            records: ContainerRecord[]
+            placements: Record<string, { pageIndex, x, y, w, h, focalPoint? }>
+            selection: string | null
+            partsBin: { search: string, collapse: Record<string, boolean> }
+            pageCount: number
+        - `src/editor/panes/PartsBinPane.tsx`: hierarchical tree (group by
+          first 2 segments of sourceDomPath; collapse/expand state in store).
+          Debounced text search filters visible nodes by record text /
+          domClasses / NodeKind. NO thumbnails yet (deferred to slice 07).
+        - `src/editor/panes/CanvasPane.tsx`: renders `pageCount` empty
+          US-Letter-portrait pages stacked vertically; viewport scrollable.
+        - Wire `main.tsx` to render `App` (replacing the existing
+          placeholder content).
+      Acceptance: open xss-sandbox.html OR a Brad fixture; tree populates;
+      search filters; pages render at correct dimensions; nothing renders
+      onto canvas yet.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-01"
+
+  - slice_id: "SLICE-003-002-03"
+    title: "Container rendering on canvas + MANDATORY SVG sanitize boundary"
+    description: |
+      Render each kind of ContainerRecord onto the canvas. This slice
+      establishes the SVG security boundary that the rest of the editor
+      builds against. Tasks:
+        - Install `dompurify` + `@types/dompurify`.
+        - `src/editor/lib/sanitizeSvg.ts`: thin wrapper around
+          `DOMPurify.sanitize(svgString, { USE_PROFILES: { svg: true, svgFilters: true } })`.
+          Returns a sanitized string AND a Trusted Types policy if browser
+          supports it. Document the contract in JSDoc.
+        - `src/editor/canvas/render/SvgRender.tsx`: THE ONLY file in
+          `src/editor/` permitted to render rawMarkup. Uses sanitizeSvg()
+          and inserts via a ref + innerHTML on a host <div> ONLY after
+          sanitization. JSDoc states explicitly: "This file is the SVG
+          sanitize boundary. Do not duplicate this pattern elsewhere."
+        - `src/editor/canvas/render/{TextRender,ImageRender,TableRender,BackgroundRender}.tsx`:
+          per-kind render components. Tables render via real `<table>` JSX.
+          Backgrounds render as a styled box with `background-image` URL
+          (already filtered through the SSRF allowlist by parser; no
+          re-check needed).
+        - `src/editor/canvas/Container.tsx`: dispatches on `rec.kind` to
+          the correct render component; receives placement geometry from
+          store.
+        - `src/editor/canvas/Page.tsx`: iterates store.placements for its
+          pageIndex and mounts Container components.
+        - For this slice: programmatically place 1 record of each NodeKind
+          on page 0 via store.setState (no drag yet); verify visual render.
+        - `tests/editor/sanitize-svg.test.ts`: 8 hostile SVG probes
+          (<script>, onload, javascript: href, base-href, etc.) all
+          sanitized to harmless markup.
+        - `tests/editor/forbidden-patterns.test.ts`: grep-based test —
+          walks every `.ts`/`.tsx` under `apps/visual-composer/src/editor/`,
+          asserts NONE contains the forbidden patterns enumerated in the
+          mandatory AC (innerHTML = rec.content.rawMarkup, outerHTML = …,
+          document.write(…), plus variable-bound forms via a regex that
+          matches `innerHTML\s*=\s*\S*rawMarkup` and equivalents).
+          Whitelists `src/editor/canvas/render/SvgRender.tsx` ONLY if its
+          one use goes through sanitizeSvg() first (regex-asserted).
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-02"
+
+  - slice_id: "SLICE-003-002-04"
+    title: "Drag-from-parts-bin → place-on-canvas + canvas-resident drag"
+    description: |
+      Two drag flows wired:
+        (a) Drag from a parts-bin tree leaf onto the canvas — drops at the
+            page coordinates of the drop point. If dropped outside a page,
+            the drop is ignored. New placement entry added to store.
+        (b) Drag an already-placed canvas container to reposition. Uses
+            react-rnd's drag handle; updates store.placements on drag end
+            (NOT on each frame — to keep the parts-bin off the hot path).
+      Tasks:
+        - Use HTML5 drag-and-drop for parts-bin → canvas (drag-source on
+          tree leaves, drop-target on canvas pages). dataTransfer carries
+          the recordId.
+        - react-rnd wraps each Container; `disableDragging={selection !== rec.id}`
+          OR a click-to-select pattern (slice-time decision; document in
+          slice plan).
+        - Selection: clicking a Container sets store.selection; clicking
+          empty canvas clears.
+        - Drag-frame perf: drag updates write to a transient `dragGhost`
+          slice of the store that ONLY the dragged container subscribes to
+          (parts-bin pane subscribes to records/partsBin slices, not
+          placements/dragGhost — verified by a render-counter test).
+        - `tests/editor/drag-place.test.tsx`: simulate drag from parts-bin
+          leaf to canvas at (200, 300); assert placement appears at those
+          coordinates.
+        - Manual smoke: 100 text containers placed; drag latency stays
+          under 16ms (record `performance.now()` deltas in evidence).
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-03"
+
+  - slice_id: "SLICE-003-002-05"
+    title: "Resize gestures — simple variants (text-reflow + image-scale + svg-scale-vector)"
+    description: |
+      First three of five resize-gesture variants. Share most of their
+      infrastructure (corner handles, aspect-lock toggle, geometry update
+      on resize-end). Tasks:
+        - `src/editor/canvas/gestures/resizeShared.ts`: corner-handle
+          geometry, resize-event normalization (regardless of corner),
+          store.placements update batching.
+        - `src/editor/canvas/gestures/resizeText.ts`: width-only handles
+          (left + right edges and corners limited to horizontal axis);
+          height auto-recomputed from rendered text after reflow.
+        - `src/editor/canvas/gestures/resizeImage.ts`: aspect-locked from
+          any corner; aspect ratio derived from intrinsic
+          `bounds.width / bounds.height`.
+        - `src/editor/canvas/gestures/resizeSvg.ts`: aspect-locked from
+          any corner; aspect ratio derived from `viewBox` when present,
+          else from `aspectRatio` field on SvgContent. ViewBox preserved
+          (not modified) — only the host box scales.
+        - Container.tsx dispatches the resize gesture by rec.kind.
+        - `tests/editor/resize-variants.test.tsx` (partial): tests for
+          text/image/svg variants; table + background tests land in
+          slice 06.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-04"
+
+  - slice_id: "SLICE-003-002-06"
+    title: "Resize gestures — table-scale-uniform + column handles + background-cover-fit + focal-point"
+    description: |
+      The two complex resize variants. Tasks:
+        - `src/editor/canvas/gestures/resizeTable.ts`: corner handles
+          uniformly scale the whole table (font-size + cell padding scale
+          proportionally — document the scaling rule in slice plan). Per
+          column, a vertical drag handle on the right edge of each column
+          adjusts that column's width (other columns rebalance to preserve
+          total width, OR table total width grows — slice-time decision).
+        - `src/editor/canvas/gestures/resizeBackground.ts`: corner handles
+          resize the container box (the photo stays cover-fit). A separate
+          pointer-drag inside the box (NOT a corner handle) moves the
+          focal-point used by `background-position`. Focal point stored
+          per-placement as `focalPoint: { x: 0-1, y: 0-1 }` (normalized
+          coordinates).
+        - BackgroundRender consumes the focal-point when rendering.
+        - `tests/editor/resize-variants.test.tsx` (completion): tests for
+          table column-handle behavior and background focal-point.
+        - Integration test: place all 5 kinds, exercise each resize
+          variant, assert final geometry.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-05"
+
+  - slice_id: "SLICE-003-002-07"
+    title: "Parts-bin thumbnails + tree collapse polish + story-level integration tests"
+    description: |
+      Final polish + the story closing test set. Tasks:
+        - Parts-bin thumbnails: per-kind thumbnail renderer (text snippet
+          first 80 chars; image as 64px thumb via the loaded image element;
+          SVG inline at 64px constrained box — using sanitizeSvg(); table
+          as a mini-table preview; background as a 64px thumb of the
+          first layer URL). Lazy-render (IntersectionObserver) so 500+
+          records don't block initial paint.
+        - Tree collapse: persist collapse state across reload via store
+          (still in-memory only — file persistence is STORY-003-003).
+        - `tests/editor/integration-brad-doc.test.tsx`: load a real Brad
+          fixture; assert parts-bin populates; simulate drag-place of 5
+          records (one per kind); simulate resize on each; assert final
+          placement geometry matches expected.
+        - Story-level perf check: 100 placed text containers + drag, p95
+          frame time under 16ms.
+        - Mark STORY-003-002 status: completed.
+        - Lock STORY-003-002 acceptance criteria in evidence bundle.
+    effort: "M"
+    dependencies:
+      - "SLICE-003-002-06"
+
+# Execution order
+# Strict sequential for single-developer cadence. Slices 05 + 06 could be
+# parallelized if a second developer joins (independent resize variants),
+# but the conditional 01b creates a kickoff-gate dependency that must
+# resolve before 02 begins.
+execution_order:
+  - phase: 1
+    slices: ["SLICE-003-002-01"]
+  - phase: 1b  # CONDITIONAL — fires only if BG3-audit outcome == multi-layer-present
+    slices: ["SLICE-003-002-01b"]
+  - phase: 2
+    slices: ["SLICE-003-002-02"]
+  - phase: 3
+    slices: ["SLICE-003-002-03"]
+  - phase: 4
+    slices: ["SLICE-003-002-04"]
+  - phase: 5
+    slices: ["SLICE-003-002-05"]
+  - phase: 6
+    slices: ["SLICE-003-002-06"]
+  - phase: 7
+    slices: ["SLICE-003-002-07"]
+
+# Files involved
+files_involved:
+  create:
+    # editor subtree (new)
+    - "apps/visual-composer/src/editor/App.tsx"
+    - "apps/visual-composer/src/editor/store/index.ts"
+    - "apps/visual-composer/src/editor/panes/CanvasPane.tsx"
+    - "apps/visual-composer/src/editor/panes/PartsBinPane.tsx"
+    - "apps/visual-composer/src/editor/canvas/Page.tsx"
+    - "apps/visual-composer/src/editor/canvas/Container.tsx"
+    - "apps/visual-composer/src/editor/canvas/render/TextRender.tsx"
+    - "apps/visual-composer/src/editor/canvas/render/ImageRender.tsx"
+    - "apps/visual-composer/src/editor/canvas/render/SvgRender.tsx"      # SVG sanitize boundary
+    - "apps/visual-composer/src/editor/canvas/render/TableRender.tsx"
+    - "apps/visual-composer/src/editor/canvas/render/BackgroundRender.tsx"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeShared.ts"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeText.ts"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeImage.ts"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeSvg.ts"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeTable.ts"
+    - "apps/visual-composer/src/editor/canvas/gestures/resizeBackground.ts"
+    - "apps/visual-composer/src/editor/lib/sanitizeSvg.ts"                # DOMPurify wrapper
+    - "apps/visual-composer/src/editor/lib/dragGesture.ts"
+    - "apps/visual-composer/src/editor/partsBin/TreeNode.tsx"
+    - "apps/visual-composer/src/editor/partsBin/Thumbnail.tsx"
+    # tests
+    - "apps/visual-composer/tests/editor/sanitize-svg.test.ts"
+    - "apps/visual-composer/tests/editor/forbidden-patterns.test.ts"       # MANDATORY AC enforcement
+    - "apps/visual-composer/tests/editor/render-each-kind.test.tsx"
+    - "apps/visual-composer/tests/editor/drag-place.test.tsx"
+    - "apps/visual-composer/tests/editor/resize-variants.test.tsx"
+    - "apps/visual-composer/tests/editor/integration-brad-doc.test.tsx"
+    # fixtures
+    - "apps/visual-composer/tests/fixtures/brad-real-production.html"     # fixture-size finding
+    # evidence
+    - ".acos/evidence/<date>/SLICE-003-002-01/bg3-audit-outcome.md"        # BG3-audit verdict
+
+  modify:
+    - "apps/visual-composer/src/parser/extractors/background.ts"           # S1 + bracket-comment
+    - "apps/visual-composer/src/parser/types.ts"                            # 01b only — adds layers[] (conditional)
+    - "apps/visual-composer/tests/parser/index.test.ts"                     # F2-neg test
+    - "apps/visual-composer/tests/fixtures/xss-sandbox.html"                # S1 probe append
+    - "apps/visual-composer/tests/integration/xss-sandbox.test.ts"          # S1 assertion
+    - "apps/visual-composer/package.json"                                   # +zustand +react-rnd +dompurify +@types/dompurify
+    - "apps/visual-composer/pnpm-lock.yaml"                                 # lockfile update
+    - "apps/visual-composer/index.html"                                     # editor mount title
+    - "apps/visual-composer/src/main.tsx"                                   # render <App /> instead of placeholder
+    - "planning/stories/STORY-003-001-html-ingest-parts-bin-extractor.yaml" # perf_envelope recalibration note
+
+# UI/UX notes
+ui_notes: |
+  Layout
+    Two-pane horizontal split. Left pane (~70% width): scrollable viewport
+    holding stacked US-Letter-portrait pages. Right pane (~30% width):
+    parts-bin tree at top, selection details panel below (placeholder in
+    this story; populated in STORY-003-003 with font controls).
+
+  Parts-bin tree
+    Hierarchical group: first 2 segments of `sourceDomPath` form the
+    parent node, the leaf is the record. Each leaf shows: NodeKind icon,
+    short label (text snippet OR alt text OR svg viewBox OR table dims OR
+    background filename), thumbnail (slice 07). Collapse arrow per group;
+    debounced search box at top of pane (debounce 150ms; filters by record
+    text content, domClasses, NodeKind name).
+
+  Canvas
+    US Letter portrait at 96 DPI base (8.5" × 11" → 816 × 1056 px). Pages
+    stacked vertically with a 32px gutter. Page background white, 1px
+    border, drop-shadow to suggest page elevation. No grid overlay yet
+    (STORY-003-003 adds the 8px grid toggle).
+
+  Selection + handles
+    Selected container shows 8 corner+edge handles (4 corner + 4 edge).
+    Text containers only render the 4 edge handles on the left/right
+    (width-only resize). Table containers render 4 corner handles + per
+    column vertical drag handles on the right edge of each column.
+    Background containers render 4 corner handles + a focal-point crosshair
+    inside the container.
+
+  Drag-and-drop affordance
+    Parts-bin leaves get a drag-source cursor + 50% opacity ghost while
+    dragging. Canvas pages get a 2px dashed inset border when a drag is
+    hovering over them as a valid drop target.
+
+# Technical notes
+technical_notes: |
+  Library decisions
+    - State: ZUSTAND. Rationale: single-user editor; no time-travel-debug
+      need; ergonomic selector subscriptions that let parts-bin pane
+      subscribe to records/partsBin slices while the drag-frame writes to
+      a separate placements/dragGhost slice — keeping parts-bin off the
+      hot path is structurally simpler in Zustand than in Redux Toolkit.
+      Bundle size also smaller (~3 KB vs ~12 KB). If slice 02 surfaces
+      a reason to revisit, document and switch.
+    - Drag/resize: REACT-RND as primary. Konva is the documented fallback
+      if react-rnd cannot satisfy the per-kind gesture variants cleanly
+      (specifically table column handles + background focal-point); first
+      try react-rnd with custom resize handle components.
+    - SVG sanitize: DOMPURIFY. Mature, widely audited, has an explicit
+      SVG profile (`USE_PROFILES: { svg: true, svgFilters: true }`).
+      Alternative considered (DOMParser-strip pattern): rejected because
+      enumerating all unsafe attributes is open-ended and we cannot match
+      DOMPurify's coverage in a hand-rolled stripper.
+
+  Security boundary (mandatory AC)
+    `apps/visual-composer/src/editor/canvas/render/SvgRender.tsx` is THE
+    one file allowed to render `rec.content.rawMarkup` into the live DOM.
+    It MUST go through `src/editor/lib/sanitizeSvg.ts` (a thin DOMPurify
+    wrapper) BEFORE any innerHTML / outerHTML / document.write. The
+    `tests/editor/forbidden-patterns.test.ts` grep-asserts:
+      1. No file in `src/editor/` (other than SvgRender.tsx) contains
+         `innerHTML\s*=\s*[^;]*rawMarkup` OR `outerHTML\s*=\s*[^;]*rawMarkup`
+         OR `document\.write\s*\(`.
+      2. In SvgRender.tsx, every `innerHTML = ` assignment of a rawMarkup-
+         derived value is preceded by a call to `sanitizeSvg(...)`.
+    The test fails CI on any match. A custom ESLint rule was considered
+    but rejected in favor of the grep test because it is auditable in
+    30 seconds by the security-reviewer and requires no eslint-plugin
+    authoring overhead.
+
+  State store shape (drafted; refined in slice 02 planning)
+    {
+      records: ContainerRecord[],
+      placements: Record<recordId, {
+        pageIndex: number,
+        x: number, y: number,
+        w: number, h: number,
+        focalPoint?: { x: number, y: number },  // background only; normalized 0-1
+      }>,
+      selection: recordId | null,
+      partsBin: {
+        search: string,
+        collapse: Record<groupKey, boolean>,
+      },
+      pageCount: number,
+      // Hot-path-isolated slice (subscribed only by the dragged container):
+      dragGhost: { recordId: string, x: number, y: number } | null,
+    }
+
+  Performance
+    Drag-frame writes must touch ONLY `dragGhost`, not `placements`.
+    `placements` is updated on `onDragStop` (single write at the end).
+    Parts-bin pane subscribes to `state.records` + `state.partsBin` only;
+    a React render-counter test verifies the parts-bin component does NOT
+    re-render during a drag-frame sequence. If this fails on a real
+    selection model, fall back to React.memo + manual selector splitting
+    rather than relaxing the budget.
+
+  Re-validate STORY-003-001 perf claim (fixture-size finding)
+    Slice 01 pulls a real ~30-50 KB Brad fixture and re-times extract().
+    Expected headroom: 60–100× (vs the ~85-100× claimed against the
+    18 KB hand-authored fixture). Record exact number in this story's
+    notes block AND amend `planning/stories/STORY-003-001-*.yaml`
+    `perf_envelope` so future readers see the recalibrated figure.
+
+  BG3-audit kickoff gate
+    Run real Brad CSS through:
+      grep -E 'background-image\s*:\s*[^;]*,' <css-files>
+    If any match, BackgroundContent needs a `layers: string[]` field
+    BEFORE slice 02. The conditional slice 01b ships that contract change.
+    The reason this is upfront-planned rather than reactive: changing
+    BackgroundContent mid-story (after slice 03 renders the field, slice
+    04 drags it, slice 06 implements focal-point on it) means rewriting
+    every consumer. Upfront contract stability is cheaper than mid-story
+    refactor.
+
+# Review considerations
+review_focus:
+  - "MANDATORY SECURITY AC: SVG sanitize boundary present in `src/editor/canvas/render/SvgRender.tsx`; `tests/editor/forbidden-patterns.test.ts` passes; NO `innerHTML`/`outerHTML`/`document.write` of rawMarkup anywhere in `src/editor/` other than the sanitized boundary."
+  - "Parser API surface unchanged — only additive changes to background.ts (S1 helper); no breaking signature change to extract() or any exported type."
+  - "Drag perf budget: 16ms / 60fps on 100+ text containers (measured, not assumed)."
+  - "Hot-path isolation: drag-frame state updates do NOT re-render the parts-bin pane (verified by render-counter test or React DevTools profile)."
+  - "Per-kind gesture correctness: text reflows on width change; image+SVG aspect-locked; table uniform-scale + column handles work independently; background cover-fit + focal-point pointer-drag works."
+  - "BG3-audit outcome recorded in slice 01 evidence; if `multi-layer-present`, slice 01b shipped BEFORE slice 02."
+  - "fixture-size recalibration: real-Brad-fixture timing recorded in this story's notes + STORY-003-001's perf_envelope; old claim corrected."
+  - "F2-neg: negative-path test on `assertKindCoherent` lands and passes."
+  - "bracket-comment: inline comment in background.ts corrected to reflect that URL.hostname DOES return brackets for IPv6."
+  - "DOMPurify dependency pinned; supply-chain provenance verified at install time (pnpm audit clean)."
+
+# Effort estimate
+effort_estimate: "L"
+
+# Notes
+notes: |
+  Parent epic: EPIC-003 (HTML-to-PDF Visual Composer MVP).
+  Parent story closure record:
+    memory/handoffs/archive/2026-05-28-slice-003-001-07-and-story-001-completed.yaml
+
+  Five forward findings folded in from STORY-003-001 close-out (verbatim in the
+  acceptance_criteria block above): S1 (IPv4-mapped IPv6 hostname denial),
+  F2-neg (assertKindCoherent negative-path test), BG3-audit (multi-layer
+  background-image kickoff gate), fixture-size (real-Brad perf recalibration),
+  bracket-comment (background.ts inline comment correction).
+
+  The MANDATORY SVG sanitize-at-render acceptance criterion is the consumer-side
+  half of the Option B contract chosen during STORY-003-001 SVG XSS resolution
+  (CWE-79). It is NOT a code-quality preference — it is the second half of a
+  security boundary whose first half is already shipped. Removing or weakening
+  it re-opens the CWE-79 surface that was closed at 2026-05-28. The security
+  reviewer will reject any slice that fails the forbidden-patterns automated
+  check OR removes the sanitizeSvg() wrapper.
+
+  Zustand chosen over Redux Toolkit in this plan for ergonomics + bundle size
+  in a single-user editor; rationale documented in technical_notes. If slice
+  02 planning surfaces a reason to revisit, document and proceed accordingly
+  (this is a slice-time-revisable decision, not a story-level lock).
+
+  Slice 01b is a conditional contingency slice that fires only if BG3-audit
+  finds multi-layer background-image rules in real Brad CSS. The contingency
+  is planned upfront (not deferred) because the type-contract change would
+  otherwise force mid-story rewrites of slices 03–06. If the audit comes back
+  `single-layer-only`, slice 01b is marked `not-required` in its evidence and
+  skipped — `BackgroundContent` remains as currently shipped.
+
+  Perf headroom recalibration (fixture-size finding) will be filled in here
+  AND amended in STORY-003-001's perf_envelope block once slice 01 runs.
+  Placeholder until measured:
+    brad_real_production: "<TBD by SLICE-003-002-01; expect 25-50 KB doc, 60-100x headroom>"
+
+  Next step after this story file:
+    /acos-plan slice (for SLICE-003-002-01) to define the parser-prep slice
+    in implementation detail (file paths allowed, verification method,
+    evidence requirements, S1+F2-neg+bracket-comment+fixture-size+BG3-audit
+    task list per acceptance criterion).

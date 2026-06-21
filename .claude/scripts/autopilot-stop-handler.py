@@ -233,6 +233,26 @@ def main():
             # Harness re-fire safeguard — bail out
             sys.exit(0)
 
+        # ── Eternity-protocol subordination (precedence over autopilot) ───────
+        # Per user spec 2026-06-15: when eternity is in flight (daemon arming
+        # /clear, pending-resume armed, etc.), autopilot stands down. Do NOT
+        # inject the continuation directive — let Claude's turn end naturally
+        # so eternity's /clear and resume sequence can complete cleanly.
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from _autopilot_eternity import is_eternity_protocol_active, detect_eternity_marker
+            if is_eternity_protocol_active(cwd):
+                sid, marker = detect_eternity_marker(cwd)
+                audit(project_root,
+                      f"[{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}] "
+                      f"AUTOPILOT_ETERNITY_SUBORDINATE | hook=Stop | "
+                      f"marker={marker} | sid={sid[:12] if sid else '?'}")
+                sys.exit(0)
+        except Exception:
+            # Fail-open: if subordination check itself errors, proceed with
+            # normal continuation. Better than silently halting autopilot.
+            pass
+
         try:
             state = json.loads(sentinel.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):

@@ -1,0 +1,113 @@
+# Slice Plan — Completeness / freshness / schema-drift hardening
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-11-completeness-hardening"
+story_id: "STORY-HCA-09B"
+epic_id: "EPIC-HCA-09"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Completeness / freshness / schema-drift hardening"
+objective: |
+  Harden the completeness, freshness, and schema-drift handling under adversarial
+  conditions, and validate hypothesis H1 (aggregation/units/currency/truncation
+  dominate the trust failure). Prove the gates catch each failure mode with
+  deliberately hostile fixtures, and implement freshness invalidation (webhook stub /
+  polling fallback) and schema-drift surfacing (not silent absorption). In scope:
+  adversarial fixtures (deeply-truncated multi-page list, rate-limit cutoff mid-cursor,
+  stale-just-past-window, drifted-schema with added/removed/retyped fields);
+  pagination-completeness hardening across multi-page + cursor exhaustion; freshness
+  invalidation (webhook stub + polling fallback) wiring on the adapter; schema-drift
+  detection that surfaces drift_details rather than absorbing; H1 validation write-up.
+  Out of scope: new gates (the six exist from slice-05 — this hardens them); feed
+  formats (slice-09); security (slice-10).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Pagination-completeness blocks every hostile truncation fixture (mid-cursor cutoff, rate-limit stop, multi-page short count) — pass-condition: ALL hostile-truncation fixtures => refuse (REQUIRED; no silent truncation; fail = REJECT)"
+  - "[ ] Freshness gate + invalidation: stale-just-past-window fixtures are refused/flag-refreshed; invalidation hook (webhook stub/polling fallback) marks affected cache entries stale — pass-condition: stale fixtures refused; invalidation test"
+  - "[ ] Schema-drift detection surfaces drift_detected: true + drift_details[] for added/removed/retyped fields and does NOT silently absorb — pass-condition: drift fixtures surface details (REQUIRED; fail = REJECT)"
+  - "[ ] H1 validated: evidence shows aggregation/units/currency/truncation are the dominant catch vs raw text fabrication; result recorded (confirm or refine gate weighting) — pass-condition: H1 write-up with data, backed by fixture outcomes (not hand-waved)"
+  - "[ ] Freshness-invalidation hook introduces NO mutating call (stays read-only) — pass-condition: QA confirms no mutating call"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-09-feed-formats"
+      what_it_provides: "The completed end-to-end report + feed pipeline (incl. completeness proof in the manifest) that this slice stress-tests with hostile fixtures and validates H1 against"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-gates.py"    # harden pagination/freshness/drift logic; no new gate types
+  - ".claude/scripts/hca-adapter.py"  # freshness invalidation hook: webhook stub + polling fallback (read-only)
+  - ".claude/skills/acos-hypercore-ask/fixtures/adversarial/"  # truncated/stale/drifted hostile fixtures
+  - ".claude/scripts/tests/test_hca_completeness.py"
+  - ".claude/scripts/tests/test_hca_drift.py"
+  - ".claude/scripts/tests/test_hca_freshness.py"
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-11-completeness-hardening.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure
+
+# Skills recommended
+skills_recommended:
+  - "testing"          # adversarial/hostile-fixture authoring + completeness/freshness/drift tests
+  - "backend-coding"   # Python 3 stdlib gate hardening + read-only invalidation hook
+  - "security-audit"   # no-silent-truncation / no-stale-serve / drift-surfacing as integrity controls
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-11-completeness-hardening.md"
+  - "This hardens the six existing gates (slice-05) under hostile fixtures and validates H1 with data; it adds NO new gate types."
+  - "Gotcha (hard gates): ALL hostile-truncation fixtures must refuse (no silent truncation; REQUIRED = REJECT) and schema-drift must be surfaced as drift_detected/drift_details, never silently absorbed (REQUIRED = REJECT)."
+  - "Gotcha: the freshness-invalidation hook (webhook stub + polling fallback) must stay read-only — no mutating call. The H1 write-up must be backed by fixture outcomes, not hand-waved."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; no new gate types (harden the existing six from slice-05)"
+  - "Author hostile fixtures under fixtures/adversarial/ (deeply-truncated multi-page, rate-limit mid-cursor cutoff, stale-just-past-window, drifted-schema)"
+  - "Harden the pagination gate to reconcile across all pages + cursor exhaustion vs reported_total"
+  - "Wire freshness invalidation (webhook stub + polling fallback, read-only) marking stale cache entries"
+  - "Harden drift detection to diff observed shape vs expected schema and surface drift_details (no silent absorption)"
+  - "Record which failure modes were caught -> H1 validation write-up with data"
+
+# Testing requirements
+testing_requirements:
+  - "QA independently authors at least one truncation fixture and confirms the pagination gate refuses it (no silent truncation)"
+  - "QA confirms a stale-just-past-window fixture is refused and the invalidation hook marks the right entries stale"
+  - "QA confirms drift fixtures produce drift_detected: true + accurate drift_details and nothing is silently absorbed"
+  - "QA reviews the H1 write-up: backed by fixture outcomes vs hand-waved"
+  - "QA confirms the invalidation hook introduces no mutating call"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"           # Always
+  - "ACOS-performance-reviewer"  # pagination over deeply-truncated multi-page lists + cursor exhaustion (large data)
+  - "ACOS-security-reviewer"     # read-only invalidation hook (no mutating call) + no-stale-serve integrity
+
+# Effort estimate
+effort_estimate: "M"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-11-completeness-hardening.md. If
+  /acos-plan is later run and conflicts with this skeleton, /acos-plan is authoritative.
+  Build order: dependency_order 11 (BEFORE slice-10 at order 12, despite the higher
+  numeric suffix). depends_on is SLICE-HCA-09-feed-formats.
+  VISION-HCA-01 / EPIC-HCA-09 are PROPOSED — not yet formally planned via /acos-plan.

@@ -1,0 +1,194 @@
+timestamp: "2026-05-06T03:44:35Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "308261d5-c5b3-4107-8b84-e36e5e18b5e4"
+estimated_tokens: 422630  # latest approx= from session log, evt=14
+
+session_summary: |
+  This ~6 hour session designed and built the ACOS Eternity Protocol end-to-end: a
+  kqueue-based token-watcher daemon, multi-session launcher, AppleScript+CGEvent
+  keystroke injector, launchd supervision, one-shot installer, and 4 skills. The
+  system is OPERATIONAL — launchd service com.acos.token-monitor is running (PID
+  71066), 3 parallel session watchers are live, and the daemon already fired
+  /acos-eternity-protocol once this session (evt=5 at approx=410,700). A known
+  limitation exists: pane targeting falls back to AppleScript-frontmost because
+  lsof PID resolution cannot catch Claude Code's sub-20ms open-write-close JSONL
+  cycle. All infrastructure lives in ~/Library/Application Support/acos-token-monitor/
+  (TCC-friendly path, avoids macOS Documents-folder permission blocks on launchd
+  processes). Next step queued: SessionStart hook for PID self-registration to
+  enable precise CGEventPostToPid targeting.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  work_type: "acos-infrastructure"
+  description: "ACOS Eternity Protocol — autonomous compaction + resume system"
+
+completed_this_session:
+  - "token-watcher.py — kqueue-based daemon. Watches one JSONL file. Per-session flag
+    keying (.compact-fired-<session_id>) prevents double-fire. Rolling-average
+    forward-looking token estimation (total_input + output_tokens * 1.02). Hot-reloads
+    config.yaml on every event."
+  - "token-watcher-launcher.py — multi-session launcher. Enumerates all *.jsonl files
+    in the project session directory, spawns one token-watcher.py subprocess per file,
+    reaps terminated watchers and restarts on new JSONL appearance. This is what launchd
+    actually runs."
+  - "inject-keystroke.py — dual-mode keystroke injector. Default mode: AppleScript
+    typeText into frontmost Warp pane. --pid <PID> mode: CGEventPostToPid (Quartz Event
+    Services) to deliver keystrokes directly to a specific Claude Code process, bypassing
+    focus. Infrastructure complete; --pid mode unused in practice due to PID resolution
+    limitation."
+  - "resolve-session-pid.py — attempts to find the Claude Code PID that owns a given
+    JSONL by using lsof. Known limitation: Claude Code opens the JSONL for <20ms per
+    write; lsof polling cannot reliably catch the window. Returns empty on most attempts.
+    Documented as known limitation — Option 2 (SessionStart hook) is the intended fix."
+  - "com.acos.token-monitor.plist — launchd service definition. Points to
+    token-watcher-launcher.py with the project session dir as argument. RunAtLoad +
+    KeepAlive=true. WorkingDirectory in ~/Library/Application Support/acos-token-monitor/
+    (TCC-friendly). Logs to ~/Library/Logs/acos-token-monitor.{log,err}."
+  - "install.sh — one-shot installer. Creates ~/Library/Application Support/acos-token-monitor/
+    directory tree, copies scripts, writes config.yaml, symlinks plist to
+    ~/Library/LaunchAgents/, calls launchctl load."
+  - "config.yaml — hot-reload daemon config. threshold: 400000, fire_command:
+    /acos-eternity-protocol, post_compact_drop_pct: 35."
+  - "Skill: acos-eternity-protocol — master orchestrator (pre-compact phase). Invokes
+    acos-handoff, then acos-resume-prompt, then arms daemon via .resume-pending flag,
+    then keystroke-injects /compact. Explicitly non-confirmatory: autonomous execution
+    is the design contract."
+  - "Skill: acos-eternity-protocol-threshold — convenience wrapper to hot-edit
+    threshold in config.yaml. Usage: /acos-eternity-protocol-threshold 350000."
+  - "Skill: acos-eternity-protocol-resume — manual fallback for post-compact resume
+    injection when daemon didn't fire. Reads pending-resume.txt, attempts PID resolution,
+    falls back to AppleScript-frontmost."
+  - "Skill: acos-resume-prompt — generates a one-shot resume prompt from the latest
+    handoff. Writes to ~/Library/Application Support/acos-token-monitor/state/pending-resume.txt.
+    Subagent-registry-aware: enumerates .claude/agents/*.md to build agent roster context."
+  - "TCC path migration — all daemon files moved from .acos/state/ (inside ~/Documents,
+    blocked by macOS TCC for launchd) to ~/Library/Application Support/acos-token-monitor/
+    (user-owned, TCC-exempt). This was the critical fix that made launchd supervision work."
+  - "Multi-session refactor — original token-watcher.py was single-session (hardcoded one
+    JSONL). Refactored to take JSONL path as argument, and added token-watcher-launcher.py
+    to spawn N watchers for N active sessions."
+  - "Live system validation — daemon fires at threshold 400k, used AppleScript-frontmost
+    mode, injected /acos-eternity-protocol at evt=5 approx=410,700. State flag confirmed
+    written: .compact-fired-308261d5-c5b3-4107-8b84-e36e5e18b5e4."
+
+files_modified:
+  - path: "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: "Core daemon — kqueue JSONL watcher, rolling avg estimation, per-session fire flag, hot-reload config"
+  - path: "~/Library/Application Support/acos-token-monitor/bin/token-watcher-launcher.py"
+    changes: "Multi-session launcher — spawns/reaps per-JSONL watcher subprocesses"
+  - path: "~/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py"
+    changes: "Keystroke injector — AppleScript default + CGEventPostToPid --pid mode"
+  - path: "~/Library/Application Support/acos-token-monitor/bin/resolve-session-pid.py"
+    changes: "PID resolver — lsof-based, documents known sub-20ms limitation"
+  - path: "~/Library/Application Support/acos-token-monitor/com.acos.token-monitor.plist"
+    changes: "launchd service plist, TCC-friendly paths"
+  - path: "~/Library/Application Support/acos-token-monitor/install.sh"
+    changes: "One-shot installer"
+  - path: "~/Library/Application Support/acos-token-monitor/config.yaml"
+    changes: "Hot-reload daemon config (threshold: 400000)"
+  - path: "~/Library/Application Support/acos-token-monitor/state/.compact-fired-308261d5-c5b3-4107-8b84-e36e5e18b5e4"
+    changes: "Created by daemon on threshold-cross, records fire timestamp + approx token count"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: "Master orchestrator skill — NEW"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+    changes: "Threshold config skill — NEW"
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+    changes: "Manual resume fallback skill — NEW"
+  - path: "/Users/zee/.claude/skills/acos-resume-prompt/SKILL.md"
+    changes: "Resume prompt generator skill — NEW (global, in ~/.claude/skills/)"
+
+decisions_made:
+  - "TCC-friendly path migration: all daemon files moved from .acos/state/ (~/Documents —
+    blocked by macOS TCC for launchd-spawned processes) to ~/Library/Application Support/
+    acos-token-monitor/. This was a hard requirement, not a preference."
+  - "Multi-session architecture: single-session watcher replaced with launcher+watcher
+    pattern so all open Claude Code sessions are watched simultaneously."
+  - "lsof PID resolution rejected as primary path: sub-20ms JSONL open cycle is too short
+    for reliable polling. lsof code kept in resolve-session-pid.py for completeness; the
+    known limitation is documented. Option 2 (SessionStart hook) is the planned fix."
+  - "CGEventPostToPid infrastructure built but unused in production: inject-keystroke.py
+    --pid mode is fully implemented and working, but only reachable when PID resolution
+    succeeds. AppleScript-frontmost is the effective runtime path until Option 2 lands."
+  - "Fire-once per session keying: .compact-fired-<session_id> (not .compact-fired) so
+    multiple concurrent sessions don't interfere with each other's fire flags."
+  - "post_compact_drop_pct set to 35 (not 60 as in skill docs): daemon considers compaction
+    done when token count drops 35% from pre-compact baseline."
+
+blockers:
+  - "Pane targeting requires user window focus: lsof cannot catch Claude Code's brief JSONL
+    opens, so --pid mode in inject-keystroke.py is unreachable in practice. Workaround:
+    AppleScript-frontmost requires the target Warp pane to be the active window at
+    threshold-cross. Fix requires Option 2 (SessionStart hook for PID self-registration)."
+  - "Skills inventory cleanup blocked on separate workstream: acos-credit-memo-generator
+    deletion, security-review-ultimate dedup, and acos-loan-doc-* consolidation review
+    are all pending. These are blocked behind the floor-test workstream running in session
+    de6cfa11. Do not touch these until that session's results are known."
+
+next_actions:
+  - "PRIORITY 1 — Implement Option 2 (SessionStart hook for PID self-registration): add a
+    SessionStart hook that runs `echo $PPID > ~/Library/Application Support/acos-token-monitor/
+    state/pid-<session_id>` so the daemon and injector can read the Claude Code PID without
+    lsof. This enables CGEventPostToPid precise targeting in inject-keystroke.py and removes
+    the need for user window focus."
+  - "PRIORITY 2 — Resume floor-test workstream (session de6cfa11): that session was mid-way
+    through measuring Claude Code's platform baseline token cost. Results needed before any
+    skills pruning decisions."
+  - "PRIORITY 3 — Tier 1 skills inventory cleanup (pending floor-test results + user approval):
+    delete acos-credit-memo-generator (replaced by acos-loan-doc-generator); resolve
+    security-review-ultimate duplication between project standalone and global standalone;
+    review acos-loan-doc-* family (5 skills) for consolidation."
+
+context_for_next_session: |
+  The Eternity Protocol system is live and operational. The launchd service
+  com.acos.token-monitor (PID 71066) is running and supervising 3 parallel session
+  watchers: this session (308261d5), de6cfa11, and 663e6411. The system already
+  fired once this session at 410k tokens using AppleScript-frontmost mode.
+
+  The architecture is a two-phase design: the skill (acos-eternity-protocol) handles
+  pre-compact work (handoff + resume prompt + arm daemon + fire /compact), and the
+  daemon handles post-compact work (detect token drop, inject resume prompt). The
+  skill intentionally exits after /compact is typed — it cannot survive its own
+  compaction.
+
+  The one incomplete piece is precise pane targeting. Everything is built for
+  CGEventPostToPid (inject-keystroke.py --pid mode is fully implemented) but the
+  PID source is missing. The fix is a SessionStart hook: one line that writes
+  $PPID (or the Claude Code process PID) to a known path keyed by session ID. Once
+  that hook exists, the daemon reads the PID file instead of attempting lsof, and
+  --pid mode becomes the default path.
+
+  The skills inventory cleanup (Tier 1: delete acos-credit-memo-generator, dedup
+  security-review-ultimate; Tier 2: loan-doc-* consolidation) is a separate
+  workstream — do not conflate it with the eternity-protocol work. It is gated on
+  the floor-test results from session de6cfa11.
+
+  All daemon infrastructure lives in ~/Library/Application Support/acos-token-monitor/
+  NOT in .acos/state/. The in-repo config mirror is .acos/config/eternity-protocol.yaml
+  but the daemon reads only the ~/Library path. Edit config.yaml there to change
+  threshold; daemon hot-reloads on next kqueue event.
+
+reconstruction_sources:
+  - "User-provided context block (primary source — ~6 hour session summary)"
+  - "~/Library/Application Support/acos-token-monitor/ (ls -la, all subdirs)"
+  - "~/Library/Application Support/acos-token-monitor/logs/308261d5-c5b3-4107-8b84-e36e5e18b5e4.log (tail -20)"
+  - "~/Library/Application Support/acos-token-monitor/logs/token-watcher.log (full)"
+  - "~/Library/Application Support/acos-token-monitor/logs/de6cfa11-*.log"
+  - "~/Library/Application Support/acos-token-monitor/logs/663e6411-*.log"
+  - "~/Library/Application Support/acos-token-monitor/state/.compact-fired-308261d5-*"
+  - "~/Library/Application Support/acos-token-monitor/config.yaml"
+  - "~/Library/Application Support/acos-token-monitor/com.acos.token-monitor.plist"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+  - "/Users/zee/.claude/skills/acos-resume-prompt/SKILL.md (header)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-05T22-40-03Z-eternity-resume-handoff.yaml (full)"
+  - "git status --short (full output)"
+  - "git log --oneline -20"
+  - "launchctl list | grep acos"
+</content>
+</invoke>

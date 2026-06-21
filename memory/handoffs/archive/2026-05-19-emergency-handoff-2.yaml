@@ -1,0 +1,252 @@
+timestamp: "2026-05-19T12:20:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session ran two simultaneous work threads that were never committed to git.
+  Thread A (primary): Installed five AI CLI harness tools via Homebrew and one via
+  the Factory curl installer. The openhands() shell wrapper was removed from ~/.zshrc
+  due to PyPI Python dependency hell (3.12/3.14 conflict). Thread B (secondary,
+  user-redirected): Audited the eternity-protocol housekeeping issues (four open
+  items identified in the prior session) but executed NOTHING — all four issues
+  remain open pending user decisions that were interrupted by session context
+  exhaustion.
+
+current_work:
+  slice_id: "homebrew-harness-install + eternity-protocol-cleanup"
+  story_id: "ai-tool-harness-setup"
+  epic_id: "developer-toolchain"
+  status: "blocked_on_user_decisions"
+
+completed_this_session:
+  homebrew_installs:
+    - "codex 0.128.0 — installed via brew install --cask codex; binary at /opt/homebrew/bin/codex"
+    - "goose 1.33.1 — installed via brew tap block-goose-cli/goose && brew install goose; binary at /opt/homebrew/bin/goose"
+    - "aider 0.86.2 — installed via brew install aider; binary at /opt/homebrew/bin/aider"
+    - "crush 0.66.0 — installed via brew tap charmbracelet/tap && brew install crush; binary at /opt/homebrew/bin/crush"
+    - "pipx — installed via brew install pipx; binary at /opt/homebrew/bin/pipx; auto-appended PATH line to ~/.zshrc (line 255)"
+    - "droid 0.120.1 — installed via Factory curl installer; binary at ~/.local/bin/droid (NOT in /opt/homebrew)"
+  zshrc_changes:
+    - "openhands() wrapper REMOVED (was at line 216 before removal); reason: PyPI Python 3.12/3.14 dep hell made clean install impossible"
+    - "pipx auto-appended: 'export PATH=\"$PATH:/Users/zee/.local/bin\"' at line 255 (added by pipx installer on 2026-05-07 02:13:23)"
+    - "imbue() wrapper at line 216 — REMAINS (user authorized openhands removal only)"
+    - "pi() wrapper at line 220 — REMAINS"
+    - "PATH line from pipx has NOT been sourced in current shell (no 'source ~/.zshrc' run)"
+
+not_done_this_session:
+  - "openhands Docker-based wrapper — user asked about it; no decision made yet"
+  - "imbue()/pi() dead wrapper removal — user asked about it; no decision made yet"
+  - "Eternity-protocol Issue #1 (symlink sync) — DECIDED but NOT EXECUTED"
+  - "Eternity-protocol Issue #2 (RESCUED-* files) — PENDING user decision"
+  - "Eternity-protocol Issue #3 (orphan pending-resume cleanup) — PENDING user decision"
+  - "Eternity-protocol Issue #4 (--dry-run mode for hook) — PENDING user decision"
+
+files_modified:
+  - path: "~/.zshrc"
+    changes: "Removed openhands() wrapper (was around line 216 pre-removal). pipx auto-appended PATH export at line 255. No other changes. File is outside ACOS 3.0 git tree — will not appear in git diff."
+  note: "No files inside the ACOS 3.0 git repository were modified in this session."
+
+open_decisions:
+  homebrew_thread:
+    q1_openhands_docker:
+      question: "Set up a Docker-based openhands() wrapper in ~/.zshrc instead of the removed PyPI version?"
+      status: "PENDING — user asked, session ended before deciding"
+      context: "OpenHands requires Docker anyway for its sandbox. A wrapper could do 'docker run ghcr.io/all-hands-ai/runtime:...' transparently."
+
+    q2_dead_wrappers:
+      question: "Remove the dead imbue() and pi() wrappers from ~/.zshrc?"
+      status: "PENDING — user asked, session ended before deciding"
+      context: "imbue() is at line 216, pi() is at line 220. Both use _acos_cli. Neither has a corresponding Homebrew install. If imbue and pi are not real tools, both lines are dead weight."
+
+  eternity_protocol_thread:
+    issue_1:
+      title: "Skill sync: global vs project SKILL.md out of sync"
+      decision: "DECIDED — replace global files with symlinks pointing at project files"
+      execution_status: "NOT YET EXECUTED"
+      commands_ready_to_run: |
+        ln -sf "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md" \
+          "/Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md"
+        ln -sf "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md" \
+          "/Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+      size_context: "global=7840 bytes (May 16 stale), project=10053 bytes (May 18 fixed). 2213-byte gap."
+
+    issue_2:
+      title: "Two RESCUED-* files in daemon state dir"
+      decision: "PENDING — user wants to review before deciding"
+      files:
+        - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-from-smoke-test.txt"
+          size_bytes: 1514
+          created: "May 18 17:15"
+          content: "OKOA website crane experiment resume. Branch claude/hungry-jemison-6ea04a in worktree .claude/worktrees/hungry-jemison-6ea04a. Last action: moved 4 corner cranes to plinth right edge. Handoff in okoa-website project."
+        - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-ascent-dataroom-pii.txt"
+          size_bytes: 1596
+          created: "May 18 17:17"
+          content: "Ascent dataroom v2 Phase 6 PII blocker. PII scan found live bank/account details + AmEx card statement. Next step: apply PII directive, rebuild Excel, re-scan, ship to Dropbox. Reportedly complete per 2026-05-19-ascent-dataroom-v2-completion.yaml."
+      note: "RESCUED files are INERT — the hook never auto-injects them. They are reference copies only."
+      options:
+        - "Discard both with rm — Ascent work complete; OKOA website is a separate project resumable from its own handoff"
+        - "Keep as reference — they never auto-inject so there is no UX cost"
+        - "Decide per-file"
+
+    issue_3:
+      title: "Orphan pending-resume files — 'surprise auto-resume' UX"
+      decision: "PENDING — user wants to clarify"
+      current_pending_files_on_disk:
+        - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt"
+          size_bytes: 1794
+          created: "May 18 20:10"
+          content: "OKOA website crane experiment resume (newer copy, session c38121b3). Active work in okoa-website project. Will auto-inject on next ACOS 3.0 prompt if project-scoping matches."
+        - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume.txt"
+          size_bytes: 2970
+          created: "May 6 01:27"
+          content: "Eternity Protocol Cycle 2 resume from May 6. Legacy non-UUID filename format (pre-UUID keying). Handoff archived at memory/handoffs/archive/2026-05-06T07-24-49Z-eternity-cycle-2.yaml. Ancient history."
+      live_demo: "Session 4ce9db82 (hypercore-exploration, May 19 01:12) fired live during this conversation, injecting hypercore content into the session as a real-time demonstration of the surprise auto-resume problem."
+      options:
+        - "Sweep all with rm — OKOA website is a separate project; May 6 eternity cycle is ancient history"
+        - "Keep OKOA pending-resume-c38121b3 (it is active separate-project work) and rm the May 6 legacy pending-resume.txt only"
+        - "Let hook consume them one-per-prompt (current default behavior)"
+
+    issue_4:
+      title: "Add --dry-run mode to eternity-resume-prepend.sh"
+      decision: "PENDING — user wants to clarify"
+      file: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+      context: "Smoke tests without --dry-run consumed real orphan state. A dry-run flag would allow testing hook matching logic and output format without deleting files or injecting content."
+      options:
+        - "Add DRY_RUN env var: if DRY_RUN=1, print what would be injected to stderr and exit 0 without consuming file or emitting hookSpecificOutput"
+        - "Skip — testing via unit test harness that stubs the consume step is sufficient; --dry-run adds hook complexity"
+
+daemon_and_runtime_state:
+  token_watcher_pids:
+    - pid: 1038
+      jsonl: "913f8d70-bd32-4586-9f56-8d489281c2d8.jsonl"
+      note: "Watching ACOS 3.0 session JSONL"
+    - pid: 1039
+      jsonl: "8d41efa0-3103-4fa5-8ca9-17cbb7fea1f1.jsonl"
+      note: "Watching ACOS 3.0 session JSONL"
+  heartbeat: "Active as of May 19 12:17 (fresh, ~3 minutes before this handoff)"
+  launcher_pids:
+    - pid: 93099
+      watching: "okoa-website claude/hungry-jemison-6ea04a worktree"
+    - pid: 56473
+      watching: "ACOS 3.0 project (running since May 6)"
+  note: "Two daemons alive does not necessarily mean two parallel Claude windows are open."
+  state_dir_snapshot:
+    path: "/Users/zee/Library/Application Support/acos-token-monitor/state/"
+    files:
+      - "heartbeat (May 19 12:17 — fresh)"
+      - "pid-bc6ab999-409a-4c64-91a5-a637c23d003b (May 19 01:30)"
+      - "pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt (May 18 20:10)"
+      - "RESCUED-resume-ascent-dataroom-pii.txt (May 18 17:17)"
+      - "RESCUED-resume-from-smoke-test.txt (May 18 17:15)"
+      - "pid-7e19ca6e-d525-4eba-b4e4-4651e49f3f77 (May 18 15:08)"
+      - "pid-c4e7af8b-d1ed-4b60-93a5-baafda76533c (May 18 12:47)"
+      - "pid-b5e61646-f1a6-4188-8a17-cb501945de91 (May 6 03:01)"
+      - "pending-resume.txt (May 6 01:27)"
+      - "pid-308261d5-c5b3-4107-8b84-e36e5e18b5e4 (May 5 22:06)"
+
+userpromptsubmit_hook_note: |
+  The UserPromptSubmit hook (eternity-resume-prepend.sh, registered in
+  .claude/settings.local.json) fired correctly during this session. It surfaced
+  the pre-existing 2026-05-19-eternity-protocol-mid-decision.yaml as auto-resume
+  context on session start. A May-6 orphan handoff reference was also injected
+  (the non-UUID pending-resume.txt) — this was real state being consumed, not
+  a fabrication. Both injections were expected behavior from the hook reading
+  on-disk state.
+
+installed_tools_summary:
+  note: "All tools installed in this session. No prior commits. Verify with 'which <tool>'."
+  tools:
+    - name: codex
+      version: "0.128.0"
+      install_method: "brew install --cask codex"
+      binary: "/opt/homebrew/bin/codex"
+      zshrc_wrapper: "codex() at line 213 — already existed before this session"
+    - name: goose
+      version: "1.33.1"
+      install_method: "brew tap block-goose-cli/goose && brew install goose"
+      binary: "/opt/homebrew/bin/goose"
+      zshrc_wrapper: "goose() at line 215 — already existed before this session"
+    - name: aider
+      version: "0.86.2"
+      install_method: "brew install aider"
+      binary: "/opt/homebrew/bin/aider"
+      zshrc_wrapper: "aider() at line 217 — already existed before this session"
+    - name: crush
+      version: "0.66.0"
+      install_method: "brew tap charmbracelet/tap && brew install crush"
+      binary: "/opt/homebrew/bin/crush"
+      zshrc_wrapper: "crush() at line 226 — already existed before this session"
+    - name: pipx
+      version: "latest brew"
+      install_method: "brew install pipx"
+      binary: "/opt/homebrew/bin/pipx"
+      zshrc_effect: "auto-appended 'export PATH=\"$PATH:/Users/zee/.local/bin\"' at line 255"
+    - name: droid
+      version: "0.120.1"
+      install_method: "Factory curl installer (not Homebrew)"
+      binary: "/Users/zee/.local/bin/droid"
+      zshrc_wrapper: "droid() wrapper at lines 123-125 uses _acos_cli droid"
+      note: "PATH line from pipx makes ~/.local/bin visible; requires 'source ~/.zshrc' or new terminal"
+    - name: openhands
+      status: "REMOVED — wrapper deleted from ~/.zshrc"
+      reason: "PyPI Python 3.12/3.14 dependency conflict; pip install openhands-ai failed cleanly"
+
+next_actions:
+  homebrew_thread:
+    - "Ask user: Remove imbue() and pi() dead wrappers from ~/.zshrc? (they use _acos_cli but have no corresponding installed binary)"
+    - "Ask user: Set up Docker-based openhands() wrapper in ~/.zshrc? (OpenHands uses Docker sandbox regardless)"
+    - "Remind user to run 'source ~/.zshrc' (or open new terminal) to activate the pipx PATH line and pick up droid at ~/.local/bin"
+  eternity_thread:
+    - "Present Issues #2, #3, #4 options to user and collect decisions"
+    - "After all four decisions confirmed, execute in order: Issue #1 (ln -sf symlinks, ready to run), Issue #2 (RESCUED files), Issue #3 (orphan cleanup), Issue #4 (--dry-run if wanted)"
+    - "After housekeeping complete, optionally run end-to-end /clear cycle to validate the fixed implementation — do NOT fire /clear unless user explicitly requests it"
+
+context_for_next_session: |
+  Two work threads ran in this session with no git commits, so the session is
+  fully recoverable from this handoff and the prior handoffs.
+
+  HOMEBREW THREAD: Five tools successfully installed (codex, goose, aider, crush,
+  pipx from Homebrew; droid from Factory curl installer). The openhands() wrapper
+  was removed from ~/.zshrc; imbue() and pi() remain. The pipx installer added a
+  PATH line to ~/.zshrc (line 255) that has not been sourced yet — the next terminal
+  or 'source ~/.zshrc' will activate it, making droid accessible via the path.
+  Two pending decisions: (a) whether to remove the dead imbue/pi wrappers, (b)
+  whether to add a Docker-based openhands wrapper. The user authorized removing
+  openhands only — nothing else was changed in ~/.zshrc.
+
+  ETERNITY THREAD: The implementation (all 8 atomic tasks from the prior session)
+  is 100% complete and verified for syntax. No regression testing has been run.
+  The primary handoff documenting that implementation is:
+    memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml
+  The mid-decision checkpoint is:
+    memory/handoffs/2026-05-19-eternity-protocol-mid-decision.yaml
+  Four housekeeping issues remain open. Issue #1 has a user decision (use symlinks)
+  but was NOT executed. Issues #2, #3, #4 need user decisions before anything runs.
+  The exact commands to execute Issue #1 are in this handoff under open_decisions.
+
+  The prior session's handoff (2026-05-19-eternity-protocol-mid-decision.yaml) is
+  the best source for the full Issue #2/3/4 decision context and the complete
+  state-dir inventory. Read it first if resuming the eternity thread.
+
+  DAEMON STATE: Two token-watcher.py processes (PIDs 1038, 1039) are alive,
+  heartbeat is fresh at 12:17. One pending-resume file that will auto-inject
+  (OKOA website, c38121b3) and one legacy May-6 file (pending-resume.txt) remain
+  in the state dir. The hook will consume them one-per-prompt unless cleaned first.
+
+reconstruction_sources:
+  - "git status --short (full working tree state)"
+  - "git log --oneline -20 (recent commit history)"
+  - "git diff --stat HEAD~5..HEAD (bulk of recent changes confirmed as acos-dataroom-v2)"
+  - "memory/handoffs/2026-05-19-eternity-protocol-mid-decision.yaml (read in full — primary prior handoff)"
+  - "memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml (read in full — implementation record)"
+  - "memory/handoffs/2026-05-19-emergency-handoff.yaml (read in full — guided-reader session, confirmed unrelated)"
+  - "memory/handoffs/ directory listing (timestamps and file inventory)"
+  - ".acos/state/ directory listing (token watcher, oracle audit, heartbeat)"
+  - ".acos/evidence/ directory listing (no recent evidence — last entry Apr 21)"
+  - "memory/decisions/ directory listing (no today decisions — last Apr 23)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/ directory listing (full inventory)"
+  - "ps aux grep token-watcher (confirmed PIDs 1038, 1039 alive)"
+  - "which codex goose aider droid crush pipx (confirmed all binaries present)"
+  - "grep ~/.zshrc for openhands/imbue/pi/pipx (confirmed wrapper state)"
+  - "Parent session context cues (authoritative source for session narrative and exact version numbers)"

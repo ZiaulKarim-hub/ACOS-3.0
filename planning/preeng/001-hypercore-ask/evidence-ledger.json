@@ -1,0 +1,164 @@
+{
+  "entries": [
+    {
+      "id": "EV-001",
+      "claim": "Hypercore is loan-management software for private credit / direct lending that manages origination, underwriting, servicing, amendments, restructurings, and repayment.",
+      "source_refs": ["hypercore.ai (vendor/public site)", "_product_context.md §8 External"],
+      "tier": "T3",
+      "confidence": 0.6,
+      "freshness_days": 0,
+      "notes": "Vendor/public-site claim. UNVERIFIED until partner-gated access. Used only for domain framing, not for any delivered value.",
+      "lattice_node_ids": ["cq-01", "risk-apiunknown"]
+    },
+    {
+      "id": "EV-002",
+      "claim": "Hypercore exposes a REST read/write API plus real-time webhook events and integrates with Salesforce, NetSuite, and document repositories; exact endpoints/schemas/auth/pagination are partner-gated.",
+      "source_refs": ["hypercore.ai (vendor/public site)", "_product_context.md §6, §8"],
+      "tier": "T3",
+      "confidence": 0.4,
+      "freshness_days": 0,
+      "notes": "API specifics UNVERIFIED until access. Treated as TBD/Assumption; the skill writes ONLY against read endpoints (read-only constraint) and stubs all live calls behind the adapter.",
+      "lattice_node_ids": ["cq-01", "cq-06", "cq-12", "proc-acquire"]
+    },
+    {
+      "id": "EV-003",
+      "claim": "Likely Hypercore read entities to model: loans/facilities, borrowers/entities, drawdowns/fundings, payments/repayments, fees, interest accruals, amortization schedules, covenants/compliance, collateral, investor allocations, documents.",
+      "source_refs": ["hypercore.ai (vendor/public site)", "_product_context.md §8", "command_inputs.plan.data_model_entities"],
+      "tier": "T3",
+      "confidence": 0.5,
+      "freshness_days": 0,
+      "notes": "Entity list is a likely-set Assumption; field-level schemas TBD pending API docs. Drives data-model.md subject entities and the normalized layer.",
+      "lattice_node_ids": ["cq-02", "ent-loan", "ent-borrower", "ent-drawdown", "ent-payment", "ent-fee", "ent-interest", "ent-amort", "ent-covenant", "ent-collateral", "ent-investor", "ent-document"]
+    },
+    {
+      "id": "EV-004",
+      "claim": "Pre-generation-verification-gate (ACOS LEARN): a mandatory non-bypassable gate between extraction and delivery shows every data point with source + provenance + confidence and caps single-source figures at confidence <= 0.7.",
+      "source_refs": ["ACOS internal LEARN: pre-generation-verification-gate", "_product_context.md §8 Internal"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 30,
+      "notes": "Validated internal prior. Directly grounds provenance-binding, refuse-on-missing, confidence cap, and the gate suite.",
+      "lattice_node_ids": ["cq-03", "cq-05", "meth-pregate", "meth-prov", "pat-refuse", "ent-provbind", "ent-gateresult", "ent-confidence", "risk-fabricate", "metric-fab", "metric-provcov"]
+    },
+    {
+      "id": "EV-005",
+      "claim": "Adversarial-consensus pattern (acos-dataroom-v2 / acos-financial-statement / acos-grader): N blind independent agents with asymmetric/quorum consensus gating must agree before a result is accepted.",
+      "source_refs": ["acos-dataroom-v2", "acos-financial-statement", "acos-grader", "_product_context.md §8 Internal"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 30,
+      "notes": "Validated internal prior. Grounds the consensus orchestrator, substance-consensus definition, blind re-dispatch, and tiered routing. Default quorum 2-of-3 asymmetric (Assumption; finalize per tier at plan time).",
+      "lattice_node_ids": ["cq-04", "cq-09", "cq-15", "meth-consensus", "meth-tiered", "meth-recon", "ent-consensus", "term-substance", "pat-blindredispatch", "anti-singletrust", "risk-consensuscost", "metric-consensus"]
+    },
+    {
+      "id": "EV-006",
+      "claim": "A freshness policy is required: define live-fetch vs cached vs webhook-invalidated, and never serve stale data silently.",
+      "source_refs": ["_product_context.md §7 Stale data", "feature_config.known_risks", "hypercore.ai webhook capability (UNVERIFIED)"],
+      "tier": "T3",
+      "confidence": 0.55,
+      "freshness_days": 0,
+      "notes": "Risk-driven requirement; webhook contract UNVERIFIED until access, so polling fallback is the Assumption. Concrete window length TBD at plan time.",
+      "lattice_node_ids": ["cq-06", "meth-freshpolicy", "proc-invalidate", "risk-stale", "metric-freshwin"]
+    },
+    {
+      "id": "EV-007",
+      "claim": "A pagination-completeness gate is required to prevent silent record truncation by rate limits or cutoffs (reconcile expected vs fetched counts / cursor exhaustion).",
+      "source_refs": ["_product_context.md §7 Silent pagination", "feature_config.known_risks"],
+      "tier": "T2",
+      "confidence": 0.7,
+      "freshness_days": 0,
+      "notes": "Risk-driven deterministic gate. Exact reconciliation mechanism depends on Hypercore pagination scheme (TBD); designed against fixture cursors now.",
+      "lattice_node_ids": ["cq-07", "meth-pagecheck", "risk-truncation", "anti-silenttrunc", "metric-pagecomplete"]
+    },
+    {
+      "id": "EV-008",
+      "claim": "Schema validation plus drift detection against expected entity schemas is required to handle Hypercore-side schema changes.",
+      "source_refs": ["_product_context.md §7 Schema drift", "feature_config.known_risks"],
+      "tier": "T2",
+      "confidence": 0.6,
+      "freshness_days": 0,
+      "notes": "Risk-driven deterministic gate. Expected schemas are Assumptions (fixtures) until real schemas land; drift surfaced, not absorbed.",
+      "lattice_node_ids": ["cq-08", "meth-schemaval", "risk-drift"]
+    },
+    {
+      "id": "EV-009",
+      "claim": "Aggregation/unit/currency errors are the real hallucination-adjacent failure mode and require cross-field reconciliation + unit/currency normalization + adversarial recomputation.",
+      "source_refs": ["_product_context.md §7 Aggregation errors", "feature_config.known_risks", "OKOA prior extraction discipline"],
+      "tier": "T2",
+      "confidence": 0.7,
+      "freshness_days": 30,
+      "notes": "Combines a deterministic gate (normalization/reconciliation) with adversarial recompute (consensus). Highest-leverage correctness control per hypothesis H1.",
+      "lattice_node_ids": ["cq-09", "meth-recon", "meth-normalize", "risk-aggerr"]
+    },
+    {
+      "id": "EV-010",
+      "claim": "Two-tier-data-model (LEARN-ARCH-002): a full canonical record with full provenance (source of truth) plus a brief token-efficient derived view; give each agent only the tier it needs.",
+      "source_refs": ["ACOS internal LEARN-ARCH-002", "_product_context.md §8 Internal"],
+      "tier": "T2",
+      "confidence": 0.85,
+      "freshness_days": 30,
+      "notes": "Validated internal prior. Maps raw cached API responses -> truth; normalized answer layer -> derived. Foundational to provenance + token efficiency.",
+      "lattice_node_ids": ["cq-03", "cq-14", "meth-twotier", "ent-rawresp", "ent-normrec", "proc-cache"]
+    },
+    {
+      "id": "EV-011",
+      "claim": "Client/adapter isolation for an unprovisioned external API (contract-first, fixtures/mocks, graceful degradation) lets the whole skill be built/tested before access; absent credentials it says 'no live data' rather than fabricate.",
+      "source_refs": ["feature_config.constraints (API not yet provisioned)", "feature_config.runtime_guardrails (STUBBED-CLIENT-UNTIL-ACCESS)", "_product_context.md §5, §7"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 0,
+      "notes": "Architecture constraint mandated by the config. Contract is stable; fixture backend now, live backend later behind the same contract.",
+      "lattice_node_ids": ["cq-10", "cq-11", "meth-adapter", "meth-degrade", "pat-fixturefirst", "term-nolivedata", "proc-acquire", "risk-apiunknown", "risk-fabricate"]
+    },
+    {
+      "id": "EV-012",
+      "claim": "Hypercore security posture and OKOA discipline: TLS 1.2+, AES-256 at rest, RBAC, SOC 2 Type II, GDPR, MFA + SSO; borrower PII/financials must not leak into logs/evidence beyond need; secrets via env/secret store.",
+      "source_refs": ["hypercore.ai (vendor/public site)", "feature_config.constraints", "_product_context.md §5, §7"],
+      "tier": "T3",
+      "confidence": 0.65,
+      "freshness_days": 0,
+      "notes": "Vendor posture is T3/UNVERIFIED for specifics but the OKOA-side discipline (PII scrub, env secrets, no creds in repo) is a hard internal rule.",
+      "lattice_node_ids": ["cq-12", "meth-piiscrub", "std-tls", "std-aes", "std-rbac", "std-soc2", "std-gdpr", "std-mfasso", "std-secretstore", "risk-pii"]
+    },
+    {
+      "id": "EV-013",
+      "claim": "Verified extracts must be shaped as trusted inputs for downstream skills (acos-dataroom-v2, acos-financial-statement, prospectus, legal-analyst) via report/table/dataset (JSON/CSV) formats with embedded provenance/confidence + a manifest.",
+      "source_refs": ["feature_config.business_objectives", "feature_config.known_dependencies", "_product_context.md §2, §6"],
+      "tier": "T2",
+      "confidence": 0.7,
+      "freshness_days": 0,
+      "notes": "Feed format set is an Assumption (report + table + dataset + manifest); refine per consumer at plan/tasks time.",
+      "lattice_node_ids": ["cq-13", "meth-feedfmt", "proc-feed", "ent-bundle", "std-icgrade"]
+    },
+    {
+      "id": "EV-014",
+      "claim": "Deliverables must be IC-grade / boss-criticism-proof on first cold look; ACOS logs agent identity to .acos/metrics/agent-completions.log and packages per-slice evidence bundles.",
+      "source_refs": ["OKOA prior (boss-no-intermediate-review)", "ACOS metrics convention", "Protocol 0.5"],
+      "tier": "T2",
+      "confidence": 0.8,
+      "freshness_days": 30,
+      "notes": "Grounds the metrics/instrumentation plan and the IC-grade output standard.",
+      "lattice_node_ids": ["std-icgrade", "ent-bundle", "metric-ttva"]
+    },
+    {
+      "id": "EV-015",
+      "claim": "The skill MUST be read-only against Hypercore: no write/mutate code path against the API under any circumstance.",
+      "source_refs": ["feature_config.constraints", "feature_config.runtime_guardrails (READ-ONLY)", "_product_context.md §5"],
+      "tier": "T1",
+      "confidence": 0.95,
+      "freshness_days": 0,
+      "notes": "Hard, permanent constraint. Adapter exposes read methods only; structurally enforced.",
+      "lattice_node_ids": ["std-readonly", "proc-acquire", "meth-adapter"]
+    },
+    {
+      "id": "EV-016",
+      "claim": "Subscription-only Claude: never use ANTHROPIC_API_KEY; all model work via main-thread Read or Task() sub-agents.",
+      "source_refs": ["feature_config.constraints", "feature_config.runtime_guardrails (SUBSCRIPTION-ONLY)", "user MEMORY feedback_subscription_not_api"],
+      "tier": "T1",
+      "confidence": 0.95,
+      "freshness_days": 0,
+      "notes": "Hard, permanent OKOA rule (separate API billing forbidden). Consensus agents dispatched via Task() only.",
+      "lattice_node_ids": ["meth-subonly", "anti-apikey", "std-secretstore", "proc-extract"]
+    }
+  ]
+}

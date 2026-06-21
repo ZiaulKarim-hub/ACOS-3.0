@@ -1,0 +1,74 @@
+slice_id: "SLICE-001-02"
+story_id: "STORY-001"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Extract Brad tokens into tokens.css"
+objective: |
+  Read acos-document-design-brad/SKILL.md and extract the full OKOA palette
+  (as :root CSS custom properties), the full typography scale (as CSS classes
+  matching Brad's scale rows), and the Carbon 16-column grid into a single
+  tokens.css file. Every color and typography token used by any page template
+  (SLICE-001-03) must resolve to a var(--token-name) or a named class in this file.
+
+acceptance_criteria:
+  - "[ ] templates/tokens.css exists and is a pure CSS file — no HTML, no JS"
+  - "[ ] :root block contains every OKOA palette color from Brad's SKILL.md (ink, warm neutrals, sage, navy, coral, etc.), each as a --token-name custom property with hex value"
+  - "[ ] Typography classes are defined one-per-row from Brad's scale: .display-xl, .display-lg, .headline-xl, .headline-lg, .headline-md, .body-lg, .body-md, .body-sm, .mono-label, etc. — 1:1 with Brad's scale tables"
+  - "[ ] Each typography class sets font-family, font-size (using clamp() for responsive), line-height, letter-spacing, font-weight per Brad's spec"
+  - "[ ] Carbon 16-column grid helper classes are present (.grid-16, .col-span-N for N in 1..16)"
+  - "[ ] Google Fonts @import or link reference is NOT in tokens.css (goes in emitted HTML <head> — SLICE-001-05 handles it)"
+  - "[ ] File contains a one-line comment at top: '/* Extracted from acos-document-design-brad/SKILL.md on YYYY-MM-DD — Brad remains source of truth */'"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-01"
+      what_it_provides: "Skill directory scaffold with templates/ directory"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/templates/tokens.css"
+
+files_prohibited:
+  - "~/.claude/skills/acos-document-design-brad/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/page-templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/templates/pdf-styles.css"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Brad's SKILL.md is the SOURCE OF TRUTH for design tokens. Read it, extract, commit to tokens.css. Do NOT read loan-doc's pdf-styles.css — it's flow-layout and a different aesthetic envelope."
+  - "Brad uses raw hex values inline (not CSS vars) in hero/footer for prompt-robustness. tokens.css is for the NEW skill's page-templates — here we DO use var() because the templates emit consistent structural CSS, not prompt-context."
+  - "If a typography row in Brad's scale uses clamp(), preserve clamp() in the corresponding class so print rendering is stable across print/screen contexts."
+  - "Brad's --ink-40 fails WCAG AA at 3.8:1 contrast on warm white. Keep --ink-40 defined but make a side note that page-templates should use --ink-80 or darker for body text on light backgrounds."
+
+technical_requirements:
+  - "File must parse as valid CSS (no syntax errors)"
+  - "Hex values are 6-character lowercase (#0a0a0a not #0A0A0A) for consistency"
+  - "Typography classes must set font-family with Brad's exact fallback chain (e.g., 'Cormorant Garamond, Georgia, serif')"
+
+testing_requirements:
+  - "Manual: open tokens.css in a browser stylesheet validator — must validate"
+  - "Manual: cross-check every token defined in Brad's SKILL.md is present in tokens.css (no missing tokens)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is extraction, not transformation. If Brad's SKILL.md changes (new tokens,
+  new scale rows), tokens.css must be re-extracted — there's no automatic sync.
+  STORY-005's visual-checklist includes a "only Brad tokens used" criterion, so
+  any drift here fails verification downstream.

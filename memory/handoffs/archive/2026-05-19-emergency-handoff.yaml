@@ -1,0 +1,198 @@
+timestamp: "2026-05-19T00:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session rebuilt the acos-guided-reader global personal skill
+  (~/.claude/skills/acos-guided-reader/) from a terminal-driven navigation model
+  (user typed F+Enter in the Claude Code terminal) to a browser-native two-way
+  architecture. The motivation was that terminal-driven keypresses interrupt
+  reading comprehension by forcing context-switching between browser and terminal.
+  The full rebuild is code-complete and passed a curl-based server smoke test.
+  The skill has NOT yet been tested with a real browser — browser keyboard handlers,
+  text-selection capture, SSE-driven re-render, and the visual explanation panel
+  require a live end-to-end test that only Zee can perform.
+
+  NOTE: This work is entirely outside the ACOS 3.0 git repository. All changed
+  files live at ~/.claude/skills/acos-guided-reader/ and will NOT appear in git
+  status or git diff for the ACOS 3.0 project.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "acos-guided-reader-browser-native-rebuild"
+  epic_id: "acos-guided-reader"
+  status: "in_progress"
+
+completed_this_session:
+  - "Designed and implemented browser-native two-way architecture replacing
+    terminal-driven F+Enter navigation model"
+  - "Created gr-server.py (450 lines) — stdlib-only ThreadingHTTPServer on
+    random loopback port with endpoints: GET / (page.html), GET /state,
+    GET /events (SSE), GET /health, POST /cmd, POST /internal/complete-explain;
+    handles f/b navigation server-side (~50ms, no Claude involvement); routes
+    e/x to commands.jsonl for Claude to consume; 30-min idle-timeout auto-shutdown"
+  - "Modified build-page.py (now 347 lines) — added --serve flag that spawns
+    gr-server.py as a detached background subprocess and emits http://127.0.0.1:PORT/
+    URL; added _ensure_server and _server_is_alive helpers; updated footer
+    command-hint strings to reflect browser-native keys"
+  - "Modified page-template.html (now 593 lines) — replaced mtime-polling JS with
+    EventSource SSE state sync; added keyboard handler for bare-letter keys f
+    (next chunk) / b (prev) / e (explain) / x (exit) with modifier-key ignore so
+    browser shortcuts (Ctrl/Cmd+R, etc.) still work; added text-selection capture
+    for e key (captures selection text + line range via data-line-idx attributes);
+    added CSS and renderer for explanation history list in right-sidebar e-panel,
+    newest on top"
+  - "Modified SKILL.md (now 202 lines) — rewrote Phase 4 (build page + --serve),
+    Phase 5 (open http:// URL not file://), Phase 6 (event loop: Claude blocks on
+    tail -n 0 -f commands.jsonl | head -1, processes explain/exit, POSTs explanations
+    back via curl to /internal/complete-explain); added architecture diagram;
+    added key-bindings table; moved E-mode from v2 placeholder to in-scope"
+  - "Ran server-side smoke test via curl — validated all endpoints: GET /health,
+    GET /state, GET /events (SSE), POST /cmd (next/prev chunk advance), explain
+    queueing to commands.jsonl, POST /internal/complete-explain writeback, SSE
+    broadcast on complete-explain, clean exit + session_status flip to 'exited'"
+  - "Cleaned up all smoke-test artifacts — no leftover state directory"
+
+files_modified:
+  - path: "~/.claude/skills/acos-guided-reader/scripts/gr-server.py"
+    changes: "NEW FILE, 450 lines. Stdlib-only local HTTP server. Endpoints: GET /
+      (serves page.html), GET /state (JSON), GET /events (SSE stream), GET /health,
+      POST /cmd (navigation commands), POST /internal/complete-explain (Claude
+      posts explanation HTML back; server merges to state.json, broadcasts SSE).
+      f/b handled entirely server-side by invoking build-page.py subprocess and
+      rewriting page.html. e/x appended to commands.jsonl for Claude. Idle-timeout
+      30 minutes. Random-port loopback binding."
+  - path: "~/.claude/skills/acos-guided-reader/scripts/build-page.py"
+    changes: "MODIFIED, 347 lines. Added --serve flag that spawns gr-server.py as
+      detached background subprocess, reads ready-line from stdout, returns JSON
+      with server URL. Added _ensure_server() and _server_is_alive() helpers.
+      Updated footer command-hint strings to browser-native keys (f/b/e/x)."
+  - path: "~/.claude/skills/acos-guided-reader/templates/page-template.html"
+    changes: "MODIFIED, 593 lines. Replaced mtime-polling JavaScript with
+      EventSource SSE sync for live state updates. Added keyboard handler for
+      f/b/e/x bare-letter keys; modifier keys intentionally ignored. Added
+      text-selection capture on e keypress (selection text + line range via
+      data-line-idx attributes on line elements). Added CSS and render logic for
+      explanation history list in e-panel (right sidebar), newest entry on top."
+  - path: "~/.claude/skills/acos-guided-reader/SKILL.md"
+    changes: "MODIFIED, 202 lines. Phase 4 rewritten (build page with --serve,
+      parse ready-line for URL). Phase 5 rewritten (open http:// URL). Phase 6
+      rewritten (tail -f event loop, explain dispatch, curl POST back to
+      /internal/complete-explain). Architecture diagram added. Key-bindings table
+      added. E-mode moved from v2 placeholder to in-scope and fully documented."
+
+decisions_made:
+  - "f/b navigation is 100% server-side: server rewrites page.html and pushes SSE
+    — Claude consumes zero tokens for navigation, achieving ~50ms round-trip"
+  - "e/x events go to commands.jsonl (tail-f polling): these require LLM work
+    (explain) or session teardown (exit), so Claude must be in the loop"
+  - "stdlib-only constraint on gr-server.py: consistent with subscription-only
+    constraint — no pip installs, no API keys. Claude-in-terminal does LLM work."
+  - "Modifier-key ignore on keyboard handler: intentional, so Ctrl/Cmd/Alt+anything
+    passes through to the browser natively (reload, find, etc.)"
+  - "Mechanism C (pre-baked hover tooltips on terms) explicitly deferred out of
+    MVP scope"
+  - "Help overlay (? key) reserved in key-bindings table but not implemented"
+
+blockers:
+  - "Browser end-to-end test NOT YET DONE — keyboard handlers, text-selection
+    capture, SSE-driven re-render, and e-panel visual rendering can only be
+    verified by Zee opening the page in a real browser and pressing f/b/e/x"
+  - "If build-page.py --serve has a subprocess timing issue (e.g. gr-server.py
+    not ready before build-page.py reads the ready-line), it will surface only
+    during the live test, not in the curl smoke test"
+  - "commands.jsonl path resolution must match between gr-server.py and Claude's
+    tail -f invocation in Phase 6 — a mismatch (e.g. project vs. home .acos)
+    would cause Claude to block indefinitely without receiving events"
+
+next_actions:
+  - "FIRST: Zee runs the browser end-to-end test — invoke '/acos-guided-reader
+    acos-knowledge-builder' in a Claude Code session, let it build the page and
+    open the browser, then press f/b/e/x keys and verify the following:
+    (a) f advances to next chunk (page re-renders with new content)
+    (b) b goes back to previous chunk
+    (c) e on a text selection queues an explain event and Claude's explanation
+        appears in the right-sidebar e-panel
+    (d) x exits the session cleanly with a session summary in the terminal"
+  - "If f/b fail: check gr-server.py logs at
+    .acos/state/guided-reader/knowledge-builder/server.log — look for subprocess
+    errors calling build-page.py"
+  - "If SSE stops delivering updates: check browser devtools Network tab for the
+    /events stream — should be an open connection with event: state_update messages"
+  - "If e selection capture is empty: check that page-template.html line elements
+    have data-line-idx attributes and that the keyboard handler is reading
+    window.getSelection() before calling preventDefault()"
+  - "After successful browser test: the MVP is done. Deferred items for v2:
+    Q checkpoints, adaptive chunking, glossary, bookmarks, arbitrary target
+    support (beyond acos-knowledge-builder), Mechanism C hover tooltips,
+    ? help overlay"
+
+context_for_next_session: |
+  The acos-guided-reader skill lives at ~/.claude/skills/acos-guided-reader/ as a
+  global personal skill — it is NOT inside the ACOS 3.0 project repo and will
+  never appear in git status.
+
+  The rebuild converted the skill from a terminal-driven F+Enter model to a
+  browser-native two-way architecture. The architecture is:
+
+    Browser (f/b/e/x keypresses + text selection)
+      ↕ HTTP POST + SSE (EventSource)
+    gr-server.py (local ThreadingHTTPServer, random loopback port)
+      ↕ commands.jsonl (tail -f)
+    Claude-in-terminal (explains selections, handles exit)
+
+  f and b are entirely server-side: ~50ms, no Claude tokens consumed. e and x
+  go to commands.jsonl for Claude to pick up. Claude blocks in a tail -f loop
+  in Phase 6 of the skill protocol, processes explain/exit events, and POSTs
+  explanations back via curl to /internal/complete-explain.
+
+  The server smoke test passed (all 6 endpoints verified via curl). What has NOT
+  been tested is any browser interaction — keyboard handlers, SSE re-render, text
+  selection capture, and the e-panel history list are all untested in a real
+  browser. The immediate next action for Zee is to invoke the skill and do that
+  test. Expected invocation:
+
+    /acos-guided-reader acos-knowledge-builder
+
+  The server log for debugging is at:
+    .acos/state/guided-reader/knowledge-builder/server.log
+  (relative to the working directory when the skill was invoked; likely the ACOS
+  3.0 project root if invoked there, or ~/.acos/ if invoked from a directory
+  without a .acos/ folder)
+
+  There is no leftover state from the smoke test — the state dir was cleaned up.
+  The first real run will create a fresh .acos/state/guided-reader/knowledge-builder/
+  directory.
+
+  SECONDARY PARALLEL THREAD (NOT part of this session, may still be active):
+  The acos-dataroom-v2 production run on Wolfgramm/Ascent Park City is paused
+  mid-Phase-6 with a PII blocker. Handoff at:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-16-ascent-dataroom-v2-phase6-pii-blocker.yaml
+  Critical state file for resuming:
+    _acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase6/PHASE6_RESUMPTION_STATE.md
+  That thread has NOTHING to do with the guided-reader work. Resume it separately
+  when Zee is ready to finish the Ascent dataroom delivery.
+
+  TERTIARY PARALLEL THREAD (separate session, not part of this session):
+  HyperCore loan-servicing platform exploration — Playwright crawl captured 25 of
+  33 active loans. Handoff at:
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-19-hypercore-exploration.yaml
+  That work is also unrelated to the guided-reader rebuild.
+
+reconstruction_sources:
+  - "~/.claude/skills/acos-guided-reader/SKILL.md (read in full, 202 lines)"
+  - "~/.claude/skills/acos-guided-reader/scripts/gr-server.py (file size: 450 lines confirmed)"
+  - "~/.claude/skills/acos-guided-reader/scripts/build-page.py (file size: 347 lines confirmed)"
+  - "~/.claude/skills/acos-guided-reader/templates/page-template.html (file size: 593 lines confirmed)"
+  - "~/.claude/skills/acos-guided-reader/ (directory listing, timestamps confirmed May 14)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (listing — no prior guided-reader handoff)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-19-hypercore-exploration.yaml (read — different session, confirmed unrelated)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-05-16-ascent-dataroom-v2-phase6-pii-blocker.yaml (read header — confirmed dataroom-v2 PII blocker state)"
+  - "git log --oneline -20 (ACOS 3.0 repo — guided-reader not in commits, confirms it's global-only)"
+  - "git status --short (confirms no guided-reader changes tracked in ACOS 3.0 repo)"
+  - "git diff --name-only HEAD~3..HEAD (confirms last 3 commits are all acos-dataroom-v2 work)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ (listing — no guided-reader decisions)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/evidence/ (listing — no guided-reader evidence, last entry Apr 21)"
+  - "~/.acos/state/guided-reader/ (does not exist — smoke-test artifacts confirmed cleaned up)"
+  - "Session context provided by parent (primary source for session narrative, architecture, and status)"

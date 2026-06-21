@@ -1,0 +1,75 @@
+timestamp: "2026-05-28T08:30:00Z"
+status: "completed"
+session_summary: "Located Ascent 'SNDA' per Ty Corbridge's 5/26 Ascent Weekly ask, identified that the document is C-PACE/Greenworks/Wolfgramm-captive (NOT OKOA/Hilton), produced counsel-prep package (cover + memo + question list + clean PDF) for outside counsel Matt."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Cross-referenced Fireflies transcripts (Ascent Weekly 2026-05-26 + Scott Nichols 4/27 + Ohana 4/16) to confirm the document the boss meant by 'the SNDA' — pulled the literal 33:30 transcript line from Ty Corbridge"
+  - "Enumerated all subordination-flavored documents in the Beehive 30 closing folder and the full Ascent Dropbox tree — found only the 12/28/23 Assignment and Subordination of Hotel Management Agreement as a candidate"
+  - "Read the executed document text + pre-built War Room synthesis YAML; discovered the parties are Greenworks Lending LLC (C-PACE / Nuveen Green Capital) and Wolfgramm Properties LLC (Wolfgramm captive) — NOT OKOA and Hilton as Ty/Jason assumed"
+  - "Identified three counsel-critical gaps: (1) no signed OKOA-direct manager subordination located (only a Jan 2024 BTJD draft), (2) no Hilton-side recognition/SNDA found in closing, (3) OKOA Loan Agreement PDF returns no SNDA/Hilton/subordination text — likely image-only scan"
+  - "Wrote 3 markdown deliverables: 00-COVER-Read-First.md (orientation), 01-Memo-for-Counsel.md (substantive §-by-§ review + mapping to live worries, later trimmed), 02-Questions-for-Counsel.md (24 prioritized questions grouped A–G)"
+  - "Built HTML→PDF pipeline using pandoc + Puppeteer (html-to-pdf.js) + visual-QA gate from the loan-doc-generator-with-visual-verification skill (Gate 3 only — render-doc-audit.py at 150 DPI, Read all PNG pages, Wigum-fix loop)"
+  - "Iterated through 5 Wigum cycles: (1) initial render at 0.85in margins/footer, all 16 pages PASS; (2) removed 'Mapping to Boss's Worries' section per user, renumbered 5→4/6→5/7→6, memo shrank 9pp→7pp, PASS; (3) tightened margins to 0.6in, PASS; (4) added text-align:justify + hyphens:auto + heading/table/code overrides to eliminate ragged-right whitespace, PASS; (5) removed all metadata-style headers (To/From/Re/Date/Status from memo, Prepared/Prepared-for/Triggering-ask from cover, Re/Date/Reviewer from questions, trailing Prepared-by disclaimer from memo) — kept Ty quote with em-dash byline attribution, PASS"
+  - "Moved deliverable folder: initially in Dropbox at Foreclosure Process/Ascent PC/SNDA Review for Counsel 2026-05-27 → ~/Documents/ascent_SNDA → ~/Documents/OKOA/ascent_SNDA"
+  - "Verified copy-not-move on the original SNDA PDF: source in Dropbox untouched (mtime Mar 25 2024), MD5 hash identical between source and deliverable copy"
+  - "Saved project memory note (project_ascent_snda_finding.md) capturing the central finding that 'the SNDA' is C-PACE/Wolfgramm-captive not OKOA/Hilton — material for future Ascent/Curio/foreclosure work"
+
+files_modified:
+  - path: "~/Documents/OKOA/ascent_SNDA/00-COVER-Read-First.md"
+    changes: "Created. Cover note with Ty Corbridge quote (em-dash byline), Document Identified table, Three Big Findings, package contents, honest AI-review limits. Final at ~59 lines."
+  - path: "~/Documents/OKOA/ascent_SNDA/01-Memo-for-Counsel.md"
+    changes: "Created and revised. Substantive §1–§6 memo: Parties & Instrument, Loan Context, Operative Provisions (§1–§25 walkthrough), Key Risks (high/medium/lower priority), Open Gaps, Recommendation for Next Step. 'Mapping to Boss's Worries' section removed in iteration 2; metadata header (To/From/Re/Date/Status) and trailing Prepared-by disclaimer removed in iteration 5."
+  - path: "~/Documents/OKOA/ascent_SNDA/02-Questions-for-Counsel.md"
+    changes: "Created. 24 prioritized questions grouped A (document identity/privity), B (foreclosure pathway), C (Hilton/Curio negotiation), D (cash/fee), E (notice/procedural), F (intercreditor read-through), G (catch-all), with prioritization footer for first counsel response. Metadata header (Re/Date/Reviewer) removed in iteration 5."
+  - path: "~/Documents/OKOA/ascent_SNDA/00-COVER-Read-First.pdf"
+    changes: "Generated. 3 pages, 222 KB, Letter, 0.6in margins, IBM Plex Sans + Cormorant Garamond headlines, sage section borders, coral blockquote accent, justified body text with auto-hyphenation."
+  - path: "~/Documents/OKOA/ascent_SNDA/01-Memo-for-Counsel.pdf"
+    changes: "Generated. 7 pages, 338 KB. Final renders passed visual-QA Wigum loop on all pages."
+  - path: "~/Documents/OKOA/ascent_SNDA/02-Questions-for-Counsel.pdf"
+    changes: "Generated. 4 pages, 170 KB."
+  - path: "~/Documents/OKOA/ascent_SNDA/Assignment and Subordination of Hotel Management Agreement - Ascent (FINAL 12.28.23).pdf"
+    changes: "Copied (not moved) from Dropbox Beehive 30 Loan Documents SIGNED folder. Original in closing untouched. MD5 verified identical."
+  - path: "~/Documents/OKOA/ascent_SNDA/.build/"
+    changes: "Intermediate artifacts: styles.html (shared CSS with OKOA color tokens + justified body + heading/table/code overrides), per-doc .html files from pandoc, per-doc PNG visual-audit folders. Safe to delete; kept for re-render if needed."
+  - path: "memory/project_ascent_snda_finding.md (auto-memory)"
+    changes: "Created. Documents parties mismatch + counsel-prep folder location at ~/Documents/OKOA/ascent_SNDA/."
+  - path: "memory/MEMORY.md (auto-memory)"
+    changes: "Added one-line pointer to project_ascent_snda_finding.md under Active Projects."
+
+decisions_made:
+  - "Document identity: 'the SNDA' = Assignment and Subordination of Hotel Management Agreement (FINAL 12.28.23). Rationale: only manager-subordination-style instrument in closing; Fireflies transcript confirms boss's loose hotel-finance usage of 'SNDA' for the manager subordination."
+  - "Sequencing: Fireflies first then document review (user-chosen Option A). Result: pulled the literal 33:30 Ty Corbridge transcript line which confirmed scope before we touched the PDF."
+  - "Skill substitution: used Option C of /acos-loan-doc-generator-with-visual-verification (Gate 3 visual-QA piece only on a pandoc→Puppeteer-rendered PDF) instead of full Phase 1–3 pipeline. Rationale: full pipeline is designed to GENERATE loan docs from data, not convert existing markdown. User explicitly authorized this on multiple-choice prompt."
+  - "Layout choices, in order: 0.85in margins → 0.6in margins → text-align:justify + hyphens:auto. Each step driven by user feedback about right-side whitespace. Final result eliminates trailing whitespace on wrapped lines while preserving headings/tables/code as left-aligned."
+  - "Removed 'Mapping to Boss's Worries' table per user, renumbered subsequent sections rather than leaving a numbered gap. Rationale: numbered gaps look hastily-edited and unprofessional in counsel-prep material."
+  - "Removed all memo-style metadata headers (To/From/Re/Date/Status etc.) per user. Rationale: email-forwarding-to-counsel carries those fields naturally; duplicating inside the document reads as templated AI output."
+  - "Copy not move for SNDA PDF. Rationale: Dropbox closing folder is system of record for OKOA loan docs; touching mtime creates audit-trail noise for the team."
+
+blockers: []
+
+next_actions:
+  - "Forward [~/Documents/OKOA/ascent_SNDA/] folder (or zipped subset) to Matt (outside counsel) per Jason's introduction from 5/26 meeting. Lead with 00-COVER-Read-First.pdf; flag High-priority questions A1/A2/A3 + B5/B6/B7 + F18 as first response."
+  - "Locate the Intercreditor Agreement that controls today (one in 12.28.23 closing, second dated March 2025 — confirm which is operative). §25 of the SNDA makes the Intercreditor load-bearing for OKOA's rights."
+  - "Locate the underlying Management Agreement dated 2/1/2023 (Exhibit A to the SNDA) — referenced but separate document; not in the closing folder."
+  - "Confirm with counsel whether an OKOA-direct manager subordination was ever signed (draft exists at Loan Docs Final Drafts/Drafts/30M Ascent... BTJD 1.31.24.docx; no signed PDF located)."
+  - "Verify whether any Hilton-side SNDA/recognition agreement exists in OKOA's records — not found in closing folder."
+  - "Coordinate with Cam Lamming's Hilton/Curio brand conversion negotiation — confirm with counsel that this SNDA does NOT constrain Hilton (it binds Wolfgramm Properties LLC, not Hilton)."
+
+context_for_next_session: |
+  This session is closed. The Ascent SNDA counsel-prep package is at ~/Documents/OKOA/ascent_SNDA/
+  and includes a cover note, substantive memo, prioritized question list, and a clean copy of the
+  PDF — all ready to forward to outside counsel Matt.
+
+  CENTRAL FINDING (preserved in memory/project_ascent_snda_finding.md): "the SNDA" everyone at
+  OKOA refers to is the 12/28/23 Assignment and Subordination of Hotel Management Agreement —
+  but it is the C-PACE lender's (Greenworks/Nuveen) document with a Wolfgramm captive manager,
+  NOT an OKOA-Hilton instrument. The team's working assumption that OKOA has direct rights vs.
+  Hilton via this document does not match reality. Counsel must confirm or correct.
+
+  No mid-flight work. Next session can start cold.

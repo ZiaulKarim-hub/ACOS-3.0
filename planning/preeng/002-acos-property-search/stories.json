@@ -1,0 +1,311 @@
+{
+  "feature_id": "002-acos-property-search",
+  "product_name": "acos-property-search",
+  "generated_by": "/preeng.tasks",
+  "preconditions_verified": {
+    "plan_md_exists": true,
+    "tech_prd_md_exists": true,
+    "planning_qa_status": "APPROVED",
+    "planning_qa_not_rejected": true
+  },
+  "notes": "Epic -> Story -> Slice backlog. Vertical slices, each a demo-able increment (Protocol 0.8). Each slice id is stable and used as the tasks/<slice-id>.md filename and as the ACOS bridge slice id. parent_story maps a slice to its story; parent_epic maps story to epic. Effort S/M/L. dependency_order is the global build order. Demos D0-D3 (plan.md sec 4). v1 = channels 1-4 + recorder full (Decision D4); channels 5-9 phased to v2/v3.",
+  "epics": [
+    {
+      "epic_id": "EPIC-APS-00",
+      "title": "Diagnostics + decision lock (problem-before-solution)",
+      "description": "Confirm symptoms/hypotheses/unknowns; validate H1 (union of channels/pivots, not one search), H2 (blind isolation => non-circular corroboration), H3 (no hub-guard => N^2 blow-up); lock D1-D8 defaults + the free-only / stdlib-only / blocking-compliance ground rules via an acos-decide ADR.",
+      "stories": ["STORY-APS-00"]
+    },
+    {
+      "epic_id": "EPIC-APS-01",
+      "title": "Skill scaffold + BLOCKING compliance gate",
+      "description": "Project-skill scaffold (SKILL.md command surface, explicit-invocation-only) + the blocking compliance gate that captures a permissible-purpose ComplianceRecord (DPPA/FCRA/FDCPA + GLBA hard block + scraping posture) before any external lookup.",
+      "stories": ["STORY-APS-01"]
+    },
+    {
+      "epic_id": "EPIC-APS-02",
+      "title": "Cache + fetch + scraping posture",
+      "description": "JSON cache with freshness TTLs wrapping every external lookup; posture enforcement (public no-login pages, respect robots/rate limits); 403/rate-limit resilience; per-record freshness stamps.",
+      "stories": ["STORY-APS-02"]
+    },
+    {
+      "epic_id": "EPIC-APS-03",
+      "title": "Normalize/classify + Stage-1 identity resolution",
+      "description": "Person-vs-entity classification + alias/maiden/Jr-Sr/variant + fuzzy match; identity resolution expanding spouse/relatives/associates (people-search = leads only, corroborate) with >=2 anchors for common names.",
+      "stories": ["STORY-APS-03"]
+    },
+    {
+      "epic_id": "EPIC-APS-04",
+      "title": "Entity graph engine + hub-guard",
+      "description": "Temporal/provenance edges + edge-strength ordering + inverse-frequency weighting + hub-guard (stop-list + dynamic detection >=25 + hop limit 2 + log-every-prune).",
+      "stories": ["STORY-APS-04"]
+    },
+    {
+      "epic_id": "EPIC-APS-05",
+      "title": "Discovery channels 1-4 + recorder index (ArcGIS / assessor / recorder / mailing pivot)",
+      "description": "ArcGIS REST parcel query by OWNER or MAIL_ADDR; assessor owner-name search (free states); recorder grantor-grantee index (highest-yield + name-blocked workaround); owner-search-by-state routing.",
+      "stories": ["STORY-APS-05"]
+    },
+    {
+      "epic_id": "EPIC-APS-06",
+      "title": "Embedded blind swarm + between-rounds synthesizer",
+      "description": "swarm_dispatch builds the channel x jurisdiction x entity agent matrix per round (isolated, subscription-only Task()); synthesize_round cross-references -> confidence (Verified=2+ independent), preserves conflicts as review flags, hub-prunes + enforces the hop limit, emits next seeds; loop stops at no new high-confidence nodes.",
+      "stories": ["STORY-APS-06"]
+    },
+    {
+      "epic_id": "EPIC-APS-07",
+      "title": "Entity discovery wiring + graph-expansion loop integration",
+      "description": "SoS + OpenCorporates entity discovery feeding the graph; wire normalize -> identity -> entity discovery -> channels -> swarm -> synthesizer into the loop-until-dry pipeline in SKILL.md (Demo 1 thin path validated end to end).",
+      "stories": ["STORY-APS-07"]
+    },
+    {
+      "epic_id": "EPIC-APS-08",
+      "title": "Dedup on APN + per-owner aggregation",
+      "description": "Canonicalize APN; merge cross-channel duplicate parcels unioning provenance + freshness; aggregate holdings per owner/controlled-entity.",
+      "stories": ["STORY-APS-08"]
+    },
+    {
+      "epic_id": "EPIC-APS-09",
+      "title": "Scoring + confidence tiers + review-flag taxonomy",
+      "description": "Merged scoring rubric -> score + signals; tiers >=75 high / 50-74 candidate / <50 weak; emit manual-review flags; hub-cap <=40; common-name penalty.",
+      "stories": ["STORY-APS-09"]
+    },
+    {
+      "epic_id": "EPIC-APS-10",
+      "title": "Estimated equity / value / debt rollup",
+      "description": "Assessed value (flag 'assessed, not market') + last sale + original recorded mortgage - amortization assumption -> estimated equity; 'no mortgage data found' flag; every figure labeled estimated; never fabricate AVM/payoff.",
+      "stories": ["STORY-APS-10"]
+    },
+    {
+      "epic_id": "EPIC-APS-11",
+      "title": "Report + coverage/limits footer + dry-run hardening",
+      "description": "Markdown dossier (compliance header -> tiers -> per-parcel evidence chain -> estimated portfolio equity -> coverage/limits footer -> review flags) with hedged language; sample dry run probing real portal availability + false-positive rate at the 75/50 cutoffs; audit trail verified.",
+      "stories": ["STORY-APS-11"]
+    }
+  ],
+  "stories": [
+    {
+      "story_id": "STORY-APS-00",
+      "parent_epic": "EPIC-APS-00",
+      "title": "As the team, confirm the asset-discovery diagnosis and lock the D1-D8 defaults + ground rules so the solution is built against the real problem.",
+      "user_value": "Prevents building the wrong engine: validates that 'widest net' = union of channels/pivots (not one search), that blind isolation makes corroboration non-circular, and that an unguarded graph explodes; records the free-only / stdlib-only / blocking-compliance decisions.",
+      "demo": "Demo 0",
+      "slices": ["slice-00-diagnostic"]
+    },
+    {
+      "story_id": "STORY-APS-01",
+      "parent_epic": "EPIC-APS-01",
+      "title": "As a collections analyst, when I invoke the skill it refuses to do anything until a permissible-purpose record is captured.",
+      "user_value": "The blocking compliance gate makes every run legally defensible: no external lookup happens until DPPA/FCRA/FDCPA purpose + debt class + GLBA hard-block acknowledgment + scraping posture are recorded.",
+      "demo": "-",
+      "slices": ["slice-01-scaffold-compliance-gate"]
+    },
+    {
+      "story_id": "STORY-APS-02",
+      "parent_epic": "EPIC-APS-02",
+      "title": "As the pipeline, I can wrap every external lookup in a freshness-aware cache that survives 403s and rate limits and makes re-runs cheap.",
+      "user_value": "Resilience + resumability + auditability: cached lookups with freshness TTLs handle blocks, make re-runs cheap, and surface per-record freshness stamps in the report.",
+      "demo": "-",
+      "slices": ["slice-02-cache-fetch-posture"]
+    },
+    {
+      "story_id": "STORY-APS-03",
+      "parent_epic": "EPIC-APS-03",
+      "title": "As the pipeline, I can resolve the real person/entity behind a query, expanding aliases/spouse/associates as leads while resisting common-name false positives.",
+      "user_value": "Identity resolution seeds the graph correctly: person-vs-entity classification, alias/variant expansion, people-search as leads-only (corroborate), and >=2 anchors required for common names.",
+      "demo": "-",
+      "slices": ["slice-03-normalize-identity"]
+    },
+    {
+      "story_id": "STORY-APS-04",
+      "parent_epic": "EPIC-APS-04",
+      "title": "As the pipeline, I can build a temporal/provenance entity graph that expands control links while a hub-guard prevents combinatorial blow-up.",
+      "user_value": "The graph spine works without exploding: every edge carries temporal+provenance, edges are strength-ranked, and the hub-guard (stop-list + dynamic detection + hop limit + log-every-prune) keeps precision while logging coverage honestly.",
+      "demo": "-",
+      "slices": ["slice-04-graph-hubguard"]
+    },
+    {
+      "story_id": "STORY-APS-05",
+      "parent_epic": "EPIC-APS-05",
+      "title": "As the pipeline, I can find parcels through channels 1-4 + the recorder index, routed by each jurisdiction's owner-search capability.",
+      "user_value": "Real parcels surface from the highest-yield free channels (assessor owner-name, recorder grantor-grantee index, ArcGIS mailing-address pivot, entity graph), with name-blocked states routed to the recorder workaround.",
+      "demo": "-",
+      "slices": ["slice-05-channels-arcgis-assessor-recorder"]
+    },
+    {
+      "story_id": "STORY-APS-06",
+      "parent_epic": "EPIC-APS-06",
+      "title": "As the pipeline, I can run isolated blind agents per round and synthesize them into corroborated nodes with conflicts preserved, pruning hubs and enforcing the hop limit.",
+      "user_value": "Corroboration is genuine and bounded: blind isolated agents make 'Verified = 2+ sources' non-circular; the between-rounds synthesizer preserves conflicts, prunes hubs, enforces the hop limit, and stops when a round yields no new high-confidence nodes.",
+      "demo": "Demo 2",
+      "slices": ["slice-06-swarm-synthesizer"]
+    },
+    {
+      "story_id": "STORY-APS-07",
+      "parent_epic": "EPIC-APS-07",
+      "title": "As a collections analyst, I can run a compliant thin pipeline end to end on a sample name and get a hedged Markdown report with an audit trail.",
+      "user_value": "Demo 1: compliance gate -> normalize -> identity -> entity discovery -> (stubbed/real) channels -> swarm -> synthesizer wired into the loop in SKILL.md, producing a hedged report stub + audit trail.",
+      "demo": "Demo 1",
+      "slices": ["slice-07-entity-discovery-loop-integration"]
+    },
+    {
+      "story_id": "STORY-APS-08",
+      "parent_epic": "EPIC-APS-08",
+      "title": "As the pipeline, I can deduplicate parcels on APN and aggregate holdings per owner/controlled entity.",
+      "user_value": "One parcel found via three channels becomes one row with unioned provenance + freshness; holdings roll up per owner so the portfolio view is clean.",
+      "demo": "-",
+      "slices": ["slice-08-dedup-apn"]
+    },
+    {
+      "story_id": "STORY-APS-09",
+      "parent_epic": "EPIC-APS-09",
+      "title": "As a collections analyst, I get parcels ranked into confidence tiers with explicit signals and manual-review flags.",
+      "user_value": "The merged scoring rubric ranks parcels >=75 high / 50-74 candidate / <50 weak with every +/- signal shown, hub-only links capped <=40, common-name matches penalized, and review flags preserving uncertainty.",
+      "demo": "-",
+      "slices": ["slice-09-scoring-review-flags"]
+    },
+    {
+      "story_id": "STORY-APS-10",
+      "parent_epic": "EPIC-APS-10",
+      "title": "As a collections analyst, I get an estimated equity/value/debt picture from free data, with every figure clearly labeled an estimate.",
+      "user_value": "An estimated equity rollup (assessed value + original recorded mortgage - amortization assumption) per parcel and per portfolio, with 'no mortgage data found' flags and an explicit 'estimates, not AVMs' limitation -- never fabricated.",
+      "demo": "-",
+      "slices": ["slice-10-equity-rollup"]
+    },
+    {
+      "story_id": "STORY-APS-11",
+      "parent_epic": "EPIC-APS-11",
+      "title": "As a collections analyst, I get a complete hedged dossier with a coverage/limits footer, validated by a real-name dry run.",
+      "user_value": "Demo 3: the full Markdown dossier (compliance header -> tiers -> per-parcel evidence chain -> estimated portfolio equity -> coverage/limits footer -> review flags) with hedged language, hardened by a dry run that probes real portal availability and the false-positive rate at the 75/50 cutoffs.",
+      "demo": "Demo 3",
+      "slices": ["slice-11-report-coverage-dryrun"]
+    }
+  ],
+  "slices": [
+    {
+      "slice_id": "slice-00-diagnostic",
+      "parent_story": "STORY-APS-00",
+      "parent_epic": "EPIC-APS-00",
+      "objective": "Confirm symptoms/hypotheses/unknowns; validate H1/H2/H3; lock D1-D8 defaults + free-only / stdlib-only / blocking-compliance ground rules via an acos-decide ADR. No solution code.",
+      "effort": "S",
+      "dependency_order": 1,
+      "demo": "Demo 0",
+      "depends_on": []
+    },
+    {
+      "slice_id": "slice-01-scaffold-compliance-gate",
+      "parent_story": "STORY-APS-01",
+      "parent_epic": "EPIC-APS-01",
+      "objective": "Scaffold the project skill (SKILL.md command surface, explicit-invocation-only) + references/compliance.md + the BLOCKING compliance gate that captures a complete ComplianceRecord before any external lookup; GLBA anti-pretexting hard block.",
+      "effort": "M",
+      "dependency_order": 2,
+      "demo": "-",
+      "depends_on": ["slice-00-diagnostic"]
+    },
+    {
+      "slice_id": "slice-02-cache-fetch-posture",
+      "parent_story": "STORY-APS-02",
+      "parent_epic": "EPIC-APS-02",
+      "objective": "Implement cache.py (JSON cache + freshness TTLs keyed by person/entity/address/parcel/query) wrapping every external lookup; scraping posture (public no-login, respect robots/rate limits); 403/rate-limit resilience; per-record freshness stamps.",
+      "effort": "M",
+      "dependency_order": 3,
+      "demo": "-",
+      "depends_on": ["slice-01-scaffold-compliance-gate"]
+    },
+    {
+      "slice_id": "slice-03-normalize-identity",
+      "parent_story": "STORY-APS-03",
+      "parent_epic": "EPIC-APS-03",
+      "objective": "Implement normalize.py (person-vs-entity classify + alias/maiden/Jr-Sr/variant + fuzzy match) + Stage-1 identity resolution (spouse/relatives/associates as leads-only, corroborate; >=2 anchors for common names).",
+      "effort": "M",
+      "dependency_order": 4,
+      "demo": "-",
+      "depends_on": ["slice-02-cache-fetch-posture"]
+    },
+    {
+      "slice_id": "slice-04-graph-hubguard",
+      "parent_story": "STORY-APS-04",
+      "parent_epic": "EPIC-APS-04",
+      "objective": "Implement graph.py: temporal/provenance edge schema + edge-strength ordering + inverse-frequency weighting + hub-guard (stop-list hub_agents.txt + dynamic detection >=25 + hop limit 2 + log-every-prune). Non-commercial-agent inverse signal kept.",
+      "effort": "L",
+      "dependency_order": 5,
+      "demo": "-",
+      "depends_on": ["slice-03-normalize-identity"]
+    },
+    {
+      "slice_id": "slice-05-channels-arcgis-assessor-recorder",
+      "parent_story": "STORY-APS-05",
+      "parent_epic": "EPIC-APS-05",
+      "objective": "Implement arcgis_query.py (parcel query by OWNER or MAIL_ADDR LIKE) + assessor owner-name + recorder grantor-grantee index access + owner-search-by-state routing (references/owner-search-by-state.md); name-blocked states route to recorder.",
+      "effort": "L",
+      "dependency_order": 6,
+      "demo": "-",
+      "depends_on": ["slice-04-graph-hubguard"]
+    },
+    {
+      "slice_id": "slice-06-swarm-synthesizer",
+      "parent_story": "STORY-APS-06",
+      "parent_epic": "EPIC-APS-06",
+      "objective": "Implement swarm_dispatch.py (channel x jurisdiction x entity agent matrix per round, isolated/blind, subscription-only Task()) + synthesize_round.py (cross-ref -> confidence Verified=2+ independent; preserve conflicts as review flags; hub-prune + enforce hop limit; emit next seeds; loop stops at no new high-confidence nodes). Demo 2.",
+      "effort": "L",
+      "dependency_order": 7,
+      "demo": "Demo 2",
+      "depends_on": ["slice-05-channels-arcgis-assessor-recorder"]
+    },
+    {
+      "slice_id": "slice-07-entity-discovery-loop-integration",
+      "parent_story": "STORY-APS-07",
+      "parent_epic": "EPIC-APS-07",
+      "objective": "Wire SoS + OpenCorporates entity discovery into the graph and integrate compliance-gate -> normalize -> identity -> entity-discovery -> channels -> swarm -> synthesizer into the loop-until-dry pipeline in SKILL.md; produce a hedged thin report + audit trail on a sample name. Demo 1.",
+      "effort": "M",
+      "dependency_order": 8,
+      "demo": "Demo 1",
+      "depends_on": ["slice-06-swarm-synthesizer"]
+    },
+    {
+      "slice_id": "slice-08-dedup-apn",
+      "parent_story": "STORY-APS-08",
+      "parent_epic": "EPIC-APS-08",
+      "objective": "Implement dedup.py: canonicalize APN; merge cross-channel duplicate parcels unioning provenance + freshness; aggregate holdings per owner / controlled entity.",
+      "effort": "M",
+      "dependency_order": 9,
+      "demo": "-",
+      "depends_on": ["slice-07-entity-discovery-loop-integration"]
+    },
+    {
+      "slice_id": "slice-09-scoring-review-flags",
+      "parent_story": "STORY-APS-09",
+      "parent_epic": "EPIC-APS-09",
+      "objective": "Implement score.py: merged rubric -> score + signals; tiers >=75 high / 50-74 candidate / <50 weak; hub-cap <=40; common-name penalty; emit manual-review flags from the taxonomy (references/review-flags.md).",
+      "effort": "M",
+      "dependency_order": 10,
+      "demo": "-",
+      "depends_on": ["slice-08-dedup-apn"]
+    },
+    {
+      "slice_id": "slice-10-equity-rollup",
+      "parent_story": "STORY-APS-10",
+      "parent_epic": "EPIC-APS-10",
+      "objective": "Implement rollup.py: assessed value (flag 'assessed, not market') + last sale + original recorded mortgage - amortization assumption -> estimated equity per parcel + per portfolio; 'no mortgage data found' flag; every figure labeled estimated; never fabricate AVM/payoff.",
+      "effort": "M",
+      "dependency_order": 11,
+      "demo": "-",
+      "depends_on": ["slice-09-scoring-review-flags"]
+    },
+    {
+      "slice_id": "slice-11-report-coverage-dryrun",
+      "parent_story": "STORY-APS-11",
+      "parent_epic": "EPIC-APS-11",
+      "objective": "Render the full Markdown dossier (compliance header -> tiers -> per-parcel evidence chain -> estimated portfolio equity -> coverage/limits footer -> review flags) with hedged language; run a real-name dry run probing portal availability + false-positive rate at the 75/50 cutoffs; verify the audit trail. Demo 3.",
+      "effort": "M",
+      "dependency_order": 12,
+      "demo": "Demo 3",
+      "depends_on": ["slice-10-equity-rollup"]
+    }
+  ],
+  "counts": {
+    "epics": 12,
+    "stories": 12,
+    "slices": 12
+  }
+}

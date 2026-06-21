@@ -1,0 +1,47 @@
+timestamp: "2026-05-13T10:00:00Z"
+status: "completed"
+type: "operational-restart"
+trigger: "user-initiated Claude Code restart to register dr2-* agents"
+
+session_summary: |
+  Continuation of the acos-dataroom-v2 morning playbook. v2 was built overnight
+  (commit 977d0f7 created this session). Unit tests pass (14/14). Source folder
+  cleaned of v1 outputs by user. Ascent run was about to be invoked when we
+  discovered the 14 dr2-* agents are not in the current session's registered
+  subagent_type enum — Claude Code scans .claude/agents/ at process start, and
+  this process started before the overnight build. User chose Option (a):
+  quit + re-open Claude Code so the registry rebuilds. After restart, dr2-*
+  agents will be registered and /acos-dataroom-v2 can run as designed.
+
+current_work:
+  task: "Invoke /acos-dataroom-v2 on Wolfgramm_Ascent_Beehive folder"
+  status: "blocked-on-restart"
+  blocker: "dr2-* agents not in current Claude Code agent registry"
+
+completed_this_session:
+  - "Resumed prior session via /acos-eternity-protocol-resume (manual injection, AppleScript-frontmost mode)"
+  - "Read overnight build state from memory/handoffs/2026-05-13-emergency-handoff.yaml + READY_TO_RUN.md + BUILD_STATE.md"
+  - "Committed v2 to git: commit 977d0f7 — 33 files, 6,623 insertions (skill + 14 dr2 agents + build handoff)"
+  - "Ran unit tests from .claude/skills/acos-dataroom-v2/: 14/14 pass in 0.6s"
+  - "Verified Ascent source folder: 2,285 files (matches handoff estimate after user deleted v1 leftovers _acos_dataroom_output/ + Ascent_Dataroom/)"
+  - "Identified dr2-* agent registration gap; user chose restart over workaround"
+
+next_actions:
+  - "After Claude Code restart, verify dr2-* agents are registered (they should appear in the available subagent_type enum on session start)"
+  - "Re-invoke /acos-dataroom-v2 --source \"/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)\" --objective \"Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope.\""
+  - "CRITICAL: invoke from project root pwd /Users/zee/Documents/Vibe Coding/ACOS 3.0 — the audit trail lands at $(pwd)/_acos_dataroom_v2_output/run_{ts}_{hash}/"
+  - "Expected runtime: 4-8 hours (2,285 source files, ~5,250+ Phase 2 sub-agent invocations)"
+  - "Final deliverable lands at <Source-Parent>/<DataRoomName>_Dataroom/ (i.e., somewhere in /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/)"
+  - "After completion: compare side-by-side with v1 outputs in Dropbox trash (if user wants comparison) — note v1 outputs were deleted, so comparison may not be possible"
+
+key_files:
+  - ".claude/skills/acos-dataroom-v2/SKILL.md — 6-phase orchestrator procedure"
+  - ".claude/skills/acos-dataroom-v2/READY_TO_RUN.md — morning playbook"
+  - ".claude/skills/acos-dataroom-v2/DESIGN.md — authoritative spec"
+  - ".claude/agents/dr2-*.md — 14 specialized agents"
+  - "memory/handoffs/2026-05-13-emergency-handoff.yaml — overnight build handoff"
+
+invocation_string_post_restart: |
+  /acos-dataroom-v2 --source "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)" --objective "Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope."
+
+blockers: []

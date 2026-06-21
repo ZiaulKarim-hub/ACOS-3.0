@@ -1,0 +1,99 @@
+# Slice Plan — Scoring + confidence tiers + review-flag taxonomy
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-09-scoring-review-flags"
+story_id: "STORY-APS-09"
+epic_id: "EPIC-APS-09"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Scoring + confidence tiers + review-flag taxonomy"
+objective: |
+  Implement score.py: the merged scoring rubric -> score + per-signal breakdown;
+  confidence tiers (>=75 high / 50-74 candidate / <50 weak, configurable); the hub cap
+  (score <=40 if the only graph link runs through a hub); the common-name penalty; and
+  emission of manual-review flags from the taxonomy (references/review-flags.md). Rubric:
+  +40 owner-of-record exact / +25 tax-mailing / +25 manager-member-officer / +20 shared
+  phone-email / +10 spouse-associate / +10 per independent corroborating channel (cap +20);
+  -40 registered-agent-only / -30 common-name-only / -20 hub-virtual-office mailing / -10
+  inactive-dissolved / -10 conflicting owner names; cap <=40 through a hub.
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] The rubric produces the exact documented score for fixture cases, with each +/- signal itemized — pass: rubric test (hand-recomputed)"
+  - "[ ] Tiers assigned at the 75/50 cutoffs (configurable) — pass: tier-cutoff test"
+  - "[ ] An attribution whose only link runs through a hub is capped at <=40 (candidate at best) — pass: hub-cap test (REQUIRED)"
+  - "[ ] A common-name-only match is penalized (-30) and flagged — pass: common-name test"
+  - "[ ] Conflicting owner names emit a review flag (never silently resolved) — pass: conflict-flag test (REQUIRED)"
+  - "[ ] Scoring is deterministic given identical inputs — pass: determinism test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-08-dedup-apn"
+      what_it_provides: "Deduplicated parcels (with unioned provenance / corroboration count) to score"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/score.py"   # stdlib only; pure/deterministic
+  - ".claude/skills/acos-property-search/references/review-flags.md"
+  - ".claude/skills/acos-property-search/scripts/tests/test_score.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-09-scoring-review-flags.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/rollup.py"   # owned by slice-10
+  - ".claude/skills/acos-property-search/scripts/dedup.py"    # owned by slice-08
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-09-scoring-review-flags.md"
+  - "The rubric is a pure deterministic function returning score, signals[], tier, capped_through_hub."
+  - "Gotcha (hard gates): the hub-cap (<=40) and conflict-flag tests are REQUIRED; exceeding the hub cap or silently resolving a conflict = REJECT."
+  - "Gotcha: cutoffs 75/50, hub threshold, and corroboration-bonus cap +20 are configurable defaults (PLAN.md D6); scoring must be deterministic."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; pure function"
+  - "Apply the rubric, the hub cap (<=40 if only link is through a hub), and the common-name penalty"
+  - "Emit review flags from the taxonomy (references/review-flags.md)"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA hand-recomputes the score for 2 fixtures and compares signal-by-signal"
+  - "QA re-authors a hub-only-link case; confirm the score is capped <=40"
+  - "QA re-authors conflicting owner names; confirm a review flag (no silent resolution)"
+  - "QA re-runs on identical inputs; confirm identical output (determinism)"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-09-scoring-review-flags.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

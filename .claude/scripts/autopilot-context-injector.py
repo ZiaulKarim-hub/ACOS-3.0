@@ -49,35 +49,20 @@ def find_project_root(cwd):
     return Path(cwd).resolve()
 
 
-def project_session_ids(cwd):
-    """Session IDs whose JSONL transcripts live in this project's Claude Code dir."""
-    sanitized = str(cwd).replace("/", "-").replace(" ", "-").replace(".", "-")
-    project_dir = Path.home() / ".claude" / "projects" / sanitized
-    if not project_dir.is_dir():
-        return set()
-    return {p.stem for p in project_dir.glob("*.jsonl")}
+def _eternity_check(cwd):
+    """Return True if ANY in-flight eternity-protocol marker for this project's
+    sessions is currently armed. Uses the shared _autopilot_eternity module
+    so all hooks agree on what 'eternity active' means.
 
-
-def is_eternity_resume_injection(cwd):
-    """Return True if a pending-resume marker for this project is currently armed.
-
-    Matches the project-scoping logic in .claude/scripts/eternity-resume-prepend.sh:
-    a pending-resume-<sid>.txt file is 'ours' iff <sid> matches a JSONL session
-    in this project's directory. Mirrors the daemon-side semantics.
+    Marker types covered (was only pending-resume-*.txt prior to 2026-06-15):
+      pending-resume-<sid>.txt, .resume-pending-<sid>, .compact-fired-<sid>,
+      .clear-requested-<sid>.
     """
     try:
-        state = Path.home() / "Library" / "Application Support" / "acos-token-monitor" / "state"
-        if not state.is_dir():
-            return False
-        project_sessions = project_session_ids(cwd)
-        if not project_sessions:
-            return False
-        for pending in state.glob("pending-resume-*.txt"):
-            sid = pending.stem.removeprefix("pending-resume-")
-            if sid in project_sessions:
-                return True
-        return False
-    except OSError:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _autopilot_eternity import is_eternity_protocol_active
+        return is_eternity_protocol_active(cwd)
+    except Exception:
         return False
 
 
@@ -137,12 +122,12 @@ def main():
             emit()
             return
 
-        # ── Eternity-protocol exemption ────────────────────────────────────
-        # Pending-resume marker present → this prompt is the daemon-driven
-        # (or fallback) resume injection. Pass through silently; the next
-        # hook in the chain (eternity-resume-prepend.sh) prepends the
-        # resume content, which contains everything Claude needs.
-        if is_eternity_resume_injection(cwd):
+        # ── Eternity-protocol subordination (precedence over autopilot) ──────
+        # Per user spec 2026-06-15: any in-flight eternity marker (not just
+        # pending-resume) means eternity owns the right-of-way. Pass through
+        # silently — no guidance directive, no panic-stop. The sentinel is
+        # preserved so autopilot resumes after eternity's markers clear.
+        if _eternity_check(cwd):
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             try:
                 state_obj = json.loads(sentinel.read_text(encoding="utf-8"))
@@ -150,8 +135,8 @@ def main():
             except Exception:
                 iters = "?"
             audit(project_root,
-                  f"[{ts}] AUTOPILOT_ETERNITY_RESUME_EXEMPT | iter={iters} | "
-                  f"sentinel preserved across /clear")
+                  f"[{ts}] AUTOPILOT_ETERNITY_SUBORDINATE | hook=UserPromptSubmit | "
+                  f"iter={iters} | sentinel preserved")
             emit()
             return
 

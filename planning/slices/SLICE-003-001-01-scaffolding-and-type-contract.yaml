@@ -1,0 +1,127 @@
+# Slice Plan — Project scaffolding + ContainerRecord type contract
+# Created by The Architect (Opus 4.7, /acos-plan slice, premium profile)
+
+slice_id: "SLICE-003-001-01"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+completed_date: "2026-05-26"
+completed_by: the-architect
+review_verdict:
+  qa-reviewer: PASS
+  integration-reviewer: PASS
+  required_fixes: 0
+  minor_findings: 5
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-01/"
+
+# Slice overview
+title: "Project scaffolding + ContainerRecord type contract"
+objective: |
+  Initialize the Vite + React + TypeScript project at apps/visual-composer/
+  with all base configuration. Define and export the canonical
+  ContainerRecord discriminated-union TypeScript type. The type is the
+  epic-wide API surface; every downstream story consumes it. No walker
+  logic in this slice — only the project skeleton and the frozen type.
+
+  Includes an extract() stub that takes an HTML string and returns an
+  empty ContainerRecord[]. The stub exists so downstream slices have a
+  function to fill in, and so the public-API shape is locked from
+  slice 01 onward.
+
+# Acceptance criteria
+acceptance_criteria:
+  - "[ ] apps/visual-composer/package.json exists with Vite, React, React-DOM, TypeScript, and Vitest as direct deps; lockfile committed"
+  - "[ ] apps/visual-composer/vite.config.ts and tsconfig.json present and successfully compile an empty src/main.tsx"
+  - "[ ] pnpm install && pnpm run typecheck && pnpm run build all succeed with zero errors"
+  - "[ ] apps/visual-composer/src/parser/types.ts exports ContainerRecord as a discriminated union over NodeKind ('text' | 'image' | 'svg' | 'table' | 'background')"
+  - "[ ] ContainerRecord includes: id (string), kind (NodeKind), sourceDomPath (string), bounds ({ width: number; height: number }), computedStyle (ComputedStyle), content (kind-discriminated payload), bradClass (string | undefined)"
+  - "[ ] apps/visual-composer/src/parser/index.ts exports extract(html: string): ContainerRecord[] as a stub that returns []"
+  - "[ ] apps/visual-composer/.gitignore covers node_modules/, dist/, .vite/, *.local"
+  - "[ ] Root .gitignore updated to also cover apps/visual-composer/node_modules/ and apps/visual-composer/dist/"
+  - "[ ] One smoke test in tests/parser/types.test.ts that imports ContainerRecord and asserts the discriminated union narrows correctly for each NodeKind"
+  - "[ ] pnpm run test passes (one smoke test, zero failures)"
+
+# Dependencies
+dependencies:
+  slices: []  # First slice in the epic — no upstream dependencies
+
+# File permissions
+files_allowed:
+  - "apps/visual-composer/"  # entire subtree, this slice creates it
+  - ".gitignore"             # add ignore patterns for the new subtree
+
+files_prohibited:
+  - "memory/"                # planning artifacts are read-only at execute time
+  - "planning/"              # ditto
+  - ".acos/config/"          # framework config off-limits to slice work
+  - ".claude/"               # framework primitives off-limits
+  - "**/*"                   # everything else outside apps/visual-composer/ and root .gitignore
+
+# Skills recommended
+skills_recommended:
+  - "frontend-coding"        # React + TypeScript + Vite project init
+  - "testing"                # Vitest smoke test
+  - "quality-gates"          # lint + typecheck + test gates
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "ContainerRecord is THE API surface for the entire EPIC-003. Any change after this slice cascades into 6 downstream slices in this story alone, plus 4 downstream stories. Treat it as frozen once merged."
+  - "Use discriminated unions — each NodeKind has a corresponding content payload type. The compiler must reject `if (kind === 'unknown')` and force exhaustive narrowing."
+  - "The exact type signature is documented in STORY-003-001 technical_notes. Implement it verbatim."
+  - "Use pnpm (not npm) per the repo's existing convention. Check the root for a package-manager preference; default to pnpm if unclear."
+  - "Vite + React template via `pnpm create vite@latest apps/visual-composer --template react-ts` is the canonical init path."
+  - "Smoke test purpose: prove the type compiles and narrows; not to test extraction (that's slice 02+)."
+  - "DO NOT add unused dependencies — only Vite, React, React-DOM, TypeScript, Vitest, and their @types. Resist the urge to add zustand, react-rnd, etc. — those come in later stories."
+
+# Technical requirements
+technical_requirements:
+  - "Node 18+ runtime (verify on user's macOS)"
+  - "pnpm as package manager"
+  - "Vite 5.x or 6.x"
+  - "React 18 (NOT 19) — React 18 has the best ecosystem support for react-rnd in STORY-003-002"
+  - "TypeScript 5.4+"
+  - "Vitest 1.x or 2.x"
+  - "strict: true in tsconfig.json (no implicit any, strict null checks)"
+  - "ES2022 target for tsconfig.json (DOMParser, structuredClone available natively)"
+
+# Testing requirements
+testing_requirements:
+  - "tests/parser/types.test.ts contains one type-level test that exhaustively switches on NodeKind and asserts each branch returns a string label. This proves the discriminated union narrows."
+  - "Test must compile without `// @ts-expect-error` or `as any`."
+  - "pnpm run test must show 1 passed, 0 failed."
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-integration-reviewer"  # Verify type contract matches STORY-003-001 technical_notes verbatim
+
+# Effort estimate
+effort_estimate: "M"
+# Rationale: ~30min Vite init + tsconfig + folders + gitignore; ~30min ContainerRecord
+# discriminated union + content payload types; ~30min smoke test + first-run verification.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  This is the most leveraged slice in the entire epic. The
+  ContainerRecord type defined here becomes the contract every other
+  story builds against. Reviewer paranoia is justified.
+
+  If pnpm is not installed on the system, the developer should pause
+  and ask the user before falling back to npm — the project's existing
+  scripts assume pnpm.
+
+  React 18 (not 19) is deliberate: react-rnd's React 19 support is
+  marked experimental as of 2026-05. Re-evaluate at STORY-003-002 time.

@@ -1,0 +1,219 @@
+timestamp: "2026-05-19T02:35:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This is a mid-decision checkpoint handoff. The prior handoff
+  (memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml) documents the
+  complete implementation — 8 atomic tasks done, all syntax checks passing.
+  The current session has NOT cleared. The user paused after implementation
+  was complete to surface four housekeeping decisions before proceeding.
+
+  One decision is already made (Issue #1 — symlink sync). Three are pending
+  (Issues #2, #3, #4). An orphan pending-resume fired live during this session
+  (session 4ce9db82, hypercore-exploration handoff, May 19 01:12), which
+  served as a real-time demonstration of the "surprise auto-resume" problem
+  described in Issue #3.
+
+  DO NOT re-implement anything. DO NOT re-litigate the bug fixes. Read
+  memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml for the full
+  prior implementation record.
+
+current_work:
+  slice_id: "eternity-protocol-bug-fixes"
+  story_id: "acos-eternity-protocol-resilience"
+  epic_id: "acos-eternity-protocol"
+  status: "implementation_complete_pending_user_decisions"
+
+completed_this_session:
+  - "All 8 atomic implementation tasks from prior handoff are done (see
+    memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml for full list)"
+  - "UserPromptSubmit hook eternity-resume-prepend.sh written and registered
+    in .claude/settings.local.json"
+  - "Four open housekeeping issues identified and presented to user"
+  - "Issue #1 decision received: use symlinks (global -> project) for both
+    SKILL.md files. NOT YET EXECUTED."
+
+pending_decisions:
+  issue_1:
+    title: "Skill sync: global vs project SKILL.md out of sync"
+    decision: "DECIDED — replace global files with symlinks pointing at
+      project files so global always reflects latest project edits"
+    execution_status: "NOT YET EXECUTED"
+    files_affected:
+      - global: "/Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md"
+        project: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md"
+        size_delta: "global=7840 bytes (May 16), project=10053 bytes (May 18) — 2213 byte gap"
+      - global: "/Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+        project: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+        size_delta: "global=2915 bytes (May 16), project=3872 bytes (May 18) — 957 byte gap"
+    execution_command: |
+      ln -sf "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md" \
+        "/Users/zee/.claude/skills/acos-eternity-protocol/SKILL.md"
+      ln -sf "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol-resume/SKILL.md" \
+        "/Users/zee/.claude/skills/acos-eternity-protocol-resume/SKILL.md"
+
+  issue_2:
+    title: "Two RESCUED-* files in daemon state dir"
+    decision: "PENDING — user wants to review file contents before deciding"
+    files:
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-from-smoke-test.txt"
+        size: 1514 bytes
+        created: "May 18 17:15"
+        content_summary: "OKOA Capital website resume — 3D tower crane / OKOA letters
+          experiment on branch claude/hungry-jemison-6ea04a in worktree
+          .claude/worktrees/hungry-jemison-6ea04a. Last action: moved 4 corner cranes
+          to plinth right edge. Next step: awaiting visual verification at localhost:4321.
+          Handoff: memory/handoffs/2026-05-18-okoa-website-handoff.yaml (in okoa-website
+          project, NOT ACOS 3.0). This was consumed by the first smoke test before
+          project scoping was added."
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-ascent-dataroom-pii.txt"
+        size: 1596 bytes
+        created: "May 18 17:17"
+        content_summary: "Ascent dataroom v2 Phase 6 PII blocker resume — read
+          memory/handoffs/2026-05-16-ascent-dataroom-v2-phase6-pii-blocker.yaml
+          and _acos_dataroom_v2_output/run_20260513_152429_e79c3aa1/phase6/PHASE6_RESUMPTION_STATE.md.
+          Last action: PII scan found live bank/account details + AmEx card statement.
+          Next step: apply PII directive, rebuild Excel, re-scan, ship to Dropbox.
+          Consumed by second smoke test after project scoping added (still matched
+          because ACOS 3.0 session history includes this session)."
+    options_for_user:
+      - "Discard both (rm) — the Ascent dataroom work is reportedly complete per
+        2026-05-19-ascent-dataroom-v2-completion.yaml; OKOA website experiment is
+        a separate project that can be restarted from its own handoff file if needed"
+      - "Keep both as reference — they are not consumed by the hook (they are
+        RESCUED copies, not pending-resume files) so they never auto-inject"
+      - "Review each individually and decide per-resume"
+
+  issue_3:
+    title: "Orphan pending-resume files in state dir — 'surprise auto-resume' UX"
+    decision: "PENDING — user wants to clarify before answering"
+    live_demonstration: "Session 4ce9db82 (hypercore-exploration, May 19 01:12)
+      fired during this session on a user prompt, injecting hypercore-learning
+      content. This was the real-time demonstration the user observed."
+    current_pending_files:
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt"
+        size: 1794 bytes
+        created: "May 18 20:10"
+        content_summary: "OKOA website resume (newer copy) — same crane experiment,
+          slightly different state. Session c38121b3. Handoff:
+          memory/handoffs/2026-05-18-okoa-website-handoff.yaml in okoa-website project."
+      - path: "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume.txt"
+        size: 2970 bytes
+        created: "May 6 01:27"
+        content_summary: "Eternity Protocol Cycle 2 resume from May 6 — ACOS eternity
+          protocol itself, session that tested multi-cycle /clear. Handoff:
+          memory/handoffs/archive/2026-05-06T07-24-49Z-eternity-cycle-2.yaml (now archived).
+          This is the legacy non-UUID filename format (pre-UUID keying)."
+      - note: "pending-resume-e4f2d9d9 from May 6 was listed in prior handoff but file
+          is confirmed NOT PRESENT on disk now (likely consumed during this session's
+          smoke testing). Only 2 files + 1 legacy remain."
+    options_for_user:
+      - "Sweep all 3 with rm — none are actionable: OKOA website is a separate project,
+        May 6 eternity cycle is ancient history"
+      - "Keep OKOA website pending-resume-c38121b3 (it is active work in another project)
+        and rm the May 6 legacy pending-resume.txt only"
+      - "Let the hook consume them one-per-prompt over next few interactions (current
+        behavior — each fires on a user prompt in the matching project)"
+
+  issue_4:
+    title: "Add --dry-run mode to eternity-resume-prepend.sh"
+    decision: "PENDING — user wants to clarify before answering"
+    context: "Smoke tests without --dry-run consumed real orphan state. A dry-run
+      flag would allow testing the hook's matching logic and output format without
+      deleting any files or injecting content."
+    file: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+    options_for_user:
+      - "Add DRY_RUN env var check: if DRY_RUN=1, print what would be injected to
+        stderr and exit 0 without consuming or emitting hookSpecificOutput"
+      - "Add --dry-run positional arg via stdin JSON field (non-standard but possible)"
+      - "Skip this — testing via unit test harness that stubs the consume step is
+        sufficient and --dry-run adds hook complexity"
+
+files_modified:
+  implementation_complete_see_prior_handoff:
+    - reference: "memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml"
+      note: "Full file list with change descriptions is in the prior handoff.
+        Nothing new was modified in this checkpoint session."
+
+state_inventory:
+  daemon_state_dir: "/Users/zee/Library/Application Support/acos-token-monitor/state/"
+  pending_resume_files:
+    - "pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt (May 18 20:10, OKOA website)"
+    - "pending-resume.txt (May 6 01:27, eternity cycle 2 legacy)"
+  rescued_files:
+    - "RESCUED-resume-from-smoke-test.txt (May 18 17:15, OKOA website older copy)"
+    - "RESCUED-resume-ascent-dataroom-pii.txt (May 18 17:17, Ascent dataroom PII)"
+  pid_files_present:
+    - "pid-7e19ca6e (May 18) — prior session"
+    - "pid-b5e61646 (May 6) — old session"
+    - "pid-bc6ab999 (May 19 01:30) — recent session"
+    - "pid-c4e7af8b (May 18) — prior session"
+  heartbeat: "active as of May 19 02:35"
+
+next_actions_for_resumed_session:
+  - "FIRST: Present the user with the contents of the 2 RESCUED-* files and 3
+    pending-resume files (summarized above in pending_decisions) and ask them to
+    decide on Issues #2, #3, #4. The user wants to review contents before deciding —
+    contents are now captured in this handoff so you can present them without re-reading
+    files if context allows, or re-read for the user if they want verbatim."
+  - "SECOND: After all four decisions are confirmed, execute in this order:
+    (a) Issue #1 symlink execution (ln -sf commands above — already decided),
+    (b) Issue #2 RESCUED file action (per user decision),
+    (c) Issue #3 orphan cleanup (per user decision),
+    (d) Issue #4 --dry-run addition if user wants it."
+  - "THIRD: After all housekeeping is complete, optionally run an end-to-end
+    /clear cycle to validate the fixed implementation (the hook, the PID
+    self-write, the daemon recovery). This step is optional — user may prefer
+    to simply trust the syntax/unit tests already done."
+  - "DO NOT fire /clear as part of this resumed session unless the user explicitly
+    requests it. This is a housekeeping session, not a test cycle."
+
+context_for_next_session: |
+  The eternity-protocol bug fix implementation is 100% done and verified for
+  syntax. The session is paused at a housekeeping crossroads: four issues were
+  surfaced, one is decided (Issue #1: symlink global skill files to project
+  copies), three are pending user input (Issues #2, #3, #4 about RESCUED files,
+  orphan pending-resume cleanup, and --dry-run mode for the hook).
+
+  The key file to understand the implementation is the prior handoff:
+  memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml. The five modified
+  implementation files are:
+    - ~/Library/Application Support/acos-token-monitor/bin/token-watcher.py
+    - ~/Library/Application Support/acos-token-monitor/bin/inject-keystroke.py
+    - ~/Library/Application Support/acos-token-monitor/bin/register-session-pid.sh
+    - .claude/skills/acos-eternity-protocol/SKILL.md (project copy, 10053 bytes)
+    - .claude/skills/acos-eternity-protocol-resume/SKILL.md (project copy, 3872 bytes)
+    - .claude/scripts/eternity-resume-prepend.sh (NEW UserPromptSubmit hook)
+    - .claude/settings.local.json (UserPromptSubmit hook registered)
+
+  The global skill files at ~/.claude/skills/ are stale (pre-fix versions from
+  May 16) and must be symlinked to the project copies before the fixes are
+  effective for /acos-eternity-protocol invocations.
+
+  The daemon state directory has orphan files that will fire as "surprise auto-
+  resumes" if not cleaned. The OKOA website pending-resume (c38121b3) is live
+  active work in a different project. The May 6 legacy pending-resume.txt is
+  ancient and should probably be swept.
+
+  The RESCUED-* files are inert (never consumed by hook) and exist only for
+  reference — they are copies of real resumes that were accidentally consumed
+  by smoke tests during implementation verification.
+
+  Present the user with the Issue #2/3/4 options, collect decisions, then execute
+  all four issues in order. After that, this work stream is complete.
+
+reconstruction_sources:
+  - "memory/handoffs/2026-05-19-eternity-protocol-fixes.yaml (prior implementation handoff)"
+  - "git status --short (untracked file list including new hook and backup)"
+  - "git log --oneline -20 (commit history context)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/ (full dir listing)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-from-smoke-test.txt"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/RESCUED-resume-ascent-dataroom-pii.txt"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume-c38121b3-1a63-44fb-bd56-7a3cd98ffe17.txt"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/state/pending-resume.txt"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/eternity-resume-prepend.sh"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (directory listing)"
+  - "Global and project skill directory listings (size/timestamp comparison)"
+  - ".acos/state/ directory listing"

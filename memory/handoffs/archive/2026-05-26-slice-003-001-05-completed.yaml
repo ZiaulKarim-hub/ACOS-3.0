@@ -1,0 +1,32 @@
+handoff_id: "2026-05-26-slice-003-001-05-completed"
+handoff_type: "slice-completion-audit"
+created_date: "2026-05-26"
+status: "completed"
+slice_id: "SLICE-003-001-05"
+title: "Background extractor + async signature flip"
+outcome: PASS
+reviewer_verdicts:
+  qa-reviewer: { verdict: PASS, acceptance: "10/10" }
+  performance-reviewer: { verdict: PASS, parallelism: PASS, walker_perf_unchanged: PASS }
+  integration-reviewer: { verdict: PASS, async_contract: PASS, dual_path_design: PASS }
+required_fixes: 0
+minor_findings: 9  # all LOW, all forward-looking — captured as slice 07 addenda BG1-BG6
+test_count: 76  # 21 new + 55 migrated to await
+key_contract_change: |
+  extract() signature: ContainerRecord[] -> Promise<ContainerRecord[]>
+  All 5 prior test files migrated to await extract() in-place
+  No production callsites exist yet (STORY-003-002 will be first consumer, designed against async)
+key_design_decisions:
+  - "Background dispatch in index.ts orchestrator (not in walker) — preserves walker sync contract"
+  - "Dual-path: header sniffer (data: URIs, deterministic) + new Image() (http(s), real-browser)"
+  - "Promise.all parallelism, single await at end of walk; no mid-walk awaits"
+  - "Two-record case: distinct id prefixes (text-* vs bg-*) on same source-DOM path"
+forward_look_for_slice_07:
+  - "BG1: cancel image bitmap decode on timeout (img.src='' idiom)"
+  - "BG2: URL-level dedup within a single extract() call"
+  - "BG3: audit Brad fixtures for multi-layer backgrounds; type extension if needed"
+  - "BG4: real-browser test for new Image() general path (not happy-dom)"
+  - "BG5: vi.useFakeTimers() test for 5s timeout end-to-end"
+  - "BG6: soften dom-walker.ts O(N) comment (carried from slice 04)"
+evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-05/"
+next_step: "/acos-execute-slice SLICE-003-001-06 (Brad-class enrichment pass)"

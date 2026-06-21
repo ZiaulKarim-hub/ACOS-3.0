@@ -1,0 +1,113 @@
+# Slice Plan — Adversarial multi-model consensus orchestrator (Demo 2)
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-06-consensus"
+story_id: "STORY-HCA-06"
+epic_id: "EPIC-HCA-06"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Adversarial multi-model consensus orchestrator (Demo 2)"
+objective: |
+  Implement the blind adversarial-consensus engine: dispatch N blind general-purpose
+  agents via Task() (subscription-only — never ANTHROPIC_API_KEY), each given only
+  its scoped Tier-1 slice + the question, no shared context, no sight of each other's
+  output. Deliver only on substance consensus (agreement on the normalized
+  number/name/date) at the configured quorum; disagreement => bounded blind
+  re-dispatch => still no quorum => ESCALATE. Never a silent pick. This is Demo 2.
+  In scope: hca-consensus.py (dispatch envelope spec + result aggregation producing
+  a ConsensusResult); substance-equality after normalization; quorum evaluation
+  (default 2-of-3 asymmetric from config); bounded re-dispatch (default 1 retry);
+  ESCALATE state; single-source cap interplay with the gate suite. hca-consensus.py
+  does NOT itself call any model API — the orchestrating skill spawns the blind
+  agents via Task(). Out of scope: the gate suite itself (slice-05), full report
+  orchestration (slice-08), delivery rendering beyond the escalate envelope.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] N blind agents each receive ONLY their scoped Tier-1 slice + the question; no shared context (prompt + dispatch envelope enforce this) — pass-condition: prompt review + envelope test; any cross-leak = REJECT"
+  - "[ ] Substance consensus computed on normalized values (not prose); quorum from config (default 2-of-3) — pass-condition: consensus reached when >=quorum agree on substance (different prose, same number)"
+  - "[ ] Disagreement triggers bounded blind re-dispatch (fresh agents, default 1 retry); still no quorum => agreement_status == escalated — pass-condition: re-dispatch + escalate test (REQUIRED)"
+  - "[ ] No silent pick ever: on disagreement the engine NEVER returns an agreed_value without quorum (escalate with agreed_value == null) — pass-condition: no-silent-pick test (REQUIRED; fail = REJECT)"
+  - "[ ] Single-source / single-response values flagged and confidence-capped <= 0.7 (interplay with slice-05) — pass-condition: cap test"
+  - "[ ] Subscription-only: scripts contain no ANTHROPIC_API_KEY / direct model API call — pass-condition: grep gate (fail = REJECT)"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-07-e2e-thin"
+      what_it_provides: "The working thin end-to-end deterministic-tier path (router->adapter->cache->bind->gates->deliver) that consensus extends for the report/aggregation tier"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/hca-consensus.py"  # consensus math + dispatch envelope spec; stdlib only; NO model API call
+  - ".claude/skills/acos-hypercore-ask/prompts/blind-extractor.md"  # blind-agent prompt: scoped slice + question + structured-return contract; no shared context
+  - ".claude/skills/acos-hypercore-ask/SKILL.md"  # add the consensus dispatch step for the report tier
+  - ".claude/skills/acos-hypercore-ask/demos/demo2-consensus.md"  # Demo 2 walkthrough
+  - ".claude/scripts/tests/test_hca_consensus.py"
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-06-consensus.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure (must NOT add an agent; uses existing general-purpose)
+  - ".claude/scripts/hca-gates.py"  # owned by slice-05
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"   # Python 3 stdlib consensus math + envelope spec
+  - "testing"          # simulated-return tests (agreement / redispatch->consensus / escalate / single-source)
+  - "security-audit"   # subscription-only (no ANTHROPIC_API_KEY) + blind-independence enforcement
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-06-consensus.md"
+  - "Dependency note: depends_on is SLICE-HCA-07-e2e-thin (NOT slice-05) — the thin e2e path must exist first; this slice's numeric suffix (06) is BEFORE 07 but its build order is AFTER 07 (dependency_order 8 vs 7)."
+  - "Gotcha (hard gates): no-silent-pick (escalate with null agreed_value) and blind independence (scoped slice only, no shared context) are both REQUIRED = REJECT on fail. Subscription-only: no ANTHROPIC_API_KEY / direct model API call anywhere — grep gate = REJECT."
+  - "Gotcha: hca-consensus.py defines the per-agent request envelope and computes consensus on normalized substance; the orchestrating skill (SKILL.md) spawns the blind general-purpose agents via Task() — the script never calls a model API itself."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; hca-consensus.py contains NO model API call"
+  - "Per-agent request envelope: scoped slice + question + return schema {value, json_field_path, raw_response_id, agent_confidence}"
+  - "blind-extractor.md enforces independence (no shared context) + structured return"
+  - "Normalize each agent value, group by substance, evaluate quorum (default 2-of-3 from config); on miss emit a bounded re-dispatch directive (default 1 retry), then ESCALATE"
+  - "SKILL.md spawns N agents via Task() for the report tier (subscription-only), collects returns, calls consensus"
+  - "Single-source / single-response values flagged and confidence-capped <= 0.7"
+
+# Testing requirements
+testing_requirements:
+  - "QA inspects the blind-agent prompt + dispatch envelope: an agent CANNOT see another agent's output and gets only a scoped slice; any cross-leak = REJECT"
+  - "QA feeds simulated agent returns that disagree; confirm bounded re-dispatch and, if still split, escalated with agreed_value == null (no silent pick)"
+  - "QA feeds exactly quorum agreement on substance (different prose, same number); confirm consensus"
+  - "QA greps all scripts for ANTHROPIC_API_KEY and direct HTTP-to-model calls — must find none (subscription-only)"
+  - "QA confirms single-source path caps confidence <= 0.7"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # subscription-only (no API key) + blind-agent independence / no context leak
+
+# Effort estimate
+effort_estimate: "L"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-06-consensus.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  Dependency taken from depends_on (SLICE-HCA-07-e2e-thin), NOT the numeric suffix.
+  VISION-HCA-01 / EPIC-HCA-06 are PROPOSED — not yet formally planned via /acos-plan.

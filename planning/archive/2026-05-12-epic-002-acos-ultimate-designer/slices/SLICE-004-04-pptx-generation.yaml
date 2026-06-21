@@ -1,0 +1,91 @@
+slice_id: "SLICE-004-04"
+story_id: "STORY-004"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "PPTX generation + post-build cleanup"
+objective: |
+  Build scripts/render-pptx.sh that invokes loan-doc's data-to-pptx.py with the
+  content YAML (from SLICE-004-03) + design-spec + template + output path, then
+  applies post-generation cleanup: (a) strip python-pptx default theme shadows,
+  (b) ensure every text shape has explicit fill.solid() background, (c) attempt
+  Cormorant Garamond font embedding via OOXML /ppt/fonts/ manipulation (with
+  graceful fallback if embedding fails).
+
+acceptance_criteria:
+  - "[ ] scripts/render-pptx.sh exists, bash, executable"
+  - "[ ] scripts/pptx-cleanup.py exists, Python 3, executable — invoked by render-pptx.sh after data-to-pptx.py"
+  - "[ ] render-pptx.sh invokes: python3 /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py --content <content.yaml> --design-spec <design-spec.yaml> --template <template.pptx> --output <output.pptx>"
+  - "[ ] On data-to-pptx.py success, render-pptx.sh calls pptx-cleanup.py --pptx <output.pptx>"
+  - "[ ] pptx-cleanup.py theme-shadow strip: open the pptx zip, modify theme1.xml to remove outerShdw from effectStyleLst, reset effectRef idx=0 — same fix as loan-doc's phase3-design.md:48-68"
+  - "[ ] pptx-cleanup.py background verification: iterate every slide, every shape; if shape has a text frame and shape.fill.type is None, call shape.fill.solid() with default background (white or the layout's surface token)"
+  - "[ ] pptx-cleanup.py Cormorant embedding attempt: locate Cormorant Garamond font file (check /Library/Fonts/, ~/Library/Fonts/ on macOS, /usr/share/fonts on Linux, else use fontconfig); if found, inject into /ppt/fonts/ subdir of the pptx zip with font1.fntdata reference in presentation.xml; if not found or injection fails, write a clear advisory note as a small text frame on the final (closing) slide"
+  - "[ ] render-pptx.sh exits 0 on full success, non-zero on any failure"
+  - "[ ] --skip-cleanup flag for debugging: produces raw data-to-pptx.py output without post-processing"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-004-03"
+      what_it_provides: "pptx-content.yaml conforming to data-to-pptx.py schema"
+      status: "complete"
+    - slice_id: "SLICE-004-02"
+      what_it_provides: "template.pptx with 9 layouts"
+      status: "complete"
+    - slice_id: "SLICE-004-01"
+      what_it_provides: "pptx-design-spec.yaml"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/render-pptx.sh"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/pptx-cleanup.py"
+
+files_prohibited:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/data-to-pptx.py"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/emit-pptx-content.py"
+  - "~/.claude/skills/acos-ultimate-designer/scripts/build-template-pptx.py"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "The python-pptx default theme applies subtle drop shadows via theme1.xml's effectStyleLst. Brad's design has no shadows on cards. Every PPTX run needs the shadow-strip cleanup."
+  - "Cormorant Garamond embedding is a known sharp edge — python-pptx has no API for it. Direct OOXML manipulation via zipfile + lxml is the only path. If /Library/Fonts/ doesn't have the TTF, graceful degrade: note in closing slide that 'PPTX designed for Cormorant Garamond; install from Google Fonts for proper rendering.'"
+  - "Reuse of data-to-pptx.py is at the SCRIPT level — we invoke it as a subprocess, don't import or modify it. This keeps the dependency surface small and respects the 'reuse, don't enhance loan-doc' constraint."
+  - "Explicit background check: python-pptx's default shape has fill.type=None, which in PowerPoint renders as whatever the theme background is. Brad's rule (explicit background on every text container) requires .solid() with actual color."
+
+technical_requirements:
+  - "Python 3.9+; python-pptx, lxml, zipfile (stdlib)"
+  - "bash 4+"
+  - "pptx-cleanup.py uses file atomicity: work on a copy, swap on success"
+  - "Never modify data-to-pptx.py (strictly read/invoke only)"
+
+testing_requirements:
+  - "Unit: pptx-cleanup.py on a test pptx with drop shadows, assert shadows removed after"
+  - "Unit: cleanup on a pptx with bare text frames (no fill), assert shape.fill.type == MSO_FILL.SOLID after"
+  - "Integration: full render-pptx.sh on sample content, open in PowerPoint, click a text element, confirm it's editable (not a rasterized image)"
+  - "Integration: compare output PPTX theme colors to pptx-design-spec.yaml — no drift"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "L"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  Closes STORY-004. If data-to-pptx.py's output is garbage even before cleanup,
+  the issue is in SLICE-004-03's content adapter or SLICE-004-02's template —
+  not here. Debug upstream first.
+
+  Font embedding is the one place where we might silently degrade. Log
+  clearly whether embedding succeeded so the user knows what they shipped.

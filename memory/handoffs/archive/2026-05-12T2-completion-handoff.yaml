@@ -1,0 +1,138 @@
+timestamp: "2026-05-12T20:50:00Z"
+status: "completed"
+type: "completion"
+trigger: "acos-complete"
+
+session_summary: |
+  Closeout session for the OKOA Private Credit Income Fund Prospectus V003.
+  Resumed via /acos-eternity-protocol-resume after a /clear, then drove four
+  late-stage layout fixes through to final acceptance:
+    1. Page 16 (Fund Structure) swapped from the previous warm-light design
+       to the Refined Dark "V4" variant per user selection.
+    2. Page 15 (CS03 Capella English Hotel case study) outcome banner
+       restored — the sage-green "Paid in Full — Premium Return Delivered"
+       was being clipped because the flex-grow photo wrapper was consuming
+       the banner's vertical space. Fixed with a max-height:3in cap on the
+       CS03 photo wrapper only.
+    3. Western / SLC / regional residue grep sweep — clean, no edits needed.
+       Stage-1 narrative-rewrite work had already excised the regional framing.
+    4. Pages 3 and 11 bottom-edge overflow fixed — risk card border (p3) and
+       map container border + poster-footer (p11) were both clipping past the
+       8.5in landscape page boundary. Tightened margins on p3 and removed a
+       redundant lede paragraph + shrank map width on p11.
+
+  Final 20-page visual spot-check passed. PDF rebuilt three times during the
+  session; final render at 2026-05-12 13:48 local.
+
+prior_handoffs_chained:
+  - "memory/handoffs/archive/2026-05-12-completion-handoff.yaml (earlier today)"
+  - "memory/handoffs/archive/2026-05-12-emergency-handoff-4.yaml"
+  - "memory/handoffs/archive/2026-05-12-emergency-handoff-3.yaml (this session's bootstrap)"
+  - "memory/handoffs/archive/2026-05-12-emergency-handoff-2.yaml (authoritative working-doc state)"
+  - "memory/handoffs/archive/2026-05-12-emergency-handoff.yaml (Stage 1 data accuracy)"
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+  project: "OKOA Private Credit Income Fund — Prospectus Q2 2026"
+
+project_context:
+  working_file: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.html"
+  working_file_size_bytes: 6398713
+  pdf_output: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus_WIP.pdf"
+  pdf_size_bytes: 7025362
+  pdf_last_rendered: "2026-05-12 13:48 local"
+  page_count: 20
+  page_size: "11in x 8.5in landscape letter"
+
+completed_this_session:
+  - "Selected page 16 design variant: user picked V4 (Refined Dark)"
+  - "Page 16 swap: replaced the existing warm-light Fund Structure spread with the V4 dark-mode 2-column entities+deployment layout + 3 feature cards. Uses inline-style verbatim copy of V4 preview for render fidelity. Coral eyebrow + italic Reg D 506(b) headline preserved."
+  - "Page 15 CS03 outcome banner restored: diagnosed via pixel-band scan (sage% before=4.9, after=17.4) that photo wrapper's flex-grow:1 was overflowing banner space; capped wrapper with max-height:3in (Capella-anchored regex, surgical, CS01/CS02 untouched)."
+  - "Western / SLC / regional residue sweep: zero hits on Western, West Coast, Salt Lake City, SLC, Mountain West, Intermountain. 14 Utah hits all legitimate (HQ, structure, licensing, case study, state-list contexts)."
+  - "Page 3 bottom overflow: tightened poster-body margin-top 0.2in→0.05in and two-col margin-top 0.25in→0.12in (page-scoped inline styles). Saved 0.28in. Risk card bottom border now visible."
+  - "Page 11 bottom overflow: removed redundant lede paragraph, allowed natural title wrap (max-width:9.5in), tightened poster-body margin-top 0.1in→0, reduced pf-card padding 22px→14px, tightened pf-heading margin/padding, shrank map image max-width 9.4in→8.2in and top margin 0.15in→0.05in. Saved ~1.5in. Map container border + poster-footer now visible."
+  - "Final 20-page visual spot-check: all pages render cleanly, no clipping, all authoritative numbers preserved."
+
+files_modified:
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.html"
+    changes: "Page 16 swap (V4 dark variant), CS03 photo max-height cap, page 3 margin tightening, page 11 multi-element compaction. Net file delta -117 bytes (lede paragraph removal vs V4 inline-style verbosity)."
+  - path: "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus_WIP.pdf"
+    changes: "Re-rendered 3 times during the session via Chrome --headless=new --print-to-pdf. Final 7,025,362 bytes, 20 pages."
+
+files_created:
+  - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage4-pre-v4-swap.html (6,394,151 bytes — pre V4 swap)"
+  - "/Users/zee/Documents/OKOA/OKOA Prospectus/OKOA_Prospectus V003.backup-20260512-stage5-pre-overflow-fixes.html (6,398,830 bytes — pre page 3/11 fixes)"
+
+decisions_made:
+  - "Page 16: V4 Refined Dark variant selected over V2 Two-Block warm-light recommendation. User chose tonal pause via single dark spread between case studies and key terms."
+  - "CS03 photo fix: scope the height cap to CS03 only (Capella-anchored regex), don't reduce CS01/CS02 which were rendering correctly at 2.2in min-height. Surgical beats global when 2/3 of affected elements are working."
+  - "CS03 banner root cause: flex-grow:1 + margin-top:auto interaction, not photo size per se. Min-height:1.6in was a no-op when flex-grow was unconstrained. max-height cap was the real fix."
+  - "Page 11 lede paragraph removed: 'The composition below reflects historical lending patterns...' was redundant with the title + poster-footer. Removing it solves overflow and tightens information hierarchy."
+  - "Page 11 map width reduced to 8.2in (from 9.4in): map still readable for state labels and pin distribution, but fits the vertical budget with the now-visible poster-footer."
+
+blockers: []
+
+next_actions:
+  - "Document is ship-ready. User to deliver final PDF to prospective LPs."
+  - "If further visual QA needed, can run /acos-doc-design-qa for per-page 0-100 scoring."
+  - "If content changes are made (numbers, text), re-render via the documented Chrome headless command and re-check the bottom-edge pixel bands."
+
+authoritative_numbers_unchanged:
+  founded: "2021"
+  hq: "Park City, UT"
+  address: "1441 West Ute Blvd #130, Park City, UT 84098"
+  phone: "(702) 582-5456"
+  pref_return: "8%"
+  mgmt_fee: "1.5% per annum"
+  initial_lockup: "1 year"
+  target_fund_size: "$300,000,000"
+  committed: "$172M"
+  outstanding: "$164.72M"
+  active_loans: 32
+  paid_off_loans: 86
+  total_originated: 118
+  geographic_scope: "US-wide (11 states + Puerto Rico)"
+
+context_for_next_session: |
+  OKOA Prospectus V003 is closed out. All Stage 1 (data accuracy), Stage 3
+  (layout/positional QA + case-study photo embeds), Stage 4 (V4 page 16 swap +
+  CS03 banner fix), and Stage 5 (page 3 + page 11 bottom overflow fixes) work
+  is complete. The 20-page document fits cleanly on 11x8.5 landscape letter
+  with no clipping, all photos embedded, all authoritative numbers preserved.
+
+  If the user returns to this document in a future session for further changes,
+  start from the current V003.html (NOT a backup) — it's the latest state.
+  Use the same Chrome --headless render pattern (sleep 25s; pkill -9 -f "Google
+  Chrome.*print-to-pdf"; "X bytes written to file" is the success signal).
+
+  Diagnostic patterns that worked well this session:
+    - Pixel-band sampling for clipping diagnosis: scan the bottom N pixel rows
+      across the full page width, count background-matching vs content pixels.
+      ≥95% background = clean, <80% = content is touching/exceeding the edge.
+    - Comparative pixel scans across structurally-identical pages: when CS03
+      banner was missing, comparing sage% in CS01 (working) vs CS03 (broken)
+      was decisive evidence that the fix had to be on CS03's flex-grow, not
+      on photo sizing.
+
+  Path constraint reminder: Desktop is TCC-blocked. All file I/O via
+  /Users/zee/Documents/OKOA/OKOA Prospectus/ — never ~/Desktop/.
+
+reconstruction_sources:
+  - "This session's conversation thread (primary)"
+  - "Read /tmp/v003_post-v4-15-15.png, /tmp/v003_post-v4-15b-15.png (CS03 before/after fix)"
+  - "Read /tmp/v003_final-01.png through /tmp/v003_final-20.png (full 20-page render)"
+  - "Read /tmp/v003_p3b-03.png, /tmp/v003_p11b-11.png (page 3 + 11 after overflow fix)"
+  - "Python pixel scans via PIL on bottom-band rows"
+  - "Bash: file sizes, mtimes, pdfinfo output"
+  - "Read of /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-05-12-emergency-handoff-{2,3}.yaml"
+
+confidence: "high"
+confidence_notes: |
+  Every fix was visually verified via PDF re-render + PNG screenshot. Pixel-band
+  scans provided quantitative confirmation for both the CS03 banner restoration
+  (sage% 4.9 → 17.4, matching CS01 reference within 0.5%) and the page 3 + 11
+  overflow fixes (bottom 30px is 97.3% and 100.0% background respectively).
+  All 20 pages spot-checked at 110-150 DPI in the final pass.

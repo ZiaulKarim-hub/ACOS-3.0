@@ -1,0 +1,102 @@
+# Slice Plan — Skill scaffold + ACOS integration
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "SLICE-HCA-01-scaffold"
+story_id: "STORY-HCA-01"
+epic_id: "EPIC-HCA-01"
+vision_id: "VISION-HCA-01"  # PROPOSED — vision/epic not yet formally planned via /acos-plan
+created_date: "2026-06-17"
+created_by: acos-preeng-classic-bridge
+status: "planned"
+
+# Slice overview
+title: "Skill scaffold + ACOS integration"
+objective: |
+  Scaffold the acos-hypercore-ask skill so it is discoverable and loadable in
+  ACOS/Claude Code, exposes the natural-language command surface, classifies a
+  question into a verification tier, surfaces the skill config, and wires per-slice
+  evidence bundles. No data access yet. In scope: SKILL.md (frontmatter + command
+  surface + forward pipeline overview); the tier-router script classifying a
+  question as trivial-lookup vs report/aggregation/analysis; the skill config file
+  (consensus/freshness/confidence/adapter defaults from tech_prd §5); evidence-bundle
+  wiring stub. Out of scope: adapter, cache, gates, consensus, provenance, delivery.
+  The router must NOT fetch data.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] SKILL.md loads with valid frontmatter (name/description); documents the NL command surface and the forward pipeline (router -> adapter -> cache -> normalize -> consensus -> gates -> binder -> deliver); states read-only + subscription-only + stubbed-until-access guardrails — artifact: SKILL.md"
+  - "[ ] hca-route.py deterministically classifies a question into trivial-lookup or report/aggregation/analysis and prints the tier; covered by an inline self-test (python3 hca-route.py --selftest exits 0) — pass-condition: self-test passes against QA-authored truth set (not Dev's) = REJECT on fail"
+  - "[ ] config.yaml present with the tech_prd §5 keys (consensus.default_quorum, agent_count, redispatch_retries, freshness_windows_days.*, confidence.single_source_cap: 0.7, adapter.backend: fixture) and NO secrets — artifact: config.yaml"
+  - "[ ] No secret-looking key (API key, token, password) found in config.yaml; no network import (urllib/http/socket) in hca-route.py; no .claude/agents/ file added"
+  - "[ ] Evidence-bundle wiring writes to .acos/evidence/[DATE]/[SLICE-ID]/ — pass-condition: bundle dir created"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (taken from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "SLICE-HCA-00-diagnostic"
+      what_it_provides: "Confirmed trust-failure diagnosis, Python 3 stdlib + stubbed-access ground rules, and gate-priority ranking that shape the scaffold"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-hypercore-ask/SKILL.md"
+  - ".claude/skills/acos-hypercore-ask/config.yaml"  # consensus/freshness/confidence/adapter defaults; NO secrets
+  - ".claude/skills/acos-hypercore-ask/README.md"
+  - ".claude/scripts/hca-route.py"  # tier router; Python 3 stdlib only
+  - ".acos/evidence/"
+  - "planning/preeng/001-hypercore-ask/tasks/slice-01-scaffold.md"  # learnings update only
+
+files_prohibited:
+  - "review-rules/"       # framework-restricted (human-editable only)
+  - ".claude/agents/"     # framework infrastructure; no agent file may be added
+  - ".claude/scripts/hca-adapter.py"  # later slice (slice-02)
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"        # Python 3 stdlib router + config
+  - "api-documentation"     # SKILL.md command-surface + pipeline overview
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/001-hypercore-ask/tasks/slice-01-scaffold.md"
+  - "Carried guardrails: Python 3 stdlib ONLY, subscription-only (never ANTHROPIC_API_KEY), stubbed-until-access. No network/API call and no secret in config."
+  - "Gotcha: the router must NOT fetch data — it is a deterministic rule-based classifier (single id/field => trivial; aggregation/list/'total'/'across'/'by' => report tier) with a --selftest."
+  - "Gotcha: QA re-authors the router truth set and will not trust Dev's; classifications must match QA's independent set."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; no third-party deps; no network imports (urllib/http.client/socket) in hca-route.py"
+  - "Deterministic rule-based classifier with inline --selftest exiting 0"
+  - "config.yaml carries tech_prd §5 defaults; comment noting secrets come from env/secret store only"
+  - "SKILL.md frontmatter valid (name/description); forward references for downstream pipeline stages"
+  - "Evidence-bundle directory-creation helper stub"
+
+# Testing requirements
+testing_requirements:
+  - "Run python3 .claude/scripts/hca-route.py --selftest; confirm exit 0 and classifications match a QA-authored truth set"
+  - "Grep config.yaml for secret-looking keys — must find none"
+  - "Confirm no .claude/agents/ file added; confirm no network import in hca-route.py"
+  - "Confirm evidence bundle exists and is authentic"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "M"  # from stories.json
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. The authoritative detail lives in the preeng task file
+  planning/preeng/001-hypercore-ask/tasks/slice-01-scaffold.md. If /acos-plan is
+  later run and conflicts with this skeleton, /acos-plan is authoritative.
+  VISION-HCA-01 / EPIC-HCA-01 are PROPOSED — not yet formally planned via /acos-plan.

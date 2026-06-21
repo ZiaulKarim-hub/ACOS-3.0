@@ -1,0 +1,87 @@
+slice_id: "SLICE-006-01"
+story_id: "STORY-006"
+epic_id: "EPIC-002"
+vision_id: "VISION-ZEE"
+created_date: "2026-04-23"
+created_by: the-architect
+status: "completed"
+
+title: "Phase 0 wizard in SKILL.md"
+objective: |
+  Author the full SKILL.md protocol — frontmatter, Purpose, Phase 0 (wizard
+  with quick/detailed modes), Phase 1–5 dispatch instructions, status/resume
+  commands. Use AskUserQuestion for option-based prompts (format, doc type);
+  use text prompts for paths. Store all inputs in
+  .acos/ultimate-designer/sessions/{session_id}/manifest.yaml. Replaces
+  the SKILL.md stub from SLICE-001-01 with the full specification.
+
+acceptance_criteria:
+  - "[ ] ~/.claude/skills/acos-ultimate-designer/SKILL.md contains: (A) frontmatter with valid name, description, user-invocable: true, allowed-tools list including Task/AskUserQuestion/Bash/Read/Write/Edit; (B) Purpose section (2-3 sentences on what the skill does); (C) Phase 0 wizard protocol; (D) Phase 1–5 dispatch instructions referencing phases/phase1-html.md etc.; (E) Status and Resume subcommands"
+  - "[ ] Phase 0 wizard — Quick mode (3 prompts): (1) content source path; (2) output format (pdf/pptx/both — AskUserQuestion); (3) brand-asset directory path (text input, optional — use '' for Unsplash-only)"
+  - "[ ] Phase 0 wizard — Detailed mode (adds 3 more prompts): (4) document type (editorial/technical/executive — AskUserQuestion, maps to Brad's doc-type templates); (5) special instructions (text input, optional); (6) iteration ceiling override (optional, defaults to 5)"
+  - "[ ] Mode selection: first prompt asks 'Quick wizard (3 prompts) or Detailed (6 prompts)?' via AskUserQuestion"
+  - "[ ] Session ID format: YYYYMMDD-HHMMSS-<slug> where slug is derived from content title or user-supplied"
+  - "[ ] Session directory: .acos/ultimate-designer/sessions/{session_id}/ created at wizard start; manifest.yaml written with all collected inputs"
+  - "[ ] Phase dispatch table: each phase lists either (a) inline Bash invocation of the right script with session paths, or (b) Task(agent_name, model) spawn"
+  - "[ ] Status subcommand (/acos-ultimate-designer status): lists all sessions with {session_id, doc_type, format, current_phase, verdict (if complete), iteration_count}"
+  - "[ ] Resume subcommand (/acos-ultimate-designer resume [session_id]): reads last-completed phase, picks up at next"
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-001-01"
+      what_it_provides: "SKILL.md stub + directory structure (this slice replaces stub with full protocol)"
+      status: "complete"
+
+files_allowed:
+  - "~/.claude/skills/acos-ultimate-designer/SKILL.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase0-wizard.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase1-html.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase2-images.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase3-convert.md"
+  - "~/.claude/skills/acos-ultimate-designer/phases/phase4-verify.md"
+
+files_prohibited:
+  - "~/.claude/skills/acos-ultimate-designer/scripts/"
+  - "~/.claude/skills/acos-ultimate-designer/templates/"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-loan-doc-generator-with-visual-verification/"
+
+skills_recommended:
+  - "frontend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "SKILL.md is a prompt, not code. Redundancy aids LLM attention; raw hex values in context beat var() indirection; adversarial checklists pattern well in execution prompts."
+  - "Design-library exclusion is enforced here too: Phase 1–5 instructions MUST NOT mention 'design-library', 'design-patterns.yaml', 'benchmark-criteria.yaml'. The epic's acceptance criterion requires this to grep-clean."
+  - "AskUserQuestion is for bounded choices (format: pdf/pptx/both). Plain text for open-ended (paths, instructions). Don't force multiple-choice for free-form input."
+  - "Wizard UX target: ≤5 prompts in Quick mode, ≤10 in Detailed. Loan-doc's wizard is longer than it needs to be; this skill's wizard should be tighter."
+
+technical_requirements:
+  - "SKILL.md has valid YAML frontmatter between --- markers"
+  - "Every phase dispatch is specific: exact script path, exact args, exact Task() spawn (if used), model specified where required (e.g., 'model: opus' in Phase 4 visual verifier)"
+  - "Session directory creation is mkdir -p, idempotent"
+
+testing_requirements:
+  - "Manual: invoke /acos-ultimate-designer, verify Quick mode asks exactly 3 prompts"
+  - "Manual: verify Detailed mode asks 6 prompts total (mode selector doesn't count)"
+  - "Manual: grep SKILL.md for 'design-library' — must return empty"
+  - "Manual: verify Phase 4 dispatch explicitly pins opus model (not inherited)"
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+
+effort_estimate: "M"
+
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+notes: |
+  This is the user-facing face of the skill. SKILL.md needs to be polished,
+  not just functional. Time spent on clarity and brevity pays off every
+  invocation.
+
+  The phase files (phase0-wizard.md etc.) are authored here alongside SKILL.md
+  so the full protocol is complete. SLICE-006-02 wires them together in
+  orchestration.

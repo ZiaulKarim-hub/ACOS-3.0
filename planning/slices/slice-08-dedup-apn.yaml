@@ -1,0 +1,92 @@
+# Slice Plan — Dedup on APN + per-owner aggregation
+# Bridged from preeng by acos-preeng-classic-bridge (faithful translation, not new design)
+
+slice_id: "slice-08-dedup-apn"
+story_id: "STORY-APS-08"
+epic_id: "EPIC-APS-08"
+vision_id: "VISION-APS-01"  # PROPOSED — not yet formally planned via /acos-plan
+created_date: "2026-06-19"
+created_by: acos-preeng-classic-bridge
+status: "complete"
+
+# Slice overview
+title: "Dedup on APN + per-owner aggregation"
+objective: |
+  Implement dedup.py: canonicalize APN and merge cross-channel duplicate parcels —
+  UNIONING provenance + freshness across the channels that found them — then aggregate
+  holdings per owner / controlled entity. One parcel found via assessor + recorder + ArcGIS
+  becomes one row carrying all three sources. Out of scope: scoring (slice-09), equity
+  rollup (slice-10).
+
+# Acceptance criteria (from task DoD + QA gates; testable)
+acceptance_criteria:
+  - "[ ] The same parcel found via 3 channels collapses to one record that retains all 3 source_refs + the freshest stamp — pass: merge-unions-provenance test (REQUIRED; dropped provenance = REJECT)"
+  - "[ ] APN canonicalization handles county format variants (dashes/spaces/leading zeros) deterministically — pass: canonicalization test"
+  - "[ ] Distinct APNs are never merged — pass: no-false-merge test"
+  - "[ ] Holdings aggregate per owner / controlled entity — pass: aggregation test"
+  - "[ ] Dev Learnings and QA Learnings sections updated"
+
+# Dependencies (from depends_on in stories.json)
+dependencies:
+  slices:
+    - slice_id: "slice-07-entity-discovery-loop-integration"
+      what_it_provides: "The integrated pipeline output (parcels found across channels) to deduplicate"
+      status: "complete"
+
+# File permissions (from task Guardrails / Allowed files)
+files_allowed:
+  - ".claude/skills/acos-property-search/scripts/dedup.py"   # stdlib only
+  - ".claude/skills/acos-property-search/scripts/tests/test_dedup.py"
+  - "planning/preeng/002-acos-property-search/tasks/slice-08-dedup-apn.md"  # learnings
+  - ".acos/evidence/"
+
+files_prohibited:
+  - ".claude/skills/acos-property-search/scripts/score.py"    # owned by slice-09
+  - ".claude/skills/acos-property-search/scripts/rollup.py"   # owned by slice-10
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Bridged from planning/preeng/002-acos-property-search/tasks/slice-08-dedup-apn.md"
+  - "Dedup is on canonical APN; cross-channel duplicates merge into one row."
+  - "Gotcha (hard gate): the merge MUST union provenance + freshness — dropping a source on merge = REJECT."
+  - "Gotcha: never merge two distinct APNs; never fabricate an APN."
+
+# Technical requirements
+technical_requirements:
+  - "Python 3 stdlib only; deterministic"
+  - "Canonical APN function normalizing separators / leading zeros"
+  - "Merge by canonical APN unioning source_refs; keep the freshest date_last_verified; aggregate per owner/entity"
+
+# Testing requirements (from QA verification steps)
+verification_method:
+  - "QA re-authors a 3-channel duplicate; confirm one row with all three sources + freshest stamp"
+  - "QA feeds two near-identical-but-distinct APNs; confirm they do NOT merge"
+  - "QA independently recomputes the canonical APN for a tricky format"
+
+# Review triggers (informational; assigned programmatically)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate (from stories.json)
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+handoff_path: null
+
+# Notes
+notes: |
+  Preeng-bridged skeleton. Authoritative detail lives in
+  planning/preeng/002-acos-property-search/tasks/slice-08-dedup-apn.md.
+  Parallel with the actual skill-file build (both derive from PLAN.md).

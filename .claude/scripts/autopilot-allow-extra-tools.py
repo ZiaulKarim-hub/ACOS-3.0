@@ -79,6 +79,25 @@ def main():
             emit("allow")  # silent pass-through; normal harness behavior
             return
 
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # ── Eternity-protocol subordination (precedence over autopilot) ───────
+        # Per user spec 2026-06-15: while eternity is in flight, skip the
+        # autopilot-specific auto-approval reasoning. Plain allow — the
+        # harness gets to apply its normal behavior for these tools.
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from _autopilot_eternity import is_eternity_protocol_active, detect_eternity_marker
+            if is_eternity_protocol_active(cwd):
+                sid, marker = detect_eternity_marker(cwd)
+                audit(project_root,
+                      f"[{ts}] AUTOPILOT_ETERNITY_SUBORDINATE | hook=extra-tools | "
+                      f"tool={tool_name} | marker={marker} | sid={sid[:12] if sid else '?'}")
+                emit("allow")
+                return
+        except Exception:
+            pass
+
         is_target = (
             tool_name in TOOL_PREFIXES_OR_NAMES
             or tool_name.startswith(MCP_PREFIX)
@@ -87,7 +106,6 @@ def main():
             emit("allow")
             return
 
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         audit(project_root,
               f"[{ts}] AUTOPILOT_EXTRA_ALLOW | tool={tool_name}")
         emit("allow", reason=f"Autopilot auto-approved {tool_name}.")

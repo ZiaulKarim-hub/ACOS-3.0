@@ -1,0 +1,173 @@
+# Audit-trail handoff — SLICE-003-001-01 completed
+# Written by /acos-execute-slice Step 10. Status: completed.
+
+handoff_id: "2026-05-26-slice-003-001-01-completed"
+handoff_type: "slice-completion-audit"
+created_date: "2026-05-26"
+created_by: the-architect
+status: "completed"
+
+slice_id: "SLICE-003-001-01"
+story_id: "STORY-003-001"
+epic_id: "EPIC-003"
+vision_id: "VISION-HVC-01"
+
+title: "Project scaffolding + ContainerRecord type contract"
+
+outcome: PASS
+
+protocol_steps:
+  step_1_read_spec: ✓
+  step_2_scope_enforcement: ✓ (active-slice.yaml written + cleared at completion)
+  step_3_evidence_bundle: ✓ (.acos/evidence/2026-05-26/SLICE-003-001-01/)
+  step_4_developer_delegation: ✓ (Task(developer, opus); 1 spawn; completed)
+  step_5_quality_gates: ✓ (skipped — no quality-gates.yaml at framework level)
+  step_6_reviewer_assignment: ✓ (assign-reviewers.sh returned ["integration-reviewer", "qa-reviewer"])
+  step_7_reviewer_swarm: ✓ (both spawned in parallel, isolation: worktree, opus)
+  step_8_verdict_aggregation: ✓ (all PASS)
+  step_9_feedback_resolution: SKIPPED (no REJECT)
+  step_10_completion: ✓ (this handoff)
+
+reviewer_verdicts:
+  qa-reviewer:
+    verdict: PASS
+    acceptance_criteria_pass_rate: "10/10"
+    scope_compliance: PASS
+    evidence_authenticity: PASS
+    code_quality: PASS
+    required_fixes: []
+    minor_findings: 3
+  integration-reviewer:
+    verdict: PASS
+    type_contract_fidelity: PASS
+    api_surface_correctness: PASS
+    downstream_consumability: PASS
+    exhaustive_narrowing: PASS
+    required_fixes: []
+    minor_findings: 2
+
+key_decisions_during_execution:
+  - decision: "Installed pnpm 10.33.4 via corepack (pinned to v10; v11 requires Node 22+)"
+    rationale: "Slice spec mandated pnpm; user is on Node 20.19.3"
+    user_approved: true
+  - decision: "Developer rewrote package.json from scratch to pin React 18.3 / TS 5.6 / Vite 5.4 / Vitest 2.1"
+    rationale: "pnpm create vite@latest defaults to React 19 / TS 6 / Vite 8 — newer than slice spec's locked stack"
+    user_approved: implicit (matches slice spec)
+  - decision: "Build script became 'tsc --noEmit && vite build' instead of 'tsc -b && vite build'"
+    rationale: "Template's TS-6-only flags dropped; single tsconfig.json doesn't need project-reference build mode"
+    user_approved: implicit (passes acceptance criteria)
+  - decision: "Vitest config inlined inside vite.config.ts instead of separate vitest.config.ts"
+    rationale: "Reduces config drift; both patterns documented as valid in Vitest"
+    user_approved: implicit
+
+minor_findings_to_address_in_downstream_slices:
+  - finding_id: "F1"
+    severity: MINOR
+    source: integration-reviewer
+    target_slice: "SLICE-003-001-02"
+    description: |
+      vite.config.ts sets test.environment: 'node'. Slice 02's DOM walker
+      tests will need 'jsdom' or 'happy-dom' (or per-file @vitest-environment
+      pragma) to access window/Document. Add to slice 02 plan.
+    action: "Document in slice 02's technical_requirements; add happy-dom or jsdom as devDep when slice 02 starts."
+
+  - finding_id: "F2"
+    severity: MINOR
+    source: integration-reviewer
+    target_slice: "SLICE-003-001-07"
+    description: |
+      ContainerRecord.kind and ContainerRecord.content.kind are two parallel
+      discriminators. TypeScript can't enforce structural agreement between
+      them. Mitigation: add a runtime invariant check
+      (assert(record.kind === record.content.kind)) in slice 07 integration tests.
+    action: "Add to slice 07 testing_requirements before execution starts."
+
+  - finding_id: "F3"
+    severity: MINOR
+    source: qa-reviewer
+    target_slice: "SLICE-003-001-02 (when index.ts is next touched)"
+    description: |
+      apps/visual-composer/src/parser/index.ts:33 has a stale
+      `// eslint-disable-next-line` comment. No ESLint configured; comment
+      is dead. Recommend dropping in the next slice that touches index.ts.
+    action: "Remove the comment line during slice 02 when wiring extractors."
+
+  - finding_id: "F4"
+    severity: MINOR
+    source: qa-reviewer
+    target_slice: "any future slice"
+    description: |
+      apps/visual-composer/public/favicon.svg and icons.svg are Vite-template
+      leftovers, unreferenced. Cosmetic dead weight, not load-bearing.
+    action: "Optional cleanup; not assigned to a specific slice."
+
+  - finding_id: "F5"
+    severity: MINOR
+    source: qa-reviewer
+    target_slice: "SLICE-003-001-02 or later"
+    description: |
+      Vitest test glob limits discovery to tests/**/*.test.ts. Downstream
+      slices may want to co-locate `.test.ts` files next to source under src/.
+      Not a defect; flag for awareness.
+    action: "If co-located tests are wanted later, extend vite.config.ts test.include."
+
+framework_findings:
+  - finding_id: "FW1"
+    severity: MAJOR (out-of-slice-scope)
+    source: developer + integration-reviewer + qa-reviewer (corroborated by 3 independent agents)
+    description: |
+      .claude/scripts/check-scope.sh does not normalize absolute vs relative
+      paths. The hook compares absolute paths from Write/Edit tool calls
+      against the relative patterns in .acos/config/active-slice.yaml. Result:
+      the hook does NOT actually enforce slice scope at the tool-call layer.
+      For this slice, developer discipline kept all writes inside the
+      intended scope, but a future developer relying on the hook for safety
+      could write outside scope with impunity.
+    action: "Create a follow-up framework-hygiene slice to fix check-scope.sh — normalize paths, treat trailing-slash patterns as subtree-allow."
+    suggested_slice_owner: "framework hygiene; not in EPIC-003 scope"
+
+artifacts_produced:
+  files_created:
+    - apps/visual-composer/.gitignore
+    - apps/visual-composer/index.html
+    - apps/visual-composer/package.json
+    - apps/visual-composer/pnpm-lock.yaml
+    - apps/visual-composer/public/favicon.svg
+    - apps/visual-composer/public/icons.svg
+    - apps/visual-composer/src/main.tsx
+    - apps/visual-composer/src/parser/index.ts
+    - apps/visual-composer/src/parser/types.ts
+    - apps/visual-composer/tests/parser/types.test.ts
+    - apps/visual-composer/tsconfig.json
+    - apps/visual-composer/vite.config.ts
+  files_modified:
+    - .gitignore
+  evidence_bundle: ".acos/evidence/2026-05-26/SLICE-003-001-01/"
+  evidence_bundle_contents:
+    - Summary.md
+    - verify.log
+    - after/modified-files.txt
+    - after/diff.patch
+    - after/diff.stat.txt
+
+execution_metrics:
+  developer_agent_duration_ms: 284843
+  qa_reviewer_duration_ms: 131306
+  integration_reviewer_duration_ms: 88626
+  developer_tool_uses: 48
+  qa_reviewer_tool_uses: 32
+  integration_reviewer_tool_uses: 20
+  total_models_used: ["opus" x 3 spawned agents]
+
+next_step_recommended: "/acos-execute-slice SLICE-003-001-02"
+notes: |
+  This is the first slice executed end-to-end on this project under the
+  ACOS slice-execution protocol. Both reviewers PASSED first-pass with
+  zero required fixes — no feedback-resolution loop needed.
+
+  ContainerRecord type contract is frozen and consumable by 6 downstream
+  slices in this story + 4 downstream stories in EPIC-003.
+
+  Three framework-level observations surfaced (check-scope.sh path bug,
+  vitest environment forward-look, dual-discriminator runtime invariant)
+  are captured as forward-looking findings, not blockers.

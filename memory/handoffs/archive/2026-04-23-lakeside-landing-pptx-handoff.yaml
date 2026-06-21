@@ -1,0 +1,139 @@
+timestamp: "2026-04-23T13:30:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  This session ran the /acos-loan-doc-generator-with-visual-verification skill (session
+  20260423-030643) to produce a PPTX investor brief for Lakeside Landing, a 975-unit
+  residential land deal in Springville, Utah being lent on by Okoa Capital. The source
+  of truth was a user-authored HTML file at /Users/zee/Desktop/SpringVille/
+  Lakeside_Landing_Investor_Brief.html. The session went through 6 build iterations before
+  the user called it done and ended the context window. Final deliverables are live at
+  /Users/zee/Desktop/SpringVille/. The user was frustrated by the number of iterations
+  required and wants to start fresh — next session should NOT re-audit, just confirm
+  the file is present and ask what needs fixing.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+  notes: |
+    Skill invocation completed. All 4 phases ran (Phase 2 analysis, Phase 3 design,
+    Phase 4 validation). Session manifest status=complete, current_phase=4,
+    current_iteration=4 (manifest was last written at iter-4; iter-5 and iter-6 were
+    done outside the manifest checkpoint cycle, directly by running build.py).
+    Final PPTX is iteration-6. The session workspace remains intact for surgical fixes.
+
+completed_this_session:
+  - "Phase 2: Analyzed Lakeside_Landing_Investor_Brief.html + Lakeside Landing Investor Preso 20260323.pptx; synthesized loan-data.yaml + loan-data-brief.yaml + verification-table.yaml"
+  - "Phase 3 iterations 1-2: Generic 13-slide OKOA brand/coffee-table build; structurally deviated from HTML"
+  - "Phase 3 iteration 3: Coral-stripe color drift fix + slide 8 overflow fix + slide 9 wrong image (tropical home replaced with Utah context photo)"
+  - "Phase 3 iteration 4: Full structural rebuild to 11 slides matching HTML sections; OKOA wordmark added; title case corrected; $16.3M data row added; infrastructure callout and stacked scenario slides added; hero-mountains.jpg and photobreak-valley.jpg embedded via Unsplash URLs from HTML"
+  - "Phase 4 iteration-4 patch: User said 'use same photos as pdf'; grep'd HTML for Unsplash URLs; downloaded and embedded photo-break-valley.jpg (1500382017468-9049fed747ef)"
+  - "System change: Installed LibreOffice via brew install --cask libreoffice (for real PPTX→PDF→PNG rendering)"
+  - "System change: Installed fonts via brew install --cask font-cormorant-garamond font-ibm-plex-sans font-ibm-plex-mono"
+  - "Phase 4 iteration 5 (visual verification): LibreOffice renders revealed IRR 14.45%/14.99% clipping at slide bottom on slides 9-10; fixed via font shrink 64pt→32pt with TOP anchor; side-by-side PNGs written to /Users/zee/Desktop/SpringVille/pptx-renders/"
+  - "Phase 3 iteration 6: User demanded 'same slide order, same content, same look as PDF' and 'don't change first slide'; rebuilt slides 2-10 for verbatim 1:1 HTML page parity; added missing pull quote ('No single-buyer concentration risk') on slide 9; added full disclosure text on slide 10; reduced from 11 to 10 slides"
+  - "Copied final PPTX + PDF + renders to /Users/zee/Desktop/SpringVille/"
+
+files_modified:
+  - path: "/Users/zee/Desktop/SpringVille/Lakeside_Landing_Investor_Brief.pptx"
+    changes: "Final iteration-6 PPTX, 10 slides, 234KB. Built from iteration-6/build.py. 1:1 mapping to HTML PDF pages 2-10 with custom hero slide 1."
+  - path: "/Users/zee/Desktop/SpringVille/Lakeside_Landing_Investor_Brief.pdf"
+    changes: "LibreOffice-rendered PDF of the final PPTX, 546KB. Authoritative visual reference for next session comparison."
+  - path: "/Users/zee/Desktop/SpringVille/pptx-renders/slide-01.png through slide-10.png"
+    changes: "LibreOffice-rendered PNGs of all 10 slides. Used for side-by-side visual verification."
+  - path: "/Users/zee/Desktop/SpringVille/pptx-renders/build-script.py"
+    changes: "Copy of iteration-6 build.py placed here for discoverability."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260423-030643/session-manifest.yaml"
+    changes: "Status=complete, current_phase=4, current_iteration=4. Note: manifest last checkpointed at iter-4; iterations 5-6 ran after manual user override."
+
+decisions_made:
+  - "Slide 1 is permanently frozen as the custom hero (Utah mountain photo + OKOA wordmark + 5 data cells on dark background). User explicitly said 'don't change first slide'."
+  - "10-slide structure is final: slides 2-10 map 1:1 to HTML PDF pages 2-10."
+  - "Photos used are EXACTLY the two Unsplash URLs found in the HTML: hero (1506905925346-21bda4d32df4) for slide 1, valley photobreak (1500382017468-9049fed747ef) for slide 9."
+  - "Font stack: Cormorant Garamond (display), IBM Plex Sans (body), IBM Plex Mono (monospace labels) — all installed via Homebrew cask."
+  - "IRR numbers (14.45% / 14.99%) render at 36pt with TOP anchor to prevent bottom clipping."
+
+blockers:
+  - "None blocking delivery. User was frustrated at iteration count but accepted iteration-6 as final."
+  - "If user opens PPTX and reports new defects, do TARGETED surgical fixes only — do NOT rebuild from scratch."
+
+next_actions:
+  - "FIRST: Show the user the file links without re-auditing. Ask what needs fixing, if anything."
+  - "SECOND (if defects reported): Open iteration-6/build.py, make surgical edits to the specific slide function, re-run build.py, re-render via LibreOffice, confirm fix visually."
+  - "THIRD (if user wants to learn from this): Consider running /acos-learn to capture the key lessons from this session into learning-curve/"
+  - "OPTIONAL: Add 'Prefer matching source documents literally over improving their composition' to memory/feedback-history/ as a reinforced preference."
+
+context_for_next_session: |
+  The Lakeside Landing PPTX is DONE. Final file is at /Users/zee/Desktop/SpringVille/
+  Lakeside_Landing_Investor_Brief.pptx (234KB, 10 slides). A LibreOffice-rendered PDF
+  is at /Users/zee/Desktop/SpringVille/Lakeside_Landing_Investor_Brief.pdf (546KB).
+  Slide PNGs are in /Users/zee/Desktop/SpringVille/pptx-renders/.
+
+  Do NOT ask the user if they want to re-verify or re-audit. They are frustrated. Just
+  confirm you can see the files and ask what, if anything, needs to change.
+
+  If fixes are needed, the build script is at:
+  /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260423-030643/phase3-design/iteration-6/build.py
+
+  The build script is self-contained (53KB). Each slide is a separate function.
+  To fix slide N: edit the corresponding function, run build.py (it writes PPTX to
+  /Users/zee/Desktop/SpringVille/ automatically), then re-render via LibreOffice:
+    soffice --headless --convert-to png --outdir /Users/zee/Desktop/SpringVille/pptx-renders/ \
+      /Users/zee/Desktop/SpringVille/Lakeside_Landing_Investor_Brief.pptx
+
+  Fonts confirmed installed this session (via Homebrew cask):
+    - Cormorant Garamond → ~/Library/Fonts/CormorantGaramond-*.ttf (check with: ls ~/Library/Fonts | grep -i cormorant)
+    - IBM Plex Sans     → ~/Library/Fonts/IBMPlexSans-*.ttf
+    - IBM Plex Mono     → ~/Library/Fonts/IBMPlexMono-*.ttf
+  LibreOffice: /Applications/LibreOffice.app/Contents/MacOS/soffice
+
+  The HTML source at /Users/zee/Desktop/SpringVille/Lakeside_Landing_Investor_Brief.html
+  is the authoritative content reference. The older deck (Lakeside Landing Investor Preso
+  20260323.pptx) was never touched — leave it alone.
+
+  KEY LESSONS (do not repeat these mistakes):
+  1. Visual verification with LibreOffice real renders is mandatory — install it BEFORE
+     starting builds, not after iteration 4.
+  2. Fonts must be installed system-wide or LibreOffice substitutes Helvetica and the
+     editorial character is lost.
+  3. When source HTML has specific Unsplash photo URLs, use THOSE URLs — do not
+     substitute with agent-chosen alternates.
+  4. "Look like the PDF" means literal 1:1 page-to-slide mapping including continuation
+     paragraphs, secondary pull quotes, full disclosure blocks, and footer strips. Never
+     compress or reorganize unless explicitly asked.
+  5. Dispatched sub-agents that pause at their own confirmation gates waste turns — when
+     briefing sub-agents, pre-authorize all decisions in the brief.
+
+  Other active projects in this repo: EPIC-002 (acos-ultimate-designer skill) is
+  plan-approved and ready for /acos-execute-story STORY-001. Three handoffs from that
+  planning work are also active: 2026-04-23-081259-plan-approved-pending.yaml,
+  2026-04-23-095423-emergency-state-recovery.yaml, 2026-04-23-documents-materialized.yaml.
+  Those are unrelated to Lakeside Landing — do not conflate.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260423-030643/session-manifest.yaml"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/loan-doc-generator/sessions/20260423-030643/phase3-design/iteration-6/build.py (header, lines 1-60)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-documents-materialized.yaml (confirmed separate/unrelated planning work)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-04-23-081259-plan-approved-pending.yaml (confirmed EPIC-002 context)"
+  - "git log --oneline -20 (confirmed most recent commits are loan-doc-generator remediation work)"
+  - "git status --short (confirmed modified files: data-to-pptx.py, html-to-docx.py, phase2-analyze.md, phase3-design.md, doc-type-catalog.yaml)"
+  - "ls /Users/zee/Desktop/SpringVille/ (confirmed deliverables present: PPTX 234KB, PDF 546KB, pptx-renders/ with 10 PNGs)"
+  - "ls .acos/loan-doc-generator/sessions/20260423-030643/ (confirmed all 4 phases present)"
+  - "ls .acos/loan-doc-generator/sessions/20260423-030643/phase3-design/ (confirmed iteration-6 directory)"
+  - "ls .acos/loan-doc-generator/sessions/20260423-030643/phase3-design/images/ (confirmed hero.jpg, break1.jpg, break2.jpg, break3.jpg)"
+  - "ls /Users/zee/Desktop/SpringVille/pptx-renders/ (confirmed slide-01.png through slide-10.png + build-script.py)"
+  - "ls .acos/loan-doc-generator/sessions/20260423-030643/sidebyside/iter-current/ (confirmed PDF + PNGs copied to sidebyside workspace)"
+  - "Session context provided by user at handoff invocation (iteration history, lessons, open items)"
+
+confidence: "high"
+confidence_notes: |
+  All key artifacts confirmed on disk. Deliverables verified at expected paths with
+  correct file sizes. Build script header confirmed 10-slide structure and iter-6 contract.
+  Session manifest confirmed phase completion and prior iteration history. The only gap is
+  that iteration-5 and iteration-6 ran outside the manifest checkpoint cycle — the manifest
+  still says current_iteration=4 — but the physical files (iteration-6/ directory, desktop
+  PPTX timestamp 13:19) confirm iteration-6 is the true final output.

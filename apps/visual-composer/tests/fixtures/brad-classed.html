@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Brad-classed fixture — SLICE-003-001-06</title>
+    <style>
+      body { font-family: 'Inter', sans-serif; color: rgb(20, 20, 20); }
+      .heading-display { font-size: 48px; font-weight: 700; line-height: 56px; }
+      .heading-subhead { font-size: 24px; font-weight: 600; line-height: 32px; }
+      .body-lead       { font-size: 18px; line-height: 28px; }
+      .body-default    { font-size: 14px; line-height: 20px; }
+      .body-paragraph  { font-size: 14px; line-height: 20px; }
+      .metric-grid     { display: grid; gap: 16px; }
+      .metric-card     { padding: 12px; }
+      .chapter-divider { border-top: 1px solid #000; margin: 24px 0; }
+      .pull-quote      { font-style: italic; font-size: 22px; }
+      .caption         { font-size: 12px; color: rgb(80, 80, 80); }
+      .footnote        { font-size: 11px; color: rgb(120, 120, 120); }
+      .data-table      { border-collapse: collapse; width: 100%; }
+      .photo-break     { background-image: url('data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='); width: 1px; height: 1px; }
+    </style>
+  </head>
+  <body>
+    <!-- Each visible element below carries a distinct Brad class.
+         These 12 entries cover every member of the v1 taxonomy. The
+         fixture also includes "narrow" / "wide" extras to confirm the
+         priority pick correctly ignores non-taxonomy noise. -->
+
+    <h1 class="heading-display">Chapter Opening Display</h1>
+    <h2 class="heading-subhead">Section subhead in Brad style</h2>
+
+    <p class="body-lead">Lead paragraph that sets up the section in larger body text.</p>
+    <p class="body-default">Default body paragraph with running prose for downstream text extraction.</p>
+
+    <!-- False-positive guard: body-paragraph is NOT in the taxonomy. The
+         record produced for this <p> must end up with bradClass===undefined. -->
+    <p class="body-paragraph">Article-style paragraph using a non-Brad class that visually mimics body text.</p>
+
+    <div class="metric-grid">
+      <div class="metric-card">$1.2B AUM</div>
+      <div class="metric-card">17 deals</div>
+    </div>
+
+    <div class="chapter-divider">Chapter Two</div>
+
+    <blockquote class="pull-quote">"A pull-quote that breaks up the column rhythm."</blockquote>
+
+    <figure>
+      <img src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
+           alt="dot"
+           width="1" height="1" />
+      <p class="caption">Caption: photo of a single visible pixel.</p>
+    </figure>
+
+    <p class="footnote">[1] Footnote text in fine print at the bottom of the page.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Metric</th><th>Q1</th><th>Q2</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>NOI</td><td>120</td><td>134</td></tr>
+        <tr><td>DSCR</td><td>1.42</td><td>1.55</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Photo-break: a background-image div used as a full-bleed visual rule. -->
+    <div class="photo-break"></div>
+
+    <!-- Multi-class element: bears BOTH heading-subhead AND body-lead. By
+         the priority table, heading-subhead wins. -->
+    <h3 class="heading-subhead body-lead">Multi-class element — heading wins</h3>
+
+    <!-- Element with only non-Brad classes: bradClass must be undefined. -->
+    <p class="narrow custom-thing">No Brad class on this paragraph.</p>
+  </body>
+</html>

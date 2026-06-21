@@ -1,0 +1,123 @@
+timestamp: "2026-05-23T03:20:01Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+
+session_summary: |
+  Working on the Ascent Park City lender memorandum rebuild for Okoa Capital.
+  The session built a complete Python YAML-to-HTML generator (brad-build.py, 1371 lines)
+  targeting the OKOA Brad design system spec, plus a Puppeteer renderer
+  (brad-render-pdf.js, 99 lines), and produced multiple rendered PDFs across the day.
+  The current blocker is an image-loading regression: the Property Renderings section
+  (section 04 of the document, approximately pages 7-8 in the rendered PDF) showed only
+  2 of 8 image cards loading in the most recent BRAD.pdf render. The just-applied fix —
+  removing loading="lazy" from img tags in render_image_grid() — is on disk but has NOT
+  yet been verified by re-render. That verification is the next action.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+completed_this_session:
+  - "Extracted and reconciled two source PDFs (Lender Memorandum UPDATED + Debt Presentation v7) into two canonical YAMLs: ascent-park-city.A-verbatim.yaml (verbatim) and ascent-park-city.B-corrected.yaml (three tables corrected to foot)"
+  - "Produced RECONCILIATION-NOTES.md documenting all content decisions, the three internal MEMO footing errors, the MEMO-vs-V7 data conflicts, and the Think Architecture attribution caution"
+  - "Produced IMAGE-CATALOG.md cataloging all image streams from both source PDFs with provenance and curated use assignments"
+  - "Hand-named and placed 36 brand assets into images/curated/ (filenames 00- through 70-)"
+  - "Built brad-build.py: full YAML-to-Brad-HTML generator with hero, data callouts, narrative sections, tables, photo breaks, image grid, timeline, metric cards, risk cards, sponsor section, and closing — all CSS inline"
+  - "Built brad-render-pdf.js: Puppeteer renderer using page.goto('file://') instead of setContent() to avoid same-origin blocking of file:// images; includes per-image load-complete polling"
+  - "Produced A-verbatim.BRAD.html (85 KB) and A-verbatim.BRAD.pdf (1.83 MB) as the most recent Version A output"
+  - "Applied fix: removed loading='lazy' attribute from all <img> tags in render_image_grid() because Chromium headless does not trigger lazy-load for images outside the initial viewport"
+  - "Earlier pipeline attempts on disk as fallbacks: ascent-park-city.A-verbatim.MAGAZINE.pdf and B-corrected.MAGAZINE.pdf (acos-ultimate-designer runs, 1.63 MB each); and ascent-park-city.A-verbatim.pdf + B-corrected.pdf (earlier HTML pipeline attempt, ~413 KB)"
+
+files_modified:
+  - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/brad-build.py"
+    changes: "Full YAML-to-HTML generator for Brad design system, 1371 lines. Most recent change: removed loading='lazy' from img tags in render_image_grid() to fix headless Chromium image loading. All image src attributes use absolute file:// paths."
+  - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/brad-render-pdf.js"
+    changes: "Puppeteer renderer, 99 lines. Uses page.goto('file://'+absolutePath) not setContent(). Includes per-image .complete polling + 8s timeout fallback + fonts.ready wait + 600ms final settle. node_modules resolved from absolute ACOS 3.0 path."
+  - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.BRAD.html"
+    changes: "Most recent Brad-generated HTML for Version A (verbatim). 85,369 bytes. Generated at 21:12 today. This is the file to re-render."
+  - path: "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/ascent-park-city.A-verbatim.BRAD.pdf"
+    changes: "Most recent Brad PDF for Version A. 1,875,331 bytes (1.83 MB). Generated at 21:16 today. This is the output to visually inspect after re-render."
+
+decisions_made:
+  - "page.goto('file://') is mandatory — setContent() puts page at about:blank origin which blocks all file:// image loads (this was the root cause of blank hero pages in the earlier pipeline)"
+  - "All <img> src attributes in brad-build.py use absolute file:// paths, not relative paths, because the HTML may be opened from any working directory"
+  - "loading='lazy' must NOT be used in image grids — headless Chromium does not scroll and therefore never triggers lazy-load for images below the initial viewport fold"
+  - "Version A preserves MEMO numbers verbatim with inline red/green callout markers at the three footing-error locations; Version B corrects those three tables. Both versions go through the same brad-build.py pipeline."
+  - "node_modules/puppeteer is resolved from the ACOS 3.0 directory (/Users/zee/Documents/Vibe Coding/ACOS 3.0/node_modules/puppeteer) — there is no node_modules in the OKOA workspace"
+
+blockers:
+  - "Image grid verification pending: the lazy-load fix is on disk in brad-build.py but brad-build.py has NOT been re-run yet to regenerate the HTML, and the HTML has NOT been re-rendered to PDF. The current A-verbatim.BRAD.pdf on disk was rendered BEFORE the loading='lazy' removal and still shows the 2-of-8 failure."
+
+next_actions:
+  - "Step 1 — Regenerate Version A HTML: run `python3 brad-build.py ascent-park-city.A-verbatim.yaml ascent-park-city.A-verbatim.BRAD.html` from the rebuild/ directory"
+  - "Step 2 — Re-render PDF: run `node brad-render-pdf.js ascent-park-city.A-verbatim.BRAD.html ascent-park-city.A-verbatim.BRAD.pdf` from the rebuild/ directory"
+  - "Step 3 — Visual verification: open the new PDF and check pages 7-8 (Property Renderings section 04). Confirm all 8 image cards are visible: Plate II Driveway Evening, Plate III Porte-Cochere Winter, Plate IV Ridge View, Plate V South Elevation, Plate VI Courtyard Terrace, Interior Bedroom, Interior Living/Kitchen, Interior Bath"
+  - "Step 4 — If images pass: build Version B HTML and PDF using the same pipeline (`python3 brad-build.py ascent-park-city.B-corrected.yaml ascent-park-city.B-corrected.BRAD.html && node brad-render-pdf.js ascent-park-city.B-corrected.BRAD.html ascent-park-city.B-corrected.BRAD.pdf`). Version B differs from A only in the three corrected tables: Unit Mix pricing rows, Use of Proceeds Preferred total, and Use of Proceeds Alternative total."
+  - "Step 5 — Full visual QA pass on both PDFs: cover hero, photo breaks (3 total), all image grids, all tables, closing sage section"
+  - "Step 6 — If any whitespace or density issues remain, fix-page-density.py and inject-table-pages.py are on disk as precedent scripts"
+
+context_for_next_session: |
+  The session is in the middle of a brad-build.py iteration loop for the Ascent Park City
+  lender memorandum. The workspace is at /Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/.
+
+  The pipeline is: YAML source → brad-build.py → HTML → brad-render-pdf.js → PDF.
+  Both Python and Node scripts are self-contained and ready to run. The working command
+  sequence is:
+    cd "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild"
+    python3 brad-build.py ascent-park-city.A-verbatim.yaml ascent-park-city.A-verbatim.BRAD.html
+    node brad-render-pdf.js ascent-park-city.A-verbatim.BRAD.html ascent-park-city.A-verbatim.BRAD.pdf
+
+  The most recent BRAD.pdf on disk (ascent-park-city.A-verbatim.BRAD.pdf, 1.83 MB,
+  timestamp 21:16) was rendered BEFORE the loading='lazy' fix and therefore should NOT be
+  treated as the verified output. It may show only 2 of 8 image cards in the Property
+  Renderings section. Re-render first, then inspect.
+
+  Content architecture: 16 numbered sections + 3 photo breaks + hero + closing. The
+  image-heavy sections are the hero (background-image CSS, not an img tag — always works),
+  the 3 photo breaks (also CSS background-image), and two image grids: section 04 Property
+  Renderings (8 cards, the one that failed) and implicitly any floor-plan grid if added.
+  The render_image_grid() function in brad-build.py produces all img tags — that is the
+  only place where loading='lazy' was removed.
+
+  Key path facts for the resume session:
+  - Source YAMLs: rebuild/ascent-park-city.A-verbatim.yaml (412 KB) and B-corrected.yaml (same structure)
+  - Curated images directory: rebuild/images/curated/ (36 files, filenames 00- through 70-)
+  - All image src attributes in brad-build.py are absolute file:// URIs, not relative paths
+  - puppeteer: /Users/zee/Documents/Vibe Coding/ACOS 3.0/node_modules/puppeteer
+  - Earlier pipeline runs (acos-ultimate-designer) are in rebuild/.acos/ultimate-designer/sessions/
+    (two sessions: 20260522-144500-ascent-A-verbatim and 20260522-150000-ascent-B-corrected)
+    These produced output-final.pdf files and can be used as visual reference for what
+    the design should look like with all images loading.
+
+  Three MEMO footing errors (documented in RECONCILIATION-NOTES.md §4):
+  - Table 1: Unit Mix revenue rows sum to $106.77M vs printed total $110.78M. Version B
+    scales per-unit prices by x1.037580 to close the gap.
+  - Table 2: Use of Proceeds Preferred line items sum to $63.40M vs printed $61.76M.
+    Version B sets total = $63.40M.
+  - Table 3: Use of Proceeds Alternative line items sum to $87.38M vs printed $88.26M.
+    Version B sets total = $87.38M.
+  These corrections appear in red/green callout markup in the Version A HTML and as
+  corrected numbers in the Version B HTML.
+
+  User frustration context: Zee expressed frustration twice — first about excessive
+  whitespace from the acos-ultimate-designer pipeline, then about missing pictures in
+  the BRAD render. Both are directly addressed: BRAD uses a flowing layout (not fixed
+  page canvases) to avoid forced whitespace, and the lazy-load fix addresses the missing
+  pictures. The next session should deliver a verified render immediately — do not propose
+  additional design changes until images are confirmed loading.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/brad-build.py (lines 1-100, 395-455, 700-800, 1100-1371)"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/brad-render-pdf.js (all 99 lines)"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/IMAGE-CATALOG.md (all 114 lines)"
+  - "/Users/zee/Documents/OKOA/Ascent LK Cap preso/rebuild/RECONCILIATION-NOTES.md (all 141 lines)"
+  - "bash: ls -lt rebuild/ (file timestamps and sizes, confirmed most recent edits)"
+  - "bash: ls -la rebuild/images/curated/ (36 curated files confirmed present)"
+  - "bash: find rebuild/.acos (acos-ultimate-designer session artifacts confirmed on disk)"
+  - "bash: ls -lt rebuild/ (confirmed brad-build.py modified 21:17, BRAD.html at 21:12, BRAD.pdf at 21:16)"
+  - "bash: grep loading|lazy|image-grid in brad-build.py (confirmed loading='lazy' absence post-fix)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ADR-001-page-as-canvas-composition.md"
+  - "git log --oneline -20 (ACOS repo — no Ascent-specific commits; project is untracked)"

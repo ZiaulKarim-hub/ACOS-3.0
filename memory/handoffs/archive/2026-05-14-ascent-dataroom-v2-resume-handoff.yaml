@@ -1,0 +1,157 @@
+timestamp: "2026-05-14T07:25:00Z"
+status: "completed"
+type: "long-running-run-pause"
+trigger: "user-requested clean handoff after 10hr interactive session; conversation length exceeded efficient round-trip threshold"
+
+session_summary: |
+  acos-dataroom-v2 invoked on Wolfgramm Ascent Beehive Waldorf 30M loan folder (2,285 files).
+  Phase 1 (objective solidification) complete. Phase 2 preprocessing (extraction + OCR + selective
+  vision-bridge) complete. Phase 2 deliberation IN PROGRESS — tiered architecture adopted after
+  context-budget analysis revealed pure 1:1 swarm impractical at this corpus size. Paused at
+  batches 7-8 complete; 82 more deliberation batches remain plus phases 2.5, 3, 4, 5, 6.
+
+run_id: "run_20260513_152429_e79c3aa1"
+run_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1"
+source_folder: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+objective: |
+  Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the Ascent Hotel
+  are relevant. Other-collateral and other-deal documents are out of scope.
+
+what_is_done:
+  phase_1_objective_solidification:
+    status: "COMPLETE"
+    convergence: "85% substance, 82 confidence"
+    artifact: "<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md (31KB, 251 lines)"
+    key_findings:
+      - "Asset is 'The Ascent Park City' Tapestry Collection by Hilton condotel, 4080 N Cooper Lane, Park City UT — NOT the operating Waldorf-Astoria at 2100 Frostwood Blvd"
+      - "'Waldorf' in this folder is a loan-family codename (Beehive_Waldorf, Waldorf 30M, etc.) — Phase 2 must NOT auto-exclude 'Waldorf'-named files"
+      - "Wolfgramm sponsor, $30M Okoa construction loan, in workout / settlement / sale process"
+      - "Variant participation agreement + Nuveen senior-construction-lender question + EB-5 LOI all surfaced"
+      - "20+ relevance criteria written in §5 of solidified objective"
+      - "10 OPEN_QUESTIONS surfaced as downstream content-verification flags (Phase 2.5 territory)"
+
+  phase_2_preprocessing:
+    status: "COMPLETE"
+    extraction:
+      files_in_canonical_queue: 1858  # deduped from 2,285 raw (266 dup groups + 113 non-extractable)
+      extraction_successes: 1854
+      extraction_failures: 4  # 302MB Excel loan model, 112MB Friendswood construction PDF, 80MB binder, 17MB planning PDF — all timed out at 180s
+      wall_time: "~5 hours"
+    ocr:
+      files_processed: 329
+      vision_bridge_requests_emitted: 212
+      wall_time: "~18 min"
+    vision_bridge:
+      requests_dispatched: 81  # 5 wave-1 + 18*4 batched - 4 stragglers re-dispatched
+      requests_skipped: 135  # 89 default-EXCLUDE folder files (Friendswood, TX Foreclosure) per user choice
+      responses_rehydrated: 76
+      wall_time: "~25 min"
+
+  phase_2_inclusion_deliberation:
+    status: "IN PROGRESS — paused at end of batch 8"
+    architecture_adopted: |
+      Tiered pre-filter strategy chosen by user (option "Pre-filter then swarm") to make pure-design
+      execution tractable on a 1,858-file corpus.
+    tier_1_deterministic_exclude:
+      status: "COMPLETE"
+      count: 345
+      rule_breakdown:
+        rule_16_friendswood: 329  # Friendswood Lot 1/7/10 retail/theatre — different Wolfgramm-Tannos $750M TX deal
+        rule_20_21_other_wolfgramm_property: 16  # TownePlace Pleasant Grove, Avatar Hotel, Waco/Marshall/etc.
+      artifact: "<run_dir>/phase2/exclusion_log.csv (first 345 rows)"
+    tier_2_sample_then_bulk_exclude:
+      status: "COMPLETE"
+      sampled: 12  # 10 TX Foreclosure + 2 Texas Properties DD
+      sample_consensus: "3-of-3 unanimous EXCLUDE across opus+sonnet+opus swarm"
+      bulk_excluded_after_confirmation: 265  # rest of TX Foreclosure folder (all about Fairfield Inn Waxahachie TX)
+      total_tier_2: 277
+    tier_3_full_swarm:
+      status: "IN PROGRESS"
+      total_files: 1236
+      batches_completed: 8  # batches 1-8 processed
+      files_swarmed_so_far: 78  # 8 batches × ~10 files
+      files_deterministically_included_arch_optimization: 340  # Ascent Architectural Drawings tree (§5 rule 5)
+      remaining_batches: 82  # batches 9-90 in <run_dir>/phase2/batches/
+      remaining_files: 820  # non-arch Tier 3 files
+      splits_pending_iter3:
+        - "f_01c078d10ef5  24-NY-260_Waldorf Astoria Park City.pdf  (iter1 2E-1I; iter2 2E-1I; instance_2 sonnet keeps switching between E and I based on whether it reads Schedule B)"
+        - "f_9516680d94f1  ALTA COMMITMENT 2021 (UT)-LINKED-LIVELOOK.pdf  (iter1 2I-1E; iter2 2I-1E; sonnet identified Exception 127 names the Okoa $30M DOT with Beehive Hospitality Ascent PC LLC co-grantor — STRONG evidence INCLUDE is correct)"
+    dataroom_files_so_far: 418
+    excluded_so_far: 622
+    total_files_classified: 1040  # 418 + 622
+    remaining_to_classify: 818  # of 1858
+
+what_is_pending:
+  phase_2_remaining:
+    - "Dispatch batches 9-90 (82 batches × 3 deliberator agents = 246 spawns covering 820 files)"
+    - "Resolve 2 split files (iter3+iter4+iter5 or accept default-EXCLUDE after K=5)"
+    - "Estimated wall time: 4-7 hours if dispatched in waves of 4-6 batches"
+  phase_2_5_privilege_scanner:
+    - "Run dr2-privilege-scanner × 3 agents on every file in <run_dir>/dataroom/ (currently 418, expected ~600-700 after Tier 3 completes)"
+    - "Asymmetric consensus: ANY single FLAG removes file from dataroom"
+    - "Special attention: War Room Wolfgramm files (heavy privilege exposure per Phase 1 §5 rule 14 + rule 24)"
+    - "Use batched-deliberator pattern same as Phase 2"
+  phase_3_inclusion_qa:
+    - "Run dr2-inclusion-qa × 3 (adversarial/completeness/coherence lenses) on every dataroom file"
+    - "Wigum loop K=5 — re-deliberate failures back through Phase 2"
+  phase_4_taxonomy_and_placement:
+    - "4a: dr2-taxonomy-designer × 3 blind → dr2-taxonomy-synthesizer → TAXONOMY.json"
+    - "4b: dr2-placement-classifier × 3 per file → sort files into sub-folders"
+  phase_5_classification_qa:
+    - "Run dr2-placement-qa × 3 per file"
+  phase_6_excel_and_ship:
+    - "Worksheet 1 (Data Room Guide): dr2-guide-drafter × 3 → dr2-guide-synthesizer → dr2-guide-qa Wigum"
+    - "Worksheet 2 (File Tree): dr2-description-drafter × 3 per file → dr2-description-qa"
+    - "Build Excel via scripts/build_dataroom_guide_excel.py"
+    - "Manual review markdown (conditional) via scripts/build_manual_review_md.py"
+    - "Copy final dataroom to <source-parent>/Ascent_Park_City_Dataroom/"
+
+key_findings_for_future_session:
+  - "Wolfgramm folder uses 'Waldorf' as loan codename, NOT the operating hotel — Phase 2 agents must apply §2 Naming Catalog rules"
+  - "Borrower SPE is 'Beehive Hospitality Ascent PC, LLC' (confirmed in ALTA Schedule B Exception 127)"
+  - "Cross-collateral DOT recorded 2024-03-05 in Summit County, $30M, with 2100 Frostwood Blvd parcels as cross-pledged"
+  - "Greenworks is a third-party (likely C-PACE lender) — secondary lien holder confirmed via Notice of Assessment Interest in batch 8"
+  - "Hilton Tapestry franchise agreement dated 9/29/2023 — confirmed by batch 8 (Collateral Assignment of Franchise Agreement to Greenworks)"
+  - "File f_6c24f730b842 (30M Ascent Hotel-Payment Guaranty) has filename-vs-content mismatch: filename says Ascent but body references TS1 LLC/$20M/Scott Smithson — Phase 2.5 flag noted, possibly a recycled template"
+
+critical_architectural_insights:
+  - "Pure 1:1 swarm at 1,858 files would cost ~5,217 Task() invocations — too expensive even at 1M context due to round-trip overhead"
+  - "Batched-deliberator architecture (10 files per agent, 3 agents per batch) cuts main-thread cost ~10x with minor per-agent context bleeding (acceptable tradeoff for this corpus)"
+  - "Deterministic-EXCLUDE on §5 rules 16/20/21 saved 345 unnecessary swarm rounds"
+  - "Sample-then-bulk-EXCLUDE on Tier 2 (12 sample files confirmed unanimous EXCLUDE → bulk-excluded 265 more) is design-faithful per §5 rule 17 'content-sampling sweep before bulk exclusion'"
+  - "Deterministic-INCLUDE on Ascent Architectural Drawings tree (§5 rule 5) after 35-file unanimous sample saved 340 swarm rounds — folder is explicitly enumerated in objective"
+
+how_to_resume:
+  command: |
+    /acos-dataroom-v2 --source "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)" --objective "Sell the Ascent Park City Waldorf-Astoria hotel — only documents related to the Ascent Hotel are relevant. Other-collateral and other-deal documents are out of scope."
+  resume_behavior: |
+    Per SKILL.md §12, the skill is resumable. RUN_ID is deterministic from source path hash:
+    run_20260513_152429_e79c3aa1. When invoked from the same CWD (/Users/zee/Documents/Vibe Coding/ACOS 3.0),
+    the skill will find the existing run_dir and pick up from run_state.json.
+  next_action_for_resuming_session:
+    - "Read run_state.json to confirm phase = '2_tier3_in_progress_pause_for_handoff'"
+    - "Read intermediate/phase2_tier_classification.json to see tier breakdown"
+    - "Use phase2/batches/batch_009.json through batch_090.json (82 batches × 3 agents)"
+    - "Dispatch in waves of 4-6 batches; process consensus per file via scripts/consensus_check.py; copy INCLUDE files to <run_dir>/dataroom/; append to inclusion_log.csv / exclusion_log.csv"
+    - "Handle splits via re-dispatch (archive iter1 votes to votes/<fid>/iter1_archive/, write new iter2 votes)"
+    - "After Tier 3 done, address 2 long-standing splits then advance to Phase 2.5"
+
+key_files:
+  run_state: "<run_dir>/run_state.json"
+  solidified_objective: "<run_dir>/phase1/SOLIDIFIED_OBJECTIVE.md"
+  tier_classification: "<run_dir>/intermediate/phase2_tier_classification.json"
+  inclusion_log: "<run_dir>/phase2/inclusion_log.csv"
+  exclusion_log: "<run_dir>/phase2/exclusion_log.csv"
+  batch_queue: "<run_dir>/phase2/batches/batch_007.json through batch_090.json (current/rewritten)"
+  votes_dir: "<run_dir>/phase2/votes/<file_id>/instance_{1,2,3}.json"
+  disputed_dir: "<run_dir>/phase2/disputed/"
+  dataroom: "<run_dir>/dataroom/ (418 files at pause)"
+  consensus_script: ".claude/skills/acos-dataroom-v2/scripts/consensus_check.py inclusion --votes-dir <DIR>"
+
+blockers: []
+
+resumption_eta:
+  phase_2_completion: "4-7 hours wall time (82 batches × 3 agents, ~5 min per batch if waves of 4-6 in parallel)"
+  phase_2_5_through_6: "additional 8-15 hours wall time"
+  total_remaining: "12-22 hours wall time"
+  note: "Pure-design is operationally expensive on a corpus this large. Consider whether the user's audit-trail rigor needs justify the additional 12-22 hours, or whether shipping the current 418-file dataroom + the obvious deterministic-include + Phase 2.5 privilege scanner on just those is sufficient."
