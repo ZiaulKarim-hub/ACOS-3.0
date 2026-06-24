@@ -57,10 +57,21 @@ The skill is invoked with a portfolio question or a report/feed request:
   confidence + freshness stamp + verification tier. Or a terminal state:
   `REFUSED`, `ESCALATED`, `NO_LIVE_DATA`.
 
-  **Implementation (deterministic spine, no model call):** the Ask command runs
+  **PRIMARY ENTRY — the smart orchestrator (`hca-ask.py`).** Prefer this for arbitrary
+  questions (especially investor/funding questions). It tries the deterministic spine first
+  (unchanged), then a FUNDING interpretation (splits a question into investor + loan + metric →
+  reconciled funding figure), then a confidence-graded EXPLORER fallback:
+
+  ```bash
+  doppler run --project hypercore-ask --config dev_personal -- \
+      python3 .claude/scripts/hca-ask.py --ask "what is XL's outstanding on the Beehive loan?"
+  ```
+
+  **Implementation (deterministic spine, no model call):** the spine itself is
   `.claude/scripts/hca-deliver.py --ask "<question>"`, which wires the full vertical
   `plan -> fetch (read-only adapter) -> Tier-1/Tier-2 cache -> provenance bind+verify ->
-  deterministic gates -> answer envelope`. Live reads run under Doppler:
+  deterministic gates -> answer envelope`. `hca-ask.py` calls it first and returns a clean
+  delivery verbatim; the examples below run either entry. Live reads run under Doppler:
 
   ```bash
   doppler run --project hypercore-ask --config dev_personal -- \
@@ -325,6 +336,10 @@ NL question
 |---|---|---|
 | Intake & tier router | `.claude/scripts/hca-route.py` | BUILT — `--selftest` exits 0 |
 | Shared vocabulary leaf | `.claude/scripts/hca-vocab.py` | BUILT — single source of truth for payoff / utilization / aggregation-analysis phrasing vocab + figure-kind constants, imported by route/deliver/figures/ontology (imports nothing from the skill); `--selftest` exits 0 |
+| **Smart ask orchestrator (PRIMARY ENTRY)** | `.claude/scripts/hca-ask.py` | **BUILT** — `--ask "<question>"`: tries the deterministic spine first (unchanged), else FUNDING interpretation (split investor + loan + metric → funding figure), else the confidence-graded EXPLORER fallback. Prefer this over `hca-deliver.py --ask` for arbitrary questions; the deterministic spine is still used verbatim for the questions it owns. |
+| **General entity resolver** | `.claude/scripts/hca-entities.py` | **BUILT** — resolve ANY searchable entity by name (loans / clients / equities / **fundingEntities** = investors), reusing the loan resolver's scoring + thresholds + no-silent-pick. `resolve_entity(name, entity_type)`. |
+| **Investor / funding figures** | `.claude/scripts/hca-funding.py` | **BUILT** — `funding_outstanding` (an investor's outstanding on a loan via `loanFunding.repaymentSchedule.summary.totalOutstanding`, reconciled to $0.01 + provenance-bound) + `funding_commitment` / `funding_participation` / `funding_receivable`. Reliable 2-step query (assetId list → loanFundingId summary). Live-verified XL (fundingEntity 3) on Beehive 134 → 6,922,294.60. |
+| **Confidence-graded explorer (fallback)** | `.claude/scripts/hca-explorer.py` | **BUILT** — when no verified figure matches, introspect the entity's type, match question keywords → fields, fetch live, return values with HIGH/MEDIUM/LOW confidence + provenance (best-effort, never fabricates — values are fetched-real or omitted). |
 | Skill scaffold + config | this `SKILL.md`, `config.yaml`, `README.md` | BUILT |
 | Read-only adapter + fixtures | `.claude/scripts/hca-adapter.py`, `fixtures/`, `schemas/` | BUILT |
 | Adapter tests (incl. read-only guard) | `.claude/scripts/tests/test_hca_adapter.py` | BUILT |
