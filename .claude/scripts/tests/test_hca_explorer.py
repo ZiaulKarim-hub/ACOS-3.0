@@ -16,7 +16,8 @@ the single_query field-fetch returning real values — that the explorer:
 
   NEVER-FABRICATE (REQUIRED — fail = REJECT)
     - a keyword matching NOTHING -> EMPTY results, state NO_MATCH (no invented field/value).
-    - nested OBJECT fields are NOT auto-traversed (only scalars are explored/fetched).
+    - introspect_type stays scalar-only; the explorer expands DEPTH-1 nested objects (e.g.
+      receivables.total) but never deeper, and never LIST-of-object fields.
     - a matched field that comes back null is reported value=None (reported as-is, not faked).
 
   CONFIDENCE POLICY
@@ -388,6 +389,140 @@ class ExploreQuestionTest(unittest.TestCase):
         res = ex.explore_question("how much commitment?", resolved)
         top = next(r for r in res["results"] if r["field"] == "totalCommitment")
         self.assertEqual(top["confidence_label"], explorer.LABEL_LOW)
+
+
+# ---------------------------------------------------------------------------
+# Depth-1 nested-object exploration (e.g. loanFunding.receivables.total)
+# ---------------------------------------------------------------------------
+
+import re as _re  # noqa: E402
+
+
+class _NestedFakeClient:
+    """Fake that routes `__type` introspection BY TYPE NAME and serves a single-record carrying a
+    populated nested object — exercises depth-1 nested-object exploration end to end."""
+
+    _TYPES = {
+        "LoanFunding": [
+            {"name": "id", "type": {"name": "ID", "kind": "SCALAR", "ofType": None}},
+            {"name": "participationPercentage",
+             "type": {"name": "Float", "kind": "SCALAR", "ofType": None}},
+            {"name": "commitmentAmount", "type": {"name": "Float", "kind": "SCALAR", "ofType": None}},
+            # depth-1 OBJECT containers (must be expanded one level):
+            {"name": "receivables",
+             "type": {"name": "InstallmentComponents", "kind": "OBJECT", "ofType": None}},
+            {"name": "cashReceived",
+             "type": {"name": "InstallmentComponents", "kind": "OBJECT", "ofType": None}},
+            # LIST-of-OBJECT — must NOT be expanded (bounded-query discipline):
+            {"name": "transactions",
+             "type": {"name": None, "kind": "LIST",
+                      "ofType": {"name": "LoanTransaction", "kind": "OBJECT", "ofType": None}}},
+        ],
+        "InstallmentComponents": [
+            {"name": "total", "type": {"name": "Float", "kind": "SCALAR", "ofType": None}},
+            {"name": "principal", "type": {"name": "Float", "kind": "SCALAR", "ofType": None}},
+            {"name": "interest", "type": {"name": "Float", "kind": "SCALAR", "ofType": None}},
+        ],
+    }
+    _RECORD = {
+        "id": "LF-282",
+        "participationPercentage": 20.0,
+        "commitmentAmount": 6000000.0,
+        "receivables": {"total": 166653.71, "principal": 0.0, "interest": 150790.62},
+        "cashReceived": {"total": 900000.0, "principal": 0.0, "interest": 0.0},
+    }
+
+    def __init__(self, *, record=_UNSET):
+        self._record = dict(self._RECORD) if record is _UNSET else record
+        self.calls = []
+
+    def raw_query(self, query, variables=None):
+        self.calls.append((query, variables))
+        m = _re.search(r'__type\(name:\s*"([^"]+)"', query)
+        if m:
+            return {"__type": {"fields": list(self._TYPES.get(m.group(1), []))}}
+        if "loanFunding(id:" in query.replace(" ", ""):
+            return {"loanFunding": (dict(self._record) if self._record is not None else None)}
+        if "loanFundings(" in query.replace(" ", ""):
+            items = [dict(self._record)] if self._record is not None else []
+            return {"loanFundings": {"totalFilteredRecords": len(items), "pageItems": items}}
+        return {}
+
+
+class SelectionBuilderTest(unittest.TestCase):
+    def test_build_selection_renders_nested_groups(self):
+        sel = explorer.EntityExplorer._build_selection(
+            [["commitmentAmount"], ["receivables", "total"], ["receivables", "interest"]])
+        # id always included; nested fields grouped under their object; deterministic (sorted).
+        self.assertEqual(sel, "commitmentAmount id receivables { interest total }")
+
+    def test_navigate_absent_path_returns_not_present(self):
+        rec = {"receivables": {"total": 5.0}}
+        val, present = explorer.EntityExplorer._navigate(rec, ["receivables", "total"])
+        self.assertEqual((val, present), (5.0, True))
+        val, present = explorer.EntityExplorer._navigate(rec, ["cashReceived", "total"])
+        self.assertEqual(present, False)  # absent path -> never fabricate
+
+
+class ExploreNestedObjectTest(unittest.TestCase):
+    def _ex(self, **kw):
+        return explorer.EntityExplorer(client=_NestedFakeClient(**kw), sleep=_no_sleep)
+
+    def test_nested_receivable_total_has_dotted_field_value_and_nested_provenance(self):
+        ex = self._ex()
+        res = ex.explore("loanFunding", "LF-282", ["receivable", "total"],
+                         fetched_at="2026-06-24T00:00:00Z")
+        self.assertEqual(res["state"], explorer.STATE_EXPLORED)
+        fields = {r["field"]: r for r in res["results"]}
+        self.assertIn("receivables.total", fields)              # depth-1 dotted display name
+        nt = fields["receivables.total"]
+        self.assertEqual(nt["value"], 166653.71)               # navigated nested value
+        self.assertEqual(nt["graphql_type"], "Float")
+        self.assertEqual(nt["provenance"]["operation"], "loanFunding")
+        self.assertEqual(nt["provenance"]["json_field_path"], "$.loanFunding.receivables.total")
+        self.assertEqual(nt["provenance"]["fetched_at"], "2026-06-24T00:00:00Z")
+
+    def test_depth0_and_depth1_match_together(self):
+        ex = self._ex()
+        # "commitment" -> commitmentAmount (depth 0); "total" -> receivables.total + cashReceived.total
+        res = ex.explore("loanFunding", "LF-282", ["commitment", "total"])
+        fields = {r["field"]: r for r in res["results"]}
+        self.assertIn("commitmentAmount", fields)
+        self.assertEqual(fields["commitmentAmount"]["value"], 6000000.0)
+        self.assertIn("receivables.total", fields)
+        self.assertIn("cashReceived.total", fields)
+        self.assertEqual(fields["cashReceived.total"]["value"], 900000.0)
+
+    def test_list_of_object_field_not_expanded(self):
+        ex = self._ex()
+        # "transactions" is a LIST-of-OBJECT; even a direct keyword must not expand/traverse it.
+        res = ex.explore("loanFunding", "LF-282", ["transactions"])
+        for r in res.get("results", []):
+            self.assertFalse(r["field"].startswith("transactions"))
+
+    def test_nested_object_absent_on_record_is_skipped_not_fabricated(self):
+        rec = dict(_NestedFakeClient._RECORD)
+        rec.pop("receivables")  # backend returned no receivables object
+        ex = self._ex(record=rec)
+        res = ex.explore("loanFunding", "LF-282", ["receivable", "interest"])
+        # cashReceived.interest still resolves; receivables.* dropped (absent), never invented.
+        field_names = {r["field"] for r in res.get("results", [])}
+        self.assertNotIn("receivables.total", field_names)
+        self.assertNotIn("receivables.interest", field_names)
+
+    def test_nested_introspection_failure_does_not_sink_scalar_match(self):
+        # If a nested type cannot be introspected, the scalar (depth-0) match must still deliver.
+        class _PartialFake(_NestedFakeClient):
+            def raw_query(self, query, variables=None):
+                m = _re.search(r'__type\(name:\s*"([^"]+)"', query)
+                if m and m.group(1) == "InstallmentComponents":
+                    raise _Http500()  # nested introspection blows up
+                return super().raw_query(query, variables)
+        ex = explorer.EntityExplorer(client=_PartialFake(), sleep=_no_sleep)
+        res = ex.explore("loanFunding", "LF-282", ["commitment"])
+        fields = {r["field"]: r for r in res["results"]}
+        self.assertIn("commitmentAmount", fields)
+        self.assertEqual(fields["commitmentAmount"]["value"], 6000000.0)
 
 
 if __name__ == "__main__":

@@ -12,9 +12,12 @@ figure for every scalar field on every entity type.
 This module is the trust-preserving fallback for those. Given a resolved entity (e.g. a
 specific fundingEntity, loan, or client) and the keyword(s) in the question, it:
 
-  1. INTROSPECTS that entity's GraphQL type to learn its real field list (cached in-process),
-     keeping ONLY scalar fields (Float/Int/String/Boolean/Date/DateTime/ID/Decimal/Long).
-     It does NOT auto-traverse nested object fields — that keeps the query bounded and safe.
+  1. INTROSPECTS that entity's GraphQL type to learn its real field list (cached in-process):
+     its scalar fields (Float/Int/String/Boolean/Date/DateTime/ID/Decimal/Long), PLUS one level
+     of nested scalars inside value-bearing / keyword-relevant OBJECT fields (e.g.
+     fundingEntity.receivables.total -> selection_path ["receivables","total"]). Expansion is
+     DEPTH-1 ONLY and bounded (capped object count, no deep/recursive traversal, LIST-of-object
+     fields excluded) — keeping the generated query small and safe.
   2. SCORES each scalar field name against the question keyword(s): an exact / substring
      match (after splitting camelCase into tokens) is HIGH; a difflib close-ratio >= 0.6 is
      MEDIUM; anything weaker is skipped.
@@ -411,19 +414,16 @@ class EntityExplorer:
         return data
 
     # --- step 1: introspect the entity's GraphQL type ----------------------
-    def introspect_type(self, type_name: str) -> list:
-        """Introspect a GraphQL type and return its SCALAR fields (cached in-process).
+    def _introspect_raw(self, type_name: str) -> list:
+        """Introspect a GraphQL type and return its RAW field list (cached in-process).
 
-        Returns a list of {"name": str, "scalar_type": str} for the scalar fields only
-        (nested objects/lists are excluded). Caches per type_name so repeated explores of the
-        same entity type issue the introspection query at most once.
-
-        Uses the bounded introspection query from the brief:
-            query{ __type(name:"<TypeName>"){ fields{ name type{ name kind
-                   ofType{ name kind ofType{ name } } } } } }
+        Each item is the raw introspection field dict {"name", "type": {...}}. Used by both
+        introspect_type (scalars) and _object_fields (nested objects). Issues the bounded
+        introspection query at most once per type_name.
         """
-        if type_name in self._field_cache:
-            return self._field_cache[type_name]
+        cache_key = ("__raw__", type_name)
+        if cache_key in self._field_cache:
+            return self._field_cache[cache_key]
         client = self._ensure_client()
         query = (
             'query { __type(name: "%s") { '
@@ -433,16 +433,139 @@ class EntityExplorer:
         )
         data = self._raw_query(client, query, {})
         type_block = (data or {}).get("__type") or {}
-        fields = type_block.get("fields") or []
+        fields = [f for f in (type_block.get("fields") or []) if isinstance(f, dict)]
+        self._field_cache[cache_key] = fields
+        return fields
+
+    def introspect_type(self, type_name: str) -> list:
+        """Introspect a GraphQL type and return its SCALAR fields (cached in-process).
+
+        Returns a list of {"name": str, "scalar_type": str} for the scalar fields only
+        (nested objects/lists excluded). Cached per type_name.
+        """
+        if type_name in self._field_cache:
+            return self._field_cache[type_name]
         scalars: list = []
-        for fl in fields:
-            if not isinstance(fl, dict):
-                continue
+        for fl in self._introspect_raw(type_name):
             if _is_scalar_field(fl):
                 name, _kind, _is_list = _unwrap_type(fl.get("type"))
                 scalars.append({"name": fl.get("name"), "scalar_type": name})
         self._field_cache[type_name] = scalars
         return scalars
+
+    def _object_fields(self, type_name: str) -> list:
+        """Non-list OBJECT fields of a type: [{"name", "type_name"}]. ONE level only — used to
+        expand into depth-1 nested scalars (e.g. fundingEntity.receivables.total). LIST-of-object
+        fields are deliberately excluded (keeps the generated query bounded)."""
+        out: list = []
+        for fl in self._introspect_raw(type_name):
+            name, kind, is_list = _unwrap_type(fl.get("type"))
+            if is_list or kind != "OBJECT" or not name:
+                continue
+            out.append({"name": fl.get("name"), "type_name": name})
+        return out
+
+    # Value-bearing summary/container object fields that are ALWAYS expanded one level (their
+    # scalars are where outstanding/receivable/disbursed-style answers live), independent of the
+    # exact keyword. Matched by the normalized (separator-stripped) lowercase object-field name.
+    _SUMMARY_CONTAINERS = frozenset({
+        "summary", "receivables", "cashreceived", "totaloutstanding", "totaldue", "overdue",
+        "totalpaid", "commitmentbreakdown", "mergedloanfundingssummary", "aginganalysis",
+    })
+
+    def _object_relevant(self, object_field_name: str, keywords: list) -> bool:
+        """Whether to expand a depth-1 OBJECT field: it is a known summary/value container, OR
+        its name tokens relate to a keyword (substring either direction). Keeps expansion (and
+        thus the extra introspection queries) bounded to plausibly-relevant containers."""
+        low = (object_field_name or "").lower()
+        if re.sub(r"[_\-]+", "", low) in self._SUMMARY_CONTAINERS:
+            return True
+        toks = tokenize_identifier(object_field_name)
+        for kw in keywords:
+            k = (kw or "").strip().lower()
+            if not k:
+                continue
+            if k in low or low in k:
+                return True
+            for t in toks:
+                if t and (t in k or k in t):
+                    return True
+        return False
+
+    def _nested_matches(self, type_name: str, keywords: list, *,
+                        entity_fuzzy: bool = False, max_expand: int = 6) -> list:
+        """Depth-1 nested matches: expand relevant OBJECT fields one level and score THEIR scalars
+        against the keywords. Returns match descriptors with a 2-element selection_path
+        [object_field, scalar_field]. Bounded: at most `max_expand` objects are introspected, one
+        level only (no recursion). A nested-introspection failure skips that object (never
+        fabricates)."""
+        out: list = []
+        expanded = 0
+        for obj in self._object_fields(type_name):
+            if expanded >= max_expand:
+                break
+            oname = obj["name"]
+            if not self._object_relevant(oname, keywords):
+                continue
+            try:
+                sub_scalars = self.introspect_type(obj["type_name"])
+            except Exception:
+                continue  # nested introspection failed -> skip this object, never invent
+            expanded += 1
+            for sf in sub_scalars:
+                sfname = sf.get("name")
+                display = f"{oname}.{sfname}"
+                label, conf, mk = score_field(display, keywords)
+                if label is None:
+                    continue
+                if entity_fuzzy:
+                    label, conf = _cap_for_fuzzy_entity(label, conf)
+                out.append({"display": display, "selection_path": [oname, sfname],
+                            "scalar_type": sf.get("scalar_type"), "label": label,
+                            "conf": conf, "mk": mk})
+        return out
+
+    @staticmethod
+    def _render_selection(tree: dict) -> str:
+        """Render a nested selection tree (field -> None(leaf) | subtree(dict)) to a GraphQL
+        selection string. Deterministic field order for stable queries/provenance."""
+        parts = []
+        for key in sorted(tree.keys()):
+            sub = tree[key]
+            if sub is None:
+                parts.append(key)
+            else:
+                parts.append(f"{key} {{ {EntityExplorer._render_selection(sub)} }}")
+        return " ".join(parts)
+
+    @classmethod
+    def _build_selection(cls, selection_paths: list) -> str:
+        """Build a GraphQL selection string from a list of selection_paths (each a list of field
+        names). `id` is always included at the top level so the list-fallback can match by id."""
+        tree: dict = {"id": None}
+        for path in selection_paths:
+            node = tree
+            for i, key in enumerate(path):
+                if i == len(path) - 1:
+                    if not isinstance(node.get(key), dict):
+                        node[key] = None  # leaf
+                else:
+                    if not isinstance(node.get(key), dict):
+                        node[key] = {}
+                    node = node[key]
+        return cls._render_selection(tree)
+
+    @staticmethod
+    def _navigate(record: dict, path: list) -> tuple:
+        """Walk `record` along `path`. Returns (value, present). `present` is False if any key
+        along the path is absent (the field was requested but the backend returned nothing for
+        it — never fabricate); the value itself may legitimately be None."""
+        cur = record
+        for key in path:
+            if not isinstance(cur, dict) or key not in cur:
+                return None, False
+            cur = cur[key]
+        return cur, True
 
     # --- main: explore -----------------------------------------------------
     def explore(self, entity_type: str, entity_id: str, keywords, *,
@@ -508,8 +631,8 @@ class EntityExplorer:
             base["state"] = STATE_NO_MATCH
             return base
 
-        # 2) Score each scalar field against the keyword(s); keep only matches.
-        matched: list = []  # list of (field_name, scalar_type, label, confidence, matched_kw)
+        # 2) Score scalar fields (depth 0) AND depth-1 nested-object scalars; keep matches.
+        matched: list = []  # each: {display, selection_path, scalar_type, label, conf, mk}
         for sf in scalar_fields:
             fname = sf.get("name")
             label, conf, mk = score_field(fname, kws)
@@ -517,27 +640,35 @@ class EntityExplorer:
                 continue
             if entity_fuzzy:
                 label, conf = _cap_for_fuzzy_entity(label, conf)
-            matched.append((fname, sf.get("scalar_type"), label, conf, mk))
+            matched.append({"display": fname, "selection_path": [fname],
+                            "scalar_type": sf.get("scalar_type"), "label": label,
+                            "conf": conf, "mk": mk})
+        try:
+            matched.extend(self._nested_matches(type_name, kws, entity_fuzzy=entity_fuzzy))
+        except Exception as e:
+            # nested expansion is best-effort enrichment; a failure must not sink a scalar match.
+            notes.append(f"nested-object expansion skipped: {type(e).__name__}: {str(e)[:120]}")
 
         if not matched:
             notes.append(
-                "no scalar field matched the keyword(s) "
+                "no scalar field (incl. depth-1 nested) matched the keyword(s) "
                 f"{kws} on type {type_name!r}; returning empty result (no fabrication)"
             )
             base["state"] = STATE_NO_MATCH
             return base
 
-        # De-duplicate field names (keep the strongest score per field) and order the selection.
+        # De-duplicate by display name (keep the strongest score per field), order deterministically.
         best_by_field: dict = {}
-        for fname, stype, label, conf, mk in matched:
-            prev = best_by_field.get(fname)
-            if prev is None or conf > prev[2]:
-                best_by_field[fname] = (stype, label, conf, mk)
-        match_fields = sorted(best_by_field.keys())
+        for m in matched:
+            prev = best_by_field.get(m["display"])
+            if prev is None or m["conf"] > prev["conf"]:
+                best_by_field[m["display"]] = m
+        match_descs = [best_by_field[d] for d in sorted(best_by_field.keys())]
+        selection_paths = [m["selection_path"] for m in match_descs]
 
-        # 3) Fetch the matched scalar fields LIVE for this entity (single-by-id, list fallback).
+        # 3) Fetch the matched fields LIVE for this entity (single-by-id, list fallback).
         try:
-            fetch = self._fetch_fields(reg, entity_id, match_fields, name_hint=name_hint)
+            fetch = self._fetch_fields(reg, entity_id, selection_paths, name_hint=name_hint)
         except Exception as e:
             return self._classify_failure(base, e, context="fetching matched fields")
 
@@ -558,27 +689,25 @@ class EntityExplorer:
             base["state"] = STATE_NO_MATCH
             return base
 
-        # 4) Assemble per-field results with the ACTUAL fetched value + provenance.
+        # 4) Assemble per-field results with the ACTUAL fetched value + provenance. Each field is
+        # navigated along its selection_path (handles depth-1 nesting); a path that is absent from
+        # the record is skipped (requested but unreturned -> never fabricate).
         ts = fetched_at if fetched_at is not None else None
         results: list = []
-        for fname in match_fields:
-            stype, label, conf, mk = best_by_field[fname]
-            # Only report a field the record actually carries. A field that is present but
-            # null is reported with value=None + a note; a field entirely absent is skipped
-            # (it was requested but the backend returned nothing for it — never fabricate).
-            if fname not in record:
+        for m in match_descs:
+            value, present = self._navigate(record, m["selection_path"])
+            if not present:
                 continue
-            value = record.get(fname)
             entry = {
-                "field": fname,
+                "field": m["display"],
                 "value": value,
-                "graphql_type": stype,
-                "confidence": conf,
-                "confidence_label": label,
-                "matched_keyword": mk,
+                "graphql_type": m["scalar_type"],
+                "confidence": m["conf"],
+                "confidence_label": m["label"],
+                "matched_keyword": m["mk"],
                 "provenance": {
                     "operation": operation,
-                    "json_field_path": f"{json_path_prefix}.{fname}",
+                    "json_field_path": f"{json_path_prefix}." + ".".join(m["selection_path"]),
                     "fetched_at": ts,
                 },
             }
@@ -609,23 +738,22 @@ class EntityExplorer:
         return base
 
     # --- step 3 helper: build + run the fetch query ------------------------
-    def _fetch_fields(self, reg: dict, entity_id: str, fields: list, *,
+    def _fetch_fields(self, reg: dict, entity_id: str, selection_paths: list, *,
                       name_hint: Optional[str] = None) -> dict:
-        """Fetch the requested scalar `fields` for one entity by id.
+        """Fetch the requested fields for one entity by id. Each `selection_path` is a list of
+        GraphQL field names (length 1 for a scalar, 2 for a depth-1 nested scalar); the GraphQL
+        selection (incl. `id`) is built from them, so a nested path like ["receivables","total"]
+        renders as `receivables { total }`.
 
-        Primary path: the single-record query `<single_query>(id: $id){ id <fields...> }`.
-        Fallback (when the single-record resolver 500s after retries, or the entity has no
-        single query): the list query filtered by `name_hint`, picking the row whose id matches.
+        Primary path: the single-record query `<single_query>(id: $id){ <selection> }`. Fallback
+        (single-record resolver 500s after retries, or no single query): the list query filtered
+        by `name_hint`, picking the row whose id matches.
 
-        Returns {"record": <dict|None>, "operation": <query field used>,
-                 "json_path_prefix": "$.<operation>", "fallback_used": bool}.
+        Returns {"record": <dict|None>, "operation", "json_path_prefix", "fallback_used"}.
         """
         client = self._ensure_client()
         single_query = reg.get("single_query")
-        # Always include id in the selection so the fallback can match by id, and so the
-        # provenance path is anchored on a real key.
-        sel_fields = list(dict.fromkeys(["id"] + list(fields)))
-        selection = " ".join(sel_fields)
+        selection = self._build_selection(selection_paths)  # always includes id
 
         # --- primary: single-record by id ----------------------------------
         if single_query:
@@ -659,7 +787,7 @@ class EntityExplorer:
                 "json_path_prefix": f"$.{single_query or 'unknown'}",
                 "fallback_used": False,
             }
-        record = self._list_fallback(client, reg, entity_id, sel_fields, name_hint)
+        record = self._list_fallback(client, reg, entity_id, selection, name_hint)
         return {
             "record": record,
             "operation": list_query,
@@ -667,16 +795,16 @@ class EntityExplorer:
             "fallback_used": True,
         }
 
-    def _list_fallback(self, client, reg: dict, entity_id: str, sel_fields: list,
+    def _list_fallback(self, client, reg: dict, entity_id: str, selection: str,
                        name_hint: Optional[str]):
         """Run the entity's list query filtered by name_hint and return the row matching id.
 
-        Uses a single small page filtered by searchString=name_hint (most selective). The
-        returned Paginated* shape is { totalFilteredRecords, pageItems }. We pick the row whose
+        `selection` is the already-built GraphQL selection string (incl. id + any nesting). Uses a
+        single small page filtered by searchString=name_hint (most selective). The returned
+        Paginated* shape is { totalFilteredRecords, pageItems }. We pick the row whose
         id == entity_id; if none matches we return None (never fabricate a row).
         """
         list_query = reg.get("list_query")
-        selection = " ".join(sel_fields)
         # Build a filter input. Hypercore list filters accept `searchString`; if no name_hint
         # is given we send an empty filter (still bounded to one small page).
         filt = {"searchString": name_hint} if name_hint else {}
