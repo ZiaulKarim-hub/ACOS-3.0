@@ -526,7 +526,8 @@ class PortfolioAnalyzer:
             return res
         present, skipped = self._collect_figure(rows, rid, figure)
         present.sort(key=lambda r: (r["value"], str(r["name"])), reverse=not ascending)
-        ranked = present[:top_n] if top_n else present
+        # top_n=0 is an explicit "zero rows" request (reachable via CLI --n 0); only None means "all".
+        ranked = present if top_n is None else present[:top_n]
         out_rows = [{"rank": idx + 1, "loan_id": r["loan_id"], "name": r["name"],
                      "value": r["value"], "currency": r["currency"], "figure": figure,
                      "provenance": r["provenance"]}
@@ -571,7 +572,8 @@ class PortfolioAnalyzer:
             present.append({"index": i, "loan_id": lid, "name": name, "maturity_date": value,
                             "days_to_maturity": (d - as_of).days, "provenance": prov})
         present.sort(key=lambda r: (r["days_to_maturity"], str(r["name"])))
-        ranked = present[:top_n] if top_n else present
+        # top_n=0 is an explicit "zero rows" request (reachable via CLI --n 0); only None means "all".
+        ranked = present if top_n is None else present[:top_n]
         out_rows = [{"rank": idx + 1, "loan_id": r["loan_id"], "name": r["name"],
                      "maturity_date": r["maturity_date"],
                      "days_to_maturity": r["days_to_maturity"], "provenance": r["provenance"]}
@@ -620,7 +622,8 @@ class PortfolioAnalyzer:
                                            "formula": "total_disbursed / commitment",
                                            "total_disbursed": p_disb, "commitment": p_commit}})
         present.sort(key=lambda r: (r["value"], str(r["name"])), reverse=True)
-        ranked = present[:top_n] if top_n else present
+        # top_n=0 is an explicit "zero rows" request (reachable via CLI --n 0); only None means "all".
+        ranked = present if top_n is None else present[:top_n]
         out_rows = [{"rank": idx + 1, "loan_id": r["loan_id"], "name": r["name"],
                      "value": r["value"], "unit": "ratio", "figure": "utilization",
                      "total_disbursed": r["total_disbursed"], "commitment": r["commitment"],
@@ -675,15 +678,11 @@ class PortfolioAnalyzer:
         if agg["outcome"] != self._provlib.VERIFIED:
             return _refused(analysis, REASON_PROVENANCE, agg.get("reason", "aggregate unbindable"),
                             provenance={"bulk_raw_response_id": rid}, skipped=skipped)
-        # RECONCILIATION: the delivered total must equal the sum of the bound parts to the cent.
-        recon_sum = round(sum(parts), 4)
-        diff = round(abs(recon_sum - total), 6)
-        reconciles = diff <= RECONCILE_TOLERANCE
-        if not reconciles:
-            return _refused(analysis, REASON_RECONCILE,
-                            (f"total {figure} {total} does not reconcile to the sum of its "
-                             f"{len(parts)} parts ({recon_sum}, diff={diff})"),
-                            provenance={"bulk_raw_response_id": rid}, skipped=skipped)
+        # RECONCILIATION is performed by bind_aggregate above (it verifies the bound parts resolve
+        # to Tier-1 AND sum to `total`). The former local re-sum here was dead — recon_sum was just
+        # sum(parts) again == total, so diff was always 0.0 and the refusal branch unreachable. We
+        # keep diff=0.0 in the reported envelope since downstream fields reference it.
+        diff = 0.0
         cur_str = f" {currency}" if currency else ""
         answer = (f"Total {figure} across {len(present)} of {len(rows)} loans is "
                   f"{total}{cur_str} (reconciles to the sum of {len(parts)} parts; "
@@ -994,9 +993,20 @@ class PortfolioAnalyzer:
             return _refused(analysis, REASON_RECONCILE,
                             (f"exposure spans mixed currencies {sorted(currencies)} — refusing"),
                             provenance={"bulk_raw_response_id": rid}, skipped=skipped)
-        book = round(sum(p["value"] for p in present), 4)
-        buckets: dict = {}
+        # Loans with outstanding but NO status must be SURFACED (mirroring count_by_status), never
+        # bucketed under a stringified-None category. They are excluded from the buckets and from
+        # `book`, so the bucket sums still reconcile to the bucketed book total.
+        bucketed = []
         for p in present:
+            if p["row"].get("status") is None:
+                skipped.append({"loan_id": p["loan_id"], "name": p["name"],
+                                "reason": "outstanding present but no status — "
+                                          "excluded from exposure-by-status (surfaced, not dropped)"})
+            else:
+                bucketed.append(p)
+        book = round(sum(p["value"] for p in bucketed), 4)
+        buckets: dict = {}
+        for p in bucketed:
             status = str(p["row"].get("status"))
             b = buckets.setdefault(status, {"exposure": 0.0, "count": 0, "contributing": []})
             b["exposure"] = round(b["exposure"] + p["value"], 4)
@@ -1014,11 +1024,11 @@ class PortfolioAnalyzer:
         reconciles = abs(bucket_sum - book) <= RECONCILE_TOLERANCE
         currency = (sorted(currencies) or [None])[0]
         cur_str = f" {currency}" if currency else ""
-        answer = (f"Exposure by status across {len(present)} of {len(rows)} loans "
+        answer = (f"Exposure by status across {len(bucketed)} of {len(rows)} loans "
                   f"(book {book}{cur_str}): "
                   + ", ".join(f"{r['status']}={r['exposure']} "
                               f"({round((r['pct_of_book'] or 0) * 100, 1)}%)" for r in out_rows)
-                  + (f"; {len(skipped)} surfaced as missing outstanding." if skipped else "."))
+                  + (f"; {len(skipped)} surfaced (missing outstanding or status)." if skipped else "."))
         gate_verdict = {"outcome": "pass", "pagination_complete": True,
                         "reconciliation_ok": reconciles}
         return _envelope(STATE_DELIVERED, answer=answer, analysis=analysis, rows=out_rows,
@@ -1027,7 +1037,7 @@ class PortfolioAnalyzer:
                          provenance={"bulk_raw_response_id": rid}, gate_verdict=gate_verdict,
                          complete=True, refusals=[], skipped=skipped,
                          meta={"book_total": book, "currency": currency, "buckets": len(buckets),
-                               "assessed": len(present), "total_loans": len(rows)})
+                               "assessed": len(bucketed), "total_loans": len(rows)})
 
     def top_n_concentration(self, n: int = 5) -> dict:
         """Top-N concentration: the % of the book held by the largest-N loans by outstanding.
@@ -1245,7 +1255,9 @@ class PortfolioAnalyzer:
                             record["provenance"]["dscr"] = {
                                 "derived": True,
                                 "formula": "NOI / (commitment × interest_rate)",
-                                "noi": {"source": "kg"},
+                                "noi": {"source": "kg", **(kg_prov.get("noi")
+                                        or {"node_id": kg_node, "field": "noi",
+                                            "file": kg.get("kg_file")})},
                                 "commitment": {"source": "hypercore", **(p_commit or {})},
                                 "interest_rate": {"source": rate_src, "value": float(rate)}}
                             if dscr < PRISM_MIN_DSCR:
@@ -1336,9 +1348,20 @@ class PortfolioAnalyzer:
             if kg is not None and _is_number(kg.get("appraised_value")) \
                     and float(kg.get("appraised_value")) != 0.0:
                 out_v, out_path = _row_value(row, "outstanding")
-                if _is_number(out_v):
+                if not _is_number(out_v):
+                    # KG appraised_value is present but outstanding is missing/non-numeric: the LTV
+                    # criterion cannot be assessed for this loan. SURFACE it — never silently drop.
+                    unassessable_ltv.append({"loan_id": lid, "name": name,
+                                             "reason": "LTV not assessable (outstanding "
+                                                       "missing/non-numeric)"})
+                else:
                     p_out = self._bind(out_v, rid, i, out_path, f"loan.{lid}.outstanding")
-                    if p_out is not None:
+                    if p_out is None:
+                        # outstanding could not be provenance-bound to Tier-1: SURFACE it.
+                        unassessable_ltv.append({"loan_id": lid, "name": name,
+                                                 "reason": "LTV not assessable (outstanding "
+                                                           "unbindable to Tier-1)"})
+                    else:
                         ltv = round(float(out_v) / float(kg["appraised_value"]), 6)
                         if ltv > PRISM_MAX_LTV:
                             reasons.append("high_ltv")

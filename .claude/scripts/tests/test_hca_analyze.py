@@ -272,6 +272,25 @@ class RankingTest(_AnalyzeBase):
         self.assertEqual(env["rows"][0]["name"], "Marsh Hollow")
         self.assertAlmostEqual(env["rows"][0]["value"], 1.0, places=6)
 
+    def test_top_n_zero_returns_no_rows(self):
+        # top_n=0 is an EXPLICIT "zero rows" request (reachable via CLI --n 0); it must NOT be
+        # treated as falsy "give me all". Loans missing the figure are still surfaced.
+        import datetime
+        rank = self._analyzer().rank("outstanding", top_n=0)
+        self.assertEqual(rank["state"], analyze_mod.STATE_DELIVERED)
+        self.assertEqual(rank["rows"], [])
+        self.assertIn("500", {s["loan_id"] for s in rank["skipped"]})  # still surfaced
+        mat = self._analyzer().rank_by_maturity(top_n=0, as_of=datetime.date(2026, 6, 19))
+        self.assertEqual(mat["rows"], [])
+        util = self._analyzer().rank_by_utilization(top_n=0)
+        self.assertEqual(util["rows"], [])
+
+    def test_top_n_none_returns_all(self):
+        # top_n=None still means "all loans carrying the figure" (4 of 5; Acme surfaced).
+        env = self._analyzer().rank("outstanding", top_n=None)
+        self.assertEqual(env["state"], analyze_mod.STATE_DELIVERED)
+        self.assertEqual(len(env["rows"]), 4)
+
 
 # ---------------------------------------------------------------------------
 # AGGREGATIONS
@@ -378,6 +397,22 @@ class ConcentrationTest(_AnalyzeBase):
         bucket_sum = round(sum(r["exposure"] for r in env["rows"]), 4)
         self.assertAlmostEqual(bucket_sum, env["aggregates"]["book_total"], places=2)
 
+    def test_concentration_by_status_surfaces_null_status(self):
+        # A loan with outstanding but NO status must be SURFACED (like count_by_status), never
+        # bucketed under a stringified-"None" category. Marsh (id 300) gets its status nulled.
+        loans = [({**l, "status": None} if l["id"] == "300" else l) for l in _LOANS]
+        env = self._analyzer(loans=loans).concentration_by_status()
+        self.assertEqual(env["state"], analyze_mod.STATE_DELIVERED)
+        # No "None" stringified bucket leaks into the rows.
+        self.assertNotIn("None", {r["status"] for r in env["rows"]})
+        # Marsh is surfaced as null-status (not dropped).
+        surfaced = {s["loan_id"] for s in env["skipped"]}
+        self.assertIn("300", surfaced)
+        # Buckets still reconcile to the (now Marsh-excluded) book total.
+        self.assertTrue(env["aggregates"]["reconciles"])
+        bucket_sum = round(sum(r["exposure"] for r in env["rows"]), 4)
+        self.assertAlmostEqual(bucket_sum, env["aggregates"]["book_total"], places=2)
+
     def test_concentration_by_client_refuses_without_linkage(self):
         env = self._analyzer().concentration_by_client()
         self.assertEqual(env["state"], analyze_mod.STATE_REFUSED)
@@ -432,6 +467,20 @@ class CovenantScanTest(_AnalyzeBase):
                           "json_field_path": hp["json_field_path"]})
         self.assertEqual(res["outcome"], prov_mod.VERIFIED)
 
+    def test_dscr_noi_provenance_carries_full_kg_locator(self):
+        # DSCR and debt_yield use the SAME KG NOI value; their NOI provenance bindings must be the
+        # SAME full, independently re-resolvable KG locator (not a bare {"source": "kg"} stub).
+        env = self._analyzer().covenant_breach_scan()
+        beehive = next(r for r in env["rows"] if r["loan_id"] == "134")
+        self.assertIn("dscr", beehive["provenance"])
+        self.assertIn("debt_yield", beehive["provenance"])
+        dscr_noi = beehive["provenance"]["dscr"]["noi"]
+        dy_noi = beehive["provenance"]["debt_yield"]["noi"]
+        # full locator -> carries more than just the bare source tag, and matches debt_yield.
+        self.assertEqual(dscr_noi["source"], "kg")
+        self.assertGreater(len(dscr_noi.keys()), 1)
+        self.assertEqual(dscr_noi, dy_noi)
+
 
 # ---------------------------------------------------------------------------
 # INTERPRETIVE JUDGMENT: most_at_risk (stated criteria + consensus)
@@ -466,6 +515,27 @@ class AtRiskTest(_AnalyzeBase):
         self.assertEqual(env["meta"]["consensus"]["agreeing_count"], 3)
         # deterministic evidence still present.
         self.assertTrue(env["rows"])
+
+    def test_at_risk_kg_covered_loan_missing_outstanding_surfaced(self):
+        # Broadbent (id 200) IS in the KG (appraised_value present), but if its outstanding is
+        # missing the LTV criterion cannot be assessed — it must be SURFACED in unassessable_ltv
+        # (env["skipped"]), NOT silently dropped from the LTV criterion.
+        import datetime
+        loans = []
+        for l in _LOANS:
+            if l["id"] == "200":
+                s = dict(l["summary"])
+                s["totalOutstanding"] = {**s["totalOutstanding"], "total": None}
+                loans.append({**l, "summary": s})
+            else:
+                loans.append(l)
+        env = self._analyzer(loans=loans).most_at_risk(as_of=datetime.date(2026, 6, 19))
+        self.assertEqual(env["state"], analyze_mod.STATE_DELIVERED)
+        surfaced = {s["loan_id"]: s["reason"] for s in env["skipped"]}
+        self.assertIn("200", surfaced)
+        self.assertIn("outstanding", surfaced["200"])  # reason names the missing input
+        # ...and not because of "no KG appraised_value" — the KG join WAS present.
+        self.assertNotIn("no KG", surfaced["200"])
 
     def test_at_risk_consensus_disagreement_escalates_with_evidence(self):
         import datetime

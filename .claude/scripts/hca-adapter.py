@@ -586,11 +586,36 @@ class FixtureBackend(HypercoreBackend):
 # Network code lives in the sibling module hca-live.py, imported LAZILY below.
 # ---------------------------------------------------------------------------
 
+def _load_hca_secrets():
+    """Load the sibling credential module hca-secrets.py (hyphenated filename).
+
+    hca-secrets.py is the SINGLE SOURCE OF TRUTH for credential env var NAMES and the
+    is_provisioned() check. Loaded via importlib (matching the _load_hca_live seam) and
+    cached under the stable name "hca_secrets" in sys.modules so every caller and the
+    tests share ONE module instance. No network/secret value is read at import time.
+    """
+    import sys
+    import importlib.util
+    cached = sys.modules.get("hca_secrets")
+    if cached is not None:
+        return cached
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, "hca-secrets.py")
+    spec = importlib.util.spec_from_file_location("hca_secrets", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["hca_secrets"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 # Default credential ENV VAR NAMES (Doppler injects the VALUES; never stored here).
-# `client_secret` historically used the env name HYPERCORE_CLIENT_SECRET (see config.yaml).
-DEFAULT_CLIENT_ID_ENV = "CLIENT_ID"
-DEFAULT_API_KEY_ENV = "HYPERCORE_CLIENT_SECRET"        # OAuth client SECRET (Doppler name)
-DEFAULT_BASE_URL_ENV = "HYPERCORE_BASE_URL"      # optional override for the GraphQL URL
+# SINGLE SOURCE OF TRUTH: hca-secrets.py owns these names. We import them lazily (the
+# sibling has a hyphenated filename) rather than re-declaring the literals, so the names
+# can never drift. See _load_hca_secrets() above.
+_secrets = _load_hca_secrets()
+DEFAULT_CLIENT_ID_ENV = _secrets.CLIENT_ID_ENV
+DEFAULT_API_KEY_ENV = _secrets.API_KEY_ENV            # OAuth client SECRET (Doppler name)
+DEFAULT_BASE_URL_ENV = _secrets.BASE_URL_ENV          # optional override for the GraphQL URL
 
 # Public (non-secret) Hypercore endpoint constants (also in config.yaml; not credentials).
 DEFAULT_GQL_URL = "https://api.hypercore.ai/graphql"
@@ -684,9 +709,13 @@ class LiveBackend(HypercoreBackend):
         Reads env (Doppler-injected). Absent/partial creds -> False, which drives the
         graceful NO_LIVE_DATA degradation upstream. NEVER returns/echoes the values.
         """
-        client_id = self._env.get(self.client_id_env, "") or ""
-        secret = self._env.get(self.api_key_env, "") or ""
-        return bool(client_id.strip()) and bool(secret.strip())
+        # Delegate to hca-secrets.is_provisioned — the single source of truth for the
+        # provisioned check — so the logic lives in exactly one place. NEVER echoes values.
+        return _load_hca_secrets().is_provisioned(
+            client_id_env=self.client_id_env,
+            api_key_env=self.api_key_env,
+            env=self._env,
+        )
 
     # --- live client construction (lazy; only when is_live()) --------------
     def _ensure_client(self):
@@ -780,6 +809,11 @@ class LiveBackend(HypercoreBackend):
         filter_input = filters.get("filter")
         sort_by = filters.get("sortBy")
         page_limit = int(filters.get("limit") or self._page_limit)
+        # Non-positive limit footgun: a negative limit is truthy so `or` won't catch it,
+        # and downstream a limit <= 0 makes offset pagination never advance. Clamp to the
+        # configured default before handing off (hca-live also clamps as a second guard).
+        if page_limit <= 0:
+            page_limit = self._page_limit
         result = client.list_entities(
             entity_type, fields=fields, filter_input=filter_input,
             sort_by=sort_by, page_limit=page_limit,
@@ -1005,8 +1039,11 @@ def _selftest_live(entity_type: str = "loans") -> int:
         doppler run --project hypercore-ask --config dev_personal -- \
             python3 .claude/scripts/hca-adapter.py --selftest-live
     """
-    singular = {"loans": "loan", "clients": "client", "equities": "equity",
-                "fundingEntities": "fundingEntity", "loanFundings": "loanFunding"}
+    # Derive the plural(list_query) -> singular(entity_type) map from the live
+    # ENTITY_REGISTRY at runtime so it can never drift from the source of truth.
+    _registry = _load_hca_live().ENTITY_REGISTRY
+    singular = {reg["list_query"]: k for k, reg in _registry.items()
+                if reg.get("list_query")}
     et = singular.get(entity_type, entity_type)
     backend = LiveBackend()  # reads creds from env (Doppler-injected)
     print(f"is_live = {backend.is_live()}")

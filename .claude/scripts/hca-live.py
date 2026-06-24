@@ -39,7 +39,7 @@ import ssl
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -104,10 +104,17 @@ def assert_query_only(operation_text: str) -> None:
     """HARD read-only guard. Refuse anything that is not a pure `query`.
 
     Rules:
+      - Empty / whitespace-only (or comment-only) operation -> refuse (no query to send).
       - Anonymous `{ ... }` shorthand (no leading keyword) -> allowed (it's a query).
       - First operation keyword MUST be `query`.
       - The presence of ANY `mutation`/`subscription` operation keyword -> refuse.
     """
+    # An empty / whitespace-only operation carries no query — refuse rather than pass
+    # implicitly. (Checked on the raw text so a None/blank input is caught up front.)
+    if not (operation_text or "").strip():
+        raise ReadOnlyViolation(
+            "refused: empty operation; client is READ-ONLY and requires a GraphQL `query`"
+        )
     cleaned = _strip_graphql_noise(operation_text)
     keywords = [m.group(1).lower() for m in _OP_KEYWORD_RE.finditer(cleaned)]
     for kw in keywords:
@@ -117,16 +124,18 @@ def assert_query_only(operation_text: str) -> None:
                 f"READ-ONLY and sends GraphQL queries only"
             )
     # If a leading keyword exists it must be `query`; bare `{...}` (no keyword) is fine.
+    # After noise-stripping, an operation that was only comments/strings becomes blank —
+    # there is no query to send, so refuse that too (do NOT let "" pass implicitly).
     stripped = cleaned.lstrip()
-    if stripped[:1] not in ("{", ""):  # has a leading word
+    if stripped[:1] != "{":  # not a bare `{...}` query body
         first = _OP_KEYWORD_RE.match(stripped)
         if first and first.group(1).lower() != "query":  # pragma: no cover (caught above)
             raise ReadOnlyViolation(
                 "refused: leading operation is not a `query`; client is READ-ONLY"
             )
         if not first:
-            # a leading word that isn't query/mutation/subscription and isn't `{` —
-            # not a valid operation we will send.
+            # No leading `{`, no operation keyword (includes the comment/whitespace-only
+            # case) — not a valid query we will send.
             raise ReadOnlyViolation(
                 "refused: operation does not begin with `query` or `{`; client is READ-ONLY"
             )
@@ -596,6 +605,12 @@ class LiveGraphQLClient:
                       filter_input: Optional[dict] = None,
                       sort_by: Optional[dict] = None,
                       page_limit: int = _DEFAULT_PAGE_LIMIT) -> dict:
+        # Guard against a non-positive page_limit: with limit <= 0 the short-page test
+        # `len(items) < page_limit` is always False and `skip += page_limit` never
+        # advances, so the walk would issue _MAX_PAGES identical requests. Clamp to the
+        # default BEFORE the walk. (None coerces to default too.)
+        if not page_limit or page_limit <= 0:
+            page_limit = _DEFAULT_PAGE_LIMIT
         reg = ENTITY_REGISTRY.get(entity_type)
         if not reg:
             raise SchemaValidationError(
@@ -630,9 +645,12 @@ class LiveGraphQLClient:
         pages = 0
         complete = False
         while True:
-            pages += 1
-            if pages > _MAX_PAGES:
+            # Safety-bound check BEFORE incrementing/fetching, so `pages` always equals
+            # the number of pages actually fetched (not _MAX_PAGES + 1). complete=False
+            # when we hit the bound (we never reached server-reported completion).
+            if pages >= _MAX_PAGES:
                 break
+            pages += 1
             variables = {"skip": skip, "limit": page_limit,
                          "filter": filter_input, "sortBy": sort_by}
             # drop keys the query doesn't declare (e.g. sortBy when not in var_decls)

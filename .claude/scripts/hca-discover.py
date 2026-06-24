@@ -12,14 +12,29 @@ Flow (all READ-ONLY — an auth POST + a GraphQL introspection query; no mutatio
 SECURITY: never prints the secret or the JWT. stdlib only.
 """
 import os, sys, json, urllib.request, urllib.error
+import importlib.util
+
+
+def _load_hca_secrets():
+    """Load the sibling hca-secrets.py (hyphenated filename) — the SINGLE SOURCE OF TRUTH
+    for credential env var NAMES. No secret VALUE is read at import time."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, "hca-secrets.py")
+    spec = importlib.util.spec_from_file_location("hca_secrets", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_secrets = _load_hca_secrets()
 
 AUTH_URL = os.environ.get(
     "HYPERCORE_AUTH_URL",
     "https://auth.hypercore.ai/identity/resources/auth/v1/api-token",
 )
-GQL_URL = os.environ.get("HYPERCORE_BASE_URL", "https://api.hypercore.ai/graphql")
-CLIENT_ID = os.environ.get("CLIENT_ID")
-SECRET = os.environ.get("HYPERCORE_CLIENT_SECRET")  # OAuth client secret (Doppler name)
+GQL_URL = os.environ.get(_secrets.BASE_URL_ENV, "https://api.hypercore.ai/graphql")
+CLIENT_ID = os.environ.get(_secrets.CLIENT_ID_ENV)
+SECRET = os.environ.get(_secrets.API_KEY_ENV)  # OAuth client secret (Doppler name)
 OUT = "planning/preeng/001-hypercore-ask/_introspection.json"
 
 INTROSPECTION = (

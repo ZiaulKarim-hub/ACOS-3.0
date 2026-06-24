@@ -303,7 +303,12 @@ def _substance_key(value: Any) -> tuple:
     if num is not None:
         # Coarse bucket so identical numbers hash together; fine tolerance is in _keys_agree.
         return ("num", round(num, 9), num)
-    return ("txt", _normalize_text(value))
+    text = _normalize_text(value)
+    if text == "":
+        # A blank / whitespace-only answer carries NO substance — treat it like None so two
+        # blank returns can never form an agreeing group and reach quorum on emptiness.
+        return ("none",)
+    return ("txt", text)
 
 
 def _keys_agree(k1: tuple, k2: tuple) -> bool:
@@ -520,7 +525,20 @@ class ConsensusEngine:
             groups = group_by_substance(values)
             last_groups = groups
             last_disagreement = _disagreement_summary(values, groups)
-            top = groups[0]
+            # STRUCTURAL no-silent-pick guard: a ('none',) group (None / blank / unextractable)
+            # can NEVER be the agreed group, even when the quorum threshold resolves to 1. Pick
+            # `top` ONLY from real-substance candidates so a count-1 none-group cannot satisfy
+            # the quorum and reach _verify_and_deliver with agreed_value == None. This makes the
+            # no-None guarantee independent of the downstream provenance binder.
+            candidates = [g for g in groups if g["key"][0] != "none"]
+            if not candidates:
+                # No real-substance group this round. Treat as a disagreement round: re-dispatch
+                # if budget remains, else escalate as NO_CONSENSUS (never fabricate a None pick).
+                if attempt < attempts - 1:
+                    continue
+                return self._escalate(quorum_threshold, n, attempt, last_disagreement,
+                                      reason_detail="no real-substance group reached quorum")
+            top = candidates[0]
             agreeing_count = top["count"]
 
             if agreeing_count >= quorum_threshold:
@@ -562,7 +580,10 @@ class ConsensusEngine:
     def _verify_and_deliver(self, *, question: str, groups: list, results: list,
                             values: list, quorum: int, n: int, redispatches: int,
                             agreeing_count: int) -> dict:
-        top = groups[0]
+        # Mirror run()'s structural guard: the agreed group is the top REAL-substance group,
+        # never a ('none',) group. (Defensive — run() already filtered before calling here.)
+        candidates = [g for g in groups if g["key"][0] != "none"]
+        top = candidates[0] if candidates else groups[0]
         agreed_value = top["representative"]
         disagreement = _disagreement_summary(values, groups)
 

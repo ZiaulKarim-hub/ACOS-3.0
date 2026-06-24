@@ -88,6 +88,12 @@ def _load(modname: str, filename: str):
     return mod
 
 
+def _vocab():
+    # hca-vocab is a pure data LEAF (imports nothing from the skill) -> sourcing the payoff /
+    # utilization / analysis trigger vocabularies from it cannot create a circular import.
+    return _load("hca_vocab", "hca-vocab.py")
+
+
 def _route():
     return _load("hca_route", "hca-route.py")
 
@@ -190,22 +196,20 @@ _ANALYSIS_FIGURE_SYNONYMS = {
     "penalties_outstanding": ("penalties", "default interest", "penalty interest"),
 }
 
-# Ranking phrasings.
-_RANK_TRIGGERS = ("top ", "largest", "biggest", "highest", "rank", "ranked", "most ",
-                  "greatest", "smallest", "lowest")
+# Ranking phrasings (sourced from the shared vocabulary leaf — single source of truth).
+_RANK_TRIGGERS = _vocab().RANK_TRIGGERS
 # Maturity-proximity phrasings.
 _MATURITY_TRIGGERS = ("closest to maturity", "nearest maturity", "soonest to mature",
                       "closest maturity", "maturing soonest", "next to mature")
-# Utilization ranking.
-_UTILIZATION_TRIGGERS = ("utilization", "utilisation", "drawn vs committed", "percent drawn")
-# Concentration phrasings.
-_CONCENTRATION_TRIGGERS = ("concentration", "concentrated", "exposure by", "% of the book",
-                           "percent of the book", "% of book", "book in the top")
+# Utilization ranking (shared vocabulary leaf).
+_UTILIZATION_TRIGGERS = _vocab().UTILIZATION_TERMS
+# Concentration phrasings (shared vocabulary leaf).
+_CONCENTRATION_TRIGGERS = _vocab().CONCENTRATION_TRIGGERS
 # Covenant-scan phrasings.
 _COVENANT_TRIGGERS = ("covenant", "breach", "in breach", "covenant breach",
                       "covenant violation", "ltv breach")
-# At-risk interpretive judgment.
-_AT_RISK_TRIGGERS = ("at risk", "at-risk", "most at risk", "riskiest", "highest risk")
+# At-risk interpretive judgment (shared vocabulary leaf).
+_AT_RISK_TRIGGERS = _vocab().AT_RISK_TRIGGERS
 # Weighted-average / portfolio roll-up phrasings.
 _WAVG_RATE_TRIGGERS = ("weighted average rate", "weighted-average rate", "weighted average "
                        "interest", "blended rate", "average rate", "average interest rate")
@@ -229,9 +233,9 @@ _OVER_THRESHOLD_RE = re.compile(
 
 # Payoff / early-redemption intent triggers. A question containing any of these routes to the
 # payoff figure (resolve loan -> getLoanRepaymentDistribution). This fixes the earlier
-# `no_lookup_target` refusal for payoff questions.
-_PAYOFF_TRIGGERS = ("payoff", "pay off", "pay-off", "early redemption", "early-redemption",
-                    "amount to redeem", "redemption amount", "amount to pay off", "redeem")
+# `no_lookup_target` refusal for payoff questions. Sourced from the shared vocabulary leaf
+# (UNION of the prior deliver triggers + the figures PayoffFigure.SYNONYMS — single source).
+_PAYOFF_TRIGGERS = _vocab().PAYOFF_TERMS
 
 # A concrete record id like "L-001", "L-GQL-1", "12" following the entity noun.
 _RECORD_ID_RE = re.compile(r"\b([A-Za-z]+-[A-Za-z0-9\-]+|\d+)\b")
@@ -462,6 +466,14 @@ def _plan_analysis(question: str, q_lower: str, tier: str) -> Optional[dict]:
     AFTER those). Routes to hca-analyze via {intent:"analysis", analysis:<kind>, ...}.
     """
     has_loans = ("loan" in q_lower or "portfolio" in q_lower or "book" in q_lower)
+    # TRUST FIX (consensus bypass): a bare-superlative figure question ("highest interest rate",
+    # "smallest commitment") with NO explicit loan/portfolio/book noun is STILL a whole-portfolio
+    # extremum (a min/max over many records) — it must route to analysis/report-tier (and thus
+    # the consensus path), NEVER fall through to a trivial single figure. We treat the presence of
+    # a superlative term + a recognizable numeric figure as an implicit portfolio scope.
+    _voc = _vocab()
+    has_superlative = any(
+        re.search(r"\b" + re.escape(s) + r"\b", q_lower) for s in _voc.SUPERLATIVE_TERMS)
 
     # covenant-breach scan (highest priority — distinctive phrasing).
     if any(t in q_lower for t in _COVENANT_TRIGGERS):
@@ -525,8 +537,12 @@ def _plan_analysis(question: str, q_lower: str, tier: str) -> Optional[dict]:
         threshold = float(over.group(1).replace(",", ""))
         return {"intent": "analysis", "analysis": "filter_over_outstanding",
                 "threshold": threshold, "tier": tier, "value_path_kind": "analysis"}
-    # ranking by a numeric figure (top/largest/highest/rank ... loans by <figure>).
-    if any(t in q_lower for t in _RANK_TRIGGERS) and has_loans:
+    # ranking by a numeric figure (top/largest/highest/rank ... loans by <figure>). A
+    # superlative (highest/smallest/largest/...) implies a whole-portfolio extremum, so it
+    # routes here EVEN WITHOUT an explicit loan/portfolio/book noun (the consensus-bypass fix:
+    # "what is the highest interest rate?" / "smallest commitment" must NOT become a trivial
+    # single figure). Ranking by a named numeric figure when recognized, else outstanding.
+    if any(t in q_lower for t in _RANK_TRIGGERS) and (has_loans or has_superlative):
         figure = _analysis_figure(q_lower) or "outstanding"
         m = _TOP_N_RE.search(q_lower)
         ascending = ("smallest" in q_lower or "lowest" in q_lower

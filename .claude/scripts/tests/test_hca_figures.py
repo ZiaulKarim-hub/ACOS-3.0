@@ -438,6 +438,42 @@ class NativeFigureTest(_NativeFigBase):
         # 27000000 + 905000 + 0 + 240000 + 0 == 28145000
         self.assertEqual(env["meta"]["reconcile"]["component_sum"], 28145000.0)
 
+    def test_outstanding_balance_reconciles_with_nonzero_capitalized_balance(self):
+        # Regression (round-1 robust review, MEDIUM): capitalizedBalance is fetched in
+        # _SUMMARY_SELECTION and IS part of the additive totalOutstanding identity. Before the fix
+        # it was excluded from the reconcile component tuple, so a NON-ZERO capitalizedBalance made
+        # component_sum != total and FALSELY REFUSED valid data (RECONCILE_FAILED). Every shipped
+        # fixture pins it 0.0, so this non-zero case is what locks the fix.
+        capbal = {
+            "id": "777", "name": "Capital Heights", "currency": "USD",
+            "commitment": 20000000.0, "scheduleEndDate": "2027-06-30",
+            "scheduleExpectedEndDate": "2027-06-30", "status": "ACTIVE",
+            "annualInterestRate": 0.11,
+            "summary": {
+                "totalOutstanding": {
+                    # 9,000,000 + 300,000 + 0 + 50,000 + 0 + 1,000,000 == 10,350,000
+                    "total": 10350000.0, "principal": 9000000.0, "interest": 300000.0,
+                    "compoundingInterest": 0.0, "totalFees": 50000.0, "totalPenalties": 0.0,
+                    "capitalizedBalance": 1000000.0,  # NON-ZERO — the regression case
+                },
+                "totalDue": {"total": 300000.0, "principal": 0.0, "interest": 300000.0},
+                "overdue": {"total": 0.0},
+                "totalPaid": {"total": 0.0},
+                "totalDisbursed": 9000000.0,
+                "unutilizedPrincipal": 11000000.0,
+                "distributedPrincipal": 9000000.0,
+                "interestRate": 0.11,
+            },
+        }
+        client = _SummaryFakeClient([capbal])
+        reg = self._registry(client)
+        env = reg.get("outstanding_balance").run(loan_id="777", loan_name="Capital Heights")
+        self.assertEqual(env["state"], figures_mod.STATE_DELIVERED, env.get("refusals"))
+        self.assertTrue(env["gate_verdict"]["reconciliation_ok"])
+        self.assertEqual(env["values"][0]["value"], 10350000.0)
+        # the non-zero capitalizedBalance (1,000,000) is summed into the components
+        self.assertEqual(env["meta"]["reconcile"]["component_sum"], 10350000.0)
+
     def test_maturity_date_is_a_date_string(self):
         client = _SummaryFakeClient([_SUMMARY_BEEHIVE])
         reg = self._registry(client)

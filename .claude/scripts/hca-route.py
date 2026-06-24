@@ -26,6 +26,7 @@ NOTE on imports: this module intentionally imports ONLY `re`, `sys`, `json`,
 
 import argparse
 import datetime
+import importlib.util
 import json
 import os
 import re
@@ -34,18 +35,39 @@ import sys
 TIER_TRIVIAL = "trivial-lookup"
 TIER_REPORT = "report/aggregation/analysis"
 
-# Signals that push a question toward the report/aggregation/analysis tier.
-# Whole-word matched (case-insensitive) against the question text.
-_AGGREGATION_WORDS = (
-    "total", "totals", "sum", "average", "avg", "mean", "median", "count",
-    "aggregate", "aggregated", "aggregation", "across", "all", "every", "each",
-    "list", "report", "breakdown", "distribution", "compare", "comparison",
-    "trend", "histogram", "rank", "ranked", "ranking", "top", "bottom",
-    "portfolio", "combined", "overall", "grouped", "group", "by", "per",
-    "between", "over time", "year-over-year", "month-over-month", "ytd",
-    "weighted", "outstanding balance", "exposure", "concentration",
-    "how many", "how much in total", "which loans", "what loans",
-)
+
+# --- shared vocabulary leaf (hyphenated filename -> import by file path, cached) -------------
+# hca-vocab is a pure data LEAF that imports nothing from the skill, so sourcing the
+# aggregation/analysis vocabulary from it cannot create a circular import. It is the single
+# source of truth (superlatives + ratios + table terms live here so a whole-portfolio
+# superlative/ratio question classifies as report-tier and is consensus-routed downstream).
+
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load(modname: str, filename: str):
+    cached = sys.modules.get(modname)
+    if cached is not None:
+        return cached
+    path = os.path.join(_THIS_DIR, filename)
+    spec = importlib.util.spec_from_file_location(modname, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _vocab():
+    return _load("hca_vocab", "hca-vocab.py")
+
+
+# Signals that push a question toward the report/aggregation/analysis tier. Sourced from the
+# shared vocabulary leaf (base aggregation words UNIONED with analysis triggers + superlatives
+# + ratio + table terms). Whole-word matched for pure-word terms; substring-matched for terms
+# carrying a space or a non-word char (e.g. "%", "over time").
+_AGGREGATION_WORDS = _vocab().AGGREGATION_ANALYSIS_TERMS
+
+_WORD_TERM_RE = re.compile(r"^[A-Za-z0-9]+$")
 
 # Phrases that strongly indicate a single-record / single-value lookup. Used to
 # *demote* an otherwise-ambiguous question back to trivial when no aggregation
@@ -60,12 +82,14 @@ _TRIVIAL_SINGLE_PATTERNS = (
 def _has_aggregation_signal(question: str) -> bool:
     q = question.lower()
     for word in _AGGREGATION_WORDS:
-        # Multi-word phrases: substring match. Single words: whole-word match.
-        if " " in word:
-            if word in q:
+        # Pure-word single tokens: whole-word match (avoids matching inside another word).
+        # Anything carrying a space or a non-word char (e.g. "%", "over time", "at-risk"):
+        # substring match — a word boundary either side would not fire (e.g. "\b%\b").
+        if _WORD_TERM_RE.match(word):
+            if re.search(r"\b" + re.escape(word) + r"\b", q):
                 return True
         else:
-            if re.search(r"\b" + re.escape(word) + r"\b", q):
+            if word in q:
                 return True
     return False
 

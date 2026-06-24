@@ -44,7 +44,11 @@ maps its class onto the two delivery tiers:
 | `how many loans are there?` | `report/aggregation/analysis` | **report** → consensus-required |
 | `what is the total commitment across all loans?` | `report/aggregation/analysis` | **report** → consensus-required |
 
-The conservative default is report-tier (consensus-required): when in doubt, demand consensus.
+The conservative default is the **trivial tier**: `hca-route.classify` returns
+`trivial-lookup` for any question with no aggregation/list/cross-entity signal. The trivial
+tier is *not* a weaker path — universal provenance binding + the deterministic gate suite
+always apply. Full adversarial consensus is mandated only when an aggregation/list/
+cross-entity signal pushes the question to the report tier.
 
 ## Who spawns the blind agents
 

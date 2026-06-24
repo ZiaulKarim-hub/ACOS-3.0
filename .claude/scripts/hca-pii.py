@@ -5,21 +5,33 @@ Redacts borrower PII from any string or dict before it is written to logs,
 evidence bundles, or any output that leaves the git-ignored cache.
 
 PII CLASSES HANDLED:
-  - legal_name / borrower names
+  - borrower / legal names — FIELD-NAME-based only (full-value redaction of known
+    identity and free-text fields such as legal_name, contact, notes, description).
+    There is NO arbitrary-free-text name regex: a personal name buried in genuinely
+    unstructured prose under a non-PII key is NOT detected. We redact the WHOLE value
+    of fields whose name signals identity or free-text that commonly carries names.
   - email addresses
   - phone numbers (US + international)
   - street addresses (numeric street prefix)
-  - SSN / TIN / EIN (tax IDs)
+  - SSN / TIN / EIN and other tax/ID numbers (US + non-US) — FIELD-NAME-based for
+    arbitrary-shaped IDs (e.g. taxId "AB123456C", identificationNumber "X4815162"),
+    regex-based for canonically-shaped US SSN/EIN in free text.
   - account numbers (long digit runs)
   - credit card numbers (16-digit Luhn-shaped)
   - zip codes (US 5+4)
   - IP addresses (v4 / v6)
 
 DESIGN PRINCIPLES:
-  - Redact anything that looks like PII in free-text; keep aggregates intact.
-  - Field-name-driven redaction for structured dicts: named PII fields are fully
-    replaced with a redaction token; non-PII fields are recursively scrubbed for
-    inline PII patterns.
+  - Redact anything that looks like PII in free-text; keep numeric aggregates intact.
+  - Field-name-driven redaction for structured dicts: named PII fields (identity,
+    contact, tax/ID, free-text) are fully replaced with a redaction token; other
+    fields are recursively scrubbed for inline PII patterns.
+  - Field-name matching is CASE-INSENSITIVE and camelCase-AWARE: identifiers are split
+    into tokens (mobileNumber -> {mobile, number}) before the substring/token check, so
+    the LIVE Hypercore camelCase names are caught alongside snake_case variants.
+  - The PII field-name vocabulary has a SINGLE source of truth: the live camelCase
+    names live in hca-normalize.DEFAULT_PII_FIELDS and are imported here (see
+    _canonical_pii_fields); hca-pii adds only snake_case/aliasing breadth on top.
   - The scrubber is conservative: when in doubt, redact.
   - stdlib only (Python 3); no network; no model calls; no secrets.
 
@@ -28,6 +40,12 @@ WHAT IS NOT REDACTED (aggregates):
     deliverable financial data. They do NOT carry PII by themselves.
   - Loan IDs, entity IDs (opaque system identifiers, not personal data).
   - Dates (origination_date, maturity_date) without an accompanying name.
+  - CAVEAT (fail-safe over-redaction): a bare, unformatted 10-20 digit run embedded
+    in a free-text STRING is treated as a possible account number and IS redacted,
+    even if it was actually a numeric aggregate written without separators (e.g.
+    "Portfolio total 1234567890"). Numeric aggregates passed as JSON numbers (int /
+    float) are always preserved; only string-embedded long digit runs are affected.
+    We accept this over-redaction because under-redacting an account number is worse.
 
 GROUND RULES (memory/decisions/2026-06-18-hca-build-ground-rules.md):
   - Python 3 stdlib only.
@@ -38,8 +56,11 @@ GROUND RULES (memory/decisions/2026-06-18-hca-build-ground-rules.md):
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
+import os
 import re
+import sys
 from typing import Any, Optional, Union
 
 
@@ -50,11 +71,54 @@ from typing import Any, Optional, Union
 REDACTED = "[REDACTED]"
 
 # ---------------------------------------------------------------------------
+# Single source of truth: the LIVE Hypercore camelCase PII field names
+# ---------------------------------------------------------------------------
+# The canonical PII field-name vocabulary lives ONCE, in hca-normalize.py
+# (DEFAULT_PII_FIELDS — the live Hypercore camelCase names). hca-pii imports it
+# here rather than maintaining its own divergent copy. Both files share the same
+# lexicon, so they cannot drift again.
+#
+# hca-normalize uses a hyphenated filename, so it is loaded via the same
+# importlib seam pattern hca-normalize itself uses for hca-cache. The load is
+# lazy + memoized and degrades safely (empty set) if the sibling is missing, so
+# the scrubber can never be locked out — it simply falls back to its own
+# snake_case lexicon below.
+
+_CANONICAL_PII_FIELDS_CACHE: Optional[frozenset] = None
+
+
+def _canonical_pii_fields() -> frozenset:
+    """Import hca-normalize.DEFAULT_PII_FIELDS (the live camelCase names) lazily.
+
+    Memoized. No circular import: hca-normalize imports hca-cache (not hca-pii),
+    so loading hca-normalize from here introduces no cycle. Fails safe to an empty
+    frozenset so a missing/broken sibling never disables redaction.
+    """
+    global _CANONICAL_PII_FIELDS_CACHE
+    if _CANONICAL_PII_FIELDS_CACHE is not None:
+        return _CANONICAL_PII_FIELDS_CACHE
+    try:
+        mod = sys.modules.get("hca_normalize")
+        if mod is None:
+            here = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(here, "hca-normalize.py")
+            spec = importlib.util.spec_from_file_location("hca_normalize", path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["hca_normalize"] = mod
+            spec.loader.exec_module(mod)
+        fields = frozenset(getattr(mod, "DEFAULT_PII_FIELDS", ()))
+    except Exception:
+        fields = frozenset()  # fail safe: rely on the snake_case lexicon below
+    _CANONICAL_PII_FIELDS_CACHE = fields
+    return fields
+
+
+# ---------------------------------------------------------------------------
 # Field-name driven PII classification
 # ---------------------------------------------------------------------------
 
-# Fields whose VALUE must be fully redacted regardless of content.
-# The match is case-insensitive on the field name.
+# snake_case / aliasing breadth ADDED ON TOP of the canonical camelCase set.
+# Matched case-insensitively against the camelCase-split tokens of the field name.
 _PII_FIELD_NAMES: frozenset = frozenset({
     # names
     "legal_name", "borrower_name", "first_name", "last_name", "full_name",
@@ -63,9 +127,11 @@ _PII_FIELD_NAMES: frozenset = frozenset({
     "email", "email_address", "phone", "phone_number", "mobile", "cell",
     "fax", "address", "street_address", "mailing_address", "home_address",
     "city", "state", "zip", "zip_code", "postal_code", "country",
-    # tax / financial IDs
-    "ssn", "tin", "ein", "tax_id", "social_security_number",
+    # tax / financial IDs (US + non-US)
+    "ssn", "tin", "ein", "tax_id", "taxid", "social_security_number",
     "tax_identification_number", "employer_identification_number",
+    "identification_number", "identificationnumber", "id_number",
+    "passport", "national_id",
     "account_number", "bank_account", "routing_number",
     # auth-adjacent
     "password", "secret", "token", "api_key", "access_token", "refresh_token",
@@ -76,21 +142,75 @@ _PII_FIELD_NAMES: frozenset = frozenset({
     "date_of_birth", "dob", "birth_date", "gender", "race", "nationality",
 })
 
-# Field-name substrings that signal PII even if not in the exact set above.
-# Checked with `any(substr in lower_key ...)`.
+# Field-name substrings that signal PII even if not an exact match above.
+# Checked against the camelCase-normalized (split-then-rejoined) field name.
 _PII_FIELD_SUBSTRINGS: tuple = (
-    "name", "email", "phone", "address", "ssn", "tin", "ein",
-    "tax_id", "account", "routing", "secret", "token", "password",
+    "name", "email", "phone", "mobile", "contact", "address", "ssn", "tin", "ein",
+    "tax_id", "taxid", "identification", "id_number", "passport", "national_id",
+    "account", "routing", "secret", "token", "password",
     "dob", "birth", "ip_addr",
 )
 
+# Free-text fields whose ENTIRE value is redacted because such prose commonly
+# carries borrower names and other PII that no field-name or regex rule can catch
+# inside arbitrary text. Case-insensitive, camelCase-aware (matched as tokens).
+_FREE_TEXT_PII_FIELDS: frozenset = frozenset({
+    "contact", "notes", "note", "description", "comment", "comments",
+    "memo", "remarks",
+})
+
+
+def _split_camel(key: str) -> str:
+    """Lower-case a field name and insert '_' at camelCase / digit boundaries.
+
+    mobileNumber -> 'mobile_number'; taxId -> 'tax_id'; identificationNumber ->
+    'identification_number'; SSNValue -> 'ssn_value'. This lets a single set of
+    tokens match snake_case, camelCase, PascalCase, and UPPER variants uniformly.
+    """
+    # boundary between a lowercase/digit and an uppercase letter
+    s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", key)
+    # boundary inside acronym runs, e.g. 'SSNValue' -> 'SSN_Value'
+    s = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", s)
+    # collapse existing separators (hyphen / space / dot) to underscore
+    s = re.sub(r"[\s\-.]+", "_", s)
+    return s.lower().strip("_")
+
 
 def _is_pii_field(key: str) -> bool:
-    """Return True if the field name indicates a PII value."""
-    lo = key.lower().strip()
-    if lo in _PII_FIELD_NAMES:
+    """Return True if the field name indicates a PII value.
+
+    Case-insensitive and camelCase-aware: the key is normalized to snake_case
+    tokens first, so mobileNumber / taxId / identificationNumber / contact are all
+    caught regardless of casing. Matches against (1) the canonical live camelCase
+    set imported from hca-normalize, (2) the snake_case/alias set, and (3) the
+    free-text set, then falls back to a token-aware substring scan.
+    """
+    raw_lo = key.lower().strip()
+    norm = _split_camel(key)                 # e.g. 'mobile_number', 'tax_id'
+    tokens = set(norm.split("_")) if norm else set()
+
+    # 1) canonical camelCase names from hca-normalize — match on the camelCase
+    #    form (lower) OR on any normalized token (e.g. 'mobileNumber' -> 'mobile').
+    canon_lo = {c.lower() for c in _canonical_pii_fields()}
+    if raw_lo in canon_lo or norm in canon_lo:
         return True
-    return any(substr in lo for substr in _PII_FIELD_SUBSTRINGS)
+    for c in canon_lo:
+        c_tokens = set(_split_camel(c).split("_"))
+        if c_tokens and c_tokens.issubset(tokens):
+            return True
+
+    # 2) exact snake_case / alias names (compare both the raw and normalized forms)
+    if raw_lo in _PII_FIELD_NAMES or norm in _PII_FIELD_NAMES:
+        return True
+
+    # 3) free-text fields (full-value redaction) — token-level match
+    if raw_lo in _FREE_TEXT_PII_FIELDS or norm in _FREE_TEXT_PII_FIELDS:
+        return True
+    if tokens & _FREE_TEXT_PII_FIELDS:
+        return True
+
+    # 4) substring fallback against the normalized name
+    return any(substr in norm for substr in _PII_FIELD_SUBSTRINGS)
 
 
 # ---------------------------------------------------------------------------
@@ -132,10 +252,13 @@ _PATTERNS: list = [
     re.compile(r"\b\d{3}[- ]\d{2}[- ]\d{4}\b"),
     # EIN: dd-ddddddd
     re.compile(r"\b\d{2}-\d{7}\b"),
+    # International phone: +CC followed by the WHOLE grouped number.
+    # Ordered BEFORE the US-phone pattern so it wins on "+1-202-555-0147" forms —
+    # otherwise the US pattern would consume the local part and leave "+1-" exposed.
+    # Greedily consumes every digit group (with (), space, dash, or dot separators).
+    re.compile(r"\+\d{1,3}(?:[\s.\-]?\(?\d{1,4}\)?){1,6}"),
     # US phone: (ddd) ddd-dddd  or  ddd-ddd-dddd  or  ddd.ddd.dddd
     re.compile(r"\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}"),
-    # International phone: +1-... or +44-...
-    re.compile(r"\+\d{1,3}[\s\-]?\(?\d{1,4}\)?[\s\-]?\d{1,4}[\s\-]?\d{1,9}"),
     # Credit card: 16 digits (blocks of 4)
     re.compile(r"\b(\d{4}[\s\-]){3}\d{4}\b"),
     # Long digit runs that look like account numbers (10–20 digits, no decimals around them)

@@ -376,6 +376,55 @@ class MinimalSliceTest(_TmpCacheTest):
         sl = self.cache.minimal_slice("hca:slist", ["id"], max_records=2)
         self.assertEqual(len(sl["slice"]), 2)  # capped, not the whole list
 
+    def test_minimal_slice_field_paths_resolve_across_all_tier1_shapes(self):
+        # HARD provenance gate: every emitted field_path MUST re-resolve into Tier-1.
+        # The blind-extractor pipeline REFUSES any cited path that does not resolve, so a
+        # bogus path (e.g. the REST-single `$.body[0].<field>` regression) would falsely
+        # refuse a legitimately-extracted value. Cover all three supported body shapes.
+        cases = {
+            # REST single: body = {<id>: {...fields...}} directly (no data/record wrapper).
+            "hca:rest-single": _make_raw("hca:rest-single", entity_type="loan", body={
+                "loan_id": "L-REST", "commitment": 750000.0, "status": "ACTIVE",
+            }),
+            # GraphQL single: body.record = {...}
+            "hca:record-single": _make_raw("hca:record-single", entity_type="loan", body={
+                "record": {"id": "L-REC", "commitment": 250000.0, "status": "CLOSED"},
+                "provenance": {"fetched_at": "2026-06-18T08:00:00Z"},
+            }),
+            # GraphQL list: body.data = [...]
+            "hca:data-list": _make_list_raw("hca:data-list", [
+                {"id": "L-1", "commitment": 100.0, "status": "ACTIVE"},
+                {"id": "L-2", "commitment": 200.0, "status": "CLOSED"},
+            ]),
+        }
+        fields = ["commitment", "status"]
+        for rid, raw in cases.items():
+            self.cache.put_raw(raw)
+
+        for rid in cases:
+            tier1 = self.cache.get_raw(rid)
+            sl = self.cache.minimal_slice(rid, fields, max_records=5)
+            emitted = 0
+            for entry in sl["slice"]:
+                for field, path in entry["field_paths"].items():
+                    resolved = cache_mod.walk_json_path(tier1, path)
+                    self.assertIsNot(
+                        resolved, cache_mod._MISSING,
+                        msg=f"{rid}: emitted field_path {path!r} does NOT resolve into Tier-1",
+                    )
+                    self.assertEqual(
+                        resolved, entry["fields"][field],
+                        msg=f"{rid}: field_path {path!r} resolved to a different value",
+                    )
+                    emitted += 1
+            self.assertGreater(emitted, 0, msg=f"{rid}: no field_paths were emitted")
+
+        # Explicit regression assertion for the REST-single shape: path is $.body.<field>
+        # (NOT the broken $.body[0].<field> the endswith('record') heuristic produced).
+        rest_slice = self.cache.minimal_slice("hca:rest-single", fields, max_records=5)
+        self.assertEqual(
+            rest_slice["slice"][0]["field_paths"]["commitment"], "$.body.commitment")
+
 
 # ===========================================================================
 # 6. Cache dir is git-ignored (no real PII can ever be committed)

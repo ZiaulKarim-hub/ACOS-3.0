@@ -381,5 +381,154 @@ class IpAndCardTest(unittest.TestCase):
         self.assertNotIn("4111 1111 1111 1111", out)
 
 
+# ===========================================================================
+# 12. Live Hypercore camelCase field names (single-source-of-truth + camelCase)
+# ===========================================================================
+
+class CamelCaseFieldNameTest(unittest.TestCase):
+    """The LIVE Hypercore camelCase PII field names must be redacted as FIELDS,
+    independent of value shape. Regression for the divergence where hca-pii's
+    _is_pii_field() returned False for mobileNumber/taxId/identificationNumber/contact.
+    """
+
+    def test_live_camelcase_fields_redacted(self):
+        # Values are deliberately NON-phone/NON-SSN-shaped so the field-name rule
+        # (not an inline value regex) is what must catch them.
+        for field in ("mobileNumber", "phoneNumber", "identificationNumber",
+                      "taxId", "firstName", "lastName", "contact"):
+            with self.subTest(field=field):
+                rec = {field: "PLACEHOLDER_VALUE"}
+                out = pii.scrub(rec)
+                self.assertEqual(out[field], REDACTED,
+                                 f"camelCase PII field {field!r} must be redacted")
+
+    def test_case_insensitive_camelcase_variants(self):
+        for field in ("MobileNumber", "MOBILENUMBER", "mobilenumber", "TaxID"):
+            with self.subTest(field=field):
+                out = pii.scrub({field: "placeholder"})
+                self.assertEqual(out[field], REDACTED)
+
+    def test_single_source_of_truth_import(self):
+        """hca-pii imports the canonical camelCase set from hca-normalize."""
+        import importlib.util as _ilu
+        norm_path = os.path.join(_SCRIPTS_DIR, "hca-normalize.py")
+        spec = _ilu.spec_from_file_location("hca_normalize", norm_path)
+        norm = _ilu.module_from_spec(spec)
+        sys.modules["hca_normalize"] = norm
+        spec.loader.exec_module(norm)
+        canon = pii._canonical_pii_fields()
+        self.assertEqual(set(canon), set(norm.DEFAULT_PII_FIELDS),
+                         "hca-pii must reuse hca-normalize.DEFAULT_PII_FIELDS verbatim")
+        # every canonical name must classify as PII
+        for field in norm.DEFAULT_PII_FIELDS:
+            with self.subTest(field=field):
+                self.assertTrue(pii._is_pii_field(field))
+
+
+# ===========================================================================
+# 13. Non-US tax / ID numbers (arbitrary-shaped, field-name driven)
+# ===========================================================================
+
+class NonUsIdRedactionTest(unittest.TestCase):
+    """Non-US tax/ID values match no US regex; the ID FIELD must still be redacted."""
+
+    def test_non_us_taxid_field_redacted(self):
+        out = pii.scrub({"taxId": "AB123456C"})
+        self.assertEqual(out["taxId"], REDACTED)
+        self.assertFalse(_contains_pii(out, "AB123456C"))
+
+    def test_identification_number_field_redacted(self):
+        out = pii.scrub({"identificationNumber": "X4815162"})
+        self.assertEqual(out["identificationNumber"], REDACTED)
+        self.assertFalse(_contains_pii(out, "X4815162"))
+
+    def test_id_field_name_variants(self):
+        for field in ("id_number", "passport", "national_id", "nationalId",
+                      "passportNumber"):
+            with self.subTest(field=field):
+                out = pii.scrub({field: "Z9999999"})
+                self.assertEqual(out[field], REDACTED)
+
+
+# ===========================================================================
+# 14. Names in free-text fields (full-value redaction of known free-text keys)
+# ===========================================================================
+
+class FreeTextNameRedactionTest(unittest.TestCase):
+    """A borrower name buried in a free-text field (notes/contact/description/...)
+    leaks unless the WHOLE value is redacted. Regression for
+    scrub({"notes": "Borrower is Jane Q. Doe"}) leaking the name.
+    """
+
+    NAME = "Jane Q. Doe"
+
+    def test_name_in_notes_field_redacted(self):
+        out = pii.scrub({"notes": f"Borrower is {self.NAME}", "currency": "USD"})
+        self.assertEqual(out["notes"], REDACTED)
+        self.assertFalse(_contains_pii(out, self.NAME),
+                         "name in notes free-text must not survive")
+        self.assertEqual(out["currency"], "USD", "aggregate must survive")
+
+    def test_name_in_contact_field_redacted(self):
+        out = pii.scrub({"contact": f"Reach {self.NAME} at the office"})
+        self.assertEqual(out["contact"], REDACTED)
+        self.assertFalse(_contains_pii(out, self.NAME))
+
+    def test_free_text_field_variants_redacted(self):
+        for field in ("notes", "note", "description", "comment", "comments",
+                      "memo", "remarks"):
+            with self.subTest(field=field):
+                out = pii.scrub({field: f"see {self.NAME}"})
+                self.assertEqual(out[field], REDACTED)
+
+
+# ===========================================================================
+# 15. International phone — country code must NOT leak
+# ===========================================================================
+
+class IntlPhoneRedactionTest(unittest.TestCase):
+    """Tighten intl-phone redaction so the +CC prefix is consumed too."""
+
+    def test_intl_phone_country_code_not_left_behind(self):
+        out = pii.scrub_string("+1-202-555-0147")
+        self.assertEqual(out, REDACTED,
+                         "intl phone incl. country code must be fully redacted")
+        self.assertNotIn("+1", out, "country code must not survive")
+        self.assertNotIn("202", out)
+
+    def test_intl_phone_uk_redacted(self):
+        out = pii.scrub_string("Call +44 7700 900123 today")
+        self.assertNotIn("+44", out)
+        self.assertNotIn("7700", out)
+        self.assertIn(REDACTED, out)
+
+    def test_us_phone_still_redacted_after_reorder(self):
+        out = pii.scrub_string("Call 555-867-5309 now")
+        self.assertNotIn("555-867-5309", out)
+        self.assertIn(REDACTED, out)
+
+
+# ===========================================================================
+# 16. Account-number over-redaction caveat (string-embedded long digit runs)
+# ===========================================================================
+
+class AccountNumberCaveatTest(unittest.TestCase):
+    """Per the documented fail-safe choice: a bare 10+ digit run embedded in a
+    STRING is redacted (possible account number), but numeric aggregates passed as
+    ints/floats survive.
+    """
+
+    def test_numeric_aggregate_as_int_survives(self):
+        rec = {"portfolio_total": 1234567890}
+        out = pii.scrub(rec)
+        self.assertEqual(out["portfolio_total"], 1234567890,
+                         "JSON-number aggregate must survive intact")
+
+    def test_string_embedded_long_run_is_redacted(self):
+        # Documented over-redaction: a long digit run in free text is redacted.
+        out = pii.scrub_string("Portfolio total 1234567890")
+        self.assertNotIn("1234567890", out)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -57,7 +57,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +109,12 @@ def _load(modname: str, filename: str):
     sys.modules[modname] = mod
     spec.loader.exec_module(mod)
     return mod
+
+
+def _vocab():
+    # hca-vocab is a pure data LEAF (imports nothing from the skill) -> sourcing the payoff /
+    # utilization vocabularies + KIND_* constants from it cannot create a circular import.
+    return _load("hca_vocab", "hca-vocab.py")
 
 
 def _adapter():
@@ -175,9 +181,12 @@ def _refused(reason_code: str, reason: str, *, meta: Optional[dict] = None) -> d
 # The Figure abstraction (registry seed)
 # ---------------------------------------------------------------------------
 
-KIND_DIRECT = "direct"      # a value read straight off one API field
-KIND_DERIVED = "derived"    # a value computed/reconciled from multiple API fields
-KIND_REQUIRES_EXTERNAL = "requires_external"  # needs KG data Hypercore can't source (refuses)
+# Figure-kind constants — single source of truth in the shared vocabulary leaf (these were
+# duplicated identically here and in hca-ontology.py). Re-exported as module attributes so
+# existing `figures_mod.KIND_DIRECT` references (tests + deliver) keep working unchanged.
+KIND_DIRECT = _vocab().KIND_DIRECT                      # a value read straight off one API field
+KIND_DERIVED = _vocab().KIND_DERIVED                    # computed/reconciled from many fields
+KIND_REQUIRES_EXTERNAL = _vocab().KIND_REQUIRES_EXTERNAL  # needs external KG data (refuses)
 
 
 class Figure:
@@ -281,9 +290,20 @@ def known_good_redemption_input(loan_id: str, date: str) -> dict:
 
 
 def _is_http_500(exc: Exception) -> bool:
-    """Heuristic: does this exception look like the intermittent HTTP 500 from the resolver?"""
+    """Does this exception look like the intermittent HTTP 5xx the resolver returns?
+
+    Match ONLY on a server-error signal: an explicit numeric `status` attribute in the 5xx
+    range (LiveServerError carries this), or a "500" / "internal server error" string in the
+    message. The bare substring "transport" was DROPPED — it caused fatal non-5xx transport
+    errors (TLS handshake, connection reset, DNS failure) to be retried 3x as if flaky. A
+    read-only violation (ReadOnlyViolation — no status attr, no 5xx text) is correctly NOT
+    treated as retryable and is surfaced immediately by the caller.
+    """
+    status = getattr(exc, "status", None)
+    if isinstance(status, int) and 500 <= status < 600:
+        return True
     msg = f"{type(exc).__name__}: {exc}".lower()
-    return ("500" in msg) or ("internal server error" in msg) or ("transport" in msg)
+    return ("500" in msg) or ("internal server error" in msg)
 
 
 def _call_with_retry(client, query: str, variables: dict, *,
@@ -326,8 +346,9 @@ class PayoffFigure:
     """
 
     NAME = "payoff_as_of"
-    SYNONYMS = ("early_redemption", "early redemption", "payoff", "redemption",
-                "amount to redeem", "redeem")
+    # Sourced from the shared vocabulary leaf (UNION of the prior figure synonyms + the deliver
+    # payoff triggers — single source of truth so the two can never diverge again).
+    SYNONYMS = _vocab().PAYOFF_TERMS
 
     def __init__(self, *, client=None, cache=None, engine=None,
                  currency: Optional[str] = None,
@@ -652,6 +673,10 @@ class LoanSummaryFetcher:
             except Exception as e:  # noqa: BLE001 — surfaced below, never fabricated
                 last_err = e
                 continue
+            # A search that COMPLETED without raising supersedes any earlier transport error:
+            # a clean "no matching id" must report REASON_FETCH_EMPTY, not REASON_LIVE_500 from
+            # a prior (e.g. name-filtered) attempt that 500'd. Reset the recorded error.
+            last_err = None
             if row is not None:
                 break
         if row is None:
@@ -710,6 +735,19 @@ class LoanSummaryFetcher:
             skip += _SUMMARY_FETCH_LIMIT
 
 
+def _strip_loan_prefix(field_path: str) -> str:
+    """Strip a leading 'loan.' prefix from a logical field path, returning the relative path.
+
+    The cached loan row IS the loan record, so a 'loan.'-prefixed path ('loan.commitment') and
+    a bare path ('summary.totalOutstanding.total') both address fields directly on the row.
+    Single source of truth for the prefix strip used by _summary_path + the two figure fetchers.
+    """
+    fp = (field_path or "").strip()
+    if fp.startswith("loan."):
+        return fp[len("loan."):]
+    return fp
+
+
 def _summary_path(field_path: str) -> str:
     """Map a logical 'summary.totalOutstanding.total' source path to the Tier-1 json path.
 
@@ -718,10 +756,7 @@ def _summary_path(field_path: str) -> str:
       loan.commitment / commitment    ->  $.body.record.commitment
       loan.scheduleEndDate            ->  $.body.record.scheduleEndDate
     """
-    fp = field_path.strip()
-    if fp.startswith("loan."):
-        fp = fp[len("loan."):]
-    return f"$.body.record.{fp}"
+    return f"$.body.record.{_strip_loan_prefix(field_path)}"
 
 
 class NativeFigure:
@@ -772,7 +807,7 @@ class NativeFigure:
         cur = currency or row.get("currency")
 
         # Resolve the value at the logical path within the cached row.
-        rel = self.field_path[len("loan."):] if self.field_path.startswith("loan.") else self.field_path
+        rel = _strip_loan_prefix(self.field_path)
         value = _walk_dotted(row, rel)
         if value is _ABSENT:
             return _refused(REASON_FETCH_EMPTY,
@@ -1053,7 +1088,7 @@ class LeverageFigure:
                     "reason": fetched.get("reason", "loan summary fetch failed")}
         row = fetched["row"]
         rid = fetched["rid"]
-        rel = field_path[len("loan."):] if field_path.startswith("loan.") else field_path
+        rel = _strip_loan_prefix(field_path)
         value = _walk_dotted(row, rel)
         if value is _ABSENT or not isinstance(value, (int, float)) or isinstance(value, bool):
             return {"ok": False, "state": STATE_REFUSED, "reason_code": REASON_FETCH_EMPTY,
@@ -1294,7 +1329,12 @@ class LeverageFigure:
 _NATIVE_FIGURE_SPECS = (
     ("outstanding_balance", "summary.totalOutstanding.total", "currency",
      ("outstanding", "total outstanding", "current balance", "balance"),
-     ("principal", "interest", "compoundingInterest", "totalFees", "totalPenalties")),
+     # capitalizedBalance IS part of the additive totalOutstanding identity and is fetched in
+     # _SUMMARY_SELECTION; including it here means a NON-ZERO capitalizedBalance reconciles
+     # cleanly (its omission would cause a FALSE RECONCILE_FAILED refusal). Fixtures pin it 0.0,
+     # so summing it in is a no-op for the existing suite (zero contribution).
+     ("principal", "interest", "compoundingInterest", "totalFees", "totalPenalties",
+      "capitalizedBalance")),
     ("principal_outstanding", "summary.totalOutstanding.principal", "currency",
      ("principal", "outstanding principal"), None),
     ("accrued_interest", "summary.totalOutstanding.interest", "currency",
@@ -1375,12 +1415,14 @@ def build_registry(*, client=None, cache=None, engine=None,
                             description=nf.description))
 
     # 3) Derived utilization = total_disbursed / commitment (transparent; shows inputs).
+    #    Synonyms sourced from the shared vocabulary leaf (single source; "utilization" itself
+    #    is the figure NAME and already matches via Figure.matches, so including it is harmless).
     util = DerivedFigure(
         "utilization", formula="total_disbursed / commitment",
         inputs=("total_disbursed", "commitment"),
         compute=lambda v: round(v["total_disbursed"] / v["commitment"], 6),
         unit="ratio",
-        synonyms=("utilization rate", "utilisation", "drawn vs committed", "percent drawn"),
+        synonyms=_vocab().UTILIZATION_TERMS,
         description="derived utilization = total_disbursed / commitment (inputs shown)",
         registry=reg, cache=cache, engine=engine)
     reg.register(Figure("utilization", synonyms=util.synonyms, kind=KIND_DERIVED,

@@ -56,7 +56,7 @@ def main():
                  f"total_types={len(schema['types'])}  query_fields={len(query_fields)}\n")
     lines.append("> READ-ONLY: this skill uses ONLY Query fields below. NEVER any Mutation.\n")
 
-    lines.append("\n## All Query field names (84)\n")
+    lines.append(f"\n## All Query field names ({len(query_fields)})\n")
     lines.append("`" + "`, `".join(sorted(query_fields)) + "`\n")
 
     seen_objs = []

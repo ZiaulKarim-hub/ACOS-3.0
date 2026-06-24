@@ -55,12 +55,39 @@ from typing import Any, Optional
 
 
 # ---------------------------------------------------------------------------
-# Concept kinds
+# Sibling module loading (hyphenated filename -> import by file path, cached)
 # ---------------------------------------------------------------------------
 
-KIND_DIRECT = "direct"                        # one GraphQL field
-KIND_DERIVED = "derived"                      # transparent formula over other concepts
-KIND_REQUIRES_EXTERNAL = "requires_external"  # needs the OKOA KG (appraised value / NOI / ...)
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load(modname: str, filename: str):
+    cached = sys.modules.get(modname)
+    if cached is not None:
+        return cached
+    path = os.path.join(_THIS_DIR, filename)
+    spec = importlib.util.spec_from_file_location(modname, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _vocab():
+    # hca-vocab is a pure data LEAF (imports nothing from the skill) -> sourcing the KIND_*
+    # constants from it cannot create a circular import.
+    return _load("hca_vocab", "hca-vocab.py")
+
+
+# ---------------------------------------------------------------------------
+# Concept kinds — single source of truth in the shared vocabulary leaf (these were duplicated
+# identically here and in hca-figures.py). Re-exported as module attributes so existing
+# `ont_mod.KIND_DIRECT` references (tests + planner) keep working unchanged.
+# ---------------------------------------------------------------------------
+
+KIND_DIRECT = _vocab().KIND_DIRECT                      # one GraphQL field
+KIND_DERIVED = _vocab().KIND_DERIVED                    # transparent formula over concepts
+KIND_REQUIRES_EXTERNAL = _vocab().KIND_REQUIRES_EXTERNAL  # needs the OKOA KG (appraised / NOI)
 
 
 # PRISM covenant thresholds (OKOA bridge-loan defaults — bridge-loan.yaml Assumptions/Covenants;

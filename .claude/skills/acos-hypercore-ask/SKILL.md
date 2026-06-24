@@ -16,7 +16,7 @@ allowed-tools: Read, Glob, Grep, Bash, Task
 > OKOA knowledge graph, dual provenance + per-loan refusal where collateral data is absent),
 > and a portfolio analysis layer (rankings, roll-ups, concentration, covenant scan vs PRISM
 > 75%/1.25x/8% thresholds). Every delivered value is provenance-bound or the skill REFUSES —
-> it never fabricates. 456 stdlib-only tests, date-independent.
+> it never fabricates. 450+ stdlib-only tests, date-independent.
 
 ## Purpose
 
@@ -40,9 +40,10 @@ skill refuses to deliver any value it cannot provenance-bind and verify.
 4. **Never fabricate.** Absent credentials (`is_live() == false`) → explicit
    `NO_LIVE_DATA` envelope / `NoLiveDataError`, never a made-up record, never a crash.
 5. **Secrets via env / Doppler only.** Credentials are read from environment variables
-   (`HYPERCORE_CLIENT_SECRET`, `HYPERCORE_BASE_URL` by default; names configurable in
-   `config.yaml`), injected by `doppler run` (project `acos-3-0`, config `dev`). No key
-   or URL is ever committed.
+   (`CLIENT_ID` + `HYPERCORE_CLIENT_SECRET` by default; names configurable in
+   `config.yaml`). `HYPERCORE_BASE_URL` is an OPTIONAL GraphQL-URL override, not a
+   credential. They are injected by `doppler run` (project `hypercore-ask`, config
+   `dev_personal`). No key or URL is ever committed.
 6. **Python 3 stdlib only.** No third-party dependencies in any supporting script.
 
 (See `memory/decisions/2026-06-18-hca-build-ground-rules.md` for the full decision record.)
@@ -301,8 +302,8 @@ NL question
   -> [Hypercore Adapter (CONTRACT)]    BUILT (SLICE-HCA-02) — hca-adapter.py
         read-only; FixtureBackend active; LiveBackend stubbed (NotImplementedError)
         |-- (no creds) --> NO_LIVE_DATA -> explicit "no live data" envelope (never fabricate)
-  -> [Raw-Response Cache]              TODO (SLICE-HCA-03) — Tier-1 RawApiResponse (truth)
-  -> [Normalizer]                      TODO (SLICE-HCA-03) — Tier-2 NormalizedAnswerRecord
+  -> [Raw-Response Cache]              BUILT (SLICE-HCA-03) — Tier-1 RawApiResponse (truth)
+  -> [Normalizer]                      BUILT (SLICE-HCA-03) — Tier-2 NormalizedAnswerRecord
   -> [Blind Extraction Agents x N]     BUILT (SLICE-HCA-06) — Task() general-purpose, no shared context
   -> [Consensus Evaluator]             BUILT (SLICE-HCA-06) — hca-consensus.py: substance consensus;
                                        bounded blind re-dispatch; ESCALATE (no silent pick)
@@ -323,6 +324,7 @@ NL question
 | Stage | Artifact | Status |
 |---|---|---|
 | Intake & tier router | `.claude/scripts/hca-route.py` | BUILT — `--selftest` exits 0 |
+| Shared vocabulary leaf | `.claude/scripts/hca-vocab.py` | BUILT — single source of truth for payoff / utilization / aggregation-analysis phrasing vocab + figure-kind constants, imported by route/deliver/figures/ontology (imports nothing from the skill); `--selftest` exits 0 |
 | Skill scaffold + config | this `SKILL.md`, `config.yaml`, `README.md` | BUILT |
 | Read-only adapter + fixtures | `.claude/scripts/hca-adapter.py`, `fixtures/`, `schemas/` | BUILT |
 | Adapter tests (incl. read-only guard) | `.claude/scripts/tests/test_hca_adapter.py` | BUILT |
@@ -340,8 +342,8 @@ NL question
 | **Private-credit domain ontology** | `.claude/scripts/hca-ontology.py`, `tests/test_hca_ontology.py` | **BUILT (SLICE-HCA-13)** — PRISM-seeded concept map (15 concepts: name + synonyms + plain-English definition + kind + source + unit + covenant); resolves a phrasing → concept (synonyms + fuzzy + verbatim-substring); unmapped concept REFUSES (named), never guesses |
 | Evidence-bundle wiring | `python3 hca-route.py` + `hca_evidence_bundle_dir()` helper | STUB |
 
-Everything else in the pipeline is a forward reference (see the `TODO (SLICE-HCA-NN)`
-tags above) and is intentionally NOT implemented in this foundation.
+Every pipeline stage above is BUILT and live-verified; only the evidence-bundle wiring
+remains a STUB (see the table row above).
 
 ## Evidence bundles
 

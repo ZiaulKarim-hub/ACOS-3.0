@@ -5,7 +5,7 @@ This module owns BOTH tiers of the data model (data-model.md §0, B1, B2):
 
   Tier-1  RawApiResponse        = IMMUTABLE source of truth. The exact raw GraphQL
                                   response (operation_name, query, variables, raw body,
-                                  fetched_at, reported_total, pages_walked, complete),
+                                  timestamp, reported_total, pages_walked, complete),
                                   content-addressed by a STABLE id (hash of
                                   operation+variables). Append-only; NEVER mutated after
                                   write. ALL provenance points here.
@@ -545,7 +545,7 @@ class TwoTierCache:
         fields not in `fields` are simply absent (not redacted-in-place — omitted).
         """
         raw = self.store.get(raw_response_id)
-        items, base_path = _tier1_items(raw)
+        items, base_path, single = _tier1_items(raw)
         sliced = []
         for i, item in enumerate(items[:max(0, int(max_records))]):
             if not isinstance(item, dict):
@@ -555,7 +555,7 @@ class TwoTierCache:
             for f in fields:
                 if f in item:
                     picked[f] = item[f]
-                    field_paths[f] = _join_path(base_path, i, f, single=(base_path is not None and base_path.endswith("record")))
+                    field_paths[f] = _join_path(base_path, i, f, single=single)
             sliced.append({"fields": picked, "field_paths": field_paths})
         return {
             "raw_response_id": raw_response_id,
@@ -587,23 +587,29 @@ def _tier1_entity_type(raw: dict) -> Optional[str]:
 
 
 def _tier1_items(raw: dict) -> tuple:
-    """Return (items_list, base_json_path) for the records inside a Tier-1 body.
+    """Return (items_list, base_json_path, single) for the records inside a Tier-1 body.
+
+    `single` is the authoritative single-record flag (matches hca-normalize._items_and_base):
+    True when the body is a lone record (dict-shaped), False when it is a list of records.
+    Provenance paths MUST use this flag — re-deriving it from a `base_path.endswith("record")`
+    string heuristic is WRONG for the REST-single shape (base "$.body"), which produced an
+    unresolvable `$.body[0].<field>` path and a false provenance refusal.
 
     Handles three shapes:
-      - GraphQL list:   body.data = [...]          base = "$.body.data"
-      - GraphQL single: body.record = {...}        base = "$.body.record" (wrapped to [rec])
-      - REST single:    body = {loan_id: ...}       base = "$.body"        (wrapped to [body])
+      - GraphQL list:   body.data = [...]          base = "$.body.data"   single=False
+      - GraphQL single: body.record = {...}        base = "$.body.record" single=True  (wrapped to [rec])
+      - REST single:    body = {loan_id: ...}       base = "$.body"        single=True  (wrapped to [body])
     """
     body = raw.get("body")
     if isinstance(body, dict):
         if isinstance(body.get("data"), list):
-            return body["data"], "$.body.data"
+            return body["data"], "$.body.data", False
         if isinstance(body.get("record"), dict):
-            return [body["record"]], "$.body.record"
-        return [body], "$.body"
+            return [body["record"]], "$.body.record", True
+        return [body], "$.body", True
     if isinstance(body, list):
-        return body, "$.body"
-    return [], None
+        return body, "$.body", False
+    return [], None, True
 
 
 def _join_path(base_path: Optional[str], index: int, field: str, *, single: bool) -> str:

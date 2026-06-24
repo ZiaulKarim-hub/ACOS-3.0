@@ -372,6 +372,64 @@ class NoSilentPickTest(_ConsensusTestBase):
         self.assertEqual(len(runner.calls), 1)   # no re-dispatch when budget is 0
 
 
+    def test_none_group_never_picked_even_at_quorum_one(self):
+        # Regression for the silent-None pick: a ('none',) return must NEVER be selected as the
+        # agreed group, even when quorum resolves to 1 (which would otherwise let a count-1
+        # group satisfy `agreeing_count >= threshold`). Tier-1 stores null at the cited path so
+        # even the binder would not save us — the guard must be STRUCTURAL.
+        raw_null = adapter_mod.make_raw_api_response(
+            raw_response_id="r:loan:L-null",
+            endpoint="https://api.hypercore.ai/graphql",
+            request_params={"graphql_operation": "HCAGetLoan"},
+            timestamp="2026-06-18T08:00:00Z", http_status=200, cursor=None,
+            reported_total=None,
+            body={"record": {"id": "L-null", "x": None},
+                  "provenance": {"fetched_at": "2026-06-18T08:00:00Z"}},
+            backend="fixture")
+        null_rid = self.cache.put_raw(raw_null)
+        null_path = "$.body.record.x"
+        # Two agents: one returns None (bound to the null Tier-1 path), one returns 5.
+        runner = _ScriptedRunner([[
+            _envelope_return(None, null_rid, null_path),
+            _envelope_return(5, "r:other", "$.body.record.x"),
+        ]])
+        env = consensus_mod.run_consensus(
+            "what is x of loan L-null?", runner,
+            quorum=1, n=2, max_redispatch=0, binder=self.binder)
+        # The None group must NOT be delivered. With quorum 1, the real-substance group (5)
+        # has count 1 and is bound to r:other (which is NOT in Tier-1) so provenance refuses;
+        # either way the engine must REFUSE with value None — NEVER DELIVER None.
+        self.assertEqual(env["state"], consensus_mod.STATE_REFUSED)
+        self.assertIsNone(env["value"])
+        self.assertIn(env["refusals"][0]["reason_code"],
+                      (consensus_mod.REASON_NO_CONSENSUS, consensus_mod.REASON_PROVENANCE))
+        self.assertNotEqual(env["state"], consensus_mod.STATE_DELIVERED)
+
+    def test_two_blank_returns_do_not_form_delivering_consensus(self):
+        # Regression for the blank-substance bug: two whitespace-only answers must NOT agree on
+        # substance and reach quorum — a blank is non-substantive (collapses to the none
+        # sentinel), so the engine must REFUSE (never deliver an empty-string "consensus").
+        runner = _ScriptedRunner([[
+            _envelope_return("", self.rid, self.path),
+            _envelope_return("   ", self.rid, self.path),
+        ]])
+        env = consensus_mod.run_consensus(
+            "what is the commitment of loan L-1?", runner,
+            quorum="2-of-3", n=2, max_redispatch=0, binder=self.binder)
+        self.assertEqual(env["state"], consensus_mod.STATE_REFUSED)
+        self.assertEqual(env["refusals"][0]["reason_code"], consensus_mod.REASON_NO_CONSENSUS)
+        self.assertIsNone(env["value"])
+
+    def test_blank_substance_key_is_none_sentinel(self):
+        # Direct unit proof that blank/whitespace text maps to the non-agreeing none sentinel.
+        self.assertEqual(consensus_mod._substance_key(""), ("none",))
+        self.assertEqual(consensus_mod._substance_key("   "), ("none",))
+        # Two blanks therefore do NOT cluster into an agreeing group.
+        groups = consensus_mod.group_by_substance(["", "  "])
+        for g in groups:
+            self.assertEqual(g["count"], 1)
+
+
 class SingleSourceCapTest(_ConsensusTestBase):
     def test_single_agent_agreement_caps_confidence_at_0_7(self):
         # quorum 1-of-1 with a single agent: the lone agreeing source is capped at <= 0.7.
