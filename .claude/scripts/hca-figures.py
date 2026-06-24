@@ -1382,12 +1382,12 @@ class LeverageFigure:
 _NATIVE_FIGURE_SPECS = (
     ("outstanding_balance", "summary.totalOutstanding.total", "currency",
      ("outstanding", "total outstanding", "current balance", "balance"),
-     # capitalizedBalance IS part of the additive totalOutstanding identity and is fetched in
-     # _SUMMARY_SELECTION; including it here means a NON-ZERO capitalizedBalance reconciles
-     # cleanly (its omission would cause a FALSE RECONCILE_FAILED refusal). Fixtures pin it 0.0,
-     # so summing it in is a no-op for the existing suite (zero contribution).
-     ("principal", "interest", "compoundingInterest", "totalFees", "totalPenalties",
-      "capitalizedBalance")),
+     # totalOutstanding.total = principal + interest + compoundingInterest + totalFees +
+     # totalPenalties. capitalizedBalance is a NON-additive MEMO field (live data 2026-06-24:
+     # Beehive 134 capitalizedBalance == principal == 27,240,937.50), so it must NOT be summed
+     # here — including it caused a FALSE RECONCILE_FAILED on any loan with a non-zero
+     # capitalizedBalance. (It is still fetched in _SUMMARY_SELECTION; it is just not a component.)
+     ("principal", "interest", "compoundingInterest", "totalFees", "totalPenalties")),
     ("principal_outstanding", "summary.totalOutstanding.principal", "currency",
      ("principal", "outstanding principal"), None),
     ("accrued_interest", "summary.totalOutstanding.interest", "currency",

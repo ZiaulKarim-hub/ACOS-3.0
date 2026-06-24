@@ -369,7 +369,8 @@ def _extract_loan_name_for_payoff(question: str) -> Optional[str]:
 # the words the ontology may use inside a concept term — removing them leaves the loan name.
 _FIGURE_FILLER_RE = re.compile(
     r"(?i)\b(what|whats|what's|is|are|the|of|for|on|loan|loans|amount|to|me|tell|give|please|"
-    r"current|total|how|much|s|in|across|portfolio|all|by|at|do|we|have|show|give)\b")
+    r"current|total|how|much|s|in|across|portfolio|all|by|at|do|we|have|show|give|"
+    r"senior|junior|mezzanine|mezz|tranche)\b")
 
 
 def _strip_concept_terms(question: str, concept) -> str:
