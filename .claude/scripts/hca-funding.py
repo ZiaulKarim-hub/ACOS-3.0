@@ -704,6 +704,21 @@ _PPATH_DISBURSEMENT = "$.body.record.totalDisbursement"
 _PPATH_CONTRIBUTED = "$.body.record.contributed"
 _PPATH_ACTIVE_LOANS = "$.body.record.activeLoansCount"
 
+# Portfolio OUTSTANDING is computed as a RECONCILED AGGREGATE over the investor's LoanFunding
+# positions (loanFundings filter:{fundingEntityId}) — a reliable path, unlike the flaky
+# fundingEntity.mergedLoanFundingsSummary (which 500s). Each position's totalOutstanding is itself
+# reconciled (the 5-component _OUTSTANDING_COMPONENTS identity) and provenance-bound to its own
+# Tier-1 record; the sum is bind_aggregate-verified; the page set is completeness-checked.
+_PORTFOLIO_OUTSTANDING_QUERY = (
+    "query HCAPortfolioOutstanding($filter: LoanFundingsFilterInput, $skip: Int, $limit: Int) { "
+    "loanFundings(filter: $filter, skip: $skip, limit: $limit) { "
+    "totalFilteredRecords pageItems { id fundingEntity { id name } asset { id name } "
+    "repaymentSchedule { summary { totalOutstanding { total principal interest "
+    "compoundingInterest totalFees totalPenalties } } } } "
+    "} }"
+)
+_PORTFOLIO_OUTSTANDING_LIMIT = 100
+
 
 class FundingPortfolioFigure:
     """fundingEntity-level (PORTFOLIO) figures for ONE investor across ALL their loans.
@@ -885,6 +900,137 @@ class FundingPortfolioFigure:
                                "reconciles": True, "components": recon["components"],
                                "confidence_record": conf})
 
+    # === investor PORTFOLIO OUTSTANDING (reconciled AGGREGATE over positions) =====
+    def portfolio_outstanding(self, *, funding_entity_id: str, currency: Optional[str] = None,
+                              name_hint: Optional[str] = None, **_ignored) -> dict:
+        """The investor's total OUTSTANDING across ALL loans = SUM of each LoanFunding position's
+        reconciled totalOutstanding. AGGREGATE figure: every contributor is provenance-bound to its
+        own Tier-1 record AND reconciles its 5 components; the page set is completeness-checked; the
+        sum is bind_aggregate-verified. REFUSE on any unreconciled/unbindable contributor or an
+        incomplete fetch (never a partial sum)."""
+        if not funding_entity_id:
+            return _refused(REASON_BAD_INPUT, "no funding entity id supplied")
+        fe_id = str(funding_entity_id)
+        meta0 = {"figure": "portfolio_outstanding", "funding_entity_id": fe_id}
+        try:
+            client = self._ensure_client()
+        except Exception as e:
+            ad = _adapter()
+            if isinstance(e, getattr(ad, "NoLiveDataError", ())):
+                return _envelope(STATE_NO_LIVE_DATA, answer=None, values=[], gate_verdict=None,
+                                 complete=False,
+                                 refusals=[{"reason_code": STATE_NO_LIVE_DATA, "reason": str(e)}],
+                                 meta=meta0)
+            return _refused(REASON_LIVE_500,
+                            f"could not build live client: {type(e).__name__}: {str(e)[:160]}",
+                            meta=meta0)
+        # fetch ALL positions, paged to completion
+        skip = 0
+        pages = 0
+        positions: list = []
+        reported_total = None
+        while True:
+            pages += 1
+            if pages > 1000:
+                break
+            variables = {"filter": {"fundingEntityId": fe_id}, "skip": skip,
+                         "limit": _PORTFOLIO_OUTSTANDING_LIMIT}
+            try:
+                data, _a, _e = _call_with_retry(
+                    client, _PORTFOLIO_OUTSTANDING_QUERY, variables,
+                    attempts=self._attempts, backoff_s=self._backoff, sleep=self._sleep,
+                    is_empty=lambda d: (d or {}).get("loanFundings") is None)
+            except Exception as e:
+                return _refused(REASON_LIVE_500,
+                                (f"loanFundings(fundingEntityId={fe_id!r}) failed after "
+                                 f"{self._attempts} attempt(s): {type(e).__name__}: {str(e)[:200]}"),
+                                meta=meta0)
+            page = (data or {}).get("loanFundings") or {}
+            items = page.get("pageItems") or []
+            reported_total = page.get("totalFilteredRecords")
+            positions.extend(items)
+            got = len(positions)
+            if not items or (reported_total is not None and got >= reported_total) \
+                    or len(items) < _PORTFOLIO_OUTSTANDING_LIMIT:
+                break
+            skip += _PORTFOLIO_OUTSTANDING_LIMIT
+        if not positions:
+            return _refused(REASON_FETCH_EMPTY,
+                            f"funding entity {fe_id!r} has no funding positions — refusing", meta=meta0)
+        # completeness: never deliver a PARTIAL sum
+        if reported_total is not None and len(positions) != reported_total:
+            return _refused(REASON_FETCH_EMPTY,
+                            (f"incomplete fetch: got {len(positions)} of {reported_total} "
+                             "positions — refusing (never a partial sum)"), meta=meta0)
+        # cache each position, reconcile each, collect the aggregate bindings + values
+        fetched_at = _now_iso()
+        ad = _adapter()
+        contributing: list = []
+        contributing_values: list = []
+        total_sum = 0.0
+        breakdown: list = []
+        fe_name = None
+        for pos in positions:
+            lf_id = str((pos or {}).get("id"))
+            fe = (pos or {}).get("fundingEntity") or {}
+            fe_name = fe_name or fe.get("name")
+            summ = (((pos or {}).get("repaymentSchedule") or {}).get("summary") or {})
+            outstanding = summ.get("totalOutstanding") or {}
+            t = outstanding.get("total")
+            if not _is_number(t):
+                return _refused(REASON_FETCH_EMPTY,
+                                f"position {lf_id} has non-numeric outstanding total ({t!r}) — refusing",
+                                meta={**meta0, "loan_funding_id": lf_id})
+            recon = FundingFigure._reconcile_outstanding(outstanding, t)
+            if not recon["ok"]:
+                return _refused(REASON_RECONCILE,
+                                (f"position {lf_id} outstanding components do not reconcile "
+                                 f"(sum={recon['component_sum']} vs total={t})"),
+                                meta={**meta0, "loan_funding_id": lf_id})
+            raw = ad.make_raw_api_response(
+                raw_response_id=f"live:fundingOutstanding:{fe_id}:{lf_id}:{fetched_at}",
+                endpoint="loanFundings",
+                request_params={"graphql_operation": "HCAPortfolioOutstanding",
+                                "funding_entity_id": fe_id, "loan_funding_id": lf_id},
+                timestamp=fetched_at, http_status=200, cursor=None, reported_total=None,
+                body={"record": pos,
+                      "provenance": {"fetched_at": fetched_at, "operation": "loanFundings",
+                                     "funding_entity_id": fe_id, "loan_funding_id": lf_id}},
+                backend="live")
+            rid = self._cache.put_raw(raw)
+            contributing.append({"raw_response_id": rid, "json_field_path": _PATH_OUTSTANDING_TOTAL})
+            contributing_values.append(float(t))
+            total_sum += float(t)
+            breakdown.append({"loan_funding_id": lf_id,
+                              "loan": (pos.get("asset") or {}).get("name"), "outstanding": float(t)})
+        total_sum = round(total_sum, 2)
+        agg = self._engine.bind_aggregate(
+            total_sum, contributing, value_ref=f"fundingEntity.{fe_id}.portfolio_outstanding",
+            contributing_values=contributing_values)
+        if agg["outcome"] != self._provlib.VERIFIED:
+            return _refused(REASON_PROVENANCE, agg.get("reason", "aggregate binding failed"),
+                            meta={**meta0, "reason_code_inner": agg.get("reason_code")})
+        conf = self._engine.confidence_record(
+            f"fundingEntity.{fe_id}.portfolio_outstanding", source_count=len(contributing),
+            basis=f"reconciled aggregate over {len(contributing)} funding positions")
+        cur = currency or self._currency
+        out_value = {
+            "value": total_sum, "currency": cur, "unit": "currency",
+            "provenance": {"aggregate": True, "operation": "loanFundings",
+                           "contributing": contributing, "funding_entity_id": fe_id,
+                           "fetched_at": fetched_at},
+            "confidence": conf["confidence"]}
+        answer = (f"Investor {fe_name or fe_id} total outstanding across {len(contributing)} "
+                  f"loans is {total_sum}{(' ' + cur) if cur else ''}.")
+        gate_verdict = {"outcome": "pass", "reconciliation_ok": True, "aggregate": True,
+                        "contributors": len(contributing), "completeness_ok": True,
+                        "single_source": conf["single_source"]}
+        return _envelope(STATE_DELIVERED, answer=answer, values=[out_value],
+                         gate_verdict=gate_verdict, complete=True, refusals=[],
+                         meta={**meta0, "funding_entity_name": fe_name, "currency": cur,
+                               "positions": len(contributing), "reported_total": reported_total,
+                               "breakdown": breakdown, "confidence_record": conf})
+
     # === LIGHTER portfolio scalars (single-source, no reconciliation) ======
     def _light(self, *, figure: str, value_path: str, field_name: str, unit: str,
                funding_entity_id: str, currency: Optional[str], name_hint: Optional[str]) -> dict:
@@ -957,6 +1103,7 @@ class FundingPortfolioFigure:
     def registry(self) -> dict:
         return {
             "portfolio_receivable": self.portfolio_receivable,
+            "portfolio_outstanding": self.portfolio_outstanding,
             "portfolio_commitment": self.portfolio_commitment,
             "portfolio_disbursement": self.portfolio_disbursement,
             "portfolio_contributed": self.portfolio_contributed,
@@ -965,8 +1112,8 @@ class FundingPortfolioFigure:
 
 
 PORTFOLIO_FIGURE_NAMES = (
-    "portfolio_receivable", "portfolio_commitment", "portfolio_disbursement",
-    "portfolio_contributed", "portfolio_active_loans",
+    "portfolio_receivable", "portfolio_outstanding", "portfolio_commitment",
+    "portfolio_disbursement", "portfolio_contributed", "portfolio_active_loans",
 )
 
 

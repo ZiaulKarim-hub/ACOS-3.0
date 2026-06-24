@@ -95,6 +95,7 @@ def _funding_figure_for(q_lower: str) -> Optional[str]:
 # Portfolio (fundingEntity-level, ACROSS ALL the investor's loans) figures by keyword — used when
 # an investor resolves but NO loan is named ("XL's total receivable across the portfolio").
 _PORTFOLIO_FIGURE_BY_KEYWORD = (
+    (("outstanding",), "portfolio_outstanding"),
     (("receivable", "receivables"), "portfolio_receivable"),
     (("commitment", "committed"), "portfolio_commitment"),
     (("disbursement", "disbursed", "disbursements"), "portfolio_disbursement"),
