@@ -240,25 +240,107 @@ _PAYOFF_TRIGGERS = _vocab().PAYOFF_TERMS
 # A concrete record id like "L-001", "L-GQL-1", "12" following the entity noun.
 _RECORD_ID_RE = re.compile(r"\b([A-Za-z]+-[A-Za-z0-9\-]+|\d+)\b")
 
-# "as of 2026-06-30" / "as-of 2026/06/30" / "on 2026-06-30" date extraction.
-_ASOF_DATE_RE = re.compile(
-    r"\b(?:as[\s-]?of|on|for|by|at)\s+(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b", re.IGNORECASE)
-_BARE_DATE_RE = re.compile(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b")
+# Date extraction. The payoff / figure paths accept ISO ("2026-06-28"), natural-language
+# ("28th June 2026", "28 June 2026", "June 28 2026", "June 28, 2026") and numeric ("06/28/2026",
+# "28-06-2026") forms. Ambiguous all-numeric dates use US MM/DD/YYYY, with a day-first fallback
+# ONLY when the first field cannot be a month (> 12). Every recognized date is also strippable
+# from the loan-name query via _strip_date_phrases, so date text never pollutes resolution.
+_MONTHS = {
+    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
+    "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
+    "august": 8, "aug": 8, "september": 9, "sept": 9, "sep": 9, "october": 10, "oct": 10,
+    "november": 11, "nov": 11, "december": 12, "dec": 12,
+}
+_MONTH_ALT = "|".join(sorted(_MONTHS, key=len, reverse=True))
+
+_DATE_PATTERNS = (
+    # ISO: 2026-06-28 / 2026/06/28
+    ("iso", re.compile(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b")),
+    # 28th June 2026 / 28 June 2026  (DAY MONTH-NAME YEAR)
+    ("dmy", re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(" + _MONTH_ALT + r")\.?,?\s+(\d{4})\b",
+                       re.IGNORECASE)),
+    # June 28 2026 / June 28th, 2026  (MONTH-NAME DAY YEAR)
+    ("mdy", re.compile(r"\b(" + _MONTH_ALT + r")\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b",
+                       re.IGNORECASE)),
+    # 06/28/2026 / 28-06-2026  (NUMERIC, year LAST; US MM/DD, day-first fallback when MM > 12)
+    ("num", re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")),
+)
+
+
+def _normalize_date_match(kind: str, m) -> Optional[tuple]:
+    """(year, month, day) ints from a matched date pattern, or None if out of range."""
+    try:
+        if kind == "iso":
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        elif kind == "dmy":
+            d, mo, y = int(m.group(1)), _MONTHS[m.group(2).lower()], int(m.group(3))
+        elif kind == "mdy":
+            mo, d, y = _MONTHS[m.group(1).lower()], int(m.group(2)), int(m.group(3))
+        elif kind == "num":
+            a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if a <= 12:            # US convention: first field is the month (05/06 -> May 6)
+                mo, d = a, b
+            elif b <= 12:          # first field can't be a month (28/06) -> day-first
+                mo, d = b, a
+            else:
+                return None
+        else:
+            return None
+    except (KeyError, ValueError):
+        return None
+    if not (1 <= mo <= 12 and 1 <= d <= 31):
+        return None
+    return y, mo, d
+
+
+def _find_date(question: str) -> tuple:
+    """Find the EARLIEST recognizable date in `question`.
+
+    Returns (iso_str, (start, end)) for the matched span, or (None, None). Used both to read the
+    as-of date AND to strip the date phrase out of the loan-name query.
+    """
+    found = []
+    for kind, rx in _DATE_PATTERNS:
+        for m in rx.finditer(question):
+            norm = _normalize_date_match(kind, m)
+            if norm is not None:
+                found.append((m.start(), m.end(), norm))
+    if not found:
+        return None, None
+    found.sort(key=lambda f: f[0])
+    s, e, (y, mo, d) = found[0]
+    return f"{y}-{mo:02d}-{d:02d}", (s, e)
+
+
+# A connector ('as of' / 'on' / 'for' / 'by' / 'at' / 'dated') immediately preceding a date is
+# swallowed with it when stripping, so the loan-name query keeps no orphaned 'on' / 'as of'.
+_DATE_CONNECTOR_RE = re.compile(r"(?i)\b(?:as[\s-]?of|on|for|by|at|dated)\s*$")
 
 
 def _extract_asof_date(question: str) -> Optional[str]:
     """Pull an explicit as-of date (YYYY-MM-DD) from the question, or None for 'today'.
 
-    Prefers an 'as of <date>' phrasing; falls back to any bare ISO-ish date in the text.
-    Normalizes to zero-padded YYYY-MM-DD. Returns None when no date is present.
+    Accepts ISO, natural-language ("28th June 2026" / "June 28, 2026") and numeric ("06/28/2026")
+    forms. Ambiguous numeric dates use US MM/DD/YYYY (day-first fallback when month > 12).
     """
-    m = _ASOF_DATE_RE.search(question) or _BARE_DATE_RE.search(question)
-    if not m:
-        return None
-    y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
-    if not (1 <= mo <= 12 and 1 <= d <= 31):
-        return None
-    return f"{y}-{mo:02d}-{d:02d}"
+    iso, _span = _find_date(question)
+    return iso
+
+
+def _strip_date_phrases(text: str) -> str:
+    """Remove every recognized date (and an immediately-preceding connector word) from `text`,
+    so a trailing 'as of <date>' / 'on <date>' clause never pollutes loan-name resolution.
+    Idempotent and bounded.
+    """
+    out = text
+    for _ in range(8):  # bounded; each pass removes one matched date span
+        iso, span = _find_date(out)
+        if span is None:
+            break
+        s, e = span
+        prefix = _DATE_CONNECTOR_RE.sub(" ", out[:s])
+        out = prefix + " " + out[e:]
+    return re.sub(r"\s+", " ", out).strip()
 
 
 def _extract_loan_name_for_payoff(question: str) -> Optional[str]:
@@ -268,17 +350,10 @@ def _extract_loan_name_for_payoff(question: str) -> Optional[str]:
     trailing 'as of <date>' clause, leaving the loan name token(s) to hand to the resolver.
     Returns None when nothing name-like remains (caller refuses: needs a loan).
     """
-    q = question.strip()
-    # drop a trailing "as of <date>" / "on <date>" clause
-    q = _ASOF_DATE_RE.sub(" ", q)
-    q = _BARE_DATE_RE.sub(" ", q)
-    low = q.lower()
+    # Drop any recognized date (and its 'as of' / 'on' connector) FIRST, so date text never
+    # leaks into the resolver query (e.g. "Utah Shoe 28th June 2026" -> "Utah Shoe").
+    work = _strip_date_phrases(question.strip())
     # remove payoff trigger phrases
-    for t in sorted(_PAYOFF_TRIGGERS, key=lambda s: -len(s)):
-        low = low.replace(t, " ")
-    # rebuild q preserving original case by mapping: simplest is to re-extract from original
-    # after removing the same spans, but a case-insensitive token strip is sufficient here.
-    work = q
     for t in sorted(_PAYOFF_TRIGGERS, key=lambda s: -len(s)):
         work = re.sub(re.escape(t), " ", work, flags=re.IGNORECASE)
     # strip leading filler words/punctuation
@@ -300,9 +375,7 @@ _FIGURE_FILLER_RE = re.compile(
 def _strip_concept_terms(question: str, concept) -> str:
     """Remove a matched concept's terms (canonical name + synonyms) + filler from the question,
     leaving the loan-name token(s). Returns '' when nothing name-like remains (portfolio-level)."""
-    work = question
-    work = _ASOF_DATE_RE.sub(" ", work)
-    work = _BARE_DATE_RE.sub(" ", work)
+    work = _strip_date_phrases(question)
     terms = sorted(concept.terms(), key=lambda s: -len(s))
     for t in terms:
         work = re.sub(re.escape(t), " ", work, flags=re.IGNORECASE)
@@ -324,7 +397,7 @@ def _detect_figure_concept(question: str):
     # Try the question as-is, then a date-stripped variant (so a trailing 'as of <date>' or a
     # loan name doesn't dilute the score). The resolver returns the best concept either way.
     candidates = []
-    for q in (question, _ASOF_DATE_RE.sub(" ", _BARE_DATE_RE.sub(" ", question))):
+    for q in (question, _strip_date_phrases(question)):
         res = ont.resolve(q)
         candidates.append(res)
         # Also probe each concept term's presence directly: if a concept's synonym phrase is a

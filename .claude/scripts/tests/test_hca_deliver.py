@@ -364,5 +364,51 @@ class PayoffLoanNameExtractionTest(unittest.TestCase):
                                  msg=f"filler {noise!r} leaked into loan name for {q!r}: {name!r}")
 
 
+class PayoffDateParsingTest(unittest.TestCase):
+    """The payoff date parser accepts natural-language + numeric formats (not just ISO) and
+    strips the recognized date out of the loan-name query so date text can't pollute resolution.
+    Ambiguous all-numeric dates use US MM/DD/YYYY, with a day-first fallback when month > 12."""
+
+    def test_natural_and_numeric_formats_parse(self):
+        f = deliver_mod._extract_asof_date
+        cases = {
+            "what is the payoff for X on 28th June 2026": "2026-06-28",
+            "payoff for X on 28 June 2026": "2026-06-28",
+            "payoff for X on June 28 2026": "2026-06-28",
+            "payoff for X on June 28, 2026": "2026-06-28",
+            "payoff for X as of 2026-06-28": "2026-06-28",
+            "payoff for X on 2026/06/28": "2026-06-28",
+            "payoff for X on 06/28/2026": "2026-06-28",   # US MM/DD
+            "payoff for X on 28/06/2026": "2026-06-28",   # day-first fallback (28 not a month)
+            "payoff for X on 05/06/2026": "2026-05-06",   # ambiguous -> US: May 6
+            "payoff for X on 28-06-2026": "2026-06-28",
+        }
+        for q, want in cases.items():
+            self.assertEqual(f(q), want, msg=f"{q!r} -> {f(q)!r}, expected {want!r}")
+
+    def test_no_date_returns_none(self):
+        self.assertIsNone(deliver_mod._extract_asof_date("what is the payoff for Beehive"))
+
+    def test_date_phrase_stripped_from_loan_name(self):
+        # the original bug: "Utah Shoe ... on 28th June 2026" leaked the date into the resolver.
+        name = deliver_mod._extract_loan_name_for_payoff(
+            "what is the payoff amount for Utah Shoe loan on 28th June 2026?")
+        self.assertEqual(name, "Utah Shoe")
+        for noise in ("28th", "june", "2026", "on"):
+            self.assertNotIn(noise, (name or "").lower().split())
+
+    def test_loan_name_preserves_legit_trailing_number(self):
+        # a trailing number that is part of the NAME (not a date) must survive.
+        name = deliver_mod._extract_loan_name_for_payoff("payoff for Motel 6 on 28 June 2026")
+        self.assertEqual(name, "Motel 6")
+
+    def test_plan_threads_parsed_natural_date(self):
+        plan = deliver_mod.plan_question(
+            "what is the payoff for Beehive on 28th June 2026")
+        self.assertEqual(plan["intent"], "payoff")
+        self.assertEqual(plan["as_of_date"], "2026-06-28")
+        self.assertEqual(plan["loan_name"], "Beehive")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

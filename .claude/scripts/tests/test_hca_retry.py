@@ -267,5 +267,69 @@ class FiguresRetryRecognizesLiveServerErrorTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
 
 
+# ===========================================================================
+# figures._call_with_retry re-fetches a TRANSIENT EMPTY payload (substance-preserving retry):
+# same input re-issued; a missing value is recovered, never a wrong one (re-gated downstream).
+# ===========================================================================
+
+class FiguresRetryOnEmptyPayloadTest(unittest.TestCase):
+    @staticmethod
+    def _empty(d):
+        return not isinstance((d or {}).get("getLoanRepaymentDistribution"), dict)
+
+    def test_refetches_transient_empty_then_succeeds(self):
+        good = {"getLoanRepaymentDistribution": {"total": 100.0}}
+
+        class _C:
+            def __init__(self):
+                self.calls = 0
+
+            def raw_query(self, q, v):
+                self.calls += 1
+                return {} if self.calls < 3 else good  # empty twice (same input), then good
+
+        c = _C()
+        data, attempts, errs = figures._call_with_retry(
+            c, "query Q { x }", {}, attempts=3, backoff_s=0.0, sleep=lambda _s: None,
+            is_empty=self._empty)
+        self.assertEqual(data, good)
+        self.assertEqual(c.calls, 3)
+        self.assertTrue(any("empty" in e for e in errs))
+
+    def test_returns_last_empty_after_budget_so_caller_refuses(self):
+        class _C:
+            def __init__(self):
+                self.calls = 0
+
+            def raw_query(self, q, v):
+                self.calls += 1
+                return {}  # always empty
+
+        c = _C()
+        data, attempts, errs = figures._call_with_retry(
+            c, "query Q { x }", {}, attempts=3, backoff_s=0.0, sleep=lambda _s: None,
+            is_empty=self._empty)
+        self.assertEqual(c.calls, 3)            # spent the full budget re-fetching the same input
+        self.assertTrue(self._empty(data))      # hands the still-empty payload back -> caller refuses
+
+    def test_non_empty_first_response_is_not_refetched(self):
+        good = {"getLoanRepaymentDistribution": {"total": 5.0}}
+
+        class _C:
+            def __init__(self):
+                self.calls = 0
+
+            def raw_query(self, q, v):
+                self.calls += 1
+                return good
+
+        c = _C()
+        data, attempts, errs = figures._call_with_retry(
+            c, "query Q { x }", {}, attempts=3, backoff_s=0.0, sleep=lambda _s: None,
+            is_empty=self._empty)
+        self.assertEqual(c.calls, 1)
+        self.assertEqual(data, good)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

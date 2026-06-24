@@ -206,5 +206,32 @@ class ResolveFailureTest(unittest.TestCase):
             r.resolve_loan("beehive")
 
 
+class SearchTokenBroadeningTest(unittest.TestCase):
+    """Substance-preserving resolution retry: progressively broader searchStrings, all built ONLY
+    from the user's own words (never invented), so a real loan is surfaced even when a strict
+    server-side filter returns nothing."""
+
+    def test_search_tokens_include_full_pair_singles_and_unfiltered(self):
+        r = resolve_mod.LoanResolver(client=_FakeClient())
+        variants = r._search_tokens("Beehive Waldorff Senior")
+        self.assertEqual(variants[0], "beehive waldorff senior")   # full query first (specific)
+        self.assertIsNone(variants[-1])                            # unfiltered fallback last
+        self.assertIn("waldorff beehive", variants)                # two most-distinctive tokens
+        for tok in ("waldorff", "beehive", "senior"):              # each token individually
+            self.assertIn(tok, variants)
+        # de-duped (None keyed as a sentinel)
+        keys = [v if v is not None else "__ALL__" for v in variants]
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_broadening_surfaces_candidate_a_strict_filter_would_miss(self):
+        # Reversed word order: the full searchString "waldorff beehive" is NOT a substring of the
+        # real name, so a single strict-filter fetch returns zero rows; token broadening + the
+        # order-insensitive token-set score still surface (and resolve) the real loan.
+        client = _FakeClient(loans=[{"id": "134", "name": "Beehive Waldorff", "status": "Active"}])
+        r = resolve_mod.LoanResolver(client=client)
+        res = r.resolve_loan("Waldorff Beehive")
+        self.assertIn("134", [c["id"] for c in res["candidates"]])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -273,20 +273,49 @@ _REPAYMENT_DISTRIBUTION_QUERY = (
 )
 
 
+# The LOCKED non-variable fields of the verified-working Early-Redemption input (2026-06-19).
+# A minimal / `isPrepayment:true` input CRASHES the resolver (HTTP 500), and flipping a flag
+# changes the returned value, so these are pinned here and enforced by _assert_known_good_input
+# at every call site — no future edit can silently send a crash-inducing or value-changing input.
+_KNOWN_GOOD_REDEMPTION_FIELDS = {
+    "includeDraftChanges": False,
+    "repaymentType": "EarlyRedemption",
+    "applyExpectedRepaymentsUntilEarlyRedemption": False,
+    "isPrepayment": False,
+}
+_REDEMPTION_INPUT_KEYS = frozenset({"loanId", "date"}) | set(_KNOWN_GOOD_REDEMPTION_FIELDS)
+
+
+def _assert_known_good_input(gql_input: dict) -> None:
+    """Fail LOUDLY if the redemption input deviates from the verified shape. This is the
+    'right input -> correct value every time' guard: the resolver 500s on a trimmed input and
+    returns a DIFFERENT value if a flag is flipped, so any drift must be a hard error, not a
+    silently-wrong payoff. Validates exact key set, locked flag values, a non-empty loanId, and
+    a real YYYY-MM-DD date."""
+    keys = set(gql_input)
+    if keys != _REDEMPTION_INPUT_KEYS:
+        raise ValueError(f"redemption input keys {sorted(keys)} != required "
+                         f"{sorted(_REDEMPTION_INPUT_KEYS)}")
+    for k, locked in _KNOWN_GOOD_REDEMPTION_FIELDS.items():
+        if gql_input.get(k) != locked:
+            raise ValueError(f"redemption input {k!r}={gql_input.get(k)!r} != locked {locked!r}")
+    loan_id = gql_input.get("loanId")
+    if not isinstance(loan_id, str) or not loan_id.strip():
+        raise ValueError(f"redemption input loanId must be a non-empty str, got {loan_id!r}")
+    if not _valid_date(gql_input.get("date")):
+        raise ValueError(f"redemption input date {gql_input.get('date')!r} must be YYYY-MM-DD")
+
+
 def known_good_redemption_input(loan_id: str, date: str) -> dict:
     """The EXACT input that the Hypercore UI's Early-Redemption button sends.
 
     A minimal / `isPrepayment:true` input CRASHES the resolver (HTTP 500); this shape is the
-    verified-working one (2026-06-19). Do NOT trim fields from this dict.
+    verified-working one (2026-06-19). Built from the locked field template + the per-call
+    loanId/date, then self-validated by _assert_known_good_input. Do NOT trim fields.
     """
-    return {
-        "loanId": loan_id,
-        "includeDraftChanges": False,
-        "date": date,
-        "repaymentType": "EarlyRedemption",
-        "applyExpectedRepaymentsUntilEarlyRedemption": False,
-        "isPrepayment": False,
-    }
+    gql_input = {"loanId": loan_id, "date": date, **_KNOWN_GOOD_REDEMPTION_FIELDS}
+    _assert_known_good_input(gql_input)
+    return gql_input
 
 
 def _is_http_500(exc: Exception) -> bool:
@@ -308,19 +337,28 @@ def _is_http_500(exc: Exception) -> bool:
 
 def _call_with_retry(client, query: str, variables: dict, *,
                      attempts: int = RETRY_ATTEMPTS, backoff_s: float = RETRY_BACKOFF_S,
-                     sleep: Callable[[float], None] = time.sleep) -> tuple:
-    """Run client.raw_query with bounded retry on the flaky 500.
+                     sleep: Callable[[float], None] = time.sleep,
+                     is_empty: Optional[Callable[[object], bool]] = None) -> tuple:
+    """Run client.raw_query with bounded retry on the flaky 500 AND on a transient EMPTY payload.
 
-    Returns (data, attempts_made, errors[]). Raises the LAST exception only after the retry
-    budget is exhausted (the caller turns that into a REFUSED stating the 500). A non-500
-    error (e.g. a read-only violation) is NOT retried — it is raised immediately.
+    "Retry slightly differently, same substance": the input (loan + date + figure) is held
+    IDENTICAL across attempts — only the request is RE-ISSUED (with linear backoff). Both failure
+    modes are retried: a flaky HTTP 500, and — when `is_empty` is supplied — a transient empty /
+    incomplete payload (the endpoint occasionally returns an empty body before it settles). A
+    non-500 hard error (e.g. a read-only violation) is NOT retried — it surfaces immediately.
+    Because the delivered value still passes reconciliation + provenance downstream, a re-fetch
+    can never produce a WRONG number — only recover a missing one.
+
+    Returns (data, attempts_made, errors[]). On exhausted 500s, raises the last exception (the
+    caller turns it into a REFUSED stating the 500); on exhausted empties, returns the last
+    (empty) data so the caller emits its FETCH_EMPTY refusal.
     """
     errors: list = []
     last_exc: Optional[Exception] = None
+    data = None
     for i in range(1, max(1, attempts) + 1):
         try:
             data = client.raw_query(query, variables)
-            return data, i, errors
         except Exception as e:  # noqa: BLE001 — bounded, classified below
             last_exc = e
             errors.append(f"attempt {i}: {type(e).__name__}: {str(e)[:160]}")
@@ -329,8 +367,19 @@ def _call_with_retry(client, query: str, variables: dict, *,
                 raise
             if i < attempts:
                 sleep(backoff_s * i)  # linear backoff
+            continue
+        # Got a response. If it is transiently empty/incomplete, RE-FETCH (same input) in budget.
+        if is_empty is not None and is_empty(data):
+            errors.append(f"attempt {i}: empty/incomplete payload — re-fetching (same input)")
+            if i < attempts:
+                sleep(backoff_s * i)
+                continue
+            return data, i, errors  # budget exhausted: hand the empty back; caller refuses
+        return data, i, errors
     # Retries exhausted on the flaky 500.
-    raise last_exc  # type: ignore[misc]
+    if last_exc is not None:
+        raise last_exc
+    return data, max(1, attempts), errors
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +478,11 @@ class PayoffFigure:
         try:
             data, attempts_made, errors = _call_with_retry(
                 client, _REPAYMENT_DISTRIBUTION_QUERY, variables,
-                attempts=self._attempts, backoff_s=self._backoff, sleep=self._sleep)
+                attempts=self._attempts, backoff_s=self._backoff, sleep=self._sleep,
+                # a transiently-empty InstallmentComponents payload is re-fetched (same input);
+                # if still empty after the budget, the components check below REFUSES (never guess).
+                is_empty=lambda d: not isinstance(
+                    (d or {}).get("getLoanRepaymentDistribution"), dict))
         except Exception as e:
             note = ("getLoanRepaymentDistribution failed after "
                     f"{self._attempts} attempt(s): {type(e).__name__}: {str(e)[:200]} "

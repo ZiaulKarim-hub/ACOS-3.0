@@ -939,5 +939,42 @@ class FigureViaSpineTest(_NativeFigBase):
         self.assertEqual(env["meta"]["loans"], 2)
 
 
+class KnownGoodRedemptionInputTest(unittest.TestCase):
+    """The 'right input -> correct value every time' guard: the verified Early-Redemption input
+    shape is locked, and any drift (trimmed key, flipped flag, bad loanId/date) is a HARD error
+    rather than a silently-wrong or resolver-crashing call."""
+
+    def test_builder_returns_exact_verified_shape(self):
+        gi = figures_mod.known_good_redemption_input("88", "2026-06-28")
+        self.assertEqual(gi, {
+            "loanId": "88", "date": "2026-06-28", "includeDraftChanges": False,
+            "repaymentType": "EarlyRedemption",
+            "applyExpectedRepaymentsUntilEarlyRedemption": False, "isPrepayment": False})
+
+    def test_assert_rejects_flipped_flag(self):
+        bad = figures_mod.known_good_redemption_input("88", "2026-06-28")
+        bad["isPrepayment"] = True  # the value-changing / resolver-crashing flag
+        with self.assertRaises(ValueError):
+            figures_mod._assert_known_good_input(bad)
+
+    def test_assert_rejects_trimmed_key(self):
+        bad = figures_mod.known_good_redemption_input("88", "2026-06-28")
+        del bad["applyExpectedRepaymentsUntilEarlyRedemption"]
+        with self.assertRaises(ValueError):
+            figures_mod._assert_known_good_input(bad)
+
+    def test_assert_rejects_extra_key(self):
+        bad = figures_mod.known_good_redemption_input("88", "2026-06-28")
+        bad["unexpected"] = 1
+        with self.assertRaises(ValueError):
+            figures_mod._assert_known_good_input(bad)
+
+    def test_assert_rejects_bad_date_and_empty_loan_id(self):
+        with self.assertRaises(ValueError):
+            figures_mod.known_good_redemption_input("88", "28th June 2026")  # not normalized yet
+        with self.assertRaises(ValueError):
+            figures_mod.known_good_redemption_input("", "2026-06-28")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -255,23 +255,27 @@ class LoanResolver:
         return rows
 
     def _search_tokens(self, name_query: str) -> list:
-        """Candidate searchString tokens to try against the server-side filter.
+        """Progressively broader searchStrings to try against the server-side filter — a
+        substance-preserving retry: every variant is built ONLY from the user's own words (a
+        subset of the normalized query), so a loan is never invented, only searched-for more
+        loosely when a stricter filter found nothing.
 
-        The full query first (most specific), then the single most-distinctive token
-        (so 'beehive senior' still pulls 'Beehive Waldorff' which lacks 'senior'), then
-        an UNFILTERED fetch as a final fallback so a real loan is never missed because the
-        server-side searchString filter was too strict.
+        Order, narrow -> wide: the full query (most specific); the two most-distinctive tokens
+        joined; each individual token (longest first, so 'beehive senior' still pulls 'Beehive
+        Waldorff' which lacks 'senior'); then an UNFILTERED fetch as the final fallback so a real
+        loan is never missed because the server-side searchString filter was too strict.
         """
         nq = _normalize(name_query)
         toks = [t for t in nq.split() if len(t) >= 3] or nq.split()
-        # longest token tends to be the most distinctive loan name root.
+        # longest tokens tend to be the most distinctive loan-name roots.
         toks_sorted = sorted(set(toks), key=lambda t: -len(t))
         out = []
         if nq:
-            out.append(nq)
-        if toks_sorted:
-            out.append(toks_sorted[0])
-        out.append(None)  # unfiltered fallback
+            out.append(nq)                                  # full query (most specific)
+        if len(toks_sorted) >= 2:
+            out.append(" ".join(toks_sorted[:2]))           # two most-distinctive tokens
+        out.extend(toks_sorted)                             # each token alone, longest first
+        out.append(None)                                    # unfiltered fallback (never miss)
         # de-dup preserving order
         seen, ordered = set(), []
         for s in out:
