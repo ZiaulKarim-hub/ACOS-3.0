@@ -92,14 +92,33 @@ def _funding_figure_for(q_lower: str) -> Optional[str]:
     return None
 
 
+# Portfolio (fundingEntity-level, ACROSS ALL the investor's loans) figures by keyword — used when
+# an investor resolves but NO loan is named ("XL's total receivable across the portfolio").
+_PORTFOLIO_FIGURE_BY_KEYWORD = (
+    (("receivable", "receivables"), "portfolio_receivable"),
+    (("commitment", "committed"), "portfolio_commitment"),
+    (("disbursement", "disbursed", "disbursements"), "portfolio_disbursement"),
+    (("contributed", "contribution"), "portfolio_contributed"),
+    (("active loans", "number of loans", "loan count"), "portfolio_active_loans"),
+)
+
+
+def _portfolio_figure_for(q_lower: str) -> Optional[str]:
+    for kws, fig in _PORTFOLIO_FIGURE_BY_KEYWORD:
+        if any(k in q_lower for k in kws):
+            return fig
+    return None
+
+
 def _name_tokens(question: str) -> list:
     """The candidate ENTITY-NAME tokens in a question: drop dates, the funding metric words, and
     the generic figure filler (reused from hca-deliver so the vocabularies cannot drift)."""
     d = _deliver()
     work = d._strip_date_phrases(question)
+    work = re.sub(r"(?i)'s\b", " ", work)        # drop possessive 's  ("XL's" -> "XL")
     work = _FUNDING_METRIC_RE.sub(" ", work)
     work = d._FIGURE_FILLER_RE.sub(" ", work)
-    work = re.sub(r"[?.,:;!%]", " ", work)
+    work = re.sub(r"[?.,:;!%'\"]", " ", work)
     return [t for t in work.split() if t]
 
 
@@ -171,7 +190,7 @@ def _explorer_envelope(explore_result: dict, *, entity, question: str) -> dict:
 
 
 def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=None,
-              run_funding=None, explorer=None) -> dict:
+              run_funding=None, run_portfolio=None, explorer=None) -> dict:
     """Answer a question via: deterministic spine -> funding interpretation -> explorer fallback.
 
     All collaborators are injectable for testing; live defaults wire to the real modules.
@@ -186,6 +205,9 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
     run_funding = run_funding or (
         lambda fig, loan_id, fe_id: _funding().run_funding_figure(
             fig, loan_id=loan_id, funding_entity_id=fe_id))
+    run_portfolio = run_portfolio or (
+        lambda fig, fe_id, name: _funding().run_portfolio_figure(
+            fig, funding_entity_id=fe_id, name_hint=name))
     if explorer is None:
         explorer = _explorer().EntityExplorer()
 
@@ -214,6 +236,19 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
                     "investor": {"id": inv["id"], "name": inv.get("name")},
                     "figure": fig}
                 return env
+        # PORTFOLIO interpretation: a funding metric + an investor that resolves, but NO loan ->
+        # the fundingEntity-level (across-all-loans) reconciled/verified figure.
+        pfig = _portfolio_figure_for(q_lower)
+        if pfig and not loan_m:
+            etype, m = _resolve_any_entity(
+                tokens, resolve_loan=resolve_loan, resolve_entity=resolve_entity)
+            if etype == "fundingEntity" and m:
+                penv = run_portfolio(pfig, m["id"], m.get("name"))
+                if isinstance(penv, dict) and penv.get("state") == "DELIVERED":
+                    penv.setdefault("tier", "portfolio")
+                    penv.setdefault("meta", {})["resolution"] = {
+                        "investor": {"id": m["id"], "name": m.get("name")}, "figure": pfig}
+                    return penv
         # one side resolved but the other is ambiguous/missing -> surface for disambiguation
         if loan_m or (isinstance(investor_r, dict) and investor_r.get("candidates")):
             return {"state": "REFUSED", "tier": "funding", "answer": None,

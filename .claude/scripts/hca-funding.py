@@ -675,6 +675,318 @@ def run_funding_figure(figure: str, *, loan_id: str, funding_entity_id: str,
              currency=currency, loan_name=loan_name, **kwargs)
 
 
+# ---------------------------------------------------------------------------
+# INVESTOR-PORTFOLIO figures (fundingEntity-level: across ALL the investor's loans)
+# ---------------------------------------------------------------------------
+
+# The investor's portfolio receivable lives on fundingEntity.receivables (InstallmentComponents).
+# Reconciliation identity = the FULL InstallmentComponents identity (None -> 0). Verified live
+# 2026-06-24: ALL 62 funding entities reconcile under this identity to the cent. (capitalizedBalance
+# is not an InstallmentComponents field and never enters the sum.)
+_RECEIVABLE_COMPONENTS = (
+    "principal", "indexedPrincipal", "interest", "compoundingInterest",
+    "accruedCompoundingInterest", "totalFees", "totalPenalties", "totalTaxes",
+)
+# The RELIABLE fundingEntities list query — fetch ONE entity by id (match client-side), paging to
+# completion. (The single fundingEntity(id) resolver is flaky; the list path is the proven one.)
+_PORTFOLIO_QUERY = (
+    "query HCAFundingEntity($filter: FundingEntitiesFilterInput, $skip: Int, $limit: Int) { "
+    "fundingEntities(filter: $filter, skip: $skip, limit: $limit) { "
+    "totalFilteredRecords pageItems { id name totalCommitment totalDisbursement contributed "
+    "activeLoansCount receivables { total principal indexedPrincipal interest compoundingInterest "
+    "accruedCompoundingInterest totalFees totalPenalties totalTaxes } } "
+    "} }"
+)
+_PORTFOLIO_LIMIT = 200
+_PPATH_RECEIVABLE_TOTAL = "$.body.record.receivables.total"
+_PPATH_COMMITMENT = "$.body.record.totalCommitment"
+_PPATH_DISBURSEMENT = "$.body.record.totalDisbursement"
+_PPATH_CONTRIBUTED = "$.body.record.contributed"
+_PPATH_ACTIVE_LOANS = "$.body.record.activeLoansCount"
+
+
+class FundingPortfolioFigure:
+    """fundingEntity-level (PORTFOLIO) figures for ONE investor across ALL their loans.
+
+    Flagship `portfolio_receivable` is RECONCILED (the InstallmentComponents identity) +
+    provenance-bound, mirroring FundingFigure's trust contract. The lighter portfolio scalars
+    (commitment / disbursement / contributed / active_loans) are single-source provenance-bound
+    reads (no reconciliation; confidence cap <= 0.7). Fetch is the reliable fundingEntities list
+    query filtered by name_hint (or unfiltered, paged), matched by id. Never fabricates.
+    """
+
+    NAME = "portfolio_receivable"
+
+    def __init__(self, *, client=None, cache=None, engine=None,
+                 currency: Optional[str] = None,
+                 retry_attempts: int = RETRY_ATTEMPTS,
+                 retry_backoff_s: float = RETRY_BACKOFF_S,
+                 sleep: Callable[[float], None] = time.sleep):
+        self._client = client
+        self._cachelib = _cache()
+        self._provlib = _provenance()
+        self._cache = cache or self._cachelib.TwoTierCache()
+        self._engine = engine or self._provlib.ProvenanceEngine(cache=self._cache)
+        self._currency = currency
+        self._attempts = int(retry_attempts)
+        self._backoff = float(retry_backoff_s)
+        self._sleep = sleep
+
+    def _ensure_client(self):
+        if self._client is not None:
+            return self._client
+        self._client = _adapter().LiveBackend().live_client()
+        return self._client
+
+    def _fetch_entity_record(self, funding_entity_id: str, name_hint: Optional[str] = None) -> dict:
+        """Fetch ONE fundingEntity by id via the reliable list query (paged), cache it as Tier-1.
+        Returns {ok, row, rid, fetched_at} or a refusal dict. Never fabricates a row."""
+        fe_id = str(funding_entity_id)
+        try:
+            client = self._ensure_client()
+        except Exception as e:
+            ad = _adapter()
+            if isinstance(e, getattr(ad, "NoLiveDataError", ())):
+                return {"ok": False, "state": STATE_NO_LIVE_DATA,
+                        "reason_code": STATE_NO_LIVE_DATA, "reason": str(e)}
+            return {"ok": False, "state": STATE_REFUSED, "reason_code": REASON_LIVE_500,
+                    "reason": f"could not build live client: {type(e).__name__}: {str(e)[:160]}"}
+        filt = {"searchString": name_hint} if name_hint else {}
+        skip = 0
+        pages = 0
+        row = None
+        while True:
+            pages += 1
+            if pages > 1000:
+                break
+            variables = {"filter": filt, "skip": skip, "limit": _PORTFOLIO_LIMIT}
+            try:
+                data, _a, _e = _call_with_retry(
+                    client, _PORTFOLIO_QUERY, variables,
+                    attempts=self._attempts, backoff_s=self._backoff, sleep=self._sleep,
+                    is_empty=lambda d: (d or {}).get("fundingEntities") is None)
+            except Exception as e:
+                return {"ok": False, "state": STATE_REFUSED, "reason_code": REASON_LIVE_500,
+                        "reason": (f"fundingEntities fetch failed after {self._attempts} "
+                                   f"attempt(s): {type(e).__name__}: {str(e)[:200]}")}
+            page = (data or {}).get("fundingEntities") or {}
+            items = page.get("pageItems") or []
+            row = next((it for it in items if str((it or {}).get("id")) == fe_id), None)
+            if row is not None:
+                break
+            total = page.get("totalFilteredRecords")
+            got = skip + len(items)
+            if not items or (total is not None and got >= total) or len(items) < _PORTFOLIO_LIMIT:
+                break
+            skip += _PORTFOLIO_LIMIT
+        if row is None:
+            return {"ok": False, "state": STATE_REFUSED, "reason_code": REASON_FETCH_EMPTY,
+                    "reason": (f"funding entity {fe_id!r} not found via fundingEntities — "
+                               "refusing (never invent)")}
+        fetched_at = _now_iso()
+        ad = _adapter()
+        raw = ad.make_raw_api_response(
+            raw_response_id=f"live:fundingEntity:{fe_id}:{fetched_at}",
+            endpoint="fundingEntities",
+            request_params={"graphql_operation": "HCAFundingEntity", "funding_entity_id": fe_id},
+            timestamp=fetched_at, http_status=200, cursor=None, reported_total=None,
+            body={"record": row,
+                  "provenance": {"fetched_at": fetched_at, "operation": "fundingEntities",
+                                 "funding_entity_id": fe_id}},
+            backend="live")
+        rid = self._cache.put_raw(raw)
+        stored = self._cache.get_raw(rid).get("body", {}).get("record", row)
+        return {"ok": True, "row": stored, "rid": rid, "fetched_at": fetched_at}
+
+    @staticmethod
+    def _reconcile_receivable(receivables: dict, total: float) -> dict:
+        """Sum the full InstallmentComponents identity (None -> 0) and compare to total."""
+        itemized = {}
+        comp_sum = 0.0
+        for f in _RECEIVABLE_COMPONENTS:
+            v = (receivables or {}).get(f)
+            num = float(v) if _is_number(v) else 0.0
+            itemized[f] = num
+            comp_sum += num
+        comp_sum = round(comp_sum, 4)
+        diff = round(abs(comp_sum - float(total)), 6)
+        return {"ok": diff <= RECONCILE_TOLERANCE, "component_sum": comp_sum,
+                "diff": diff, "components": itemized}
+
+    def _refusal_envelope(self, fetched: dict, *, figure: str, funding_entity_id) -> dict:
+        meta = {"figure": figure, "funding_entity_id": funding_entity_id}
+        if fetched.get("state") == STATE_NO_LIVE_DATA:
+            return _envelope(STATE_NO_LIVE_DATA, answer=None, values=[], gate_verdict=None,
+                             complete=False,
+                             refusals=[{"reason_code": STATE_NO_LIVE_DATA,
+                                        "reason": fetched.get("reason")}], meta=meta)
+        return _refused(fetched.get("reason_code", REASON_FETCH_EMPTY),
+                        fetched.get("reason", "portfolio fetch failed"), meta=meta)
+
+    # === FLAGSHIP: investor's portfolio RECEIVABLE (reconciled) ============
+    def portfolio_receivable(self, *, funding_entity_id: str, currency: Optional[str] = None,
+                             name_hint: Optional[str] = None, **_ignored) -> dict:
+        """The investor's total RECEIVABLE across all loans (reconciled + provenance-bound)."""
+        if not funding_entity_id:
+            return _refused(REASON_BAD_INPUT,
+                            "no funding entity id supplied — cannot compute portfolio receivable")
+        fetched = self._fetch_entity_record(str(funding_entity_id), name_hint=name_hint)
+        if not fetched.get("ok"):
+            return self._refusal_envelope(fetched, figure=self.NAME,
+                                          funding_entity_id=funding_entity_id)
+        row = fetched["row"]
+        rid = fetched["rid"]
+        receivables = (row or {}).get("receivables") or {}
+        total = receivables.get("total")
+        if not _is_number(total):
+            return _refused(REASON_FETCH_EMPTY,
+                            f"portfolio receivable: non-numeric/absent receivables.total "
+                            f"({total!r}) — refusing",
+                            meta={"figure": self.NAME, "funding_entity_id": funding_entity_id})
+        prov = self._engine.bind_and_verify(
+            total, {"raw_response_id": rid, "json_field_path": _PPATH_RECEIVABLE_TOTAL},
+            value_ref=f"fundingEntity.{funding_entity_id}.portfolio_receivable")
+        if prov["outcome"] != self._provlib.VERIFIED:
+            return _refused(REASON_PROVENANCE, prov["reason"],
+                            meta={"figure": self.NAME, "funding_entity_id": funding_entity_id,
+                                  "reason_code_inner": prov["reason_code"]})
+        recon = self._reconcile_receivable(receivables, total)
+        if not recon["ok"]:
+            return _refused(
+                REASON_RECONCILE,
+                (f"portfolio receivable components do not reconcile to total within "
+                 f"${RECONCILE_TOLERANCE}: sum(components)={recon['component_sum']} vs "
+                 f"total={total}"),
+                meta={"figure": self.NAME, "funding_entity_id": funding_entity_id,
+                      "component_sum": recon["component_sum"], "total": total,
+                      "diff": recon["diff"], "reconciles": False})
+        conf = self._engine.confidence_record(
+            f"fundingEntity.{funding_entity_id}.portfolio_receivable", source_count=1,
+            basis="single-source fundingEntity receivable (reconciled)")
+        cur = currency or self._currency
+        fe_name = (row or {}).get("name")
+        out_value = {
+            "value": total, "currency": cur, "unit": "currency",
+            "provenance": {"raw_response_id": rid, "json_field_path": _PPATH_RECEIVABLE_TOTAL,
+                           "operation": "fundingEntities", "field": "receivables.total",
+                           "funding_entity_id": str(funding_entity_id),
+                           "fetched_at": fetched.get("fetched_at")},
+            "confidence": conf["confidence"]}
+        answer = (f"Investor {fe_name or funding_entity_id} portfolio receivable (across all "
+                  f"loans) is {total}{(' ' + cur) if cur else ''}.")
+        gate_verdict = {"outcome": "pass", "reconciliation_ok": True,
+                        "reconcile_tolerance": RECONCILE_TOLERANCE,
+                        "component_sum": recon["component_sum"], "total": float(total),
+                        "diff": recon["diff"], "single_source": conf["single_source"]}
+        return _envelope(STATE_DELIVERED, answer=answer, values=[out_value],
+                         gate_verdict=gate_verdict, complete=True, refusals=[],
+                         meta={"figure": self.NAME, "funding_entity_id": funding_entity_id,
+                               "funding_entity_name": fe_name, "currency": cur,
+                               "reconciles": True, "components": recon["components"],
+                               "confidence_record": conf})
+
+    # === LIGHTER portfolio scalars (single-source, no reconciliation) ======
+    def _light(self, *, figure: str, value_path: str, field_name: str, unit: str,
+               funding_entity_id: str, currency: Optional[str], name_hint: Optional[str]) -> dict:
+        if not funding_entity_id:
+            return _refused(REASON_BAD_INPUT, "no funding entity id supplied")
+        fetched = self._fetch_entity_record(str(funding_entity_id), name_hint=name_hint)
+        if not fetched.get("ok"):
+            return self._refusal_envelope(fetched, figure=figure,
+                                          funding_entity_id=funding_entity_id)
+        row = fetched["row"]
+        rid = fetched["rid"]
+        value = (row or {}).get(field_name)
+        if not _is_number(value):
+            return _refused(REASON_FETCH_EMPTY,
+                            f"{figure}: non-numeric/absent {field_name!r} ({value!r}) — refusing",
+                            meta={"figure": figure, "funding_entity_id": funding_entity_id})
+        prov = self._engine.bind_and_verify(
+            value, {"raw_response_id": rid, "json_field_path": value_path},
+            value_ref=f"fundingEntity.{funding_entity_id}.{figure}")
+        if prov["outcome"] != self._provlib.VERIFIED:
+            return _refused(REASON_PROVENANCE, prov["reason"],
+                            meta={"figure": figure, "funding_entity_id": funding_entity_id,
+                                  "reason_code_inner": prov["reason_code"]})
+        conf = self._engine.confidence_record(
+            f"fundingEntity.{funding_entity_id}.{figure}", source_count=1,
+            basis=f"single-source fundingEntity read ({field_name})")
+        cur = currency or self._currency
+        fe_name = (row or {}).get("name")
+        out_value = {
+            "value": value, "currency": cur if unit == "currency" else None, "unit": unit,
+            "provenance": {"raw_response_id": rid, "json_field_path": value_path,
+                           "operation": "fundingEntities", "field": field_name,
+                           "funding_entity_id": str(funding_entity_id),
+                           "fetched_at": fetched.get("fetched_at")},
+            "confidence": conf["confidence"]}
+        cur_str = f" {cur}" if (cur and unit == "currency") else ""
+        answer = f"{figure} for investor {fe_name or funding_entity_id} is {value}{cur_str}."
+        gate_verdict = {"outcome": "pass", "single_source": conf["single_source"],
+                        "reconciliation_ok": None}
+        return _envelope(STATE_DELIVERED, answer=answer, values=[out_value],
+                         gate_verdict=gate_verdict, complete=True, refusals=[],
+                         meta={"figure": figure, "funding_entity_id": funding_entity_id,
+                               "funding_entity_name": fe_name, "currency": cur, "unit": unit,
+                               "confidence_record": conf})
+
+    def portfolio_commitment(self, *, funding_entity_id, currency=None, name_hint=None, **_ig):
+        return self._light(figure="portfolio_commitment", value_path=_PPATH_COMMITMENT,
+                           field_name="totalCommitment", unit="currency",
+                           funding_entity_id=funding_entity_id, currency=currency,
+                           name_hint=name_hint)
+
+    def portfolio_disbursement(self, *, funding_entity_id, currency=None, name_hint=None, **_ig):
+        return self._light(figure="portfolio_disbursement", value_path=_PPATH_DISBURSEMENT,
+                           field_name="totalDisbursement", unit="currency",
+                           funding_entity_id=funding_entity_id, currency=currency,
+                           name_hint=name_hint)
+
+    def portfolio_contributed(self, *, funding_entity_id, currency=None, name_hint=None, **_ig):
+        return self._light(figure="portfolio_contributed", value_path=_PPATH_CONTRIBUTED,
+                           field_name="contributed", unit="currency",
+                           funding_entity_id=funding_entity_id, currency=currency,
+                           name_hint=name_hint)
+
+    def portfolio_active_loans(self, *, funding_entity_id, currency=None, name_hint=None, **_ig):
+        return self._light(figure="portfolio_active_loans", value_path=_PPATH_ACTIVE_LOANS,
+                           field_name="activeLoansCount", unit="count",
+                           funding_entity_id=funding_entity_id, currency=currency,
+                           name_hint=name_hint)
+
+    def registry(self) -> dict:
+        return {
+            "portfolio_receivable": self.portfolio_receivable,
+            "portfolio_commitment": self.portfolio_commitment,
+            "portfolio_disbursement": self.portfolio_disbursement,
+            "portfolio_contributed": self.portfolio_contributed,
+            "portfolio_active_loans": self.portfolio_active_loans,
+        }
+
+
+PORTFOLIO_FIGURE_NAMES = (
+    "portfolio_receivable", "portfolio_commitment", "portfolio_disbursement",
+    "portfolio_contributed", "portfolio_active_loans",
+)
+
+
+def run_portfolio_figure(figure: str, *, funding_entity_id: str, client=None, cache=None,
+                         engine=None, currency: Optional[str] = None,
+                         name_hint: Optional[str] = None,
+                         sleep: Callable[[float], None] = time.sleep, **kwargs) -> dict:
+    """Run a single named portfolio (fundingEntity-level) figure by funding_entity_id."""
+    fig = FundingPortfolioFigure(client=client, cache=cache, engine=engine, currency=currency,
+                                 sleep=sleep)
+    reg = fig.registry()
+    fn = reg.get(figure)
+    if fn is None:
+        return _refused(REASON_BAD_INPUT,
+                        f"unknown portfolio figure {figure!r} (known: {list(reg)})",
+                        meta={"funding_entity_id": funding_entity_id})
+    return fn(funding_entity_id=funding_entity_id, currency=currency, name_hint=name_hint,
+              **kwargs)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run an investor/funding figure for a (loan, funding entity) pair.")

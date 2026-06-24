@@ -145,6 +145,35 @@ class SmartAskTest(unittest.TestCase):
         self.assertEqual(out["refusals"][0]["reason_code"], "FUNDING_DISAMBIGUATION")
         self.assertEqual(len(out["refusals"][0]["investor_candidates"]), 2)
 
+    def test_portfolio_question_routes_to_portfolio_figure(self):
+        # investor named + funding metric, but NO loan -> the fundingEntity-level portfolio figure.
+        def resolve_loan(name):
+            return _no_match(name)  # nothing resolves as a loan
+
+        def resolve_entity(name, etype):
+            return _resolved("3", "XL") \
+                if etype == "fundingEntity" and name.strip().lower() == "xl" else _no_match(name)
+
+        captured = {}
+
+        def run_portfolio(fig, fe_id, name):
+            captured.update(fig=fig, fe_id=fe_id, name=name)
+            return {"state": "DELIVERED", "answer": "XL portfolio receivable = 27,040,395.55",
+                    "values": [{"value": 27040395.55}], "meta": {}}
+
+        out = ask_mod.smart_ask(
+            "what is XL's total receivable across the portfolio?",
+            deliver_ask=lambda q: {"state": "REFUSED", "refusals": [{"reason_code": "UNMAPPABLE"}]},
+            resolve_loan=resolve_loan, resolve_entity=resolve_entity,
+            run_funding=lambda *a, **k: None, run_portfolio=run_portfolio,
+            explorer=_FakeExplorer([]))
+
+        self.assertEqual(out["state"], "DELIVERED")
+        self.assertEqual(out["tier"], "portfolio")
+        self.assertEqual(captured, {"fig": "portfolio_receivable", "fe_id": "3", "name": "XL"})
+        self.assertEqual(out["meta"]["resolution"]["investor"]["id"], "3")
+        self.assertEqual(out["meta"]["resolution"]["figure"], "portfolio_receivable")
+
     def test_empty_question_refused(self):
         out = ask_mod.smart_ask("   ")
         self.assertEqual(out["state"], "REFUSED")
