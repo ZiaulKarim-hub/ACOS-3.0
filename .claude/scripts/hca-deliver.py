@@ -278,8 +278,9 @@ def _extract_loan_name_for_payoff(question: str) -> Optional[str]:
     for t in sorted(_PAYOFF_TRIGGERS, key=lambda s: -len(s)):
         work = re.sub(re.escape(t), " ", work, flags=re.IGNORECASE)
     # strip leading filler words/punctuation
-    work = re.sub(r"(?i)\b(what|whats|what's|is|the|of|for|on|loan|amount|to|me|tell|give|"
-                  r"please|current|total|early|redemption|by|at)\b", " ", work)
+    work = re.sub(r"(?i)\b(what|whats|what's|how|much|is|are|the|of|for|on|loan|amount|to|me|tell|"
+                  r"give|please|current|total|early|redemption|by|at|do|we|have|show|"
+                  r"senior|junior|mezzanine|mezz|tranche)\b", " ", work)
     work = re.sub(r"[?.,:;!]", " ", work)
     work = re.sub(r"\s+", " ", work).strip()
     return work or None

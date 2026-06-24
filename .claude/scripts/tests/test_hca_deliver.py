@@ -343,5 +343,26 @@ class NoNetworkImportTest(unittest.TestCase):
                              msg=f"hca-deliver.py must not {forbidden} (no network in the spine)")
 
 
+class PayoffLoanNameExtractionTest(unittest.TestCase):
+    """Regression (bug 2026-06-23): the payoff loan-name extractor's filler list had drifted
+    behind the figure path's, so 'how much is the beehive senior loan payoff' leaked
+    'how much ... senior' into the resolver query and refused a valid question. The extractor
+    must strip filler ('how'/'much') + tranche descriptors ('senior'/'junior'/'mezz')."""
+
+    def test_strips_filler_and_tranche_words(self):
+        f = deliver_mod._extract_loan_name_for_payoff
+        for q in (
+            "how much is the beehive senior loan payoff",
+            "how much is the beehive payoff",
+            "what is the payoff for the beehive senior loan",
+            "beehive junior loan early redemption",
+        ):
+            name = (f(q) or "").lower()
+            self.assertIn("beehive", name.split(), msg=f"loan name lost for {q!r}: got {name!r}")
+            for noise in ("how", "much", "senior", "junior", "payoff", "loan"):
+                self.assertNotIn(noise, name.split(),
+                                 msg=f"filler {noise!r} leaked into loan name for {q!r}: {name!r}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
