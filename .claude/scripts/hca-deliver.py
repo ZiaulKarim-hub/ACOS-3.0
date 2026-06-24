@@ -475,6 +475,12 @@ def _plan_analysis(question: str, q_lower: str, tier: str) -> Optional[dict]:
     has_superlative = any(
         re.search(r"\b" + re.escape(s) + r"\b", q_lower) for s in _voc.SUPERLATIVE_TERMS)
 
+    # An analysis is by definition a WHOLE-PORTFOLIO, multi-record operation, so every analysis
+    # plan must carry the consensus-routed report tier — NEVER the trivial tier that classify()
+    # may have returned for filter phrasings like "active loans" / "overdue loans" (round-2
+    # tier/intent-divergence fix: an analysis intent must not ride the trivial single-source path).
+    tier = TIER_REPORT
+
     # covenant-breach scan (highest priority — distinctive phrasing).
     if any(t in q_lower for t in _COVENANT_TRIGGERS):
         return {"intent": "analysis", "analysis": "covenant_breach_scan", "tier": tier,
@@ -542,10 +548,14 @@ def _plan_analysis(question: str, q_lower: str, tier: str) -> Optional[dict]:
     # routes here EVEN WITHOUT an explicit loan/portfolio/book noun (the consensus-bypass fix:
     # "what is the highest interest rate?" / "smallest commitment" must NOT become a trivial
     # single figure). Ranking by a named numeric figure when recognized, else outstanding.
-    if any(t in q_lower for t in _RANK_TRIGGERS) and (has_loans or has_superlative):
+    # A superlative ALONE (worst/best/least/maximum/minimum/... — not just the rank words) implies
+    # a whole-portfolio extremum and MUST route here, so "worst DSCR" / "best loan" become an
+    # analysis (consensus-tier) and never fall through to _plan_figure (which would mis-resolve
+    # "worst" as a loan name). A bare rank word still also needs a portfolio noun.
+    if has_superlative or (any(t in q_lower for t in _RANK_TRIGGERS) and has_loans):
         figure = _analysis_figure(q_lower) or "outstanding"
         m = _TOP_N_RE.search(q_lower)
-        ascending = ("smallest" in q_lower or "lowest" in q_lower
+        ascending = (any(w in q_lower for w in ("smallest", "lowest", "least", "minimum"))
                      or "closest to maturity" in q_lower)
         return {"intent": "analysis", "analysis": "rank", "figure": figure,
                 "n": int(m.group(1)) if m else 10, "ascending": ascending, "tier": tier,

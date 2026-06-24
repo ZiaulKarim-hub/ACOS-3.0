@@ -100,6 +100,15 @@ class ConsensusRoutingTrustTest(unittest.TestCase):
         "Which loan has the largest outstanding balance?",
         "What percentage of loans are overdue?",
         "What is the average DSCR ratio across the book?",
+        # round-2 additions: credit-extremum + ratio words the round-1 fix omitted (bypass risk).
+        "What is the worst DSCR?",
+        "the loan with the worst DSCR",
+        "best performing loan",
+        "the least utilized loan",
+        "maximum exposure",
+        "minimum interest rate",
+        "what fraction of loans are overdue?",
+        "what portion of the book is in default?",
     )
     # Genuine single-value lookups that must NOT be forced through consensus.
     SINGLE_LOOKUPS = (
@@ -121,11 +130,23 @@ class ConsensusRoutingTrustTest(unittest.TestCase):
             self.assertEqual(tier, "trivial", msg=f"{q!r} should stay trivial, got {tier!r}")
 
     def test_classify_agrees_superlatives_are_not_trivial(self):
+        # classify() returns a plain tier string by contract.
         for q in self.SUPERLATIVE_RATIO:
-            c = route_mod.classify(q)
-            tier = getattr(c, "tier", c)
-            self.assertNotIn("trivial", str(tier).lower(),
+            tier = route_mod.classify(q)
+            self.assertNotIn("trivial", tier.lower(),
                              msg=f"classify routed {q!r} trivial: {tier!r}")
+
+    def test_analysis_intent_questions_are_always_report_tier(self):
+        # An analysis is whole-portfolio / multi-record, so its plan must ALWAYS carry the
+        # consensus-routed report tier — never the trivial tier classify() returns for filter
+        # phrasings like "active loans" / "overdue loans" (round-2 tier/intent-divergence fix).
+        for q in ("which loans are overdue?", "show me the active loans",
+                  "rank loans by balance", "What is the worst DSCR?"):
+            plan = deliver_mod.plan_question(q)
+            self.assertEqual(plan["intent"], "analysis",
+                             msg=f"{q!r} should plan as analysis, got {plan['intent']!r}")
+            self.assertEqual(plan["tier"], deliver_mod.TIER_REPORT,
+                             msg=f"{q!r} analysis must be report-tier, got {plan['tier']!r}")
 
 
 if __name__ == "__main__":

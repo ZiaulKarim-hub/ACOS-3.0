@@ -90,13 +90,18 @@ CONCENTRATION_TRIGGERS = (
 # ---------------------------------------------------------------------------
 
 # Superlatives that imply a whole-portfolio extremum (a min/max over many records).
+# Includes the natural credit-extremum words "worst"/"best" (and price extremes) — round-2
+# review found "worst DSCR" / "best loan" bypassed consensus because they were omitted here.
 SUPERLATIVE_TERMS = (
     "largest", "highest", "smallest", "lowest", "most", "least",
     "maximum", "minimum", "biggest", "greatest", "top",
+    "worst", "best", "priciest", "cheapest",
 )
 
-# Ratio / share phrasings (a proportion over the book is an aggregation).
-RATIO_TERMS = ("percentage", "percent", "ratio", "proportion", "share", "%")
+# Ratio / share phrasings (a proportion over the book is an aggregation). "fraction"/"portion"
+# added in round 2 ("what fraction of loans are overdue" must be consensus-routed).
+RATIO_TERMS = ("percentage", "percent", "ratio", "proportion", "share", "%",
+               "fraction", "portion")
 
 # Table / tabulation phrasings (a table is multi-row, multi-figure -> report tier).
 TABLE_TERMS = ("tabulate", "table")

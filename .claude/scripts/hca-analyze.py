@@ -1365,12 +1365,17 @@ class PortfolioAnalyzer:
                         ltv = round(float(out_v) / float(kg["appraised_value"]), 6)
                         if ltv > PRISM_MAX_LTV:
                             reasons.append("high_ltv")
+                        # appraised_value (LTV denominator) carries the FULL KG locator so it is
+                        # independently re-resolvable — matching the covenant_breach_scan / DSCR
+                        # paths' dual-provenance standard (round-2 provenance-completeness fix).
+                        _kg_av = (kg.get("provenance") or {}).get("appraised_value") or {
+                            "node_id": kg.get("node_id"), "field": "appraised_value",
+                            "file": kg.get("kg_file")}
                         evidence["ltv"] = {"value": ltv, "threshold": PRISM_MAX_LTV,
                                            "provenance": {"outstanding": {"source": "hypercore",
                                                                           **p_out},
                                                           "appraised_value": {"source": "kg",
-                                                                              "node_id":
-                                                                              kg.get("node_id")}}}
+                                                                              **_kg_av}}}
             else:
                 unassessable_ltv.append({"loan_id": lid, "name": name,
                                          "reason": "LTV criterion not assessable (no KG "
