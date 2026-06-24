@@ -11,19 +11,27 @@ could classify as TRIVIAL and be answered WITHOUT the 2-of-3 consensus path — 
 violation of trust invariant #5 (reports / aggregations route through consensus).
 
 LEAF MODULE CONTRACT (DO NOT VIOLATE):
-  - This module imports NOTHING from the skill (no hca-* sibling). It is a pure data leaf so
-    it can NEVER participate in a circular import. The consumers import FROM here, never the
-    reverse. Stdlib only (it imports nothing at all beyond what the stdlib already provides).
+  - This module imports NOTHING from the skill (no hca-* sibling). It is a pure leaf so it can
+    NEVER participate in a circular import. The consumers import FROM here, never the reverse.
+    Stdlib only (imports just `re`, used by the shape-detection heuristics below).
   - The aggregation/analysis vocabulary is a strict SUPERSET of the prior per-module copies:
     every phrasing that previously matched still matches (the union only ADDS phrasings).
   - Trust direction: when adding terms here, only ever WIDEN the consensus-routed set. Never
     move a superlative / ratio / aggregation phrasing OUT of the consensus path.
+  - A flat allowlist CANNOT bound natural language: rounds 1-3 each missed a different extremum
+    synonym (worst/best, then fewest/shortest/safest/...). So consensus routing ALSO uses
+    has_structural_aggregation_shape() below — it detects the SHAPE of a portfolio operation
+    (an "-est" superlative suffix, a comparator+threshold filter, a statistical term) rather than
+    enumerating every word. Conservative by design: over-routing to consensus is safe; the only
+    unsafe direction is a whole-portfolio question slipping to the trivial (no-consensus) path.
 
 GROUND RULES (memory/decisions/2026-06-18-hca-build-ground-rules.md):
   - Python 3 stdlib ONLY. No third-party deps. No network. No model calls.
 """
 
 from __future__ import annotations
+
+import re
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +114,13 @@ RATIO_TERMS = ("percentage", "percent", "ratio", "proportion", "share", "%",
 # Table / tabulation phrasings (a table is multi-row, multi-figure -> report tier).
 TABLE_TERMS = ("tabulate", "table")
 
+# Statistical-dispersion phrasings (a statistic computed across many records is an aggregation).
+# ("mean"/"median"/"average" already live in the base aggregation words; these ADD the rest.)
+STATISTICAL_TERMS = (
+    "mode", "spread", "dispersion", "variance", "standard deviation", "std dev", "stdev",
+    "percentile", "quartile", "skew", "kurtosis",
+)
+
 
 # ---------------------------------------------------------------------------
 # The base aggregation words (the prior hca-route._AGGREGATION_WORDS, verbatim) — kept as a
@@ -150,7 +165,59 @@ AGGREGATION_ANALYSIS_TERMS = _dedup(
     SUPERLATIVE_TERMS,
     RATIO_TERMS,
     TABLE_TERMS,
+    STATISTICAL_TERMS,
 )
+
+
+# ---------------------------------------------------------------------------
+# Structural shape detection — the part that does NOT depend on a flat allowlist.
+# Rounds 1-3 each missed a different extremum synonym; a curated word list cannot bound an
+# open-ended synonym space. These rules detect the SHAPE of a whole-portfolio operation so the
+# router/planner route it to consensus regardless of the exact word used.
+# ---------------------------------------------------------------------------
+
+# Words ending in "-est" that are NOT superlatives — they must not trip the suffix rule.
+# "interest" is the critical one (ubiquitous in loan queries); the rest are common English
+# -est nouns/verbs/adjectives that can legitimately appear in a single-record question.
+_EST_NONSUPERLATIVE = frozenset({
+    "interest", "request", "test", "contest", "protest", "invest", "harvest", "honest",
+    "modest", "rest", "guest", "forest", "west", "vest", "suggest", "digest", "manifest",
+    "midwest", "conquest", "behest", "arrest", "unrest", "bequest", "ingest", "attest",
+    "detest", "infest", "molest", "crest", "quest", "nest", "pest", "fest", "jest", "zest",
+    "wrest", "lest", "gest", "earnest", "tempest",
+})
+
+# An "-est" superlative (fewest/shortest/longest/safest/tightest/soonest/highest/...). The
+# exclusion set above removes the non-superlative -est words.
+_EST_SUPERLATIVE_RE = re.compile(r"\b([a-z]{3,}est)\b")
+
+# A comparator + threshold-number filter ("loans below 1.2", "under $1m", "more than 3 loans").
+# Requires a comparator word AND a nearby number, so a bare "above"/"over time" does NOT fire.
+_THRESHOLD_FILTER_RE = re.compile(
+    r"\b(?:below|under|over|above|less than|greater than|more than|fewer than|"
+    r"at least|at most|no more than|no less than|exceeding|exceeds|in excess of)\b"
+    r"[^.\n]{0,15}?\$?\d"
+)
+
+
+def has_structural_aggregation_shape(q_lower: str) -> bool:
+    """True when a question has the SHAPE of a whole-portfolio operation, independent of the flat
+    vocabulary allowlists. Detects: (1) any '-est' superlative suffix (minus the non-superlative
+    -est words); (2) a comparator + threshold-number filter; (3) a statistical-dispersion term.
+    Conservative by design — over-routing to consensus is safe; under-routing is a trust bypass.
+    Expects an already-lowercased question."""
+    for m in _EST_SUPERLATIVE_RE.finditer(q_lower):
+        if m.group(1) not in _EST_NONSUPERLATIVE:
+            return True
+    if _THRESHOLD_FILTER_RE.search(q_lower):
+        return True
+    for t in STATISTICAL_TERMS:
+        if " " in t:
+            if t in q_lower:
+                return True
+        elif re.search(r"\b" + re.escape(t) + r"\b", q_lower):
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +250,18 @@ def _run_selftest() -> int:
     if (KIND_DIRECT, KIND_DERIVED, KIND_REQUIRES_EXTERNAL) != (
             "direct", "derived", "requires_external"):
         failures.append("KIND_* constants drifted from canonical strings")
+
+    # Structural shape detection catches the open-ended extremum/filter/stat phrasings the flat
+    # allowlist omitted across rounds 1-3, WITHOUT false-firing on the ubiquitous word "interest".
+    for q in ("fewest days to maturity", "shortest tenor", "the safest loan",
+              "loans under $1m", "loans below 1.2x coverage", "spread of rates",
+              "standard deviation of balances", "tightest covenant headroom"):
+        if not has_structural_aggregation_shape(q):
+            failures.append(f"structural shape MISSED a portfolio operation: {q!r}")
+    for q in ("what is the interest rate of loan 134",
+              "what is the accrued interest on loan 5"):
+        if has_structural_aggregation_shape(q):
+            failures.append(f"structural shape FALSE-FIRED on a single-loan question: {q!r}")
 
     if failures:
         for f in failures:

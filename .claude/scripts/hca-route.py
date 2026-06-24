@@ -91,6 +91,11 @@ def _has_aggregation_signal(question: str) -> bool:
         else:
             if word in q:
                 return True
+    # The flat allowlist cannot bound natural language — ALSO detect the SHAPE of a portfolio
+    # operation (an "-est" superlative, a comparator+threshold filter, a statistical term) so an
+    # extremum/filter phrasing whose exact word is not enumerated still routes to consensus.
+    if _vocab().has_structural_aggregation_shape(q):
+        return True
     return False
 
 

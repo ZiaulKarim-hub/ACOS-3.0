@@ -116,6 +116,28 @@ class ConsensusRoutingTrustTest(unittest.TestCase):
         "what is the payoff for Beehive Waldorff?",
     )
 
+    # Round-3 verification reproduced these bypasses; the STRUCTURAL shape detector must catch
+    # them all. None is an enumerated superlative word — they exercise the "-est" suffix rule,
+    # the comparator+threshold-filter rule, and the statistical-term rule.
+    STRUCTURAL_BYPASS = (
+        "which loan is the safest", "which loan is the dearest",
+        "fewest days to maturity", "shortest tenor", "longest tenor",
+        "deepest in default", "loan nearest to default", "loan furthest from maturity",
+        "mode interest rate", "spread of rates", "dispersion of interest rates",
+        "variance of commitments", "standard deviation of balances",
+        "loans maturing soonest", "loans with coverage below 1.2", "loans below 1.2x coverage",
+        "loans under $1m", "tightest covenant headroom", "skinniest margin loan",
+        "thinnest equity cushion",
+    )
+
+    # Single-record lookups that must STAY trivial — in particular the "-est" suffix rule must
+    # NOT fire on the ubiquitous word "interest".
+    REGRESSION_TRIVIAL = (
+        "what is the interest rate of loan 134",
+        "what is the accrued interest on loan 5",
+        "what is the commitment of loan 134",
+    )
+
     def test_superlative_and_ratio_questions_are_consensus_routed(self):
         for q in self.SUPERLATIVE_RATIO:
             tier = deliver_mod.route_figure_tier(q)
@@ -147,6 +169,18 @@ class ConsensusRoutingTrustTest(unittest.TestCase):
                              msg=f"{q!r} should plan as analysis, got {plan['intent']!r}")
             self.assertEqual(plan["tier"], deliver_mod.TIER_REPORT,
                              msg=f"{q!r} analysis must be report-tier, got {plan['tier']!r}")
+
+    def test_structural_bypass_phrasings_are_consensus_routed(self):
+        # The flat allowlist missed these across rounds 1-3; the structural shape detector closes
+        # the class. Every one MUST route to the consensus-required report tier.
+        for q in self.STRUCTURAL_BYPASS:
+            self.assertEqual(deliver_mod.route_figure_tier(q), "report",
+                             msg=f"CONSENSUS BYPASS (round-3 regression): {q!r} routed trivial")
+
+    def test_single_record_lookups_not_over_promoted(self):
+        for q in self.REGRESSION_TRIVIAL:
+            self.assertEqual(deliver_mod.route_figure_tier(q), "trivial",
+                             msg=f"single-record lookup wrongly promoted to consensus: {q!r}")
 
 
 if __name__ == "__main__":

@@ -472,8 +472,13 @@ def _plan_analysis(question: str, q_lower: str, tier: str) -> Optional[dict]:
     # the consensus path), NEVER fall through to a trivial single figure. We treat the presence of
     # a superlative term + a recognizable numeric figure as an implicit portfolio scope.
     _voc = _vocab()
+    # A whole-portfolio extremum/filter/statistical question must route here (analysis/report)
+    # rather than fall through to _plan_figure (which would mis-resolve "fewest"/"worst" as a
+    # loan name). Detect it by the allowlisted superlatives OR by SHAPE (an "-est" superlative,
+    # a comparator+threshold filter, a statistical term) so an unenumerated synonym still lands.
     has_superlative = any(
-        re.search(r"\b" + re.escape(s) + r"\b", q_lower) for s in _voc.SUPERLATIVE_TERMS)
+        re.search(r"\b" + re.escape(s) + r"\b", q_lower) for s in _voc.SUPERLATIVE_TERMS
+    ) or _voc.has_structural_aggregation_shape(q_lower)
 
     # An analysis is by definition a WHOLE-PORTFOLIO, multi-record operation, so every analysis
     # plan must carry the consensus-routed report tier — NEVER the trivial tier that classify()
