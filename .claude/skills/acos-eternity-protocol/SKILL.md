@@ -166,6 +166,21 @@ test -f "$HOME/Library/Application Support/acos-token-monitor/bin/inject-via-cmu
 # Auto-create memory/handoffs if missing — makes this skill work in any
 # project, not just ones with ACOS infrastructure already in place.
 mkdir -p memory/handoffs 2>/dev/null || { echo "ERROR: could not create memory/handoffs in $(pwd)"; exit 1; }
+
+# 2026-06-24 FREEZE-EARLY: arm subordination as the FIRST mutation of this fire — BEFORE
+# acos-handoff (Step 1). From now until the Step-5 disarm, both the Oracle and the autopilot
+# Stop hook subordinate (via _autopilot_eternity.is_eternity_protocol_active), so NO new
+# continuation work can land between the handoff snapshot (Step 1) and /clear — closing the
+# stale-handoff gap. Best-effort: a failed write must NEVER abort the fire. The marker
+# self-expires (age-GC, 10 min, in _autopilot_eternity.py) so a crashed fire can never freeze
+# the autopilot, and it is explicitly removed in Step 5 so it can't outlive the fire.
+ARMING_MARKER="$STATE/.eternity-arming-${SESSION_ID}"
+if printf 'armed_at: "%s"\nsession_id: %s\nby: acos-eternity-protocol\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SESSION_ID" > "$ARMING_MARKER" 2>/dev/null; then
+    echo "Freeze-early armed (autopilot + Oracle subordinate; self-expires 10m): $ARMING_MARKER"
+else
+    echo "WARN: could not write freeze-early arming marker — proceeding (fire NOT blocked)."
+fi
 ```
 
 ### Step 1: Create the handoff
@@ -411,6 +426,15 @@ if [[ -n "$MY_SURFACE" ]]; then
     echo "Surface-keyed clear-request armed: $SURF_FLAG"
 fi
 echo "In-pane Stop hook fires /clear on next turn-end (surface-keyed; sid-churn-proof)."
+
+# 2026-06-24 FREEZE-EARLY DISARM: pending-resume-<sid> (Step 2) and .clear-requested-<sid>
+# (just written) now carry subordination through /clear and are daemon-managed (consumed
+# after the resume injects), so the in-repo arming marker is no longer needed. Remove it
+# BEFORE exit so it can never linger and subordinate the freshly-resumed NEXT session (whose
+# project still lists this session's transcript). Age-GC would clear it within 10 min
+# regardless — this just makes the common path instant. Best-effort; never abort on failure.
+rm -f "$STATE/.eternity-arming-${SESSION_ID}" 2>/dev/null || true
+echo "Freeze-early disarmed (subordination now continues via daemon-managed markers)."
 ```
 
 ### Step 6: Exit cleanly

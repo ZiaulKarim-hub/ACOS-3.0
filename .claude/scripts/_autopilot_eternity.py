@@ -42,12 +42,26 @@ Fail-open: any error → False. Autopilot continues with normal behavior;
 debug via the daemon's own logs.
 """
 
+import time
 from pathlib import Path
 
 
 DAEMON_STATE = (
     Path.home() / "Library" / "Application Support" / "acos-token-monitor" / "state"
 )
+
+# 2026-06-24 (freeze-early): the eternity fire writes this marker as its VERY FIRST
+# action — BEFORE acos-handoff (Step 0.5 in acos-eternity-protocol/SKILL.md) — so that
+# Oracle + autopilot subordination covers the WHOLE sequence (handoff → resume → /clear),
+# closing the Step-1→Step-2 window where new continuation work used to slip in AFTER the
+# handoff snapshot was frozen (the stale-handoff failure mode).
+#
+# AUTONOMY GUARANTEE: this marker SELF-EXPIRES (age-GC, see _marker_is_live). If the fire
+# ever crashes after arming but before /clear, the stale marker stops counting after
+# ARMING_MARKER_TTL_SECONDS and autopilot resumes ON ITS OWN — it can NEVER freeze forever
+# and depends on NO daemon action to clear. The /clear trigger path is untouched.
+ARMING_MARKER_PREFIX = ".eternity-arming-"
+ARMING_MARKER_TTL_SECONDS = 600  # 10 min — mirrors the skill's handoff-freshness window.
 
 # (filename_prefix, filename_suffix) — sid is the substring between them.
 IN_FLIGHT_MARKERS = [
@@ -60,7 +74,29 @@ IN_FLIGHT_MARKERS = [
     # be cleared. Cleared by the daemon's pre-dispatch ping probe (auto-recover)
     # or manual `rm` after restarting cmux.
     ("cmux-unhealthy-", ""),
+    # 2026-06-24: freeze-early arming marker (age-GC'd — see ARMING_MARKER_* above).
+    (ARMING_MARKER_PREFIX, ""),
 ]
+
+
+def _marker_is_live(entry, prefix):
+    """Whether a matched marker file should still count as in-flight.
+
+    Daemon-managed markers always count while present (the daemon clears them). The
+    freeze-early arming marker additionally SELF-EXPIRES by mtime, so a crashed/aborted
+    fire can never freeze autopilot beyond ARMING_MARKER_TTL_SECONDS. This is a pure read
+    (no unlink) — the autonomy guarantee lives entirely in this age check.
+
+    Errs toward NOT-live (don't freeze) for the arming marker on any stat failure: an
+    unreadable/vanished marker is not a live freeze signal, and biasing here toward
+    autopilot-continues protects autonomy.
+    """
+    if prefix != ARMING_MARKER_PREFIX:
+        return True
+    try:
+        return (time.time() - entry.stat().st_mtime) <= ARMING_MARKER_TTL_SECONDS
+    except OSError:
+        return False
 
 
 def project_session_ids(cwd):
@@ -106,7 +142,7 @@ def is_eternity_protocol_active(cwd):
             name = entry.name
             for prefix, suffix in IN_FLIGHT_MARKERS:
                 sid = _extract_sid(name, prefix, suffix)
-                if sid and sid in sessions:
+                if sid and sid in sessions and _marker_is_live(entry, prefix):
                     return True
         return False
     except OSError:
@@ -127,7 +163,7 @@ def detect_eternity_marker(cwd):
             name = entry.name
             for prefix, suffix in IN_FLIGHT_MARKERS:
                 sid = _extract_sid(name, prefix, suffix)
-                if sid and sid in sessions:
+                if sid and sid in sessions and _marker_is_live(entry, prefix):
                     return sid, name
         return None, None
     except OSError:

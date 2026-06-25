@@ -87,6 +87,47 @@ if [[ ! -s "$RESUME_FILE" ]]; then
 fi
 export RESUME_FILE
 
+# ── 2026-06-24 GIT-STATE CAPTURE (inform-only, fail-open) ─────────────────
+# The handoff is a point-in-time snapshot. Work committed/edited AFTER it was written
+# (e.g. autopilot units produced in the lead-up to /clear) is otherwise invisible to the
+# resumed session — the stale-handoff failure mode. Append a DETERMINISTIC git snapshot to
+# the resume content (which the daemon injects, and which is copied to the archival
+# .resume.md sibling below) so the next session can DETECT drift (HEAD advanced / dirty
+# tree) and reconcile from git before trusting the handoff's "completed" claims.
+#
+# AUTONOMY: pure information. This NEVER commits, stashes, refuses, or blocks /clear — any
+# git error or non-repo simply skips the block. /clear fires exactly as before.
+if git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
+    GS_HEAD=$(git -C "$PWD" rev-parse --short=12 HEAD 2>/dev/null)
+    GS_BRANCH=$(git -C "$PWD" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    GS_DIRTY=$(git -C "$PWD" status --porcelain 2>/dev/null)
+    if [[ -n "$GS_DIRTY" ]]; then
+        GS_DIRTY_COUNT=$(printf '%s\n' "$GS_DIRTY" | grep -c .)
+    else
+        GS_DIRTY_COUNT=0
+    fi
+    {
+        printf '\n\n---\n## GIT STATE SNAPSHOT (captured at eternity fire — verify BEFORE trusting the handoff)\n'
+        printf 'At /clear time the repository was:\n'
+        printf -- '- branch: `%s`\n' "${GS_BRANCH:-?}"
+        printf -- '- HEAD: `%s`\n'   "${GS_HEAD:-?}"
+        printf -- '- uncommitted changes: %s file(s)\n' "${GS_DIRTY_COUNT}"
+        if [[ "${GS_DIRTY_COUNT}" -gt 0 ]]; then
+            printf '\nUncommitted working-tree files (these are in NO handoff — inspect FIRST):\n```\n'
+            printf '%s\n' "$GS_DIRTY" | head -40
+            printf '```\n'
+        fi
+        printf '\nRecent commits at fire time:\n```\n'
+        git -C "$PWD" log --oneline -8 2>/dev/null
+        printf '```\n'
+        printf '\n**Drift check:** if `git rev-parse --short=12 HEAD` no longer equals `%s`, or the working tree is dirty, RECONCILE from `git log` / `git status` / `git diff` before trusting any "completed / all committed" claim in the handoff above. (This session learned the hard way: a 2026-06-24 resume arrived 3 commits + 1 uncommitted method stale.)\n' "${GS_HEAD:-?}"
+    } >> "$RESUME_FILE" 2>/dev/null \
+        && echo "Git-state snapshot appended to resume (HEAD ${GS_HEAD:-?}, ${GS_DIRTY_COUNT} dirty)." \
+        || echo "WARN: git-state snapshot append failed — resume still valid (non-fatal)."
+else
+    echo "Not a git repo — skipping git-state snapshot (non-fatal; resume unaffected)."
+fi
+
 # ── Step 3: capture pre-clear token total (fallback chain) ────────────────
 # Authoritative source is the daemon's per-session .last-total marker, written
 # atomically on every JSONL event (single line, ASCII integer). When that's
