@@ -131,6 +131,8 @@ RETRY_BACKOFF_S = _fig.RETRY_BACKOFF_S
 _envelope = _fig._envelope
 _refused = _fig._refused
 _now_iso = _fig._now_iso
+_today_iso = _fig._today_iso
+_valid_date = _fig._valid_date
 _call_with_retry = _fig._call_with_retry
 
 
@@ -163,6 +165,25 @@ _STEP2_QUERY = (
 )
 _STEP2_LIMIT = 5
 
+# STEP-2 selection WITH the repayment schedule table — used only by per_diem_interest so it can
+# read Hypercore's NATIVE daily interest accrual (the schedule's "Int. Daily Accrual" column =
+# scheduleTable[row].due.interest on each interest-accrual-date row). Carries currentInterestRate
+# + totalOutstanding.principal too, so the figure has its computed-cross-check inputs on the SAME
+# record. Verified live 2026-06-25 (loanFunding 338 = XL on Lux II, schedule 214570): the current
+# accrual row (2026-06-18) due.interest = 1029.2369231252 == principal 2,646,609.23 × 14% ÷ 360,
+# matching the UI's $1,029.24 and PROVING Hypercore's day-count is Actual/360.
+_SCHEDULE_ROW_SELECTION = (
+    "index date type isInterestAccrualDate interestRate "
+    "outstanding { principal } due { total interest }"
+)
+_STEP2_SCHEDULE_QUERY = (
+    "query HCAFundingScheduleByLfId($filter: LoanFundingsFilterInput, $skip: Int, $limit: Int) { "
+    "loanFundings(filter: $filter, skip: $skip, limit: $limit) { "
+    "pageItems { id fundingEntity { id name } currentInterestRate "
+    "repaymentSchedule { id summary { totalOutstanding { principal } } scheduleTable { "
+    + _SCHEDULE_ROW_SELECTION + " } } } } }"
+)
+
 # The components that, summed, MUST equal totalOutstanding.total (reconciliation identity).
 # capitalizedBalance is NOT here (non-additive memo).
 _OUTSTANDING_COMPONENTS = (
@@ -182,17 +203,12 @@ _PATH_COMMITMENT = "$.body.record.commitmentAmount"
 _PATH_PARTICIPATION = "$.body.record.participationPercentage"
 _PATH_RECEIVABLE_TOTAL = "$.body.record.receivables.total"
 
-# Day-count conventions for per-diem interest. Hypercore exposes NO day-count field anywhere in
-# the schema (verified via full introspection 2026-06-25), so the convention CANNOT be fetched and
-# MUST be assumed + STATED in the output. Default = Actual/360, the CRE money-market standard (and
-# the convention the user confirmed for the OKOA book — XL/Lux II per-diem = $1,029.24/day).
-DAY_COUNT_DEFAULT = 360
-_DAY_COUNT_LABELS = {360: "Actual/360", 365: "Actual/365"}
-
-
-def _day_count_label(day_count: int) -> str:
-    return _DAY_COUNT_LABELS.get(day_count, "Actual/%s" % day_count)
-
+# Per-diem interest is delivered DIRECTLY from Hypercore's repayment schedule (the "Int. Daily
+# Accrual" column = scheduleTable[row].due.interest), which carries Hypercore's real day-count
+# convention. The figure DERIVES the convention from that native value (implied = principal ×
+# rate/100 ÷ native) rather than assuming one. Hypercore's accrual is Actual/360 (proven live
+# 2026-06-25: every accrual row's due.interest == principal × rate% ÷ 360 to full precision). The
+# computed FALLBACK (only when the native value is unavailable) assumes Actual/360 and says so.
 
 def _is_number(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
@@ -260,7 +276,8 @@ class FundingFigure:
         return None
 
     # --- shared fetch: resolve loanFundingId then fetch the STEP-2 record ---
-    def _fetch_funding_record(self, loan_id: str, funding_entity_id: str) -> dict:
+    def _fetch_funding_record(self, loan_id: str, funding_entity_id: str,
+                              *, step2_query: str = _STEP2_QUERY) -> dict:
         """Run the reliable 2-step path and CACHE the picked STEP-2 record as Tier-1.
 
         Returns one of:
@@ -270,6 +287,11 @@ class FundingFigure:
         Never fabricates: a missing investor (STEP-1 no match) -> NOT_FUNDING refusal; a flaky
         500 surviving the retry budget -> LIVE_500 refusal; an empty/incomplete STEP-2 payload
         -> FETCH_EMPTY refusal.
+
+        `step2_query` selects WHICH STEP-2 selection to fetch — defaults to the lean figure block
+        (`_STEP2_QUERY`); the per-diem figure passes `_STEP2_SCHEDULE_QUERY` to additionally pull
+        `repaymentSchedule.scheduleTable` so it can read Hypercore's NATIVE daily-accrual value
+        without burdening the other funding figures with the 60+ schedule rows.
         """
         loan_id = str(loan_id)
         funding_entity_id = str(funding_entity_id)
@@ -294,7 +316,7 @@ class FundingFigure:
         step2_vars = {"filter": {"loanFundingId": lf_id}, "skip": 0, "limit": _STEP2_LIMIT}
         try:
             data, _attempts, _errs = _call_with_retry(
-                client, _STEP2_QUERY, step2_vars,
+                client, step2_query, step2_vars,
                 attempts=self._attempts, backoff_s=self._backoff, sleep=self._sleep,
                 # a transiently-empty page is re-fetched (same input); still empty -> refuse below.
                 is_empty=lambda d: not (((d or {}).get("loanFundings") or {}).get("pageItems")))
@@ -636,47 +658,74 @@ class FundingFigure:
             loan_id=loan_id, funding_entity_id=funding_entity_id,
             currency=currency, loan_name=loan_name)
 
-    # === DERIVED: investor's PER-DIEM (daily) interest on the position =====
+    # === investor's PER-DIEM (daily) interest — NATIVE from Hypercore's schedule ===========
+    @staticmethod
+    def _pick_current_accrual_row(table, as_of):
+        """Return (list_index, row) for the CURRENT daily-accrual row in a scheduleTable.
+
+        The current per-diem is the LATEST interest-accrual-date row (isInterestAccrualDate True)
+        whose date <= as_of and whose due.interest is positive — that mirrors the UI's most-recent
+        "Int. Accrued" row. If no accrual row is at/before as_of (a not-yet-accruing position), fall
+        back to the EARLIEST upcoming accrual row so the question still answers. Returns
+        (None, None) when there is no positive-interest accrual row at all. list_index is the
+        POSITION in the returned scheduleTable (what the array-path provenance binds to), NOT the
+        row's own `index` field."""
+        accr = []
+        for i, r in enumerate(table or []):
+            if not isinstance(r, dict) or not r.get("isInterestAccrualDate"):
+                continue
+            di = (r.get("due") or {}).get("interest")
+            if not _is_number(di) or di <= 0:
+                continue
+            accr.append((i, r, str(r.get("date") or "")))
+        if not accr:
+            return None, None
+        at_or_before = [t for t in accr if t[2] and t[2] <= as_of]
+        pool = at_or_before if at_or_before else accr
+        # latest date wins (earliest if all future); the row `index` breaks date ties deterministically.
+        chooser = max if at_or_before else min
+        i, r, _d = chooser(pool, key=lambda t: (t[2], t[1].get("index") or 0))
+        return i, r
+
     def per_diem_interest(self, *, loan_id: str, funding_entity_id: str,
                           currency: Optional[str] = None, loan_name: Optional[str] = None,
-                          day_count: int = DAY_COUNT_DEFAULT, **_ignored) -> dict:
-        """The investor's PER-DIEM (daily) interest accruing on the position.
+                          as_of: Optional[str] = None, **_ignored) -> dict:
+        """The investor's PER-DIEM (daily) interest — DELIVERED DIRECTLY FROM HYPERCORE.
 
-        DERIVED + TRANSPARENT:
-            per_diem = outstanding_principal × (currentInterestRate / 100) / day_count
+        PRIMARY (the delivered value): Hypercore's OWN daily accrual — `scheduleTable[row].due.interest`
+        on the current interest-accrual row of the investor's repayment schedule (the UI's
+        "Int. Daily Accrual" column under Lux II → XL → Schedule). It is provenance-bound to its exact
+        Tier-1 array path (`$.body.record.repaymentSchedule.scheduleTable[K].due.interest`) so it is
+        independently re-resolvable, and it carries Hypercore's real day-count convention baked in.
 
-        Both inputs are read off the SAME cached STEP-2 LoanFunding record and INDEPENDENTLY
-        provenance-bound (so each is re-resolvable); the per-diem itself is COMPUTED live on every
-        call and NEVER cached. Two facts pinned from a live probe (2026-06-25, loanFunding 338 =
-        XL on Lux II):
-          * `currentInterestRate` is a PERCENT (the field returns `14`, meaning 14% — NOT 0.14),
-            so it is divided by 100. This is verified, not assumed: 2,646,609.23 × 14% ÷ 360 =
-            $1,029.24/day, the user-confirmed correct answer. (Note: the loan-level DSCR figure
-            reads a DIFFERENT field, Loan.annualInterestRate, whose scale is its own concern — the
-            two fields must not be assumed to share a scale.)
-          * The interest BASIS is outstanding PRINCIPAL (totalOutstanding.principal), not
-            totalOutstanding.total — the latter is net of fee/credit components and is the wrong
-            base for an interest accrual.
+        CROSS-CHECK (double-check ONLY — never the delivered number): independently DERIVE the implied
+        day-count from Hypercore's own value (implied = principal × rate/100 ÷ native). A clean 360 or
+        365 CONFIRMS the convention (reported as confirmed, not assumed). A value that matches neither
+        is FLAGGED in the gate — but the native value is STILL delivered, because it is the source of
+        truth; the flag just surfaces that the convention is non-standard.
 
-        Hypercore exposes NO day-count field anywhere in the schema, so the convention is ASSUMED
-        (default Actual/360) and STATED in both the answer and the provenance. `day_count` is
-        parameterizable (e.g. 365) for callers who know a different convention applies.
+        FALLBACK (only when the native value is unavailable — no schedule / no positive accrual row):
+        compute principal × rate/100 ÷ 360 from the funding record, CLEARLY LABELLED computed +
+        Actual/360 ASSUMED. Preferred over refusing so the question still answers, but never presented
+        as Hypercore's own figure.
 
-        REFUSAL DISCIPLINE (never fabricate): a bad day_count, an absent/non-numeric principal or
-        rate, a non-positive rate (a per-diem question presumes an interest-bearing position), or a
-        provenance-bind miss each return a CLEAN structured REFUSAL — never a guessed per-diem.
+        Live-verified 2026-06-25 (XL on Lux II, loanFunding 338, schedule 214570): native current
+        accrual row (2026-06-18) due.interest = 1029.236923 == 2,646,609.23 × 14% ÷ 360 = the UI's
+        $1,029.24.
         """
         bad = self._check_inputs(loan_id, funding_entity_id)
         if bad is not None:
             return bad
+        as_of = as_of or _today_iso()
         meta_base = {"figure": "per_diem_interest", "loan_id": loan_id,
-                     "funding_entity_id": funding_entity_id}
-        if not isinstance(day_count, int) or isinstance(day_count, bool) or day_count <= 0:
+                     "funding_entity_id": funding_entity_id, "as_of": as_of}
+        if not _valid_date(as_of):
             return _refused(REASON_BAD_INPUT,
-                            "per_diem_interest: day_count must be a positive int (got %r)"
-                            % (day_count,), meta=meta_base)
+                            "per_diem_interest: invalid as_of date %r (expected YYYY-MM-DD)"
+                            % (as_of,), meta=meta_base)
 
-        fetched = self._fetch_funding_record(str(loan_id), str(funding_entity_id))
+        fetched = self._fetch_funding_record(str(loan_id), str(funding_entity_id),
+                                             step2_query=_STEP2_SCHEDULE_QUERY)
         if not fetched.get("ok"):
             return self._fetch_refusal_envelope(fetched, figure="per_diem_interest",
                                                 loan_id=loan_id,
@@ -684,80 +733,160 @@ class FundingFigure:
         row = fetched["row"]
         rid = fetched["rid"]
         lf_id = fetched.get("loan_funding_id")
-        summary = (((row or {}).get("repaymentSchedule") or {}).get("summary") or {})
-        outstanding = summary.get("totalOutstanding") or {}
-        principal = outstanding.get("principal")
-        rate = (row or {}).get("currentInterestRate")
+        fe = (row or {}).get("fundingEntity") or {}
+        cur = currency or self._currency
+        sched = (row or {}).get("repaymentSchedule") or {}
+        table = sched.get("scheduleTable") or []
+        k, arow = self._pick_current_accrual_row(table, as_of)
 
-        # Both inputs must be real numbers (never guess a missing one).
-        if not _is_number(principal):
+        # ------------------------------------------------------------------ NATIVE PATH (preferred)
+        if arow is not None:
+            native = (arow.get("due") or {}).get("interest")
+            ar_principal = (arow.get("outstanding") or {}).get("principal")
+            ar_rate = arow.get("interestRate")
+            ar_date = str(arow.get("date") or "")
+            npath = "$.body.record.repaymentSchedule.scheduleTable[%d].due.interest" % k
+            prov = self._engine.bind_and_verify(
+                native, {"raw_response_id": rid, "json_field_path": npath},
+                value_ref="loan.%s.funding.%s.per_diem.native" % (loan_id, funding_entity_id))
+            if prov["outcome"] != self._provlib.VERIFIED:
+                return _refused(REASON_PROVENANCE, prov["reason"],
+                                meta={**meta_base, "reason_code_inner": prov["reason_code"],
+                                      "input": "native_due_interest"})
+
+            # CROSS-CHECK: derive the implied day-count from Hypercore's own value (double-check only).
+            cross = None
+            convention = "unknown"
+            convention_confirmed = False
+            if (_is_number(ar_principal) and _is_number(ar_rate) and ar_rate > 0
+                    and _is_number(native) and native > 0):
+                annual = float(ar_principal) * (float(ar_rate) / 100.0)
+                implied = round(annual / float(native), 4)
+                computed_360 = round(annual / 360.0, 6)
+                cross = {"computed_actual_360": computed_360, "implied_day_count": implied,
+                         "matches_360": abs(float(native) - computed_360) <= RECONCILE_TOLERANCE}
+                if abs(implied - 360) <= 0.5:
+                    convention, convention_confirmed = "Actual/360", True
+                elif abs(implied - 365) <= 0.5:
+                    convention, convention_confirmed = "Actual/365", True
+                else:
+                    convention = "Actual/%s" % (int(round(implied)) if implied else "?")
+
+            conf = self._engine.confidence_record(
+                "loan.%s.funding.%s.per_diem_interest" % (loan_id, funding_entity_id),
+                source_count=1,
+                basis=("Hypercore-native daily accrual (scheduleTable.due.interest) with a computed "
+                       "cross-check"))
+            out_value = {
+                "value": float(native),
+                "currency": cur,
+                "unit": "currency_per_day",
+                "provenance": {
+                    "source": "hypercore_native",
+                    "raw_response_id": rid,
+                    "json_field_path": npath,
+                    "operation": "loanFundings",
+                    "field": "repaymentSchedule.scheduleTable[].due.interest",
+                    "schedule_id": sched.get("id"),
+                    "accrual_row_date": ar_date,
+                    "accrual_row_index": arow.get("index"),
+                    "loan_funding_id": lf_id, "asset_id": str(loan_id),
+                    "funding_entity_id": str(funding_entity_id),
+                    "fetched_at": fetched.get("fetched_at"),
+                    "cross_check": cross,
+                    "day_count_convention": convention,
+                    "day_count_confirmed": convention_confirmed,
+                },
+                "confidence": conf["confidence"],
+            }
+            inv_str = " %r" % fe.get("name") if fe.get("name") else ""
+            name_str = " on %r" % loan_name if loan_name else ""
+            cur_str = " %s" % cur if cur else ""
+            conv_str = (("%s (confirmed by Hypercore's own accrual)" % convention)
+                        if convention_confirmed
+                        else ("%s (implied from Hypercore's value)" % convention))
+            answer = (
+                "Per-diem interest for investor%s (funding entity %s) on loan %s%s is %s%s per day "
+                "(≈ %.2f) — read DIRECTLY from Hypercore's repayment schedule (Int. Daily "
+                "Accrual, accrual row dated %s). Day-count convention: %s."
+                % (inv_str, funding_entity_id, loan_id, name_str, float(native), cur_str,
+                   round(float(native), 2), ar_date, conv_str))
+            gate_verdict = {
+                "outcome": "pass", "source": "hypercore_native",
+                "single_source": conf["single_source"],
+                "day_count_convention": convention, "day_count_confirmed": convention_confirmed,
+                "cross_check": cross,
+            }
+            if cross is not None and not cross["matches_360"] and not convention_confirmed:
+                gate_verdict["cross_check_flag"] = (
+                    "Hypercore's native daily accrual matches neither a clean Actual/360 nor "
+                    "Actual/365 computation — delivering the native value, flagging the convention")
+            return _envelope(
+                STATE_DELIVERED, answer=answer, values=[out_value],
+                gate_verdict=gate_verdict, complete=True, refusals=[],
+                meta={
+                    "figure": "per_diem_interest", "loan_id": loan_id, "loan_name": loan_name,
+                    "funding_entity_id": funding_entity_id, "funding_entity_name": fe.get("name"),
+                    "loan_funding_id": lf_id, "schedule_id": sched.get("id"),
+                    "currency": cur, "unit": "currency_per_day",
+                    "source": "hypercore_native", "accrual_row_date": ar_date,
+                    "outstanding_principal": (float(ar_principal) if _is_number(ar_principal) else None),
+                    "current_interest_rate_percent": (float(ar_rate) if _is_number(ar_rate) else None),
+                    "day_count_convention": convention, "day_count_confirmed": convention_confirmed,
+                    "cross_check": cross, "confidence_record": conf, "as_of": as_of,
+                })
+
+        # ------------------------------------------------------------- FALLBACK PATH (computed)
+        # No native accrual row available -> compute from the funding record, CLEARLY labelled.
+        summary = (sched.get("summary") or {})
+        rec_principal = ((summary.get("totalOutstanding") or {}).get("principal"))
+        rec_rate = (row or {}).get("currentInterestRate")
+        if not _is_number(rec_principal):
             return _refused(REASON_FETCH_EMPTY,
-                            "per_diem_interest: non-numeric/absent outstanding principal (%r) — "
-                            "refusing" % (principal,), meta=meta_base)
-        if not _is_number(rate):
+                            "per_diem_interest: no Hypercore-native accrual row AND no outstanding "
+                            "principal to compute from — refusing (never fabricate)", meta=meta_base)
+        if not _is_number(rec_rate):
             return _refused(REASON_FETCH_EMPTY,
-                            "per_diem_interest: non-numeric/absent currentInterestRate (%r) — "
-                            "refusing" % (rate,), meta=meta_base)
-        if rate <= 0:
+                            "per_diem_interest: no Hypercore-native accrual row AND absent "
+                            "currentInterestRate — refusing", meta=meta_base)
+        if rec_rate <= 0:
             return _refused(REASON_BAD_INPUT,
-                            "per_diem_interest: currentInterestRate is non-positive (%r) — a "
-                            "per-diem requires an interest-bearing position; refusing" % (rate,),
+                            "per_diem_interest: currentInterestRate non-positive (%r) — a per-diem "
+                            "requires an interest-bearing position; refusing" % (rec_rate,),
                             meta=meta_base)
-
-        # PROVENANCE-BIND BOTH inputs to their Tier-1 paths on the SAME record. A miss => REFUSE.
         prov_p = self._engine.bind_and_verify(
-            principal, {"raw_response_id": rid, "json_field_path": _PATH_OUTSTANDING_PRINCIPAL},
+            rec_principal, {"raw_response_id": rid, "json_field_path": _PATH_OUTSTANDING_PRINCIPAL},
             value_ref="loan.%s.funding.%s.per_diem.principal" % (loan_id, funding_entity_id))
         if prov_p["outcome"] != self._provlib.VERIFIED:
             return _refused(REASON_PROVENANCE, prov_p["reason"],
-                            meta={**meta_base, "reason_code_inner": prov_p["reason_code"],
-                                  "input": "outstanding_principal"})
+                            meta={**meta_base, "input": "outstanding_principal"})
         prov_r = self._engine.bind_and_verify(
-            rate, {"raw_response_id": rid, "json_field_path": _PATH_CURRENT_INTEREST_RATE},
+            rec_rate, {"raw_response_id": rid, "json_field_path": _PATH_CURRENT_INTEREST_RATE},
             value_ref="loan.%s.funding.%s.per_diem.rate" % (loan_id, funding_entity_id))
         if prov_r["outcome"] != self._provlib.VERIFIED:
             return _refused(REASON_PROVENANCE, prov_r["reason"],
-                            meta={**meta_base, "reason_code_inner": prov_r["reason_code"],
-                                  "input": "currentInterestRate"})
-
-        # COMPUTE live (never cached). Rate is a percent -> /100. Day-count assumed + stated.
-        rate_fraction = float(rate) / 100.0
-        per_diem = round(float(principal) * rate_fraction / day_count, 6)
-        dcc_label = _day_count_label(day_count)
-
+                            meta={**meta_base, "input": "currentInterestRate"})
+        per_diem = round(float(rec_principal) * (float(rec_rate) / 100.0) / 360, 6)
         conf = self._engine.confidence_record(
-            "loan.%s.funding.%s.per_diem_interest" % (loan_id, funding_entity_id),
-            source_count=1,
-            basis=("derived per-diem (single-source principal + rate; day-count %s ASSUMED — "
-                   "Hypercore exposes no day-count field)" % dcc_label))
-
-        cur = currency or self._currency
-        fe = (row or {}).get("fundingEntity") or {}
+            "loan.%s.funding.%s.per_diem_interest" % (loan_id, funding_entity_id), source_count=1,
+            basis=("computed per-diem (Hypercore-native daily accrual unavailable for this "
+                   "position; Actual/360 ASSUMED)"))
         out_value = {
-            "value": per_diem,
-            "currency": cur,
-            "unit": "currency_per_day",
+            "value": per_diem, "currency": cur, "unit": "currency_per_day",
             "provenance": {
-                "derived": True,
-                "formula": "outstanding_principal * (currentInterestRate / 100) / day_count",
+                "source": "computed_fallback",
+                "formula": "outstanding_principal * (currentInterestRate / 100) / 360",
                 "inputs": {
-                    "outstanding_principal": {
-                        "raw_response_id": rid,
-                        "json_field_path": _PATH_OUTSTANDING_PRINCIPAL,
-                        "value": float(principal)},
-                    "currentInterestRate": {
-                        "raw_response_id": rid,
-                        "json_field_path": _PATH_CURRENT_INTEREST_RATE,
-                        "value": float(rate), "scale": "percent"},
+                    "outstanding_principal": {"raw_response_id": rid,
+                                              "json_field_path": _PATH_OUTSTANDING_PRINCIPAL,
+                                              "value": float(rec_principal)},
+                    "currentInterestRate": {"raw_response_id": rid,
+                                            "json_field_path": _PATH_CURRENT_INTEREST_RATE,
+                                            "value": float(rec_rate), "scale": "percent"},
                 },
-                "day_count": day_count,
-                "day_count_convention": dcc_label,
-                "day_count_assumed": True,
-                "operation": "loanFundings",
-                "loan_funding_id": lf_id,
-                "asset_id": str(loan_id),
-                "funding_entity_id": str(funding_entity_id),
-                "fetched_at": fetched.get("fetched_at"),
+                "day_count": 360, "day_count_convention": "Actual/360", "day_count_assumed": True,
+                "operation": "loanFundings", "loan_funding_id": lf_id, "asset_id": str(loan_id),
+                "funding_entity_id": str(funding_entity_id), "fetched_at": fetched.get("fetched_at"),
             },
             "confidence": conf["confidence"],
         }
@@ -765,38 +894,29 @@ class FundingFigure:
         name_str = " on %r" % loan_name if loan_name else ""
         cur_str = " %s" % cur if cur else ""
         answer = (
-            "Per-diem interest for investor%s (funding entity %s) on loan %s%s is "
-            "%s%s per day. Computed as outstanding principal %s × %s%% ÷ %s (%s). "
-            "Day-count convention is ASSUMED (%s) — Hypercore exposes no day-count field."
+            "Per-diem interest for investor%s (funding entity %s) on loan %s%s is %s%s per day "
+            "(≈ %.2f) — COMPUTED (Hypercore's native daily accrual was unavailable for this "
+            "position): outstanding principal %s × %s%% ÷ 360. Day-count Actual/360 (ASSUMED)."
             % (inv_str, funding_entity_id, loan_id, name_str, per_diem, cur_str,
-               float(principal), float(rate), day_count, dcc_label, dcc_label))
+               round(per_diem, 2), float(rec_principal), float(rec_rate)))
         gate_verdict = {
-            "outcome": "pass",
-            "derived": True,
-            "formula": "outstanding_principal * (currentInterestRate / 100) / day_count",
-            "day_count": day_count,
-            "day_count_convention": dcc_label,
-            "day_count_assumed": True,
+            "outcome": "pass", "source": "computed_fallback",
+            "formula": "outstanding_principal * (currentInterestRate / 100) / 360",
+            "day_count": 360, "day_count_convention": "Actual/360", "day_count_assumed": True,
             "single_source": conf["single_source"],
         }
         return _envelope(
             STATE_DELIVERED, answer=answer, values=[out_value],
             gate_verdict=gate_verdict, complete=True, refusals=[],
             meta={
-                "figure": "per_diem_interest",
-                "loan_id": loan_id,
-                "loan_name": loan_name,
-                "funding_entity_id": funding_entity_id,
-                "funding_entity_name": fe.get("name"),
-                "loan_funding_id": lf_id,
-                "currency": cur,
-                "unit": "currency_per_day",
-                "outstanding_principal": float(principal),
-                "current_interest_rate_percent": float(rate),
-                "day_count": day_count,
-                "day_count_convention": dcc_label,
-                "day_count_assumed": True,
-                "confidence_record": conf,
+                "figure": "per_diem_interest", "loan_id": loan_id, "loan_name": loan_name,
+                "funding_entity_id": funding_entity_id, "funding_entity_name": fe.get("name"),
+                "loan_funding_id": lf_id, "currency": cur, "unit": "currency_per_day",
+                "source": "computed_fallback",
+                "outstanding_principal": float(rec_principal),
+                "current_interest_rate_percent": float(rec_rate),
+                "day_count": 360, "day_count_convention": "Actual/360", "day_count_assumed": True,
+                "confidence_record": conf, "as_of": as_of,
             })
 
     # --- registry: figure name -> callable ---------------------------------
