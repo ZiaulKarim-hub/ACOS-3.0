@@ -84,8 +84,10 @@ _METRIC_TO_PORTFOLIO = {
 }
 
 
-# Funding metric keyword -> the funding figure that answers it. Ordered most-specific first.
+# Funding metric keyword -> the funding figure that answers it. Ordered most-specific first, so
+# the multi-word "per diem" is recognized before any single-word metric in the same question.
 _FUNDING_FIGURE_BY_KEYWORD = (
+    (("per diem", "perdiem", "per-diem", "daily interest"), "per_diem_interest"),
     (("outstanding",), "funding_outstanding"),
     (("commitment", "committed"), "funding_commitment"),
     (("participation", "participating", "participates"), "funding_participation"),
@@ -93,11 +95,14 @@ _FUNDING_FIGURE_BY_KEYWORD = (
 )
 
 # Words removed when isolating the entity names in a funding question (the metric words + 'amount'
-# / 'balance' / 'contributed'). The remaining generic filler + tranche words + dates are stripped
-# by reusing hca-deliver's helpers so the two paths can never drift.
+# / 'balance' / 'contributed' + the per-diem terms). The remaining generic filler + tranche words +
+# dates are stripped by reusing hca-deliver's helpers so the two paths can never drift. The
+# per-diem terms (per[ -]diem, daily, interest) are stripped here so a question like "per diem
+# interest for XL for Lux II" does not carry "per/diem/interest" into entity resolution (which the
+# 2026-06-25 handoff flagged as breaking the name match).
 _FUNDING_METRIC_RE = re.compile(
-    r"(?i)\b(outstanding|commitment|committed|participation|participating|participates|"
-    r"receivable|receivables|owed|amount|balance|contributed|due)\b")
+    r"(?i)\b(per[\s-]*diem|daily|interest|outstanding|commitment|committed|participation|"
+    r"participating|participates|receivable|receivables|owed|amount|balance|contributed|due)\b")
 
 
 def _funding_figure_for(q_lower: str) -> Optional[str]:

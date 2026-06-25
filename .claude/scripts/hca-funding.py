@@ -154,6 +154,7 @@ _STEP2_QUERY = (
     "query HCAFundingByLfId($filter: LoanFundingsFilterInput, $skip: Int, $limit: Int) { "
     "loanFundings(filter: $filter, skip: $skip, limit: $limit) { "
     "pageItems { id fundingEntity { id name } participationPercentage commitmentAmount "
+    "currentInterestRate "
     "receivables { total principal interest } "
     "repaymentSchedule { summary { "
     "totalOutstanding { total principal interest compoundingInterest totalFees totalPenalties } "
@@ -173,9 +174,24 @@ _OUTSTANDING_COMPONENTS = (
 _PATH_OUTSTANDING_TOTAL = (
     "$.body.record.repaymentSchedule.summary.totalOutstanding.total"
 )
+_PATH_OUTSTANDING_PRINCIPAL = (
+    "$.body.record.repaymentSchedule.summary.totalOutstanding.principal"
+)
+_PATH_CURRENT_INTEREST_RATE = "$.body.record.currentInterestRate"
 _PATH_COMMITMENT = "$.body.record.commitmentAmount"
 _PATH_PARTICIPATION = "$.body.record.participationPercentage"
 _PATH_RECEIVABLE_TOTAL = "$.body.record.receivables.total"
+
+# Day-count conventions for per-diem interest. Hypercore exposes NO day-count field anywhere in
+# the schema (verified via full introspection 2026-06-25), so the convention CANNOT be fetched and
+# MUST be assumed + STATED in the output. Default = Actual/360, the CRE money-market standard (and
+# the convention the user confirmed for the OKOA book — XL/Lux II per-diem = $1,029.24/day).
+DAY_COUNT_DEFAULT = 360
+_DAY_COUNT_LABELS = {360: "Actual/360", 365: "Actual/365"}
+
+
+def _day_count_label(day_count: int) -> str:
+    return _DAY_COUNT_LABELS.get(day_count, "Actual/%s" % day_count)
 
 
 def _is_number(v) -> bool:
@@ -620,6 +636,169 @@ class FundingFigure:
             loan_id=loan_id, funding_entity_id=funding_entity_id,
             currency=currency, loan_name=loan_name)
 
+    # === DERIVED: investor's PER-DIEM (daily) interest on the position =====
+    def per_diem_interest(self, *, loan_id: str, funding_entity_id: str,
+                          currency: Optional[str] = None, loan_name: Optional[str] = None,
+                          day_count: int = DAY_COUNT_DEFAULT, **_ignored) -> dict:
+        """The investor's PER-DIEM (daily) interest accruing on the position.
+
+        DERIVED + TRANSPARENT:
+            per_diem = outstanding_principal × (currentInterestRate / 100) / day_count
+
+        Both inputs are read off the SAME cached STEP-2 LoanFunding record and INDEPENDENTLY
+        provenance-bound (so each is re-resolvable); the per-diem itself is COMPUTED live on every
+        call and NEVER cached. Two facts pinned from a live probe (2026-06-25, loanFunding 338 =
+        XL on Lux II):
+          * `currentInterestRate` is a PERCENT (the field returns `14`, meaning 14% — NOT 0.14),
+            so it is divided by 100. This is verified, not assumed: 2,646,609.23 × 14% ÷ 360 =
+            $1,029.24/day, the user-confirmed correct answer. (Note: the loan-level DSCR figure
+            reads a DIFFERENT field, Loan.annualInterestRate, whose scale is its own concern — the
+            two fields must not be assumed to share a scale.)
+          * The interest BASIS is outstanding PRINCIPAL (totalOutstanding.principal), not
+            totalOutstanding.total — the latter is net of fee/credit components and is the wrong
+            base for an interest accrual.
+
+        Hypercore exposes NO day-count field anywhere in the schema, so the convention is ASSUMED
+        (default Actual/360) and STATED in both the answer and the provenance. `day_count` is
+        parameterizable (e.g. 365) for callers who know a different convention applies.
+
+        REFUSAL DISCIPLINE (never fabricate): a bad day_count, an absent/non-numeric principal or
+        rate, a non-positive rate (a per-diem question presumes an interest-bearing position), or a
+        provenance-bind miss each return a CLEAN structured REFUSAL — never a guessed per-diem.
+        """
+        bad = self._check_inputs(loan_id, funding_entity_id)
+        if bad is not None:
+            return bad
+        meta_base = {"figure": "per_diem_interest", "loan_id": loan_id,
+                     "funding_entity_id": funding_entity_id}
+        if not isinstance(day_count, int) or isinstance(day_count, bool) or day_count <= 0:
+            return _refused(REASON_BAD_INPUT,
+                            "per_diem_interest: day_count must be a positive int (got %r)"
+                            % (day_count,), meta=meta_base)
+
+        fetched = self._fetch_funding_record(str(loan_id), str(funding_entity_id))
+        if not fetched.get("ok"):
+            return self._fetch_refusal_envelope(fetched, figure="per_diem_interest",
+                                                loan_id=loan_id,
+                                                funding_entity_id=funding_entity_id)
+        row = fetched["row"]
+        rid = fetched["rid"]
+        lf_id = fetched.get("loan_funding_id")
+        summary = (((row or {}).get("repaymentSchedule") or {}).get("summary") or {})
+        outstanding = summary.get("totalOutstanding") or {}
+        principal = outstanding.get("principal")
+        rate = (row or {}).get("currentInterestRate")
+
+        # Both inputs must be real numbers (never guess a missing one).
+        if not _is_number(principal):
+            return _refused(REASON_FETCH_EMPTY,
+                            "per_diem_interest: non-numeric/absent outstanding principal (%r) — "
+                            "refusing" % (principal,), meta=meta_base)
+        if not _is_number(rate):
+            return _refused(REASON_FETCH_EMPTY,
+                            "per_diem_interest: non-numeric/absent currentInterestRate (%r) — "
+                            "refusing" % (rate,), meta=meta_base)
+        if rate <= 0:
+            return _refused(REASON_BAD_INPUT,
+                            "per_diem_interest: currentInterestRate is non-positive (%r) — a "
+                            "per-diem requires an interest-bearing position; refusing" % (rate,),
+                            meta=meta_base)
+
+        # PROVENANCE-BIND BOTH inputs to their Tier-1 paths on the SAME record. A miss => REFUSE.
+        prov_p = self._engine.bind_and_verify(
+            principal, {"raw_response_id": rid, "json_field_path": _PATH_OUTSTANDING_PRINCIPAL},
+            value_ref="loan.%s.funding.%s.per_diem.principal" % (loan_id, funding_entity_id))
+        if prov_p["outcome"] != self._provlib.VERIFIED:
+            return _refused(REASON_PROVENANCE, prov_p["reason"],
+                            meta={**meta_base, "reason_code_inner": prov_p["reason_code"],
+                                  "input": "outstanding_principal"})
+        prov_r = self._engine.bind_and_verify(
+            rate, {"raw_response_id": rid, "json_field_path": _PATH_CURRENT_INTEREST_RATE},
+            value_ref="loan.%s.funding.%s.per_diem.rate" % (loan_id, funding_entity_id))
+        if prov_r["outcome"] != self._provlib.VERIFIED:
+            return _refused(REASON_PROVENANCE, prov_r["reason"],
+                            meta={**meta_base, "reason_code_inner": prov_r["reason_code"],
+                                  "input": "currentInterestRate"})
+
+        # COMPUTE live (never cached). Rate is a percent -> /100. Day-count assumed + stated.
+        rate_fraction = float(rate) / 100.0
+        per_diem = round(float(principal) * rate_fraction / day_count, 6)
+        dcc_label = _day_count_label(day_count)
+
+        conf = self._engine.confidence_record(
+            "loan.%s.funding.%s.per_diem_interest" % (loan_id, funding_entity_id),
+            source_count=1,
+            basis=("derived per-diem (single-source principal + rate; day-count %s ASSUMED — "
+                   "Hypercore exposes no day-count field)" % dcc_label))
+
+        cur = currency or self._currency
+        fe = (row or {}).get("fundingEntity") or {}
+        out_value = {
+            "value": per_diem,
+            "currency": cur,
+            "unit": "currency_per_day",
+            "provenance": {
+                "derived": True,
+                "formula": "outstanding_principal * (currentInterestRate / 100) / day_count",
+                "inputs": {
+                    "outstanding_principal": {
+                        "raw_response_id": rid,
+                        "json_field_path": _PATH_OUTSTANDING_PRINCIPAL,
+                        "value": float(principal)},
+                    "currentInterestRate": {
+                        "raw_response_id": rid,
+                        "json_field_path": _PATH_CURRENT_INTEREST_RATE,
+                        "value": float(rate), "scale": "percent"},
+                },
+                "day_count": day_count,
+                "day_count_convention": dcc_label,
+                "day_count_assumed": True,
+                "operation": "loanFundings",
+                "loan_funding_id": lf_id,
+                "asset_id": str(loan_id),
+                "funding_entity_id": str(funding_entity_id),
+                "fetched_at": fetched.get("fetched_at"),
+            },
+            "confidence": conf["confidence"],
+        }
+        inv_str = " %r" % fe.get("name") if fe.get("name") else ""
+        name_str = " on %r" % loan_name if loan_name else ""
+        cur_str = " %s" % cur if cur else ""
+        answer = (
+            "Per-diem interest for investor%s (funding entity %s) on loan %s%s is "
+            "%s%s per day. Computed as outstanding principal %s × %s%% ÷ %s (%s). "
+            "Day-count convention is ASSUMED (%s) — Hypercore exposes no day-count field."
+            % (inv_str, funding_entity_id, loan_id, name_str, per_diem, cur_str,
+               float(principal), float(rate), day_count, dcc_label, dcc_label))
+        gate_verdict = {
+            "outcome": "pass",
+            "derived": True,
+            "formula": "outstanding_principal * (currentInterestRate / 100) / day_count",
+            "day_count": day_count,
+            "day_count_convention": dcc_label,
+            "day_count_assumed": True,
+            "single_source": conf["single_source"],
+        }
+        return _envelope(
+            STATE_DELIVERED, answer=answer, values=[out_value],
+            gate_verdict=gate_verdict, complete=True, refusals=[],
+            meta={
+                "figure": "per_diem_interest",
+                "loan_id": loan_id,
+                "loan_name": loan_name,
+                "funding_entity_id": funding_entity_id,
+                "funding_entity_name": fe.get("name"),
+                "loan_funding_id": lf_id,
+                "currency": cur,
+                "unit": "currency_per_day",
+                "outstanding_principal": float(principal),
+                "current_interest_rate_percent": float(rate),
+                "day_count": day_count,
+                "day_count_convention": dcc_label,
+                "day_count_assumed": True,
+                "confidence_record": conf,
+            })
+
     # --- registry: figure name -> callable ---------------------------------
     def registry(self) -> dict:
         """Map of funding-figure name -> bound callable(loan_id, funding_entity_id, ...)."""
@@ -628,6 +807,7 @@ class FundingFigure:
             "funding_commitment": self.funding_commitment,
             "funding_participation": self.funding_participation,
             "funding_receivable": self.funding_receivable,
+            "per_diem_interest": self.per_diem_interest,
         }
 
 
@@ -640,6 +820,7 @@ FUNDING_FIGURE_NAMES = (
     "funding_commitment",
     "funding_participation",
     "funding_receivable",
+    "per_diem_interest",
 )
 
 
