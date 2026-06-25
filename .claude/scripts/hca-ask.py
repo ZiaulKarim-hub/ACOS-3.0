@@ -69,6 +69,21 @@ def _explorer():
     return _load("hca_explorer", "hca-explorer.py")
 
 
+def _learned():
+    return _load("hca_learned", "hca-learned.py")
+
+
+# A learned canonical metric word -> the figure that answers it (loan-level and portfolio-level).
+_METRIC_TO_FUNDING = {
+    "outstanding": "funding_outstanding", "receivable": "funding_receivable",
+    "commitment": "funding_commitment", "participation": "funding_participation",
+}
+_METRIC_TO_PORTFOLIO = {
+    "outstanding": "portfolio_outstanding", "receivable": "portfolio_receivable",
+    "commitment": "portfolio_commitment",
+}
+
+
 # Funding metric keyword -> the funding figure that answers it. Ordered most-specific first.
 _FUNDING_FIGURE_BY_KEYWORD = (
     (("outstanding",), "funding_outstanding"),
@@ -111,12 +126,18 @@ def _portfolio_figure_for(q_lower: str) -> Optional[str]:
     return None
 
 
-def _name_tokens(question: str) -> list:
+def _name_tokens(question: str, *, extra_strip=None) -> list:
     """The candidate ENTITY-NAME tokens in a question: drop dates, the funding metric words, and
-    the generic figure filler (reused from hca-deliver so the vocabularies cannot drift)."""
+    the generic figure filler (reused from hca-deliver so the vocabularies cannot drift).
+    `extra_strip` is a list of LEARNED alias phrases to also remove (so a learned metric phrase
+    like "amount due" doesn't pollute entity resolution, the same way the built-in metric words
+    are stripped)."""
     d = _deliver()
     work = d._strip_date_phrases(question)
     work = re.sub(r"(?i)'s\b", " ", work)        # drop possessive 's  ("XL's" -> "XL")
+    for phrase in (extra_strip or []):
+        if phrase:
+            work = re.sub(re.escape(phrase), " ", work, flags=re.IGNORECASE)
     work = _FUNDING_METRIC_RE.sub(" ", work)
     work = d._FIGURE_FILLER_RE.sub(" ", work)
     work = re.sub(r"[?.,:;!%'\"]", " ", work)
@@ -190,8 +211,102 @@ def _explorer_envelope(explore_result: dict, *, entity, question: str) -> dict:
     }
 
 
+def _as_resolved(le: dict) -> dict:
+    """Wrap a learned {entity_type, id, name} into a resolver-shaped RESOLVED result so the
+    existing splitter logic consumes it transparently. The id is what routes; the live figure
+    fetch downstream is the integrity gate (a stale id REFUSES — it can never fabricate)."""
+    m = {"id": le["id"], "name": le.get("name"), "score": 1.0}
+    return {"query": le.get("name"), "match": m, "resolved": True, "ambiguous": False,
+            "candidates": [m], "echo": "learned", "reason": "learned routing"}
+
+
+def _with_learned_loan(resolve_loan, learned):
+    def _r(name):
+        le = learned.entity_for(name)
+        if le and le.get("entity_type") == "loan":
+            return _as_resolved(le)
+        return resolve_loan(name)
+    return _r
+
+
+def _with_learned_entity(resolve_entity, learned):
+    def _r(name, entity_type):
+        le = learned.entity_for(name)
+        if le and le.get("entity_type") == entity_type:
+            return _as_resolved(le)
+        return resolve_entity(name, entity_type)
+    return _r
+
+
+def _unmapped_metric_phrase(q_lower: str) -> Optional[str]:
+    """The contiguous metric-ish span in a question that has NO built-in figure mapping — the
+    phrase we offer to LEARN. e.g. 'amount due' in 'what is the amount due for XL?'. Returns the
+    LONGEST merged run of metric words so we learn a specific phrase, not a generic single word."""
+    spans = [mt.span() for mt in _FUNDING_METRIC_RE.finditer(q_lower)]
+    if not spans:
+        return None
+    merged = [list(spans[0])]
+    for s, e in spans[1:]:
+        if q_lower[merged[-1][1]:s].strip() == "":
+            merged[-1][1] = e
+        else:
+            merged.append([s, e])
+    best = max(merged, key=lambda se: se[1] - se[0])
+    return q_lower[best[0]:best[1]].strip()
+
+
+_METRIC_CHOICES = [
+    ("outstanding", "Outstanding — amount currently owed on the position"),
+    ("receivable", "Receivable — total amount receivable"),
+    ("commitment", "Commitment — the committed amount"),
+    ("participation", "Participation — participation amount / percentage"),
+]
+
+
+def _metric_selection_envelope(question, phrase, loan_m, investor_r) -> dict:
+    """NEEDS_SELECTION offering the funding metric choices for a funding-shaped question whose
+    metric we couldn't map. The user's pick is LEARNED as (phrase -> metric)."""
+    cands = [{"label": label, "record": {"kind": "metric_alias", "phrase": phrase, "metric": m}}
+             for m, label in _METRIC_CHOICES]
+    inv = (investor_r or {}).get("match") if isinstance(investor_r, dict) else None
+    return {"state": "NEEDS_SELECTION", "tier": "ask", "question": question, "answer": None,
+            "selection": {"kind": "metric",
+                          "prompt": "Which figure do you mean by \"%s\"?" % phrase,
+                          "phrase": phrase, "candidates": cands},
+            "meta": {"resolution": {"loan": loan_m, "investor": inv, "unmapped_phrase": phrase}}}
+
+
+def _entity_selection_envelope(question, investor_r, loan_m) -> dict:
+    """NEEDS_SELECTION offering the ambiguous entity candidates. The user's pick is LEARNED as
+    (name -> entity id), so the same name resolves directly next time."""
+    name = (investor_r or {}).get("query") or ""
+    cands = [{"label": "%s (fundingEntity %s)" % (c.get("name"), c.get("id")),
+              "record": {"kind": "entity_resolution", "name": name, "entity_type": "fundingEntity",
+                         "id": c.get("id"), "label": c.get("name")}}
+             for c in (investor_r or {}).get("candidates", [])]
+    return {"state": "NEEDS_SELECTION", "tier": "funding", "question": question, "answer": None,
+            "selection": {"kind": "entity",
+                          "prompt": "Which \"%s\" did you mean?" % name,
+                          "name": name, "candidates": cands},
+            "meta": {"resolution": {"loan": loan_m, "investor_query": name}}}
+
+
+def record_choice(record, *, learned=None) -> dict:
+    """Persist a confirmed NEEDS_SELECTION candidate's `record`. Routing only — there is no path
+    here that stores a value. Returns the store result."""
+    store = learned if learned is not None else _learned().default_store()
+    kind = (record or {}).get("kind")
+    if kind == "metric_alias":
+        return store.record_metric_alias(record.get("phrase", ""), record.get("metric", ""))
+    if kind == "entity_resolution":
+        return store.record_entity_resolution(
+            record.get("name", ""), record.get("entity_type", ""),
+            record.get("id", ""), record.get("label"))
+    return {"ok": False, "reason": "unknown record kind %r" % kind}
+
+
 def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=None,
-              run_funding=None, run_portfolio=None, explorer=None) -> dict:
+              run_funding=None, run_portfolio=None, explorer=None, learned=None) -> dict:
     """Answer a question via: deterministic spine -> funding interpretation -> explorer fallback.
 
     All collaborators are injectable for testing; live defaults wire to the real modules.
@@ -212,6 +327,13 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
     if explorer is None:
         explorer = _explorer().EntityExplorer()
 
+    # LEARNED ROUTING (only when a store is provided; None preserves the base deterministic
+    # behavior the core tests assert). Wrap the resolvers so a CONFIRMED name->entity is applied
+    # transparently everywhere downstream. NEVER applies a learned VALUE — routing only.
+    if learned is not None:
+        resolve_loan = _with_learned_loan(resolve_loan, learned)
+        resolve_entity = _with_learned_entity(resolve_entity, learned)
+
     # 1) DETERMINISTIC SPINE — unchanged. A clean delivery wins outright.
     det = deliver_ask(question)
     if isinstance(det, dict) and det.get("state") == "DELIVERED":
@@ -220,10 +342,18 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
 
     q_lower = question.lower()
 
-    # 2) FUNDING / INVESTOR interpretation.
+    # 2) FUNDING / INVESTOR interpretation. Metric from built-in keywords first; if none, a
+    # LEARNED alias (e.g. "amount due" -> outstanding) can supply it.
     fig = _funding_figure_for(q_lower)
+    lm = None
+    strip_phrase = None
+    if not fig and learned is not None:
+        lm = learned.metric_for(q_lower)
+        if lm:
+            fig = _METRIC_TO_FUNDING.get(lm)
+            strip_phrase = learned.matched_alias_phrase(q_lower)
     if fig:
-        tokens = _name_tokens(question)
+        tokens = _name_tokens(question, extra_strip=[strip_phrase] if strip_phrase else None)
         loan_m, investor_r = _split_loan_investor(
             tokens, resolve_loan=resolve_loan, resolve_entity=resolve_entity)
         if loan_m and isinstance(investor_r, dict) and investor_r.get("resolved"):
@@ -239,7 +369,7 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
                 return env
         # PORTFOLIO interpretation: a funding metric + an investor that resolves, but NO loan ->
         # the fundingEntity-level (across-all-loans) reconciled/verified figure.
-        pfig = _portfolio_figure_for(q_lower)
+        pfig = _portfolio_figure_for(q_lower) or (_METRIC_TO_PORTFOLIO.get(lm) if lm else None)
         if pfig and not loan_m:
             etype, m = _resolve_any_entity(
                 tokens, resolve_loan=resolve_loan, resolve_entity=resolve_entity)
@@ -250,14 +380,30 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
                     penv.setdefault("meta", {})["resolution"] = {
                         "investor": {"id": m["id"], "name": m.get("name")}, "figure": pfig}
                     return penv
-        # one side resolved but the other is ambiguous/missing -> surface for disambiguation
-        if loan_m or (isinstance(investor_r, dict) and investor_r.get("candidates")):
+        # one side resolved but the other is ambiguous/missing.
+        inv_cands = (investor_r or {}).get("candidates", []) if isinstance(investor_r, dict) else []
+        if learned is not None and inv_cands:
+            # surface the ambiguous investor as a SELECTION to learn from (not a dead-end refusal)
+            return _entity_selection_envelope(question, investor_r, loan_m)
+        if loan_m or inv_cands:
             return {"state": "REFUSED", "tier": "funding", "answer": None,
                     "refusals": [{"reason_code": "FUNDING_DISAMBIGUATION",
                                   "reason": "could not uniquely resolve both the investor and the "
                                             "loan for this funding question",
-                                  "loan": loan_m,
-                                  "investor_candidates": (investor_r or {}).get("candidates", [])}]}
+                                  "loan": loan_m, "investor_candidates": inv_cands}]}
+
+    # UNMAPPED METRIC: a funding-shaped question (resolves an investor, +/- a loan) whose metric
+    # we don't recognize -> offer the metric choices as a SELECTION to learn from, instead of
+    # silently dropping to the best-effort explorer.
+    if not fig and learned is not None:
+        phrase = _unmapped_metric_phrase(q_lower)
+        if phrase:
+            tokens = _name_tokens(question)
+            loan_m, investor_r = _split_loan_investor(
+                tokens, resolve_loan=resolve_loan, resolve_entity=resolve_entity)
+            inv_ok = isinstance(investor_r, dict) and investor_r.get("resolved")
+            if inv_ok or loan_m:
+                return _metric_selection_envelope(question, phrase, loan_m, investor_r)
 
     # 3) CONFIDENCE-GRADED EXPLORER fallback.
     etype, m = _resolve_any_entity(
@@ -281,13 +427,26 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Smart ask: deterministic -> funding -> explorer")
     parser.add_argument("--ask", dest="ask", metavar="QUESTION", help="the question to answer")
+    parser.add_argument("--record", dest="record", metavar="JSON",
+                        help="persist a confirmed NEEDS_SELECTION choice (a candidate's 'record' "
+                             "object), then re-run --ask if also given")
     args = parser.parse_args(argv)
+    store = _learned().default_store()
+    if args.record:
+        try:
+            rec = json.loads(args.record)
+        except ValueError as e:
+            parser.error("--record must be JSON: %s" % e)
+        res = record_choice(rec, learned=store)
+        if not args.ask:
+            print(json.dumps({"recorded": res}, indent=2, default=str))
+            return 0 if res.get("ok") else 1
     if not args.ask:
         parser.error("a question is required: --ask \"what is XL's outstanding on Beehive?\"")
-    env = smart_ask(args.ask)
+    env = smart_ask(args.ask, learned=store)
     print(json.dumps(env, indent=2, default=str))
     state = env.get("state")
-    return 0 if state in ("DELIVERED", "EXPLORED") else 1
+    return 0 if state in ("DELIVERED", "EXPLORED", "NEEDS_SELECTION") else 1
 
 
 if __name__ == "__main__":
