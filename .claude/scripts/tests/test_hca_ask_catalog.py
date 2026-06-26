@@ -391,6 +391,9 @@ class ExplorePathsTest(unittest.TestCase):
         self.assertEqual(res["state"], "EXPLORED")
         self.assertEqual(res["results"][0]["value"], 6922294.60)
         self.assertEqual(res["results"][0]["catalog_path"], "totalOutstanding.principal")
+        # the nested selection path is pinned into the provenance citation pointer
+        self.assertEqual(res["results"][0]["provenance"]["json_field_path"],
+                         "$.loan.totalOutstanding.principal")
 
     def test_fuzzy_entity_caps_low(self):
         ex, client = _loan_explorer(record={"id": "L-1", "annualInterestRate": 15})
@@ -449,6 +452,9 @@ class ExplorePathsTest(unittest.TestCase):
         self.assertEqual(res["state"], "EXPLORED")
         self.assertEqual(res["results"][0]["value"], 15)
         self.assertEqual(res["results"][0]["provenance"]["operation"], "loans")  # list fallback
+        # the list-fallback prefix ($.<list>.pageItems) is pinned, distinct from the single path
+        self.assertEqual(res["results"][0]["provenance"]["json_field_path"],
+                         "$.loans.pageItems.annualInterestRate")
         self.assertTrue(any("list query" in n for n in res["notes"]))
 
     def test_empty_fields_list_no_match(self):
@@ -456,6 +462,46 @@ class ExplorePathsTest(unittest.TestCase):
         res = ex.explore_paths("loan", "L-1", [])
         self.assertEqual(res["state"], "NO_MATCH")
         self.assertEqual(client.calls, [])
+
+    # --- regression pins from the OPTIONAL-1 adversarial verification (ship_with_fixes) ----------
+
+    def test_provenance_json_path_and_fetched_at_roundtrip(self):
+        # The cache-citation pointer (json_field_path) and the staleness stamp (fetched_at) are the
+        # load-bearing provenance fields for OKOA financial data, yet only provenance.operation was
+        # pinned before — a regression in json_path_prefix or the selection-path join would have
+        # passed every other test. Pin the exact single-query pointer + the fetched_at round-trip.
+        ex, client = _loan_explorer(record={"id": "L-1", "annualInterestRate": 15})
+        res = ex.explore_paths("loan", "L-1", [_RATE_DESC], name_hint="Beehive",
+                               fetched_at="2026-06-26T12:00:00Z")
+        prov = res["results"][0]["provenance"]
+        self.assertEqual(prov["operation"], "loan")
+        self.assertEqual(prov["json_field_path"], "$.loan.annualInterestRate")
+        self.assertEqual(prov["fetched_at"], "2026-06-26T12:00:00Z")
+
+    def test_list_index_and_non_identifier_paths_skipped(self):
+        # These paths are depth<=2 (so they PASS the depth gate) but carry a non-identifier segment,
+        # so the _IDENT_RE guard must reject them. test_unsafe_path_is_skipped uses a depth-3 path,
+        # rejected by the depth gate BEFORE _IDENT_RE runs — so without this the identifier guard is
+        # never exercised, leaving a future _IDENT_RE refactor unguarded.
+        for bad in ("items[0]", "totalOutstanding.0"):
+            ex, client = _loan_explorer(
+                record={"id": "L-1", "items": [1], "totalOutstanding": {"0": 9}})
+            res = ex.explore_paths("loan", "L-1", [{"path": bad, "name": "bad", "figure": None,
+                                                    "example": 0, "gotchas": None}])
+            self.assertEqual(res["state"], "NO_MATCH", bad)
+            self.assertEqual(client.calls, [], bad)            # rejected before any query is issued
+            self.assertTrue(any("not safely fetchable" in n for n in res["notes"]), bad)
+
+    def test_safe_selection_path_unit(self):
+        # Direct unit pin of the path-safety gate (depth <= 2 AND every segment a plain identifier).
+        sp = explorer._safe_selection_path
+        self.assertEqual(sp("annualInterestRate"), ["annualInterestRate"])
+        self.assertEqual(sp("totalOutstanding.principal"), ["totalOutstanding", "principal"])
+        self.assertIsNone(sp("a.b.c"))               # depth-3 -> rejected by the depth gate
+        self.assertIsNone(sp("items[0]"))            # list-index -> rejected by the identifier check
+        self.assertIsNone(sp("totalOutstanding.0"))  # numeric segment -> rejected
+        self.assertIsNone(sp(""))                    # empty
+        self.assertIsNone(sp(None))                  # None
 
 
 if __name__ == "__main__":

@@ -923,8 +923,10 @@ class EntityExplorer:
              "name": "outstanding principal",         # human label -> result field + matched_keyword
              "synonyms": [...],                        # optional
              "gotchas": "PERCENT not fraction",        # optional scale-trap, surfaced on the result
-             "figure": None}                           # MUST be falsey (figure-owned fields are
-                                                       #   excluded UPSTREAM — defended again here)
+             "figure": None}                           # lookup() DOES return figure-owned
+                                                       #   descriptors (with figure set); the guard
+                                                       #   below is their ONLY exclusion — they are
+                                                       #   never raw-fetched (no-fabrication)
 
         Only paths that are SAFELY fetchable are used: depth <= 2 and every segment a plain
         GraphQL identifier (no list-index / array traversal the simple selection can't express).
