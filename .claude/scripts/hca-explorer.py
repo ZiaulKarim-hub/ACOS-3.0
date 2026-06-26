@@ -337,6 +337,30 @@ def _now_iso() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Catalog path safety (for explore_paths): a catalog dot-path is fetchable only if it is
+# shallow (depth <= 2 — the explorer's proven nesting depth) and every segment is a plain
+# GraphQL identifier. Anything deeper or with list-index / array notation is rejected so we
+# never emit a selection the simple builder can't express (and never silently misread a value).
+# ---------------------------------------------------------------------------
+
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_MAX_CATALOG_PATH_DEPTH = 2
+
+
+def _safe_selection_path(path: str):
+    """A catalog dot-path -> a selection_path list (e.g. "totalOutstanding.principal" ->
+    ["totalOutstanding","principal"]), or None if the path is not safely fetchable."""
+    if not path:
+        return None
+    segs = path.split(".")
+    if not (1 <= len(segs) <= _MAX_CATALOG_PATH_DEPTH):
+        return None
+    if not all(_IDENT_RE.match(s) for s in segs):
+        return None
+    return segs
+
+
+# ---------------------------------------------------------------------------
 # The explorer
 # ---------------------------------------------------------------------------
 
@@ -879,6 +903,147 @@ class EntityExplorer:
             entity_type, entity_id, keywords,
             name_hint=name, entity_fuzzy=entity_fuzzy, fetched_at=fetched_at,
         )
+
+    # --- catalog-guided fetch (exact paths, no introspection guess) --------
+    def explore_paths(self, entity_type: str, entity_id: str, fields, *,
+                      name_hint: Optional[str] = None,
+                      entity_fuzzy: bool = False,
+                      fetched_at: Optional[str] = None) -> dict:
+        """Fetch a CURATED set of catalog fields by EXACT path for one entity.
+
+        Unlike explore()/explore_question(), this does NOT introspect-and-guess: the caller
+        supplies the exact dot-paths from the committed Hypercore Data Catalog, so a hit is a
+        curated field match (graded HIGH), not a fuzzy name match. The VALUE is still fetched
+        LIVE via the same single-by-id→list-fallback machinery — the catalog's illustrative
+        `example` is NEVER returned as the answer (no-fabrication invariant). `entity_fuzzy=True`
+        caps every result at LOW (same rule as explore()).
+
+        `fields` — a list of catalog descriptors, each:
+            {"path": "totalOutstanding.principal",  # dot-path; segments are GraphQL field names
+             "name": "outstanding principal",         # human label -> result field + matched_keyword
+             "synonyms": [...],                        # optional
+             "gotchas": "PERCENT not fraction",        # optional scale-trap, surfaced on the result
+             "figure": None}                           # MUST be falsey (figure-owned fields are
+                                                       #   excluded UPSTREAM — defended again here)
+
+        Only paths that are SAFELY fetchable are used: depth <= 2 and every segment a plain
+        GraphQL identifier (no list-index / array traversal the simple selection can't express).
+        Unsafe or figure-owned descriptors are skipped (never silently coerced). Returns the same
+        envelope shape as explore(); purely additive (explore()/explore_question() untouched).
+        """
+        notes = [BEST_EFFORT_NOTE]
+        reg = self._registry_entry(entity_type)
+        base = {
+            "state": STATE_REFUSED,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "graphql_type": (reg or {}).get("single_return") if reg else None,
+            "keywords": [],
+            "results": [],
+            "notes": notes,
+        }
+        if reg is None:
+            notes.append(
+                f"unknown entity_type {entity_type!r} — not in ENTITY_REGISTRY "
+                f"(known: {sorted(_live().ENTITY_REGISTRY)}); refusing (never invent fields)")
+            return base
+        if not entity_id:
+            notes.append("no entity_id supplied — cannot fetch fields; refusing")
+            return base
+
+        # Keep only safely-fetchable, figure-LESS descriptors; build (selection_path, descriptor)
+        # pairs de-duplicated by path so we never fetch the same field twice.
+        safe: dict = {}  # path_str -> {"sel": [...], "desc": {...}}
+        skipped_figure = 0
+        skipped_unsafe = 0
+        for f in (fields or []):
+            if not isinstance(f, dict):
+                continue
+            if f.get("figure"):           # figure-owned field — owned by a verified figure; do NOT raw-fetch
+                skipped_figure += 1
+                continue
+            path = (f.get("path") or "").strip()
+            sel = _safe_selection_path(path)
+            if sel is None:
+                skipped_unsafe += 1
+                continue
+            safe.setdefault(path, {"sel": sel, "desc": f})
+        if skipped_figure:
+            notes.append(f"{skipped_figure} catalog field(s) skipped: owned by a verified figure "
+                         "(not raw-fetched, to avoid a misleading raw value)")
+        if skipped_unsafe:
+            notes.append(f"{skipped_unsafe} catalog field(s) skipped: path not safely fetchable "
+                         "(depth>2 or non-identifier segment)")
+        if not safe:
+            notes.append("no catalog path was safely fetchable; returning empty result (no fabrication)")
+            base["state"] = STATE_NO_MATCH
+            return base
+
+        ordered = [safe[p] for p in sorted(safe.keys())]
+        selection_paths = [s["sel"] for s in ordered]
+        base["keywords"] = [(s["desc"].get("name") or s["desc"].get("path")) for s in ordered]
+
+        # Fetch the curated fields LIVE (single-by-id, list fallback on the flaky 5xx).
+        try:
+            fetch = self._fetch_fields(reg, entity_id, selection_paths, name_hint=name_hint)
+        except Exception as e:
+            return self._classify_failure(base, e, context="fetching catalog fields")
+
+        record = fetch.get("record")
+        operation = fetch.get("operation")
+        json_path_prefix = fetch.get("json_path_prefix")
+        if fetch.get("fallback_used"):
+            notes.append(
+                f"single-record query was unavailable/flaky; fell back to the {operation!r} "
+                "list query filtered by name_hint and matched the row by id")
+        if not isinstance(record, dict):
+            notes.append(
+                f"entity {entity_type}:{entity_id} returned no record from {operation!r} — "
+                "returning empty result (never invent an entity)")
+            base["state"] = STATE_NO_MATCH
+            return base
+
+        results: list = []
+        for s in ordered:
+            sel = s["sel"]
+            desc = s["desc"]
+            value, present = self._navigate(record, sel)
+            if not present:
+                continue  # requested but unreturned -> never fabricate
+            label, conf = (LABEL_HIGH, CONFIDENCE_HIGH)
+            if entity_fuzzy:
+                label, conf = _cap_for_fuzzy_entity(label, conf)
+            entry = {
+                "field": desc.get("name") or ".".join(sel),
+                "value": value,                       # the LIVE value — never the catalog example
+                "graphql_type": desc.get("kind"),
+                "confidence": conf,
+                "confidence_label": label,
+                "matched_keyword": desc.get("name") or ".".join(sel),
+                "source": "catalog",
+                "catalog_path": desc.get("path"),
+                "gotcha": desc.get("gotchas") or None,
+                "provenance": {
+                    "operation": operation,
+                    "json_field_path": f"{json_path_prefix}." + ".".join(sel),
+                    "fetched_at": fetched_at,
+                },
+            }
+            if value is None:
+                entry["note"] = "field matched but returned null (reported as-is; not fabricated)"
+            results.append(entry)
+
+        if not results:
+            notes.append("catalog field(s) were not present on the fetched record; "
+                         "returning empty result (no fabrication)")
+            base["state"] = STATE_NO_MATCH
+            return base
+        results.sort(key=lambda r: (-r["confidence"], r["field"]))
+        if entity_fuzzy:
+            notes.append("entity was only fuzzily resolved — every catalog field capped at LOW")
+        base["results"] = results
+        base["state"] = STATE_EXPLORED
+        return base
 
 
 # ---------------------------------------------------------------------------

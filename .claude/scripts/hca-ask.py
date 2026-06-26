@@ -73,6 +73,68 @@ def _learned():
     return _load("hca_learned", "hca-learned.py")
 
 
+# The catalog-lookup tool lives in the skill's catalog/ dir (NOT alongside the scripts). It maps a
+# natural phrase -> the exact Hypercore field path(s) + figure linkage + gotchas, read from the
+# committed catalog-index.json (no network). Loaded lazily by its own absolute path; if the tool
+# or its index is absent, the skill still works — it just won't catalog-augment.
+_CATALOG_DIR = os.path.abspath(os.path.join(
+    _THIS_DIR, os.pardir, "skills", "acos-hypercore-ask", "catalog"))
+
+
+def _catalog_lookup_fn():
+    """Return the catalog `lookup(query, domain=..., top=...)` callable, or None if the catalog
+    tool isn't present (graceful degradation — the live caller falls back to the blind explorer)."""
+    path = os.path.join(_CATALOG_DIR, "hca-catalog-lookup.py")
+    if not os.path.exists(path):
+        return None
+    mod = sys.modules.get("hca_catalog_lookup")
+    if mod is None:
+        spec = importlib.util.spec_from_file_location("hca_catalog_lookup", path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["hca_catalog_lookup"] = mod
+        try:
+            spec.loader.exec_module(mod)
+        except Exception:
+            return None
+    return getattr(mod, "lookup", None)
+
+
+# Resolver/explorer entity types -> catalog domain names (the catalog labels each domain by its
+# ROOT GraphQL type family). investor(LoanFunding) and equity are NOT reached by the explorer
+# fallback's entity resolution (it resolves fundingEntity / client / loan), so they're absent.
+_ENTITY_TYPE_TO_CATALOG_DOMAIN = {
+    "loan": "loan",
+    "fundingEntity": "funding_entity",
+    "client": "borrower",
+}
+
+
+def _catalog_explore(question, entity, *, catalog_lookup, explorer, top=6):
+    """Catalog-guided explorer pass: map the question phrase -> the exact catalog field paths for
+    the resolved entity's domain, then fetch those fields LIVE via explorer.explore_paths. Returns
+    a catalog-tier envelope if any field resolved to a live value, else None (the caller then falls
+    through to the blind keyword explorer). NEVER fabricates: explore_paths excludes figure-owned
+    and unsafe paths and returns only fields actually present on the fetched record."""
+    domain = _ENTITY_TYPE_TO_CATALOG_DOMAIN.get(entity.get("entity_type"))
+    if not domain:
+        return None
+    try:
+        hits = catalog_lookup(question, domain=domain, top=top)
+    except Exception:
+        return None  # missing/corrupt index, etc. -> degrade to the blind explorer
+    if not hits:
+        return None
+    ex = explorer.explore_paths(
+        entity.get("entity_type"), entity.get("id"), hits,
+        name_hint=entity.get("name"), entity_fuzzy=bool(entity.get("fuzzy", False)))
+    if (ex or {}).get("results"):
+        env = _explorer_envelope(ex, entity=entity, question=question)
+        env["tier"] = "catalog"
+        env.setdefault("meta", {})["catalog_backed"] = True
+        return env
+    return None
+
+
 # A learned canonical metric word -> the figure that answers it (loan-level and portfolio-level).
 _METRIC_TO_FUNDING = {
     "outstanding": "funding_outstanding", "receivable": "funding_receivable",
@@ -311,10 +373,17 @@ def record_choice(record, *, learned=None) -> dict:
 
 
 def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=None,
-              run_funding=None, run_portfolio=None, explorer=None, learned=None) -> dict:
+              run_funding=None, run_portfolio=None, explorer=None, learned=None,
+              catalog_lookup=None) -> dict:
     """Answer a question via: deterministic spine -> funding interpretation -> explorer fallback.
 
     All collaborators are injectable for testing; live defaults wire to the real modules.
+
+    `catalog_lookup` (a `lookup(query, domain=..., top=...)` callable) augments the explorer
+    fallback: when provided, the catalog's curated exact field paths are tried FIRST (graded
+    HIGH, gotchas attached), then the blind keyword explorer. Default None means OFF — this
+    preserves the base behavior the existing explorer-fallback tests assert. The live CLI wires
+    it; routing/field-selection only — it NEVER supplies a value (explore_paths fetches live).
     """
     if not isinstance(question, str) or not question.strip():
         return {"state": "REFUSED", "tier": "ask", "answer": None,
@@ -410,11 +479,19 @@ def smart_ask(question, *, deliver_ask=None, resolve_loan=None, resolve_entity=N
             if inv_ok or loan_m:
                 return _metric_selection_envelope(question, phrase, loan_m, investor_r)
 
-    # 3) CONFIDENCE-GRADED EXPLORER fallback.
+    # 3) CONFIDENCE-GRADED EXPLORER fallback. When a catalog lookup is wired, try the CATALOG-
+    #    GUIDED pass FIRST (curated exact paths, graded HIGH, gotchas attached); only if it yields
+    #    nothing do we fall through to the blind keyword explorer (today's behavior) — so the
+    #    catalog can only ADD answers, never shadow or regress an existing one.
     etype, m = _resolve_any_entity(
         _name_tokens(question), resolve_loan=resolve_loan, resolve_entity=resolve_entity)
     if m:
         entity = {"entity_type": etype, "id": m["id"], "name": m.get("name")}
+        if catalog_lookup is not None:
+            cat = _catalog_explore(
+                question, entity, catalog_lookup=catalog_lookup, explorer=explorer)
+            if cat is not None:
+                return cat
         ex = explorer.explore_question(question, entity)
         if (ex or {}).get("results"):
             return _explorer_envelope(ex, entity=entity, question=question)
@@ -448,7 +525,7 @@ def main(argv=None) -> int:
             return 0 if res.get("ok") else 1
     if not args.ask:
         parser.error("a question is required: --ask \"what is XL's outstanding on Beehive?\"")
-    env = smart_ask(args.ask, learned=store)
+    env = smart_ask(args.ask, learned=store, catalog_lookup=_catalog_lookup_fn())
     print(json.dumps(env, indent=2, default=str))
     state = env.get("state")
     return 0 if state in ("DELIVERED", "EXPLORED", "NEEDS_SELECTION") else 1
