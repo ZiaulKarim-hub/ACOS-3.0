@@ -32,7 +32,7 @@ _DOMAIN_ROOTS = [
     ("loan", "Loan", "loans(filter:{searchString}){ pageItems{ ... } }"),
     ("investor", "LoanFunding", "loanFundings(filter:{loanFundingId}){ pageItems{ ... } } (2-step)"),
     ("funding_entity", "FundingEntity", "fundingEntities(filter:{...}){ pageItems{ ... } }"),
-    ("borrower", "Client", "clients(filter:{...}){ pageItems{ ... } }"),
+    ("borrower", "ClientExtended", "clients(filter:{searchString}){ pageItems{ ... } }"),
     ("equity", "Equity", "equities(filter:{...}){ pageItems{ ... } }"),
 ]
 
@@ -74,6 +74,17 @@ def _tier_for(path):
         if any(s in seg for s in _DENY_SUBSTR):
             return "extended"
     return "active"
+
+
+def _required_args(f):
+    """Arg names that are NON_NULL with no default — a field with any is NOT selectable in a generic
+    probe selection (it needs an explicit argument), so the walker prunes it (and its subtree)."""
+    req = []
+    for a in (f.get("args") or []):
+        t = a.get("type") or {}
+        if t.get("kind") == "NON_NULL" and a.get("defaultValue") in (None, "null"):
+            req.append(a.get("name"))
+    return req
 
 
 def _leaf_typeref(tref):
@@ -127,6 +138,11 @@ def walk(byname, root_type, max_depth):
                 continue
             seg = fname + ("[]" if is_list else "")
             fpath = path + "." + seg if path else seg
+            req = _required_args(f)
+            if req:                                  # not selectable without args -> prune subtree
+                out.append({"path": fpath, "leaf_type": leaf_name, "leaf_kind": leaf_kind,
+                            "value_kind": "needs_args", "required_args": req})
+                continue
             if leaf_kind in _SCALAR_KINDS:
                 entry = {"path": fpath, "leaf_type": leaf_name, "leaf_kind": leaf_kind,
                          "value_kind": _classify(leaf_name, leaf_kind, fname)}

@@ -1,0 +1,5392 @@
+{
+"loan": {
+"name": {
+"name": "loan name",
+"synonyms": [
+"deal name",
+"facility name"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"status": {
+"name": "loan status",
+"synonyms": [
+"state",
+"is it active"
+],
+"gotchas": "LoanStatusEnum (e.g. Active); distinct from lifeCycle which carries Defaulted/Repaid",
+"high_value": true,
+"figure": ""
+},
+"lifeCycle": {
+"name": "loan life-cycle stage",
+"synonyms": [
+"loan stage",
+"defaulted?",
+"performing/non-performing"
+],
+"gotchas": "LoanLifeCycle enum (Active/Defaulted/Repaid/...); this is where default shows, not status",
+"high_value": true,
+"figure": ""
+},
+"loanPurpose": {
+"name": "loan purpose",
+"synonyms": [
+"use of proceeds",
+"purpose"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"loanTypeName": {
+"name": "loan type",
+"synonyms": [
+"product type",
+"interest type"
+],
+"gotchas": "e.g. 'Cash Interest'",
+"high_value": false,
+"figure": ""
+},
+"commitment": {
+"name": "total commitment",
+"synonyms": [
+"facility size",
+"approved amount",
+"loan size",
+"total commitment"
+],
+"gotchas": "This is the headline commitment; terms[].approvedPrincipal/proposedPrincipal carry the same figure per-term version | Headline commitment is duplicated as terms[].approvedPrincipal/proposedPrincipal per term version \u2014 the same money, not additive. Use commitment OR a single chosen term, never both summed.",
+"high_value": true,
+"figure": "commitment"
+},
+"annualInterestRate": {
+"name": "annual interest rate",
+"synonyms": [
+"coupon",
+"interest rate",
+"contract rate",
+"note rate"
+],
+"gotchas": "PERCENT not fraction (example 15 = 15%); do not divide by 100 again",
+"high_value": true,
+"figure": ""
+},
+"annualCompoundingInterestRate": {
+"name": "annual compounding interest rate",
+"synonyms": [
+"PIK rate",
+"compounding rate"
+],
+"gotchas": "PERCENT not fraction",
+"high_value": false,
+"figure": ""
+},
+"baseCurrency": {
+"name": "base currency",
+"synonyms": [
+"reporting currency"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"currency": {
+"name": "loan currency",
+"synonyms": [
+"denomination currency"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"startDate": {
+"name": "loan start date",
+"synonyms": [
+"origination date",
+"commencement date"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"endDate": {
+"name": "loan end date",
+"synonyms": [
+"maturity date",
+"scheduled maturity"
+],
+"gotchas": "Contractual end; scheduleEndDate/scheduleExpectedEndDate are computed schedule horizons",
+"high_value": true,
+"figure": "maturity_date"
+},
+"scheduleEndDate": {
+"name": "schedule end date",
+"synonyms": [
+"computed maturity",
+"amortization end"
+],
+"gotchas": "Computed schedule horizon (example == today's date for a defaulted loan); not the contractual maturity",
+"high_value": false,
+"figure": ""
+},
+"scheduleExpectedEndDate": {
+"name": "expected schedule end date",
+"synonyms": [
+"expected payoff date",
+"expected maturity"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"approvalDate": {
+"name": "approval date",
+"synonyms": [
+"credit-approved date",
+"committee date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"submittedOnDate": {
+"name": "submitted-on date",
+"synonyms": [
+"application date",
+"submission date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"closingDate": {
+"name": "closing date",
+"synonyms": [
+"close date"
+],
+"gotchas": "Often null; contractClosingDate is the contractual variant",
+"high_value": false,
+"figure": ""
+},
+"contractClosingDate": {
+"name": "contract closing date",
+"synonyms": [
+"legal closing date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"isRevolving": {
+"name": "is revolving",
+"synonyms": [
+"revolver?",
+"line of credit?"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"isSubLoan": {
+"name": "is sub-loan",
+"synonyms": [
+"tranche?",
+"child loan?"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fileEntriesCount": {
+"name": "document count",
+"synonyms": [
+"number of files",
+"attachments count"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentStrategy[]": {
+"name": "repayment waterfall order",
+"synonyms": [
+"payment allocation order",
+"application order"
+],
+"gotchas": "InstallmentComponentType enum list (e.g. Penalties first); order matters",
+"high_value": false,
+"figure": ""
+},
+"duesCalculationMethod": {
+"name": "dues calculation method",
+"synonyms": [
+"accrual method"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.principal": {
+"name": "outstanding principal",
+"synonyms": [
+"principal balance",
+"principal outstanding",
+"UPB",
+"unpaid principal balance"
+],
+"gotchas": "Use THIS for an interest basis, NOT totalOutstanding.total (which is net of fee/credit components)",
+"high_value": true,
+"figure": "principal_outstanding"
+},
+"summary.totalOutstanding.total": {
+"name": "total outstanding (net)",
+"synonyms": [
+"total balance",
+"total owed",
+"outstanding balance"
+],
+"gotchas": "NET of fee/credit components \u2014 NOT principal; example 31.87M vs principal 27.24M. For an interest basis use .principal",
+"high_value": true,
+"figure": "outstanding_balance"
+},
+"summary.totalOutstanding.totalWithTaxes": {
+"name": "total outstanding incl. taxes",
+"synonyms": [
+"grand total outstanding"
+],
+"gotchas": "== total when totalTaxes is 0",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.interest": {
+"name": "outstanding interest",
+"synonyms": [
+"accrued interest outstanding",
+"interest balance"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "accrued_interest"
+},
+"summary.totalOutstanding.totalFees": {
+"name": "outstanding fees",
+"synonyms": [
+"fees owed",
+"outstanding fee balance"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalOutstanding.totalPenalties": {
+"name": "outstanding penalties",
+"synonyms": [
+"default interest outstanding",
+"penalty balance",
+"late-charge balance"
+],
+"gotchas": "Penalties here are the default/late-interest bucket",
+"high_value": true,
+"figure": "default_interest"
+},
+"summary.totalOutstanding.totalTaxes": {
+"name": "outstanding taxes",
+"synonyms": [
+"VAT outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.compoundingInterest": {
+"name": "outstanding compounding interest",
+"synonyms": [
+"PIK balance",
+"outstanding PIK"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.totalCompoundingInterest": {
+"name": "total outstanding compounding interest",
+"synonyms": [
+"total PIK outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.capitalizedBalance": {
+"name": "capitalized balance (memo)",
+"synonyms": [
+"capitalized principal"
+],
+"gotchas": "NON-additive MEMO \u2014 equals principal; do NOT add into a sum",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOutstanding.indexedPrincipal": {
+"name": "indexed principal outstanding",
+"synonyms": [
+"inflation-indexed principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalDue.total": {
+"name": "total amount due",
+"synonyms": [
+"amount due now",
+"amount due today",
+"total due"
+],
+"gotchas": "NET of components like the outstanding block; for principal-only use .principal",
+"high_value": true,
+"figure": "amount_due_today"
+},
+"summary.totalDue.principal": {
+"name": "principal due",
+"synonyms": [
+"principal payment due"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalDue.interest": {
+"name": "interest due",
+"synonyms": [
+"interest payment due"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalDue.totalFees": {
+"name": "fees due",
+"synonyms": [
+"fee due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalDue.totalPenalties": {
+"name": "penalties due",
+"synonyms": [
+"default interest due",
+"late charges due"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalDue.totalWithTaxes": {
+"name": "total due incl. taxes",
+"synonyms": [
+"grand total due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalDue.compoundingInterest": {
+"name": "compounding interest due",
+"synonyms": [
+"PIK due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.overdue.total": {
+"name": "total overdue",
+"synonyms": [
+"amount overdue",
+"past due total",
+"arrears",
+"delinquent amount"
+],
+"gotchas": "NET of components; principal-only via .principal",
+"high_value": true,
+"figure": "overdue_amount"
+},
+"summary.overdue.principal": {
+"name": "overdue principal",
+"synonyms": [
+"principal in arrears",
+"past-due principal"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.overdue.interest": {
+"name": "overdue interest",
+"synonyms": [
+"interest in arrears",
+"past-due interest"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.overdue.totalFees": {
+"name": "overdue fees",
+"synonyms": [
+"past-due fees"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.overdue.totalPenalties": {
+"name": "overdue penalties",
+"synonyms": [
+"overdue default interest",
+"past-due penalties"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.overdue.totalWithTaxes": {
+"name": "total overdue incl. taxes",
+"synonyms": [
+"grand total overdue"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalPaid.total": {
+"name": "total paid",
+"synonyms": [
+"total repaid",
+"total collections",
+"amount received",
+"total payments"
+],
+"gotchas": "Like the other .total buckets (totalOutstanding/totalDue/overdue), this is NET of fee/credit components \u2014 NOT a gross sum of cash received. For principal-only paid use .principal; do not treat .total as gross amount paid.",
+"high_value": true,
+"figure": ""
+},
+"summary.totalPaid.principal": {
+"name": "principal paid",
+"synonyms": [
+"principal repaid",
+"principal collections"
+],
+"gotchas": "Can be 0 even when interest/fees paid (interest-only loan)",
+"high_value": true,
+"figure": ""
+},
+"summary.totalPaid.interest": {
+"name": "interest paid",
+"synonyms": [
+"interest collected",
+"interest received"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalPaid.totalFees": {
+"name": "fees paid",
+"synonyms": [
+"fees collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalPaid.totalPenalties": {
+"name": "penalties paid",
+"synonyms": [
+"default interest paid",
+"late charges paid"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalPaid.totalWithTaxes": {
+"name": "total paid incl. taxes",
+"synonyms": [],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExpected.total": {
+"name": "total expected (life-of-loan)",
+"synonyms": [
+"total expected repayment",
+"expected gross",
+"total return expected"
+],
+"gotchas": "Full-term projection; totalExpectedToDate is the as-of-today cut | Same component-netting as the other .total fields \u2014 NET, not a gross life-of-loan cash projection. Use the component sub-fields (interest, principal) for a gross basis; totalExpectedToDate.total is the as-of-today net cut.",
+"high_value": true,
+"figure": ""
+},
+"summary.totalExpected.principal": {
+"name": "expected principal",
+"synonyms": [
+"principal expected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExpected.interest": {
+"name": "expected interest (life-of-loan)",
+"synonyms": [
+"total interest expected",
+"projected interest"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalExpected.totalFees": {
+"name": "expected fees",
+"synonyms": [
+"projected fees"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExpected.totalPenalties": {
+"name": "expected penalties",
+"synonyms": [
+"projected penalties"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExpectedToDate.total": {
+"name": "total expected to date",
+"synonyms": [
+"expected as of today",
+"expected-to-date total"
+],
+"gotchas": "As-of-today slice of totalExpected",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExpectedToDate.interest": {
+"name": "interest expected to date",
+"synonyms": [
+"accrued-expected interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalWaived.total": {
+"name": "total waived",
+"synonyms": [
+"amount waived",
+"forgiven",
+"waivers"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalWaived.interest": {
+"name": "interest waived",
+"synonyms": [
+"forgiven interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalWaived.totalPenalties": {
+"name": "penalties waived",
+"synonyms": [
+"forgiven penalties",
+"waived default interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalWrittenOff.total": {
+"name": "total written off",
+"synonyms": [
+"charge-off",
+"write-off",
+"amount written off"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalWrittenOff.principal": {
+"name": "principal written off",
+"synonyms": [
+"principal charge-off"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalWrittenOff.interest": {
+"name": "interest written off",
+"synonyms": [
+"interest charge-off"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalDisbursed": {
+"name": "total disbursed",
+"synonyms": [
+"total funded",
+"amount drawn",
+"amount funded",
+"total advances"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "total_disbursed"
+},
+"summary.totalExpectedDisbursements": {
+"name": "total expected disbursements",
+"synonyms": [
+"expected fundings",
+"committed disbursements"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.distributedPrincipal": {
+"name": "distributed principal",
+"synonyms": [
+"principal distributed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.unutilizedPrincipal": {
+"name": "unutilized principal",
+"synonyms": [
+"undrawn commitment",
+"available to draw",
+"unfunded commitment",
+"remaining availability"
+],
+"gotchas": "commitment minus drawn (example 2.76M = 30M commitment - 27.24M drawn)",
+"high_value": true,
+"figure": ""
+},
+"summary.outstandingPrincipalBeforeAmortization": {
+"name": "outstanding principal before amortization",
+"synonyms": [
+"gross principal outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.paidInCapital": {
+"name": "paid-in capital",
+"synonyms": [
+"PIC",
+"capital deployed",
+"invested capital"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.expectedPaidInCapital": {
+"name": "expected paid-in capital",
+"synonyms": [
+"expected PIC",
+"expected deployment"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.interestRate": {
+"name": "summary interest rate",
+"synonyms": [
+"current rate",
+"effective rate"
+],
+"gotchas": "PERCENT not fraction (example 15)",
+"high_value": true,
+"figure": ""
+},
+"summary.compoundingInterestRate": {
+"name": "summary compounding rate",
+"synonyms": [
+"current PIK rate"
+],
+"gotchas": "PERCENT not fraction",
+"high_value": false,
+"figure": ""
+},
+"summary.oidRate": {
+"name": "OID rate",
+"synonyms": [
+"original issue discount rate"
+],
+"gotchas": "PERCENT not fraction",
+"high_value": false,
+"figure": ""
+},
+"summary.oidRemainingCost": {
+"name": "OID remaining cost",
+"synonyms": [
+"unamortized OID",
+"remaining discount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOID.amount": {
+"name": "total OID amount",
+"synonyms": [
+"original issue discount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalOID.interest": {
+"name": "total OID interest",
+"synonyms": [
+"OID accretion"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.irr": {
+"name": "IRR",
+"synonyms": [
+"internal rate of return",
+"realized IRR"
+],
+"gotchas": "PERCENT (example 31.4 = 31.4%); IncludingEquity variant folds in equity legs",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedIrr": {
+"name": "expected IRR",
+"synonyms": [
+"projected IRR",
+"forecast IRR"
+],
+"gotchas": "PERCENT; can be negative (example -56.8)",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.irrIncludingEquity": {
+"name": "IRR incl. equity",
+"synonyms": [
+"IRR with equity"
+],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedIrrIncludingEquity": {
+"name": "expected IRR incl. equity",
+"synonyms": [],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.dpi": {
+"name": "DPI",
+"synonyms": [
+"distributions to paid-in",
+"cash-on-cash realized"
+],
+"gotchas": "Multiple (example 0.41x), not a percent",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedDpi": {
+"name": "expected DPI",
+"synonyms": [
+"projected DPI"
+],
+"gotchas": "Multiple",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.tvpi": {
+"name": "TVPI",
+"synonyms": [
+"total value to paid-in"
+],
+"gotchas": "Multiple (example 1.58x)",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedTvpi": {
+"name": "expected TVPI",
+"synonyms": [
+"projected TVPI"
+],
+"gotchas": "Multiple",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.dpiIncludingEquity": {
+"name": "DPI incl. equity",
+"synonyms": [],
+"gotchas": "Multiple",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.tvpiIncludingEquity": {
+"name": "TVPI incl. equity",
+"synonyms": [],
+"gotchas": "Multiple",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].date": {
+"name": "schedule row date",
+"synonyms": [
+"payment date",
+"period date",
+"installment date"
+],
+"gotchas": "One row per scheduled period",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].index": {
+"name": "schedule row index",
+"synonyms": [
+"period number",
+"installment number"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].interestRate": {
+"name": "period interest rate",
+"synonyms": [
+"rate for period"
+],
+"gotchas": "PERCENT not fraction (example 15)",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].disbursedAmount": {
+"name": "period disbursed amount",
+"synonyms": [
+"draw in period",
+"advance in period"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.total": {
+"name": "period total due",
+"synonyms": [
+"installment due",
+"payment due this period"
+],
+"gotchas": "Net of components",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.principal": {
+"name": "period principal due",
+"synonyms": [
+"scheduled principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.interest": {
+"name": "period interest due",
+"synonyms": [
+"scheduled interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.principal": {
+"name": "period-end principal outstanding",
+"synonyms": [
+"running principal balance",
+"balance after period"
+],
+"gotchas": "Per-row running balance, not the loan-level outstanding",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.total": {
+"name": "period-end total outstanding",
+"synonyms": [
+"running balance"
+],
+"gotchas": "Net of components; can dip below principal due to credits",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.penalties[].periodCharge": {
+"name": "per-diem penalty accrual",
+"synonyms": [
+"daily penalty",
+"daily default interest"
+],
+"gotchas": "Per-row daily accrual; 'periodCharge'/'due' on an accrual row is the per-diem",
+"high_value": false,
+"figure": "per_diem_interest"
+},
+"repaymentSchedule.scheduleTable[].paid.total": {
+"name": "period total paid",
+"synonyms": [
+"payment received this period"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].principalRealizedBalance": {
+"name": "principal realized balance",
+"synonyms": [
+"realized principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].oid.remainingCost": {
+"name": "period OID remaining cost",
+"synonyms": [
+"unamortized OID this period"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].oid.rate": {
+"name": "period OID rate",
+"synonyms": [],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.total.total": {
+"name": "aging total",
+"synonyms": [
+"total in aging buckets",
+"total past due"
+],
+"gotchas": "Mirrors overdue/totalOutstanding totals",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.total.principal": {
+"name": "aging total principal",
+"synonyms": [
+"aged principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.total.interest": {
+"name": "aging total interest",
+"synonyms": [
+"aged interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.total.totalPenalties": {
+"name": "aging total penalties",
+"synonyms": [
+"aged penalties",
+"aged default interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.cohorts[].numberOfDays": {
+"name": "aging bucket days",
+"synonyms": [
+"days past due bucket",
+"DPD bucket",
+"aging cohort"
+],
+"gotchas": "Bucket boundary in days (e.g. 0/30/60/90)",
+"high_value": true,
+"figure": ""
+},
+"agingAnalysis.cohorts[].total.total": {
+"name": "aging bucket total",
+"synonyms": [
+"amount in bucket",
+"past-due in bucket"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"agingAnalysis.cohorts[].total.principal": {
+"name": "aging bucket principal",
+"synonyms": [
+"principal in bucket"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.cohorts[].total.interest": {
+"name": "aging bucket interest",
+"synonyms": [
+"interest in bucket"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"agingAnalysis.cohorts[].total.totalPenalties": {
+"name": "aging bucket penalties",
+"synonyms": [
+"penalties in bucket"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"disbursements[].amount": {
+"name": "disbursement amount",
+"synonyms": [
+"draw amount",
+"advance amount",
+"funding amount"
+],
+"gotchas": "Per-draw amount; sum across array for total drawn (cf. summary.totalDisbursed)",
+"high_value": true,
+"figure": ""
+},
+"disbursements[].date": {
+"name": "disbursement date",
+"synonyms": [
+"draw date",
+"advance date",
+"funding date"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"disbursements[].deductions.total": {
+"name": "disbursement deductions total",
+"synonyms": [
+"netting at funding",
+"holdbacks",
+"fees netted at draw"
+],
+"gotchas": "Amount netted out of a draw (e.g. origination fee)",
+"high_value": false,
+"figure": ""
+},
+"disbursements[].deductions.totalFees": {
+"name": "disbursement fee deductions",
+"synonyms": [
+"fees withheld at draw"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].baseRate": {
+"name": "base interest rate",
+"synonyms": [
+"index rate",
+"base rate"
+],
+"gotchas": "PERCENT not fraction (example 15)",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].finalRate": {
+"name": "final interest rate",
+"synonyms": [
+"all-in rate",
+"effective rate"
+],
+"gotchas": "PERCENT; base + margin combined",
+"high_value": true,
+"figure": ""
+},
+"interestRatesData[].margin": {
+"name": "interest margin",
+"synonyms": [
+"spread",
+"credit spread"
+],
+"gotchas": "PERCENT not fraction",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].minRate": {
+"name": "interest rate floor",
+"synonyms": [
+"rate floor",
+"minimum rate"
+],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].maxRate": {
+"name": "interest rate cap",
+"synonyms": [
+"rate ceiling",
+"maximum rate"
+],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].fromDate": {
+"name": "rate effective-from date",
+"synonyms": [
+"rate start date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].floatingRateName": {
+"name": "floating rate index name",
+"synonyms": [
+"benchmark name",
+"reference rate (SOFR/LIBOR)"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].ratePer": {
+"name": "rate period basis",
+"synonyms": [
+"per annum?",
+"rate frequency"
+],
+"gotchas": "FrequencyEveryEnum (e.g. Year)",
+"high_value": false,
+"figure": ""
+},
+"terms[].approvedPrincipal": {
+"name": "approved principal",
+"synonyms": [
+"approved amount",
+"committed principal"
+],
+"gotchas": "Per-term version of commitment (example 30M) | Per-term restatement of the SAME commitment figure (example 30M = loan-level commitment), repeated once per term version. Do NOT sum across terms[] \u2014 take the latest/approved term only; summing double-counts the commitment.",
+"high_value": true,
+"figure": ""
+},
+"terms[].proposedPrincipal": {
+"name": "proposed principal",
+"synonyms": [
+"requested amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].netPrincipal": {
+"name": "net principal",
+"synonyms": [
+"net loan amount",
+"net of fees principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].maturityDate": {
+"name": "term maturity date",
+"synonyms": [
+"maturity",
+"term end"
+],
+"gotchas": "Per-term maturity; loan-level maturity is endDate",
+"high_value": true,
+"figure": "maturity_date"
+},
+"terms[].commitmentExpirationDate": {
+"name": "commitment expiration date",
+"synonyms": [
+"availability end date",
+"draw-period end"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].expectedScheduleEndDate": {
+"name": "expected schedule end date (term)",
+"synonyms": [
+"expected term end"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].effectiveDate": {
+"name": "term effective date",
+"synonyms": [
+"term start"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].date": {
+"name": "term date",
+"synonyms": [
+"term version date"
+],
+"gotchas": "terms[] is versioned; latest entry is current",
+"high_value": false,
+"figure": ""
+},
+"terms[].fundingTerms.commitmentAmount": {
+"name": "funding commitment amount",
+"synonyms": [
+"participation commitment"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "funding_commitment"
+},
+"terms[].fundingTerms.seniority": {
+"name": "funding seniority rank",
+"synonyms": [
+"tranche seniority",
+"lien priority rank"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].interestFloatDays": {
+"name": "interest float days",
+"synonyms": [
+"float days"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].minimumBalanceForInterestAccrual": {
+"name": "minimum balance for interest accrual",
+"synonyms": [
+"accrual floor balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].partialPeriodDaysInYear": {
+"name": "day-count basis",
+"synonyms": [
+"days in year",
+"30/360 vs actual/365"
+],
+"gotchas": "Day-count convention driver",
+"high_value": false,
+"figure": ""
+},
+"terms[].revolvingPeriod.endDate": {
+"name": "revolving period end",
+"synonyms": [
+"revolver end date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].fees[].name": {
+"name": "fee name",
+"synonyms": [
+"fee type",
+"charge name"
+],
+"gotchas": "e.g. 'Origination Fee'",
+"high_value": true,
+"figure": ""
+},
+"terms[].fees[].value": {
+"name": "fee rate/value",
+"synonyms": [
+"fee percent",
+"fee bps"
+],
+"gotchas": "When percent-based this is a PERCENT (example 4 = 4%), not a fraction",
+"high_value": true,
+"figure": ""
+},
+"terms[].fees[].totalDue": {
+"name": "fee total due",
+"synonyms": [
+"fee amount",
+"fee charged"
+],
+"gotchas": "Absolute amount (example 1,200,000 = 4% of 30M)",
+"high_value": true,
+"figure": ""
+},
+"terms[].fees[].outstanding": {
+"name": "fee outstanding",
+"synonyms": [
+"unpaid fee balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].fees[].minAmount": {
+"name": "fee minimum amount",
+"synonyms": [
+"floor fee"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].fees[].chargeDate": {
+"name": "fee charge date",
+"synonyms": [
+"fee billing date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"terms[].fees[].dueDate": {
+"name": "fee due date",
+"synonyms": [
+"fee payment date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].name": {
+"name": "loan-level fee name",
+"synonyms": [
+"fee type"
+],
+"gotchas": "Top-level fees[] mirrors terms[].fees[]",
+"high_value": false,
+"figure": ""
+},
+"fees[].value": {
+"name": "loan-level fee rate/value",
+"synonyms": [
+"fee percent"
+],
+"gotchas": "PERCENT when percent-based (example 4)",
+"high_value": false,
+"figure": ""
+},
+"fees[].totalDue": {
+"name": "loan-level fee total due",
+"synonyms": [
+"fee amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].outstanding": {
+"name": "loan-level fee outstanding",
+"synonyms": [
+"unpaid fee"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"defaultEvents[].startDate": {
+"name": "default event start date",
+"synonyms": [
+"date of default",
+"default date"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"defaultEvents[].endDate": {
+"name": "default event end date",
+"synonyms": [
+"default cured date",
+"default resolution date"
+],
+"gotchas": "Null while default is open",
+"high_value": false,
+"figure": ""
+},
+"defaultEvents[].startNote": {
+"name": "default reason note",
+"synonyms": [
+"cause of default",
+"default note"
+],
+"gotchas": "Free text (e.g. 'Maturity Default & non-payment')",
+"high_value": true,
+"figure": ""
+},
+"oidRestructureEvents[].date": {
+"name": "OID/restructure event date",
+"synonyms": [
+"restructure date",
+"modification date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"oidRestructureEvents[].effectiveDate": {
+"name": "restructure effective date",
+"synonyms": [
+"modification effective date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"oidRestructureEvents[].name": {
+"name": "restructure event name",
+"synonyms": [
+"event type",
+"modification type"
+],
+"gotchas": "e.g. 'Disbursement'",
+"high_value": false,
+"figure": ""
+},
+"oidRestructureEvents[].newRate": {
+"name": "restructure new rate",
+"synonyms": [
+"repriced rate"
+],
+"gotchas": "PERCENT",
+"high_value": false,
+"figure": ""
+},
+"valuations[].valuation": {
+"name": "collateral valuation",
+"synonyms": [
+"appraised value",
+"collateral value",
+"property value"
+],
+"gotchas": "Empty for this loan; the appraisal/AsIs value used for LTV | This is an absolute collateral value in money (appraisal / As-Is dollars), NOT an LTV ratio \u2014 the figure tag 'ltv' is misleading. LTV must be COMPUTED as outstanding/valuation; never render this dollar value as a percent.",
+"high_value": true,
+"figure": "ltv"
+},
+"valuations[].date": {
+"name": "valuation date",
+"synonyms": [
+"appraisal date",
+"as-of date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"valuations[].methodology": {
+"name": "valuation methodology",
+"synonyms": [
+"appraisal method"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"owner.name": {
+"name": "loan owner / deal lead",
+"synonyms": [
+"account manager",
+"relationship manager",
+"deal owner"
+],
+"gotchas": "Internal OKOA staffer, not the borrower",
+"high_value": false,
+"figure": ""
+},
+"owner.email": {
+"name": "loan owner email",
+"synonyms": [
+"deal lead email"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"deal.facilitySize": {
+"name": "deal facility size",
+"synonyms": [
+"facility size",
+"deal size"
+],
+"gotchas": "deal block is absent on this loan; redundant with commitment when present",
+"high_value": false,
+"figure": "commitment"
+},
+"deal.closingDate": {
+"name": "deal closing date",
+"synonyms": [
+"deal close date"
+],
+"gotchas": "deal block absent here",
+"high_value": false,
+"figure": ""
+},
+"taxRules[].vat": {
+"name": "VAT rate",
+"synonyms": [
+"tax rate",
+"value-added tax"
+],
+"gotchas": "Likely a PERCENT; empty for this loan",
+"high_value": false,
+"figure": ""
+},
+"taxRules[].date": {
+"name": "tax rule effective date",
+"synonyms": [],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+}
+},
+"investor": {
+"commitmentAmount": {
+"name": "funding commitment amount",
+"synonyms": [
+"commitment",
+"committed capital",
+"participation commitment",
+"funder commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "funding_commitment"
+},
+"commitmentAmountInFundingEntityCurrency": {
+"name": "funding commitment (funder currency)",
+"synonyms": [
+"commitment in funder currency",
+"FX-converted commitment"
+],
+"gotchas": "FX-converted twin of commitmentAmount; equals it when funder currency == loan currency",
+"high_value": false,
+"figure": "funding_commitment"
+},
+"participationPercentage": {
+"name": "participation percentage",
+"synonyms": [
+"participation share",
+"funder share",
+"pro-rata share",
+"percent of loan"
+],
+"gotchas": "Percent not fraction (5.26 means 5.26%); it is share of the loan, not an interest rate",
+"high_value": true,
+"figure": "funding_participation"
+},
+"currentInterestRate": {
+"name": "current interest rate",
+"synonyms": [
+"coupon",
+"note rate",
+"interest rate",
+"current rate"
+],
+"gotchas": "Percent not fraction (14 means 14%); a value >1 is a percent",
+"high_value": true,
+"figure": ""
+},
+"currentCompoundingInterestRate": {
+"name": "current compounding (PIK) rate",
+"synonyms": [
+"PIK rate",
+"compounding rate",
+"accrual rate"
+],
+"gotchas": "Percent not fraction; null when no compounding/PIK component on this funding",
+"high_value": false,
+"figure": ""
+},
+"currentOidRemainingCost": {
+"name": "current OID remaining cost",
+"synonyms": [
+"unamortized OID",
+"remaining original-issue-discount"
+],
+"gotchas": "null when no OID terms attached",
+"high_value": false,
+"figure": ""
+},
+"currency": {
+"name": "funding currency",
+"synonyms": [
+"denomination",
+"ccy"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"duesCalculationMethod": {
+"name": "dues calculation method",
+"synonyms": [
+"accrual basis convention",
+"dues basis"
+],
+"gotchas": "Enum (e.g. AfterDisbursement); config not a number",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.total": {
+"name": "cash received total (net)",
+"synonyms": [
+"total received",
+"cash collected",
+"distributions received"
+],
+"gotchas": "Net of fee/credit components; use .principal for an interest basis, not .total",
+"high_value": true,
+"figure": ""
+},
+"cashReceived.principal": {
+"name": "principal cash received",
+"synonyms": [
+"principal repaid to funder",
+"principal collected",
+"return of capital"
+],
+"gotchas": "This is a component of cashReceived.total (which already nets principal + interest + fee/credit components). Do NOT add cashReceived.principal to cashReceived.total or sum the children alongside the parent \u2014 that double-counts. Pick the parent OR the components, never both.",
+"high_value": true,
+"figure": ""
+},
+"cashReceived.interest": {
+"name": "interest cash received",
+"synonyms": [
+"interest collected",
+"interest paid to funder",
+"income received"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"cashReceived.compoundingInterest": {
+"name": "compounding interest received",
+"synonyms": [
+"PIK interest received",
+"compounded interest collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.accruedCompoundingInterest": {
+"name": "accrued compounding interest received",
+"synonyms": [
+"accrued PIK received"
+],
+"gotchas": "null when no PIK component",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.indexedPrincipal": {
+"name": "indexed principal received",
+"synonyms": [
+"inflation-indexed principal collected"
+],
+"gotchas": "null unless principal is index-linked",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalFees": {
+"name": "fees received",
+"synonyms": [
+"fee cash collected",
+"total fee income received"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalPenalties": {
+"name": "penalties received",
+"synonyms": [
+"penalty cash collected",
+"default-interest collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalTaxes": {
+"name": "taxes received",
+"synonyms": [
+"withholding collected",
+"tax on cash received"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalWithTaxes": {
+"name": "cash received incl. taxes",
+"synonyms": [
+"gross cash received",
+"total received with tax"
+],
+"gotchas": "Gross-of-tax variant of cashReceived.total",
+"high_value": false,
+"figure": ""
+},
+"receivables.total": {
+"name": "total receivable (net)",
+"synonyms": [
+"amount owed to funder",
+"outstanding to funder",
+"total due to funder"
+],
+"gotchas": "Net of fee/credit components; for an interest basis use .principal not .total",
+"high_value": true,
+"figure": "funding_receivable"
+},
+"receivables.principal": {
+"name": "principal receivable",
+"synonyms": [
+"outstanding principal to funder",
+"principal owed",
+"funder principal balance"
+],
+"gotchas": "Use this as the interest basis, not receivables.total | Mapped to two different figures across the catalog: receivables.principal=funding_outstanding here, while repaymentSchedule.summary.totalDisbursed and outstandingPrincipalBeforeAmortization are also tagged funding_outstanding/principal_outstanding. These are different bases (gross disbursed vs. before-amortization vs. current net principal receivable) and must not be summed or treated as interchangeable. receivables.principal is also a child of receivables.total \u2014 never add it to the parent.",
+"high_value": true,
+"figure": "funding_outstanding"
+},
+"receivables.interest": {
+"name": "interest receivable",
+"synonyms": [
+"accrued interest owed",
+"interest due to funder",
+"unpaid interest"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "accrued_interest"
+},
+"receivables.compoundingInterest": {
+"name": "compounding interest receivable",
+"synonyms": [
+"PIK receivable",
+"accrued PIK owed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.accruedCompoundingInterest": {
+"name": "accrued compounding interest receivable",
+"synonyms": [
+"accrued PIK balance"
+],
+"gotchas": "null when no PIK component",
+"high_value": false,
+"figure": ""
+},
+"receivables.indexedPrincipal": {
+"name": "indexed principal receivable",
+"synonyms": [
+"inflation-indexed principal owed"
+],
+"gotchas": "null unless index-linked",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalFees": {
+"name": "fees receivable",
+"synonyms": [
+"fees owed to funder",
+"outstanding fee balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalPenalties": {
+"name": "penalties receivable",
+"synonyms": [
+"default interest owed",
+"penalty balance due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "default_interest"
+},
+"receivables.totalTaxes": {
+"name": "taxes receivable",
+"synonyms": [
+"withholding owed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalWithTaxes": {
+"name": "total receivable incl. taxes",
+"synonyms": [
+"gross receivable",
+"total owed with tax"
+],
+"gotchas": "Gross-of-tax variant of receivables.total",
+"high_value": false,
+"figure": "funding_receivable"
+},
+"repaymentSchedule.summary.totalDisbursed": {
+"name": "total disbursed (funder)",
+"synonyms": [
+"funded amount",
+"deployed capital",
+"drawn principal",
+"disbursement to date"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "funding_outstanding"
+},
+"repaymentSchedule.summary.outstandingPrincipalBeforeAmortization": {
+"name": "outstanding principal before amortization",
+"synonyms": [
+"gross outstanding principal",
+"principal before paydown"
+],
+"gotchas": "Before amortization/paydown; differs from receivables.principal",
+"high_value": true,
+"figure": "principal_outstanding"
+},
+"repaymentSchedule.summary.unutilizedPrincipal": {
+"name": "unutilized principal",
+"synonyms": [
+"undrawn commitment",
+"available to draw",
+"unfunded commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.summary.totalExpectedDisbursements": {
+"name": "total expected disbursements",
+"synonyms": [
+"expected funded amount",
+"planned deployment"
+],
+"gotchas": "Projected/planned, not actuals",
+"high_value": false,
+"figure": "funding_commitment"
+},
+"repaymentSchedule.summary.paidInCapital": {
+"name": "paid-in capital",
+"synonyms": [
+"PIC",
+"contributed capital",
+"capital called"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "portfolio_contributed"
+},
+"repaymentSchedule.summary.expectedPaidInCapital": {
+"name": "expected paid-in capital",
+"synonyms": [
+"projected PIC",
+"expected contributed capital"
+],
+"gotchas": "Projection, not actual",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.summary.distributedPrincipal": {
+"name": "distributed principal",
+"synonyms": [
+"principal returned",
+"principal distributions"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.summary.interestRate": {
+"name": "schedule interest rate",
+"synonyms": [
+"coupon (summary)",
+"note rate"
+],
+"gotchas": "Percent not fraction (14 = 14%)",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.summary.compoundingInterestRate": {
+"name": "schedule compounding rate",
+"synonyms": [
+"PIK rate (summary)"
+],
+"gotchas": "Percent not fraction; null when no PIK",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.summary.oidRate": {
+"name": "OID rate",
+"synonyms": [
+"original issue discount rate"
+],
+"gotchas": "Percent not fraction; null when no OID",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.summary.oidRemainingCost": {
+"name": "OID remaining cost (summary)",
+"synonyms": [
+"unamortized OID (summary)"
+],
+"gotchas": "null when no OID",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.updatedAt": {
+"name": "schedule last-updated timestamp",
+"synonyms": [
+"as-of timestamp",
+"schedule recompute time",
+"data freshness"
+],
+"gotchas": "DateTime of last schedule recompute; use as the as-of/freshness stamp",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.irr": {
+"name": "IRR (funder)",
+"synonyms": [
+"internal rate of return",
+"realized IRR"
+],
+"gotchas": "Percent not fraction (13.69 = 13.69%); a money-typed KPI but it is a rate | IRR is a percent (13.69 = 13.69%) carried in a money-typed field. NEVER sum, average unweighted, or roll it up across fundings as if it were currency, and never format with a currency symbol. It is a per-funding rate.",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedIrr": {
+"name": "expected IRR",
+"synonyms": [
+"projected IRR",
+"forecast IRR"
+],
+"gotchas": "Percent not fraction; projection, can be negative",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.irrIncludingEquity": {
+"name": "IRR including equity",
+"synonyms": [
+"IRR with equity"
+],
+"gotchas": "Percent not fraction; equity-inclusive permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedIrrIncludingEquity": {
+"name": "expected IRR including equity",
+"synonyms": [
+"projected IRR with equity"
+],
+"gotchas": "Percent; projection + equity permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.dpi": {
+"name": "DPI",
+"synonyms": [
+"distributions to paid-in",
+"realized multiple"
+],
+"gotchas": "Ratio/multiple, not money despite money type | DPI is a dimensionless multiple (e.g. 1.25x) carried in a money type. NEVER format as currency or sum across fundings; aggregating requires recomputing from distributions/paid-in, not adding DPIs.",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedDpi": {
+"name": "expected DPI",
+"synonyms": [
+"projected DPI"
+],
+"gotchas": "Ratio; projection",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.dpiIncludingEquity": {
+"name": "DPI including equity",
+"synonyms": [
+"DPI with equity"
+],
+"gotchas": "Ratio; equity permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedDpiIncludingEquity": {
+"name": "expected DPI including equity",
+"synonyms": [
+"projected DPI with equity"
+],
+"gotchas": "Ratio; projection + equity permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.tvpi": {
+"name": "TVPI",
+"synonyms": [
+"total value to paid-in",
+"total multiple"
+],
+"gotchas": "Ratio/multiple, not money despite money type | TVPI is a dimensionless multiple (e.g. 1.40x) carried in a money type. NEVER format as currency or sum across fundings; aggregate by recomputing (distributed+residual)/paid-in, not by adding TVPIs.",
+"high_value": true,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedTvpi": {
+"name": "expected TVPI",
+"synonyms": [
+"projected TVPI"
+],
+"gotchas": "Ratio; projection",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.tvpiIncludingEquity": {
+"name": "TVPI including equity",
+"synonyms": [
+"TVPI with equity"
+],
+"gotchas": "Ratio; equity permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.loanKPIs.expectedTvpiIncludingEquity": {
+"name": "expected TVPI including equity",
+"synonyms": [
+"projected TVPI with equity"
+],
+"gotchas": "Ratio; projection + equity permutation",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].date": {
+"name": "schedule row date",
+"synonyms": [
+"event date",
+"cashflow date",
+"payment date"
+],
+"gotchas": "Per-row in the amortization schedule array",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].effectiveDate": {
+"name": "schedule row effective date",
+"synonyms": [
+"value date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].type": {
+"name": "schedule row type",
+"synonyms": [
+"event type",
+"row kind"
+],
+"gotchas": "Enum (Disbursement/Repayment/Accrual etc.); filter to find the right row",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].disbursedAmount": {
+"name": "row disbursed amount",
+"synonyms": [
+"draw amount on date",
+"funding on date"
+],
+"gotchas": "Only populated on disbursement rows",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].interestRate": {
+"name": "row interest rate",
+"synonyms": [
+"rate in effect",
+"period rate"
+],
+"gotchas": "Percent not fraction (14 = 14%)",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].interestChargedOnPeriod": {
+"name": "interest charged in period",
+"synonyms": [
+"period interest",
+"interest accrued in period"
+],
+"gotchas": "Per-row period interest; not cumulative",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].compoundingChargedOnPeriod": {
+"name": "compounding charged in period",
+"synonyms": [
+"period PIK",
+"PIK accrued in period"
+],
+"gotchas": "null when no PIK",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].principalRealizedBalance": {
+"name": "principal realized balance (row)",
+"synonyms": [
+"principal balance on date",
+"outstanding principal at row"
+],
+"gotchas": "Snapshot balance at that schedule row",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.total": {
+"name": "amount due (row, net)",
+"synonyms": [
+"total due on date",
+"payment due"
+],
+"gotchas": "Net of fee/credit components; an accrual row's 'due' on a daily row is the per-diem",
+"high_value": false,
+"figure": "amount_due_today"
+},
+"repaymentSchedule.scheduleTable[].due.principal": {
+"name": "principal due (row)",
+"synonyms": [
+"principal payment due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.interest": {
+"name": "interest due (row) / per-diem",
+"synonyms": [
+"per diem",
+"daily interest",
+"interest due on date",
+"daily accrual"
+],
+"gotchas": "On an accrual row this 'due' interest is the per-diem (daily accrual); not cumulative | On an accrual row 'due interest' is the PER-DIEM (daily accrual rate), but on a payment/installment row the same field is the interest actually due that period. The meaning flips by row type \u2014 do not treat all rows uniformly, and never sum per-diem rows with payment-due rows.",
+"high_value": true,
+"figure": "per_diem_interest"
+},
+"repaymentSchedule.scheduleTable[].due.compoundingInterest": {
+"name": "compounding due (row)",
+"synonyms": [
+"PIK due on date"
+],
+"gotchas": "null/0 when no PIK",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.totalFees": {
+"name": "fees due (row)",
+"synonyms": [
+"fee due on date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.totalPenalties": {
+"name": "penalties due (row)",
+"synonyms": [
+"default interest due on date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.fees[].name": {
+"name": "due fee name (row)",
+"synonyms": [
+"fee label on date"
+],
+"gotchas": "e.g. 'Origination Fee'",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].due.fees[].amount": {
+"name": "due fee amount (row)",
+"synonyms": [
+"per-fee due on date"
+],
+"gotchas": "Itemized fee within the row's due",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.total": {
+"name": "outstanding (row, net)",
+"synonyms": [
+"balance outstanding at row",
+"total outstanding on date"
+],
+"gotchas": "Net of fee/credit components; use .principal for interest basis",
+"high_value": false,
+"figure": "outstanding_balance"
+},
+"repaymentSchedule.scheduleTable[].outstanding.principal": {
+"name": "outstanding principal (row)",
+"synonyms": [
+"principal balance at row"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "principal_outstanding"
+},
+"repaymentSchedule.scheduleTable[].outstanding.interest": {
+"name": "outstanding interest (row)",
+"synonyms": [
+"accrued interest balance at row"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "accrued_interest"
+},
+"repaymentSchedule.scheduleTable[].outstanding.totalCompoundingInterest": {
+"name": "outstanding compounding interest (row)",
+"synonyms": [
+"accrued PIK balance at row"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.capitalizedBalance": {
+"name": "capitalized balance memo (row)",
+"synonyms": [
+"capitalized principal balance"
+],
+"gotchas": "NON-additive memo field; equals principal \u2014 do not add to other balances",
+"high_value": false,
+"figure": ""
+},
+"repaymentSchedule.scheduleTable[].outstanding.totalPenalties": {
+"name": "outstanding penalties (row)",
+"synonyms": [
+"default interest balance at row"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "default_interest"
+},
+"loanFundingTerms[].date": {
+"name": "funding terms effective-as-of date",
+"synonyms": [
+"terms version date",
+"terms set date"
+],
+"gotchas": "loanFundingTerms is a versioned array; latest row = current terms",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].maturityDate": {
+"name": "maturity date",
+"synonyms": [
+"maturity",
+"term end",
+"payoff date"
+],
+"gotchas": "On the terms array; take the current/latest terms row",
+"high_value": true,
+"figure": "maturity_date"
+},
+"loanFundingTerms[].commitmentExpirationDate": {
+"name": "commitment expiration date",
+"synonyms": [
+"availability end",
+"draw period end",
+"commitment end date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].expectedScheduleEndDate": {
+"name": "expected schedule end date",
+"synonyms": [
+"projected payoff date",
+"expected end"
+],
+"gotchas": "Projected, may differ from maturityDate",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].interestType": {
+"name": "interest type",
+"synonyms": [
+"amortization style",
+"DecliningBalance/Flat"
+],
+"gotchas": "Enum (e.g. DecliningBalance)",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].amortizationType": {
+"name": "amortization type",
+"synonyms": [
+"amort method",
+"repayment style"
+],
+"gotchas": "Enum",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].approvedPrincipal": {
+"name": "approved principal",
+"synonyms": [
+"approved loan amount",
+"sanctioned principal"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"loanFundingTerms[].approvedPrincipalInBaseCurrency": {
+"name": "approved principal (base currency)",
+"synonyms": [
+"approved principal FX-converted"
+],
+"gotchas": "FX twin of approvedPrincipal",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].proposedPrincipal": {
+"name": "proposed principal",
+"synonyms": [
+"requested principal"
+],
+"gotchas": "Pre-approval figure",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].netPrincipal": {
+"name": "net principal",
+"synonyms": [
+"net advance",
+"principal net of OID/fees"
+],
+"gotchas": "Net of OID/upfront deductions",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].fixedRepaymentAmount": {
+"name": "fixed repayment amount",
+"synonyms": [
+"level payment",
+"installment amount"
+],
+"gotchas": "null unless fixed/level amortization",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].fundingTerms.commitmentAmount": {
+"name": "funding terms commitment amount",
+"synonyms": [
+"committed amount (terms)"
+],
+"gotchas": "Mirrors top-level commitmentAmount",
+"high_value": false,
+"figure": "funding_commitment"
+},
+"loanFundingTerms[].fundingTerms.seniority": {
+"name": "seniority rank",
+"synonyms": [
+"lien priority",
+"tranche seniority",
+"priority rank"
+],
+"gotchas": "Integer rank, not money",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].minimumBalanceForInterestAccrual": {
+"name": "minimum balance for interest accrual",
+"synonyms": [
+"accrual floor balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].interestFloatDays": {
+"name": "interest float days",
+"synonyms": [
+"float days",
+"grace days for interest"
+],
+"gotchas": "Day count, not money",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].partialPeriodDaysInYear": {
+"name": "day-count days-in-year",
+"synonyms": [
+"day count convention denominator",
+"360/365 basis"
+],
+"gotchas": "Day-count config; affects per-diem",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].minDaysToFirstRepayment": {
+"name": "min days to first repayment",
+"synonyms": [
+"first payment lag days"
+],
+"gotchas": "Count",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].interestCalculationPeriodType": {
+"name": "interest calc period type",
+"synonyms": [
+"accrual period convention"
+],
+"gotchas": "Enum config",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].capitalizationComponent": {
+"name": "capitalization component",
+"synonyms": [
+"what capitalizes (PIK config)"
+],
+"gotchas": "Enum config",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].decreasedCompoundingPaymentLimit": {
+"name": "decreased compounding payment limit",
+"synonyms": [
+"PIK payment cap"
+],
+"gotchas": "Niche PIK config",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].decreasedCompoundingPaymentPercentage": {
+"name": "decreased compounding payment percent",
+"synonyms": [
+"PIK payment percent"
+],
+"gotchas": "Percent not fraction; niche PIK config",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].revolvingPeriod.startDate": {
+"name": "revolving period start",
+"synonyms": [
+"revolver start"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"loanFundingTerms[].revolvingPeriod.endDate": {
+"name": "revolving period end",
+"synonyms": [
+"revolver end"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.value": {
+"name": "fee value",
+"synonyms": [
+"fee amount",
+"fee charge"
+],
+"gotchas": "For Flat calc this is a money amount; for Percentage calc it is a percent \u2014 check calculationType | Polymorphic by calculationType: Flat => a money amount; Percentage => a percent (not a fraction, and not dollars). MUST branch on calculationType before using or summing \u2014 never aggregate Flat and Percentage values together, and never treat a Percentage value as a dollar fee.",
+"high_value": true,
+"figure": ""
+},
+"fees[].assetFee.totalDue": {
+"name": "fee total due",
+"synonyms": [
+"fee owed",
+"total fee due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.outstanding": {
+"name": "fee outstanding",
+"synonyms": [
+"unpaid fee balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.calculationType": {
+"name": "fee calculation type",
+"synonyms": [
+"fee basis",
+"Flat/Percentage"
+],
+"gotchas": "Tells whether assetFee.value is money or a percent",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.chargeDate": {
+"name": "fee charge date",
+"synonyms": [
+"fee assessed date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.dueDate": {
+"name": "fee due date",
+"synonyms": [
+"fee payable date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.repaymentTiming": {
+"name": "fee repayment timing",
+"synonyms": [
+"when fee is paid (OnRepayment etc.)"
+],
+"gotchas": "Enum",
+"high_value": false,
+"figure": ""
+},
+"fees[].assetFee.minAmount": {
+"name": "fee minimum amount",
+"synonyms": [
+"fee floor"
+],
+"gotchas": "null when no floor",
+"high_value": false,
+"figure": ""
+},
+"fees[].allocationPercentage": {
+"name": "fee allocation percent to funder",
+"synonyms": [
+"funder fee share percent"
+],
+"gotchas": "Percent not fraction; funder's share of the fee",
+"high_value": false,
+"figure": ""
+},
+"fees[].fixedAmountToAllocate": {
+"name": "fixed fee amount to funder",
+"synonyms": [
+"funder fixed fee allocation"
+],
+"gotchas": "Alternative to allocationPercentage",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].date": {
+"name": "debt sale date",
+"synonyms": [
+"participation sale date",
+"sell date"
+],
+"gotchas": "empty for this entity; array of secondary sales",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].effectiveDate": {
+"name": "debt sale effective date",
+"synonyms": [
+"sale value date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].amount": {
+"name": "debt sale amount",
+"synonyms": [
+"participation sold amount",
+"sale proceeds"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].sellPercentage": {
+"name": "debt sale percent",
+"synonyms": [
+"percent sold",
+"participation percent sold"
+],
+"gotchas": "Percent not fraction",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].status": {
+"name": "debt sale status",
+"synonyms": [
+"sale state"
+],
+"gotchas": "Enum",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].sellComponents[].sellerPostSell": {
+"name": "seller post-sale balance (component)",
+"synonyms": [
+"retained after sale"
+],
+"gotchas": "Per-component (principal/interest/etc.)",
+"high_value": false,
+"figure": ""
+},
+"debtSell[].sellComponents[].buyerPostSell": {
+"name": "buyer post-sale balance (component)",
+"synonyms": [
+"transferred to buyer"
+],
+"gotchas": "Per-component",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].finalRate": {
+"name": "interest rate history - final rate",
+"synonyms": [
+"effective rate over time",
+"rate schedule"
+],
+"gotchas": "Percent not fraction; versioned rate history (empty for this entity)",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].baseRate": {
+"name": "interest rate history - base rate",
+"synonyms": [
+"index/base rate",
+"floating base"
+],
+"gotchas": "Percent not fraction",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].margin": {
+"name": "interest rate history - margin",
+"synonyms": [
+"spread",
+"credit spread"
+],
+"gotchas": "Spread over base; typed money but is a rate component (percent) | Margin is a rate spread (percent, e.g. 3.5 = 3.50%) carried in a money type. NEVER treat as a dollar amount or sum; combine with baseRate to reconstruct finalRate. Confirm it is not already a fraction by cross-checking baseRate + margin \u2248 finalRate.",
+"high_value": false,
+"figure": ""
+},
+"interestRatesData[].effectiveDate": {
+"name": "rate change effective date",
+"synonyms": [
+"rate reset date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"compoundingInterestRatesData[].finalRate": {
+"name": "compounding rate history - final rate",
+"synonyms": [
+"PIK rate over time"
+],
+"gotchas": "Percent not fraction; PIK rate history (empty here)",
+"high_value": false,
+"figure": ""
+},
+"oidTerms.method": {
+"name": "OID amortization method",
+"synonyms": [
+"OID method",
+"discount accretion method"
+],
+"gotchas": "Enum config",
+"high_value": false,
+"figure": ""
+},
+"oidTerms.date": {
+"name": "OID terms date",
+"synonyms": [
+"OID set date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"oidTerms.daysInYear": {
+"name": "OID days-in-year basis",
+"synonyms": [
+"OID day count year"
+],
+"gotchas": "Enum (e.g. Actual)",
+"high_value": false,
+"figure": ""
+},
+"oidTerms.components[].value": {
+"name": "OID component value",
+"synonyms": [
+"OID amount",
+"discount component"
+],
+"gotchas": "Per-component OID amount (empty here)",
+"high_value": false,
+"figure": ""
+},
+"valuations[].valuation": {
+"name": "valuation amount",
+"synonyms": [
+"collateral value",
+"appraised value",
+"mark"
+],
+"gotchas": "Array of valuations over time; empty for this entity",
+"high_value": false,
+"figure": ""
+},
+"valuations[].date": {
+"name": "valuation date",
+"synonyms": [
+"appraisal date",
+"mark date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"deal.facilitySize": {
+"name": "deal facility size",
+"synonyms": [
+"facility size",
+"total deal size",
+"whole-loan amount"
+],
+"gotchas": "On parent deal (absent for this funding); whole-loan, not the funder's share",
+"high_value": false,
+"figure": ""
+},
+"deal.status": {
+"name": "deal status",
+"synonyms": [
+"deal state"
+],
+"gotchas": "Enum; on parent deal",
+"high_value": false,
+"figure": ""
+},
+"fundingEntityIsServicer": {
+"name": "funding entity is servicer flag",
+"synonyms": [
+"is servicer",
+"funder services the loan"
+],
+"gotchas": "Boolean config",
+"high_value": false,
+"figure": ""
+},
+"fundingEntityReceivesMargins": {
+"name": "funding entity receives margins flag",
+"synonyms": [
+"funder keeps spread"
+],
+"gotchas": "Boolean config",
+"high_value": false,
+"figure": ""
+},
+"fileEntriesCount": {
+"name": "file entries count",
+"synonyms": [
+"document count",
+"attached files"
+],
+"gotchas": "Plumbing count",
+"high_value": false,
+"figure": ""
+}
+},
+"funding_entity": {
+"name": {
+"name": "funding entity name",
+"synonyms": [
+"fund name",
+"lender entity",
+"funding entity"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"baseCurrency": {
+"name": "base currency",
+"synonyms": [
+"currency",
+"denomination"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"totalCommitment": {
+"name": "total commitment",
+"synonyms": [
+"committed capital",
+"total committed",
+"fund commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "funding_commitment"
+},
+"totalDisbursement": {
+"name": "total disbursement",
+"synonyms": [
+"total disbursed",
+"total deployed",
+"total funded"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "portfolio_disbursement"
+},
+"contributed": {
+"name": "contributed capital",
+"synonyms": [
+"equity contributed",
+"paid-in by entity"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "portfolio_contributed"
+},
+"currentAverageInterestRate": {
+"name": "current average interest rate",
+"synonyms": [
+"weighted avg rate",
+"portfolio avg rate",
+"blended rate"
+],
+"gotchas": "Rate is a PERCENT not a fraction (e.g. 9.35 means 9.35%).",
+"high_value": true,
+"figure": ""
+},
+"isInactive": {
+"name": "inactive flag",
+"synonyms": [
+"is inactive",
+"dormant"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fileEntriesCount": {
+"name": "file entries count",
+"synonyms": [
+"document count",
+"attached files"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"activeLoansCount": {
+"name": "active loans count",
+"synonyms": [
+"number of active loans",
+"live deals",
+"active deal count"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "portfolio_active_loans"
+},
+"utilizationRate": {
+"name": "utilization rate",
+"synonyms": [
+"deployment rate",
+"capital utilization",
+"drawn %"
+],
+"gotchas": "Percent not fraction; can exceed 100 (example 106.77) when disbursed > commitment. | Percent, NOT a fraction (example 106.77 = 106.77%). Can exceed 100 when disbursed > commitment \u2014 do NOT clamp to 100% and do NOT divide by 100 expecting a 0-1 ratio without confirming the consumer wants a fraction.",
+"high_value": true,
+"figure": "utilization"
+},
+"totalReturned": {
+"name": "total returned",
+"synonyms": [
+"capital returned",
+"total distributions",
+"returned to entity"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"expectedTotalValue": {
+"name": "expected total value",
+"synonyms": [
+"expected total return",
+"projected total value"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"lastScheduleUpdate": {
+"name": "last schedule update",
+"synonyms": [
+"data as-of",
+"last recalculated",
+"freshness timestamp"
+],
+"gotchas": "As-of timestamp for the computed figures, not a loan date.",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.total": {
+"name": "cash received total",
+"synonyms": [
+"total cash collected",
+"cash in"
+],
+"gotchas": "Roll-up of cashReceived.principal + .interest + .compoundingInterest. Non-additive memo \u2014 do NOT sum it together with its component fields, and do NOT add it to other entities' .total unless de-duped.",
+"high_value": true,
+"figure": "portfolio_receivable"
+},
+"cashReceived.principal": {
+"name": "cash received - principal",
+"synonyms": [
+"principal collected",
+"principal repaid in cash"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"cashReceived.interest": {
+"name": "cash received - interest",
+"synonyms": [
+"interest collected",
+"interest income received"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"cashReceived.compoundingInterest": {
+"name": "cash received - compounding interest",
+"synonyms": [
+"PIK interest received"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.indexedPrincipal": {
+"name": "cash received - indexed principal",
+"synonyms": [
+"inflation-indexed principal received"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalFees": {
+"name": "cash received - fees",
+"synonyms": [
+"fees collected",
+"fee income received"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalPenalties": {
+"name": "cash received - penalties",
+"synonyms": [
+"penalty income received",
+"default fees collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalTaxes": {
+"name": "cash received - taxes",
+"synonyms": [
+"withholding collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.totalWithTaxes": {
+"name": "cash received incl. taxes",
+"synonyms": [
+"gross cash received"
+],
+"gotchas": "Memo total including tax line; equals .total here when taxes are 0.",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.active.amount": {
+"name": "active commitment amount",
+"synonyms": [
+"committed to active loans",
+"live commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"commitmentBreakdown.active.count": {
+"name": "active commitment loan count",
+"synonyms": [
+"active deals committed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.active.percentage": {
+"name": "active commitment share",
+"synonyms": [
+"% of commitment active"
+],
+"gotchas": "Percent of total commitment, not a fraction.",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.pending.amount": {
+"name": "pending commitment amount",
+"synonyms": [
+"committed to pending loans"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.pending.count": {
+"name": "pending commitment loan count",
+"synonyms": [
+"pending deals committed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.pending.percentage": {
+"name": "pending commitment share",
+"synonyms": [
+"% of commitment pending"
+],
+"gotchas": "Percent not fraction.",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.closed.amount": {
+"name": "closed commitment amount",
+"synonyms": [
+"committed to closed/repaid loans"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.closed.count": {
+"name": "closed commitment loan count",
+"synonyms": [
+"closed deals committed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"commitmentBreakdown.closed.percentage": {
+"name": "closed commitment share",
+"synonyms": [
+"% of commitment closed"
+],
+"gotchas": "Percent not fraction.",
+"high_value": false,
+"figure": ""
+},
+"kpis.irr": {
+"name": "IRR",
+"synonyms": [
+"internal rate of return",
+"fund IRR"
+],
+"gotchas": "value_kind tagged money but this is a PERCENT (example 18.45 = 18.45%). | IRR is a PERCENT mis-tagged value_kind=money. Example 18.45 = 18.45% (not $18.45, not 0.1845). Never currency-format; if charting as fraction divide by 100.",
+"high_value": true,
+"figure": ""
+},
+"kpis.irrIncludingEquity": {
+"name": "IRR incl. equity",
+"synonyms": [
+"IRR with equity"
+],
+"gotchas": "Percent despite money kind.",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedIrr": {
+"name": "expected IRR",
+"synonyms": [
+"projected IRR"
+],
+"gotchas": "Percent despite money kind.",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedIrrIncludingEquity": {
+"name": "expected IRR incl. equity",
+"synonyms": [
+"projected IRR with equity"
+],
+"gotchas": "Percent despite money kind.",
+"high_value": false,
+"figure": ""
+},
+"kpis.dpi": {
+"name": "DPI",
+"synonyms": [
+"distributions to paid-in",
+"realized multiple"
+],
+"gotchas": "A multiple (x), not money/percent despite kind=money. | DPI is a MULTIPLE (x), not money \u2014 value_kind=money is wrong. Example 0.6 means 0.6x distributed-to-paid-in, NOT $0.60. Never sum, never currency-format, never aggregate across entities.",
+"high_value": true,
+"figure": ""
+},
+"kpis.dpiIncludingEquity": {
+"name": "DPI incl. equity",
+"synonyms": [
+"DPI with equity"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedDpi": {
+"name": "expected DPI",
+"synonyms": [
+"projected DPI"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedDpiIncludingEquity": {
+"name": "expected DPI incl. equity",
+"synonyms": [
+"projected DPI with equity"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"kpis.tvpi": {
+"name": "TVPI",
+"synonyms": [
+"total value to paid-in",
+"gross multiple"
+],
+"gotchas": "A multiple (x), not money despite kind=money. | TVPI is a MULTIPLE (x), not money \u2014 value_kind=money is wrong. Example 1.18 means 1.18x total-value-to-paid-in. Never currency-format or sum across entities.",
+"high_value": true,
+"figure": ""
+},
+"kpis.tvpiIncludingEquity": {
+"name": "TVPI incl. equity",
+"synonyms": [
+"TVPI with equity"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedTvpi": {
+"name": "expected TVPI",
+"synonyms": [
+"projected TVPI"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"kpis.expectedTvpiIncludingEquity": {
+"name": "expected TVPI incl. equity",
+"synonyms": [
+"projected TVPI with equity"
+],
+"gotchas": "Multiple (x).",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalDisbursed": {
+"name": "total disbursed (summary)",
+"synonyms": [
+"amount funded",
+"deployed to loans"
+],
+"gotchas": "Same basis as top-level totalDisbursement / portfolio_disbursement. These are two views of the SAME disbursed dollars \u2014 do NOT add mergedLoanFundingsSummary.totalDisbursed to totalDisbursement; pick one source.",
+"high_value": true,
+"figure": "portfolio_disbursement"
+},
+"mergedLoanFundingsSummary.outstandingPrincipalBeforeAmortization": {
+"name": "outstanding principal before amortization",
+"synonyms": [
+"gross outstanding principal",
+"pre-amort principal"
+],
+"gotchas": "Before amortization adjustments; differs from totalOutstanding.principal. | Pre-amortization figure tagged portfolio_outstanding, but it differs from totalOutstanding.principal (the post-amortization, true current basis). Do NOT use this as the interest/current-outstanding basis and do NOT sum it with totalOutstanding.principal \u2014 they are the same loans before vs after amortization.",
+"high_value": true,
+"figure": "portfolio_outstanding"
+},
+"mergedLoanFundingsSummary.unutilizedPrincipal": {
+"name": "unutilized principal",
+"synonyms": [
+"undrawn principal",
+"available to draw",
+"unfunded commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedDisbursements": {
+"name": "total expected disbursements",
+"synonyms": [
+"expected funding",
+"planned disbursements"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.paidInCapital": {
+"name": "paid-in capital",
+"synonyms": [
+"PIC",
+"capital deployed by entity"
+],
+"gotchas": "Carries the same portfolio_contributed figure as the top-level contributed field. Same dollars from two paths \u2014 do NOT sum paidInCapital with contributed; they are duplicate representations of paid-in capital.",
+"high_value": true,
+"figure": "portfolio_contributed"
+},
+"mergedLoanFundingsSummary.expectedPaidInCapital": {
+"name": "expected paid-in capital",
+"synonyms": [
+"projected PIC"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.distributedPrincipal": {
+"name": "distributed principal",
+"synonyms": [
+"principal returned",
+"principal distributions"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.total": {
+"name": "total expected (all components)",
+"synonyms": [
+"expected total value",
+"lifetime expected"
+],
+"gotchas": "Net total across components. | Net total across components (principal + interest + compounding, net of fee/credit lines which can be negative). Do NOT treat as a simple gross sum of the component fields, and do NOT add it to component figures \u2014 it already aggregates them (non-additive memo).",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.principal": {
+"name": "total expected principal",
+"synonyms": [
+"expected principal"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.interest": {
+"name": "total expected interest",
+"synonyms": [
+"expected interest income",
+"lifetime interest"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.compoundingInterest": {
+"name": "total expected compounding interest",
+"synonyms": [
+"expected PIK interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.totalFees": {
+"name": "total expected fees",
+"synonyms": [
+"expected fee income"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.totalPenalties": {
+"name": "total expected penalties",
+"synonyms": [
+"expected penalty income"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.totalTaxes": {
+"name": "total expected taxes",
+"synonyms": [
+"expected withholding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpected.totalWithTaxes": {
+"name": "total expected incl. taxes",
+"synonyms": [
+"gross expected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedToDate.total": {
+"name": "total expected to date",
+"synonyms": [
+"expected through today",
+"cumulative expected"
+],
+"gotchas": "As-of-today slice of expected; equals lifetime expected here.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedToDate.principal": {
+"name": "expected-to-date principal",
+"synonyms": [
+"principal expected to date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedToDate.interest": {
+"name": "expected-to-date interest",
+"synonyms": [
+"interest expected to date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedToDate.totalFees": {
+"name": "expected-to-date fees",
+"synonyms": [
+"fees expected to date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalExpectedToDate.totalPenalties": {
+"name": "expected-to-date penalties",
+"synonyms": [
+"penalties expected to date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.total": {
+"name": "total outstanding",
+"synonyms": [
+"total balance outstanding",
+"amount outstanding"
+],
+"gotchas": "NET of fee/credit components (totalFees here is negative); use .principal for an interest basis. | NET of fee/credit components (totalFees here is negative), so it is LOWER than gross principal owed. Wrong basis for interest accrual or 'amount outstanding' headline \u2014 use .principal for the principal basis; only use .total for a net-of-credits balance.",
+"high_value": true,
+"figure": "funding_outstanding"
+},
+"mergedLoanFundingsSummary.totalOutstanding.principal": {
+"name": "outstanding principal",
+"synonyms": [
+"principal outstanding",
+"principal balance",
+"UPB"
+],
+"gotchas": "Use this (not .total) as the interest basis; .total is net of fee/credit lines.",
+"high_value": true,
+"figure": "portfolio_outstanding"
+},
+"mergedLoanFundingsSummary.totalOutstanding.interest": {
+"name": "outstanding interest",
+"synonyms": [
+"accrued interest outstanding",
+"interest balance"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "accrued_interest"
+},
+"mergedLoanFundingsSummary.totalOutstanding.compoundingInterest": {
+"name": "outstanding compounding interest",
+"synonyms": [
+"PIK balance"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.totalCompoundingInterest": {
+"name": "outstanding total compounding interest",
+"synonyms": [
+"total PIK outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.totalFees": {
+"name": "outstanding fees",
+"synonyms": [
+"fee balance outstanding"
+],
+"gotchas": "Can be negative (credit); example -1.37M. Folds into totalOutstanding.total.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.totalPenalties": {
+"name": "outstanding penalties",
+"synonyms": [
+"penalty balance outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.totalTaxes": {
+"name": "outstanding taxes",
+"synonyms": [
+"tax balance outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.capitalizedBalance": {
+"name": "capitalized balance",
+"synonyms": [
+"cap balance"
+],
+"gotchas": "NON-additive memo; do not add to principal/interest (tracks capitalized component).",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.totalWithTaxes": {
+"name": "total outstanding incl. taxes",
+"synonyms": [
+"gross outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalDue.total": {
+"name": "total due",
+"synonyms": [
+"amount due",
+"currently due"
+],
+"gotchas": "Sign convention: negative example means a credit/not-yet-due position, not money owed. | Sign convention: a NEGATIVE example is a credit / not-yet-due position, not money owed. Do NOT report magnitude as 'amount due'; check sign first \u2014 positive = owed, negative = credit balance. Mislabeling sign flips the meaning.",
+"high_value": true,
+"figure": "amount_due_today"
+},
+"mergedLoanFundingsSummary.totalDue.principal": {
+"name": "principal due",
+"synonyms": [
+"principal currently due"
+],
+"gotchas": "Sign convention as above.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalDue.interest": {
+"name": "interest due",
+"synonyms": [
+"interest currently due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalDue.totalFees": {
+"name": "fees due",
+"synonyms": [
+"fees currently due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalDue.totalPenalties": {
+"name": "penalties due",
+"synonyms": [
+"penalties currently due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.overdue.total": {
+"name": "total overdue",
+"synonyms": [
+"past due",
+"arrears",
+"delinquent amount"
+],
+"gotchas": "Sign convention: example is negative; interpret magnitude as overdue exposure. | Sign convention: example is NEGATIVE; overdue exposure is the magnitude (abs value). Do NOT deliver the raw negative as 'overdue amount' and do NOT sum signed values across loans without normalizing sign first.",
+"high_value": true,
+"figure": "overdue_amount"
+},
+"mergedLoanFundingsSummary.overdue.principal": {
+"name": "overdue principal",
+"synonyms": [
+"principal past due",
+"principal in arrears"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.overdue.interest": {
+"name": "overdue interest",
+"synonyms": [
+"interest past due",
+"interest in arrears"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.overdue.totalFees": {
+"name": "overdue fees",
+"synonyms": [
+"fees past due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.overdue.totalPenalties": {
+"name": "overdue penalties",
+"synonyms": [
+"penalties past due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalPaid.total": {
+"name": "total paid",
+"synonyms": [
+"total repaid",
+"total collected",
+"total returned"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalPaid.principal": {
+"name": "principal paid",
+"synonyms": [
+"principal repaid",
+"principal collected"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalPaid.interest": {
+"name": "interest paid",
+"synonyms": [
+"interest collected",
+"interest received"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalPaid.totalFees": {
+"name": "fees paid",
+"synonyms": [
+"fees collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalPaid.totalPenalties": {
+"name": "penalties paid",
+"synonyms": [
+"penalties collected"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWaived.total": {
+"name": "total waived",
+"synonyms": [
+"amount waived",
+"forgiven"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWaived.interest": {
+"name": "interest waived",
+"synonyms": [
+"forgiven interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWaived.totalFees": {
+"name": "fees waived",
+"synonyms": [
+"forgiven fees"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWaived.totalPenalties": {
+"name": "penalties waived",
+"synonyms": [
+"forgiven penalties"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWrittenOff.total": {
+"name": "total written off",
+"synonyms": [
+"write-offs",
+"charge-offs"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWrittenOff.principal": {
+"name": "principal written off",
+"synonyms": [
+"principal charge-off"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalWrittenOff.interest": {
+"name": "interest written off",
+"synonyms": [
+"interest charge-off"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOID.amount": {
+"name": "total OID amount",
+"synonyms": [
+"original issue discount",
+"OID"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOID.interest": {
+"name": "OID interest",
+"synonyms": [
+"OID accretion"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.exchangeRateImpact.total": {
+"name": "FX impact total",
+"synonyms": [
+"currency impact",
+"forex effect"
+],
+"gotchas": "Only meaningful for multi-currency; 0 for USD entities.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.exchangeRateImpact.principal": {
+"name": "FX impact - principal",
+"synonyms": [
+"currency impact on principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.exchangeRateImpact.interest": {
+"name": "FX impact - interest",
+"synonyms": [
+"currency impact on interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.interestRate": {
+"name": "summary interest rate",
+"synonyms": [
+"funding interest rate",
+"rate"
+],
+"gotchas": "Percent not fraction when populated; null on this entity.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.compoundingInterestRate": {
+"name": "compounding interest rate",
+"synonyms": [
+"PIK rate"
+],
+"gotchas": "Percent not fraction.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.oidRate": {
+"name": "OID rate",
+"synonyms": [
+"original issue discount rate"
+],
+"gotchas": "Percent not fraction.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.oidRemainingCost": {
+"name": "OID remaining cost",
+"synonyms": [
+"unamortized OID"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.total": {
+"name": "receivables total",
+"synonyms": [
+"total receivable",
+"amount receivable",
+"expected to collect"
+],
+"gotchas": "Net total across components. | Net total across components (net of fee/credit lines that may be negative). Non-additive with its own .principal/.interest children \u2014 summing total + components double-counts. Use .principal alone for a principal basis.",
+"high_value": true,
+"figure": "funding_receivable"
+},
+"receivables.principal": {
+"name": "receivable principal",
+"synonyms": [
+"principal receivable",
+"principal to collect"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "portfolio_receivable"
+},
+"receivables.interest": {
+"name": "receivable interest",
+"synonyms": [
+"interest receivable",
+"interest to collect"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"receivables.compoundingInterest": {
+"name": "receivable compounding interest",
+"synonyms": [
+"PIK receivable"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalFees": {
+"name": "receivable fees",
+"synonyms": [
+"fees receivable"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalPenalties": {
+"name": "receivable penalties",
+"synonyms": [
+"penalties receivable"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalTaxes": {
+"name": "receivable taxes",
+"synonyms": [
+"taxes receivable"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"receivables.totalWithTaxes": {
+"name": "receivables incl. taxes",
+"synonyms": [
+"gross receivable"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"bankDetails.bankName": {
+"name": "bank name",
+"synonyms": [
+"banking institution"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"bankDetails.accountNumber": {
+"name": "bank account number",
+"synonyms": [
+"account no"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"bankDetails.iban": {
+"name": "IBAN",
+"synonyms": [
+"international bank account number"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"bankDetails.swift": {
+"name": "SWIFT/BIC",
+"synonyms": [
+"swift code",
+"bic"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.fees[].amount": {
+"name": "cash-received fee line amount",
+"synonyms": [
+"per-fee cash received"
+],
+"gotchas": "Per-fee breakdown row; empty on this entity.",
+"high_value": false,
+"figure": ""
+},
+"cashReceived.penalties[].amount": {
+"name": "cash-received penalty line amount",
+"synonyms": [
+"per-penalty cash received"
+],
+"gotchas": "Per-penalty breakdown row; empty on this entity.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.fees[].fee.totalDue": {
+"name": "outstanding fee line - total due",
+"synonyms": [
+"per-fee due"
+],
+"gotchas": "Deep per-fee permutation; empty on this entity.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.fees[].fee.outstanding": {
+"name": "outstanding fee line - outstanding",
+"synonyms": [
+"per-fee outstanding"
+],
+"gotchas": "Deep per-fee permutation; empty on this entity.",
+"high_value": false,
+"figure": ""
+},
+"mergedLoanFundingsSummary.totalOutstanding.fees[].fee.value": {
+"name": "outstanding fee line - value/rate",
+"synonyms": [
+"fee rate or amount"
+],
+"gotchas": "Could be a percent or money depending on calculationType; deep niche, empty here.",
+"high_value": false,
+"figure": ""
+}
+},
+"borrower": {
+"type": {
+"name": "borrower type",
+"synonyms": [
+"client type",
+"individual or company"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"displayName": {
+"name": "borrower name",
+"synonyms": [
+"client name",
+"borrower display name"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"companyName": {
+"name": "borrower company name",
+"synonyms": [
+"entity name",
+"company"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"isActive": {
+"name": "borrower active status",
+"synonyms": [
+"is client active",
+"active borrower"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"createdAt": {
+"name": "borrower onboarding date",
+"synonyms": [
+"client created date",
+"date added"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"numOfActiveLoans": {
+"name": "borrower active loan count",
+"synonyms": [
+"number of active loans",
+"active loans for borrower"
+],
+"gotchas": "Borrower-level count across all of this client's loans, not portfolio-wide; do not confuse with portfolio_active_loans.",
+"high_value": true,
+"figure": ""
+},
+"numOfPendingLoans": {
+"name": "borrower pending loan count",
+"synonyms": [
+"number of pending loans",
+"loans in pipeline for borrower"
+],
+"gotchas": "Pending (not yet funded) loans for this borrower only.",
+"high_value": true,
+"figure": ""
+},
+"fileEntriesCount": {
+"name": "borrower document count",
+"synonyms": [
+"number of files",
+"file entries"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"currentCommitment": {
+"name": "borrower total commitment",
+"synonyms": [
+"committed amount",
+"total commitment to borrower",
+"facility commitment"
+],
+"gotchas": "Sum of commitment across this borrower's loans; borrower-level roll-up, not a single-loan commitment.",
+"high_value": true,
+"figure": "commitment"
+},
+"outstandingBalance": {
+"name": "borrower outstanding balance",
+"synonyms": [
+"total outstanding",
+"balance owed by borrower",
+"exposure"
+],
+"gotchas": "Borrower-level aggregate across loans; may be NET of fee/credit components like loan-level totalOutstanding.total \u2014 confirm vs loan principalOutstanding for an interest basis. | Borrower-level outstandingBalance is an aggregate that, like loan-level totalOutstanding.total, may be NET of fee/credit components. It is the WRONG basis for interest accrual or principal-exposure questions. For an interest/principal basis, sum the loan-level principalOutstanding across this borrower's loans rather than using this net roll-up; reconcile the two before delivering an exposure figure.",
+"high_value": true,
+"figure": "outstanding_balance"
+},
+"totalOverdue": {
+"name": "borrower total overdue",
+"synonyms": [
+"amount past due",
+"arrears",
+"delinquent amount"
+],
+"gotchas": "Borrower-level overdue across all loans, not a single loan.",
+"high_value": true,
+"figure": "overdue_amount"
+},
+"nextPayment": {
+"name": "borrower next payment date",
+"synonyms": [
+"upcoming payment date",
+"next due date"
+],
+"gotchas": "Date, not amount.",
+"high_value": true,
+"figure": ""
+},
+"lastPayment": {
+"name": "borrower last payment date",
+"synonyms": [
+"most recent payment date",
+"date last paid"
+],
+"gotchas": "Date, not amount.",
+"high_value": false,
+"figure": ""
+},
+"warrantsValue": {
+"name": "borrower warrants value",
+"synonyms": [
+"warrant value",
+"value of warrants held"
+],
+"gotchas": "Equity-kicker memo value, not part of debt outstanding.",
+"high_value": false,
+"figure": ""
+},
+"sharesValue": {
+"name": "borrower shares value",
+"synonyms": [
+"equity shares value",
+"value of shares held"
+],
+"gotchas": "Equity holding value, not part of debt outstanding.",
+"high_value": false,
+"figure": ""
+},
+"loans.totalFilteredRecords": {
+"name": "borrower loan count",
+"synonyms": [
+"total loans for borrower",
+"number of loans"
+],
+"gotchas": "Count of all loans (any status) for this borrower.",
+"high_value": true,
+"figure": ""
+},
+"equities.totalFilteredRecords": {
+"name": "borrower equity-position count",
+"synonyms": [
+"number of equity positions",
+"equities count"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.totalFilteredRecords": {
+"name": "borrower application count",
+"synonyms": [
+"number of data applications",
+"intake forms count"
+],
+"gotchas": "Counts intake/data applications, not loans.",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].status": {
+"name": "application status",
+"synonyms": [
+"intake form status",
+"application state"
+],
+"gotchas": "DataApplicationStatus enum, application workflow only \u2014 not loan status.",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].submittedAt": {
+"name": "application submitted date",
+"synonyms": [
+"form submission date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].reviewedAt": {
+"name": "application reviewed date",
+"synonyms": [
+"form review date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].createdAt": {
+"name": "application created date",
+"synonyms": [
+"form created date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].secondsToCompletion": {
+"name": "application completion time",
+"synonyms": [
+"time to complete form",
+"seconds to completion"
+],
+"gotchas": "Duration in seconds, not a money value.",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].progress.completedRequiredInputs": {
+"name": "application required-fields completed",
+"synonyms": [
+"required inputs done"
+],
+"gotchas": "Niche progress metric.",
+"high_value": false,
+"figure": ""
+},
+"dataApplications.pageItems[].progress.totalRequiredInputs": {
+"name": "application required-fields total",
+"synonyms": [
+"required inputs total"
+],
+"gotchas": "Niche progress metric.",
+"high_value": false,
+"figure": ""
+}
+},
+"equity": {
+"type": {
+"name": "equity type",
+"synonyms": [
+"instrument type",
+"equity instrument",
+"share/option/warrant"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"status": {
+"name": "equity status",
+"synonyms": [
+"asset status",
+"active/closed"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"createdAt": {
+"name": "equity created date",
+"synonyms": [
+"record creation date",
+"added on"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"name": {
+"name": "equity name",
+"synonyms": [
+"instrument name",
+"holding name"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"currency": {
+"name": "equity currency",
+"synonyms": [
+"denomination currency"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"acquisitionDate": {
+"name": "acquisition date",
+"synonyms": [
+"purchase date",
+"bought date",
+"date acquired"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"expirationDate": {
+"name": "expiration date",
+"synonyms": [
+"expiry",
+"option/warrant expiry"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"expectedExerciseDate": {
+"name": "expected exercise date",
+"synonyms": [
+"planned exercise date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"exercisePricePerUnit": {
+"name": "exercise price per unit",
+"synonyms": [
+"strike price",
+"option strike",
+"exercise price"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"equityClass": {
+"name": "equity class",
+"synonyms": [
+"share class",
+"unit class"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"investmentRights": {
+"name": "investment rights",
+"synonyms": [
+"rights",
+"preferences"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fileEntriesCount": {
+"name": "document count",
+"synonyms": [
+"number of files",
+"attachments count"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"allocations[].date": {
+"name": "allocation date",
+"synonyms": [
+"unit allocation date",
+"grant date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"allocations[].numberOfUnits": {
+"name": "allocated units",
+"synonyms": [
+"units granted",
+"number of units",
+"shares allocated"
+],
+"gotchas": "value_kind is money but this is a unit/share count, not a dollar amount | value_kind=money but this is a unit/SHARE COUNT, not dollars. Never format as currency or sum into a money total.",
+"high_value": true,
+"figure": ""
+},
+"allocations[].fmv": {
+"name": "allocation fair market value",
+"synonyms": [
+"FMV",
+"fair value at allocation"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"allocations[].pricePerUnit": {
+"name": "allocation price per unit",
+"synonyms": [
+"cost per share",
+"grant price"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"allocations[].note": {
+"name": "allocation note",
+"synonyms": [
+"allocation memo"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"equityKPIs.tvpi": {
+"name": "TVPI",
+"synonyms": [
+"total value to paid-in",
+"value multiple"
+],
+"gotchas": "a multiple (e.g. 1.8x), not money despite value_kind money; not a percent | TVPI is a MULTIPLE (e.g. 1.8x), not money despite value_kind=money and not a percent. Do not currency-format, do not multiply by 100, do not sum.",
+"high_value": true,
+"figure": ""
+},
+"equityKPIs.bvToCost": {
+"name": "book value to cost",
+"synonyms": [
+"BV/cost",
+"carrying value multiple"
+],
+"gotchas": "a multiple, not money despite value_kind money | Book-value-to-cost is a MULTIPLE (ratio), not money despite value_kind=money. Do not currency-format or sum.",
+"high_value": true,
+"figure": ""
+},
+"exerciseEntries[].date": {
+"name": "exercise date",
+"synonyms": [
+"date exercised"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"exerciseEntries[].numberOfExercisedUnits": {
+"name": "exercised units",
+"synonyms": [
+"units exercised",
+"shares exercised"
+],
+"gotchas": "value_kind money but this is a unit/share count | value_kind=money but this is a unit/SHARE COUNT, not dollars. Do not treat as currency or roll into money aggregates.",
+"high_value": true,
+"figure": ""
+},
+"expectedTransactions[].type": {
+"name": "expected transaction type",
+"synonyms": [
+"planned equity txn type"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].date": {
+"name": "expected transaction date",
+"synonyms": [
+"planned txn date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].rateToBaseCurrency": {
+"name": "FX rate to base currency",
+"synonyms": [
+"exchange rate",
+"fx rate"
+],
+"gotchas": "an FX conversion rate, not an interest rate | This is an FX CONVERSION RATE, not an interest rate and not money. Do not treat as a yield/percent; it is the multiplier used to convert the transaction currency to base currency.",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].pricePerUnit": {
+"name": "expected price per unit",
+"synonyms": [
+"planned price per share"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].numberOfUnits": {
+"name": "expected units",
+"synonyms": [
+"planned units",
+"planned shares"
+],
+"gotchas": "value_kind money but this is a unit/share count",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].total": {
+"name": "expected transaction total",
+"synonyms": [
+"planned txn amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].canceled": {
+"name": "expected transaction canceled flag",
+"synonyms": [
+"is canceled"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.total": {
+"name": "linked-loan distribution total",
+"synonyms": [
+"distribution total"
+],
+"gotchas": "NET of fee/credit components; use .principal for an interest basis",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.principal": {
+"name": "linked-loan distribution principal",
+"synonyms": [
+"principal portion of distribution"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.indexedPrincipal": {
+"name": "linked-loan indexed principal",
+"synonyms": [
+"inflation-indexed principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.compoundingInterest": {
+"name": "linked-loan compounding interest",
+"synonyms": [
+"compound interest portion"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.accruedCompoundingInterest": {
+"name": "linked-loan accrued compounding interest",
+"synonyms": [
+"accrued compound interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.interest": {
+"name": "linked-loan distribution interest",
+"synonyms": [
+"interest portion of distribution"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.fees[].name": {
+"name": "linked-loan fee name",
+"synonyms": [
+"fee label"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.fees[].amount": {
+"name": "linked-loan fee amount",
+"synonyms": [
+"fee charged"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.fees[].periodCharge": {
+"name": "linked-loan fee period charge",
+"synonyms": [
+"fee accrued this period"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.penalties[].name": {
+"name": "linked-loan penalty name",
+"synonyms": [
+"penalty label"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.penalties[].amount": {
+"name": "linked-loan penalty amount",
+"synonyms": [
+"penalty charged"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.penalties[].periodCharge": {
+"name": "linked-loan penalty period charge",
+"synonyms": [
+"penalty accrued this period"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.totalFees": {
+"name": "linked-loan total fees",
+"synonyms": [
+"sum of fees"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.totalPenalties": {
+"name": "linked-loan total penalties",
+"synonyms": [
+"sum of penalties"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.totalTaxes": {
+"name": "linked-loan total taxes",
+"synonyms": [
+"sum of taxes"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.distribution.totalWithTaxes": {
+"name": "linked-loan distribution incl. taxes",
+"synonyms": [
+"grossed-up distribution"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.outstandingLoanBalance": {
+"name": "linked-loan outstanding balance",
+"synonyms": [
+"loan balance after txn"
+],
+"gotchas": "snapshot tied to this linked-loan txn, not the equity itself",
+"high_value": false,
+"figure": "outstanding_balance"
+},
+"expectedTransactions[].loanTransaction.date": {
+"name": "linked-loan transaction date",
+"synonyms": [
+"txn date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.effectiveDate": {
+"name": "linked-loan effective date",
+"synonyms": [
+"value date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.type": {
+"name": "linked-loan transaction type",
+"synonyms": [
+"txn type"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.rateToBaseCurrency": {
+"name": "linked-loan FX rate",
+"synonyms": [
+"exchange rate"
+],
+"gotchas": "FX rate, not an interest rate | FX conversion rate on the linked loan transaction, not an interest rate or money. Do not misread as a yield.",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.oid.rate": {
+"name": "OID override rate",
+"synonyms": [
+"original issue discount rate"
+],
+"gotchas": "PERCENT not fraction (e.g. 14 means 14%) | OID override rate is a PERCENT, not a fraction (e.g. 14 means 14%, not 0.14). Do not divide by 100 a second time or treat as a 0..1 fraction in interest math.",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.oid.amount": {
+"name": "OID override amount",
+"synonyms": [
+"original issue discount amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.outstanding.total": {
+"name": "override outstanding total",
+"synonyms": [
+"overridden total outstanding"
+],
+"gotchas": "NET of fee/credit components; use .principal for interest basis",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.outstanding.principal": {
+"name": "override outstanding principal",
+"synonyms": [
+"overridden principal outstanding"
+],
+"gotchas": "",
+"high_value": false,
+"figure": "principal_outstanding"
+},
+"expectedTransactions[].loanTransaction.override.outstanding.interest": {
+"name": "override outstanding interest",
+"synonyms": [
+"overridden accrued interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.due.total": {
+"name": "override amount due total",
+"synonyms": [
+"overridden total due"
+],
+"gotchas": "NET total; use components for breakdown",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.due.principal": {
+"name": "override principal due",
+"synonyms": [
+"overridden principal due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.due.interest": {
+"name": "override interest due",
+"synonyms": [
+"overridden interest due"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.override.realizedPrincipal": {
+"name": "override realized principal",
+"synonyms": [
+"realized principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.amount": {
+"name": "linked debt-sale amount",
+"synonyms": [
+"debt sell amount",
+"participation sold amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.sellPercentage": {
+"name": "linked debt-sale percentage",
+"synonyms": [
+"sell %",
+"participation %"
+],
+"gotchas": "a percentage share sold",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.date": {
+"name": "linked debt-sale date",
+"synonyms": [
+"sale date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.status": {
+"name": "linked debt-sale status",
+"synonyms": [
+"sale status"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.sellComponents[].sellerPreSell": {
+"name": "debt-sale seller pre-sell",
+"synonyms": [
+"seller balance before sale"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.sellComponents[].sellerPostSell": {
+"name": "debt-sale seller post-sell",
+"synonyms": [
+"seller balance after sale"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.loanFundingDebtSell.sellComponents[].buyerPostSell": {
+"name": "debt-sale buyer post-sell",
+"synonyms": [
+"buyer balance after sale"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.distribution.principal": {
+"name": "input distribution principal",
+"synonyms": [
+"entered principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.distribution.interest": {
+"name": "input distribution interest",
+"synonyms": [
+"entered interest"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.deductedPrincipal": {
+"name": "input deducted principal",
+"synonyms": [
+"principal deducted"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.totalDistribution": {
+"name": "input total distribution",
+"synonyms": [
+"entered total distribution"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.baseNominalPrincipal": {
+"name": "input base nominal principal",
+"synonyms": [
+"nominal principal"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.relatedEquityTransaction.pricePerUnit": {
+"name": "linked equity-txn price per unit",
+"synonyms": [
+"price per share"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.transactionInput.relatedEquityTransaction.numberOfUnits": {
+"name": "linked equity-txn units",
+"synonyms": [
+"units",
+"shares"
+],
+"gotchas": "value_kind money but this is a unit/share count",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.oidOverride.rate": {
+"name": "OID override rate (alt)",
+"synonyms": [
+"original issue discount rate"
+],
+"gotchas": "PERCENT not fraction | Alt OID override rate is a PERCENT, not a fraction (e.g. 14 means 14%). Mirror handling of override.oid.rate; pick one canonical path to avoid double-counting two override fields for the same loan.",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.oidOverride.amount": {
+"name": "OID override amount (alt)",
+"synonyms": [
+"original issue discount amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.oidOverride.breakdown[].amount": {
+"name": "OID breakdown amount",
+"synonyms": [
+"OID component amount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.oidOverride.breakdown[].amortized": {
+"name": "OID amortized",
+"synonyms": [
+"amortized discount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"expectedTransactions[].loanTransaction.oidOverride.breakdown[].unamortized": {
+"name": "OID unamortized",
+"synonyms": [
+"unamortized discount"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.name": {
+"name": "investor name",
+"synonyms": [
+"LP name",
+"funder name"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investor.legalName": {
+"name": "investor legal name",
+"synonyms": [
+"legal entity name"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.type": {
+"name": "investor type",
+"synonyms": [
+"entity type",
+"LP type"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.currency": {
+"name": "investor currency",
+"synonyms": [
+"investor base currency"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.isClosed": {
+"name": "investor closed flag",
+"synonyms": [
+"account closed"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.kpis.irr": {
+"name": "investor IRR",
+"synonyms": [
+"internal rate of return"
+],
+"gotchas": "likely a percent/rate despite value_kind money; an example >1 means percent | IRR is a PERCENT/rate, not money despite value_kind money. Confirm whether the raw value is already in percent (e.g. 18 = 18%) or a fraction (0.18). An example >1 means it is delivered as a percent and must NOT be multiplied by 100 again, nor summed as a dollar amount.",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investor.kpis.dpi": {
+"name": "investor DPI",
+"synonyms": [
+"distributions to paid-in",
+"cash multiple"
+],
+"gotchas": "a multiple, not money despite value_kind money | DPI is a MULTIPLE (distributions/paid-in), not money despite value_kind=money. Do not currency-format or sum across investors.",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investor.balance": {
+"name": "investor balance",
+"synonyms": [
+"account balance",
+"cash balance"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investor.totalDistributedByEntity": {
+"name": "distributed by entity to investor",
+"synonyms": [
+"distributions paid out",
+"total distributed"
+],
+"gotchas": "directional: amount the entity paid to this investor | Directional: amount the ENTITY PAID OUT to this investor. Do not confuse with distributions received from a target; verify direction before netting against contributions.",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investor.totalDistributedToEntity": {
+"name": "distributed to entity by investor",
+"synonyms": [
+"returned to entity"
+],
+"gotchas": "directional opposite of totalDistributedByEntity",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.totalCommitmentToEntity": {
+"name": "investor commitment to entity",
+"synonyms": [
+"committed capital",
+"commitment"
+],
+"gotchas": "directional: investor's commitment into this entity | Directional figure: investor's commitment INTO this entity. Do not conflate with funding-source-level commitment or with amounts the entity owes out; ensure direction (investor->entity) matches the question before summing.",
+"high_value": true,
+"figure": "funding_commitment"
+},
+"fundingSources[].investor.totalCommitmentByEntity": {
+"name": "commitment by entity",
+"synonyms": [
+"entity-side commitment"
+],
+"gotchas": "directional opposite",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.totalInvestedInEntity": {
+"name": "invested in entity",
+"synonyms": [
+"capital invested",
+"contributed capital",
+"paid-in"
+],
+"gotchas": "directional: invested into this entity | Directional: amount invested INTO this entity (portfolio_contributed). Distinct from commitment (may be unfunded) and from totalInvestedInTarget at the funding-source level; do not double-count both the investor-level and funding-source-level invested figures.",
+"high_value": true,
+"figure": "portfolio_contributed"
+},
+"fundingSources[].investor.totalInvestedByEntity": {
+"name": "invested by entity",
+"synonyms": [
+"entity-side invested"
+],
+"gotchas": "directional opposite",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.cashAvailabilityChart[].balance": {
+"name": "investor cash availability balance",
+"synonyms": [
+"projected cash balance"
+],
+"gotchas": "time-series point; expected flag marks forecast vs actual",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investor.cashAvailabilityChart[].date": {
+"name": "investor cash availability date",
+"synonyms": [
+"balance date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investmentTransactions[].amount": {
+"name": "investment contribution amount",
+"synonyms": [
+"capital call",
+"contribution",
+"drawdown"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].investmentTransactions[].date": {
+"name": "investment date",
+"synonyms": [
+"contribution date",
+"call date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].investmentTransactions[].canceled": {
+"name": "investment canceled flag",
+"synonyms": [
+"is canceled"
+],
+"gotchas": "exclude canceled txns from rollups",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].distributionTransactions[].amount": {
+"name": "distribution amount",
+"synonyms": [
+"payout",
+"distribution"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].distributionTransactions[].date": {
+"name": "distribution date",
+"synonyms": [
+"payout date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].distributionTransactions[].canceled": {
+"name": "distribution canceled flag",
+"synonyms": [
+"is canceled"
+],
+"gotchas": "exclude canceled txns from rollups",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].commitment": {
+"name": "funding-source commitment",
+"synonyms": [
+"committed amount",
+"commitment"
+],
+"gotchas": "",
+"high_value": true,
+"figure": "funding_commitment"
+},
+"fundingSources[].commitmentPercentage": {
+"name": "funding-source commitment percentage",
+"synonyms": [
+"commitment %",
+"ownership %",
+"pro-rata share"
+],
+"gotchas": "a percentage share of total commitment | Percentage share of total commitment (funding_participation). Confirm percent (e.g. 25 = 25%) vs fraction (0.25) before deriving a dollar amount; do not sum across sources unless reconciling to 100%.",
+"high_value": true,
+"figure": "funding_participation"
+},
+"fundingSources[].date": {
+"name": "funding-source date",
+"synonyms": [
+"funding date"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].isCanceled": {
+"name": "funding-source canceled flag",
+"synonyms": [
+"is canceled"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"fundingSources[].totalDistributedToInvestor": {
+"name": "total distributed to investor",
+"synonyms": [
+"total payouts to investor"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].totalInvestedInTarget": {
+"name": "total invested in target",
+"synonyms": [
+"capital deployed",
+"total contributed"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"fundingSources[].commitmentInOriginalCurrency": {
+"name": "commitment in original currency",
+"synonyms": [
+"native-currency commitment"
+],
+"gotchas": "pre-FX-conversion amount; pair with originalCurrency",
+"high_value": false,
+"figure": ""
+},
+"summary.shareholding": {
+"name": "shareholding percentage",
+"synonyms": [
+"ownership %",
+"equity stake",
+"holding %"
+],
+"gotchas": "a percentage stake despite value_kind money | value_kind=money but this is a PERCENTAGE ownership stake. Confirm percent vs fraction encoding; never deliver as a dollar figure or sum across positions.",
+"high_value": true,
+"figure": ""
+},
+"summary.numberOfUnitsHeld": {
+"name": "units held",
+"synonyms": [
+"shares held",
+"total units"
+],
+"gotchas": "value_kind money but this is a unit/share count | value_kind=money but this is a unit/SHARE COUNT, not dollars. Multiply by valuations[].pricePerUnit to get value; do not currency-format directly.",
+"high_value": true,
+"figure": ""
+},
+"summary.currentHoldingsValue": {
+"name": "current holdings value",
+"synonyms": [
+"market value",
+"current value",
+"NAV of holding"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.totalExercisePrice": {
+"name": "total exercise price",
+"synonyms": [
+"aggregate strike cost"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"summary.totalExercisedUnits": {
+"name": "total exercised units",
+"synonyms": [
+"units exercised to date"
+],
+"gotchas": "value_kind money but this is a unit/share count",
+"high_value": false,
+"figure": ""
+},
+"summary.cost": {
+"name": "cost basis",
+"synonyms": [
+"acquisition cost",
+"invested cost",
+"basis"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.unrealizedGains": {
+"name": "unrealized gains",
+"synonyms": [
+"paper gains",
+"unrealized P&L",
+"mark-to-market gain"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"summary.numberOfUnallocatedUnits": {
+"name": "unallocated units",
+"synonyms": [
+"unassigned units",
+"remaining units"
+],
+"gotchas": "value_kind money but this is a unit/share count",
+"high_value": false,
+"figure": ""
+},
+"valuations[].type": {
+"name": "valuation type",
+"synonyms": [
+"valuation method",
+"mark type"
+],
+"gotchas": "",
+"high_value": false,
+"figure": ""
+},
+"valuations[].date": {
+"name": "valuation date",
+"synonyms": [
+"mark date",
+"as-of date"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"valuations[].pricePerUnit": {
+"name": "valuation price per unit",
+"synonyms": [
+"price per share",
+"mark price",
+"NAV per unit"
+],
+"gotchas": "",
+"high_value": true,
+"figure": ""
+},
+"valuations[].totalIssuedUnits": {
+"name": "total issued units",
+"synonyms": [
+"shares outstanding",
+"total units issued"
+],
+"gotchas": "value_kind money but this is a unit/share count; use to compute fully-diluted value",
+"high_value": false,
+"figure": ""
+}
+}
+}
