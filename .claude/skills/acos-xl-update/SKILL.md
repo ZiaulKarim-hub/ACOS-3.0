@@ -1,6 +1,6 @@
 ---
 name: acos-xl-update
-description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, carry-forward-aware), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
+description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, and RECENT — sourced only to meetings from the last two weeks, primary focus the last week; loans with no recent meeting get "No recent updates received"), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -35,8 +35,11 @@ draft into the Dropbox series is a separate, user-driven step.
 2. **Never fabricate a number.** Every payoff comes from acos-hypercore-ask (provenance-bound and
    reconciled) or the cell is left unchanged / flagged for the user. No estimated or remembered
    figures. If Hypercore refuses or is unavailable for a loan, REPORT it — do not guess.
-3. **Never fabricate an update.** Progress / blocker bullets are grounded in acos-fireflies-ask
-   findings and/or the prior week's still-relevant bullets. No invented events.
+3. **Never fabricate an update — and keep it RECENT.** Progress / blocker bullets are grounded in
+   acos-fireflies-ask meetings from the **last two weeks** (no source older than 14 days before the
+   report date), primary focus on the **last week**. No invented events, and no stale storyline carried
+   from an old meeting — a loan with no qualifying recent meeting gets `"No recent updates received from
+   the borrower."` (See Phase 3, and the machine-enforced `--min-date` cutoff.)
 4. **Appearance-safe.** The engine writes values/text and sets `fullCalcOnLoad` — it does NOT
    change formulas or formatting. Do not run destructive reformatting. Riverdale's payoff is a
    date-driven FORMULA — never overwrite it; it recalculates from the report date.
@@ -150,23 +153,33 @@ doppler run --project hypercore-ask --config dev_personal -- \
 - If a figure REFUSES or resolves to an unexpected loan, leave that payoff cell unchanged and flag
   it in the Phase 5 report — never write an unverified number.
 
-### Phase 3 — Narrative (acos-fireflies-ask — diplomatic, carry-forward-aware)
+### Phase 3 — Narrative (acos-fireflies-ask — RECENT: ≤2 weeks, last week primary)
 For each loan worksheet, build the **Progress Made This Week** bullets (≤5) and any **Key Issues /
-Blockers** bullets:
+Blockers** bullets. **This is a WEEKLY update — recency is a hard rule, not a preference.**
 
-1. **Start from continuity.** Read the prior week's bullets (`progress_current` / `blocker_current`
-   from the manifest). Many updates remain relevant week-to-week — keep the still-true ones
-   (verbatim or lightly refreshed).
-2. **Pull new updates from Fireflies** for that loan/property:
+0. **RECENCY RULE (mandatory).** Compute the cutoff = **report date − 14 days** (e.g. a 07/05 report →
+   `2026-06-21`). Build the **eligible meeting allow-list** = every cached Fireflies meeting dated on or
+   after the cutoff (`fireflies_search.py list --from <cutoff>`; refresh the cache first). A bullet may
+   cite ONLY an eligible meeting — **never anything older**. The **primary focus is the LAST WEEK**
+   (report date − 7 days .. report date): lead with those meetings; the earlier half of the window is
+   secondary context only. This recency is also machine-enforced downstream by
+   `xl_provenance.py --min-date <cutoff>` (any older source is flagged `OLDER THAN CUTOFF` and the
+   `stale_sources` count must be 0).
+1. **Compose fresh from the eligible window — do NOT carry stale storylines.** The prior week's bullets
+   (`progress_current` from the manifest) tell you which storylines to LOOK FOR, but a storyline that
+   has **no eligible-meeting mention this cycle is DROPPED, not carried.** Portfolio-wide meetings
+   (the weekly *Credit Committee / Portfolio* and *Pipeline Meeting*) are the best place to find updates
+   on quieter loans.
+2. **Pull each loan's recent activity from Fireflies** (eligible meetings only):
    ```
-   /acos-fireflies-ask "What are the latest updates, decisions, or next steps on the <loan/property> loan?"
+   /acos-fireflies-ask "What happened on the <loan/property> loan since <cutoff>?"
    ```
-   Use the loan's real-world name/property for the query (e.g. Motel 6 for Riverdale, Beehive for
-   Ascent Senior, the property city/name for the others).
-3. **Merge & prioritize** carry-forward + new into a single list; drop the stale/resolved; if more
-   than 5, keep the **top 5** most material (payoff-relevant, legal/foreclosure, refinance/extension,
-   buyer/sale progress). Fewer than 5 (or none) is fine — "No recent updates received from the
-   borrower" is an acceptable neutral bullet, matching prior weeks.
+   Use the loan's real-world name/property/borrower for the query (e.g. Motel 6 / Warburton for
+   Riverdale, Beehive / Wolfgramm for Ascent Senior, the property city/name for the others).
+3. **If NO eligible meeting substantively discusses a loan, its ONLY bullet is** the honest neutral
+   `"No recent updates received from the borrower."` — do NOT recycle an old point dressed as current.
+   Otherwise keep the **top 5** most material recent points (payoff-relevant, legal/foreclosure,
+   refinance/extension, buyer/sale progress).
 4. **Negative items / blockers → the Key Issues / Blockers section** (≤3), not Progress.
 5. **Tone (learned from prior files):** short, factual, active voice; name the actor (OKOA,
    borrower, legal, foreclosure team); forward-looking; **diplomatic and business-formal** — never
@@ -210,12 +223,13 @@ Assemble a provenance spec from your Phase 2 payoff provenances (`payoffs[]`) + 
 references (`sheets[].bullets[]` with `kind` / `prior_week_basis` / `sources[]`), then:
 ```
 python3 .claude/skills/acos-xl-update/scripts/xl_provenance.py \
-  --spec prov_spec.json \
+  --spec prov_spec.json  --min-date <cutoff YYYY-MM-DD> \
   --out "/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft/XL Ant Portfolio Update <YYYYMMDD> — Sources & Provenance.md"
 ```
-Confirm the audit prints `unverified_quotes: 0` and `sourceless_new_bullets: 0`. If a quote is flagged
-NOT LOCATED, fix it (copy it verbatim from the transcript) and re-render — an unverifiable reference
-must not ship.
+Confirm the audit prints `unverified_quotes: 0`, `sourceless_new_bullets: 0`, AND `stale_sources: 0`.
+`--min-date` = the Phase 3 cutoff (report date − 14 days); any source older than it is flagged
+`OLDER THAN CUTOFF` and counts as stale. If any count is non-zero, fix it (copy the quote verbatim,
+or drop an out-of-window source) and re-render — an unverifiable or stale reference must not ship.
 
 ### Phase 5 — Report for review (do NOT send)
 Give the user clickable links to **both** the workbook AND the reference companion, plus a concise
