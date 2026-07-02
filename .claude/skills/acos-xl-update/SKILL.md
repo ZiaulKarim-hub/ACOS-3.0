@@ -16,13 +16,22 @@ worksheet per loan) end-to-end: roll the file forward a week, refresh each loan'
 **acos-hypercore-ask**, and refresh each loan's narrative from **acos-fireflies-ask** — producing
 a review-ready `.xlsx` that is indistinguishable in look from the prior weeks.
 
-**Source folder (the report series):**
+**Source folder (READ — the published report series):**
 `/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Investor Relations/Investor Updates/XL/XL Weekly Update`
-Files are named `XL Ant Portfolio Update YYYYMMDD.xlsx`. Each week = prior week + 7 days.
+Files are named `XL Ant Portfolio Update YYYYMMDD.xlsx`. Each week = prior week + 7 days. This folder is
+read-only to the skill — it is never written to.
+
+**Output folder (WRITE — the draft staging area):**
+`/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft`
+The skill ALWAYS writes the new workbook here, never back into the Dropbox series. This is the engine
+default (`DEFAULT_OUT_FOLDER`); override per-run with `prepare --out-folder DIR`. Publishing an approved
+draft into the Dropbox series is a separate, user-driven step.
 
 ## Non-negotiable guardrails
 
-1. **Non-destructive.** Only ever write the NEW duplicated file. Never modify a prior week's file.
+1. **Non-destructive.** Only ever write the NEW duplicated file, and only into the **draft output
+   folder** (`/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft`). Never modify a prior week's file
+   and never write into the Dropbox source series.
 2. **Never fabricate a number.** Every payoff comes from acos-hypercore-ask (provenance-bound and
    reconciled) or the cell is left unchanged / flagged for the user. No estimated or remembered
    figures. If Hypercore refuses or is unavailable for a loan, REPORT it — do not guess.
@@ -37,10 +46,12 @@ Files are named `XL Ant Portfolio Update YYYYMMDD.xlsx`. Each week = prior week 
 ## The engine
 
 `scripts/xl_update.py` (openpyxl, stdlib) owns all mechanical Excel work:
-- `prepare --folder DIR [--weeks 1] [--date YYYYMMDD]` — duplicate the latest file → +1 week,
-  set `Riverdale!B3` (the single date input; every other sheet's `B3` = `=Riverdale!B3`), set
-  `fullCalcOnLoad`, and print a **manifest** (per-sheet payoff cell + whether it's a formula +
-  current value + the current Progress/Blocker bullets — the carry-forward source).
+- `prepare --folder DIR [--weeks 1] [--date YYYYMMDD] [--out-folder DIR]` — duplicate the latest file
+  (found in the source `--folder`) into the **draft output folder** → +1 week, set `Riverdale!B3` (the
+  single date input; every other sheet's `B3` = `=Riverdale!B3`), set `fullCalcOnLoad`, and print a
+  **manifest** (per-sheet payoff cell + whether it's a formula + current value + the current
+  Progress/Blocker bullets — the carry-forward source, plus `output_folder`). `--out-folder` defaults to
+  `/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft`; pass it only to override.
 - `manifest --file XLSX` — inspect a file (same shape) without changing anything.
 - `apply --file XLSX --spec SPEC.json` — write payoffs + bullets from a spec (below).
 - `verify --file XLSX` — post-write sanity checks.
@@ -82,9 +93,11 @@ Run (quote the path):
 python3 .claude/skills/acos-xl-update/scripts/xl_update.py prepare \
   --folder "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Investor Relations/Investor Updates/XL/XL Weekly Update"
 ```
-Capture the manifest: the new file path, the report date (`YYYY-MM-DD` and `MM/DD/YYYY`), and each
-sheet's `payoff_current` + `progress_current` + `blocker_current` (the **carry-forward source** for
-Phase 3). Confirm the new filename ends with the expected +7-day date.
+The new workbook is created in the draft output folder (`/Users/zee/Documents/OKOA/XL Ant Weekly Update
+Draft`) — the Dropbox source is only read. Capture the manifest: the new file path (`file` +
+`output_folder`), the report date (`YYYY-MM-DD` and `MM/DD/YYYY`), and each sheet's `payoff_current` +
+`progress_current` + `blocker_current` (the **carry-forward source** for Phase 3). Confirm the new
+filename ends with the expected +7-day date.
 
 ### Phase 2 — Payoff figures (acos-hypercore-ask — verified, never guessed)
 For each loan below, fetch the figure LIVE under Doppler. Prefer Hypercore's own native value; the

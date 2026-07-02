@@ -42,6 +42,17 @@ import openpyxl
 
 
 # ---------------------------------------------------------------------------
+# Output location
+# ---------------------------------------------------------------------------
+
+# The skill READS the latest published workbook from the Dropbox series (passed via --folder)
+# but always WRITES the new draft here — never back into the live Dropbox series. This keeps the
+# published series clean and enforces "produce a draft for review" at the filesystem level.
+# Override per-run with `prepare --out-folder DIR`.
+DEFAULT_OUT_FOLDER = "/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft"
+
+
+# ---------------------------------------------------------------------------
 # Filename / date handling
 # ---------------------------------------------------------------------------
 
@@ -73,8 +84,11 @@ def find_latest(folder: str) -> str:
     return os.path.join(folder, best[1])
 
 
-def next_filename(latest_path: str, *, weeks: int = 1, explicit_date: str = None) -> tuple:
-    """(new_path, new_date) for the roll-forward. Default = latest date + 7*weeks days."""
+def next_filename(latest_path: str, *, weeks: int = 1, explicit_date: str = None,
+                  out_folder: str = None) -> tuple:
+    """(new_path, new_date) for the roll-forward. Default = latest date + 7*weeks days.
+    The new file is placed in `out_folder` (the draft folder) when given, otherwise next to
+    the source file."""
     folder, name = os.path.split(latest_path)
     m = _FNAME_RE.match(name)
     if not m:
@@ -85,7 +99,7 @@ def next_filename(latest_path: str, *, weeks: int = 1, explicit_date: str = None
         cur = datetime.datetime.strptime(m.group("date"), _DATE_FMT).date()
         new_d = cur + datetime.timedelta(days=7 * weeks)
     new_name = f"{m.group('stem')}{new_d.strftime(_DATE_FMT)}{m.group('ext')}"
-    return os.path.join(folder, new_name), new_d
+    return os.path.join(out_folder or folder, new_name), new_d
 
 
 # ---------------------------------------------------------------------------
@@ -176,9 +190,13 @@ def manifest(path: str) -> dict:
 # prepare — duplicate the latest file, roll the date forward
 # ---------------------------------------------------------------------------
 
-def prepare(folder: str, *, weeks: int = 1, explicit_date: str = None, overwrite: bool = False) -> dict:
+def prepare(folder: str, *, weeks: int = 1, explicit_date: str = None, overwrite: bool = False,
+            out_folder: str = None) -> dict:
     latest = find_latest(folder)
-    new_path, new_date = next_filename(latest, weeks=weeks, explicit_date=explicit_date)
+    out_dir = out_folder or DEFAULT_OUT_FOLDER
+    os.makedirs(out_dir, exist_ok=True)      # write the draft here, never back into the source series
+    new_path, new_date = next_filename(latest, weeks=weeks, explicit_date=explicit_date,
+                                       out_folder=out_dir)
     if os.path.exists(new_path) and not overwrite:
         raise FileExistsError(f"target already exists: {new_path} (pass --overwrite to replace)")
     shutil.copy2(latest, new_path)           # copy2 preserves metadata; originals untouched
@@ -195,6 +213,7 @@ def prepare(folder: str, *, weeks: int = 1, explicit_date: str = None, overwrite
     wb.save(new_path)
     man = manifest(new_path)
     man["copied_from"] = latest
+    man["output_folder"] = out_dir
     man["report_date_mmddyyyy"] = new_date.strftime("%m/%d/%Y")
     return man
 
@@ -285,9 +304,11 @@ def main(argv=None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     pp = sub.add_parser("prepare", help="duplicate latest report -> +N weeks and set the date")
-    pp.add_argument("--folder", required=True)
+    pp.add_argument("--folder", required=True, help="SOURCE folder holding the published dated series (read-only)")
     pp.add_argument("--weeks", type=int, default=1)
     pp.add_argument("--date", dest="date", default=None, help="explicit new date YYYYMMDD (overrides +weeks)")
+    pp.add_argument("--out-folder", dest="out_folder", default=DEFAULT_OUT_FOLDER,
+                    help=f"folder to write the new draft into (default: {DEFAULT_OUT_FOLDER})")
     pp.add_argument("--overwrite", action="store_true")
 
     pm = sub.add_parser("manifest", help="inspect a report file")
@@ -303,7 +324,7 @@ def main(argv=None) -> int:
     a = p.parse_args(argv)
     if a.cmd == "prepare":
         print(json.dumps(prepare(a.folder, weeks=a.weeks, explicit_date=a.date,
-                                 overwrite=a.overwrite), indent=2, default=str))
+                                 overwrite=a.overwrite, out_folder=a.out_folder), indent=2, default=str))
     elif a.cmd == "manifest":
         print(json.dumps(manifest(a.file), indent=2, default=str))
     elif a.cmd == "apply":
