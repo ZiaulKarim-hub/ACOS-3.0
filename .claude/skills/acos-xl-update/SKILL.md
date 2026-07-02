@@ -1,6 +1,6 @@
 ---
 name: acos-xl-update
-description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, carry-forward-aware), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
+description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, carry-forward-aware), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -42,6 +42,13 @@ draft into the Dropbox series is a separate, user-driven step.
    date-driven FORMULA — never overwrite it; it recalculates from the report date.
 5. **Review before send.** This skill produces a DRAFT for the user to review. It does not email
    or share anything. Always end by reporting every number's provenance and every bullet's source.
+6. **Every update is referenced — in a SEPARATE companion.** No narrative bullet ships without a
+   reference. Each bullet is either quoted to the exact Fireflies meeting line (meeting title, date +
+   time in Mountain Time, speaker, in-meeting timestamp) or explicitly marked as carried forward from a
+   named prior week. These references live ONLY in the standalone `… — Sources & Provenance.md`
+   companion in the draft folder — NEVER inside the investor workbook (no investor-visible internal
+   quotes). Quotes are machine-verified verbatim against the cached transcripts; a quote that cannot be
+   located is flagged, not shipped.
 
 ## The engine
 
@@ -57,6 +64,14 @@ draft into the Dropbox series is a separate, user-driven step.
 - `verify --file XLSX` — post-write sanity checks.
 
 Cells are located by ROW LABEL per sheet (offsets differ between tabs) — never hardcode rows.
+
+`scripts/xl_provenance.py` (openpyxl-free, stdlib + zoneinfo) renders the SEPARATE reference companion:
+- `--spec SPEC.json --out FILE.md` — from a provenance spec (one entry per bullet: `kind`
+  = carried/refreshed/new, `prior_week_basis`, and `sources[]` of `{meeting_id, meeting_title, quote}`,
+  plus an optional `payoffs[]` block for the Hypercore figure trail), it loads each cited Fireflies
+  transcript from `~/.fireflies-cache`, resolves the meeting's Mountain-Time datetime, locates each
+  quote VERBATIM (attaching speaker + in-meeting mm:ss), and writes a Markdown audit into the draft
+  folder. It prints `{unverified_quotes, sourceless_new_bullets}` — both MUST be 0 before delivery.
 
 ## The workbook (8 worksheets)
 
@@ -159,8 +174,18 @@ Blockers** bullets:
    - "OKOA continues buyout discussions with multiple institutional parties ahead of the auction."
    - "Final extension draft has been reviewed by legal and returned to the borrower for execution."
    - "No recent updates received from the borrower."
+6. **Capture provenance for EVERY bullet (mandatory — feeds the reference companion).** As you
+   finalize each bullet, record its reference:
+   - NEW / REFRESHED bullet → the source meeting(s): `meeting_id` (the cached transcript id),
+     `meeting_title`, and the VERBATIM supporting line(s) copied **exactly** from the transcript
+     `sentences[].text` (must be findable as an exact substring — no paraphrase, no stitched
+     fragments). A bullet may cite more than one meeting.
+   - CARRIED / REFRESHED bullet → the exact prior-week text it rehashes (`prior_week_basis`).
+   - A NEW bullet with NO source is not allowed — cut it or find the source. Prefer tight 1–2
+     sentence quotes. Best pulled with a parallel per-loan pass (search the loan terms, read the
+     top `~/.fireflies-cache/transcripts/<id>.json` + `extracts/<id>.yaml`, quote verbatim).
 
-### Phase 4 — Write & verify
+### Phase 4 — Write, verify & reference
 Assemble a spec and apply it (omit no-change sheets and the template; omit `payoff` where the cell
 is a formula or unchanged):
 ```json
@@ -180,14 +205,30 @@ python3 .claude/skills/acos-xl-update/scripts/xl_update.py verify --file "<new f
 ```
 Heed `apply` warnings (e.g. a formula-cell payoff is refused; too many bullets for the slots).
 
+**Then render the reference companion** (mandatory — same draft folder, NEVER inside the workbook).
+Assemble a provenance spec from your Phase 2 payoff provenances (`payoffs[]`) + your Phase 3 per-bullet
+references (`sheets[].bullets[]` with `kind` / `prior_week_basis` / `sources[]`), then:
+```
+python3 .claude/skills/acos-xl-update/scripts/xl_provenance.py \
+  --spec prov_spec.json \
+  --out "/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft/XL Ant Portfolio Update <YYYYMMDD> — Sources & Provenance.md"
+```
+Confirm the audit prints `unverified_quotes: 0` and `sourceless_new_bullets: 0`. If a quote is flagged
+NOT LOCATED, fix it (copy it verbatim from the transcript) and re-render — an unverifiable reference
+must not ship.
+
 ### Phase 5 — Report for review (do NOT send)
-Give the user a clickable link to the new file and a concise change report:
+Give the user clickable links to **both** the workbook AND the reference companion, plus a concise
+change report:
 - **Payoffs:** each loan → old value → new value → **Hypercore provenance** (or "unchanged" /
   "flagged: <reason>"). Show the Lux II arithmetic (current + 7 × per-diem).
 - **Narrative:** per loan, the final bullets, marked `[carried forward]` vs `[new — Fireflies: <meeting/date>]`.
+- **Reference companion:** link the standalone `… — Sources & Provenance.md` and state the audit result
+  (`unverified_quotes: 0`, `sourceless_new_bullets: 0`). Every bullet is quoted to its exact meeting
+  line (date + time) or marked carried-forward. The workbook itself carries no references.
 - **Verify** result + any warnings.
-- Remind the user to review before sending to XL; offer to open the file
-  (`open -a "Google Chrome"` for a quick view, or Excel).
+- Remind the user to review before sending to XL; offer to open the workbook (Excel — it recalculates
+  the Riverdale formula on open) and the companion.
 
 ## Trust & failure posture
 - A payoff that can't be Hypercore-verified is **left unchanged and flagged** — never estimated.
@@ -198,6 +239,10 @@ Give the user a clickable link to the new file and a concise change report:
 
 ## Dependencies
 - acos-hypercore-ask (this repo; `.claude/scripts/hca-*.py`; Doppler `hypercore-ask/dev_personal`).
-- acos-fireflies-ask (global skill; Doppler `acos-fireflies-ask/dev_personal`).
-- Python 3 + openpyxl (system python3 has it). LibreOffice optional (only to bake cached values /
-  render a PDF preview; not required — Excel recalculates on open via `fullCalcOnLoad`).
+- acos-fireflies-ask (global skill; Doppler `acos-fireflies-ask/dev_personal`). Refresh its cache
+  (`fireflies_client.py refresh` + `fireflies_extract.py`) before Phase 3 so the newest meetings are
+  available; the reference companion reads verbatim quotes + datetimes straight from
+  `~/.fireflies-cache/transcripts/<id>.json`.
+- Python 3 + openpyxl (system python3 has it); `xl_provenance.py` needs only stdlib + `zoneinfo`
+  (Python 3.9+). LibreOffice optional (only to bake cached values / render a PDF preview; not required
+  — Excel recalculates on open via `fullCalcOnLoad`).
