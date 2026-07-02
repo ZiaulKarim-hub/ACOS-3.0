@@ -175,6 +175,29 @@ class LearnedStore:
         """A learned {entity_type, id, name} for this exact (normalized) name query, or None."""
         return self.load()["entity_resolutions"].get(_norm(name_query))
 
+    def entity_for_query(self, query: str) -> Optional[dict]:
+        """A learned {entity_type, id, name} for a free-text query. Exact (normalized) match
+        FIRST; else the learned alias ALL of whose tokens appear in the query (so a specific
+        multi-word alias like '409 hodson' still fires inside '409 hodson north carolina loan',
+        while a single incidental shared token never triggers an unrelated alias). The alias with
+        the MOST matched tokens wins (ties broken by the longer phrase), so a specific alias beats
+        a broader one. Routing only — the id is re-fetched live downstream (never a stale value)."""
+        exact = self.entity_for(query)
+        if exact:
+            return exact
+        qtoks = set(_norm(query).split())
+        if not qtoks:
+            return None
+        res = self.load()["entity_resolutions"]
+        best = None  # (n_alias_tokens, len_key, key)
+        for key, val in res.items():
+            atoks = set(key.split())
+            if atoks and atoks <= qtoks:            # every alias token is present in the query
+                rank = (len(atoks), len(key))
+                if best is None or rank > best[0]:
+                    best = (rank, val)
+        return best[1] if best else None
+
 
 _DEFAULT_STORE: Optional[LearnedStore] = None
 

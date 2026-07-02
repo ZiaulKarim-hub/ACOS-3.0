@@ -85,6 +85,10 @@ def _adapter():
     return _load("hca_adapter", "hca-adapter.py")
 
 
+def _learned():
+    return _load("hca_learned", "hca-learned.py")
+
+
 # ---------------------------------------------------------------------------
 # Normalization + scoring (pure; stdlib only)
 # ---------------------------------------------------------------------------
@@ -172,13 +176,20 @@ class ResolveError(RuntimeError):
 # Minimal selection for resolution: id + name (+ status for the candidate display).
 _RESOLVE_SELECTION = "id name status"
 
+# Hierarchy selection for drill-down. Uses the RELIABLE parentLoan edge (child -> parent). The
+# reverse edge groupSubLoans is present in the schema but returned EMPTY by the backend
+# (verified live 2026-07 on the North Carolina II facility), so tranche enumeration keys on
+# parentLoan.id, never on groupSubLoans.
+_TREE_SELECTION = "id name status parentLoan { id name status }"
 
-def _build_loans_query() -> str:
-    """The RELIABLE list query (searchString filter + offset paging)."""
+
+def _build_loans_query(selection: str = _RESOLVE_SELECTION) -> str:
+    """The RELIABLE list query (searchString filter + offset paging), with a caller-chosen field
+    selection (defaults to the minimal id/name/status used for resolution)."""
     return (
         "query HCAResolveLoans($filter: LoansFilterInput, $skip: Int, $limit: Int) { "
         "loans(filter: $filter, skip: $skip, limit: $limit) { "
-        f"totalFilteredRecords pageItems {{ {_RESOLVE_SELECTION} }} "
+        f"totalFilteredRecords pageItems {{ {selection} }} "
         "} }"
     )
 
@@ -196,12 +207,17 @@ class LoanResolver:
                  high_confidence: float = HIGH_CONFIDENCE,
                  ambiguity_gap: float = AMBIGUITY_GAP,
                  min_candidate_score: float = MIN_CANDIDATE_SCORE,
-                 fetch_limit: int = DEFAULT_FETCH_LIMIT):
+                 fetch_limit: int = DEFAULT_FETCH_LIMIT,
+                 learned=None):
         self._client = client
         self._high = float(high_confidence)
         self._gap = float(ambiguity_gap)
         self._min = float(min_candidate_score)
         self._limit = int(fetch_limit)
+        # Optional LearnedStore (hca-learned). When present, a CONFIRMED alias resolves the name
+        # directly ("learn routing, never values" — the id is re-fetched live downstream). None
+        # preserves the pure-fuzzy behavior the existing resolver tests assert.
+        self._learned = learned
 
     # --- live client (lazy) ------------------------------------------------
     def _ensure_client(self):
@@ -219,14 +235,15 @@ class LoanResolver:
         return self._client
 
     # --- fetch real loans via the reliable list query ----------------------
-    def _fetch_loans(self, search_string: Optional[str]) -> list:
-        """Fetch real loan rows (id, name, status) via loans(filter:{searchString}).
+    def _fetch_loans(self, search_string: Optional[str],
+                     selection: str = _RESOLVE_SELECTION) -> list:
+        """Fetch real loan rows via loans(filter:{searchString}) with a chosen field selection.
 
         Walks offset pages to completion (bounded by totalFilteredRecords). Returns the
         raw pageItems list. Raises ResolveError on a live failure (never fabricates rows).
         """
         client = self._ensure_client()
-        query = _build_loans_query()
+        query = _build_loans_query(selection)
         filt = {"searchString": search_string} if search_string else {}
         rows: list = []
         skip = 0
@@ -285,6 +302,18 @@ class LoanResolver:
                 ordered.append(s)
         return ordered
 
+    def _live_loan_by_id(self, loan_id, name_hint) -> Optional[dict]:
+        """Fetch the CURRENT row for a known loan id via the RELIABLE list query — searchString
+        built from the name_hint, with the unfiltered fallback so the loan is found even if the
+        hint is stale. Returns the live {id, name, status} row, or None if the id no longer
+        resolves to any loan. Never fabricates: only a row the API actually returned."""
+        target = str(loan_id)
+        for st in self._search_tokens(name_hint or ""):
+            for r in self._fetch_loans(st):
+                if str(r.get("id")) == target:
+                    return r
+        return None
+
     # --- public: resolve a name query --------------------------------------
     def resolve_loan(self, name_query: str) -> dict:
         """Resolve a loan-name query into {match, candidates, ...}.
@@ -308,6 +337,27 @@ class LoanResolver:
             return {"query": name_query, "match": None, "resolved": False,
                     "ambiguous": False, "candidates": [], "echo": None,
                     "reason": "empty query"}
+
+        # LEARNED ALIAS (routing only). A CONFIRMED name -> loan id resolves directly, WITHOUT
+        # re-scoring — this is how an off-name query like "409 Hodson" (which shares no distinctive
+        # token with "North Carolina II - 409 High Point") resolves next time. The learned id is
+        # RE-VERIFIED live here: we fetch the current row and return its LIVE name/status (never the
+        # stored label, which could drift). A dangling alias (id no longer resolves) is NOT trusted
+        # — we fall through to fuzzy/partial resolution rather than return a stale id.
+        if self._learned is not None:
+            le = self._learned.entity_for_query(name_query)
+            if le and le.get("entity_type") == "loan" and str(le.get("id") or "").strip():
+                lid = str(le["id"])
+                live = self._live_loan_by_id(lid, le.get("name"))
+                if live is not None:
+                    m = {"id": lid, "name": live.get("name"), "score": 1.0,
+                         "status": live.get("status")}
+                    return {"query": name_query, "match": m, "resolved": True, "ambiguous": False,
+                            "candidates": [m], "via": "learned",
+                            "echo": (f"learned routing: {name_query!r} -> "
+                                     f"{(live.get('name') or lid)!r} ({lid}) [verified live]"),
+                            "reason": "resolved via a learned (confirmed) alias, re-verified live"}
+                # dangling learned alias -> do not trust it; continue to fuzzy/partial below.
 
         # Fetch via the reliable list query; try progressively broader searchStrings so a
         # real loan is never missed by an over-strict server-side filter.
@@ -334,6 +384,18 @@ class LoanResolver:
         candidates = [c for c in scored if c["score"] >= self._min]
 
         if not candidates:
+            # PARTIAL-SIGNAL FALLBACK: no candidate cleared the full-name threshold, but the query
+            # may still name a real loan by an attribute (a street number, a distinctive word).
+            # Surface loans that share such a DISCRIMINATOR token so the caller can offer them for
+            # drill-down, instead of a dead-end miss. These are capped below high-confidence and
+            # ALWAYS disambiguate — never auto-resolve.
+            partial = self._partial_signal_candidates(name_query, rows)
+            if partial:
+                return {"query": name_query, "match": None, "resolved": False,
+                        "ambiguous": True, "candidates": partial, "echo": None, "partial": True,
+                        "reason": ("no full-name match; showing partial/attribute matches on a "
+                                   "shared discriminator token — disambiguation required "
+                                   "(never auto-picked)")}
             return {"query": name_query, "match": None, "resolved": False,
                     "ambiguous": False, "candidates": [], "echo": None,
                     "reason": "no candidate scored above the minimum threshold (no match)"}
@@ -361,6 +423,113 @@ class LoanResolver:
                 "reason": reason}
 
 
+    # --- partial-signal surfacing (Layer 1) --------------------------------
+    def _partial_signal_candidates(self, name_query: str, rows: list) -> list:
+        """Surface loans sharing a DISCRIMINATOR token with the query when no full-name match
+        cleared the threshold. Discriminators = numeric tokens (a street number like '409' is
+        very selective) + alpha tokens of length >= 3 (drops noise like 'st'/'of'). Scored by the
+        fraction of discriminators matched, CAPPED below high-confidence so these always
+        disambiguate (never auto-resolve). Returns a ranked list (may be empty)."""
+        qtoks = _tokens(name_query)
+        disc = {t for t in qtoks if t.isdigit() or len(t) >= 3}
+        if not disc:
+            return []
+        out = []
+        for r in rows:
+            name = r.get("name")
+            if not name:
+                continue
+            hits = disc & _tokens(name)
+            if not hits:
+                continue
+            num_hit = any(h.isdigit() for h in hits)
+            frac = len(hits) / len(disc)
+            # 0.40 base + up to 0.39 for coverage + 0.10 if a numeric discriminator matched;
+            # hard-capped at 0.79 (< HIGH_CONFIDENCE) so a partial hit can never auto-resolve.
+            score = min(0.79, round(0.40 + 0.39 * frac + (0.10 if num_hit else 0.0), 4))
+            out.append({"id": r.get("id"), "name": name, "score": score,
+                        "status": r.get("status"), "partial": True,
+                        "matched_tokens": sorted(hits)})
+        out.sort(key=lambda c: (-c["score"], str(c.get("name"))))
+        return out
+
+    # --- native hierarchical drill-down (Layer 2) --------------------------
+    def group_tree(self, name_query: str, *, seed_id: Optional[str] = None) -> dict:
+        """The multi-tranche facility tree for a loan name (or a seed id), via the RELIABLE
+        parentLoan edge. Returns:
+            {query, state ∈ {OK, SINGLE, NO_MATCH}, root:{id,name}|None,
+             tranches:[{id,name,status,is_root}], via, is_multi_tranche, reason}
+        Enumerates tranches by matching parentLoan.id == root.id (the reverse groupSubLoans edge
+        is not populated by the backend). Read-only; real rows only, never invented."""
+        # 1) gather rows matching the query (with the hierarchy selection).
+        rows_by_id: dict = {}
+        for st in self._search_tokens(name_query):
+            for r in self._fetch_loans(st, selection=_TREE_SELECTION):
+                rid = r.get("id")
+                if rid is not None and str(rid) not in rows_by_id:
+                    rows_by_id[str(rid)] = r
+        if not rows_by_id:
+            return {"query": name_query, "state": "NO_MATCH", "root": None, "tranches": [],
+                    "via": "parentLoan", "is_multi_tranche": False,
+                    "reason": "no loans matched the query"}
+
+        # 2) choose the seed: an explicit id if given, else the best name-scored row that clears
+        #    the minimum score. (The searchString fetch includes an UNFILTERED fallback so a real
+        #    loan is never missed — which means rows_by_id is rarely empty; the score gate, not
+        #    empty rows, is what distinguishes a real facility from a genuine miss.)
+        seed = None
+        if seed_id is not None:
+            seed = rows_by_id.get(str(seed_id))
+        if seed is None:
+            best = sorted(rows_by_id.values(),
+                          key=lambda r: -score_name(name_query, r.get("name") or ""))[0]
+            if score_name(name_query, best.get("name") or "") >= self._min:
+                seed = best
+        if seed is None:
+            return {"query": name_query, "state": "NO_MATCH", "root": None, "tranches": [],
+                    "via": "parentLoan", "is_multi_tranche": False,
+                    "reason": "no loan matched the query above the minimum score"}
+
+        # 3) the facility ROOT: the seed's parent if it has one, else the seed itself.
+        par = seed.get("parentLoan") or None
+        if par and par.get("id"):
+            root_id, root_name = str(par["id"]), par.get("name")
+        else:
+            root_id, root_name = str(seed.get("id")), seed.get("name")
+
+        # 4) enumerate the tranches: broaden the search by the root's name prefix so every sibling
+        #    is pulled, then keep the root + every loan whose parentLoan.id == root_id.
+        prefix = (root_name or name_query).split(" - ")[0].strip() or name_query
+        tree_rows: dict = dict(rows_by_id)
+        for st in self._search_tokens(prefix):
+            for r in self._fetch_loans(st, selection=_TREE_SELECTION):
+                rid = r.get("id")
+                if rid is not None and str(rid) not in tree_rows:
+                    tree_rows[str(rid)] = r
+
+        # Prefer the LIVE fetched row's name for the root over the (possibly stale) name carried
+        # on the child's parentLoan edge, and use that ONE value everywhere so the same root id
+        # never appears with two different names in the same response.
+        root_row = tree_rows.get(root_id)
+        root_display = root_row.get("name") if root_row else root_name
+        root_status = root_row.get("status") if root_row else None
+        tranches = [{"id": root_id, "name": root_display, "status": root_status, "is_root": True}]
+        for rid, r in tree_rows.items():
+            p = r.get("parentLoan") or {}
+            if str(p.get("id")) == root_id and rid != root_id:
+                tranches.append({"id": rid, "name": r.get("name"),
+                                 "status": r.get("status"), "is_root": False})
+
+        tranches.sort(key=lambda t: (not t["is_root"],
+                                     int(t["id"]) if str(t["id"]).isdigit() else 0))
+        is_multi = len(tranches) > 1
+        return {"query": name_query, "state": "OK" if is_multi else "SINGLE",
+                "root": {"id": root_id, "name": root_display}, "tranches": tranches,
+                "via": "parentLoan", "is_multi_tranche": is_multi,
+                "reason": (f"multi-tranche facility: {len(tranches) - 1} tranche(s) under the root"
+                           if is_multi else "no sub-tranches found (standalone loan)")}
+
+
 # ---------------------------------------------------------------------------
 # Module-level convenience
 # ---------------------------------------------------------------------------
@@ -380,11 +549,22 @@ def main(argv=None) -> int:
         description="acos-hypercore-ask fuzzy loan-name resolver (reliable list query).")
     parser.add_argument("--resolve", dest="resolve", metavar="LOAN_NAME",
                         help="loan name (or partial) to resolve to a real loan id")
+    parser.add_argument("--group-tree", dest="group_tree", metavar="LOAN_NAME",
+                        help="show the multi-tranche facility tree (root + tranches) for a name")
+    parser.add_argument("--no-learned", dest="no_learned", action="store_true",
+                        help="ignore the learned-alias store (pure fuzzy resolution)")
     args = parser.parse_args(argv)
-    if not args.resolve:
-        parser.error('a loan name is required: --resolve "beehive"')
+    if not args.resolve and not args.group_tree:
+        parser.error('provide --resolve "beehive" or --group-tree "North Carolina II"')
+    # Consult the learned-alias store by default so a CONFIRMED off-name query resolves directly.
+    learned = None if args.no_learned else _learned().default_store()
+    resolver = LoanResolver(learned=learned)
     try:
-        result = resolve_loan(args.resolve)
+        if args.group_tree:
+            result = resolver.group_tree(args.group_tree)
+            print(json.dumps(result, indent=2, default=str))
+            return 0 if result.get("state") in ("OK", "SINGLE") else 1
+        result = resolver.resolve_loan(args.resolve)
     except ResolveError as e:
         print(json.dumps({"error": str(e), "resolved": False, "candidates": []}, indent=2))
         return 2
