@@ -33,8 +33,30 @@ export ETERNITY_PROTOCOL_CORE_RAN=1
 # Same sanitization pattern Claude Code uses for project-dir names:
 # slashes/spaces/dots → dashes. The newest *.jsonl in that dir is this session.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+# 2026-07-06 ROBUST, PANE-SCOPED session-id derivation (mirrors the skill fix).
+# The old `ls -t *.jsonl | head -1` was RACY in a multi-session project and could
+# resolve a DIFFERENT (superseded) same-pane session, arming /clear + resume for
+# the WRONG session. Honor an explicit CMUX_ETERNITY_SESSION_ID pin; else scope to
+# THIS pane ($CMUX_SURFACE_ID) + newest surface-matching transcript; fail SAFE if
+# 2+ same-pane transcripts are freshly active (<90s).
+_ETS="$HOME/Library/Application Support/acos-token-monitor/state"
+SESSION_ID="${CMUX_ETERNITY_SESSION_ID:-}"; _fresh=0; _now=$(date +%s)
+if [[ -z "$SESSION_ID" && -n "${CMUX_SURFACE_ID:-}" ]]; then
+    while IFS= read -r _j; do
+        [[ -n "$_j" ]] || continue
+        _s=$(basename "$_j" .jsonl)
+        [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
+        [[ -z "$SESSION_ID" ]] && SESSION_ID="$_s"
+        _m=$(stat -f %m "$_j" 2>/dev/null || stat -c %Y "$_j" 2>/dev/null)
+        [[ -n "$_m" ]] && (( _now - _m < 90 )) && _fresh=$(( _fresh + 1 ))
+    done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
+    if (( _fresh > 1 )); then
+        echo "ERROR: $_fresh sessions in this cmux surface are freshly active — cannot safely pick the current one; aborting (set CMUX_ETERNITY_SESSION_ID to override)" >&2
+        return 1 2>/dev/null || exit 1
+    fi
+fi
+[[ -z "$SESSION_ID" ]] && SESSION_ID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)" .jsonl 2>/dev/null)
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 if [[ -z "$SESSION_ID" ]]; then
     echo "ERROR: could not determine session_id (no JSONL in $SESSION_DIR)" >&2
     return 1 2>/dev/null || exit 1

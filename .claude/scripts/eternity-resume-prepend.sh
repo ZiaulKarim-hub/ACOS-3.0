@@ -193,13 +193,43 @@ mkdir -p "$CONSUMED"
 TS=$(date +%s)
 
 if [[ -n "$POINTER_MATCHED" ]]; then
-    # Pointer path: consume ONLY the per-PID pointer. The .resume.md sibling in
-    # memory/handoffs/ is archival and is NEVER consumed; no pending-resume file
-    # is touched here (preserve-pending-resumes invariant).
+    # Pointer path: consume the per-PID pointer AND its same-cycle twin
+    # pending-resume file. Both carriers hold IDENTICAL content — core.sh cp's
+    # pending-resume-<sid>.txt into the .resume.md sibling — so consuming only
+    # the pointer used to leave the twin live, and the very next prompt re-fired
+    # it via the last-resort path (3): the double-injection bug. The pointer
+    # records session_id_at_write, which is exactly the sid that keys the twin
+    # (core.sh: RESUME_FILE=pending-resume-${SESSION_ID}.txt and pointer
+    # session_id_at_write=${SESSION_ID}), so we disarm precisely THIS pane's own
+    # twin — never another concurrent pane's resume.
+    #
+    # The .resume.md sibling in memory/handoffs/ is archival and is STILL never
+    # consumed. The twin is MOVED to consumed/ (never rm'd), so the
+    # preserve-pending-resumes invariant holds.
+    PTR_SID=$(grep '^session_id_at_write:' "$POINTER_MATCHED" 2>/dev/null \
+        | head -1 | sed 's/^session_id_at_write:[[:space:]]*//' \
+        | sed 's/[[:space:]]*$//')
+
     if [[ -e "$POINTER_MATCHED" ]]; then
         DEST="$CONSUMED/$(basename "$POINTER_MATCHED")"
         [[ -e "$DEST" ]] && DEST="${DEST}.${TS}"
         mv "$POINTER_MATCHED" "$DEST"
+    fi
+
+    # Disarm the twin (+ its arming sidecars) so path (3) cannot re-inject it on
+    # the next prompt. Guard the sid shape so a corrupt pointer can never build a
+    # bad path or glob the state dir.
+    if [[ "$PTR_SID" =~ ^[0-9a-fA-F-]+$ ]]; then
+        for ARTIFACT in \
+            "$STATE/pending-resume-${PTR_SID}.txt" \
+            "$STATE/.resume-pending-${PTR_SID}" \
+            "$STATE/.compact-fired-${PTR_SID}"
+        do
+            [[ -e "$ARTIFACT" ]] || continue
+            DEST="$CONSUMED/$(basename "$ARTIFACT")"
+            [[ -e "$DEST" ]] && DEST="${DEST}.${TS}"
+            mv "$ARTIFACT" "$DEST"
+        done
     fi
 else
     # Legacy path: move the matched pending-resume file + its arming flags to

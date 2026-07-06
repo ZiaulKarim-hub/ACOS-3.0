@@ -96,8 +96,38 @@ Threshold and other config live at
 
 ```bash
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+# 2026-07-06 ROBUST, PANE-SCOPED session-id derivation. The old
+# `ls -t *.jsonl | head -1` was RACY in a multi-session project: it returned
+# whichever transcript flushed last — which could be a DIFFERENT (even
+# superseded) same-pane session — arming /clear + a handoff against the WRONG
+# session (observed live). Surface-file mtime and pid files are ALSO pollutable,
+# so the only trustworthy signal is the transcript actively written during THIS
+# turn. Scope to THIS pane ($CMUX_SURFACE_ID), take the newest surface-matching
+# transcript, and FAIL SAFE: if 2+ same-pane transcripts are BOTH freshly active
+# (<90s) we cannot tell which is current, so abort instead of guessing. An
+# explicit CMUX_ETERNITY_SESSION_ID env pin overrides everything.
+_ETS="$HOME/Library/Application Support/acos-token-monitor/state"
+SESSION_ID="${CMUX_ETERNITY_SESSION_ID:-}"; _fresh=0; _now=$(date +%s)
+if [[ -z "$SESSION_ID" && -n "${CMUX_SURFACE_ID:-}" ]]; then
+    while IFS= read -r _j; do
+        [[ -n "$_j" ]] || continue
+        _s=$(basename "$_j" .jsonl)
+        [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
+        [[ -z "$SESSION_ID" ]] && SESSION_ID="$_s"
+        _m=$(stat -f %m "$_j" 2>/dev/null || stat -c %Y "$_j" 2>/dev/null)
+        [[ -n "$_m" ]] && (( _now - _m < 90 )) && _fresh=$(( _fresh + 1 ))
+    done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
+    if (( _fresh > 1 )); then
+        echo "ERROR: $_fresh sessions in this cmux surface are freshly active — cannot"
+        echo "       safely determine the current session. ABORTING (won't risk /clear on"
+        echo "       the wrong session). Retry when only one is active, or set"
+        echo "       CMUX_ETERNITY_SESSION_ID=<your-session-id> and re-run."
+        exit 1
+    fi
+fi
+# Fallback (non-cmux / no surface match): original newest-transcript heuristic.
+[[ -z "$SESSION_ID" ]] && SESSION_ID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)" .jsonl 2>/dev/null)
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
 # Mirror token-watcher.py EXACTLY (^[a-zA-Z0-9_-]{1,128}$). A real UUID always
 # passes; a failure means the derivation is broken before SESSION_ID hits paths.
@@ -257,8 +287,38 @@ automatically post-/clear. A one-block status is enough.
 ```bash
 # Re-derive base vars (own shell) + recover Step 3 exports from the sidecar.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+# 2026-07-06 ROBUST, PANE-SCOPED session-id derivation. The old
+# `ls -t *.jsonl | head -1` was RACY in a multi-session project: it returned
+# whichever transcript flushed last — which could be a DIFFERENT (even
+# superseded) same-pane session — arming /clear + a handoff against the WRONG
+# session (observed live). Surface-file mtime and pid files are ALSO pollutable,
+# so the only trustworthy signal is the transcript actively written during THIS
+# turn. Scope to THIS pane ($CMUX_SURFACE_ID), take the newest surface-matching
+# transcript, and FAIL SAFE: if 2+ same-pane transcripts are BOTH freshly active
+# (<90s) we cannot tell which is current, so abort instead of guessing. An
+# explicit CMUX_ETERNITY_SESSION_ID env pin overrides everything.
+_ETS="$HOME/Library/Application Support/acos-token-monitor/state"
+SESSION_ID="${CMUX_ETERNITY_SESSION_ID:-}"; _fresh=0; _now=$(date +%s)
+if [[ -z "$SESSION_ID" && -n "${CMUX_SURFACE_ID:-}" ]]; then
+    while IFS= read -r _j; do
+        [[ -n "$_j" ]] || continue
+        _s=$(basename "$_j" .jsonl)
+        [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
+        [[ -z "$SESSION_ID" ]] && SESSION_ID="$_s"
+        _m=$(stat -f %m "$_j" 2>/dev/null || stat -c %Y "$_j" 2>/dev/null)
+        [[ -n "$_m" ]] && (( _now - _m < 90 )) && _fresh=$(( _fresh + 1 ))
+    done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
+    if (( _fresh > 1 )); then
+        echo "ERROR: $_fresh sessions in this cmux surface are freshly active — cannot"
+        echo "       safely determine the current session. ABORTING (won't risk /clear on"
+        echo "       the wrong session). Retry when only one is active, or set"
+        echo "       CMUX_ETERNITY_SESSION_ID=<your-session-id> and re-run."
+        exit 1
+    fi
+fi
+# Fallback (non-cmux / no surface match): original newest-transcript heuristic.
+[[ -z "$SESSION_ID" ]] && SESSION_ID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)" .jsonl 2>/dev/null)
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 [[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
 CMUX_SURFACE_FILE="$STATE/cmux-surface-${SESSION_ID}"
@@ -320,8 +380,38 @@ probe we can't run). A successful probe is cached in
 ```bash
 # Re-derive base vars (own shell) + recover Step 3 exports from the sidecar.
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+# 2026-07-06 ROBUST, PANE-SCOPED session-id derivation. The old
+# `ls -t *.jsonl | head -1` was RACY in a multi-session project: it returned
+# whichever transcript flushed last — which could be a DIFFERENT (even
+# superseded) same-pane session — arming /clear + a handoff against the WRONG
+# session (observed live). Surface-file mtime and pid files are ALSO pollutable,
+# so the only trustworthy signal is the transcript actively written during THIS
+# turn. Scope to THIS pane ($CMUX_SURFACE_ID), take the newest surface-matching
+# transcript, and FAIL SAFE: if 2+ same-pane transcripts are BOTH freshly active
+# (<90s) we cannot tell which is current, so abort instead of guessing. An
+# explicit CMUX_ETERNITY_SESSION_ID env pin overrides everything.
+_ETS="$HOME/Library/Application Support/acos-token-monitor/state"
+SESSION_ID="${CMUX_ETERNITY_SESSION_ID:-}"; _fresh=0; _now=$(date +%s)
+if [[ -z "$SESSION_ID" && -n "${CMUX_SURFACE_ID:-}" ]]; then
+    while IFS= read -r _j; do
+        [[ -n "$_j" ]] || continue
+        _s=$(basename "$_j" .jsonl)
+        [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
+        [[ -z "$SESSION_ID" ]] && SESSION_ID="$_s"
+        _m=$(stat -f %m "$_j" 2>/dev/null || stat -c %Y "$_j" 2>/dev/null)
+        [[ -n "$_m" ]] && (( _now - _m < 90 )) && _fresh=$(( _fresh + 1 ))
+    done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
+    if (( _fresh > 1 )); then
+        echo "ERROR: $_fresh sessions in this cmux surface are freshly active — cannot"
+        echo "       safely determine the current session. ABORTING (won't risk /clear on"
+        echo "       the wrong session). Retry when only one is active, or set"
+        echo "       CMUX_ETERNITY_SESSION_ID=<your-session-id> and re-run."
+        exit 1
+    fi
+fi
+# Fallback (non-cmux / no surface match): original newest-transcript heuristic.
+[[ -z "$SESSION_ID" ]] && SESSION_ID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)" .jsonl 2>/dev/null)
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
 [[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID"; exit 1; }
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
