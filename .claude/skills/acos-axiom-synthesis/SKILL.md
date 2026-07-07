@@ -21,25 +21,32 @@ the discipline it imposes between "many opinions" and "one trusted answer."
 Full design rationale: `planning/acos-axiom-synthesis/PLAN.md`.
 Formal claim-state contract: `STATE-MACHINE.md` (authoritative).
 
-## Build status (incremental build — substrate first)
+## Build status (all phases built; deterministic core fixture-tested)
 
-**BUILT & fixture-tested (Phases 0–1, deterministic, no model calls):**
-- `scripts/axiom_ledger.py` — the single library: canonical hashing, the append-only
-  hash-chained ledger, the **single-writer invariants** (§15.1), the **legal state
-  machine** (§15.2), the **pure-function resumable frontier** (§15.3), and the renderer.
-- `scripts/ledger_writer.py` — the ONLY writer of claim state; refuses illegal writes
-  with a non-zero exit (2 schema · 3 invariant · 4 illegal transition).
-- `scripts/verify_ledger.py` — tamper-evidence check over the hash-chain.
-- `scripts/next_claims.py` — the resumable work frontier (pure function of on-disk state).
-- `scripts/render.py` — generates `source-of-truth.md` (UNRESOLVED CONFLICTS / OPEN
-  QUESTIONS / SUPERSESSION LOG surfaced).
-- `tests/test_substrate.py` — 19 offline assertions covering all of the above.
+**BUILT & fixture-tested (Phases 0–7, deterministic, no model calls — 54 assertions):**
+- Substrate (Phases 0–1): `axiom_ledger.py` (single-writer hash-chained ledger,
+  §15.1 invariants, §15.2 state machine, §15.3 resumable frontier, renderer),
+  `ledger_writer.py` / `verify_ledger.py` / `next_claims.py` / `render.py`.
+- `decircularize.py` (Phase 2) — the citogenesis firewall: collapse non-independent
+  sources to one vote BEFORE any corroboration counting.
+- `grade_fuse.py` (Phase 3) — two-axis grading + claim-level fusion (median/majority/
+  linear-pool) + dual-track tally + single-source cap.
+- `falsify.py` + `oscillation_guard.py` (Phase 4) — nullification checklist +
+  falsification-gate disposition + the settled-objections oscillation guard.
+- `resolve.py` (Phase 5) — the precedence-ladder conflict resolver + consensus polarity,
+  terminating in UNRESOLVED (never a fabricated winner).
+- `lifecycle.py` (Phase 6) — the demotion cascade (truth-maintenance over dependents).
+- `coverage.py` + `mirror.py` (Phase 7) — the final coverage gate + ACOS evidence/metrics mirror.
+- `orchestrate.py` — the end-to-end driver (stages 2→7 over the ledger).
+- Tests: `tests/test_substrate.py` (19) + `tests/test_pipeline.py` (35, incl. the
+  end-to-end adversarial cases).
 
-**NOT yet built (Phases 2–7 — the model-dependent pipeline):** decompose + de-circularize,
-two-axis grading + fusion, the falsification gate + oscillation guard, conflict
-resolution + abstention, living re-synthesis, coverage gate + review. See PLAN.md §11.
-
-Until those land, invoke the substrate directly (below); the full wizard is a stub.
+**What still requires live models (the ONLY non-deterministic part):** producing the
+atomic claims (elicitation), the ACH pass, and the independent different-family refuter
+verdict. These are performed by `Task()`-spawned agents that fill the `fact` structure
+`orchestrate.run()` consumes. In tests they are supplied as fixtures / a mock runner, so
+the whole pipeline is provable offline. The agent prompts live in `prompts/` (drafts) and
+the thin wizard that spawns them is the remaining glue (see PLAN.md §7, §10.2).
 
 ## The pipeline (target — PLAN.md §3)
 
