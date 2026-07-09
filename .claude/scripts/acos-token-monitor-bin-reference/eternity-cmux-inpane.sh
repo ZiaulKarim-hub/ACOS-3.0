@@ -103,23 +103,47 @@ if [ -n "$CR" ]; then
     # resuming an un-cleared session. So commit the bookkeeping ONLY on a verified
     # send; on failure leave the flags + guard + .last-total intact so the next Stop
     # retries THIS path (we exit 0 either way, never falling through to Priority-2).
-    if "$CMUX" ping >/dev/null 2>&1 && send "/clear"; then
-        date -u +%Y-%m-%dT%H:%M:%SZ > "$STATE/.clear-fired-$SID" 2>/dev/null
-        # Consume the WHOLE request set for this cycle, not just the matched flag.
-        # The skill arms both a surface- and a sid-keyed flag; removing only the one
-        # we matched leaves its twin to re-trigger a SECOND, context-destroying
-        # /clear on the next Stop (cmux keeps the same surface + sid across /clear).
-        rm -f "$STATE/.clear-requested-surface-$SURF" \
-              "$STATE/.clear-requested-$SID" \
-              "$STATE/.clear-requested-$SID.failed" 2>/dev/null
-        # RE-ARM for the next cycle. cmux /clear keeps the SAME session id, so the once-per-session
-        # .inpane-fired guard (set when we fired the handoff) would otherwise block every future
-        # 400k crossing — the eternity loop would run exactly once. Drop the guard, and drop the now-
-        # stale pre-clear total so we don't instantly re-fire on it: the next fire waits for the daemon
-        # to write a fresh post-clear total that climbs back over the threshold.
-        rm -f "$STATE/.inpane-fired-$SID" 2>/dev/null
-        rm -f "$STATE/.last-total-$SID" 2>/dev/null
+    if "$CMUX" ping >/dev/null 2>&1; then
+        if send "/clear"; then
+            date -u +%Y-%m-%dT%H:%M:%SZ > "$STATE/.clear-fired-$SID" 2>/dev/null
+            # Consume the WHOLE request set for this cycle, not just the matched flag.
+            # The skill arms both a surface- and a sid-keyed flag; removing only the one
+            # we matched leaves its twin to re-trigger a SECOND, context-destroying
+            # /clear on the next Stop (cmux keeps the same surface + sid across /clear).
+            rm -f "$STATE/.clear-requested-surface-$SURF" \
+                  "$STATE/.clear-requested-$SID" \
+                  "$STATE/.clear-requested-$SID.failed" 2>/dev/null
+            # RE-ARM for the next cycle. cmux /clear keeps the SAME session id, so the once-per-session
+            # .inpane-fired guard (set when we fired the handoff) would otherwise block every future
+            # 400k crossing — the eternity loop would run exactly once. Drop the guard, and drop the now-
+            # stale pre-clear total so we don't instantly re-fire on it: the next fire waits for the daemon
+            # to write a fresh post-clear total that climbs back over the threshold.
+            rm -f "$STATE/.inpane-fired-$SID" 2>/dev/null
+            rm -f "$STATE/.last-total-$SID" 2>/dev/null
+            # Recovered — reset the one-shot alert so a FUTURE failure can re-alert.
+            rm -f "$STATE/.alerted-$SID" 2>/dev/null
+        else
+            # ESCALATE (2026-07-09): cmux is UP (ping OK) but the /clear SEND failed —
+            # the target surface is unreachable/gone (cmux was restarted and this
+            # session's surface id died, or the session moved out of cmux). Unlike a
+            # cmux-down blip this will NOT self-heal, and if the session now goes idle
+            # there is no next Stop to retry — the exact silent stall that stranded the
+            # IC session. Raise the SAME alert channel the daemon uses (.eternity-ALERT
+            # log + one-shot macOS notification via the shared .alerted-<sid> marker) so
+            # the user knows to /clear manually. Leave the .clear-requested flag in place
+            # so a later Stop still retries if the surface ever comes back.
+            if [ ! -f "$STATE/.alerted-$SID" ]; then
+                date -u +%Y-%m-%dT%H:%M:%SZ > "$STATE/.alerted-$SID" 2>/dev/null
+                printf '%s  session=%s  in-pane /clear undeliverable — surface %s unreachable (cmux up, surface gone); /clear this pane manually  (in-pane Priority-1)\n' \
+                    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SID" "$SURF" >> "$STATE/.eternity-ALERT" 2>/dev/null
+                osascript -e 'display notification "Eternity /clear could not be delivered — the cmux surface is gone. /clear this pane manually." with title "ACOS Eternity Protocol"' >/dev/null 2>&1 &
+            fi
+        fi
     fi
+    # cmux DOWN (ping failed) → app itself is unreachable (may recover); leave the
+    # flag + guard + .last-total intact so the next Stop retries. No alert here — a
+    # transient cmux restart is expected to self-heal, and the daemon's own health
+    # gate escalates a persistent cmux-down separately.
     exit 0
 fi
 
