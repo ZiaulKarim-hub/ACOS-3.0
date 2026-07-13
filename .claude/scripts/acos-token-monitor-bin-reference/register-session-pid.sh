@@ -99,18 +99,43 @@ for attempt in 1 2 3 4 5; do
         # back to the legacy CGEventPost path for the warp variant. This is
         # the clean, narrow successor to the failed tmux integration: ONE
         # env var, ONE marker file, no socket discovery.
-        if [[ -n "$CMUX_SURFACE_ID" ]]; then
-            # In a live cmux surface → (re)capture the CURRENT surface ref. Because
-            # this runs on EVERY SessionStart (startup/resume/clear/compact), it also
-            # REFRESHES a stale binding after a cmux restart (which mints brand-new
-            # surface ids): the newest SessionStart overwrites with the live surface.
+        # 2026-07-13: GC old learned-dead-surface + failure-counter markers (14-day
+        # window; just bounded cleanup — behavior is gated on FRESHNESS below, not GC).
+        find "$STATE_DIR" -maxdepth 1 \( -name '.cmux-surface-dead-*' -o -name '.cmux-surface-failures-*' \) -mtime +14 -delete 2>/dev/null || true
+        # Is $CMUX_SURFACE_ID a surface the in-pane hook has LEARNED is dead? A
+        # long-lived claude process keeps its LAUNCH $CMUX_SURFACE_ID even after a cmux
+        # restart kills that surface, so a merely-present env var is NOT proof the surface
+        # is live. The in-pane hook writes .cmux-surface-dead-<surf> after >=2 failures.
+        # Honor it ONLY while FRESH (<30min): a genuinely-dead surface keeps failing, so the
+        # in-pane hook keeps refreshing the mark → it stays honored; a wrongly-marked or
+        # since-revived surface stops failing → the mark goes stale → we re-capture and give
+        # it another chance (the in-pane hook clears the mark on the next successful send).
+        # This BOUNDS a false positive to ~the window + the next SessionStart (auto-capture
+        # only runs here, so a heavy pane heals on its next auto-compact) instead of a
+        # PERMANENT warp demotion — critical because the only un-mark path runs in-pane BELOW
+        # the cmux-surface-file gate, so once the surface file is gone it could never run
+        # again (2026-07-13 review: the earlier hard-suppress version deadlocked here).
+        # Guard the id shape so a hostile value can never build a bad marker path.
+        _SURF_DEAD=""; _DEAD_MARK="$STATE_DIR/.cmux-surface-dead-$CMUX_SURFACE_ID"
+        if [[ -n "$CMUX_SURFACE_ID" ]] && [[ "$CMUX_SURFACE_ID" =~ ^[A-Za-z0-9._-]+$ ]] && [[ -e "$_DEAD_MARK" ]]; then
+            _dm=$(stat -f %m "$_DEAD_MARK" 2>/dev/null || echo 0)
+            _now=$(date +%s 2>/dev/null || echo 0)
+            [[ $(( _now - _dm )) -lt 1800 ]] && _SURF_DEAD=1
+        fi
+        if [[ -n "$CMUX_SURFACE_ID" ]] && [[ -z "$_SURF_DEAD" ]]; then
+            # In a live cmux surface (and NOT a learned-dead one) → (re)capture the
+            # CURRENT surface ref. Because this runs on EVERY SessionStart
+            # (startup/resume/clear/compact), it also REFRESHES a stale binding after a
+            # cmux restart (which mints brand-new surface ids): the newest SessionStart
+            # overwrites with the live surface.
             TMP_CMUX=$(mktemp "$STATE_DIR/cmux-surface-${SESSION_ID}.XXXXXX")
             printf "%s\n" "$CMUX_SURFACE_ID" > "$TMP_CMUX"
             mv "$TMP_CMUX" "$STATE_DIR/cmux-surface-$SESSION_ID"
             chmod 600 "$STATE_DIR/cmux-surface-$SESSION_ID" 2>/dev/null || true
         else
-            # 2026-07-09 fix: NOT in a cmux surface right now → INVALIDATE any stale
-            # cmux-surface-<sid> binding for THIS session. Without this, a session that
+            # 2026-07-09 fix (+2026-07-13): NOT in a cmux surface right now, OR
+            # $CMUX_SURFACE_ID names a LEARNED-DEAD surface (see above) → INVALIDATE any
+            # stale cmux-surface-<sid> binding for THIS session. Without this, a session that
             # was once in cmux but is now resumed OUTSIDE it (or that survived a cmux
             # restart which killed its surface) keeps a DEAD surface ref on disk.
             # is_cmux_session() trusts the file's mere existence, so the session stays

@@ -25,6 +25,26 @@ fail-CLOSES on a `bin-manifest.sha256` mismatch, so regenerate that manifest too
 | `register-session-pid.sh` | **SessionStart** hook (registered globally in `~/.claude/settings.json`). Registers the session PID, self-spawns the token-watcher, and captures the cmux surface binding. Contains the 2026-07-09 stale-surface-invalidation fix. |
 | `token-watcher.py` | The per-session **token-watcher daemon** (one process per session, spawned by the launcher after a `bin-manifest.sha256` integrity check). Detects the threshold cross and dispatches the fire; in in-pane mode it is detection-only and the in-pane hooks own injection. Contains the 2026-07-13 NOOP-log-clarity fix. |
 
+## 2026-07-13 fixes captured here (part 2 — learned-dead-surface)
+
+- **Stop eternity re-binding to a DEAD cmux surface** (`register-session-pid.sh` +
+  `eternity-cmux-inpane.sh`). A long-lived claude process keeps its LAUNCH
+  `CMUX_SURFACE_ID` even after a cmux restart kills that surface, so every `/clear`
+  re-captured the dead surface and eternity kept aiming at a corpse (FruitSync
+  `91B2A7DB`). No passive cmux liveness probe exists (`surface.list` needs in-pane
+  TabManager context; an empty `cmux send` is rejected "requires text"), so the only
+  signal is a failed send. The in-pane hook now counts live-app-but-dead-surface send
+  failures (per-surface, reset if >10 min stale so unrelated blips don't accumulate)
+  and at 2 writes `.cmux-surface-dead-<surf>`; SessionStart refuses to re-capture a
+  surface with a **fresh** (<30 min) dead marker → the pane falls to warp-manual.
+- **Self-healing (deadlock-avoidance)**: the marker is honored only while fresh. A
+  genuinely-dead surface keeps failing → the mark stays refreshed → stays suppressed;
+  a wrongly-marked or since-revived surface stops failing → the mark goes stale →
+  SessionStart re-captures → the next successful send clears it. This was the critical
+  fix from a two-round adversarial review: a naive hard-suppress *deadlocked* (marking
+  dead removed the surface file, which severed the only un-mark path until the 14-day
+  GC). Bound is ~30 min + the next SessionStart, not permanent.
+
 ## 2026-07-13 fixes captured here
 
 - **"warp manual-only" log was a red herring** (`token-watcher.py`). `dispatch_threshold_fire`

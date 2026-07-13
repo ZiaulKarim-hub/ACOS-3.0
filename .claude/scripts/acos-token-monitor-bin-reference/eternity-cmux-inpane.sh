@@ -43,6 +43,10 @@ except Exception: pass" 2>/dev/null)
 
 SURF="${CMUX_SURFACE_ID:-$(cat "$STATE/cmux-surface-$SID" 2>/dev/null)}"
 [ -z "$SURF" ] && exit 0
+# Guard the surface id shape: $SURF becomes part of the marker file paths below and
+# must match the regex register-session-pid.sh uses to READ those markers, or the two
+# halves of the fix would key on different names (2026-07-13 review).
+[[ "$SURF" =~ ^[A-Za-z0-9._-]+$ ]] || exit 0
 CMUX="${CMUX_CLAUDE_HOOK_CMUX_BIN:-cmux}"
 command -v "$CMUX" >/dev/null 2>&1 || CMUX="cmux"
 
@@ -60,6 +64,37 @@ send() {
     sleep 0.4; "$CMUX" send --surface "$SURF" -- '\n' >/dev/null 2>&1
     return 0
 }
+
+# ── Learned-dead-surface tracking (2026-07-13, hardened after review) ────────
+# A long-lived claude process keeps its launch $CMUX_SURFACE_ID even after a cmux
+# restart kills that surface, so every /clear re-binds new sessions to a DEAD surface
+# and eternity keeps aiming at a corpse (root cause of the FruitSync 91B2A7DB stall).
+# No passive cmux liveness probe exists (surface.list needs in-pane TabManager context;
+# an empty `cmux send` is rejected "requires text"), so the ONLY signal is a failed send.
+# _surface_send_failed counts failures that occur while cmux is UP (ping OK). The counter
+# RESETS if it has gone STALE (>10min) so two UNRELATED one-off failures far apart can NOT
+# accumulate to a false verdict — only a genuine run of >=2 failures inside a 10-min window
+# marks the surface dead. (Deliberately NOT the daemon's per-SESSION counter; this is
+# per-SURFACE, hence the staleness reset stands in for 'consecutive'.) register-session-pid.sh
+# refuses to re-capture a dead surface, but only while the marker is FRESH, so a wrongly-
+# marked or since-revived surface self-heals rather than sticking — critical because the
+# only un-mark path (_surface_send_ok) runs in-pane BELOW the cmux-surface-file gate, so
+# once the surface file is gone it could never run again. Any verified send resets both.
+_SURF_FAILS="$STATE/.cmux-surface-failures-$SURF"
+_SURF_DEAD="$STATE/.cmux-surface-dead-$SURF"
+_surface_send_failed() {
+    local n now m
+    now=$(date +%s 2>/dev/null || echo 0)
+    m=$(stat -f %m "$_SURF_FAILS" 2>/dev/null || echo 0)
+    if [ -f "$_SURF_FAILS" ] && [ $(( now - m )) -lt 600 ]; then
+        n=$(( $(cat "$_SURF_FAILS" 2>/dev/null || echo 0) + 1 ))
+    else
+        n=1   # stale/absent → FIRST of a fresh run, not a running tally
+    fi
+    printf '%s' "$n" > "$_SURF_FAILS" 2>/dev/null
+    [ "$n" -ge 2 ] && date -u +%Y-%m-%dT%H:%M:%SZ > "$_SURF_DEAD" 2>/dev/null
+}
+_surface_send_ok() { rm -f "$_SURF_FAILS" "$_SURF_DEAD" 2>/dev/null; }
 
 # ── Priority 0: an /exit was requested (acos-complete finished archiving) ─────
 # Mirrors the /clear split: the /acos-complete skill writes the surface-keyed
@@ -120,9 +155,12 @@ if [ -n "$CR" ]; then
             # to write a fresh post-clear total that climbs back over the threshold.
             rm -f "$STATE/.inpane-fired-$SID" 2>/dev/null
             rm -f "$STATE/.last-total-$SID" 2>/dev/null
-            # Recovered — reset the one-shot alert so a FUTURE failure can re-alert.
+            # Recovered — reset the one-shot alert + surface-health so a FUTURE
+            # failure can re-alert / re-learn a dead surface.
             rm -f "$STATE/.alerted-$SID" 2>/dev/null
+            _surface_send_ok
         else
+            _surface_send_failed   # 2 consecutive → mark surface dead (SessionStart stops re-binding)
             # ESCALATE (2026-07-09): cmux is UP (ping OK) but the /clear SEND failed —
             # the target surface is unreachable/gone (cmux was restarted and this
             # session's surface id died, or the session moved out of cmux). Unlike a
@@ -208,8 +246,10 @@ if [ "$TOTAL" -ge "$THRESH" ] && [ ! -f "$GUARD" ]; then
         if send "/acos-eternity-protocol"; then
             date -u +%Y-%m-%dT%H:%M:%SZ > "$GUARD" 2>/dev/null   # verified — confirm
             rm -f "$STATE/.alerted-$SID" 2>/dev/null             # recovered — reset one-shot alert
+            _surface_send_ok                                      # surface proven live — reset health
         else
             rm -f "$GUARD" 2>/dev/null   # send failed — release so next Stop retries
+            _surface_send_failed         # 2 consecutive → mark surface dead (SessionStart stops re-binding)
             # ESCALATE (2026-07-13): cmux is UP (ping OK) but the FIRE send failed —
             # the surface is unreachable/gone (same dead-surface condition as the
             # /clear path in Priority-1). It won't self-heal, and if the session goes
