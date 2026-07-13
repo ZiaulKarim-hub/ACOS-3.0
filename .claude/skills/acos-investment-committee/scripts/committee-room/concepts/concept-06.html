@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investment Committee — Concept 06 — Editorial Engraving</title>
+<style>
+  :root{
+    --paper:#efe7d3;
+    --paper2:#e9e0c9;
+    --paper3:#e1d6ba;
+    --ink:#1c1a15;
+    --ink-soft:#4a463d;
+    --accent:#8a1f1a;
+    --ledger:#3c5440;
+    --rule:#1c1a15;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:Georgia,'Times New Roman',Times,serif;
+    position:relative;
+    min-width:1280px;
+  }
+  body::before{
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:radial-gradient(rgba(28,26,21,0.07) 1px, transparent 1.3px);
+    background-size:5px 5px;
+    pointer-events:none;
+    z-index:0;
+  }
+  .page{
+    position:relative;
+    z-index:1;
+    max-width:1560px;
+    margin:0 auto;
+    padding:26px 44px 50px;
+  }
+
+  /* ---------- MASTHEAD ---------- */
+  .masthead{ text-align:center; padding-bottom:6px; }
+  .masthead-top{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--ink-soft); padding:2px 4px 8px;
+  }
+  .masthead-title{
+    margin:0; font-size:42px; letter-spacing:3px; text-transform:uppercase;
+    font-weight:700; font-family:Georgia,'Times New Roman',serif;
+  }
+  .masthead-sub{
+    margin:4px 0 12px; font-size:13px; font-style:italic; color:var(--ink-soft);
+    letter-spacing:.5px;
+  }
+  .rule-thick{ height:4px; background:var(--rule); margin-bottom:3px; }
+  .rule-thin{ height:1px; background:var(--rule); margin-bottom:12px; }
+  .deal-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 6px 16px; border-bottom:1px solid var(--rule); margin-bottom:14px;
+  }
+  .deal-info{ font-size:15px; font-style:italic; letter-spacing:.3px; }
+  .leaning-stamp{
+    border:2px solid var(--ink); padding:5px 16px; font-size:14px; font-weight:700;
+    letter-spacing:1px; transform:rotate(-2deg); white-space:nowrap;
+    background:rgba(28,26,21,0.02);
+  }
+  .leaning-stamp .decline-word{ color:var(--accent); }
+
+  /* ---------- VOTE BAR ---------- */
+  .vote-bar-wrap{ padding:2px 8px 16px; border-bottom:1px solid var(--rule); margin-bottom:6px; }
+  .vote-bar-label{
+    font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--ink-soft);
+    text-align:center; margin-bottom:9px;
+  }
+  .vote-bar{
+    display:flex; width:100%; height:32px; border:1px solid var(--ink); overflow:hidden;
+    background:var(--paper2);
+  }
+  .vote-seg{
+    display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700;
+    letter-spacing:1.2px; text-transform:uppercase; color:var(--paper); white-space:nowrap;
+    transition:width .7s ease; overflow:hidden;
+  }
+  .vote-seg.for{ background:var(--ledger); justify-content:flex-start; padding-left:12px; }
+  .vote-seg.against{ background:var(--accent); justify-content:flex-end; padding-right:12px; }
+  .vote-seg .n{ font-size:16px; }
+  .roll-call{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:11px; }
+  .roll-dot{ width:12px; height:12px; border-radius:50%; border:1px solid var(--ink); }
+  .roll-dot.for{ background:var(--ledger); }
+  .roll-dot.against{ background:var(--accent); }
+  .roll-note{ font-size:9.5px; font-style:italic; color:var(--ink-soft); margin-left:6px; }
+
+  /* ---------- THEATER (dispatch + arc + podium) ---------- */
+  .theater{ position:relative; margin-top:20px; }
+  .connector-overlay{
+    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    pointer-events:none; overflow:visible;
+  }
+  #connectorLine{ stroke:var(--ink); stroke-width:1.3; stroke-dasharray:5 4; opacity:.7; fill:none; }
+
+  .dispatch-panel{
+    position:relative; z-index:2; width:640px; max-width:80%; margin:0 auto;
+    background:var(--paper2); border-top:4px solid var(--ink); border-bottom:1px solid var(--ink);
+    padding:15px 28px 19px; box-shadow:0 3px 0 rgba(0,0,0,.15); min-height:112px; text-align:left;
+  }
+  .dispatch-kicker{
+    display:inline-block; font-size:10px; letter-spacing:2px; text-transform:uppercase;
+    color:#fff; background:var(--accent); padding:2px 7px; margin-bottom:8px; font-weight:700;
+  }
+  .dispatch-name{ font-size:19px; font-weight:700; letter-spacing:.4px; }
+  .dispatch-rule{ height:1px; background:var(--ink); opacity:.6; margin:6px 0; }
+  .dispatch-meta{
+    font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .dispatch-text{ font-size:14.5px; line-height:1.5; margin:0; min-height:44px; }
+  .dispatch-text::after{ content:'\258C'; margin-left:2px; opacity:.7; }
+
+  .arc-stage{ position:relative; z-index:2; height:400px; margin-top:10px; }
+  .node{ position:absolute; transform:translate(-50%,-50%); text-align:center; z-index:1; cursor:pointer; }
+  .node.active{ z-index:5; }
+
+  .face-wrap{ position:relative; width:78px; height:78px; margin:0 auto; }
+  .face-svg{ width:100%; height:100%; overflow:visible; }
+  .brow, .eye{ transform-box:fill-box; transform-origin:center; }
+  .emotion-badge{
+    position:absolute; top:-8px; right:-10px; font-size:16px;
+    filter:drop-shadow(0 1px 0 rgba(0,0,0,.25));
+  }
+
+  /* --- compact chip (idle) / highlighted chip (active) --- */
+  .chip{
+    margin:6px auto 0; display:inline-flex; flex-direction:column; align-items:center; gap:3px;
+    padding:3px 7px 4px; min-width:58px; background:var(--paper2); border:1px solid var(--ink);
+    transition:transform .28s ease, box-shadow .28s ease, background .28s ease;
+  }
+  .chip-name{ font-size:8.3px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; white-space:nowrap; }
+  .chip-meta{ display:flex; align-items:center; gap:5px; }
+  .vote-dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+  .vote-dot.for{ background:var(--ledger); }
+  .vote-dot.against{ background:var(--accent); }
+  .vote-dot.advocate{ width:auto; height:auto; font-size:9px; line-height:1; color:var(--ink-soft); }
+  .r-badge{
+    display:inline-flex; align-items:center; gap:2px; font-size:7.3px; padding:1px 4px 1px 3px;
+    border:1px solid var(--ink-soft); border-radius:7px; background:var(--paper); white-space:nowrap;
+  }
+  .r-dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); flex:none; }
+  .r-num{ font-weight:700; }
+
+  .node.active .chip, .podium.active .chip{
+    transform:scale(1.16);
+    box-shadow:0 0 0 2px var(--accent), 0 3px 0 rgba(0,0,0,.2);
+    border-width:1.6px; background:var(--paper);
+  }
+
+  /* ---------- DEAL ADVOCATE — DEFENSE PODIUM (distinct position) ---------- */
+  .podium-wrap{ position:relative; z-index:2; text-align:center; margin-top:6px; }
+  .podium-tag{
+    font-size:11px; font-style:italic; letter-spacing:.5px; color:var(--ink-soft); margin-bottom:8px;
+  }
+  .podium-frame{ display:inline-block; padding:5px; border:1px solid var(--ink); }
+  .podium{
+    padding:15px 30px 17px; border:1px solid var(--ink); background:var(--paper2); cursor:pointer;
+  }
+  .podium .face-wrap{ width:92px; height:92px; }
+  .podium .chip{ margin-top:8px; }
+
+  /* ---------- animation (guarded by reduced-motion) ---------- */
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes blink{ 0%,90%,100%{ transform:scaleY(1); } 95%{ transform:scaleY(0.08); } }
+    .eye{ animation:blink 5.4s ease-in-out infinite; }
+    .node:nth-child(2n) .eye{ animation-delay:.6s; }
+    .node:nth-child(3n) .eye{ animation-delay:1.4s; }
+    .node:nth-child(5n) .eye{ animation-delay:2.1s; }
+
+    @keyframes talk{
+      0%,100%{ transform:scaleY(.35) scaleX(1); }
+      25%{ transform:scaleY(1) scaleX(.92); }
+      50%{ transform:scaleY(.55) scaleX(1.02); }
+      75%{ transform:scaleY(.9) scaleX(.95); }
+    }
+    .node.active .mouth-open, .podium.active .mouth-open{ animation:talk .46s steps(3) infinite; }
+
+    @keyframes handbounce{
+      0%,100%{ transform:translateY(0) rotate(0deg); }
+      50%{ transform:translateY(-7px) rotate(-12deg); }
+    }
+    .emo-handraise{ animation:handbounce 1.15s ease-in-out infinite; }
+
+    @keyframes rpulse{
+      0%{ box-shadow:0 0 0 0 rgba(138,31,26,.55); }
+      70%{ box-shadow:0 0 0 5px rgba(138,31,26,0); }
+      100%{ box-shadow:0 0 0 0 rgba(138,31,26,0); }
+    }
+    .r-dot{ animation:rpulse 2.2s ease-out infinite; }
+    .node:nth-child(2n) .r-dot{ animation-delay:.4s; }
+    .node:nth-child(3n) .r-dot{ animation-delay:.9s; }
+    .node:nth-child(4n) .r-dot{ animation-delay:1.3s; }
+
+    @keyframes dashmove{ to{ stroke-dashoffset:-18; } }
+    #connectorLine{ animation:dashmove 1.1s linear infinite; }
+
+    @keyframes caret{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+    .dispatch-text::after{ animation:caret 1s steps(1) infinite; }
+  }
+  .mouth-open{ display:none; }
+  .node.active .mouth-open, .podium.active .mouth-open{ display:block; }
+  .node.active .mouth-closed, .podium.active .mouth-closed{ display:none; }
+
+  /* ---------- chair input ---------- */
+  .chair-row{ text-align:center; margin-top:14px; }
+  .chair-caption{
+    font-size:12.5px; font-style:italic; color:var(--ink-soft); margin-bottom:10px;
+  }
+  .chair-form{
+    display:inline-flex; align-items:stretch; gap:0;
+    width:640px; max-width:92%;
+    border:1px solid var(--ink);
+    background:var(--paper2);
+  }
+  .chair-form input{
+    flex:1; border:none; background:transparent; padding:12px 14px;
+    font-family:Georgia,'Times New Roman',serif; font-size:14px; font-style:italic;
+    color:var(--ink); outline:none;
+  }
+  .chair-form input::placeholder{ color:var(--ink-soft); opacity:.8; }
+  .chair-form button{
+    border:none; border-left:1px solid var(--ink); background:var(--ink); color:var(--paper);
+    padding:0 22px; font-family:Georgia,'Times New Roman',serif; font-size:12.5px;
+    letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  }
+  .chair-form button:hover{ background:var(--accent); }
+
+  .colophon{
+    text-align:center; margin-top:26px; padding-top:12px; border-top:1px solid var(--ink);
+    font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="masthead-top">
+      <span>Confidential Session</span>
+      <span>Special Session — Vol. VI</span>
+    </div>
+    <h1 class="masthead-title">The Investment Committee</h1>
+    <p class="masthead-sub">Being a True and Faithful Record of the Deliberations of the Panel</p>
+    <div class="rule-thick"></div>
+    <div class="rule-thin"></div>
+    <div class="deal-row">
+      <div class="deal-info" id="dealInfoText">&nbsp;</div>
+      <div class="leaning-stamp">Leaning: <span class="decline-word" id="leaningWord">&nbsp;</span></div>
+    </div>
+  </header>
+
+  <div class="vote-bar-wrap">
+    <div class="vote-bar-label">Committee Vote &middot; 8 Voting Seats &middot; Advocate Not Counted</div>
+    <div class="vote-bar">
+      <div class="vote-seg for" id="voteBarFor"><span class="n" id="voteForCount">0</span><span>For</span></div>
+      <div class="vote-seg against" id="voteBarAgainst"><span>Against</span><span class="n" id="voteAgainstCount">0</span></div>
+    </div>
+    <div class="roll-call" id="rollCall"></div>
+  </div>
+
+  <div class="theater" id="theater">
+    <svg class="connector-overlay"><line id="connectorLine" x1="0" y1="0" x2="0" y2="0"></line></svg>
+
+    <div class="dispatch-panel" id="dispatchPanel">
+      <div class="dispatch-kicker">Now Speaking — Live Dispatch</div>
+      <div class="dispatch-name" id="dispatchName">&mdash;</div>
+      <div class="dispatch-rule"></div>
+      <div class="dispatch-meta" id="dispatchMeta">&mdash;</div>
+      <p class="dispatch-text" id="dispatchText"></p>
+    </div>
+
+    <div class="arc-stage" id="arcStage"></div>
+
+    <div class="podium-wrap">
+      <div class="podium-tag">Defense Podium &middot; Separate From the 8-Seat Arc &middot; Not a Voting Seat</div>
+      <div class="podium-frame">
+        <div class="podium" id="podiumNode"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chair-row">
+    <p class="chair-caption">The Chair recognizes all members. State your motion below.</p>
+    <form class="chair-form" id="chairForm">
+      <input type="text" id="chairInput" placeholder="Message the whole committee&hellip;" autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <div class="colophon">ACOS Investment Committee &middot; Concept 06 &middot; Editorial Engraving &middot; Mockup Only</div>
+</div>
+
+<script>
+const COMMITTEE = {
+ deal:{name:"1420 Alder Street Bridge Refinance",amount:"$1.15M",ltv:"65% LTV",leaning:"DECLINE"},
+ vote:{for:2,against:6},
+ scrutiny:[
+  {n:1,name:"Credit & Valuation",short:"Credit",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The 65% LTV is unsupported — it's really 79% against the purchase price."},
+  {n:2,name:"Finance",short:"Finance",vote:"against",emotion:"angry",emoji:"😠",research:1,opinion:"Negative carry with no defended exit — this loan cannot refinance itself."},
+  {n:3,name:"Accounting",short:"Accounting",vote:"against",emotion:"skeptical",emoji:"🤨",research:3,opinion:"In-place NOI exceeds gross rent. The number is mathematically impossible."},
+  {n:4,name:"Legal & Structural",short:"Legal",vote:"against",emotion:"thinking",emoji:"🤔",research:2,opinion:"First-lien position is asserted but entirely unverified — no title, no UCC."},
+  {n:5,name:"Insurance & Climate",short:"Insurance",vote:"for",emotion:"worried",emoji:"😟",research:1,opinion:"Sub-1.0x DSCR is thin, but insurable if we condition on a binder."},
+  {n:6,name:"Sponsor & Fraud",short:"Fraud",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The track record is wholly self-reported. Assume fabricated until proven."},
+  {n:7,name:"Portfolio & Concentration",short:"Portfolio",vote:"for",emotion:"thinking",emoji:"🤔",research:1,opinion:"No fund tape provided — but in isolation the concentration is tolerable."},
+  {n:8,name:"Strategy",short:"Strategy",vote:"against",emotion:"disapprove",emoji:"😕",research:1,opinion:"A sub-1.0x story credit breaches our secured-lender thesis."}
+ ],
+ advocate:{n:9,name:"Deal Advocate",short:"Advocate",emotion:"handraise",emoji:"🙋",research:1,opinion:"Condition it on an appraisal and audited T-12 and it may be salvageable."}
+};
+
+const ALL = COMMITTEE.scrutiny.concat([COMMITTEE.advocate]);
+const FROWN = ['angry','disapprove','worried','skeptical'];
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function faceSVG(id, emo){
+  const mouthClosedPath = FROWN.includes(emo) ? 'M36,73 Q50,80 64,73' : 'M38,74 L62,74';
+  const isNum = (typeof id === 'number');
+  const variant = isNum ? id % 3 : 2;
+  let hairSVG = '';
+  if(variant === 1){
+    hairSVG = '<path class="hair" d="M17,37 Q50,4 83,37" fill="none" stroke="#1c1a15" stroke-width="1.8"></path>';
+  } else if(variant === 2){
+    hairSVG = '<path class="hair" d="M50,9 L28,39" fill="none" stroke="#1c1a15" stroke-width="1.6"></path>'
+            + '<path class="hair" d="M50,9 L72,39" fill="none" stroke="#1c1a15" stroke-width="1.6"></path>';
+  }
+  const glasses = (isNum && id % 2 === 1)
+    ? '<g class="glasses" fill="none" stroke="#1c1a15" stroke-width="1.2">'
+      + '<circle cx="39" cy="50" r="8"></circle><circle cx="61" cy="50" r="8"></circle>'
+      + '<line x1="47" y1="50" x2="53" y2="50"></line></g>'
+    : '';
+  const uid = isNum ? String(id) : 'p';
+  return '' +
+  '<svg class="face-svg" viewBox="0 0 100 100">' +
+    '<defs>' +
+      '<pattern id="hatch-' + uid + '" width="4" height="4" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">' +
+        '<line x1="0" y1="0" x2="0" y2="4" stroke="#1c1a15" stroke-width="1"></line>' +
+      '</pattern>' +
+      '<clipPath id="clip-' + uid + '"><ellipse cx="50" cy="52" rx="34" ry="40"></ellipse></clipPath>' +
+    '</defs>' +
+    '<ellipse cx="50" cy="52" rx="34" ry="40" fill="#efe7d3" stroke="none"></ellipse>' +
+    '<rect x="50" y="9" width="42" height="94" fill="url(#hatch-' + uid + ')" clip-path="url(#clip-' + uid + ')" opacity="0.55"></rect>' +
+    '<ellipse cx="50" cy="52" rx="34" ry="40" fill="none" stroke="#1c1a15" stroke-width="1.6"></ellipse>' +
+    hairSVG +
+    '<line class="brow brow-l" x1="32" y1="42" x2="44" y2="40" stroke="#1c1a15" stroke-width="1.7"></line>' +
+    '<line class="brow brow-r" x1="56" y1="40" x2="68" y2="42" stroke="#1c1a15" stroke-width="1.7"></line>' +
+    '<ellipse class="eye eye-l" cx="39" cy="50" rx="3.1" ry="3.6" fill="#1c1a15"></ellipse>' +
+    '<ellipse class="eye eye-r" cx="61" cy="50" rx="3.1" ry="3.6" fill="#1c1a15"></ellipse>' +
+    glasses +
+    '<path d="M50,50 L47,64" stroke="#1c1a15" stroke-width="1.2" fill="none"></path>' +
+    '<path class="mouth-closed" d="' + mouthClosedPath + '" stroke="#1c1a15" stroke-width="1.8" fill="none"></path>' +
+    '<ellipse class="mouth-open" cx="50" cy="76" rx="8.5" ry="5.5" fill="#2a2320"></ellipse>' +
+  '</svg>';
+}
+
+function chipHTML(entry, isAdvocate){
+  const voteHTML = isAdvocate
+    ? '<span class="vote-dot advocate" title="Not a voting seat">&#9671;</span>'
+    : '<span class="vote-dot ' + entry.vote + '" title="Vote: ' + entry.vote.toUpperCase() + '"></span>';
+  return '' +
+  '<div class="chip">' +
+    '<div class="chip-name">' + entry.short + '</div>' +
+    '<div class="chip-meta">' +
+      voteHTML +
+      '<span class="r-badge" title="Research items logged: ' + entry.research + '">' +
+        '<span class="r-dot"></span><span class="r-num">' + entry.research + '</span>' +
+      '</span>' +
+    '</div>' +
+  '</div>';
+}
+
+function nodeHTML(exp, i){
+  return '' +
+  '<div class="node" id="node-' + i + '" data-idx="' + i + '">' +
+    '<div class="face-wrap">' +
+      faceSVG(i, exp.emotion) +
+      '<div class="emotion-badge emo-' + exp.emotion + '">' + exp.emoji + '</div>' +
+    '</div>' +
+    chipHTML(exp, false) +
+  '</div>';
+}
+
+function buildArc(){
+  document.getElementById('arcStage').innerHTML = COMMITTEE.scrutiny.map(nodeHTML).join('');
+}
+
+function buildPodium(){
+  const adv = COMMITTEE.advocate;
+  document.getElementById('podiumNode').innerHTML = '' +
+    '<div class="face-wrap">' +
+      faceSVG('podium', adv.emotion) +
+      '<div class="emotion-badge emo-' + adv.emotion + '">' + adv.emoji + '</div>' +
+    '</div>' +
+    chipHTML(adv, true);
+}
+
+function layoutArc(){
+  const stage = document.getElementById('arcStage');
+  const w = stage.clientWidth || 1400;
+  const cx = w / 2;
+  const cy = 300;
+  const ry = 180;
+  const rx = Math.min(360, cx - 90);
+  const count = COMMITTEE.scrutiny.length;
+  COMMITTEE.scrutiny.forEach(function(exp, i){
+    const t = count > 1 ? (i / (count - 1)) * 2 - 1 : 0;
+    const theta = Math.acos(Math.max(-1, Math.min(1, t)));
+    const x = cx + rx * Math.cos(theta);
+    const y = cy - ry * Math.sin(theta);
+    const node = document.getElementById('node-' + i);
+    if(node){
+      node.style.left = x + 'px';
+      node.style.top = y + 'px';
+    }
+  });
+}
+
+function renderVoteBar(){
+  const forN = COMMITTEE.vote.for;
+  const againstN = COMMITTEE.vote.against;
+  const total = forN + againstN;
+  const forPct = total > 0 ? (forN / total * 100) : 50;
+  const againstPct = 100 - forPct;
+  document.getElementById('voteBarFor').style.width = forPct + '%';
+  document.getElementById('voteBarAgainst').style.width = againstPct + '%';
+  document.getElementById('voteForCount').textContent = forN;
+  document.getElementById('voteAgainstCount').textContent = againstN;
+  document.getElementById('rollCall').innerHTML = COMMITTEE.scrutiny.map(function(e){
+    return '<span class="roll-dot ' + e.vote + '" title="Seat ' + e.n + ' — ' + e.name + ' — ' + e.vote.toUpperCase() + '"></span>';
+  }).join('') + '<span class="roll-note">8 voting seats, roll call order</span>';
+}
+
+function renderDealHeader(){
+  document.getElementById('dealInfoText').textContent =
+    COMMITTEE.deal.name + ' · ' + COMMITTEE.deal.amount + ' · ' + COMMITTEE.deal.ltv;
+  document.getElementById('leaningWord').textContent = COMMITTEE.deal.leaning;
+}
+
+function animateResearch(){
+  document.querySelectorAll('.r-num').forEach(function(el){
+    const target = parseInt(el.textContent, 10) || 0;
+    if(reduced){ return; }
+    let cur = 0;
+    el.textContent = '0';
+    const step = setInterval(function(){
+      cur++;
+      el.textContent = cur;
+      if(cur >= target){ clearInterval(step); }
+    }, 140);
+  });
+}
+
+let typerInterval = null;
+let cycleTimeout = null;
+let currentIdx = 0;
+
+function speakerEl(idx){
+  return idx < COMMITTEE.scrutiny.length
+    ? document.getElementById('node-' + idx)
+    : document.getElementById('podiumNode');
+}
+function chipOf(idx){
+  const el = speakerEl(idx);
+  return el ? el.querySelector('.chip') : null;
+}
+
+function updateConnector(idx){
+  const theater = document.getElementById('theater');
+  const panel = document.getElementById('dispatchPanel');
+  const anchor = chipOf(idx);
+  const line = document.getElementById('connectorLine');
+  if(!theater || !panel || !anchor || !line) return;
+  const theaterRect = theater.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const anchorRect = anchor.getBoundingClientRect();
+  const x1 = panelRect.left + panelRect.width / 2 - theaterRect.left;
+  const y1 = panelRect.bottom - theaterRect.top;
+  const x2 = anchorRect.left + anchorRect.width / 2 - theaterRect.left;
+  const y2 = anchorRect.top - theaterRect.top;
+  line.setAttribute('x1', x1);
+  line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2);
+  line.setAttribute('y2', y2);
+}
+
+function clearTimers(){
+  if(typerInterval){ clearInterval(typerInterval); typerInterval = null; }
+  if(cycleTimeout){ clearTimeout(cycleTimeout); cycleTimeout = null; }
+}
+
+function activate(idx){
+  clearTimers();
+  currentIdx = idx;
+  const prev = document.querySelector('.node.active, .podium.active');
+  if(prev) prev.classList.remove('active');
+  const el = speakerEl(idx);
+  if(!el) return;
+  el.classList.add('active');
+  updateConnector(idx);
+
+  const entry = ALL[idx];
+  const isAdvocate = idx === ALL.length - 1;
+  document.getElementById('dispatchName').textContent = entry.name;
+  document.getElementById('dispatchMeta').textContent = isAdvocate
+    ? 'Defense Podium · Advocate — Not a Voting Seat · Research Items: ' + entry.research
+    : 'Seat ' + entry.n + ' · Vote: ' + entry.vote.toUpperCase() + ' · Research Items: ' + entry.research;
+
+  const textEl = document.getElementById('dispatchText');
+  textEl.textContent = '';
+
+  if(reduced){
+    textEl.textContent = entry.opinion;
+    cycleTimeout = setTimeout(function(){ activate((idx + 1) % ALL.length); }, 2800);
+    return;
+  }
+
+  const words = entry.opinion.split(' ');
+  let w = 0;
+  typerInterval = setInterval(function(){
+    textEl.textContent += (w > 0 ? ' ' : '') + words[w];
+    w++;
+    if(w >= words.length){
+      clearInterval(typerInterval);
+      typerInterval = null;
+      cycleTimeout = setTimeout(function(){ activate((idx + 1) % ALL.length); }, 2600);
+    }
+  }, 105);
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  renderDealHeader();
+  renderVoteBar();
+  buildArc();
+  buildPodium();
+  layoutArc();
+  animateResearch();
+
+  document.getElementById('arcStage').addEventListener('click', function(e){
+    const node = e.target.closest('.node');
+    if(node){
+      const idx = parseInt(node.getAttribute('data-idx'), 10);
+      activate(idx);
+    }
+  });
+  document.getElementById('podiumNode').addEventListener('click', function(){
+    activate(ALL.length - 1);
+  });
+  document.getElementById('chairForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const input = document.getElementById('chairInput');
+    input.value = '';
+  });
+
+  activate(0);
+});
+
+window.addEventListener('resize', function(){
+  layoutArc();
+  updateConnector(currentIdx);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+# ACOS Investment Committee — canonical seat roster
+# SLICE-A1 data artifact (roster + coverage map). Data-only; no logic.
+# Seat numbering is STABLE from this table onward: Deal Advocate (#9) is a
+# brand-new seat and Gap-Hunter moved from #9 -> #10. This is a deliberate,
+# one-time renumbering. Do not renumber seats beyond this file.
+
+version: 1
+
+seats:
+  - n: 1
+    name: "Credit & Valuation"
+    discipline: "Credit / Real Estate Valuation"
+    mandate: >
+      Hunts LTV, DSCR, comps, and cap-rate holes. Runs TWO sub-passes:
+      collateral-value (Collateral/Valuation, Market/Macro sub-check,
+      Construction/Completion baseline) and repayment-capacity
+      (Credit/Borrower, Cash-Flow/DSCR).
+    owns:
+      - "Credit/Borrower"
+      - "Collateral/Valuation"
+      - "Market/Macro"
+      - "Construction/Completion"
+      - "Cash-Flow/DSCR"
+    voting: true
+    swarm: true
+    model_class: opus
+    role: scrutiny
+    scope: deal
+
+  - n: 2
+    name: "Finance"
+    discipline: "Corporate Finance / Capital Structure"
+    mandate: >
+      Hunts spread, lender-IRR, and capital-structure holes. Core-owns
+      Interest-Rate/Refi/Exit (no longer a Credit fold-in).
+    owns:
+      - "Interest-Rate/Refi/Exit"
+    voting: true
+    swarm: true
+    model_class: opus
+    role: scrutiny
+    scope: deal
+
+  - n: 3
+    name: "Accounting"
+    discipline: "QoE / GAAP"
+    mandate: >
+      Hunts QoE, GAAP, and add-back holes. OWNS the single normalized-NOI
+      claim consumed by Seat 1 and Seat 2 (a shared cross-cutting
+      artifact, not a risk category — the ROCO fraud tripwire).
+      Cross-checks Credit/Borrower, Collateral/Valuation, Cash-Flow/DSCR,
+      and Fraud/Misrepresentation. Owns none of the 16 risk categories by
+      design; exempted from the "must own >=1 category" check via
+      owns_shared_artifact below.
+    owns: cross-cutting
+    owns_shared_artifact: "normalized-NOI-claim"
+    cross_checks:
+      - "Credit/Borrower"
+      - "Collateral/Valuation"
+      - "Cash-Flow/DSCR"
+      - "Fraud/Misrepresentation"
+    voting: true
+    swarm: true
+    model_class: opus
+    role: scrutiny
+    scope: deal
+
+  - n: 4
+    name: "Legal & Structural"
+    discipline: "Real Estate / Corporate Law"
+    mandate: >
+      Hunts title, lien, SPE, and guaranty holes, plus an
+      environmental-legal sub-lens (CERCLA/Phase I currency) scoped to
+      legal/financial materiality only — full physical/environmental
+      review is optional Seat 15.
+    owns:
+      - "Structural/Legal"
+      - "Title/Survey"
+      - "Environmental"
+      - "Tax"
+      - "Regulatory/Compliance"
+    voting: true
+    swarm: true
+    model_class: opus
+    role: scrutiny
+    scope: deal
+
+  - n: 5
+    name: "Insurance & Climate"
+    discipline: "Insurance / Physical Climate Risk"
+    mandate: >
+      Hunts non-renewal and premium-spike risk that breaks DSCR; merged
+      ESG/physical-climate lens.
+    owns:
+      - "Insurance"
+      - "ESG/Physical-Climate"
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 6
+    name: "Sponsor & Fraud-Forensics"
+    discipline: "Sponsor Diligence / Forensic Accounting"
+    mandate: >
+      Hunts track-record, litigation, and cross-document fabrication
+      holes. Assume fabricated until externally corroborated.
+    owns:
+      - "Sponsor/Track-Record"
+      - "Fraud/Misrepresentation"
+    voting: true
+    swarm: true
+    model_class: opus
+    role: scrutiny
+    scope: deal
+
+  - n: 7
+    name: "Portfolio & Concentration"
+    discipline: "Portfolio Risk / Fund Construction"
+    mandate: >
+      FUND-SCOPED (reads the fund loan tape, NOT deal-scoped): hunts
+      sponsor, geo, type, and maturity concentration holes.
+    owns:
+      - "Concentration/Portfolio"
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: fund
+
+  - n: 8
+    name: "Strategy"
+    discipline: "Investment Thesis / Portfolio Strategy"
+    mandate: >
+      Hunts thesis-fit, opportunity-cost, and off-mandate holes. NOT an
+      advocate — must produce a falsifiable objection or abstain. Same
+      falsification discipline as scrutiny seats, but contributes a
+      distinct strategic-fit lens outside the 16-category deal-risk
+      taxonomy; owns no risk category by design.
+    owns: cross-cutting
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 9
+    name: "Deal Advocate"
+    discipline: "Defense / Steelman"
+    mandate: >
+      Steelmans the deal; answers objections with the best good-faith
+      mitigant the evidence supports. Mitigants pass the SAME
+      falsification gate as objections. Never fabricates. NO
+      hole-hunting, NO scrutiny vote. Structurally distinct from
+      Gap-Hunter (#10) — this is the defense role, not the process role.
+    owns: defense
+    owned_risk_categories: []
+    is_defense_role: true
+    voting: false
+    swarm: true
+    model_class: opus
+    role: advocate
+    scope: deal
+
+  - n: 10
+    name: "Gap-Hunter / Chair-agent"
+    discipline: "Procedural / Meta"
+    mandate: >
+      Picks speakers each round; hunts uncovered risks; logs what
+      exclusions leave uncovered. Structurally distinct from the Deal
+      Advocate (#9) — this is the process role, not the defense role.
+    owns: procedural
+    owned_risk_categories: []
+    is_procedural_role: true
+    voting: false
+    swarm: false
+    model_class: opus
+    role: procedural
+    scope: deal
+
+optionals:
+  - n: 11
+    name: "Construction/Completion"
+    discipline: "Construction Risk / Cost-to-Complete"
+    mandate: >
+      Full construction/completion review, promoted from Seat 1's
+      collateral-value baseline sub-check.
+    trigger: "ground-up construction or major-renovation collateral"
+    owns:
+      - "Construction/Completion"
+    promotes_from: 1
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 12
+    name: "Tax"
+    discipline: "Tax / Entity Structuring"
+    mandate: >
+      Full tax review, promoted from Seat 4's fold-in ownership of Tax.
+    trigger: "complex multi-entity structure or reassessment risk"
+    owns:
+      - "Tax"
+    promotes_from: 4
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 13
+    name: "Market/Macro"
+    discipline: "Market Research / Macro Forecasting"
+    mandate: >
+      Full market/macro review, promoted from Seat 1's collateral-value
+      sub-check.
+    trigger: "new-supply-heavy market or forward-rate-stress deal type"
+    owns:
+      - "Market/Macro"
+    promotes_from: 1
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 14
+    name: "Compliance/Regulatory"
+    discipline: "Regulatory Compliance"
+    mandate: >
+      Full regulatory/compliance review, promoted from Seat 4's state
+      sub-pass.
+    trigger: "multi-state operations or regulatory complexity"
+    owns:
+      - "Regulatory/Compliance"
+    promotes_from: 4
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal
+
+  - n: 15
+    name: "Environmental/Physical-Condition"
+    discipline: "Environmental / Physical Condition"
+    mandate: >
+      Full physical/environmental condition review, promoted from Seat
+      4's legal-materiality sub-lens (CERCLA/Phase I currency, which
+      remains Legal's default). Fires only on a flagged REC or
+      higher-risk collateral type; the environmental sub-lens itself
+      stays owned by Legal (#4) unless this optional is triggered.
+    trigger: "flagged recognized environmental condition (REC) or higher-risk collateral type"
+    owns:
+      - "Environmental"
+    promotes_from: 4
+    voting: true
+    swarm: true
+    model_class: sonnet
+    role: scrutiny
+    scope: deal

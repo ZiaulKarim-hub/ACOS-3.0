@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Investment Committee — Concept 02: Hologram Council (MOCKUP)</title>
+<style>
+  :root{
+    --bg0:#020509;
+    --bg1:#060c1a;
+    --cyan:#38d6ff;
+    --cyan-soft:rgba(56,214,255,.35);
+    --teal:#29ffd0;
+    --amber:#ffb347;
+    --amber-soft:rgba(255,179,71,.4);
+    --green:#34e89e;
+    --red:#ff4d6d;
+    --panel-bg:rgba(9,20,38,.62);
+    --text-main:#d9f6ff;
+    --text-dim:#7fa8bd;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg0);
+    color:var(--text-main);
+    font-family:var(--sans);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* ---------- perspective grid floor (decorative, fixed) ---------- */
+  .grid-floor{
+    position:fixed;inset:0;z-index:0;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 0%, #0b1830 0%, #030712 55%, #010306 100%);
+  }
+  .grid-floor::before{
+    content:'';position:absolute;left:-60%;right:-60%;bottom:-20%;height:160%;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(56,214,255,.16) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(56,214,255,.16) 0 1px, transparent 1px 46px);
+    transform:perspective(600px) rotateX(62deg);
+    transform-origin:bottom center;
+    animation:gridMove 6s linear infinite;
+  }
+  .grid-floor::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(2,5,9,0) 0%, rgba(2,5,9,.55) 70%, rgba(2,5,9,.95) 100%);
+  }
+  @keyframes gridMove{ from{background-position:0 0, 0 0;} to{background-position:0 92px, 92px 0;} }
+
+  .mockup-tag{
+    position:fixed;top:10px;right:14px;z-index:20;
+    font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:rgba(127,168,189,.65);
+    border:1px solid rgba(127,168,189,.3);padding:4px 9px;border-radius:6px;
+    background:rgba(6,12,26,.5);
+  }
+
+  .app{position:relative;z-index:1;width:min(94vw,1560px);margin:0 auto;padding:26px 10px 46px;}
+
+  /* ---------- header ---------- */
+  .kicker{
+    font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--cyan);
+    opacity:.65;margin:0 0 10px;
+  }
+  .deal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;}
+  .deal-info h1{font-size:22px;margin:0 0 6px;color:#eafcff;font-weight:700;letter-spacing:.2px;}
+  .deal-meta{font-size:13px;color:var(--text-dim);display:flex;gap:10px;font-family:var(--mono);}
+  .deal-meta b{color:var(--teal);font-weight:600;}
+  .leaning-badge{
+    background:rgba(216,31,61,.16);border:1px solid var(--red);color:#ffc3cd;
+    font-family:var(--mono);font-weight:700;padding:9px 18px;border-radius:8px;
+    font-size:13px;letter-spacing:.6px;white-space:nowrap;
+    animation:leaningPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes leaningPulse{0%,100%{box-shadow:0 0 6px rgba(216,31,61,.4);}50%{box-shadow:0 0 22px rgba(216,31,61,.9);}}
+
+  /* ---------- vote bar ---------- */
+  .vote-section{margin:22px 0 10px;}
+  .vote-bar{
+    display:flex;height:36px;border-radius:9px;overflow:hidden;
+    border:1px solid rgba(56,214,255,.3);box-shadow:0 0 14px rgba(0,0,0,.5);
+  }
+  .vote-seg{
+    display:flex;align-items:center;justify-content:center;
+    font-size:12.5px;font-weight:700;font-family:var(--mono);letter-spacing:.6px;
+    transition:width .6s ease;white-space:nowrap;
+  }
+  .vote-for{background:linear-gradient(180deg,#6cf7bb,#1fae74);color:#03291a;}
+  .vote-against{background:linear-gradient(180deg,#ff8b9b,#d81f3d);color:#3a0009;}
+  .vote-caption{font-size:11px;color:var(--text-dim);margin-top:7px;text-align:center;font-family:var(--mono);letter-spacing:.3px;}
+
+  /* ---------- main row: council + advocate ---------- */
+  .main-row{display:flex;gap:28px;align-items:flex-start;margin-top:14px;}
+  .council-column{flex:1;min-width:0;}
+  .advocate-column{flex:0 0 300px;}
+
+  .stage-label{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:rgba(127,168,189,.55);
+    margin:0 0 10px 4px;text-transform:uppercase;
+  }
+
+  /* ---------- arc stage (8 scrutiny holograms) ---------- */
+  .arc-stage{position:relative;}
+
+  .chip{position:absolute;width:108px;display:flex;justify-content:center;}
+  .chip-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .4s ease;z-index:2;}
+  .chip.active .chip-inner{transform:scale(1.2);z-index:6;}
+
+  .holo-face{
+    width:60px;height:60px;border-radius:50%;position:relative;flex:none;
+    background:radial-gradient(circle at 35% 30%, rgba(120,230,255,.55), rgba(20,60,90,.35) 60%, rgba(10,30,50,.2) 100%);
+    border:1.5px solid var(--cyan-soft);
+    box-shadow:0 0 12px rgba(56,214,255,.35), inset 0 0 14px rgba(56,214,255,.22);
+    overflow:hidden;
+  }
+  .holo-face::after{
+    content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, transparent 2px 5px);
+    animation:scan 4.2s linear infinite;pointer-events:none;
+  }
+  .chip.active .holo-face{
+    box-shadow:0 0 28px rgba(56,214,255,.9), inset 0 0 20px rgba(56,214,255,.5);
+    border-color:var(--cyan);filter:brightness(1.28);
+  }
+  @keyframes scan{0%{transform:translateY(-40%);}100%{transform:translateY(40%);}}
+
+  .eye{position:absolute;width:7px;height:9px;border-radius:50%;background:#eafcff;top:22px;
+    box-shadow:0 0 6px #7fe9ff;animation:blink 4.6s ease-in-out infinite;}
+  .eye-l{left:17px;} .eye-r{right:17px;}
+  @keyframes blink{0%,90%,100%{transform:scaleY(1);}95%{transform:scaleY(.12);}}
+
+  .mouth{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);
+    width:18px;height:4px;border-radius:3px;background:#bdf3ff;opacity:.85;}
+  .chip.active .mouth{animation:talk .42s ease-in-out infinite;}
+  .podium.active .mouth{animation:talk .42s ease-in-out infinite;}
+  @keyframes talk{0%,100%{height:4px;}50%{height:11px;}}
+
+  .emo{position:absolute;right:-6px;bottom:-4px;font-size:15px;filter:drop-shadow(0 0 3px rgba(0,0,0,.6));}
+
+  .badge-research{
+    position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+    font-size:10px;font-family:var(--mono);background:rgba(6,16,30,.88);
+    border:1px solid var(--cyan-soft);color:var(--cyan);padding:1px 7px;border-radius:10px;
+    white-space:nowrap;animation:badgePulse 2.4s ease-in-out infinite;z-index:3;
+  }
+  @keyframes badgePulse{0%,100%{box-shadow:0 0 2px rgba(56,214,255,.3);}50%{box-shadow:0 0 11px rgba(56,214,255,.95);}}
+
+  .chip-meta{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-dim);}
+  .chip.active .chip-name{color:var(--cyan);font-weight:700;}
+  .vote-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;}
+  .vote-dot.for{background:var(--green);box-shadow:0 0 6px var(--green);}
+  .vote-dot.against{background:var(--red);box-shadow:0 0 6px var(--red);}
+
+  .beam{
+    position:absolute;top:64px;left:50%;transform:translateX(-50%);
+    width:5px;height:0;
+    background:linear-gradient(180deg, rgba(56,214,255,.75), rgba(56,214,255,0));
+    opacity:0;transition:opacity .35s ease, height .35s ease;pointer-events:none;z-index:1;
+  }
+  .chip.active .beam{opacity:1;height:46px;animation:beamPulse 1.4s ease-in-out infinite;}
+  @keyframes beamPulse{0%,100%{filter:brightness(1);}50%{filter:brightness(1.6);}}
+
+  /* ---------- glassy holo panels (shared) ---------- */
+  .holo-panel{
+    position:relative;background:var(--panel-bg);
+    border:1px solid rgba(56,214,255,.4);border-radius:11px;
+    padding:18px 22px;backdrop-filter:blur(6px);overflow:hidden;
+  }
+  .holo-panel::after{
+    content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0 2px, transparent 2px 6px);
+    animation:scan 5.4s linear infinite;pointer-events:none;
+  }
+  .tick{position:absolute;width:14px;height:14px;border-color:var(--cyan);border-style:solid;border-width:0;opacity:.85;}
+  .tick.tl{top:6px;left:6px;border-top-width:2px;border-left-width:2px;}
+  .tick.tr{top:6px;right:6px;border-top-width:2px;border-right-width:2px;}
+  .tick.bl{bottom:6px;left:6px;border-bottom-width:2px;border-left-width:2px;}
+  .tick.br{bottom:6px;right:6px;border-bottom-width:2px;border-right-width:2px;}
+
+  /* ---------- center spotlight display (shared "message box" for the 8) ---------- */
+  .center-display{margin-top:22px;min-height:152px;}
+  .cd-head{display:flex;align-items:center;gap:13px;margin-bottom:9px;}
+  .cd-emoji{font-size:34px;line-height:1;filter:drop-shadow(0 0 6px rgba(56,214,255,.5));}
+  .cd-name{font-size:16.5px;font-weight:700;color:#eafcff;letter-spacing:.3px;}
+  .cd-sub{font-size:11.5px;color:var(--text-dim);display:flex;align-items:center;gap:6px;margin-top:3px;font-family:var(--mono);}
+  .cd-text{font-size:15px;line-height:1.55;color:#d3f4ff;min-height:50px;margin:0;}
+  .center-display.standby{opacity:.55;}
+  .center-display.standby .cd-name{color:var(--amber);}
+  .center-display.standby .tick{border-color:var(--amber);}
+
+  /* ---------- advocate podium (distinct treatment) ---------- */
+  .podium{
+    background:linear-gradient(180deg, rgba(46,30,6,.55), rgba(12,9,4,.45));
+    border:1px solid rgba(255,179,71,.5);border-radius:15px;padding:20px;position:relative;
+  }
+  .podium-face-wrap{display:flex;flex-direction:column;align-items:center;position:relative;}
+  .gaze-arrow{
+    font-size:10px;letter-spacing:1.5px;color:var(--amber);opacity:.75;margin-bottom:8px;
+    font-family:var(--mono);text-align:center;
+  }
+  .podium .holo-face{
+    background:radial-gradient(circle at 35% 30%, rgba(255,214,150,.6), rgba(95,62,20,.35) 60%, rgba(40,26,8,.2) 100%);
+    border-color:rgba(255,179,71,.55);
+    box-shadow:0 0 14px rgba(255,179,71,.4), inset 0 0 14px rgba(255,179,71,.25);
+  }
+  .podium.active .holo-face{
+    box-shadow:0 0 30px rgba(255,179,71,.95), inset 0 0 20px rgba(255,179,71,.5);
+    filter:brightness(1.3);
+  }
+  .podium .eye{background:#fff3e0;box-shadow:0 0 6px #ffcf8f;}
+  .podium .mouth{background:#ffe3bd;}
+  .podium .emo{font-size:20px;}
+  .podium.active .emo{animation:handRaise .7s ease-in-out infinite;}
+  @keyframes handRaise{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-6px) rotate(-10deg);}}
+  .podium .badge-research{border-color:rgba(255,179,71,.55);color:var(--amber);}
+
+  .podium-meta{text-align:center;margin-top:12px;}
+  .podium-name{font-weight:700;color:#ffe3bd;font-size:14.5px;}
+  .podium-role{font-size:10.5px;color:rgba(255,179,71,.7);letter-spacing:1.2px;font-family:var(--mono);margin-top:3px;}
+
+  .podium-expand{
+    max-height:0;opacity:0;overflow:hidden;margin-top:0;padding:0 22px;
+    border-color:rgba(255,179,71,.45);
+    transition:max-height .5s ease, opacity .4s ease, margin .4s ease, padding .4s ease;
+  }
+  .podium.active .podium-expand{max-height:260px;opacity:1;margin-top:16px;padding:16px 22px;}
+  .podium-expand .tick{border-color:var(--amber);}
+  .podium-expand .cd-text{color:#ffe9cf;font-size:14.5px;line-height:1.55;min-height:40px;}
+  .podium-expand .cd-name{color:#ffd9a3;font-size:13.5px;font-family:var(--mono);letter-spacing:.4px;}
+
+  /* ---------- chair input ---------- */
+  .chair-bar{display:flex;gap:10px;max-width:720px;margin:38px auto 6px;}
+  #chairInput{
+    flex:1;background:rgba(9,20,38,.6);border:1px solid rgba(56,214,255,.4);
+    border-radius:26px;padding:13px 20px;color:#eafcff;font-size:14px;outline:none;
+    font-family:var(--sans);transition:border-color .3s, box-shadow .3s;
+  }
+  #chairInput::placeholder{color:rgba(217,246,255,.42);}
+  #chairInput:focus{border-color:var(--cyan);box-shadow:0 0 12px rgba(56,214,255,.5);}
+  #chairSend{
+    background:linear-gradient(180deg,#38d6ff,#1a8fb0);border:none;color:#02222b;
+    font-weight:700;padding:0 26px;border-radius:26px;cursor:pointer;font-size:13.5px;
+    letter-spacing:.5px;font-family:var(--sans);
+  }
+  #chairSend:hover{filter:brightness(1.1);}
+  #chairSend:active{transform:translateY(1px);}
+
+  @media (max-width:1360px){
+    .advocate-column{flex-basis:270px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{
+      animation-duration:.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;
+      scroll-behavior:auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-floor" aria-hidden="true"></div>
+<div class="mockup-tag">MOCKUP · CONCEPT 02 / 10</div>
+
+<div class="app">
+
+  <p class="kicker">INVESTMENT COMMITTEE // LIVE HOLOGRAM SESSION</p>
+
+  <div class="deal-header">
+    <div class="deal-info">
+      <h1 id="dealName">1420 Alder Street Bridge Refinance</h1>
+      <div class="deal-meta">
+        <span>AMOUNT <b id="dealAmount">$1.15M</b></span>
+        <span>·</span>
+        <span>LTV <b id="dealLtv">65% LTV</b></span>
+      </div>
+    </div>
+    <div class="leaning-badge">LEANING: <span id="leaningText">DECLINE</span></div>
+  </div>
+
+  <div class="vote-section">
+    <div class="vote-bar">
+      <div class="vote-seg vote-for" id="voteForSeg"><span id="voteForLabel">FOR 2</span></div>
+      <div class="vote-seg vote-against" id="voteAgainstSeg"><span id="voteAgainstLabel">AGAINST 6</span></div>
+    </div>
+    <div class="vote-caption">COMMITTEE VOTE · 8 VOTING SEATS · DEAL ADVOCATE NOT COUNTED</div>
+  </div>
+
+  <div class="main-row">
+
+    <div class="council-column">
+      <p class="stage-label">Scrutiny Panel — 8 Seats</p>
+      <div class="arc-stage" id="arcStage"><!-- chips injected by JS --></div>
+
+      <div class="holo-panel center-display" id="centerDisplay">
+        <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+        <div class="cd-head">
+          <span class="cd-emoji" id="cdEmoji">😠</span>
+          <div>
+            <div class="cd-name" id="cdName">Credit &amp; Valuation</div>
+            <div class="cd-sub" id="cdSub"><span class="vote-dot against"></span> AGAINST · 🔎 2 RESEARCH LOGS</div>
+          </div>
+        </div>
+        <p class="cd-text" id="cdText">The 65% LTV is unsupported — it's really 79% against the purchase price.</p>
+      </div>
+    </div>
+
+    <div class="advocate-column">
+      <p class="stage-label">Defense Podium</p>
+      <div class="podium" id="advocatePodium">
+        <div class="podium-face-wrap">
+          <div class="gaze-arrow">▲ ADDRESSING PANEL</div>
+          <div class="holo-face">
+            <div class="eye eye-l"></div>
+            <div class="eye eye-r"></div>
+            <div class="mouth"></div>
+            <div class="emo">🙋</div>
+          </div>
+          <div class="badge-research">🔎 1</div>
+        </div>
+        <div class="podium-meta">
+          <div class="podium-name">Deal Advocate</div>
+          <div class="podium-role">NOT A VOTING SEAT</div>
+        </div>
+        <div class="holo-panel podium-expand" id="podiumExpand">
+          <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+          <div class="cd-name">Deal Advocate</div>
+          <p class="cd-text" id="advText"></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chair-bar">
+    <input id="chairInput" type="text" placeholder="Message the whole committee…" autocomplete="off" />
+    <button id="chairSend" type="button">Send</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const COMMITTEE = {
+    deal:{name:"1420 Alder Street Bridge Refinance",amount:"$1.15M",ltv:"65% LTV",leaning:"DECLINE"},
+    vote:{for:2,against:6},
+    scrutiny:[
+      {n:1,name:"Credit & Valuation",short:"Credit",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The 65% LTV is unsupported — it's really 79% against the purchase price."},
+      {n:2,name:"Finance",short:"Finance",vote:"against",emotion:"angry",emoji:"😠",research:1,opinion:"Negative carry with no defended exit — this loan cannot refinance itself."},
+      {n:3,name:"Accounting",short:"Accounting",vote:"against",emotion:"skeptical",emoji:"🤨",research:3,opinion:"In-place NOI exceeds gross rent. The number is mathematically impossible."},
+      {n:4,name:"Legal & Structural",short:"Legal",vote:"against",emotion:"thinking",emoji:"🤔",research:2,opinion:"First-lien position is asserted but entirely unverified — no title, no UCC."},
+      {n:5,name:"Insurance & Climate",short:"Insurance",vote:"for",emotion:"worried",emoji:"😟",research:1,opinion:"Sub-1.0x DSCR is thin, but insurable if we condition on a binder."},
+      {n:6,name:"Sponsor & Fraud",short:"Fraud",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The track record is wholly self-reported. Assume fabricated until proven."},
+      {n:7,name:"Portfolio & Concentration",short:"Portfolio",vote:"for",emotion:"thinking",emoji:"🤔",research:1,opinion:"No fund tape provided — but in isolation the concentration is tolerable."},
+      {n:8,name:"Strategy",short:"Strategy",vote:"against",emotion:"disapprove",emoji:"😕",research:1,opinion:"A sub-1.0x story credit breaches our secured-lender thesis."}
+    ],
+    advocate:{n:9,name:"Deal Advocate",short:"Advocate",emotion:"handraise",emoji:"🙋",research:1,opinion:"Condition it on an appraisal and audited T-12 and it may be salvageable."}
+  };
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- render static data-bound bits ---------- */
+  function renderHeader(){
+    document.getElementById('dealName').textContent = COMMITTEE.deal.name;
+    document.getElementById('dealAmount').textContent = COMMITTEE.deal.amount;
+    document.getElementById('dealLtv').textContent = COMMITTEE.deal.ltv;
+    document.getElementById('leaningText').textContent = COMMITTEE.deal.leaning;
+  }
+
+  function renderVoteBar(){
+    const total = COMMITTEE.vote.for + COMMITTEE.vote.against;
+    const forPct = (COMMITTEE.vote.for/total*100).toFixed(2)+'%';
+    const againstPct = (COMMITTEE.vote.against/total*100).toFixed(2)+'%';
+    const forSeg = document.getElementById('voteForSeg');
+    const againstSeg = document.getElementById('voteAgainstSeg');
+    forSeg.style.width = forPct;
+    againstSeg.style.width = againstPct;
+    document.getElementById('voteForLabel').textContent = 'FOR ' + COMMITTEE.vote.for;
+    document.getElementById('voteAgainstLabel').textContent = 'AGAINST ' + COMMITTEE.vote.against;
+  }
+
+  /* ---------- build the 8-seat arc ---------- */
+  function buildChips(){
+    const stage = document.getElementById('arcStage');
+    stage.innerHTML = COMMITTEE.scrutiny.map(function(e){
+      return (
+        '<div class="chip" id="chip-'+e.n+'">' +
+          '<div class="beam"></div>' +
+          '<div class="chip-inner">' +
+            '<div class="badge-research">🔎 '+e.research+'</div>' +
+            '<div class="holo-face">' +
+              '<div class="eye eye-l"></div>' +
+              '<div class="eye eye-r"></div>' +
+              '<div class="mouth"></div>' +
+              '<div class="emo">'+e.emoji+'</div>' +
+            '</div>' +
+            '<div class="chip-meta">' +
+              '<span class="vote-dot '+e.vote+'"></span>' +
+              '<span class="chip-name">'+e.short+'</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    stage.querySelectorAll('.eye').forEach(function(el){
+      el.style.animationDelay = (Math.random()*4).toFixed(2)+'s';
+    });
+  }
+
+  /* ---------- lay out the 8 chips on a downward-opening semicircle ---------- */
+  function layoutArc(){
+    const stage = document.getElementById('arcStage');
+    const w = stage.clientWidth || 900;
+    const chipW = 108, chipH = 128;
+    const topPad = 80, bottomPad = 24;
+    const r = Math.max(150, Math.min(w*0.30, 260));
+    const cx = w/2;
+    const cyTop = topPad + r;
+    stage.style.height = (r + chipH + topPad + bottomPad) + 'px';
+
+    const n = COMMITTEE.scrutiny.length;
+    COMMITTEE.scrutiny.forEach(function(e, i){
+      const angle = Math.PI + (i/(n-1)) * Math.PI; // 180deg -> 360deg : dome bulges up, opens downward
+      const x = cx + r*Math.cos(angle);
+      const y = cyTop + r*Math.sin(angle);
+      const chip = document.getElementById('chip-'+e.n);
+      if(chip){
+        chip.style.left = (x - chipW/2) + 'px';
+        chip.style.top = (y - chipH/2) + 'px';
+      }
+    });
+  }
+
+  /* ---------- podium eye desync ---------- */
+  function desyncPodiumEyes(){
+    document.querySelectorAll('#advocatePodium .eye').forEach(function(el){
+      el.style.animationDelay = (Math.random()*4).toFixed(2)+'s';
+    });
+  }
+
+  /* ---------- typewriter (word by word), honors reduced motion ---------- */
+  function typeInto(el, text){
+    if(el._typerTimer) clearInterval(el._typerTimer);
+    if(reduceMotion){ el.textContent = text; return; }
+    el.textContent = '';
+    const words = text.split(' ');
+    let i = 0;
+    el._typerTimer = setInterval(function(){
+      el.textContent += (i===0 ? '' : ' ') + words[i];
+      i++;
+      if(i >= words.length) clearInterval(el._typerTimer);
+    }, 85);
+  }
+
+  /* ---------- cycle of active speakers (8 scrutiny + advocate) ---------- */
+  const ORDER = COMMITTEE.scrutiny.map(function(e){ return {kind:'s', d:e}; })
+                  .concat([{kind:'a', d:COMMITTEE.advocate}]);
+  let curIdx = 0;
+
+  function setActive(i){
+    curIdx = ((i % ORDER.length) + ORDER.length) % ORDER.length;
+    document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
+    const podium = document.getElementById('advocatePodium');
+    podium.classList.remove('active');
+    const cd = document.getElementById('centerDisplay');
+    const entry = ORDER[curIdx];
+
+    if(entry.kind === 's'){
+      cd.classList.remove('standby');
+      const chip = document.getElementById('chip-'+entry.d.n);
+      if(chip) chip.classList.add('active');
+      document.getElementById('cdEmoji').textContent = entry.d.emoji;
+      document.getElementById('cdName').textContent = entry.d.name;
+      document.getElementById('cdSub').innerHTML =
+        '<span class="vote-dot '+entry.d.vote+'"></span> ' + entry.d.vote.toUpperCase() +
+        ' · 🔎 ' + entry.d.research + ' RESEARCH LOGS';
+      typeInto(document.getElementById('cdText'), entry.d.opinion);
+    } else {
+      cd.classList.add('standby');
+      document.getElementById('cdEmoji').textContent = '📡';
+      document.getElementById('cdName').textContent = 'STANDBY';
+      document.getElementById('cdSub').textContent = 'Deal Advocate has the floor — see podium';
+      document.getElementById('cdText').textContent = '';
+      podium.classList.add('active');
+      typeInto(document.getElementById('advText'), entry.d.opinion);
+    }
+  }
+
+  /* ---------- chair input mock interaction ---------- */
+  function wireChairInput(){
+    const input = document.getElementById('chairInput');
+    const send = document.getElementById('chairSend');
+    function submit(){
+      if(!input.value.trim()) return;
+      input.value = '';
+      input.placeholder = 'Message sent to the committee ✓';
+      setTimeout(function(){ input.placeholder = 'Message the whole committee…'; }, 2200);
+    }
+    send.addEventListener('click', submit);
+    input.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter') submit();
+    });
+  }
+
+  /* ---------- init ---------- */
+  function init(){
+    renderHeader();
+    renderVoteBar();
+    buildChips();
+    layoutArc();
+    desyncPodiumEyes();
+    wireChairInput();
+    setActive(0);
+
+    let resizeTimer;
+    window.addEventListener('resize', function(){
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(layoutArc, 120);
+    });
+
+    setInterval(function(){ setActive(curIdx+1); }, 5200);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>

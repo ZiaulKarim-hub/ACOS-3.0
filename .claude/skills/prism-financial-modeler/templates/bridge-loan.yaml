@@ -1,0 +1,325 @@
+# PRISM Bridge Loan Template
+# Institutional-grade real estate bridge loan model structure
+#
+# Usage:
+#   prism bridge-loan "Deal Name" --borrower "Borrower LLC" --property "123 Main St"
+#
+# This template defines the structure for OKOA's core lending product:
+# Short-term (12-36 month) real estate loans for:
+# - Acquisition financing
+# - Repositioning/renovation
+# - Value-add projects
+# - Refinancing
+
+template_name: bridge-loan
+template_version: "1.0.0"
+model_type: real_estate_debt
+description: "Short-term real estate bridge loan with interest reserve and exit modeling"
+
+# Sheet structure (tabs in Excel model)
+sheets:
+  - name: "Cover"
+    purpose: "Executive summary and key metrics"
+    sections:
+      - header: "Deal Overview"
+        fields:
+          - deal_name: { type: text, required: true }
+          - borrower: { type: text, required: true }
+          - property_address: { type: text, required: true }
+          - property_type: { type: enum, values: [Multifamily, Office, Retail, Industrial, Mixed-Use, Land, SFR, Other], required: true }
+          - transaction_type: { type: enum, values: [Acquisition, Refinance, Renovation, Development], required: true }
+          - closing_date: { type: date, required: true }
+          - maturity_date: { type: date, formula: "=closing_date + term_months/12" }
+
+      - header: "Key Metrics"
+        fields:
+          - purchase_price: { type: currency, required: true }
+          - loan_amount: { type: currency, required: true }
+          - ltv: { type: percent, formula: "=loan_amount/purchase_price", validation: { max: 0.80 } }
+          - interest_rate: { type: percent, required: true }
+          - term_months: { type: integer, default: 24 }
+          - extension_months: { type: integer, default: 12 }
+          - lender_irr: { type: percent, formula: "=Returns!B3" }
+          - equity_required: { type: currency, formula: "=Sources_Uses!equity_total" }
+
+  - name: "Sources & Uses"
+    purpose: "Capital stack and deployment of funds"
+    sections:
+      - header: "Sources of Funds"
+        fields:
+          - senior_loan: { type: currency, label: "Senior Loan (OKOA)" }
+          - mezzanine: { type: currency, label: "Mezzanine Debt", default: 0 }
+          - equity: { type: currency, label: "Sponsor Equity" }
+          - total_sources: { type: currency, formula: "=SUM(senior_loan:equity)" }
+
+      - header: "Uses of Funds"
+        fields:
+          - purchase_price: { type: currency, label: "Purchase Price" }
+          - renovation_budget: { type: currency, label: "Renovation/Capex", default: 0 }
+          - interest_reserve: { type: currency, label: "Interest Reserve", formula: "=loan_amount * interest_rate * reserve_months / 12" }
+          - closing_costs: { type: currency, label: "Closing Costs" }
+          - origination_fee: { type: currency, label: "Origination Fee", formula: "=loan_amount * origination_fee_pct" }
+          - legal_fees: { type: currency, label: "Legal & Title" }
+          - working_capital: { type: currency, label: "Working Capital Reserve", default: 0 }
+          - total_uses: { type: currency, formula: "=SUM(purchase_price:working_capital)" }
+
+      - header: "Balance Check"
+        validation:
+          - sources_equals_uses: { formula: "=total_sources - total_uses", expected: 0, tolerance: 0.01 }
+
+  - name: "Assumptions"
+    purpose: "Loan terms, fees, and underwriting parameters"
+    sections:
+      - header: "Loan Terms"
+        fields:
+          - interest_rate: { type: percent, required: true, validation: { min: 0.08, max: 0.20 } }
+          - index_rate: { type: percent, label: "Index (if floating)", default: 0 }
+          - spread: { type: percent, formula: "=interest_rate - index_rate" }
+          - payment_type: { type: enum, values: [Interest-Only, P+I, Partial P+I], default: "Interest-Only" }
+          - term_months: { type: integer, default: 24 }
+          - extension_options: { type: integer, label: "Extension Options (count)", default: 2 }
+          - extension_months_each: { type: integer, default: 6 }
+          - prepayment_penalty: { type: enum, values: [None, Yield Maintenance, Step-Down, Lockout], default: "None" }
+
+      - header: "Fees"
+        fields:
+          - origination_fee_pct: { type: percent, default: 0.02, label: "Origination Fee (%)" }
+          - exit_fee_pct: { type: percent, default: 0.01, label: "Exit Fee (%)" }
+          - extension_fee_pct: { type: percent, default: 0.005, label: "Extension Fee (per extension)" }
+          - unused_line_fee: { type: percent, default: 0, label: "Unused Line Fee (if construction)" }
+
+      - header: "Reserves"
+        fields:
+          - interest_reserve_months: { type: integer, default: 12, label: "Interest Reserve (months)" }
+          - capex_holdback_pct: { type: percent, default: 0.10, label: "Capex Holdback (%)" }
+          - operating_reserve: { type: currency, default: 0, label: "Operating Reserve" }
+
+      - header: "Covenants"
+        fields:
+          - max_ltv: { type: percent, default: 0.75, label: "Maximum LTV" }
+          - min_dscr: { type: number, default: 1.25, label: "Minimum DSCR" }
+          - min_debt_yield: { type: percent, default: 0.08, label: "Minimum Debt Yield" }
+          - recourse: { type: enum, values: [Full Recourse, Non-Recourse, Partial Recourse], default: "Full Recourse" }
+          - guarantor: { type: text, label: "Guarantor (if recourse)" }
+
+  - name: "Property"
+    purpose: "Property details and underwriting"
+    sections:
+      - header: "Property Information"
+        fields:
+          - address: { type: text, required: true }
+          - city: { type: text, required: true }
+          - state: { type: text, required: true }
+          - zip: { type: text }
+          - county: { type: text }
+          - apn: { type: text, label: "APN / Parcel ID" }
+          - property_type: { type: enum, values: [Multifamily, Office, Retail, Industrial, Mixed-Use, Land, SFR, Other] }
+          - year_built: { type: integer }
+          - square_feet: { type: integer, label: "Building SF" }
+          - lot_size_acres: { type: number, label: "Lot Size (acres)" }
+          - units: { type: integer, label: "Units (if multifamily)" }
+
+      - header: "Valuation"
+        fields:
+          - purchase_price: { type: currency }
+          - appraised_value: { type: currency }
+          - as_is_value: { type: currency, label: "As-Is Value" }
+          - as_stabilized_value: { type: currency, label: "As-Stabilized Value" }
+          - price_per_sf: { type: currency, formula: "=purchase_price / square_feet" }
+          - price_per_unit: { type: currency, formula: "=purchase_price / units" }
+
+      - header: "Income"
+        fields:
+          - gross_potential_rent: { type: currency, label: "GPR (Annual)" }
+          - vacancy_rate: { type: percent, default: 0.05 }
+          - effective_gross_income: { type: currency, formula: "=gross_potential_rent * (1 - vacancy_rate)" }
+          - operating_expenses: { type: currency }
+          - expense_ratio: { type: percent, formula: "=operating_expenses / effective_gross_income" }
+          - noi: { type: currency, label: "NOI", formula: "=effective_gross_income - operating_expenses" }
+          - cap_rate: { type: percent, formula: "=noi / purchase_price" }
+
+  - name: "Cash Flow"
+    purpose: "Monthly cash flow projection"
+    sections:
+      - header: "Monthly Projection"
+        type: time_series
+        periods: { start: "closing_date", count: "term_months + extension_months", interval: "month" }
+        columns:
+          - period: { type: integer, label: "Month" }
+          - date: { type: date }
+          - beginning_balance: { type: currency }
+          - interest_accrued: { type: currency, formula: "=beginning_balance * interest_rate / 12" }
+          - interest_paid: { type: currency }
+          - principal_paid: { type: currency }
+          - ending_balance: { type: currency }
+          - reserve_draw: { type: currency, label: "Interest Reserve Draw" }
+          - reserve_balance: { type: currency }
+
+      - header: "Totals"
+        fields:
+          - total_interest_paid: { type: currency, formula: "=SUM(interest_paid)" }
+          - total_fees_paid: { type: currency }
+          - total_lender_proceeds: { type: currency }
+
+  - name: "Returns"
+    purpose: "Lender and borrower returns analysis"
+    sections:
+      - header: "Lender Returns"
+        fields:
+          - lender_irr: { type: percent, formula: "=XIRR(lender_cash_flows, lender_dates)" }
+          - lender_multiple: { type: number, formula: "=total_lender_proceeds / loan_amount" }
+          - yield_to_maturity: { type: percent }
+          - effective_yield: { type: percent, label: "All-in Yield (incl fees)" }
+          - spread_over_index: { type: percent, formula: "=effective_yield - index_rate" }
+
+      - header: "Borrower Economics"
+        fields:
+          - equity_invested: { type: currency }
+          - equity_irr: { type: percent, formula: "=XIRR(equity_cash_flows, equity_dates)" }
+          - equity_multiple: { type: number, formula: "=equity_proceeds / equity_invested" }
+          - cash_on_cash: { type: percent, formula: "=annual_cash_flow / equity_invested" }
+
+      - header: "Sensitivity Analysis"
+        type: data_table
+        variables:
+          - exit_cap_rate: { range: [-0.01, 0, 0.01, 0.02], base: "cap_rate + 0.005" }
+          - hold_period: { range: [12, 18, 24, 30, 36], base: "term_months" }
+        output: "lender_irr"
+
+  - name: "Exit Analysis"
+    purpose: "Exit scenarios and refinance analysis"
+    sections:
+      - header: "Exit Assumptions"
+        fields:
+          - exit_date: { type: date, formula: "=closing_date + term_months/12" }
+          - exit_cap_rate: { type: percent }
+          - exit_value: { type: currency, formula: "=noi / exit_cap_rate" }
+          - exit_costs_pct: { type: percent, default: 0.02 }
+          - exit_costs: { type: currency, formula: "=exit_value * exit_costs_pct" }
+          - net_exit_proceeds: { type: currency, formula: "=exit_value - exit_costs - loan_payoff" }
+
+      - header: "Refinance Scenario"
+        fields:
+          - refi_ltv: { type: percent, default: 0.70 }
+          - refi_rate: { type: percent }
+          - refi_loan_amount: { type: currency, formula: "=exit_value * refi_ltv" }
+          - cash_out: { type: currency, formula: "=refi_loan_amount - loan_payoff" }
+          - refi_feasible: { type: boolean, formula: "=refi_loan_amount >= loan_payoff" }
+
+      - header: "Sale Scenario"
+        fields:
+          - sale_price: { type: currency }
+          - sale_costs: { type: currency }
+          - loan_payoff: { type: currency, formula: "=ending_balance + exit_fee" }
+          - equity_proceeds: { type: currency, formula: "=sale_price - sale_costs - loan_payoff" }
+          - profit_loss: { type: currency, formula: "=equity_proceeds - equity_invested" }
+
+# Validation rules
+validations:
+  - name: "LTV Check"
+    formula: "=loan_amount / purchase_price <= max_ltv"
+    message: "LTV exceeds maximum allowed"
+    severity: error
+
+  - name: "DSCR Check"
+    formula: "=noi / (loan_amount * interest_rate) >= min_dscr"
+    message: "DSCR below minimum covenant"
+    severity: warning
+
+  - name: "Sources = Uses"
+    formula: "=ABS(total_sources - total_uses) < 1"
+    message: "Sources and Uses do not balance"
+    severity: error
+
+  - name: "Positive IRR"
+    formula: "=lender_irr > 0"
+    message: "Lender IRR is negative"
+    severity: error
+
+# Named ranges for easy reference
+named_ranges:
+  # Key inputs
+  - name: "PurchasePrice"
+    cell: "Sources_Uses!B3"
+  - name: "LoanAmount"
+    cell: "Sources_Uses!B7"
+  - name: "InterestRate"
+    cell: "Assumptions!B7"
+  - name: "TermMonths"
+    cell: "Assumptions!B11"
+
+  # Key outputs
+  - name: "LTV"
+    cell: "Cover!B10"
+  - name: "DSCR"
+    cell: "Property!B28"
+  - name: "LenderIRR"
+    cell: "Returns!B3"
+  - name: "EquityIRR"
+    cell: "Returns!B12"
+
+# Knowledge graph entities to extract
+kg_extraction:
+  parties:
+    - field: "borrower"
+      node_type: "PARTY"
+      role: "borrower"
+    - field: "guarantor"
+      node_type: "PARTY"
+      role: "guarantor"
+    - field: "lender"
+      node_type: "PARTY"
+      role: "lender"
+      default: "OKOA Management LLC"
+
+  properties:
+    - field: "address"
+      node_type: "PROPERTY"
+      include_fields: [city, state, zip, apn, property_type]
+
+  loans:
+    - node_type: "LOAN"
+      include_fields: [loan_amount, interest_rate, term_months, payment_type]
+
+  covenants:
+    - field: "max_ltv"
+      node_type: "COVENANT"
+      metric: "LTV"
+      covenant_type: "maximum"
+    - field: "min_dscr"
+      node_type: "COVENANT"
+      metric: "DSCR"
+      covenant_type: "minimum"
+    - field: "min_debt_yield"
+      node_type: "COVENANT"
+      metric: "Debt Yield"
+      covenant_type: "minimum"
+
+  claims:
+    - sources: [purchase_price, loan_amount, appraised_value, noi, lender_irr]
+      node_type: "CLAIM"
+      claim_type: "financial metric"
+
+# Formatting standards (Wall Street institutional)
+formatting:
+  currency:
+    format: "$#,##0"
+    negative: "($#,##0)"
+    decimals: 0
+  percent:
+    format: "0.00%"
+    decimals: 2
+  date:
+    format: "MM/DD/YYYY"
+  headers:
+    font: "Arial"
+    size: 11
+    bold: true
+    fill: "#1F4E79"
+    font_color: "#FFFFFF"
+  data:
+    font: "Arial"
+    size: 10
+  alternating_rows:
+    enabled: true
+    colors: ["#FFFFFF", "#F2F2F2"]

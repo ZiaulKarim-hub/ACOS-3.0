@@ -1,0 +1,49 @@
+# ACOS Investment Committee — deal-triggered optional-seat promotion rules
+# SLICE-A3 data artifact. Maps a deal-brief attribute/value to the optional
+# seat (#11-15, see roster.yaml `optionals:`) it promotes. Data-only; no
+# logic here — resolve_roster.py is the sole consumer/interpreter.
+#
+# Rule shape (exactly one of `match` / `truthy` / `any_of_fields` per rule):
+#   seat:           optional seat number (11-15)
+#   field:          deal-brief attribute name to read
+#   match:          [value, ...] -- promote if deal[field] equals (case-
+#                   insensitive for strings) ANY listed value, or if
+#                   deal[field] is itself a list containing any listed value
+#   truthy:         true -- promote if deal[field] is truthy (any non-empty /
+#                   non-"false"/non-zero value); `match` is ignored when set
+#   any_of_fields:  [field, ...] -- promote if ANY named field is present and
+#                   truthy on the deal-brief (used when either of two
+#                   independent flags should promote the same seat, e.g. #14)
+#
+# resolve_roster.py looks up each field at the deal-brief TOP LEVEL first,
+# then one level into common containers (deal / attributes / flags /
+# trigger_attributes) for resilience against the eventual SLICE-B1 intake
+# schema, which does not exist yet at the time this file was authored.
+
+version: 1
+
+triggers:
+  - seat: 11
+    field: asset_type
+    match: ["construction", "ground-up construction", "renovation", "major-renovation", "PIP"]
+    # roster.yaml #11 trigger: "ground-up construction or major-renovation collateral"
+
+  - seat: 12
+    field: borrower_entity
+    match: ["SPE-stack", "multi-entity"]
+    # roster.yaml #12 trigger: "complex multi-entity structure or reassessment risk"
+
+  - seat: 13
+    field: market_signal_needed
+    truthy: true
+    # roster.yaml #13 trigger: "new-supply-heavy market or forward-rate-stress deal type"
+
+  - seat: 14
+    any_of_fields: ["multi_state", "licensing_question"]
+    # roster.yaml #14 trigger: "multi-state operations or regulatory complexity"
+
+  - seat: 15
+    field: collateral_flag
+    match: ["REC", "phase1_finding", "recognized-environmental-condition"]
+    # roster.yaml #15 trigger: "flagged recognized environmental condition (REC)
+    # or higher-risk collateral type"

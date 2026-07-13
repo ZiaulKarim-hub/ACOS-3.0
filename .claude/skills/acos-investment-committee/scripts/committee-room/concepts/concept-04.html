@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investment Committee — Concept 04 (Glassmorphism)</title>
+<style>
+  :root{
+    --for:#16a34a; --against:#dc2626; --advocate:#d97706;
+    --ink:#1e2333; --ink-soft:#525a72;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,183,213,.55), transparent 55%),
+      radial-gradient(circle at 88% 12%, rgba(147,197,253,.55), transparent 55%),
+      radial-gradient(circle at 50% 95%, rgba(196,181,253,.5), transparent 55%),
+      linear-gradient(160deg,#eef2ff,#fdf2f8 55%,#ecfeff);
+    background-attachment:fixed;
+    overflow-x:hidden;
+    position:relative;
+  }
+  .orb{position:fixed;border-radius:50%;filter:blur(70px);opacity:.55;z-index:0;pointer-events:none;}
+  .orb1{width:420px;height:420px;background:#f472b6;top:-120px;left:-100px;animation:orbDrift 34s ease-in-out infinite;}
+  .orb2{width:380px;height:380px;background:#60a5fa;bottom:-140px;right:-80px;animation:orbDrift 40s ease-in-out infinite reverse;}
+  .orb3{width:300px;height:300px;background:#a78bfa;top:40%;left:60%;animation:orbDrift 46s ease-in-out infinite;}
+
+  .glass{
+    background:rgba(255,255,255,.16);
+    backdrop-filter:blur(18px) saturate(180%);
+    -webkit-backdrop-filter:blur(18px) saturate(180%);
+    border:1px solid rgba(255,255,255,.45);
+    border-radius:20px;
+    box-shadow:0 8px 30px rgba(31,38,135,.14), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+
+  .room{max-width:1500px;margin:0 auto;padding:26px 26px 60px;position:relative;z-index:1;}
+
+  header.deal-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:20px 28px;margin-bottom:22px;}
+  .deal-main h1{font-size:clamp(19px,2vw,26px);margin:0 0 10px;font-weight:800;letter-spacing:-.01em;}
+  .deal-stats{display:flex;gap:10px;flex-wrap:wrap;}
+  .stat-chip{padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.55);font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .leaning-pill{padding:11px 22px;border-radius:999px;font-weight:800;font-size:14px;letter-spacing:.04em;background:rgba(220,38,38,.16);border:1.5px solid rgba(220,38,38,.55);color:#b91c1c;box-shadow:0 0 24px rgba(220,38,38,.28);animation:leaningPulse 3.2s ease-in-out infinite;white-space:nowrap;}
+
+  .stage-wrap{display:flex;gap:20px;align-items:stretch;position:relative;margin-bottom:44px;}
+  .arc-panel{flex:1;min-width:0;padding:14px 10px 6px;}
+  .panel-heading{text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:4px;opacity:.75;}
+  .arc{position:relative;height:360px;}
+
+  .chip{position:absolute;width:86px;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-50%);cursor:pointer;opacity:.88;transition:opacity .4s ease, transform .3s ease;z-index:2;}
+  .chip:hover{opacity:1;}
+  .chip.active{opacity:1;z-index:6;}
+
+  .face-wrap{
+    width:58px;height:58px;border-radius:50%;position:relative;
+    background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.4) 55%, rgba(255,255,255,.18) 100%);
+    border:3px solid var(--ring,#94a3b8);
+    box-shadow:0 8px 20px rgba(31,38,135,.16), inset 0 1px 3px rgba(255,255,255,.7);
+    backdrop-filter:blur(6px);
+    animation:chipFloat 6.4s ease-in-out infinite;
+    transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease, background .4s ease;
+  }
+  .chip.active .face-wrap, .podium.active .face-wrap{
+    transform:scale(1.22);
+    background:rgba(255,255,255,.5);
+    box-shadow:0 16px 34px rgba(31,38,135,.26), 0 0 0 3px rgba(255,255,255,.7) inset, 0 0 28px var(--ring,rgba(99,102,241,.5));
+  }
+  .face{position:absolute;top:0;left:0;right:0;bottom:0;}
+  .eye{position:absolute;top:22px;width:6px;height:8px;border-radius:50%;background:#33384a;animation:blink 5.2s infinite;}
+  .eye-l{left:16px;}
+  .eye-r{right:16px;animation-delay:.15s;}
+  .brow{position:absolute;top:15px;width:9px;height:3px;border-radius:2px;background:#33384a;}
+  .brow-l{left:14px;}
+  .brow-r{right:14px;}
+  .brow-angry.brow-l{transform:rotate(20deg);top:12px;background:#b91c1c;}
+  .brow-angry.brow-r{transform:rotate(-20deg);top:12px;background:#b91c1c;}
+  .brow-skeptical.brow-l{transform:rotate(-8deg);top:13px;}
+  .brow-skeptical.brow-r{transform:rotate(14deg) translateY(-3px);top:8px;}
+  .brow-thinking.brow-l{transform:rotate(5deg);}
+  .brow-thinking.brow-r{transform:rotate(5deg);top:12px;}
+  .brow-worried.brow-l{transform:rotate(-16deg);top:11px;}
+  .brow-worried.brow-r{transform:rotate(16deg);top:11px;}
+  .brow-disapprove.brow-l{transform:rotate(9deg);}
+  .brow-disapprove.brow-r{transform:rotate(-9deg);}
+  .brow-calm.brow-l{transform:rotate(0deg);}
+  .brow-calm.brow-r{transform:rotate(0deg);}
+
+  .mouth{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#33384a;}
+  .mouth.talking{animation:mouthTalk .3s ease-in-out infinite;}
+  .mo-flat{width:16px;height:3px;border-radius:2px;}
+  .mo-thin{width:12px;height:2px;border-radius:2px;bottom:15px;}
+  .mo-o{width:9px;height:9px;border-radius:50%;bottom:12px;}
+  .mo-smile{width:15px;height:8px;background:transparent;border:3px solid #33384a;border-top-color:transparent;border-left-color:transparent;border-right-color:transparent;border-radius:0 0 12px 12px;bottom:11px;}
+  .mo-frown{width:15px;height:8px;background:transparent;border:3px solid #33384a;border-bottom-color:transparent;border-left-color:transparent;border-right-color:transparent;border-radius:12px 12px 0 0;bottom:16px;}
+
+  .emoji-tag{position:absolute;top:-9px;right:-8px;font-size:17px;line-height:1;background:rgba(255,255,255,.7);border-radius:50%;padding:3px;box-shadow:0 3px 8px rgba(0,0,0,.15);animation:emojiPulse 2.8s ease-in-out infinite;}
+  .research-badge{position:absolute;left:-14px;bottom:-8px;display:flex;align-items:center;gap:3px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:9.5px;font-weight:800;padding:3px 6px;border-radius:999px;box-shadow:0 4px 12px rgba(99,102,241,.45);white-space:nowrap;animation:badgePulse 2.6s ease-in-out infinite;}
+  .research-badge b{font-size:10px;}
+
+  .chip-label{margin-top:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--ink);background:rgba(255,255,255,.35);padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.5);white-space:nowrap;}
+  .chip.active .chip-label{font-weight:900;background:rgba(255,255,255,.6);}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none;}
+
+  .podium{width:184px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:34px 10px 20px;position:relative;cursor:pointer;transition:transform .3s ease;}
+  .podium.active{transform:translateY(-8px);}
+  .podium-tag{position:absolute;top:14px;background:rgba(217,119,6,.18);border:1px solid rgba(217,119,6,.55);color:#92400e;font-size:10px;font-weight:800;letter-spacing:.09em;padding:4px 11px;border-radius:999px;}
+  .podium-base{width:118px;height:36px;margin-top:10px;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%);background:linear-gradient(160deg,#fbbf24,#d97706);box-shadow:0 10px 22px rgba(217,119,6,.35);}
+  .podium-title{margin-top:8px;font-size:11.5px;font-weight:900;letter-spacing:.04em;color:#92400e;text-align:center;}
+
+  #beam{position:absolute;top:100%;width:3px;height:26px;transform:translateX(-50%);background:linear-gradient(to bottom, rgba(99,102,241,.05), rgba(99,102,241,.65));pointer-events:none;transition:left .45s ease;z-index:1;}
+
+  .spotlight{display:flex;gap:24px;align-items:center;padding:26px 30px;min-height:150px;margin-top:34px;}
+  .spot-face-wrap{width:84px;height:84px;flex:none;border-radius:50%;position:relative;background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.4) 55%, rgba(255,255,255,.18) 100%);border:4px solid var(--ring,#94a3b8);box-shadow:0 10px 26px rgba(31,38,135,.2), inset 0 1px 3px rgba(255,255,255,.7);}
+  .spot-face-wrap .eye{top:32px;width:8px;height:11px;}
+  .spot-face-wrap .eye-l{left:24px;}
+  .spot-face-wrap .eye-r{right:24px;}
+  .spot-face-wrap .brow{top:22px;width:13px;height:4px;}
+  .spot-face-wrap .brow-l{left:20px;}
+  .spot-face-wrap .brow-r{right:20px;}
+  .spot-face-wrap .mouth{bottom:20px;}
+  .spot-face-wrap .mo-flat{width:22px;height:4px;}
+  .spot-face-wrap .mo-thin{width:17px;height:3px;bottom:22px;}
+  .spot-face-wrap .mo-o{width:13px;height:13px;bottom:18px;}
+  .spot-face-wrap .mo-smile,.spot-face-wrap .mo-frown{width:21px;height:11px;border-width:4px;}
+  .spot-face-wrap .emoji-tag{font-size:24px;top:-10px;right:-10px;}
+
+  .spot-body{flex:1;min-width:0;}
+  .spot-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+  .spot-name{font-size:18px;font-weight:900;}
+  .spot-vote{font-size:11.5px;font-weight:800;letter-spacing:.06em;padding:4px 12px;border-radius:999px;}
+  .vote-for{background:rgba(22,163,74,.16);border:1px solid rgba(22,163,74,.5);color:#15803d;}
+  .vote-against{background:rgba(220,38,38,.16);border:1px solid rgba(220,38,38,.5);color:#b91c1c;}
+  .vote-defense{background:rgba(217,119,6,.16);border:1px solid rgba(217,119,6,.5);color:#92400e;}
+  .spot-research{font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .spot-text{margin:0;font-size:16px;line-height:1.5;color:var(--ink);min-height:48px;}
+  .cursor{font-weight:400;animation:cursorBlink 1s steps(1) infinite;}
+
+  #cycleDots{display:flex;gap:8px;margin-top:16px;}
+  .cdot{width:7px;height:7px;border-radius:50%;background:rgba(30,35,51,.18);transition:all .3s ease;}
+  .cdot.on{background:#6366f1;width:20px;border-radius:4px;}
+
+  .vote-bar-wrap{display:flex;align-items:center;gap:16px;padding:18px 28px;margin:0 auto 22px;}
+  .vote-label{font-size:13px;font-weight:800;letter-spacing:.03em;color:var(--ink-soft);white-space:nowrap;}
+  .vote-label b{font-size:17px;color:var(--ink);}
+  .vote-bar{flex:1;height:20px;border-radius:999px;overflow:hidden;display:flex;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.45);}
+  .vote-for-fill{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#15803d);transition:width 1.3s cubic-bezier(.16,.8,.2,1);}
+  .vote-against-fill{height:100%;width:0;background:linear-gradient(90deg,#ef4444,#b91c1c);transition:width 1.3s cubic-bezier(.16,.8,.2,1);}
+
+  .chair-wrap{display:flex;gap:10px;align-items:center;max-width:640px;margin:0 auto;padding:12px 12px 12px 24px;border-radius:999px;}
+  .chair-wrap input{flex:1;border:none;outline:none;background:transparent;font-size:14px;color:var(--ink);font-family:inherit;}
+  .chair-wrap input::placeholder{color:rgba(30,35,51,.45);}
+  .chair-wrap button{border:none;padding:11px 22px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:.02em;color:#fff;background:linear-gradient(135deg,#6366f1,#8b5cf6);cursor:pointer;box-shadow:0 6px 16px rgba(99,102,241,.4);}
+  #chairEcho{text-align:center;margin-top:14px;font-size:13px;font-style:italic;color:var(--ink-soft);opacity:0;transform:translateY(-4px);transition:opacity .4s ease, transform .4s ease;}
+  #chairEcho.show{opacity:1;transform:translateY(0);}
+
+  .mockup-tag{position:fixed;left:14px;bottom:12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:rgba(30,35,51,.45);background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.5);padding:5px 10px;border-radius:999px;z-index:5;}
+
+  @keyframes blink{0%,90%,100%{transform:scaleY(1);}94%{transform:scaleY(.08);}}
+  @keyframes mouthTalk{0%,100%{transform:translateX(-50%) scaleY(1);}50%{transform:translateX(-50%) scaleY(.35);}}
+  @keyframes chipFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+  @keyframes badgePulse{0%,100%{transform:scale(1);box-shadow:0 4px 12px rgba(99,102,241,.45);}50%{transform:scale(1.12);box-shadow:0 4px 18px rgba(99,102,241,.7);}}
+  @keyframes emojiPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.15);}}
+  @keyframes leaningPulse{0%,100%{box-shadow:0 0 18px rgba(220,38,38,.22);}50%{box-shadow:0 0 30px rgba(220,38,38,.4);}}
+  @keyframes cursorBlink{50%{opacity:0;}}
+  @keyframes orbDrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(30px,-20px) scale(1.08);}}
+
+  @media (max-width:1360px){
+    .podium{width:150px;}
+    .stat-chip{font-size:12px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{animation:none !important; transition:none !important;}
+  }
+</style>
+</head>
+<body>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+
+  <div class="room">
+    <header class="deal-header glass">
+      <div class="deal-main">
+        <h1 id="dealName">—</h1>
+        <div class="deal-stats">
+          <span class="stat-chip" id="dealAmount">—</span>
+          <span class="stat-chip" id="dealLtv">—</span>
+        </div>
+      </div>
+      <div class="leaning-pill" id="dealLeaning">Leaning: —</div>
+    </header>
+
+    <div class="stage-wrap" id="stageWrap">
+      <div class="arc-panel">
+        <div class="panel-heading">Scrutiny Panel — 8 Seats</div>
+        <div class="arc" id="arc"></div>
+      </div>
+      <div class="podium glass" id="podium"></div>
+      <div id="beam"></div>
+    </div>
+
+    <section class="spotlight glass">
+      <div class="spot-face-wrap" id="spotFaceWrap">
+        <div class="face" id="spotFace"></div>
+        <div class="emoji-tag" id="spotEmoji"></div>
+      </div>
+      <div class="spot-body">
+        <div class="spot-head">
+          <span class="spot-name" id="spotName"></span>
+          <span class="spot-vote" id="spotVote"></span>
+          <span class="spot-research" id="spotResearch"></span>
+        </div>
+        <p class="spot-text"><span id="spotWords"></span><span class="cursor" id="spotCursor">▌</span></p>
+        <div id="cycleDots"></div>
+      </div>
+    </section>
+
+    <div class="vote-bar-wrap glass">
+      <div class="vote-label">FOR&nbsp;<b id="voteForCount"></b></div>
+      <div class="vote-bar"><div class="vote-for-fill" id="voteForBar"></div><div class="vote-against-fill" id="voteAgainstBar"></div></div>
+      <div class="vote-label">AGAINST&nbsp;<b id="voteAgainstCount"></b></div>
+    </div>
+
+    <div class="chair-wrap glass">
+      <input id="chairInput" type="text" placeholder="Ask the Chair a question…" />
+      <button id="chairAsk">Ask</button>
+    </div>
+    <div id="chairEcho"></div>
+  </div>
+
+  <div class="mockup-tag">MOCKUP · Concept 04 of 10 — Glassmorphism</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const COMMITTEE = {
+   deal:{name:"1420 Alder Street Bridge Refinance",amount:"$1.15M",ltv:"65% LTV",leaning:"DECLINE"},
+   vote:{for:2,against:6},
+   scrutiny:[
+    {n:1,name:"Credit & Valuation",short:"Credit",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The 65% LTV is unsupported — it's really 79% against the purchase price."},
+    {n:2,name:"Finance",short:"Finance",vote:"against",emotion:"angry",emoji:"😠",research:1,opinion:"Negative carry with no defended exit — this loan cannot refinance itself."},
+    {n:3,name:"Accounting",short:"Accounting",vote:"against",emotion:"skeptical",emoji:"🤨",research:3,opinion:"In-place NOI exceeds gross rent. The number is mathematically impossible."},
+    {n:4,name:"Legal & Structural",short:"Legal",vote:"against",emotion:"thinking",emoji:"🤔",research:2,opinion:"First-lien position is asserted but entirely unverified — no title, no UCC."},
+    {n:5,name:"Insurance & Climate",short:"Insurance",vote:"for",emotion:"worried",emoji:"😟",research:1,opinion:"Sub-1.0x DSCR is thin, but insurable if we condition on a binder."},
+    {n:6,name:"Sponsor & Fraud",short:"Fraud",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The track record is wholly self-reported. Assume fabricated until proven."},
+    {n:7,name:"Portfolio & Concentration",short:"Portfolio",vote:"for",emotion:"thinking",emoji:"🤔",research:1,opinion:"No fund tape provided — but in isolation the concentration is tolerable."},
+    {n:8,name:"Strategy",short:"Strategy",vote:"against",emotion:"disapprove",emoji:"😕",research:1,opinion:"A sub-1.0x story credit breaches our secured-lender thesis."}
+   ],
+   advocate:{n:9,name:"Deal Advocate",short:"Advocate",emotion:"handraise",emoji:"🙋",research:1,opinion:"Condition it on an appraisal and audited T-12 and it may be salvageable."}
+  };
+
+  const EMO = {
+    angry:      { brow:"brow-angry",      mouth:"mo-frown" },
+    skeptical:  { brow:"brow-skeptical",  mouth:"mo-flat"  },
+    thinking:   { brow:"brow-thinking",   mouth:"mo-o"     },
+    worried:    { brow:"brow-worried",    mouth:"mo-thin"  },
+    disapprove: { brow:"brow-disapprove", mouth:"mo-frown" },
+    handraise:  { brow:"brow-calm",       mouth:"mo-smile" }
+  };
+
+  const VOTE_COLOR = { for:"#16a34a", against:"#dc2626" };
+  const ADV_COLOR = "#d97706";
+
+  function faceMarkup(emotion){
+    const e = EMO[emotion] || EMO.thinking;
+    return '<div class="brow brow-l '+e.brow+'"></div>'+
+           '<div class="brow brow-r '+e.brow+'"></div>'+
+           '<div class="eye eye-l"></div>'+
+           '<div class="eye eye-r"></div>'+
+           '<div class="mouth '+e.mouth+'" data-mouth></div>';
+  }
+
+  // ---- header ----
+  document.getElementById("dealName").textContent = COMMITTEE.deal.name;
+  document.getElementById("dealAmount").textContent = COMMITTEE.deal.amount;
+  document.getElementById("dealLtv").textContent = COMMITTEE.deal.ltv;
+  document.getElementById("dealLeaning").textContent = "Leaning: " + COMMITTEE.deal.leaning;
+
+  // ---- vote bar ----
+  const vf = COMMITTEE.vote.for, va = COMMITTEE.vote.against, vt = vf+va;
+  document.getElementById("voteForCount").textContent = vf;
+  document.getElementById("voteAgainstCount").textContent = va;
+  const forBar = document.getElementById("voteForBar");
+  const againstBar = document.getElementById("voteAgainstBar");
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      forBar.style.width = (vf/vt*100)+"%";
+      againstBar.style.width = (va/vt*100)+"%";
+    });
+  });
+
+  // ---- build arc chips (8 scrutiny experts only) ----
+  const arcEl = document.getElementById("arc");
+  const chips = [];
+  COMMITTEE.scrutiny.forEach(function(m, idx){
+    const ring = VOTE_COLOR[m.vote] || "#94a3b8";
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.setAttribute("data-idx", idx);
+    chip.innerHTML =
+      '<div class="face-wrap" style="--ring:'+ring+'">'+
+        '<div class="face">'+faceMarkup(m.emotion)+'</div>'+
+        '<div class="emoji-tag">'+m.emoji+'</div>'+
+        '<div class="research-badge">🔎<b>'+m.research+'</b></div>'+
+      '</div>'+
+      '<div class="chip-label"><span class="dot" style="background:'+ring+'"></span>'+m.short+'</div>';
+    chip.addEventListener("click", function(){ jumpTo(idx); });
+    arcEl.appendChild(chip);
+    chips.push(chip);
+  });
+
+  // ---- podium (deal advocate — distinct defense position, NOT part of the arc) ----
+  const podiumEl = document.getElementById("podium");
+  (function(){
+    const a = COMMITTEE.advocate;
+    podiumEl.innerHTML =
+      '<div class="podium-tag">DEFENSE</div>'+
+      '<div class="face-wrap" style="--ring:'+ADV_COLOR+'">'+
+        '<div class="face">'+faceMarkup(a.emotion)+'</div>'+
+        '<div class="emoji-tag">'+a.emoji+'</div>'+
+        '<div class="research-badge">🔎<b>'+a.research+'</b></div>'+
+      '</div>'+
+      '<div class="chip-label"><span class="dot" style="background:'+ADV_COLOR+'"></span>'+a.short+'</div>'+
+      '<div class="podium-base"></div>'+
+      '<div class="podium-title">DEAL ADVOCATE</div>';
+    podiumEl.addEventListener("click", function(){ jumpTo(participants.length-1); });
+  })();
+
+  const participants = COMMITTEE.scrutiny.concat([Object.assign({isAdvocate:true}, COMMITTEE.advocate)]);
+  function allNodes(){ return chips.concat([podiumEl]); }
+
+  // ---- half-moon arc layout, computed via trig (acos/sin) ----
+  function layoutArc(){
+    const w = arcEl.clientWidth;
+    const h = arcEl.clientHeight;
+    if(!w || !h) return;
+    const cx = w/2;
+    const cy = h - 65;
+    const Ry = Math.min(h - 100, 225);
+    const Rx = Math.max(260, Math.min(w/2 - 50, 470));
+    const n = chips.length;
+    chips.forEach(function(chip, i){
+      const t = i/(n-1);
+      const relX = -1 + t*2;
+      const clamped = Math.max(-1, Math.min(1, relX));
+      const theta = Math.acos(clamped);
+      const x = cx + Rx*clamped;
+      const y = cy - Ry*Math.sin(theta);
+      chip.style.left = x+"px";
+      chip.style.top = y+"px";
+    });
+  }
+  function debounce(fn, ms){
+    let t;
+    return function(){
+      const args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function(){ fn.apply(null, args); }, ms);
+    };
+  }
+  window.addEventListener("resize", debounce(layoutArc, 120));
+  window.addEventListener("load", layoutArc);
+  layoutArc();
+  setTimeout(layoutArc, 60);
+
+  // ---- spotlight / looping cycle ----
+  const spotFaceWrap = document.getElementById("spotFaceWrap");
+  const spotFace = document.getElementById("spotFace");
+  const spotEmoji = document.getElementById("spotEmoji");
+  const spotName = document.getElementById("spotName");
+  const spotVote = document.getElementById("spotVote");
+  const spotResearch = document.getElementById("spotResearch");
+  const spotWords = document.getElementById("spotWords");
+  const spotCursor = document.getElementById("spotCursor");
+  const beam = document.getElementById("beam");
+  const dotsWrap = document.getElementById("cycleDots");
+
+  participants.forEach(function(){
+    const d = document.createElement("span");
+    d.className = "cdot";
+    dotsWrap.appendChild(d);
+  });
+  const cdots = dotsWrap.querySelectorAll(".cdot");
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let genToken = 0;
+  let activeIdx = -1;
+  let autoTimer = null;
+
+  function setActiveVisual(idx){
+    allNodes().forEach(function(n,i){ n.classList.toggle("active", i===idx); });
+    cdots.forEach(function(d,i){ d.classList.toggle("on", i===idx); });
+  }
+
+  function updateBeam(idx){
+    const node = allNodes()[idx];
+    const wrap = document.getElementById("stageWrap");
+    const nodeRect = node.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const left = nodeRect.left + nodeRect.width/2 - wrapRect.left;
+    beam.style.left = left+"px";
+  }
+
+  function activate(idx){
+    genToken++;
+    const myToken = genToken;
+    clearTimeout(autoTimer);
+    activeIdx = idx;
+    const m = participants[idx];
+    setActiveVisual(idx);
+    updateBeam(idx);
+
+    const ring = m.vote ? VOTE_COLOR[m.vote] : ADV_COLOR;
+    spotFaceWrap.style.setProperty("--ring", ring);
+    spotFace.innerHTML = faceMarkup(m.emotion);
+    spotEmoji.textContent = m.emoji;
+    spotName.textContent = m.name;
+    spotVote.textContent = m.vote ? m.vote.toUpperCase() : "DEFENSE";
+    spotVote.className = "spot-vote " + (m.vote ? "vote-"+m.vote : "vote-defense");
+    spotResearch.textContent = "🔎 " + m.research + " research note" + (m.research===1 ? "" : "s");
+    spotWords.textContent = "";
+    spotCursor.style.display = "inline";
+
+    const mouthEl = spotFace.querySelector("[data-mouth]");
+
+    if(reduced){
+      spotWords.textContent = m.opinion;
+      spotCursor.style.display = "none";
+      autoTimer = setTimeout(function(){ if(myToken===genToken) advance(); }, 4200);
+      return;
+    }
+
+    mouthEl.classList.add("talking");
+    const words = m.opinion.split(" ");
+    let i = 0;
+    function typeNext(){
+      if(myToken !== genToken) return;
+      if(i >= words.length){
+        mouthEl.classList.remove("talking");
+        spotCursor.style.display = "none";
+        autoTimer = setTimeout(function(){ if(myToken===genToken) advance(); }, 2600);
+        return;
+      }
+      spotWords.textContent += (i===0 ? "" : " ") + words[i];
+      i++;
+      autoTimer = setTimeout(typeNext, 90 + Math.random()*90);
+    }
+    typeNext();
+  }
+
+  function advance(){ activate((activeIdx+1) % participants.length); }
+  function jumpTo(idx){ activate(idx); }
+
+  activate(0);
+
+  // ---- chair input (decorative, mockup only) ----
+  const chairInput = document.getElementById("chairInput");
+  const chairBtn = document.getElementById("chairAsk");
+  const chairEcho = document.getElementById("chairEcho");
+  function submitChair(){
+    const v = chairInput.value.trim();
+    if(!v) return;
+    chairEcho.textContent = "Chair asks: “" + v + "”";
+    chairEcho.classList.remove("show");
+    void chairEcho.offsetWidth;
+    chairEcho.classList.add("show");
+    chairInput.value = "";
+    clearTimeout(chairEcho._t);
+    chairEcho._t = setTimeout(function(){ chairEcho.classList.remove("show"); }, 4200);
+  }
+  chairBtn.addEventListener("click", submitChair);
+  chairInput.addEventListener("keydown", function(e){ if(e.key==="Enter") submitChair(); });
+
+})();
+</script>
+</body>
+</html>

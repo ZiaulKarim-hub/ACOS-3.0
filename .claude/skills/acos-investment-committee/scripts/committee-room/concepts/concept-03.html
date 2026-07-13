@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investment Committee Room — Concept 03: Neon Cyberpunk Night</title>
+<style>
+  :root{
+    --bg:#050308;
+    --cyan:#00eaff;
+    --cyan-soft:#7df9ff;
+    --magenta:#ff2bd6;
+    --magenta-soft:#ff7ce8;
+    --gold:#ffd23f;
+    --text:#e8f2ff;
+    --muted:#93a3c4;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-width:1180px;overflow-x:auto;}
+  body{position:relative;min-height:100vh;}
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(0,234,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,43,214,.06) 1px, transparent 1px);
+    background-size:42px 42px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 25%, black 40%, transparent 85%);
+    mask-image:radial-gradient(ellipse 90% 80% at 50% 25%, black 40%, transparent 85%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:6;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+    opacity:.45;animation:flicker 6s infinite steps(2);
+  }
+  @keyframes flicker{0%,97%,100%{opacity:.4;}98%{opacity:.55;}99%{opacity:.3;}}
+
+  .committee-room{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:30px 40px 50px;}
+
+  /* ---------- Header ---------- */
+  .deal-header{text-align:center;margin-bottom:20px;}
+  .session-tag{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:3px;
+    color:var(--cyan-soft);text-transform:uppercase;}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:var(--magenta);
+    box-shadow:0 0 10px var(--magenta);animation:liveDot 1.4s ease-in-out infinite;}
+  @keyframes liveDot{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .deal-name{font-size:29px;margin:10px 0 14px;letter-spacing:.5px;
+    text-shadow:0 0 18px rgba(0,234,255,.45),0 0 42px rgba(255,43,214,.3);}
+  .deal-meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;align-items:center;}
+  .meta-pill{border:1px solid rgba(0,234,255,.35);padding:7px 18px;border-radius:999px;
+    font-size:13px;color:var(--text);background:rgba(0,234,255,.05);letter-spacing:.3px;}
+  .leaning-badge{padding:8px 22px;border-radius:999px;font-size:13px;font-weight:700;
+    letter-spacing:1.5px;text-transform:uppercase;color:#fff;
+    background:linear-gradient(135deg,var(--magenta),#8f0055);
+    box-shadow:0 0 24px rgba(255,43,214,.65);animation:declinePulse 2.2s ease-in-out infinite;}
+  @keyframes declinePulse{0%,100%{box-shadow:0 0 16px rgba(255,43,214,.5);}50%{box-shadow:0 0 36px rgba(255,43,214,.9);}}
+
+  /* ---------- Vote bar ---------- */
+  .vote-bar-wrap{max-width:760px;margin:0 auto 28px;}
+  .vote-bar-label{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;
+    text-align:center;margin-bottom:8px;}
+  .vote-bar-label .vote-sub{opacity:.7;text-transform:none;letter-spacing:.2px;font-size:11px;}
+  .vote-bar{position:relative;display:flex;height:34px;border-radius:8px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);box-shadow:0 0 22px rgba(0,0,0,.5);}
+  .vote-seg{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+    letter-spacing:1px;white-space:nowrap;position:relative;transition:width .6s ease;width:0;}
+  .vote-seg.vote-for{background:linear-gradient(90deg,var(--cyan-soft),var(--cyan));color:#04060b;}
+  .vote-seg.vote-against{background:linear-gradient(90deg,var(--magenta),#b400cf);color:#fff;}
+  .seat-ticks{position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 1px), rgba(0,0,0,.35) calc(12.5% - 1px) 12.5%);}
+
+  /* ---------- Stage grid ---------- */
+  .stage-grid{display:grid;grid-template-columns:1fr 230px;gap:26px;align-items:start;}
+
+  .arc-chips-layer{position:relative;height:320px;}
+  .beam-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;}
+  #beamLine{stroke:url(#beamGrad);stroke-width:2;stroke-dasharray:7 7;
+    filter:drop-shadow(0 0 6px rgba(0,234,255,.8));animation:beamFlow 1s linear infinite;}
+  @keyframes beamFlow{to{stroke-dashoffset:-28;}}
+
+  .chip{position:absolute;left:0;top:0;width:140px;min-height:40px;
+    transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;padding:5px 10px;
+    border-radius:999px;background:linear-gradient(180deg, rgba(14,16,28,.92), rgba(6,7,13,.96));
+    border:1px solid rgba(0,234,255,.22);box-shadow:0 0 8px rgba(0,234,255,.08);
+    transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease;z-index:2;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .chip.vote-for .dot{background:var(--cyan);box-shadow:0 0 6px var(--cyan);}
+  .chip.vote-against .dot{background:var(--magenta);box-shadow:0 0 6px var(--magenta);}
+  .chip .chip-name{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;flex:1;min-width:0;}
+  .chip .rbadge{font-size:10px;color:var(--cyan-soft);background:rgba(0,234,255,.08);
+    border:1px solid rgba(0,234,255,.32);padding:2px 6px;border-radius:999px;flex:none;
+    animation:badgePulse 2.6s ease-in-out infinite;}
+  .chip.chip-active{transform:translate(-50%,-50%) scale(1.1);border-color:var(--cyan-soft);
+    box-shadow:0 0 22px rgba(0,234,255,.6),0 0 50px rgba(255,43,214,.3);z-index:5;}
+  @keyframes badgePulse{0%,100%{box-shadow:0 0 2px rgba(0,234,255,.15);}50%{box-shadow:0 0 9px rgba(0,234,255,.65);}}
+
+  /* ---------- Active speaker panel (the only element that "expands") ---------- */
+  .active-panel{margin-top:12px;min-height:196px;border-radius:18px;padding:22px 26px;
+    position:relative;overflow:hidden;display:flex;gap:22px;align-items:center;
+    background:linear-gradient(180deg, rgba(12,10,20,.94), rgba(6,6,12,.97));
+    border:1px solid rgba(255,43,214,.35);
+    box-shadow:0 0 30px rgba(255,43,214,.18), inset 0 0 40px rgba(0,234,255,.05);}
+  .active-panel::before{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 2px, transparent 2px 4px);
+    pointer-events:none;}
+
+  .face{--face-color:var(--cyan);width:100px;height:100px;border-radius:50%;position:relative;
+    flex:none;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.08), rgba(10,10,18,.92));
+    border:2px solid var(--face-color);box-shadow:0 0 22px var(--face-color);}
+  .face .eye{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--face-color);
+    top:40px;box-shadow:0 0 8px var(--face-color);animation:blink 4.4s infinite;}
+  .face .eye.left{left:30px;} .face .eye.right{right:30px;}
+  .face .mouth{position:absolute;left:50%;bottom:26px;width:36px;height:6px;border-radius:6px;
+    background:var(--face-color);transform:translateX(-50%);box-shadow:0 0 8px var(--face-color);}
+  .face.talking .mouth{animation:talk .3s ease-in-out infinite;}
+  .face .emotion-badge{position:absolute;bottom:-8px;right:-10px;font-size:28px;
+    filter:drop-shadow(0 0 8px rgba(0,0,0,.7));animation:emoteBounce 1.7s ease-in-out infinite;}
+  @keyframes blink{0%,90%,100%{transform:scaleY(1);}95%{transform:scaleY(.12);}}
+  @keyframes talk{0%,100%{height:6px;border-radius:6px;}50%{height:17px;border-radius:9px;}}
+  @keyframes emoteBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+
+  .panel-body{flex:1;min-width:0;}
+  .panel-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .panel-num{font-size:11px;color:var(--muted);letter-spacing:1px;}
+  .panel-name{font-size:19px;font-weight:700;color:#fff;text-shadow:0 0 10px var(--cyan);}
+  .panel-vote-tag{font-size:10.5px;padding:3px 10px;border-radius:999px;text-transform:uppercase;
+    letter-spacing:1.5px;font-weight:700;}
+  .panel-vote-tag.for{color:var(--cyan);border:1px solid var(--cyan);box-shadow:0 0 10px rgba(0,234,255,.45);}
+  .panel-vote-tag.against{color:var(--magenta-soft);border:1px solid var(--magenta);box-shadow:0 0 10px rgba(255,43,214,.45);}
+  .panel-badge{margin-left:auto;font-size:11px;color:var(--cyan-soft);background:rgba(0,234,255,.08);
+    border:1px solid rgba(0,234,255,.32);padding:4px 10px;border-radius:999px;
+    animation:badgePulse 2.6s ease-in-out infinite;}
+  .opinion-text{font-size:16px;line-height:1.55;color:#e3f1ff;min-height:3.4em;margin:0;}
+  .opinion-text .cursor{display:inline-block;width:8px;height:1em;background:var(--cyan);
+    margin-left:2px;vertical-align:-2px;animation:cursorBlink .85s steps(1) infinite;}
+  @keyframes cursorBlink{50%{opacity:0;}}
+
+  /* ---------- Deal Advocate — distinct podium, not part of the 8-seat arc ---------- */
+  .advocate-podium{position:relative;padding-top:6px;display:flex;flex-direction:column;align-items:center;}
+  .podium-eyebrow{font-size:9.5px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;
+    margin-bottom:10px;opacity:.9;text-align:center;}
+  .podium-card{position:relative;width:100%;background:linear-gradient(180deg, rgba(28,20,4,.92), rgba(12,9,3,.96));
+    border:1px solid rgba(255,210,63,.5);border-radius:10px 10px 3px 3px;
+    clip-path:polygon(9% 0,91% 0,100% 100%,0 100%);
+    padding:28px 16px 22px;text-align:center;
+    box-shadow:0 0 26px rgba(255,210,63,.28), inset 0 0 26px rgba(255,210,63,.06);}
+  .podium-hand{font-size:32px;animation:handRaise 1.7s ease-in-out infinite;
+    filter:drop-shadow(0 0 10px rgba(255,210,63,.75));}
+  @keyframes handRaise{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-9px) rotate(-8deg);}}
+  .podium-face{width:64px;height:64px;margin:10px auto 8px;}
+  .podium-face .eye{top:26px;}
+  .podium-face .eye.left{left:19px;} .podium-face .eye.right{right:19px;}
+  .podium-face .mouth{bottom:16px;width:22px;height:4px;}
+  .podium-name{font-weight:700;color:#ffe9b0;text-shadow:0 0 10px rgba(255,210,63,.6);font-size:14px;}
+  .podium-role{font-size:9.5px;color:rgba(255,233,176,.65);letter-spacing:1.2px;
+    text-transform:uppercase;margin-top:3px;}
+  .podium-badge{display:inline-flex;margin:10px 0;font-size:10.5px;color:#ffe9b0;
+    background:rgba(255,210,63,.1);border:1px solid rgba(255,210,63,.4);padding:3px 9px;
+    border-radius:999px;animation:goldPulse 2.6s ease-in-out infinite;}
+  @keyframes goldPulse{0%,100%{box-shadow:0 0 2px rgba(255,210,63,.2);}50%{box-shadow:0 0 10px rgba(255,210,63,.7);}}
+  .podium-opinion{font-size:12.5px;color:#f3e6c8;line-height:1.55;margin:0;}
+  .podium-stand{width:56%;height:16px;margin-top:-2px;
+    background:radial-gradient(ellipse at center, rgba(255,210,63,.4), transparent 70%);filter:blur(1px);}
+
+  /* ---------- Chair input ---------- */
+  .chair-input-wrap{max-width:640px;margin:34px auto 8px;text-align:center;}
+  .chair-label{font-size:11px;letter-spacing:3px;color:var(--cyan-soft);text-shadow:0 0 8px var(--cyan);
+    margin-bottom:9px;text-transform:uppercase;}
+  .chair-input{display:flex;gap:10px;background:rgba(10,12,20,.82);border:1px solid rgba(0,234,255,.38);
+    border-radius:999px;padding:7px 7px 7px 22px;
+    box-shadow:0 0 26px rgba(0,234,255,.16), inset 0 0 14px rgba(255,43,214,.06);}
+  .chair-input input{flex:1;background:transparent;border:none;color:#eaf6ff;font-size:14px;
+    outline:none;font-family:inherit;}
+  .chair-input input::placeholder{color:rgba(232,246,255,.4);}
+  .chair-input button{background:linear-gradient(135deg,var(--cyan),var(--magenta));border:none;
+    color:#04060b;font-weight:700;padding:9px 24px;border-radius:999px;letter-spacing:1px;
+    font-size:12px;cursor:pointer;box-shadow:0 0 18px rgba(0,234,255,.5);}
+
+  .mockup-note{text-align:center;margin-top:28px;font-size:11px;letter-spacing:1.5px;
+    color:rgba(147,163,196,.55);text-transform:uppercase;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;}
+  }
+</style>
+</head>
+<body>
+<div class="committee-room">
+
+  <header class="deal-header">
+    <div class="session-tag"><span class="dot-live"></span> Investment Committee — Live Session</div>
+    <h1 class="deal-name" id="dealName">Deal Name</h1>
+    <div class="deal-meta">
+      <span class="meta-pill" id="pillAmount"></span>
+      <span class="meta-pill" id="pillLtv"></span>
+      <span class="leaning-badge" id="dealLeaning"></span>
+    </div>
+  </header>
+
+  <section class="vote-bar-wrap">
+    <div class="vote-bar-label">Committee Vote <span class="vote-sub">— 8 voting seats, advocate not counted</span></div>
+    <div class="vote-bar" role="img" aria-label="Vote tally among 8 voting seats">
+      <div class="vote-seg vote-for" id="segFor"></div>
+      <div class="vote-seg vote-against" id="segAgainst"></div>
+      <div class="seat-ticks"></div>
+    </div>
+  </section>
+
+  <div class="stage-grid">
+    <div class="arc-col">
+      <div class="arc-chips-layer" id="arcChipsLayer">
+        <svg class="beam-svg" id="beamSvg">
+          <defs>
+            <linearGradient id="beamGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00eaff"/>
+              <stop offset="100%" stop-color="#ff2bd6"/>
+            </linearGradient>
+          </defs>
+          <line id="beamLine" x1="0" y1="0" x2="0" y2="0"></line>
+        </svg>
+        <!-- 8 scrutiny chips injected here by JS -->
+      </div>
+
+      <div class="active-panel" id="activePanel">
+        <div class="face" id="faceEl">
+          <span class="eye left"></span>
+          <span class="eye right"></span>
+          <span class="mouth"></span>
+          <span class="emotion-badge" id="emotionBadge">😠</span>
+        </div>
+        <div class="panel-body">
+          <div class="panel-top">
+            <span class="panel-num" id="panelNum">SEAT 1</span>
+            <span class="panel-name" id="panelName">—</span>
+            <span class="panel-vote-tag against" id="panelVoteTag">AGAINST</span>
+            <span class="panel-badge" id="panelBadge">🔎 0</span>
+          </div>
+          <p class="opinion-text" id="opinionText" aria-live="polite"><span class="cursor"></span></p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="advocate-podium">
+      <div class="podium-eyebrow">Defense — Not a Voting Seat</div>
+      <div class="podium-card">
+        <div class="podium-hand" id="advHand">🙋</div>
+        <div class="face podium-face" id="advFace">
+          <span class="eye left"></span>
+          <span class="eye right"></span>
+          <span class="mouth"></span>
+        </div>
+        <div class="podium-name" id="advName">Deal Advocate</div>
+        <div class="podium-role">Speaking on behalf of the deal</div>
+        <div class="podium-badge" id="advBadge">🔎 0</div>
+        <p class="podium-opinion" id="advOpinion"></p>
+      </div>
+      <div class="podium-stand"></div>
+    </aside>
+  </div>
+
+  <div class="chair-input-wrap">
+    <div class="chair-label">Chair</div>
+    <div class="chair-input">
+      <input type="text" placeholder="Ask the Committee a question…" disabled />
+      <button type="button">SEND</button>
+    </div>
+  </div>
+
+  <footer class="mockup-note">Mockup — Concept 03 · Neon Cyberpunk Night · Investment Committee Room</footer>
+</div>
+
+<script>
+(function(){
+  const COMMITTEE = {
+    deal:{name:"1420 Alder Street Bridge Refinance",amount:"$1.15M",ltv:"65% LTV",leaning:"DECLINE"},
+    vote:{for:2,against:6},
+    scrutiny:[
+      {n:1,name:"Credit & Valuation",short:"Credit",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The 65% LTV is unsupported — it's really 79% against the purchase price."},
+      {n:2,name:"Finance",short:"Finance",vote:"against",emotion:"angry",emoji:"😠",research:1,opinion:"Negative carry with no defended exit — this loan cannot refinance itself."},
+      {n:3,name:"Accounting",short:"Accounting",vote:"against",emotion:"skeptical",emoji:"🤨",research:3,opinion:"In-place NOI exceeds gross rent. The number is mathematically impossible."},
+      {n:4,name:"Legal & Structural",short:"Legal",vote:"against",emotion:"thinking",emoji:"🤔",research:2,opinion:"First-lien position is asserted but entirely unverified — no title, no UCC."},
+      {n:5,name:"Insurance & Climate",short:"Insurance",vote:"for",emotion:"worried",emoji:"😟",research:1,opinion:"Sub-1.0x DSCR is thin, but insurable if we condition on a binder."},
+      {n:6,name:"Sponsor & Fraud",short:"Fraud",vote:"against",emotion:"angry",emoji:"😠",research:2,opinion:"The track record is wholly self-reported. Assume fabricated until proven."},
+      {n:7,name:"Portfolio & Concentration",short:"Portfolio",vote:"for",emotion:"thinking",emoji:"🤔",research:1,opinion:"No fund tape provided — but in isolation the concentration is tolerable."},
+      {n:8,name:"Strategy",short:"Strategy",vote:"against",emotion:"disapprove",emoji:"😕",research:1,opinion:"A sub-1.0x story credit breaches our secured-lender thesis."}
+    ],
+    advocate:{n:9,name:"Deal Advocate",short:"Advocate",emotion:"handraise",emoji:"🙋",research:1,opinion:"Condition it on an appraisal and audited T-12 and it may be salvageable."}
+  };
+
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---- Deal header ---- */
+  document.getElementById('dealName').textContent = COMMITTEE.deal.name;
+  document.getElementById('pillAmount').textContent = 'Loan Amount ' + COMMITTEE.deal.amount;
+  document.getElementById('pillLtv').textContent = COMMITTEE.deal.ltv;
+  const leaningEl = document.getElementById('dealLeaning');
+  leaningEl.textContent = 'Leaning: ' + COMMITTEE.deal.leaning;
+  if (COMMITTEE.deal.leaning === 'DECLINE') leaningEl.classList.add('leaning-decline');
+
+  /* ---- Vote bar (8 voting seats, advocate excluded) ---- */
+  const total = COMMITTEE.vote.for + COMMITTEE.vote.against;
+  const segFor = document.getElementById('segFor');
+  const segAgainst = document.getElementById('segAgainst');
+  const forPct = (COMMITTEE.vote.for / total * 100) + '%';
+  const againstPct = (COMMITTEE.vote.against / total * 100) + '%';
+  segFor.textContent = 'FOR ' + COMMITTEE.vote.for;
+  segAgainst.textContent = 'AGAINST ' + COMMITTEE.vote.against;
+  requestAnimationFrame(function(){
+    segFor.style.width = forPct;
+    segAgainst.style.width = againstPct;
+  });
+
+  /* ---- Build the 8-seat half-moon arc (downward-opening semicircle) ---- */
+  const layer = document.getElementById('arcChipsLayer');
+  const chips = [];
+  COMMITTEE.scrutiny.forEach(function(ex, i){
+    const chip = document.createElement('div');
+    chip.className = 'chip vote-' + ex.vote;
+    chip.dataset.idx = i;
+    chip.innerHTML = '<span class="dot"></span><span class="chip-name">' + ex.short +
+      '</span><span class="rbadge">🔎 ' + ex.research + '</span>';
+    layer.appendChild(chip);
+    chips.push(chip);
+  });
+
+  const beamLine = document.getElementById('beamLine');
+  let positions = [];
+
+  function layout(){
+    const w = layer.clientWidth || 900;
+    const cx = w / 2, cy = 250, ry = 200, rx = w * 0.40;
+    const n = COMMITTEE.scrutiny.length;
+    positions = COMMITTEE.scrutiny.map(function(_, i){
+      const theta = (168 - i * (156 / (n - 1))) * Math.PI / 180; // downward-opening dome, left→right
+      const zig = (i % 2 === 0) ? 14 : -14; // extra stagger — guarantees no adjacent-chip overlap
+      return {
+        x: cx + rx * Math.cos(theta),
+        y: cy - ry * Math.sin(theta) + zig
+      };
+    });
+    positions.forEach(function(p, i){
+      chips[i].style.left = p.x + 'px';
+      chips[i].style.top = p.y + 'px';
+    });
+  }
+  layout();
+  window.addEventListener('resize', layout);
+
+  function updateBeam(idx){
+    const p = positions[idx];
+    const w = layer.clientWidth || 900;
+    beamLine.setAttribute('x1', p.x);
+    beamLine.setAttribute('y1', p.y);
+    beamLine.setAttribute('x2', w / 2);
+    beamLine.setAttribute('y2', 318);
+  }
+
+  /* ---- Active speaker panel — the ONLY box that ever expands ---- */
+  const faceEl = document.getElementById('faceEl');
+  const emotionBadge = document.getElementById('emotionBadge');
+  const panelNum = document.getElementById('panelNum');
+  const panelName = document.getElementById('panelName');
+  const panelVoteTag = document.getElementById('panelVoteTag');
+  const panelBadge = document.getElementById('panelBadge');
+  const opinionText = document.getElementById('opinionText');
+
+  function renderStatic(ex){
+    faceEl.style.setProperty('--face-color', ex.vote === 'for' ? 'var(--cyan)' : 'var(--magenta)');
+    emotionBadge.textContent = ex.emoji;
+    panelNum.textContent = 'SEAT ' + ex.n;
+    panelName.textContent = ex.name;
+    panelVoteTag.textContent = ex.vote.toUpperCase();
+    panelVoteTag.className = 'panel-vote-tag ' + ex.vote;
+    panelBadge.textContent = '🔎 ' + ex.research + ' research item' + (ex.research === 1 ? '' : 's');
+  }
+
+  function typeOpinion(ex, cb){
+    const words = ex.opinion.split(' ');
+    if (reduceMotion){
+      opinionText.innerHTML = ex.opinion + '<span class="cursor"></span>';
+      faceEl.classList.remove('talking');
+      cb();
+      return;
+    }
+    opinionText.innerHTML = '<span class="cursor"></span>';
+    faceEl.classList.add('talking');
+    let i = 0;
+    function step(){
+      i++;
+      opinionText.innerHTML = words.slice(0, i).join(' ') + '<span class="cursor"></span>';
+      if (i < words.length){
+        setTimeout(step, 85 + Math.random() * 70);
+      } else {
+        faceEl.classList.remove('talking');
+        cb();
+      }
+    }
+    setTimeout(step, 300);
+  }
+
+  function activate(idx){
+    chips.forEach(function(c){ c.classList.remove('chip-active'); });
+    chips[idx].classList.add('chip-active');
+    updateBeam(idx);
+    const ex = COMMITTEE.scrutiny[idx];
+    renderStatic(ex);
+    typeOpinion(ex, function(){
+      setTimeout(function(){
+        activate((idx + 1) % COMMITTEE.scrutiny.length);
+      }, reduceMotion ? 2200 : 1700);
+    });
+  }
+  activate(0);
+
+  /* ---- Deal Advocate — distinct podium, static content, hand raised ---- */
+  const adv = COMMITTEE.advocate;
+  document.getElementById('advHand').textContent = adv.emoji;
+  document.getElementById('advName').textContent = adv.name;
+  document.getElementById('advBadge').textContent = '🔎 ' + adv.research + ' research item' + (adv.research === 1 ? '' : 's');
+  document.getElementById('advOpinion').textContent = adv.opinion;
+  document.getElementById('advFace').style.setProperty('--face-color', 'var(--gold)');
+})();
+</script>
+</body>
+</html>

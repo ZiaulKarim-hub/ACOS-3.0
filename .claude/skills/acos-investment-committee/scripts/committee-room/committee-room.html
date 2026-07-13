@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1480, initial-scale=1">
+<title>OKOA Investment Committee — Room</title>
+<style>
+  :root{
+    --red:#e2001a;
+    --ink:#111111;
+    --hair:rgba(17,17,17,.16);
+    --hair-soft:rgba(17,17,17,.08);
+    --grey:#8a8a8a;
+    --bg:#ffffff;
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); }
+  body{
+    font-family:"Helvetica Neue",Helvetica,Arial,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-width:1480px;
+  }
+  .wrap{ max-width:1480px; margin:0 auto; padding:44px 40px 64px; }
+
+  /* ---------- top kicker ---------- */
+  .live{ display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; }
+  .live .left{ display:flex; align-items:center; gap:9px; }
+  .live .dot{ width:6px; height:6px; border-radius:50%; background:var(--red); animation:pulse 1.7s ease-in-out infinite; }
+  .live span{ font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--grey); }
+  .research-total{ display:flex; align-items:center; gap:8px; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink); }
+  .research-total b{ font-weight:700; }
+  .research-total .rt-dot{ position:relative; width:6px; height:6px; border-radius:50%; border:1px solid var(--red); }
+  .research-total .rt-dot::after{ content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid var(--red); opacity:.5; animation:ring 2.2s ease-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.22; } }
+
+  /* ---------- header ---------- */
+  .header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:2px solid var(--ink); padding-bottom:20px; margin-bottom:30px;
+  }
+  .header .deal-title{ font-size:23px; font-weight:700; letter-spacing:-.01em; }
+  .header .deal-meta{ font-size:12.5px; color:#555; margin-top:8px; letter-spacing:.01em; }
+  .leaning{ text-align:right; flex-shrink:0; padding-left:40px; }
+  .leaning .lbl{ font-size:10px; letter-spacing:.18em; color:var(--grey); text-transform:uppercase; display:block; margin-bottom:6px; }
+  .leaning .val{
+    font-size:15px; font-weight:700; color:var(--red);
+    border:1.5px solid var(--red); padding:5px 14px; letter-spacing:.05em; display:inline-block;
+  }
+
+  /* ---------- vote bar ---------- */
+  .votebar{ margin-bottom:46px; }
+  .votebar-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; }
+  .votebar-kicker{ font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--grey); }
+  .votebar-counts{ font-size:12px; letter-spacing:.02em; }
+  .votebar-counts .c-against{ color:var(--red); font-weight:700; }
+  .votebar-counts .c-for{ color:var(--ink); font-weight:700; }
+  .votebar-counts .sep{ color:#ccc; margin:0 6px; }
+  .votebar-track{ display:flex; width:100%; height:10px; border:1px solid var(--ink); overflow:hidden; }
+  .votebar-seg{ height:100%; transition:width .6s ease; }
+  .votebar-seg.against{ background:var(--red); }
+  .votebar-seg.for{ background:#fff; border-right:1px solid var(--ink); }
+  .votebar-ticks{ display:flex; gap:5px; margin-top:8px; }
+  .tick{ flex:1; height:5px; }
+  .tick.against{ background:var(--red); }
+  .tick.for{ background:#fff; border:1px solid var(--ink); }
+  .votebar-caption{ margin-top:9px; font-size:11px; color:var(--grey); letter-spacing:.01em; }
+
+  /* ---------- committee row (arc + podium) ---------- */
+  .committee-row{ display:flex; justify-content:center; align-items:stretch; gap:16px; height:560px; }
+
+  .arc-shell{ width:1168px; flex-shrink:0; }
+  .arc{ position:relative; width:1168px; height:560px; }
+
+  .divider{ width:1px; background:var(--hair); }
+
+  .arc .seat{ position:absolute; left:0; top:0; width:0; height:0; }
+
+  /* seat number tag */
+  .arc .tag{ position:absolute; left:0; transform:translateX(-50%); font-size:9px; color:#aaa; letter-spacing:.08em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* face */
+  .face-wrap{ position:absolute; left:0; transform:translate(-50%,-50%); width:60px; height:60px; }
+  .face-wrap.static{ position:relative; left:auto; top:auto; transform:none; margin:0 auto; }
+  .face{
+    position:absolute; inset:0; border-radius:50%;
+    background:#fff; border:1.5px solid var(--ink);
+    transition:border-color .3s ease, border-width .3s ease;
+  }
+  .seat.active .face{ border-color:var(--red); border-width:2px; }
+  .seat.clickable{ cursor:pointer; }
+  .eye{ position:absolute; width:5px; height:5px; border-radius:50%; background:var(--ink); top:23px; animation:blink 4.2s ease-in-out infinite; }
+  .eye.l{ left:18px; } .eye.r{ left:37px; }
+  @keyframes blink{ 0%,90%,100%{ transform:scaleY(1); } 95%{ transform:scaleY(.12); } }
+  .mouth{ position:absolute; left:50%; top:37px; width:16px; height:2px; background:var(--ink); border-radius:1px; transform:translateX(-50%); }
+  .face.talking .mouth{ animation:talk .48s ease-in-out infinite; }
+  @keyframes talk{ 0%,100%{ height:2px; border-radius:1px; } 50%{ height:8px; border-radius:4px; } }
+
+  .emo{
+    position:absolute; top:-5px; right:-6px; width:20px; height:20px; border-radius:50%;
+    background:#fff; border:1px solid var(--hair); display:flex; align-items:center; justify-content:center;
+    font-size:11px; line-height:1;
+  }
+  .emo.raise{ animation:raise 1.15s ease-in-out infinite; }
+  @keyframes raise{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-5px) rotate(-10deg); } }
+
+  /* label */
+  .arc .label{ position:absolute; left:0; transform:translateX(-50%); text-align:center; white-space:nowrap; }
+  .label.static{ position:static; text-align:center; margin-top:2px; }
+  .label-name{
+    font-size:11px; font-weight:700; letter-spacing:.02em; color:#333;
+    border-bottom:2px solid transparent; padding-bottom:2px; display:inline-block;
+  }
+  .seat.active .label-name{ border-bottom-color:var(--red); color:#000; }
+  .label-stance{
+    display:block; font-size:8.5px; letter-spacing:.14em; color:var(--grey);
+    text-transform:uppercase; margin-top:3px;
+  }
+  .label-stance.nonvote{ color:var(--red); }
+
+  /* connector stem (arc only) */
+  .stem{ position:absolute; left:0; width:1px; background:var(--hair); transform:translateX(-50%); }
+
+  /* chip / message card */
+  .arc .chip-anchor{ position:absolute; left:0; transform:translateX(-50%); z-index:2; }
+  .chip-anchor.static{ position:static; transform:none; display:flex; justify-content:center; margin-top:8px; }
+  .seat.active .chip-anchor{ z-index:60; }
+
+  .card{
+    width:100px; background:#fff; border:1px solid var(--hair);
+    padding:7px 9px; overflow:hidden;
+    transition:width .38s ease, border-color .3s ease, box-shadow .3s ease;
+  }
+  .seat.active .card{ width:170px; border-color:var(--red); box-shadow:0 3px 14px rgba(0,0,0,.08); }
+
+  .card-head{ display:flex; align-items:center; gap:5px; white-space:nowrap; }
+  .dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot.against{ background:var(--red); }
+  .dot.for{ background:#fff; border:1.4px solid var(--ink); }
+  .dot.advocate{ background:#fff; border:1.4px dashed var(--ink); }
+  .card-name{ font-size:10px; font-weight:700; letter-spacing:.02em; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
+
+  .rbadge{
+    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    min-width:16px; height:16px; padding:0 4px; border-radius:8px;
+    border:1px solid var(--ink); font-size:9px; font-weight:700; font-variant-numeric:tabular-nums;
+    margin-left:auto; flex-shrink:0; background:#fff;
+  }
+  .rbadge::before{
+    content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid var(--red);
+    opacity:.55; animation:ring 2.2s ease-out infinite;
+  }
+  @keyframes ring{ 0%{ transform:scale(.65); opacity:.6; } 100%{ transform:scale(1.55); opacity:0; } }
+
+  .card-text{
+    display:block; font-size:0; line-height:1.5; color:#222;
+    max-height:0; opacity:0; margin-top:0; overflow:hidden;
+    transition:max-height .32s ease, opacity .28s ease, margin-top .32s ease, font-size .01s;
+  }
+  .seat.active .card-text{ font-size:11.5px; max-height:200px; opacity:1; margin-top:7px; }
+  .card-more{ display:block; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--red); margin-top:6px; opacity:0; transition:opacity .28s ease; }
+  .seat.active .card-more{ opacity:.85; }
+  .card-research{ display:block; font-size:0; opacity:0; max-height:0; overflow:hidden; margin-top:0;
+    color:var(--red); letter-spacing:.08em; text-transform:uppercase; transition:max-height .3s ease, opacity .28s ease, margin-top .3s ease; }
+  .seat.active .card-research{ font-size:8.5px; opacity:.9; max-height:20px; margin-top:7px; }
+  .card-research .rr{ position:relative; display:inline-block; width:5px; height:5px; border-radius:50%; border:1px solid var(--red); margin-right:5px; vertical-align:1px; }
+  .card-research .rr::after{ content:''; position:absolute; inset:-2px; border-radius:50%; border:1px solid var(--red); opacity:.5; animation:ring 2.2s ease-out infinite; }
+
+  /* research bubble above each avatar (click to view threads) */
+  .rbubble{ position:absolute; left:0; transform:translateX(-50%); display:inline-flex; align-items:center; gap:4px;
+    padding:2px 8px 2px 6px; background:#fff; border:1px solid var(--red); border-radius:11px;
+    font-size:10px; font-weight:700; color:var(--red); font-variant-numeric:tabular-nums; cursor:pointer; white-space:nowrap; z-index:5; }
+  .rbubble.static{ position:static; transform:none; margin:0 auto 8px; }
+  .rbubble .mag{ position:relative; width:8px; height:8px; border:1.4px solid currentColor; border-radius:50%; }
+  .rbubble .mag::after{ content:''; position:absolute; right:-3px; bottom:-3px; width:4px; height:1.5px; background:currentColor; transform:rotate(45deg); border-radius:1px; }
+  .rbubble::before{ content:''; position:absolute; inset:-3px; border-radius:13px; border:1px solid var(--red); opacity:.4; animation:ring 2.2s ease-out infinite; pointer-events:none; }
+  .rbubble.static::before{ display:none; }
+  .rbubble:hover{ background:var(--red); color:#fff; }
+
+  /* research-thread items in drawer */
+  .rthread-status{ display:inline-block; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; padding:2px 8px; margin-bottom:8px; border:1px solid var(--red); color:var(--red); }
+  .rthread-status.done{ background:var(--ink); border-color:var(--ink); color:#fff; }
+  .cursor{ display:inline-block; width:1px; height:1em; background:var(--ink); vertical-align:-2px; margin-left:1px; animation:cblink .8s steps(1) infinite; }
+  @keyframes cblink{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+
+  /* ---------- defense podium ---------- */
+  .podium-shell{ width:199px; flex-shrink:0; display:flex; }
+  .podium{
+    width:199px; position:relative;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:1px solid var(--hair); padding:22px 14px; gap:2px;
+  }
+  .podium::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--red); }
+  .podium-kicker{ font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--grey); margin-bottom:14px; }
+  .lectern{ display:flex; flex-direction:column; align-items:center; margin-bottom:12px; }
+  .lectern-top{ width:46px; height:3px; background:var(--ink); }
+  .lectern-stand{ width:3px; height:16px; background:var(--ink); }
+  .seat.advocate{ display:flex; flex-direction:column; align-items:center; width:100%; }
+  .seat.advocate .card{ margin-top:2px; }
+  .podium-note{ margin-top:12px; font-size:9.5px; color:var(--grey); text-align:center; line-height:1.5; }
+
+  /* ---------- chair bar ---------- */
+  .chair-wrap{ display:flex; flex-direction:column; align-items:center; margin-top:30px; }
+  .chair-log{ width:640px; max-height:210px; overflow-y:auto; margin-bottom:16px; }
+  .cmsg-empty{ font-size:12px; color:#a4a4a4; padding:11px 0; border-top:1px solid var(--ink); letter-spacing:.01em; }
+  .chair-log-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .chair-log-head .h{ font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--grey); }
+  .chair-log-head .clear{ font-size:10px; letter-spacing:.04em; color:var(--grey); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; }
+  .cmsg{ border-top:1px solid var(--hair-soft); padding:9px 0; }
+  .cmsg:first-child{ border-top:1px solid var(--ink); }
+  .cmsg-top{ display:flex; justify-content:space-between; align-items:baseline; }
+  .cmsg-who{ font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .cmsg-who.chair{ color:var(--red); }
+  .cmsg-time{ font-size:9px; color:#aaa; font-variant-numeric:tabular-nums; }
+  .cmsg-text{ font-size:13px; color:#1a1a1a; margin-top:3px; line-height:1.45; }
+  .cmsg-sys{ font-size:10px; color:var(--grey); margin-top:3px; font-style:italic; }
+  .chair{
+    width:640px; display:flex; align-items:center; gap:16px;
+    border-bottom:1.5px solid var(--ink); padding-bottom:11px;
+  }
+  .chair input{
+    flex:1; border:none; outline:none; background:transparent;
+    font-family:inherit; font-size:14px; color:var(--ink); padding:8px 2px;
+  }
+  .chair input::placeholder{ color:#9a9a9a; }
+  .chair button{
+    border:1px solid var(--ink); background:#fff; color:var(--ink);
+    font-family:inherit; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    padding:9px 20px; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .chair button:hover{ background:var(--red); border-color:var(--red); color:#fff; }
+
+  .foot-rule{ margin-top:40px; border-top:1px solid var(--hair-soft); padding-top:14px; display:flex; justify-content:space-between; }
+  .foot-rule span{ font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:#bbb; }
+
+  /* ---------- drill-down overlay (full objection list for a seat) ---------- */
+  .drawer-backdrop{ position:fixed; inset:0; background:rgba(255,255,255,.72); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:100; }
+  .drawer-backdrop.open{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:fixed; top:0; right:0; height:100%; width:520px; max-width:92vw; background:#fff;
+    border-left:2px solid var(--ink); box-shadow:-8px 0 40px rgba(0,0,0,.10);
+    transform:translateX(100%); transition:transform .3s ease; z-index:101; overflow-y:auto; padding:34px 32px 60px;
+  }
+  .drawer.open{ transform:none; }
+  .drawer-close{ position:absolute; top:22px; right:26px; border:none; background:none; font-size:22px; line-height:1; cursor:pointer; color:var(--ink); }
+  .drawer h2{ font-size:20px; font-weight:700; margin:0 0 2px; letter-spacing:-.01em; }
+  .drawer .d-sub{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--grey); margin-bottom:22px; }
+  .drawer .d-sub .stance-against{ color:var(--red); font-weight:700; }
+  .obj{ border-top:1px solid var(--hair-soft); padding:16px 0; }
+  .obj:first-of-type{ border-top:2px solid var(--ink); }
+  .obj-sev{ display:inline-block; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; padding:2px 8px; margin-bottom:8px; border:1px solid var(--ink); }
+  .obj-sev.disqualifying{ background:var(--red); color:#fff; border-color:var(--red); }
+  .obj-sev.material{ background:#111; color:#fff; }
+  .obj-sev.monitor,.obj-sev.info,.obj-sev.unscored{ background:#fff; color:#555; }
+  .obj-statement{ font-size:13px; line-height:1.55; color:#1a1a1a; }
+  .obj-cites{ margin-top:8px; font-size:10.5px; color:var(--grey); letter-spacing:.01em; }
+  .obj-cites b{ color:#444; font-weight:600; }
+  .obj-question{ font-size:14.5px; font-weight:700; line-height:1.4; color:#000; margin-bottom:7px; }
+  .obj-context{ font-size:12.5px; line-height:1.5; color:#333; }
+  .lbl{ display:block; font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--grey); margin-bottom:3px; margin-top:2px; }
+  .obj-mits{ margin-top:10px; border-top:1px dotted var(--hair); padding-top:8px; }
+  .mit{ font-size:12px; line-height:1.5; color:#0a5c2f; margin:5px 0; padding-left:10px; border-left:2px solid #3FB57A; }
+  .mit-type{ display:inline-block; font-size:8px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:#fff; background:#3FB57A; padding:1px 6px; margin-right:6px; vertical-align:1px; }
+  .mit-res{ font-size:10.5px; color:var(--grey); margin-top:2px; font-style:italic; }
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{
+      animation-duration:.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="live">
+    <div class="left"><div class="dot"></div><span>OKOA Investment Committee — Live Session</span></div>
+    <div class="research-total" id="researchTotal"></div>
+  </div>
+
+  <div class="header">
+    <div>
+      <div class="deal-title" id="dealTitle"></div>
+      <div class="deal-meta" id="dealMeta"></div>
+    </div>
+    <div class="leaning">
+      <span class="lbl">Computed Verdict</span>
+      <span class="val" id="leaningVal"></span>
+    </div>
+  </div>
+
+  <div class="votebar">
+    <div class="votebar-top">
+      <span class="votebar-kicker">Committee Vote — 8 Voting Seats</span>
+      <span class="votebar-counts" id="voteCounts"></span>
+    </div>
+    <div class="votebar-track">
+      <div class="votebar-seg against" id="segAgainst"></div>
+      <div class="votebar-seg for" id="segFor"></div>
+    </div>
+    <div class="votebar-ticks" id="voteTicks"></div>
+    <div class="votebar-caption" id="voteCaption">A seat counts AGAINST when it holds an un-mitigated deal-breaker (Disqualifying) objection; otherwise FOR. Each seat proposes its own mitigant(s) per objection.</div>
+  </div>
+
+  <div class="committee-row">
+    <div class="arc-shell"><div class="arc" id="arc"></div></div>
+  </div>
+
+  <div class="chair-wrap">
+    <div class="chair-log" id="chairLog">
+      <div class="chair-log-head">
+        <span class="h">Chair — message history</span>
+        <button type="button" class="clear" id="chairClear">Clear</button>
+      </div>
+      <div id="chairMsgs"></div>
+    </div>
+    <form class="chair" id="chairForm">
+      <input id="chairInput" type="text" placeholder="Message the whole committee…" autocomplete="off">
+      <button type="submit" id="chairSend">Send</button>
+    </form>
+  </div>
+
+  <div class="foot-rule"><span id="footLeft">OKOA IC — Committee Room</span><span id="footRight">Swiss — International Minimalism</span></div>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="drawer-close" id="drawerClose" aria-label="Close">&times;</button>
+  <h2 id="drawerName"></h2>
+  <div class="d-sub" id="drawerSub"></div>
+  <div id="drawerBody"></div>
+</aside>
+
+<script>
+  const COMMITTEE = {"deal": {"name": "1420 Alder Street Bridge Refinance", "amount": "$1,150,000", "ltv": "65%", "leaning": "DECLINE", "sub": "Multifamily (6-unit) · 1420 Alder Street, Boise, ID 83702 · 8 voting scrutiny seats"}, "vote": {"for": 2, "against": 6}, "scrutiny": [{"n": 1, "name": "Credit & Valuation", "short": "Credit", "vote": "against", "emoji": "😠", "research": 2, "threads": [{"topic": "Pull Boise 6-unit multifamily cap-rate comps (trailing 12 mo) to test the implied 65% LTV value.", "status": "running"}, {"topic": "Find arm's-length sales for 1420 Alder St and adjacent parcels to corroborate the $1.45M basis.", "status": "running"}], "opinion": "Does any independent valuation support the 65% LTV, or is it built on the sponsor's own NOI?", "objections": [{"objection_id": "OBJ-1-LTV-UNSUPPORTED", "question": "Does any independent valuation support the 65% LTV, or is it built on the sponsor's own NOI?", "statement": "No appraisal, comps, or as-stabilized valuation exists. The only arm's-length evidence of value — the $1,450,000 purchase price — implies a 79.3% LTV, not 65%.", "severity": "disqualifying", "evidence": [{"citation": "term-sheet.md", "locator": "LTV line", "text": "65% LTV asserted; $1.45M purchase price"}, {"citation": "Dataroom index", "locator": "-", "text": "no appraisal present"}], "mitigants": [{"statement": "Require a current MAI appraisal establishing as-is and as-stabilized value before funding.", "type": "CP", "residual": "Value may come in below the 65% mark, re-sizing or killing the loan."}]}, {"objection_id": "OBJ-1-DSCR-SUB-1X", "question": "Can the property service its own debt, or is this a negative-carry loan dependent on an unproven exit?", "statement": "In-place NOI derived from the rent roll (~$45k) against ~$117,875 IO debt service yields DSCR ~0.38x; even the sponsor's figure yields 0.78x.", "severity": "disqualifying", "evidence": [{"citation": "rent-roll.csv", "locator": "occupied units", "text": "$74,400/yr gross from 4 of 6 units"}], "mitigants": [{"statement": "Size a funded interest reserve covering the sub-1.0x gap through stabilization, with a lease-up covenant on the 2 vacant units.", "type": "reserve", "residual": "Reserve burns out if lease-up stalls."}]}]}, {"n": 2, "name": "Finance", "short": "Finance", "vote": "against", "emoji": "😠", "research": 1, "threads": [{"topic": "Survey current 18-month bridge take-out refinance rates and availability for sub-1.0x DSCR multifamily.", "status": "running"}], "opinion": "Is there a defended take-out exit for the 18-month bridge, or is repayment purely speculative?", "objections": [{"objection_id": "OBJ-2-NO-EXIT", "question": "Is there a defended take-out exit for the 18-month bridge, or is repayment purely speculative?", "statement": "Negative carry with no take-out financing evidence, no exit cap-rate support, and no rate lock against an 18-month maturity wall.", "severity": "disqualifying", "evidence": [{"citation": "term-sheet.md", "locator": "term", "text": "18-mo IO bridge, 10.25%"}], "mitigants": [{"statement": "Require a signed refinance term sheet or forward take-out commitment as a condition to close.", "type": "CP", "residual": "Commitment may be non-binding or expire before maturity."}]}]}, {"n": 3, "name": "Accounting", "short": "Accounting", "vote": "against", "emoji": "😠", "research": 3, "threads": [{"topic": "Benchmark operating-expense ratios for 6-unit Boise multifamily to test the implied ~9.5% opex load.", "status": "running"}, {"topic": "Locate any T-12 or county tax-assessor operating data to reconcile the reported $92k / $101k NOI.", "status": "running"}, {"topic": "Check whether the $9k add-back to 'normalized' NOI ties to any documented one-time item.", "status": "done", "finding": "No add-back schedule found in the dataroom — uplift is unsupported."}], "opinion": "How can in-place NOI of $92,000 exceed the property's entire gross scheduled rent of $74,400?", "objections": [{"objection_id": "OBJ-3-NOI-EXCEEDS-RENT", "question": "How can in-place NOI of $92,000 exceed the property's entire gross scheduled rent of $74,400?", "statement": "Net operating income cannot exceed the gross revenue it derives from. The reported in-place NOI is mathematically impossible — fabricated or a mislabeled pro-forma.", "severity": "disqualifying", "evidence": [{"citation": "term-sheet.md", "locator": "NOI line", "text": "In-place NOI $92,000"}, {"citation": "rent-roll.csv", "locator": "gross", "text": "$74,400/yr"}], "mitigants": [{"statement": "Require an audited T-12 reconciling reported NOI to collected rent before any figure is underwritten.", "type": "documentation", "residual": "T-12 may confirm the deal is worse than presented."}]}, {"objection_id": "OBJ-3-ADDBACK", "question": "What documented item supports the $9,000 add-back to the $101,000 'normalized' NOI?", "statement": "The uplift from $92k to $101k has no add-back schedule; under QoE discipline an undocumented add-back defaults to zero.", "severity": "material", "evidence": [], "mitigants": [{"statement": "Require a line-item add-back schedule splitting one-time vs recurring, or strike the uplift.", "type": "documentation", "residual": "Even if provided, items may not survive QoE scrutiny."}]}]}, {"n": 4, "name": "Legal & Structural", "short": "Legal", "vote": "against", "emoji": "😠", "research": 2, "threads": [{"topic": "Search Ada County records for existing deeds of trust and liens on 1420 Alder St.", "status": "running"}, {"topic": "Verify 1420 Alder SPE LLC formation and good standing with the Idaho Secretary of State.", "status": "running"}], "opinion": "Is OKOA's first-lien position actually verified, or merely asserted in the term sheet?", "objections": [{"objection_id": "OBJ-4-LIEN-UNVERIFIED", "question": "Is OKOA's first-lien position actually verified, or merely asserted in the term sheet?", "statement": "No title commitment, no title policy, no UCC search, and — for a stated 'refinance' — no payoff/reconveyance evidence for any prior deed of trust were provided.", "severity": "disqualifying", "evidence": [{"citation": "term-sheet.md", "locator": "lien", "text": "First lien asserted"}, {"citation": "Dataroom index", "locator": "-", "text": "no title commitment"}], "mitigants": [{"statement": "Obtain a title commitment + UCC search + any required subordinations/payoffs recorded at closing.", "type": "CP", "residual": "A senior C-PACE or tax lien could still prime OKOA if it surfaces."}]}, {"objection_id": "OBJ-4-SPE", "question": "Is '1420 Alder SPE LLC' a genuine bankruptcy-remote SPE, or nominal only?", "statement": "No operating agreement, no separateness covenants, no independent member — exposing OKOA to substantive-consolidation risk with the sponsor.", "severity": "material", "evidence": [], "mitigants": [{"statement": "Require SPE separateness covenants, an independent/springing member, and anti-consolidation provisions.", "type": "covenant", "residual": "Sponsor may resist; consolidation risk persists until documented."}]}]}, {"n": 5, "name": "Insurance & Climate", "short": "Insurance", "vote": "for", "emoji": "😟", "research": 1, "threads": [{"topic": "Assess Boise / Ada County wildfire and flood-zone exposure and the current habitational insurance market.", "status": "running"}], "opinion": "Is there any DSCR cushion to absorb a premium spike or carrier non-renewal?", "objections": [{"objection_id": "OBJ-5-NO-CUSHION", "question": "Is there any DSCR cushion to absorb a premium spike or carrier non-renewal?", "statement": "A sub-1.0x DSCR leaves zero room for a premium increase, a new flood/wildfire rider, or a re-rate; no binder, flood determination, or loss runs were provided.", "severity": "material", "evidence": [{"citation": "brief", "locator": "flood", "text": "Boise River / Cottonwood Creek exposure flagged unknown"}], "mitigants": [{"statement": "Condition close on a bound policy at replacement cost + a FEMA flood determination and vacant-unit endorsement.", "type": "CP", "residual": "Force-placed or surplus-lines pricing could still stress the sub-1.0x DSCR."}]}]}, {"n": 6, "name": "Sponsor & Fraud-Forensics", "short": "Fraud", "vote": "against", "emoji": "😠", "research": 2, "threads": [{"topic": "Search litigation, judgment, and bankruptcy records for Marcus T. Whitfield and Alder Street Partners LLC.", "status": "running"}, {"topic": "Corroborate the sponsor's claimed 640-unit / 3-prior-loan track record against public records.", "status": "running"}], "opinion": "Can the sponsor's 640-unit / $8.4M-net-worth track record be independently corroborated, or is it wholly self-reported?", "objections": [{"objection_id": "OBJ-6-TRACK-RECORD", "question": "Can the sponsor's 640-unit / $8.4M-net-worth track record be independently corroborated, or is it wholly self-reported?", "statement": "The entire track record and PFS are bare assertions; the summary concedes it 'has not yet been independently verified,' and no background/litigation search was run.", "severity": "disqualifying", "evidence": [{"citation": "sponsor-summary.md", "locator": "track record", "text": "self-reported, unverified"}], "mitigants": [{"statement": "Run a background / litigation / bankruptcy search and verify the PFS with bank & brokerage statements.", "type": "documentation", "residual": "Search may surface disqualifying history; guarantor could be judgment-proof."}]}]}, {"n": 7, "name": "Portfolio & Concentration", "short": "Portfolio", "vote": "for", "emoji": "😟", "research": 1, "threads": [{"topic": "Pull the OKOA-FUND-II loan tape to test sponsor, geographic, and maturity concentration limits.", "status": "running"}], "opinion": "Does adding this loan breach any OKOA-FUND-II concentration limit — and can we even test it?", "objections": [{"objection_id": "OBJ-7-NO-TAPE", "question": "Does adding this loan breach any OKOA-FUND-II concentration limit — and can we even test it?", "statement": "The fund loan tape (holdings, sponsor exposure, geo/type/maturity mix) was not provided, so no concentration metric can be checked against fund limits.", "severity": "material", "evidence": [], "mitigants": [{"statement": "Obtain the current fund loan tape and run sponsor / geo / maturity concentration checks before commitment.", "type": "documentation", "residual": "Tape may reveal the fund is already overweight Mountain-West bridge paper."}]}]}, {"n": 8, "name": "Strategy", "short": "Strategy", "vote": "against", "emoji": "😠", "research": 1, "threads": [{"topic": "Compare this deal's terms against OKOA's stated secured-lender mandate and recent originations.", "status": "running"}], "opinion": "Does a sub-1.0x-DSCR story credit fit OKOA's secured-lender thesis, or is it underwriting-to-pro-forma drift?", "objections": [{"objection_id": "OBJ-8-THESIS", "question": "Does a sub-1.0x-DSCR story credit fit OKOA's secured-lender thesis, or is it underwriting-to-pro-forma drift?", "statement": "Repayment depends entirely on an unproven stabilization plan, converting cash-flow-protected secured lending into a story credit — a drift from the fund's stated identity.", "severity": "disqualifying", "evidence": [], "mitigants": [{"statement": "Re-scope to a smaller, fully-reserved bridge with a verified exit that fits the secured-lender mandate, or decline.", "type": "structural", "residual": "Re-scoped terms may not clear the sponsor's needs."}]}]}]};
+
+  const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  /* ---------- header + vote bar ---------- */
+  document.getElementById('dealTitle').textContent =
+    COMMITTEE.deal.name + ' · ' + COMMITTEE.deal.amount + ' · ' + COMMITTEE.deal.ltv;
+  document.getElementById('dealMeta').textContent = COMMITTEE.deal.sub || '8 scrutiny seats + 1 Deal Advocate (non-voting) · Committee in session';
+  document.getElementById('leaningVal').textContent = COMMITTEE.deal.leaning;
+
+  const voteTotal = (COMMITTEE.vote.for + COMMITTEE.vote.against) || 1;
+  document.getElementById('segAgainst').style.width = (COMMITTEE.vote.against / voteTotal * 100) + '%';
+  document.getElementById('segFor').style.width = (COMMITTEE.vote.for / voteTotal * 100) + '%';
+  document.getElementById('voteCounts').innerHTML =
+    '<b class="c-against">' + COMMITTEE.vote.against + ' AGAINST</b>' +
+    '<span class="sep">·</span>' +
+    '<b class="c-for">' + COMMITTEE.vote.for + ' FOR</b>';
+  document.getElementById('voteTicks').innerHTML = COMMITTEE.scrutiny.map(function(d){
+    return '<span class="tick ' + d.vote + '" title="' + esc(d.short) + ' — ' + d.vote.toUpperCase() + '"></span>';
+  }).join('');
+
+  const researchTotal = COMMITTEE.scrutiny.reduce(function(s,d){ return s + (d.research||0); }, 0);
+  document.getElementById('researchTotal').innerHTML =
+    researchTotal > 0 ? '<span class="rt-dot"></span>Research threads · <b>' + researchTotal + '</b> live' : '';
+
+  /* ---------- half-moon arc geometry (trig) ---------- */
+  const ARC_W = 1168, ARC_H = 560;
+  const X_MIN = 90, X_MAX = 1078;
+  const CENTER_X = 584, RX = 520, RY = 190, FACE_Y_BASE = 300;
+  const CHIP_ROW_Y = 390;
+
+  const arcEl = document.getElementById('arc');
+  let arcHTML = '';
+
+  function rbadge(n){
+    return (n > 0)
+      ? '<span class="rbadge" title="' + n + ' research thread(s) open">' + n + '</span>'
+      : '';
+  }
+
+  COMMITTEE.scrutiny.forEach(function(d, i){
+    const x = X_MIN + (X_MAX - X_MIN) * (i / (COMMITTEE.scrutiny.length - 1));
+    const u = Math.max(-1, Math.min(1, (x - CENTER_X) / RX));
+    const theta = Math.acos(u);                 /* half-moon dome via trig */
+    const faceY = FACE_Y_BASE - RY * Math.sin(theta);
+    const labelY = faceY + 40;
+    const stemTop = labelY + 30;
+    const stemH = Math.max(0, CHIP_ROW_Y - stemTop);
+    const blinkDelay = ((d.n * 0.47) % 3.6).toFixed(2);
+    const idx = String(d.n).padStart(2, '0');
+    const nObj = (d.objections || []).length;
+
+    arcHTML +=
+      '<div class="seat clickable" data-seat="' + d.n + '" style="left:' + x.toFixed(1) + 'px;">' +
+        (d.research > 0 ? '<div class="rbubble" data-seat="' + d.n + '" title="' + d.research + ' research threads — click to view" style="top:' + (faceY - 54).toFixed(1) + 'px;"><span class="mag"></span>' + d.research + '</div>' : '') +
+        '<div class="face-wrap" style="top:' + faceY.toFixed(1) + 'px;">' +
+          '<div class="face">' +
+            '<div class="eye l" style="animation-delay:' + blinkDelay + 's"></div>' +
+            '<div class="eye r" style="animation-delay:' + blinkDelay + 's"></div>' +
+            '<div class="mouth"></div>' +
+          '</div>' +
+          '<div class="emo">' + d.emoji + '</div>' +
+        '</div>' +
+        '<div class="label" style="top:' + labelY.toFixed(1) + 'px;">' +
+          '<span class="label-name" title="' + esc(d.name) + '">' + esc(d.short) + '</span>' +
+          '<span class="label-stance">' + d.vote.toUpperCase() + '</span>' +
+        '</div>' +
+        '<div class="stem" style="top:' + stemTop.toFixed(1) + 'px; height:' + stemH.toFixed(1) + 'px;"></div>' +
+        '<div class="chip-anchor" style="top:' + CHIP_ROW_Y + 'px;">' +
+          '<div class="card">' +
+            '<div class="card-head">' +
+              '<span class="dot ' + d.vote + '"></span>' +
+              '<span class="card-name">' + esc(d.short) + '</span>' +
+            '</div>' +
+            '<div class="card-text"></div>' +
+            (nObj > 1 ? '<span class="card-more">' + nObj + ' objections · click to open</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  arcEl.innerHTML = arcHTML;
+
+  /* Deal Advocate retired — no defense podium; mitigants are now suggested inline per objection. */
+
+  /* ---------- unified speaking cycle (8 arc seats + advocate) ---------- */
+  const seatEls = Array.prototype.slice.call(document.querySelectorAll('.seat'));
+  const SEATS = seatEls.map(function(el){
+    const n = +el.getAttribute('data-seat');
+    const data = COMMITTEE.scrutiny.filter(function(s){ return s.n === n; })[0];
+    return { el: el, face: el.querySelector('.face'), textEl: el.querySelector('.card-text'), data: data };
+  });
+
+  let cycleTimer = null, typingTimer = null, paused = false;
+
+  function typeOut(el, text, done){
+    el.textContent = '';
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    el.appendChild(cursor);
+    const words = text.split(' ');
+    let i = 0;
+    function step(){
+      if (i < words.length){
+        el.insertBefore(document.createTextNode((i > 0 ? ' ' : '') + words[i]), cursor);
+        i++;
+        if (REDUCED){ step(); return; }
+        typingTimer = setTimeout(step, 46 + Math.random() * 42);
+      } else {
+        cursor.remove();
+        if (done) done();
+      }
+    }
+    step();
+  }
+
+  function activateSeat(idx){
+    clearTimeout(cycleTimer);
+    clearTimeout(typingTimer);
+    SEATS.forEach(function(s, i){
+      const isActive = (i === idx);
+      s.el.classList.toggle('active', isActive);
+      s.face.classList.toggle('talking', isActive);
+    });
+    typeOut(SEATS[idx].textEl, SEATS[idx].data.opinion, function(){
+      const hold = REDUCED ? 900 : 2400;
+      cycleTimer = setTimeout(function(){ if(!paused) activateSeat((idx + 1) % SEATS.length); }, hold);
+    });
+  }
+
+  activateSeat(0);
+
+  /* ---------- drill-down drawer (full objection list) ---------- */
+  const drawer = document.getElementById('drawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  function openDrawer(data){
+    paused = true; clearTimeout(cycleTimer); clearTimeout(typingTimer);
+    document.getElementById('drawerName').textContent = data.name;
+    const stanceCls = data.vote === 'against' ? 'stance-against' : '';
+    document.getElementById('drawerSub').innerHTML =
+      'Seat ' + data.n + ' · <span class="' + stanceCls + '">' + (data.vote ? data.vote.toUpperCase() : 'DEFENSE') + '</span>' +
+      ((data.objections && data.objections.length) ? ' · ' + data.objections.length + ' objection(s)' : '') +
+      ((data.research) ? ' · ' + data.research + ' research thread(s) open' : '');
+    const objs = data.objections || (data.mitigants || []);
+    document.getElementById('drawerBody').innerHTML = objs.length ? objs.map(function(o){
+      const cites = (o.evidence || []).map(function(e){ return e.citation; }).filter(Boolean);
+      const mits = o.mitigants || [];
+      return '<div class="obj">' +
+        '<span class="obj-sev ' + (o.severity || 'unscored') + '">' + (o.severity || 'note') + '</span>' +
+        (o.question ? '<div class="obj-question">' + esc(o.question) + '</div>' : '') +
+        (o.statement ? '<div class="obj-context"><span class="lbl">Context</span>' + esc(o.statement) + '</div>' : '') +
+        (cites.length ? '<div class="obj-cites"><b>Evidence:</b> ' + esc(cites.join(' · ')) + '</div>' : '') +
+        (mits.length ? '<div class="obj-mits"><span class="lbl">Suggested mitigant' + (mits.length > 1 ? 's' : '') + '</span>' +
+            mits.map(function(m){ return '<div class="mit">' + (m.type ? '<span class="mit-type">' + esc(m.type) + '</span>' : '') + esc(m.statement) + (m.residual ? '<div class="mit-res">Residual: ' + esc(m.residual) + '</div>' : '') + '</div>'; }).join('') +
+          '</div>' : '') +
+      '</div>';
+    }).join('') : '<p style="color:#888;font-size:13px">No individual objections recorded for this seat.</p>';
+    drawer.classList.add('open'); backdrop.classList.add('open'); drawer.setAttribute('aria-hidden','false');
+  }
+  function closeDrawer(){
+    drawer.classList.remove('open'); backdrop.classList.remove('open'); drawer.setAttribute('aria-hidden','true');
+    paused = false; activateSeat(0);
+  }
+  function openResearch(data){
+    paused = true; clearTimeout(cycleTimer); clearTimeout(typingTimer);
+    document.getElementById('drawerName').textContent = 'Research — ' + data.name;
+    const threads = data.threads || [];
+    const running = threads.filter(function(t){ return (t.status || 'running') !== 'done'; }).length;
+    document.getElementById('drawerSub').innerHTML = threads.length + ' research thread(s) · <span class="stance-against">' + running + ' live</span>';
+    document.getElementById('drawerBody').innerHTML = threads.length ? threads.map(function(t){
+      const st = t.status || 'running';
+      return '<div class="obj">' +
+        '<span class="rthread-status ' + st + '">' + (st === 'done' ? 'done' : 'running') + '</span>' +
+        '<div class="obj-statement">' + esc(t.topic) + '</div>' +
+        (t.finding ? '<div class="obj-cites"><b>Finding:</b> ' + esc(t.finding) + '</div>' : '') +
+      '</div>';
+    }).join('') : '<p style="color:#888;font-size:13px">No research threads running for this seat.</p>';
+    drawer.classList.add('open'); backdrop.classList.add('open'); drawer.setAttribute('aria-hidden', 'false');
+  }
+
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDrawer(); });
+  SEATS.forEach(function(s){
+    s.el.addEventListener('click', function(){ if(s.data) openDrawer(s.data); });
+  });
+  document.querySelectorAll('.rbubble').forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      const n = +b.getAttribute('data-seat');
+      const data = COMMITTEE.scrutiny.filter(function(s){ return s.n === n; })[0];
+      if (data) openResearch(data);
+    });
+  });
+
+  /* ---------- chair input ---------- */
+  const chairForm = document.getElementById('chairForm');
+  const chairInput = document.getElementById('chairInput');
+  const chairLog = document.getElementById('chairLog');
+  const chairMsgs = document.getElementById('chairMsgs');
+  const LOGKEY = 'okoa-ic-chair-' + String(COMMITTEE.deal.name || 'session').replace(/\W+/g, '-').toLowerCase();
+
+  function loadLog(){ try { return JSON.parse(localStorage.getItem(LOGKEY) || '[]'); } catch(e){ return []; } }
+  function persist(){ try { localStorage.setItem(LOGKEY, JSON.stringify(LOG)); } catch(e){} }
+  let LOG = loadLog();               /* in-memory source of truth (always renders) */
+
+  function renderLog(){
+    if (!LOG.length){
+      chairMsgs.innerHTML = '<div class="cmsg-empty">No messages yet — send one below to address the whole committee. Your messages stay here and survive a reload.</div>';
+      return;
+    }
+    chairMsgs.innerHTML = LOG.map(function(m){
+      return '<div class="cmsg">' +
+        '<div class="cmsg-top"><span class="cmsg-who chair">' + esc(m.who) + '</span><span class="cmsg-time">' + esc(m.time) + '</span></div>' +
+        '<div class="cmsg-text">' + esc(m.text) + '</div>' +
+        (m.sys ? '<div class="cmsg-sys">' + esc(m.sys) + '</div>' : '') +
+      '</div>';
+    }).join('');
+    chairLog.scrollTop = chairLog.scrollHeight;
+  }
+
+  chairForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const t = chairInput.value.trim();
+    if (!t) return;
+    chairInput.value = '';
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    LOG.push({ who: 'You — Chair', text: t, time: time,
+               sys: 'Saved to the committee record. Seats read the chair queue at the next round once the live engine is wired.' });
+    persist(); renderLog();
+  });
+  document.getElementById('chairClear').addEventListener('click', function(){ LOG = []; persist(); renderLog(); });
+  renderLog();
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+# ACOS Investment Committee — 16-risk coverage map
+# SLICE-A1 data artifact. Maps each of the 16 risk categories to its
+# default owning seat (see roster.yaml for seat definitions). Data-only;
+# no logic. A separate check_coverage.py (not part of this slice) is
+# expected to assert zero unowned categories against this file.
+
+version: 1
+
+risk_categories:
+  - id: 1
+    category: "Credit/Borrower"
+    owner: 1
+    cross_check: [3]
+    note: "Seat 1 repayment-capacity sub-pass"
+
+  - id: 2
+    category: "Collateral/Valuation"
+    owner: 1
+    cross_check: [3]
+    note: "Seat 1 collateral-value sub-pass"
+
+  - id: 3
+    category: "Market/Macro"
+    owner: 1
+    cross_check: []
+    note: "Seat 1 collateral-value sub-pass, sub-check"
+    triggered: 13
+
+  - id: 4
+    category: "Structural/Legal"
+    owner: 4
+    cross_check: []
+
+  - id: 5
+    category: "Title/Survey"
+    owner: 4
+    cross_check: []
+    note: "Seat 4 sub-pass"
+
+  - id: 6
+    category: "Environmental"
+    owner: 4
+    cross_check: []
+    note: "Seat 4 legal-materiality sub-lens ONLY (CERCLA/Phase I currency); full condition review promotable to optional #15"
+    triggered: 15
+
+  - id: 7
+    category: "Construction/Completion"
+    owner: 1
+    cross_check: []
+    note: "Seat 1 collateral-value sub-pass, baseline"
+    triggered: 11
+
+  - id: 8
+    category: "Cash-Flow/DSCR"
+    owner: 1
+    cross_check: [3, 5]
+    note: "Seat 1 repayment-capacity sub-pass; cross-checked by Seat 3 (NOI) and Seat 5 (DSCR transmission)"
+
+  - id: 9
+    category: "Interest-Rate/Refi/Exit"
+    owner: 2
+    cross_check: []
+    note: "core-owned by Finance, no longer a Credit fold-in"
+
+  - id: 10
+    category: "Sponsor/Track-Record"
+    owner: 6
+    cross_check: []
+
+  - id: 11
+    category: "Concentration/Portfolio"
+    owner: 7
+    cross_check: []
+    scope: fund
+    note: "Seat 7 is fund-scoped, not deal-scoped"
+
+  - id: 12
+    category: "Tax"
+    owner: 4
+    cross_check: []
+    note: "Seat 4 fold-in"
+    triggered: 12
+
+  - id: 13
+    category: "Insurance"
+    owner: 5
+    cross_check: []
+
+  - id: 14
+    category: "Fraud/Misrepresentation"
+    owner: 6
+    cross_check: [3]
+
+  - id: 15
+    category: "Regulatory/Compliance"
+    owner: 4
+    cross_check: []
+    note: "Seat 4 state sub-pass"
+    triggered: 14
+
+  - id: 16
+    category: "ESG/Physical-Climate"
+    owner: 5
+    cross_check: []
+    note: "merged into Insurance & Climate"
+
+# Seats 3 (Accounting), 8 (Strategy), and 9 (Deal Advocate) do NOT own any
+# of the 16 risk categories above. This is intentional, not a gap — see
+# roster.yaml (owns: cross-cutting / defense, owned_risk_categories: []).
+exempt_seats:
+  - n: 3
+    name: "Accounting"
+    reason: >
+      Cross-cutting — cross-checks categories 1, 2, 8, and 14, and owns
+      the shared normalized-NOI claim consumed by Seats 1 and 2 (a
+      cross-cutting artifact, not a single risk category).
+  - n: 8
+    name: "Strategy"
+    reason: >
+      Cross-cutting — contributes a falsifiable strategic-fit/off-mandate
+      objection lens outside the 16-category deal-risk taxonomy.
+  - n: 9
+    name: "Deal Advocate"
+    reason: >
+      Structurally separate defense/steelman role, not a risk-owning
+      scrutiny seat, by design (owned_risk_categories: [] in roster.yaml).

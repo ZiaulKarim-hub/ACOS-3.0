@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OKOA Investment Committee — Room</title>
+<style>
+  :root{
+    --bg:#0e131a; --bg2:#141b24; --panel:#171f2a; --panel2:#1c2530;
+    --line:#28323f; --line2:#334252;
+    --tx:#e7edf3; --tx-mut:#95a3b2; --tx-dim:#6b7889;
+    --accent:#E8735C;               /* OKOA coral */
+    --sev-disq:#E5484D; --sev-mat:#E8A33D; --sev-mon:#5B8FF9;
+    --sev-info:#8B98A9; --sev-mit:#3FB57A; --sev-unscored:#6b7889;
+    --live:#3FB57A; --replay:#B08BD9; --pause:#8B98A9;
+    --font: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:radial-gradient(1200px 600px at 50% -10%, #18222e 0%, var(--bg) 60%);
+    color:var(--tx); font-family:var(--font); font-size:14px; line-height:1.5;
+    display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  /* ---------- Activity bar ---------- */
+  #activity{
+    display:flex; align-items:center; gap:14px; padding:8px 16px;
+    background:linear-gradient(180deg,#111925,#0d1420); border-bottom:1px solid var(--line);
+    font-size:12.5px; flex:0 0 auto; position:relative; overflow:hidden;
+  }
+  #activity .sweep{position:absolute;left:0;top:0;height:2px;background:var(--replay);width:0;opacity:.9}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--replay);flex:0 0 auto;box-shadow:0 0 0 0 rgba(176,139,217,.6)}
+  .dot.pulse{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(176,139,217,.55)}70%{box-shadow:0 0 0 7px rgba(176,139,217,0)}100%{box-shadow:0 0 0 0 rgba(176,139,217,0)}}
+  #act-state{font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:11px;color:var(--replay)}
+  #act-status{color:var(--tx-mut);flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #act-updated{color:var(--tx-dim);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .ctrls{display:flex;gap:6px;align-items:center;flex:0 0 auto}
+  .btn{
+    background:var(--panel2);border:1px solid var(--line2);color:var(--tx);cursor:pointer;
+    border-radius:7px;padding:5px 10px;font-size:12px;font-family:var(--font);transition:.12s;
+  }
+  .btn:hover{background:#26313d;border-color:#3d4c5e}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0f0c;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.active{outline:2px solid var(--accent);outline-offset:-2px}
+
+  /* ---------- Deal header ---------- */
+  #deal{
+    display:flex;align-items:center;gap:16px;padding:12px 18px;
+    background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap;
+  }
+  #deal h1{font-family:var(--serif);font-size:19px;font-weight:600;margin:0;letter-spacing:.01em}
+  #deal .sub{color:var(--tx-dim);font-size:12px;margin-top:2px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 auto}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--tx-mut);white-space:nowrap}
+  .chip b{color:var(--tx);font-weight:600}
+  #verdict-chip{
+    padding:7px 16px;border-radius:8px;font-weight:700;letter-spacing:.06em;font-size:13px;
+    border:1.5px solid var(--line2);color:var(--tx-dim);background:#0f1620;transition:.4s;flex:0 0 auto;
+  }
+  #verdict-chip.DECLINE{color:#fff;background:var(--sev-disq);border-color:var(--sev-disq);box-shadow:0 0 22px rgba(229,72,77,.4)}
+  #verdict-chip.PROCEED{color:#06210f;background:var(--sev-mit);border-color:var(--sev-mit)}
+  #verdict-chip.PROCEED-WITH-CONDITIONS{color:#241a03;background:var(--sev-mat);border-color:var(--sev-mat)}
+  #verdict-chip.UNRESOLVED{color:#0d1a2e;background:var(--sev-mon);border-color:var(--sev-mon)}
+
+  /* ---------- Main grid ---------- */
+  #main{display:grid;grid-template-columns:210px 1fr 260px;flex:1 1 auto;min-height:0}
+  @media(max-width:1000px){#main{grid-template-columns:64px 1fr}#vpanel{display:none}}
+
+  /* seat rail */
+  #rail{background:linear-gradient(180deg,#131a24,#101722);border-right:1px solid var(--line);overflow-y:auto;padding:12px 10px}
+  .rail-h{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-dim);margin:2px 6px 10px}
+  .seat{display:flex;align-items:center;gap:9px;padding:6px 6px;border-radius:9px;margin-bottom:3px;transition:.18s;opacity:.55}
+  .seat.spoke{opacity:.9}
+  .seat.speaking{opacity:1;background:rgba(232,115,92,.10)}
+  .seat.dimmed{opacity:.32}
+  .av{
+    width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+    font-size:16px;background:var(--sc,#334);border:2px solid transparent;position:relative;
+  }
+  .seat.speaking .av{border-color:var(--sc);box-shadow:0 0 0 3px rgba(255,255,255,.06),0 0 16px -2px var(--sc);animation:spk 1.4s infinite}
+  @keyframes spk{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  .av .num{position:absolute;bottom:-3px;right:-3px;background:#0e131a;border:1px solid var(--line2);border-radius:50%;width:15px;height:15px;font-size:9px;display:grid;place-items:center;color:var(--tx-mut);font-family:var(--font)}
+  .seat-meta{min-width:0}
+  .seat-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .seat-role{font-size:10px;color:var(--tx-dim)}
+  @media(max-width:1000px){.seat-meta{display:none}.rail-h{display:none}.seat{justify-content:center}}
+
+  /* feed */
+  #feedwrap{position:relative;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+  #feed{overflow-y:auto;padding:18px 22px 26px;scroll-behavior:smooth;overflow-anchor:none;flex:1 1 auto}
+  .rounddiv{display:flex;align-items:center;gap:12px;margin:16px 2px 14px;color:var(--tx-dim);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+  .rounddiv::before,.rounddiv::after{content:"";height:1px;background:var(--line);flex:1}
+  .msg{display:flex;gap:11px;margin:9px 0;max-width:840px;animation:rise .26s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .msg .mav{width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:14px;background:var(--sc,#334)}
+  .msg.cont .mav{visibility:hidden}
+  .bub{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--sev);border-radius:4px 12px 12px 12px;padding:9px 13px;min-width:0}
+  .msg.cont .bub{border-radius:12px}
+  .bub .who{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .bub .who .nm{font-weight:600;font-size:12.5px;color:var(--sc-t,var(--tx))}
+  .sev-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:20px;color:#0d1119}
+  .sev-tag.disqualifying{background:var(--sev-disq)} .sev-tag.material{background:var(--sev-mat)}
+  .sev-tag.monitor{background:var(--sev-mon)} .sev-tag.info{background:var(--sev-info)}
+  .sev-tag.mitigant{background:var(--sev-mit)} .sev-tag.unscored{background:var(--sev-unscored)}
+  .bub .txt{font-size:13.5px;color:var(--tx)}
+  .caret{display:inline-block;width:7px;background:var(--sc,#9ab);margin-left:1px;animation:blink 1s steps(1) infinite;vertical-align:text-bottom}
+  @keyframes blink{50%{opacity:0}}
+  .bub .foot{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .cite{font-size:10.5px;color:var(--tx-dim);border:1px solid var(--line);border-radius:6px;padding:1px 7px;cursor:pointer}
+  .cite:hover{color:var(--tx);border-color:var(--line2)}
+  .oid{font-size:10px;color:var(--tx-dim)}
+  .ev{margin-top:6px;border-top:1px dashed var(--line);padding-top:6px;font-size:11.5px;color:var(--tx-mut);display:none}
+  .ev.open{display:block}
+  .ev div{margin:3px 0}
+  .ev .c{color:var(--accent)}
+  .gavel{max-width:840px;margin:22px auto 8px;text-align:center;padding:18px;border:1px solid var(--line2);border-radius:14px;background:linear-gradient(180deg,#141d29,#101822)}
+  .gavel .v{font-family:var(--serif);font-size:30px;font-weight:700;letter-spacing:.02em}
+  .gavel .r{color:var(--tx-mut);font-size:12px;max-width:640px;margin:8px auto 0}
+
+  #pill{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;background:var(--accent);color:#1a0f0c;
+    border:none;border-radius:22px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4);display:none}
+  #pill.show{display:block;animation:rise .2s}
+
+  /* verdict panel */
+  #vpanel{background:linear-gradient(180deg,#131a24,#101722);border-left:1px solid var(--line);overflow-y:auto;padding:14px 14px}
+  #vpanel h3{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-dim);margin:4px 0 10px}
+  .tally{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .trow{display:flex;align-items:center;gap:8px;font-size:12px}
+  .tdot{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+  .trow .lbl{color:var(--tx-mut);flex:1}
+  .trow .ct{font-weight:700;font-variant-numeric:tabular-nums}
+  .vbox{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel);font-size:12px;color:var(--tx-mut)}
+  .vbox .big{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--tx-dim)}
+  .vbox.DECLINE .big{color:var(--sev-disq)}
+  .vbox dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:8px 0 0}
+  .vbox dt{color:var(--tx-dim)} .vbox dd{margin:0;color:var(--tx);text-align:right;font-variant-numeric:tabular-nums}
+
+  /* chair bar */
+  #chair{display:flex;align-items:center;gap:10px;padding:11px 16px;background:linear-gradient(180deg,#121924,#0d1420);border-top:1px solid var(--line);flex:0 0 auto}
+  #chair .you{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#1a0f0c;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+  #chair input{flex:1;background:var(--panel);border:1px solid var(--line2);color:var(--tx);border-radius:22px;padding:9px 15px;font-size:13px;font-family:var(--font)}
+  #chair input::placeholder{color:var(--tx-dim)}
+  #chair input:focus{outline:none;border-color:var(--accent)}
+  .toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:#0c1119;border:1px solid var(--line2);color:var(--tx);padding:10px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;max-width:520px;text-align:center}
+  .toast.show{opacity:1}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+  <div id="activity">
+    <div class="sweep" id="sweep"></div>
+    <span class="dot pulse" id="dot"></span>
+    <span id="act-state">Replay</span>
+    <span id="act-status">Ready — press Play to convene the committee</span>
+    <span id="act-updated">just now</span>
+    <span class="ctrls">
+      <button class="btn primary" id="playBtn">▶ Play</button>
+      <button class="btn" id="stepBtn" title="Reveal next">⏭ Step</button>
+      <button class="btn" id="speedBtn" title="Playback speed">1×</button>
+      <button class="btn" id="endBtn" title="Skip to verdict">⏩ End</button>
+      <button class="btn" id="restartBtn" title="Restart">↺</button>
+    </span>
+  </div>
+
+  <div id="deal">
+    <div>
+      <h1 id="deal-name">—</h1>
+      <div class="sub" id="deal-sub">—</div>
+    </div>
+    <div class="chips" id="deal-chips"></div>
+    <div id="verdict-chip">PENDING</div>
+  </div>
+
+  <div id="main">
+    <div id="rail"><div class="rail-h">The Committee</div><div id="seats"></div></div>
+    <div id="feedwrap">
+      <div id="feed"></div>
+      <button id="pill">↓ New objections</button>
+    </div>
+    <div id="vpanel">
+      <h3>Running tally</h3>
+      <div class="tally" id="tally"></div>
+      <h3>Computed verdict</h3>
+      <div class="vbox" id="vbox"><span class="big">pending…</span><div style="margin-top:6px">The verdict is computed by rule from the claim ledger — never narrated.</div></div>
+    </div>
+  </div>
+
+  <div id="chair">
+    <div class="you">You</div>
+    <input id="chair-input" placeholder="Type a message the whole committee will see…  (goes live once the deliberation engine is wired)">
+    <button class="btn" id="chair-send">Send</button>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const REPLAY = /*__REPLAY_JSON__*/null;
+
+const SEV_ORDER = [
+  ["disqualifying","Disqualifying","var(--sev-disq)"],
+  ["material","Material","var(--sev-mat)"],
+  ["monitor","Monitor","var(--sev-mon)"],
+  ["info","Informational","var(--sev-info)"],
+  ["unscored","Unscored","var(--sev-unscored)"],
+  ["mitigant","Mitigants","var(--sev-mit)"],
+];
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const $ = s => document.querySelector(s);
+const feed = $("#feed"), seatsEl = $("#seats"), tallyEl = $("#tally");
+let idx = 0, playing = false, revealing = false, speed = 1, lastSeat = null, lastRound = null;
+let pinned = true, newCount = 0, lastEventTs = Date.now();
+const seatColor = {}; const counts = {};
+
+// ---------- init ----------
+function init(){
+  const d = REPLAY.deal || {};
+  $("#deal-name").textContent = d.name || "Investment Committee";
+  const sub = [d.asset_type, d.address, d.fund_id].filter(Boolean).join("  ·  ");
+  $("#deal-sub").textContent = sub || "";
+  const chipData = [
+    ["Loan", d.loan_amount],["Rate", d.interest_rate],["LTV", d.ltv],["LTC", d.ltc],
+    ["Term", d.term],["Lien", d.lien],["Sponsor", d.sponsor],
+  ].filter(x=>x[1]);
+  $("#deal-chips").innerHTML = chipData.map(([k,v])=>`<span class="chip">${k} <b>${esc(v)}</b></span>`).join("");
+
+  (REPLAY.seats||[]).forEach(s=>{
+    seatColor[s.n]=s.color;
+    const el=document.createElement("div");
+    el.className="seat"+(s.spoke?" spoke":""); el.id="seat-"+s.n;
+    el.innerHTML=`<div class="av" style="--sc:${s.color}">${s.emoji}<span class="num">${s.n}</span></div>
+      <div class="seat-meta"><div class="seat-name">${esc(s.short)}</div><div class="seat-role">${s.role}</div></div>`;
+    seatsEl.appendChild(el);
+  });
+
+  SEV_ORDER.forEach(([k,lbl,col])=>{
+    counts[k]=0;
+    const r=document.createElement("div"); r.className="trow"; r.id="tally-"+k;
+    r.innerHTML=`<span class="tdot" style="background:${col}"></span><span class="lbl">${lbl}</span><span class="ct">0</span>`;
+    tallyEl.appendChild(r);
+  });
+
+  feed.addEventListener("scroll",()=>{
+    const nearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+    pinned = nearBottom;
+    if(nearBottom){ newCount=0; $("#pill").classList.remove("show"); }
+  });
+  $("#pill").onclick=()=>{ pinned=true; newCount=0; $("#pill").classList.remove("show"); feed.scrollTop=feed.scrollHeight; };
+  $("#playBtn").onclick=togglePlay;
+  $("#stepBtn").onclick=()=>{ if(!revealing) revealNext(); };
+  $("#endBtn").onclick=skipToEnd;
+  $("#restartBtn").onclick=restart;
+  $("#speedBtn").onclick=()=>{ speed = speed===1?2:speed===2?4:1; $("#speedBtn").textContent=speed+"×"; };
+  $("#chair-send").onclick=chairSend; $("#chair-input").addEventListener("keydown",e=>{if(e.key==="Enter")chairSend();});
+  setInterval(tickUpdated,1000);
+}
+
+// ---------- replay engine ----------
+function togglePlay(){ playing=!playing; $("#playBtn").innerHTML=playing?"⏸ Pause":"▶ Play"; setState(); if(playing&&!revealing) revealNext(); }
+function setState(){
+  const dot=$("#dot");
+  if(idx>=REPLAY.events.length){ $("#act-state").textContent="Complete"; $("#act-state").style.color="var(--sev-mon)"; dot.style.background="var(--sev-mon)"; dot.classList.remove("pulse"); return;}
+  dot.classList.toggle("pulse",playing);
+  dot.style.background = playing? "var(--replay)":"var(--pause)";
+  $("#act-state").style.color = playing? "var(--replay)":"var(--pause)";
+  $("#act-state").textContent = playing? "Replay":"Paused";
+}
+function revealNext(){
+  if(idx>=REPLAY.events.length){ finish(); return; }
+  const ev=REPLAY.events[idx]; revealing=true;
+  markUpdated();
+  if(ev.round!==lastRound){ addRoundDivider(ev.round); lastRound=ev.round; lastSeat=null; }
+  setSpeaking(ev.seat);
+  $("#act-status").textContent = `Round ${ev.round} · ${ev.seat_name} has the floor`;
+  const {bubble,txtEl} = addBubble(ev);
+  tallyBump(ev.severity);
+  autoscroll();
+  const done = ()=>{
+    clearSpeaking();
+    idx++;
+    bumpSweep();
+    setState();
+    revealing=false;
+    if(idx>=REPLAY.events.length){ finish(); return; }
+    if(playing){ const gap = REDUCED?60:(340/speed); setTimeout(revealNext, gap); }
+  };
+  typeReveal(txtEl, ev.statement, done, bubble);
+}
+function skipToEnd(){
+  playing=false; $("#playBtn").innerHTML="▶ Play";
+  // instant-complete current + all remaining
+  document.querySelectorAll(".caret").forEach(c=>c.remove());
+  while(idx<REPLAY.events.length){
+    const ev=REPLAY.events[idx];
+    if(ev.round!==lastRound){ addRoundDivider(ev.round); lastRound=ev.round; lastSeat=null; }
+    const {txtEl}=addBubble(ev); txtEl.textContent=ev.statement; tallyBump(ev.severity); idx++;
+  }
+  clearSpeaking(); revealing=false; autoscroll(); finish();
+}
+function restart(){
+  playing=false; revealing=false; idx=0; lastSeat=null; lastRound=null; newCount=0; pinned=true;
+  feed.innerHTML=""; $("#pill").classList.remove("show");
+  Object.keys(counts).forEach(k=>{counts[k]=0; const c=$("#tally-"+k); if(c) c.querySelector(".ct").textContent="0";});
+  const vb=$("#vbox"); vb.className="vbox"; vb.innerHTML='<span class="big">pending…</span><div style="margin-top:6px">The verdict is computed by rule from the claim ledger — never narrated.</div>';
+  const vc=$("#verdict-chip"); vc.className=""; vc.textContent="PENDING";
+  $("#playBtn").innerHTML="▶ Play"; document.querySelectorAll(".seat").forEach(s=>s.classList.remove("speaking","dimmed"));
+  setState(); $("#act-status").textContent="Ready — press Play to convene the committee";
+}
+
+// ---------- typing reveal (single rAF scheduler, word-level) ----------
+let rafId=null;
+function typeReveal(el, text, onDone, bubble){
+  if(REDUCED){ el.textContent=text; onDone(); return; }
+  const words=text.split(/(\s+)/); // keep whitespace tokens
+  const total=text.length;
+  const dur=Math.min(2000, Math.max(420, total*7))/speed; // capped ~2s
+  const caret=document.createElement("span"); caret.className="caret"; caret.innerHTML="&nbsp;";
+  el.after ? el.parentNode.appendChild(caret) : null; el.parentNode.appendChild(caret);
+  let start=null, wi=0, shown="";
+  let skip=false;
+  const clickSkip=()=>{ skip=true; };
+  bubble.addEventListener("click", clickSkip);
+  function frame(ts){
+    if(start===null) start=ts;
+    const p = skip?1:Math.min(1,(ts-start)/dur);
+    const targetChars = Math.floor(p*total);
+    while(shown.length<targetChars && wi<words.length){ shown+=words[wi++]; }
+    el.textContent = skip? text : shown;
+    if(p<1 && !skip){ rafId=requestAnimationFrame(frame); if(pinned) feed.scrollTop=feed.scrollHeight; }
+    else{ el.textContent=text; caret.remove(); bubble.removeEventListener("click",clickSkip); onDone(); }
+  }
+  rafId=requestAnimationFrame(frame);
+}
+
+// ---------- DOM helpers ----------
+function addRoundDivider(r){ const d=document.createElement("div"); d.className="rounddiv"; d.textContent="Round "+r+" — blind opening"; feed.appendChild(d); }
+function addBubble(ev){
+  const cont = ev.seat===lastSeat; lastSeat=ev.seat;
+  const col=seatColor[ev.seat]||"#5b6b7d";
+  const msg=document.createElement("div"); msg.className="msg"+(cont?" cont":""); msg.id=ev.id;
+  msg.style.setProperty("--sc",col); msg.style.setProperty("--sev",sevColor(ev.severity)); msg.style.setProperty("--sc-t",col);
+  const emoji=(REPLAY.seats.find(s=>s.n===ev.seat)||{}).emoji||"•";
+  const sevTag = ev.kind==="mitigant" ? `<span class="sev-tag mitigant">Mitigant</span>` : `<span class="sev-tag ${ev.severity}">${ev.severity}</span>`;
+  const cites = (ev.evidence||[]).map(e=>e.citation).filter(Boolean);
+  const citeChip = cites.length? `<span class="cite" data-ev="${ev.id}">▸ ${cites.length} citation${cites.length>1?"s":""}</span>`:"";
+  msg.innerHTML=`<div class="mav" style="background:${col}">${emoji}</div>
+    <div class="bub"><div class="who"><span class="nm">${esc(ev.seat_name)}</span>${sevTag}</div>
+    <div class="txt"></div>
+    <div class="foot">${citeChip}<span class="oid mono">${esc(ev.objection_id||"")}</span></div>
+    <div class="ev" id="ev-${ev.id}">${(ev.evidence||[]).map(e=>`<div><span class="c">${esc(e.citation)}</span>${e.locator?" · "+esc(e.locator):""} — ${esc(e.text)}</div>`).join("")}</div>
+    </div>`;
+  feed.appendChild(msg);
+  const chip=msg.querySelector(".cite"); if(chip) chip.onclick=(e)=>{e.stopPropagation(); $("#ev-"+ev.id).classList.toggle("open");};
+  return {bubble:msg.querySelector(".bub"), txtEl:msg.querySelector(".txt")};
+}
+function setSpeaking(n){ document.querySelectorAll(".seat").forEach(s=>{ s.classList.remove("speaking","dimmed"); if(s.id==="seat-"+n) s.classList.add("speaking"); else s.classList.add("dimmed"); }); }
+function clearSpeaking(){ document.querySelectorAll(".seat").forEach(s=>s.classList.remove("speaking","dimmed")); }
+function autoscroll(){ if(pinned){ feed.scrollTop=feed.scrollHeight; } else { newCount++; $("#pill").textContent=`↓ ${newCount} new`; $("#pill").classList.add("show"); } }
+
+function tallyBump(sev){ const key = sev==="mitigant"?"mitigant":(counts.hasOwnProperty(sev)?sev:"unscored"); counts[key]=(counts[key]||0)+1; const c=$("#tally-"+key); if(c) c.querySelector(".ct").textContent=counts[key]; }
+
+function finish(){
+  playing=false; $("#playBtn").innerHTML="▶ Play"; clearSpeaking();
+  const v=REPLAY.verdict||{}; const verd=v.verdict||"UNRESOLVED";
+  const vc=$("#verdict-chip"); vc.className=verd; vc.textContent=verd;
+  const vb=$("#vbox"); vb.className="vbox "+verd;
+  vb.innerHTML=`<span class="big">${verd}</span>
+    <dl><dt>Polarity</dt><dd>${esc(v.polarity||"—")}</dd>
+    <dt>Deal-breakers</dt><dd>${v.deal_breakers||0}</dd>
+    <dt>Kill-criteria</dt><dd>${v.kill_findings||0}</dd>
+    <dt>Conditions</dt><dd>${v.conditions||0}</dd>
+    <dt>Findings</dt><dd>${v.objection_count||0}</dd></dl>`;
+  if(!$("#gavel")){
+    const g=document.createElement("div"); g.className="gavel"; g.id="gavel";
+    g.innerHTML=`<div class="v" style="color:${verd==="DECLINE"?"var(--sev-disq)":"var(--sev-mit)"}">⚖  ${verd}</div>
+      <div class="r">${esc(v.rationale||"")}</div>
+      <div class="r mono" style="margin-top:8px;font-size:10px">${esc(v.ledger_head||"")}</div>`;
+    feed.appendChild(g); if(pinned) feed.scrollTop=feed.scrollHeight;
+  }
+  $("#act-state").textContent="Complete"; $("#act-state").style.color="var(--sev-mon)";
+  $("#dot").style.background="var(--sev-mon)"; $("#dot").classList.remove("pulse");
+  $("#act-status").textContent=`Deliberation complete · computed verdict: ${verd}`;
+  setState();
+}
+
+// ---------- activity bar / sweep / updated-ticker ----------
+function markUpdated(){ lastEventTs=Date.now(); $("#act-updated").textContent="just now"; }
+function tickUpdated(){ const s=Math.round((Date.now()-lastEventTs)/1000); $("#act-updated").textContent = s<1?"just now":`updated ${s}s ago`; }
+function bumpSweep(){ const sw=$("#sweep"); sw.style.transition="none"; sw.style.width="0"; sw.style.opacity="0.9"; requestAnimationFrame(()=>{ sw.style.transition="width .5s linear, opacity .6s"; sw.style.width="100%"; sw.style.opacity="0"; }); }
+
+// ---------- chair (inert in replay) ----------
+function chairSend(){
+  const t=$("#chair-input").value.trim(); if(!t) return;
+  $("#chair-input").value="";
+  showToast(`This is a <b>replay</b> of a finished session — the chair chatbox goes live once the Mode B engine + ic-server bridge are wired. Your message wasn't sent to the committee.`);
+}
+function showToast(html){ const el=$("#toast"); el.innerHTML=html; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),4200); }
+
+function sevColor(s){ return ({disqualifying:"var(--sev-disq)",material:"var(--sev-mat)",monitor:"var(--sev-mon)",info:"var(--sev-info)",mitigant:"var(--sev-mit)"})[s]||"var(--sev-unscored)"; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+init();
+</script>
+</body>
+</html>

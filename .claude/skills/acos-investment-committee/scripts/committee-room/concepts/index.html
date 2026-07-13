@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Committee Room — 10 Concept Designs</title>
+<style>
+  :root{ --bg:#0d1117; --panel:#161b22; --line:#283040; --tx:#e7edf3; --mut:#95a3b2; --accent:#E8735C; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{padding:22px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:linear-gradient(180deg,#0f141b,#0d1117);z-index:5}
+  header h1{margin:0;font-size:20px;font-weight:650}
+  header p{margin:5px 0 0;color:var(--mut);font-size:13px;max-width:760px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:20px;padding:22px 26px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .card .cap{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .card .num{width:26px;height:26px;border-radius:7px;background:var(--accent);color:#1a0f0c;font-weight:700;display:grid;place-items:center;font-size:13px;flex:0 0 auto}
+  .card .nm{font-weight:600;font-size:14px}
+  .card .nm small{display:block;color:var(--mut);font-weight:400;font-size:11.5px}
+  .card a.open{margin-left:auto;color:var(--accent);text-decoration:none;font-size:12.5px;border:1px solid var(--line);padding:4px 10px;border-radius:7px}
+  .card a.open:hover{border-color:var(--accent)}
+  .frameWrap{position:relative;width:100%;height:300px;overflow:hidden;background:#000;cursor:pointer}
+  .frameWrap iframe{position:absolute;top:0;left:0;width:1400px;height:955px;border:0;transform:scale(.3143);transform-origin:top left;pointer-events:none}
+  .frameWrap .veil{position:absolute;inset:0;display:grid;place-items:center;color:#8a97a6;font-size:12px;background:repeating-linear-gradient(45deg,#0c1016,#0c1016 12px,#0e1218 12px,#0e1218 24px)}
+  .frameWrap.loaded .veil{display:none}
+  .hint{color:var(--mut);font-size:12px;padding:0 26px 26px}
+  @media(max-width:520px){.frameWrap iframe{transform:scale(.34)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Investment Committee Room — 10 concept designs</h1>
+  <p>Same half-moon of 10 experts, the same real Alder Street opinions, animated faces, above-head message screens, emoji emotions + hand-raises, and a chair input below — in 10 different visual styles. Click any preview to open it full-screen and watch the committee deliberate.</p>
+</header>
+<div class="grid" id="grid"></div>
+<div class="hint">Tip: previews are scaled down and non-interactive. Open one full-screen to see the animation, typing, and hand-raises properly.</div>
+<script>
+const CONCEPTS = [
+  ["01","Friendly Flat Cartoon","Warm pastels, rounded Pixar-style faces, comic bubbles"],
+  ["02","Sci-Fi Hologram Council","Translucent glowing holo-heads on a grid floor"],
+  ["03","Neon Cyberpunk Night","Near-black with magenta/cyan neon glow"],
+  ["04","Glassmorphism","Frosted translucent glass panels, airy gradient"],
+  ["05","Retro CRT Terminal","Green phosphor, scanlines, ASCII faces"],
+  ["06","Newspaper Engraving","Cream paper, ink, serif, woodcut portraits"],
+  ["07","Pixel-Art 8-Bit","Chunky NES-style pixel heads & boxes"],
+  ["08","Swiss Minimalism","White, one red accent, geometric marks"],
+  ["09","OKOA Boardroom","Warm-neutral + navy + coral; premium/institutional"],
+  ["10","Emoji Bubbly","Big emoji faces, glossy bouncy bubbles"],
+];
+const grid = document.getElementById("grid");
+CONCEPTS.forEach(([id,name,desc])=>{
+  const file = `concept-${id}.html`;
+  const card = document.createElement("div"); card.className="card";
+  card.innerHTML = `
+    <div class="cap">
+      <div class="num">${Number(id)}</div>
+      <div class="nm">${name}<small>${desc}</small></div>
+      <a class="open" href="${file}" target="_blank" rel="noopener">Open full ↗</a>
+    </div>
+    <div class="frameWrap" onclick="window.open('${file}','_blank')">
+      <div class="veil">loading ${name}…</div>
+      <iframe src="${file}" loading="lazy" onload="this.parentNode.classList.add('loaded')" title="${name}"></iframe>
+    </div>`;
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>
