@@ -23,6 +23,23 @@ fail-CLOSES on a `bin-manifest.sha256` mismatch, so regenerate that manifest too
 | `eternity-cmux-inpane.sh` | In-pane **Stop** hook. Injects `/exit` (P0), `/clear` (P1), and the `/acos-eternity-protocol` fire (P2). Contains the 2026-07-06 hardening: arm-after-verify, verified `/clear`, consume-all-flags + fresh-`.failed`, and the guard-age-only stale-guard reaper (2h window). |
 | `eternity-cmux-resume-inpane.sh` | In-pane **SessionStart(clear)** hook. Injects the resume trigger prompt after a `/clear`. Contains the 2026-07-06 arm-after-verify + `cmux ping` gate and the separate-Enter submit fix. |
 | `register-session-pid.sh` | **SessionStart** hook (registered globally in `~/.claude/settings.json`). Registers the session PID, self-spawns the token-watcher, and captures the cmux surface binding. Contains the 2026-07-09 stale-surface-invalidation fix. |
+| `token-watcher.py` | The per-session **token-watcher daemon** (one process per session, spawned by the launcher after a `bin-manifest.sha256` integrity check). Detects the threshold cross and dispatches the fire; in in-pane mode it is detection-only and the in-pane hooks own injection. Contains the 2026-07-13 NOOP-log-clarity fix. |
+
+## 2026-07-13 fixes captured here
+
+- **"warp manual-only" log was a red herring** (`token-watcher.py`). `dispatch_threshold_fire`
+  returns `NOOP` for THREE reasons — in-pane-carrier stand-down, opt-out, and genuine warp —
+  but the caller logged "NO DISPATCH (warp manual-only)" for both in-pane and warp, which made
+  the IC-session investigation much harder (a cmux session with the in-pane carrier active
+  looked like a warp session refusing to fire). Fix: the NOOP log now distinguishes
+  `in-pane carrier owns /clear + fire; daemon detection-only — NOT a warp session`, mirroring
+  the dispatcher's own precedence (opt-out → in-pane → warp). Applying this to already-running
+  watchers requires respawning them (kill + `backfill-watchers.sh`); new watchers pick it up
+  on their next SessionStart.
+- **Priority-2 fire escalation** (`eternity-cmux-inpane.sh`): the dead-surface escalation added
+  to the Priority-1 `/clear` path on 2026-07-09 is now mirrored on the Priority-2 *fire* path —
+  a cmux-up-but-send-failed auto-fire raises the same one-shot alert instead of a session that
+  silently never hands off.
 
 ## 2026-07-09 fixes captured here
 

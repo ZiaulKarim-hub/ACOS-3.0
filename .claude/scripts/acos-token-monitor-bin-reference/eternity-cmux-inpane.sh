@@ -207,10 +207,25 @@ if [ "$TOTAL" -ge "$THRESH" ] && [ ! -f "$GUARD" ]; then
         touch "$GUARD" 2>/dev/null
         if send "/acos-eternity-protocol"; then
             date -u +%Y-%m-%dT%H:%M:%SZ > "$GUARD" 2>/dev/null   # verified — confirm
+            rm -f "$STATE/.alerted-$SID" 2>/dev/null             # recovered — reset one-shot alert
         else
             rm -f "$GUARD" 2>/dev/null   # send failed — release so next Stop retries
+            # ESCALATE (2026-07-13): cmux is UP (ping OK) but the FIRE send failed —
+            # the surface is unreachable/gone (same dead-surface condition as the
+            # /clear path in Priority-1). It won't self-heal, and if the session goes
+            # idle there's no next Stop to retry, so the session silently never hands
+            # off. Raise the SAME one-shot alert channel the daemon + Priority-1 use
+            # (.eternity-ALERT log + macOS notification via the shared .alerted-<sid>
+            # marker) so the user can act (invoke the protocol manually / restart in cmux).
+            if [ ! -f "$STATE/.alerted-$SID" ]; then
+                date -u +%Y-%m-%dT%H:%M:%SZ > "$STATE/.alerted-$SID" 2>/dev/null
+                printf '%s  session=%s  in-pane fire undeliverable — surface %s unreachable (cmux up, surface gone); invoke /acos-eternity-protocol manually  (in-pane Priority-2)\n' \
+                    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SID" "$SURF" >> "$STATE/.eternity-ALERT" 2>/dev/null
+                osascript -e 'display notification "Eternity auto-fire could not be delivered — the cmux surface is gone. Handle this pane manually." with title "ACOS Eternity Protocol"' >/dev/null 2>&1 &
+            fi
         fi
     fi
-    # cmux unhealthy → no arm, no fire; the next Stop event retries.
+    # cmux DOWN (ping failed) → no arm, no fire; the next Stop event retries. No alert
+    # (a transient cmux restart self-heals; the daemon escalates persistent cmux-down).
 fi
 exit 0
