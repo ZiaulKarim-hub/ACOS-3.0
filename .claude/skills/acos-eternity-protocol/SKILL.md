@@ -146,6 +146,71 @@ if [[ -f "$STATE/stop-${SESSION_ID}" ]]; then
     exit 0
 fi
 
+# ── Post-clear misfire guard (2026-07-19) ────────────────────────────────
+# Bug (observed live 2026-07-20): a BARE /clear (typed by hand, no handoff
+# saved first) was followed by a manual /acos-eternity-protocol in the fresh,
+# near-empty session. Eternity SAVES-then-clears; firing it on a just-cleared
+# chat checkpoints a blank session and re-clears nothing useful — the RESUME
+# belongs in that slot, not another fire. Detect a near-empty session and
+# REFUSE with recovery guidance (never auto-inject — the user acts themselves,
+# per the "refuse + guide" decision).
+#
+# "Near-empty" = live context tokens well below threshold (.last-total-<sid>),
+# or, when the watcher hasn't written that yet, a tiny transcript. A session
+# that worked back up to ~400k (the legitimate re-fire case) is NOT near-empty,
+# so the normal eternity loop is never blocked. Fail-open: if nothing is
+# measurable, do not block. Explicit override: CMUX_ETERNITY_FORCE=1.
+if [[ "${CMUX_ETERNITY_FORCE:-}" != "1" ]]; then
+    _MISFIRE_TOK_FLOOR=20000        # tokens; any real work far exceeds this
+    _MISFIRE_LINE_FLOOR=100         # fallback when .last-total-<sid> absent
+    _tok=$(cat "$STATE/.last-total-${SESSION_ID}" 2>/dev/null)
+    _near_empty=0; _measure=""
+    if [[ "$_tok" =~ ^[0-9]+$ ]]; then
+        _measure="${_tok} context tokens"
+        (( _tok < _MISFIRE_TOK_FLOOR )) && _near_empty=1
+    else
+        _lines=$(wc -l < "$JSONL" 2>/dev/null | tr -d ' ')
+        if [[ "$_lines" =~ ^[0-9]+$ ]]; then
+            _measure="${_lines} transcript lines"
+            (( _lines < _MISFIRE_LINE_FLOOR )) && _near_empty=1
+        fi
+    fi
+    if (( _near_empty == 1 )); then
+        # Point recovery at the most-recent OTHER transcript on THIS surface.
+        _prev=""
+        if [[ -n "${CMUX_SURFACE_ID:-}" ]]; then
+            while IFS= read -r _j; do
+                [[ -n "$_j" ]] || continue
+                _s=$(basename "$_j" .jsonl)
+                [[ "$_s" == "$SESSION_ID" ]] && continue
+                [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
+                _prev="$_s"; break
+            done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
+        fi
+        # Newest saved resume note in this project, if any (recovery target).
+        _note=$(ls -t memory/handoffs/*.resume.md 2>/dev/null | head -1)
+        echo "REFUSING TO FIRE — this session is near-empty (${_measure:-unmeasurable}),"
+        echo "  far below the ~400k threshold. Eternity SAVES-then-clears, so firing now"
+        echo "  would checkpoint a blank chat. A /clear likely just ran, and the RESUME —"
+        echo "  not another fire — belongs in this slot."
+        echo
+        echo "  Recover instead (nothing here is lost):"
+        echo "    - Pending resume, if any:   /acos-eternity-protocol-resume"
+        echo "      (After a BARE /clear nothing was saved, so this may also find nothing.)"
+        if [[ -n "$_prev" ]]; then
+            echo "    - Previous chat in this pane (its full work is on disk):"
+            echo "        session $_prev  ->  $SESSION_DIR/$_prev.jsonl"
+        fi
+        if [[ -n "$_note" ]]; then
+            echo "    - Newest saved handoff note (open and read it):"
+            echo "        $_note"
+        fi
+        echo
+        echo "  To fire eternity on THIS session anyway: re-run with CMUX_ETERNITY_FORCE=1"
+        exit 1
+    fi
+fi
+
 # Are we inside cmux at all? If the SessionStart hook didn't capture
 # CMUX_SURFACE_ID, the daemon doesn't know which surface to inject into.
 # Redirect to the warp variant rather than fire blindly.
@@ -159,9 +224,21 @@ fi
 
 # Is the cmux app running? Quick socket-existence probe — full RPC ping
 # happens daemon-side at fire time.
-CMUX_SOCKET="$HOME/Library/Application Support/cmux/cmux.sock"
-if [[ ! -S "$CMUX_SOCKET" ]]; then
-    echo "ERROR: cmux socket not found at $CMUX_SOCKET"
+# 2026-07-17: cmux 0.64.x moved its IPC socket from ~/Library/Application Support/cmux/
+# to the XDG state dir ~/.local/state/cmux/. Probe the `last-socket-path` pointer files
+# first (trusted only when the path they name is a live socket — the App Support pointer
+# goes stale after the move), then both fixed locations, newest scheme first.
+CMUX_SOCKET=""
+for _cand in \
+    "$(cat "$HOME/.local/state/cmux/last-socket-path" 2>/dev/null)" \
+    "$(cat "$HOME/Library/Application Support/cmux/last-socket-path" 2>/dev/null)" \
+    "$HOME/.local/state/cmux/cmux.sock" \
+    "$HOME/Library/Application Support/cmux/cmux.sock"; do
+    [[ -n "$_cand" && -S "$_cand" ]] && { CMUX_SOCKET="$_cand"; break; }
+done
+if [[ -z "$CMUX_SOCKET" ]]; then
+    echo "ERROR: cmux socket not found (checked ~/.local/state/cmux/ and"
+    echo "       ~/Library/Application Support/cmux/, plus their last-socket-path pointers)"
     echo "       The cmux app is not running. Launch cmux first, then retry."
     echo "       (Or use /acos-continue for the manual-fallback flow.)"
     exit 1
