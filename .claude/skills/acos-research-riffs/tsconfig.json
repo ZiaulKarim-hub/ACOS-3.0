@@ -1,0 +1,26 @@
+{
+  "// why": [
+    "bun runs these files directly and needs no build step, so this config is",
+    "not a build config — it exists so the claim 'type-checks clean under strict'",
+    "can be reproduced by anyone, instead of being asserted. A handoff agent",
+    "could not reproduce it precisely because no config was committed.",
+    "",
+    "Reproduce (from this directory):",
+    "  bun add -d @types/bun typescript   # once, anywhere on the machine",
+    "  bunx tsc --noEmit -p .             # expects: no output, exit 0",
+    "",
+    "@types/bun is deliberately NOT vendored here: the skill ships zero",
+    "node_modules and installing them is the checker's job, not the skill's."
+  ],
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "esnext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["scripts/**/*.ts"]
+}

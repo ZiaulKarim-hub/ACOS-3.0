@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1480, initial-scale=1">
+<title>Research Riff — Live Room</title>
+<style>
+  /* Look ported verbatim from the Investment Committee committee-room
+     (scripts/committee-room/meeting.html) so the two rooms are one family.
+     Only the data feeding it is different: seats are research seats, the floor
+     is the latest finding, the transcript is the ledger, the vote bar is
+     coverage, and the verdict is the coverage gate. */
+  :root{ --red:#e2001a; --grn:#2f9e44; --ink:#111; --hair:rgba(17,17,17,.16); --hair2:rgba(17,17,17,.08);
+         --grey:#8a8a8a; --bg:#fff; --amber:#e8a33d; }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg); color:var(--ink); }
+  body{ font-family:"Helvetica Neue",Helvetica,Arial,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; min-width:1480px; }
+  .wrap{ max-width:1480px; margin:0 auto; padding:32px 36px 40px; }
+
+  .live{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .live .left{ display:flex; align-items:center; gap:9px; }
+  .live .dot{ width:6px; height:6px; border-radius:50%; background:var(--red); animation:pulse 1.7s infinite; }
+  .live span{ font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--grey); }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.22} }
+  .phase-pill{ font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--red); border:1px solid var(--red); padding:3px 10px; }
+
+  .header{ display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--ink); padding-bottom:16px; margin-bottom:16px; }
+  .header .deal-title{ font-size:22px; font-weight:700; letter-spacing:-.01em; }
+  .header .deal-meta{ font-size:12px; color:#555; margin-top:6px; }
+  .leaning{ text-align:right; }
+  .leaning .lbl{ font-size:10px; letter-spacing:.18em; color:var(--grey); text-transform:uppercase; display:block; margin-bottom:5px; }
+  .leaning .val{ font-size:15px; font-weight:700; color:var(--red); border:1.5px solid var(--red); padding:5px 13px; letter-spacing:.05em; }
+  .leaning .val.met{ color:var(--grn); border-color:var(--grn); }
+
+  .votebar-track{ display:flex; width:100%; height:9px; border:1px solid var(--ink); overflow:hidden; margin-bottom:4px; }
+  .votebar-seg.against{ background:var(--red); } .votebar-seg.thin{ background:var(--amber); } .votebar-seg.for{ background:#fff; }
+  .votebar-row{ display:flex; justify-content:space-between; font-size:11px; margin-bottom:20px; }
+  .votebar-row .a{ color:var(--red); font-weight:700; } .votebar-row .f{ font-weight:700; }
+
+  /* ---- main grid: room + briefing sidebar ---- */
+  .grid{ display:grid; grid-template-columns:1fr 340px; gap:22px; }
+
+  /* room */
+  .room{ position:relative; }
+  .arc{ position:relative; width:100%; height:330px; }
+  .seat{ position:absolute; transform:translateX(-50%); text-align:center; width:120px; transition:opacity .3s; }
+  .seat.dim{ opacity:.5; }
+  .avwrap{ position:relative; width:52px; margin:0 auto; }
+  .react{ position:absolute; top:-12px; left:30px; width:28px; height:28px; border-radius:50%;
+    border:1.5px solid var(--hair); background:#fff; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.08); z-index:4; }
+  .react .rx{ font-size:17px; line-height:1; display:block; }
+  .react .rx.pop{ animation:pop .45s ease; }
+  @keyframes pop{ 0%{transform:scale(.4);opacity:.3} 55%{transform:scale(1.35)} 100%{transform:scale(1)} }
+  .hand{ position:absolute; top:-13px; left:-8px; font-size:20px; opacity:0; transition:opacity .3s; transform-origin:bottom center; }
+  .hand.up{ opacity:1; animation:wave 1.1s ease-in-out infinite; }
+  @keyframes wave{ 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(12deg)} }
+  .avatar{ width:52px; height:52px; border-radius:50%; border:1.5px solid var(--ink); background:#fff; margin:2px auto 0; position:relative; }
+  .seat.speaking .avatar{ border-color:var(--red); border-width:2.5px; box-shadow:0 0 0 4px rgba(226,0,26,.10); }
+  .eye{ position:absolute; width:4.5px; height:4.5px; border-radius:50%; background:var(--ink); top:20px; }
+  .eye.l{ left:15px; } .eye.r{ left:32px; }
+  .mouth{ position:absolute; left:50%; top:33px; width:14px; height:2px; background:var(--ink); transform:translateX(-50%); border-radius:1px; }
+  .seat.speaking .mouth{ animation:talk .45s infinite; }
+  @keyframes talk{ 0%,100%{height:2px} 50%{height:7px;border-radius:4px} }
+  .nm{ font-size:11px; font-weight:700; margin-top:6px; }
+  .seat.speaking .nm{ color:var(--red); }
+  .st{ font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--grey); }
+  .st.against{ color:var(--red); }
+  .rbub{ display:inline-flex; align-items:center; gap:4px; margin-top:5px; padding:2px 8px 2px 6px; background:#fff;
+    border:1px solid var(--red); border-radius:11px; font-size:10px; font-weight:700; color:var(--red);
+    font-variant-numeric:tabular-nums; cursor:pointer; position:relative; }
+  .rbub .mag{ position:relative; width:8px; height:8px; border:1.4px solid currentColor; border-radius:50%; }
+  .rbub .mag::after{ content:''; position:absolute; right:-3px; bottom:-3px; width:4px; height:1.5px; background:currentColor; transform:rotate(45deg); border-radius:1px; }
+  .rbub.live::before{ content:''; position:absolute; inset:-3px; border-radius:13px; border:1px solid var(--red); opacity:.4; animation:pulse2 2.2s ease-out infinite; pointer-events:none; }
+  @keyframes pulse2{ 0%{transform:scale(.7);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
+  .rbub:hover{ background:var(--red); color:#fff; }
+  /* research drawer */
+  .rbackdrop{ position:fixed; inset:0; background:rgba(255,255,255,.65); opacity:0; pointer-events:none; transition:.25s; z-index:100; }
+  .rbackdrop.open{ opacity:1; pointer-events:auto; }
+  .rdrawer{ position:fixed; top:0; right:0; height:100%; width:480px; max-width:92vw; background:#fff; border-left:2px solid var(--ink);
+    box-shadow:-8px 0 40px rgba(0,0,0,.10); transform:translateX(100%); transition:transform .3s; z-index:101; overflow-y:auto; padding:32px 30px 50px; }
+  .rdrawer.open{ transform:none; }
+  .rdrawer .x{ position:absolute; top:20px; right:24px; border:none; background:none; font-size:22px; cursor:pointer; }
+  .rdrawer h2{ font-size:19px; font-weight:700; margin:0 0 2px; }
+  .rdrawer .rsub{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--grey); margin-bottom:20px; }
+  .rt{ border-top:1px solid var(--hair2); padding:14px 0; }
+  .rt:first-of-type{ border-top:2px solid var(--ink); }
+  .rt-status{ display:inline-block; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; padding:2px 8px; margin-bottom:8px; border:1px solid var(--red); color:var(--red); }
+  .rt-status.done{ background:var(--ink); border-color:var(--ink); color:#fff; }
+  .rt-topic{ font-size:13px; line-height:1.5; color:#111; }
+  .rt-find{ margin-top:6px; font-size:11px; color:var(--grey); } .rt-find b{ color:#444; }
+
+  /* the floor */
+  .floor{ border:1px solid var(--ink); padding:16px 18px; min-height:120px; margin-top:6px; }
+  .floor-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .floor-who{ font-size:13px; font-weight:700; } .floor-who .role{ color:var(--grey); font-weight:400; font-size:11px; }
+  .floor-badge{ font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--red); padding:2px 8px; }
+  .floor-text{ font-size:15px; line-height:1.6; color:#111; }
+  .floor-empty{ color:#9a9a9a; font-size:13px; }
+  .cursor{ display:inline-block; width:2px; height:1em; background:var(--ink); vertical-align:-2px; margin-left:1px; animation:cb .8s steps(1) infinite; }
+  @keyframes cb{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  .think{ color:#8a8a8a; font-style:italic; }
+  .seat.thinking .avatar{ border-color:#c9a400; box-shadow:0 0 0 4px rgba(201,164,0,.14); animation:pulse 1.1s ease-in-out infinite; }
+  .seat.thinking .mouth{ animation:talk .55s infinite; }
+  #chairInput.oncall{ border-color:var(--grn); box-shadow:0 0 0 3px rgba(47,158,68,.12); }
+  /* reading-level dial */
+  .level-ctl{ display:inline-flex; align-items:center; gap:5px; margin-left:auto; padding-left:8px; font-size:11px; color:var(--grey); }
+  .level-ctl .lvl-lbl{ text-transform:uppercase; letter-spacing:.08em; font-size:9.5px; }
+  .level-ctl .btn.lvl{ padding:1px 8px; font-size:13px; line-height:1.1; min-width:0; }
+  .level-ctl #lvlVal{ min-width:104px; text-align:center; font-weight:700; color:var(--ink); }
+
+  .transcript{ margin-top:14px; max-height:190px; overflow-y:auto; }
+  .t-h{ font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--grey); margin-bottom:8px; }
+  .t-turn{ border-top:1px solid var(--hair2); padding:8px 0; font-size:12.5px; line-height:1.5; }
+  .t-turn:first-child{ border-top:1px solid var(--ink); }
+  .t-turn b{ color:var(--red); }
+  .t-turn.superseded{ text-decoration:line-through; opacity:.5; }
+
+  /* briefing sidebar */
+  .side{ border-left:1px solid var(--hair); padding-left:20px; }
+  .side h3{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--grey); margin:0 0 4px; }
+  .side .sub{ font-size:10.5px; color:#aaa; margin-bottom:14px; }
+  .brief{ max-height:560px; overflow-y:auto; }
+  .b-row{ border-top:1px solid var(--hair2); padding:11px 0; }
+  .b-row:first-child{ border-top:1px solid var(--ink); }
+  .b-seat{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .b-seat .nm{ font-size:11px; font-weight:700; margin:0; }
+  .b-seat .v{ font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--grey); } .b-seat .v.against{ color:var(--red); } .b-seat .v.met{ color:var(--grn); }
+  .b-q{ font-size:12px; font-weight:700; line-height:1.4; color:#000; }
+  .b-bar{ height:6px; border:1px solid var(--ink); margin-top:5px; overflow:hidden; } .b-bar i{ display:block; height:100%; background:var(--grn); }
+  .b-bar i.thin{ background:var(--amber); } .b-bar i.block{ background:var(--red); }
+  .b-m{ font-size:10.5px; color:var(--grey); line-height:1.45; margin-top:4px; }
+
+  /* chair bar */
+  .chair-controls{ display:flex; gap:8px; margin:18px 0 10px; }
+  .btn{ border:1px solid var(--ink); background:#fff; font-family:inherit; font-size:11px; letter-spacing:.1em; text-transform:uppercase; padding:8px 16px; cursor:pointer; }
+  .btn.primary{ background:var(--ink); color:#fff; } .btn:hover{ background:var(--red); border-color:var(--red); color:#fff; }
+  .chair{ display:flex; align-items:center; gap:14px; border-bottom:1.5px solid var(--ink); padding-bottom:10px; }
+  .chair .you{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--red); }
+  .chair input{ flex:1; border:none; outline:none; font-family:inherit; font-size:14px; padding:6px 2px; }
+  .chair input::placeholder{ color:#9a9a9a; }
+
+  @media (prefers-reduced-motion:reduce){ *{animation-duration:.001ms!important; transition-duration:.001ms!important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="live">
+    <div class="left"><div class="dot"></div><span>Research Riff — Live Room</span></div>
+    <div class="phase-pill" id="phasePill">—</div>
+  </div>
+
+  <div class="header">
+    <div><div class="deal-title" id="dealTitle">Research Riff</div><div class="deal-meta" id="dealMeta"></div></div>
+    <div class="leaning"><span class="lbl">Coverage Gate</span><span class="val" id="leaningVal">—</span></div>
+  </div>
+
+  <div class="votebar-track"><div class="votebar-seg against" id="segA"></div><div class="votebar-seg thin" id="segT"></div><div class="votebar-seg for" id="segF"></div></div>
+  <div class="votebar-row"><span><b class="a" id="cA"></b> &nbsp;·&nbsp; <b class="f" id="cF"></b></span><span style="color:#aaa" id="metaRight">Seats research in parallel · the floor shows the latest finding</span></div>
+
+  <div class="grid">
+    <div class="room">
+      <div class="arc" id="arc"></div>
+
+      <div class="floor" id="floor">
+        <div class="floor-empty" id="floorEmpty">No findings yet. Seats are gathering evidence — watch the research bubbles, or ask the panel a question below.</div>
+        <div id="floorLive" style="display:none">
+          <div class="floor-head"><span class="floor-badge" id="floorBadge">Latest finding</span><span class="floor-who" id="floorWho"></span></div>
+          <div class="floor-text" id="floorText"></div>
+        </div>
+      </div>
+
+      <div class="transcript" id="transcriptWrap" style="display:none">
+        <div class="t-h">Ledger — the running record</div>
+        <div id="transcript"></div>
+      </div>
+
+      <div class="chair-controls">
+        <button class="btn primary" id="nextBtn">▶ Surface a finding</button>
+        <button class="btn" id="autoBtn">Auto-brief</button>
+        <button class="btn" id="tallyBtn">Status</button>
+        <button class="btn" id="closeBtn">Compile report</button>
+        <span class="level-ctl" title="How plainly the panel answers — 0 Expert … 5 Very simple. Changes future turns; every number stays exact.">
+          <span class="lvl-lbl">Detail</span>
+          <button class="btn lvl" id="lvlDown">−</button>
+          <span id="lvlVal">3 · Middle school</span>
+          <button class="btn lvl" id="lvlUp">+</button>
+        </span>
+      </div>
+      <div class="chair">
+        <span class="you">You — Chair</span>
+        <input id="chairInput" placeholder="Ask the panel… (the moderator sees this on the next turn)" autocomplete="off">
+        <button class="btn" id="sendBtn">Send</button>
+      </div>
+    </div>
+
+    <div class="side">
+      <h3>Coverage Briefing</h3>
+      <div class="sub" id="briefSub"></div>
+      <div class="brief" id="brief"></div>
+    </div>
+  </div>
+</div>
+
+<div class="rbackdrop" id="rbackdrop"></div>
+<aside class="rdrawer" id="rdrawer"><button class="x" id="rx">&times;</button><h2 id="rname"></h2><div class="rsub" id="rsub"></div><div id="rbody"></div></aside>
+
+<script>
+/* ------------------------------------------------------------------ *
+ *  Research Riff live room — maps the riff RoomState onto the IC
+ *  committee-room shell. The server (riff-server.ts) recomputes state
+ *  from the session directory on every change; this page only renders.
+ * ------------------------------------------------------------------ */
+const $ = (id) => document.getElementById(id);
+const LEVELS = ["0 · Expert","1 · Undergrad","2 · High school","3 · Middle school","4 · Elementary","5 · Very simple"];
+let level = 3;
+let state = null;
+const seen = new Set();      // claim ids already reacted to (for the pop animation)
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function pct(x){ return Math.max(0, Math.min(100, Math.round(x*100))); }
+
+/* seats sit on a downward-opening arc (∩) — middle at the back, ends near
+ * the floor — so the panel forms a half-moon facing the floor box below. */
+function seatPos(i, n){
+  if (n <= 1) return { left: 50, top: 20 };
+  const t = i/(n-1);
+  const ang = (200 + 140*t) * Math.PI/180;   // 200°..340°
+  return { left: 50 + 40*Math.cos(ang), top: 150 + 150*Math.sin(ang) };
+}
+
+function seatFace(seat, i, n, speakingSlug){
+  const p = seatPos(i, n);
+  const speaking = seat.slug === speakingSlug;
+  const cls = ["seat", speaking ? "speaking" : "", seat.claims === 0 ? "dim" : ""].join(" ").trim();
+  const name = esc(seat.title || seat.slug);
+  const role = esc(seat.role || seat.status || "");
+  const bubbleLive = speaking ? "live" : "";
+  return `<div class="${cls}" style="left:${p.left}%;top:${p.top}px" data-slug="${esc(seat.slug)}">
+    <div class="avwrap">
+      <div class="hand">✋</div>
+      <div class="react"><span class="rx">${seat.role === "skeptic" ? "🔎" : seat.role === "generalist" ? "🧭" : "📄"}</span></div>
+      <div class="avatar"><div class="eye l"></div><div class="eye r"></div><div class="mouth"></div></div>
+    </div>
+    <div class="nm">${name}</div>
+    <div class="st ${seat.role === "skeptic" ? "against" : ""}">${role}</div>
+    <div class="rbub ${bubbleLive}" data-slug="${esc(seat.slug)}"><span class="mag"></span><span>${seat.claims}</span></div>
+  </div>`;
+}
+
+function renderArc(st){
+  const seats = st.panel || [];
+  const speakingSlug = (st.ledger && st.ledger[0] && st.ledger[0].slug)
+    || (st.claims_recent && st.claims_recent[0] && st.claims_recent[0].slug) || null;
+  $("arc").innerHTML = seats.map((s,i) => seatFace(s, i, seats.length, speakingSlug)).join("");
+  for (const b of document.querySelectorAll(".rbub[data-slug]")) {
+    b.addEventListener("click", () => openDrawer(b.getAttribute("data-slug")));
+  }
+}
+
+function renderVotebar(st){
+  const dims = st.coverage || [];
+  const total = dims.length || 1;
+  const covered = dims.filter(d => d.fill >= 1).length;
+  const blocking = dims.filter(d => d.blocking).length;
+  const thin = dims.filter(d => !d.blocking && d.fill < 1).length;
+  $("segA").style.width = pct(blocking/total) + "%";
+  $("segT").style.width = pct(thin/total) + "%";
+  $("segF").style.width = pct(covered/total) + "%";
+  $("cA").textContent = blocking + " blocking";
+  $("cF").textContent = covered + "/" + total + " covered";
+  const met = st.gate && st.gate.passed;
+  const v = $("leaningVal");
+  v.textContent = met ? "COVERAGE MET" : "GATE OPEN";
+  v.classList.toggle("met", !!met);
+}
+
+function renderFloor(st){
+  const led = (st.ledger || []).filter(e => e.status !== "superseded");
+  const top = led[0];
+  if (!top){ $("floorEmpty").style.display = ""; $("floorLive").style.display = "none"; return; }
+  $("floorEmpty").style.display = "none";
+  $("floorLive").style.display = "";
+  $("floorBadge").textContent = top.type === "correction" ? "Correction" : "Latest finding";
+  $("floorWho").innerHTML = esc(top.id) + ' <span class="role">' + esc(top.type) + "</span>";
+  $("floorText").innerHTML = esc(top.body);
+}
+
+function renderTranscript(st){
+  const led = st.ledger || [];
+  if (!led.length){ $("transcriptWrap").style.display = "none"; return; }
+  $("transcriptWrap").style.display = "";
+  $("transcript").innerHTML = led.slice(0, 30).map(e =>
+    `<div class="t-turn ${e.status === "superseded" ? "superseded" : ""}"><b>${esc(e.type)}</b> ${esc(e.body)}</div>`
+  ).join("");
+}
+
+function renderBrief(st){
+  const dims = st.coverage || [];
+  const c = st.corpus || {};
+  $("briefSub").textContent = (dims.length) + " coverage dimensions · " + (c.claims || 0) + " claims";
+  $("brief").innerHTML = dims.map(d => {
+    const fill = pct(d.fill || 0);
+    const barCls = d.blocking ? "block" : (d.fill < 1 ? "thin" : "");
+    const vCls = d.blocking ? "against" : (d.fill >= 1 ? "met" : "");
+    const status = esc(d.status || (d.fill >= 1 ? "covered" : "thin"));
+    return `<div class="b-row">
+      <div class="b-seat"><p class="nm">${esc(d.name || d.id)}</p><span class="v ${vCls}">${status}</span></div>
+      <div class="b-bar"><i class="${barCls}" style="width:${fill}%"></i></div>
+      ${d.why ? `<div class="b-m">${esc(d.why)}</div>` : ""}
+    </div>`;
+  }).join("") || '<div class="b-m">No dimensions declared yet.</div>';
+}
+
+function openDrawer(slug){
+  if (!state) return;
+  const seat = (state.panel || []).find(s => s.slug === slug);
+  const claims = (state.claims_recent || []).filter(c => c.slug === slug);
+  $("rname").textContent = seat ? (seat.title || seat.slug) : slug;
+  $("rsub").textContent = (seat ? (seat.role + " · ") : "") + claims.length + " recent claims";
+  $("rbody").innerHTML = claims.length ? claims.map(c =>
+    `<div class="rt"><span class="rt-status ${c.surfaced ? "done" : ""}">${c.surfaced ? "shown" : "in corpus"}${c.tier ? " · tier " + c.tier : ""}</span>
+      <div class="rt-topic">${esc(c.claim)}</div>
+      <div class="rt-find"><b>${(c.sources||0)}</b> source(s) · as of ${esc(c.as_of || "?")}${c.volatile ? " · <b>volatile</b>" : ""}</div>
+    </div>`).join("") : '<div class="rt"><div class="rt-topic">No claims recorded from this seat yet.</div></div>';
+  $("rbackdrop").classList.add("open");
+  $("rdrawer").classList.add("open");
+}
+function closeDrawer(){ $("rbackdrop").classList.remove("open"); $("rdrawer").classList.remove("open"); }
+
+function render(st){
+  state = st;
+  $("dealTitle").textContent = st.topic || "Research Riff";
+  const c = st.corpus || {};
+  $("dealMeta").textContent = [
+    (st.tier ? st.tier + " tier" : ""), (st.mode || ""),
+    (c.claims || 0) + " claims", (c.unique_sources || c.sources || 0) + " sources",
+    st.updated ? "updated " + st.updated : ""
+  ].filter(Boolean).join("  ·  ");
+  $("phasePill").textContent = st.phase || "—";
+  renderVotebar(st);
+  renderArc(st);
+  renderFloor(st);
+  renderTranscript(st);
+  renderBrief(st);
+  if (typeof st.reading_level === "number"){ level = st.reading_level; $("lvlVal").textContent = LEVELS[level] || (level + ""); }
+}
+
+/* ---- chair channel: POST /chair-cmd, exactly like the IC chair ---- */
+async function chair(cmd){
+  try{
+    await fetch("/chair-cmd", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(cmd) });
+  }catch(e){ /* the moderator picks it up from the inbox regardless */ }
+}
+function sendMessage(){
+  const inp = $("chairInput");
+  const text = inp.value.trim();
+  if (!text) return;
+  chair({ type:"message", text });
+  inp.value = "";
+  inp.classList.add("oncall");
+  setTimeout(() => inp.classList.remove("oncall"), 900);
+}
+$("sendBtn").addEventListener("click", sendMessage);
+$("chairInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+$("nextBtn").addEventListener("click", () => chair({ type:"surface" }));
+$("autoBtn").addEventListener("click", () => chair({ type:"autobrief" }));
+$("tallyBtn").addEventListener("click", () => chair({ type:"status" }));
+$("closeBtn").addEventListener("click", () => chair({ type:"report" }));
+$("lvlUp").addEventListener("click", () => { level = Math.min(5, level+1); $("lvlVal").textContent = LEVELS[level]; chair({ type:"reading_level", level }); });
+$("lvlDown").addEventListener("click", () => { level = Math.max(0, level-1); $("lvlVal").textContent = LEVELS[level]; chair({ type:"reading_level", level }); });
+$("rx").addEventListener("click", closeDrawer);
+$("rbackdrop").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+/* ---- live wiring: SSE, exactly like IC ---- */
+const es = new EventSource("/events");
+es.addEventListener("state", e => { try{ render(JSON.parse(e.data)); }catch(err){} });
+es.addEventListener("chair", e => { /* echo of a queued command; the floor updates when the moderator acts */ });
+/* prime once in case the first SSE frame is missed */
+fetch("/state").then(r => r.json()).then(render).catch(()=>{});
+</script>
+</body>
+</html>
