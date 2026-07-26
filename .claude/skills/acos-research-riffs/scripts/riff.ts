@@ -850,12 +850,36 @@ async function main(): Promise<void> {
       }
       writeFileEnsured(portFile, String(info!.port));
       proc.unref();
+
+      // Start the live responder — a warm `claude -p` pool that answers a clicked
+      // seat in ~5-7s, grounded in that seat's findings, with no moderator in the
+      // loop. It self-locks (one per session), so a reused room won't double it.
+      // `--no-live` opens a view-only room (clicks land in the inbox unanswered).
+      let live = false;
+      if (!args.bools.has("no-live")) {
+        try {
+          const liveLog = join(paths(id).root, "room-live.out");
+          const lp = Bun.spawn(["bun", join(HERE_SCRIPTS, "riff-live.ts"), "--session", id, "--root", projectRoot()], {
+            stdout: Bun.file(liveLog),
+            stderr: Bun.file(liveLog),
+            stdin: "ignore",
+          });
+          lp.unref();
+          live = true;
+        } catch {
+          /* view-only fallback; the room still serves */
+        }
+      }
+
       if (!args.bools.has("no-open")) openInChrome(info!.url!);
       out({
         url: info!.url,
         port: info!.port,
         session_id: id,
-        note: "read-only dashboard; it recomputes from the session directory, so it can never show stale research as live",
+        live,
+        note: live
+          ? "live room: click a seat (or type to it) and it answers in ~5-7s from its own findings"
+          : "view-only room; run without --no-live to let seats answer",
       });
       return;
     }

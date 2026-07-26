@@ -448,26 +448,35 @@ material turned out to say. Always reorganize the big concepts afterwards.
 verbose — that is a documented complaint about this kind of system, not a
 hypothetical one.
 
-### The live room (browser dashboard)
+### The live room (browser committee room)
 
 ```bash
-riff room --session <id>          # opens in Chrome and prints the URL
-riff room --no-open               # just print the URL
-riff room --state                 # dump the state JSON, no server
+riff room --session <id>          # opens the committee room in Chrome + live responder
+riff room --no-open               # start it, just print the URL
+riff room --no-live               # view-only: no live responder (clicks go unanswered)
+riff room --state                 # dump the IC-shaped state JSON, no server
 ```
 
-Offer it once, when Phase 2 starts — that is when there is something to watch.
-It shows coverage bars filling (green saturated, amber thin, red border =
-blocking the gate), claims streaming in with tier and volatility tags, the panel
-with each seat's claim count, the ledger with supersessions struck through, the
-concept outline, and the self-check verdict.
+The room page is the Investment Committee's own committee-room UI (reused verbatim,
+relabeled), fed by `buildIcState()`: the panel is the half-moon of seats, coverage
+is the vote bar + briefing sidebar, the gate is the verdict box, and the transcript
+is the live turns (or the ledger before the meeting opens). Offer it once, when
+Phase 2 starts — that is when there is something to watch.
 
-It is **read-only by construction** — no route writes to the session — and it
-recomputes from the session directory rather than reading a state file the
-conversation maintains. That is deliberate: a mirror file is one more thing to
-forget to update, and a stale mirror looks exactly like live research.
+**It answers on its own.** `riff room` auto-starts `riff-live.ts` — a warm pool of
+`claude -p --safe-mode` workers (subscription OAuth, never an API key). Click a
+seat's **Call** button, or type to a seat, and it speaks in ~5-7s, with the
+moderator entirely out of the loop. Every turn is **grounded**: the seat speaks
+ONLY from its own dossier claims and cites their ids; if the question is not in its
+corpus it says so and does not guess (I2 + I9). The reading-level dial sets the
+seats' register (the pool runs `--safe-mode`, so nothing else does).
 
-A second `riff room` reuses the running server rather than starting another one.
+The chair channel is the ONLY write, and it is append-only: `POST /chair-cmd`
+appends one line to `chair-inbox.jsonl`, which `riff-live` consumes; turns land in
+`room-turns.jsonl`. Session research state is never mutated. State recomputes from
+the session directory, so a stale mirror can never look like live research. A
+second `riff room` reuses the running server and its live responder (self-locked,
+one per session).
 
 ### Register
 Answer at the user's active reading level. Define terms on first use. Concede and
@@ -672,7 +681,8 @@ Layout:
 SKILL.md                     this protocol
 tsconfig.json                strict type-check config (no build step)
 scripts/riff.ts              CLI entry point (bun, no build step)
-scripts/riff-server.ts       browser bridge for the live room (read-only)
+scripts/riff-server.ts       browser bridge for the live room (serves + SSE + chair-inbox)
+scripts/riff-live.ts         live responder: warm claude -p pool answers a called seat, grounded
 scripts/room/room.html       the dashboard page
 scripts/lib/                 session, ledger, coverage, claims, panel, tree, report, room
 scripts/test-riff.ts         end-to-end smoke test

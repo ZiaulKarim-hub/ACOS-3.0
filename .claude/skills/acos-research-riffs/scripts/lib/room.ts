@@ -14,7 +14,7 @@
  * while looking live. Recomputing costs microseconds and cannot drift.
  */
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, statSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readJsonl } from "./util.ts";
 import { loadManifest, paths, MODERATOR_L, TIERS } from "./session.ts";
@@ -150,7 +150,12 @@ export function buildRoomState(sessionId: string): RoomState {
  */
 export function stateFingerprint(sessionId: string): string {
   const p = paths(sessionId);
-  const watched = [p.manifest, p.coverage, p.panel, p.ledger, p.surfaced, p.tree, p.questions];
+  const watched = [
+    p.manifest, p.coverage, p.panel, p.ledger, p.surfaced, p.tree, p.questions,
+    // live-room files written by riff-live — without these the server would not
+    // push when a seat starts thinking or a turn lands, so the room would stall.
+    join(p.root, "room-turns.jsonl"), join(p.root, "room-thinking.json"), join(p.root, "room-level.json"),
+  ];
   const parts: string[] = [];
   for (const f of watched) {
     try {
@@ -218,6 +223,8 @@ export interface IcState {
     text: string; reactions: Record<string, string>; hands: number[];
   }>;
   phase: string;
+  reading_level: number;
+  thinking?: { seat: number };
 }
 
 export function buildIcState(sessionId: string): IcState {
@@ -261,23 +268,55 @@ export function buildIcState(sessionId: string): IcState {
     n_objections: seat.research,
   }));
 
-  // The ledger becomes the meeting transcript. IC plays the LAST timeline entry
-  // as the newest turn, so order oldest -> newest; attribute each to a seat in
-  // rotation for visual variety (RoomState ledger rows carry no author slug).
+  // The transcript: once seats start speaking live (riff-live writes room-turns.jsonl),
+  // the timeline IS those spoken turns, attributed to the real seat. Before the
+  // meeting opens, fall back to the ledger so the room is never empty. IC plays
+  // the LAST timeline entry as the newest turn, so order oldest -> newest.
+  const p = paths(sessionId);
+  const liveTurns = readJsonl<{ seat: number; name: string; short: string; text: string; ts: string }>(
+    join(p.root, "room-turns.jsonl"),
+  );
   const byN = seats.length ? seats : [{ n: 1, name: "Panel", short: "Panel" }];
-  const led = [...s.ledger].sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? ""));
-  const timeline = led.map((e, i) => {
-    const seat = byN[i % byN.length]!;
-    return {
-      type: "turn",
-      seat: seat.n,
-      name: seat.name,
-      short: seat.short,
-      text: e.body,
-      reactions: {} as Record<string, string>,
-      hands: [] as number[],
-    };
-  });
+  const timeline = liveTurns.length
+    ? liveTurns.map((t) => ({
+        type: "turn",
+        seat: t.seat,
+        name: t.name,
+        short: t.short,
+        text: t.text,
+        reactions: {} as Record<string, string>,
+        hands: [] as number[],
+      }))
+    : [...s.ledger]
+        .sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? ""))
+        .map((e, i) => {
+          const seat = byN[i % byN.length]!;
+          return {
+            type: "turn",
+            seat: seat.n,
+            name: seat.name,
+            short: seat.short,
+            text: e.body,
+            reactions: {} as Record<string, string>,
+            hands: [] as number[],
+          };
+        });
+
+  // The seat the live responder is generating for (instant "thinking" feedback),
+  // and the reading-level dial, both written by riff-live.
+  let thinking: { seat: number } | undefined;
+  try {
+    const th = JSON.parse(readFileSync(join(p.root, "room-thinking.json"), "utf8"));
+    if (th && typeof th.seat === "number") thinking = { seat: th.seat };
+  } catch {
+    /* none */
+  }
+  let reading_level = 0;
+  try {
+    reading_level = Math.max(0, Math.min(5, Number(JSON.parse(readFileSync(join(p.root, "room-level.json"), "utf8")).level) || 0));
+  } catch {
+    /* default 0 */
+  }
 
   const sources = (s.corpus as Record<string, number>).unique_sources ?? (s.corpus as Record<string, number>).sources ?? 0;
   return {
@@ -296,5 +335,7 @@ export function buildIcState(sessionId: string): IcState {
     briefing,
     timeline,
     phase: s.phase,
+    reading_level,
+    ...(thinking ? { thinking } : {}),
   };
 }

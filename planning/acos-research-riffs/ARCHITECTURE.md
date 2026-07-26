@@ -595,6 +595,29 @@ agent actually produces and what the code was written to consume.
     screenshot against the live 9-seat / 235-claim session. Lesson, again: reuse
     the current artifact, do not reimplement a stale copy of it.
 
+19. *The room had the buttons but no one behind them.* The IC-shaped room posts a
+    `speak` command when you click "Call", but nothing consumed the inbox — a seat
+    only spoke when the moderator (the main session) hand-wrote the turn, so it
+    could appear to hang forever. Fixed by porting IC's warm-pool engine to the
+    riff stack as one Bun daemon, `scripts/riff-live.ts`. It keeps a warm pool of
+    `claude -p --safe-mode` workers (stream-json in/out, content-block-array
+    framing, `result` = end-of-turn, subscription OAuth, refuses if
+    `ANTHROPIC_API_KEY` is set — all load-bearing, ported verbatim from ic-pool.py),
+    tails `chair-inbox.jsonl`, and for each `speak` builds the called seat's prompt
+    and writes the turn to `room-turns.jsonl` in ~5-7s, moderator entirely out of
+    the loop. `riff room` auto-starts it (self-locking, one per session; `--no-live`
+    opts out). `buildIcState` shows `room-turns.jsonl` as the live transcript plus a
+    `thinking` seat and the `reading_level` dial; `stateFingerprint` watches those
+    files so the server pushes the moment a turn lands.
+
+    The one riff-specific hard rule, NOT softened: a seat speaks ONLY from its own
+    dossier claims and must cite their ids; if the chair's question is not in its
+    corpus it says so and does not guess (I2 + I9). Verified end-to-end against the
+    live session: calling the Liquid AI seat "Does Liquid AI support voice cloning?"
+    returned a grounded turn citing `[liquid-ai-010]` and `[liquid-ai-024]`, which
+    correctly overrode a secondary summary's cloning claim with four Liquid primary
+    sources — the primary-source discipline holding inside a live spoken turn.
+
 **Files:**
 
 ```
