@@ -243,21 +243,34 @@ def main():
 
     # The workspace's [key:<uuid>] tag outranks its name: a RENAMED tab adopts
     # its tagged row (and the upsert below heals workspace_name to the new
-    # name) instead of minting a duplicate. The tag is ignored when its row is
-    # missing, tombstoned, or rooted elsewhere.
+    # name) instead of minting a duplicate. The tag is ignored ONLY when its row
+    # is missing or tombstoned.
+    #
+    # CROSS-ROOT ADOPTION (adopt-project.sh / SPINE 2, 2026-07-26): the tag is
+    # deliberately NOT root-guarded. adopt-project.sh re-binds a tab to a
+    # project whose root differs from the tab's folder — a cmux workspace's
+    # folder cannot be changed after creation, so an adopted tab is identified
+    # by its tag, not by its cwd. Root-guarding the tag here would discard that
+    # binding and mint a DUPLICATE row keyed (tab-cwd, adopted-name) on the very
+    # next SessionStart. resurrect-view.py's pass-1 claim is likewise unguarded,
+    # so the book and this hook now agree. The name path (below) and the
+    # folder-level path stay cwd-scoped exactly as before — the f639310
+    # project-scoped fix is untouched, because only an EXPLICIT protocol-written
+    # tag can cross roots, never an inferred match.
     tagged = None
+    adopted_cross_root = False
     if ws_key:
         try:
             tagged = registry_lib.load_row(ws_key, home=home)
         except Exception:  # corrupt tagged row: fall back to name/folder paths
             tagged = None
-        if tagged is not None and (
-                tagged["status"] == "tombstoned"
-                or tagged["root_casefold"] != os.path.realpath(root).casefold()):
+        if tagged is not None and tagged["status"] == "tombstoned":
             tagged = None
 
     if tagged is not None:
         project_uuid = tagged["project_uuid"]
+        adopted_cross_root = (
+            tagged["root_casefold"] != os.path.realpath(root).casefold())
     elif ws_name:
         existing = registry_lib.find_row(root, ws_name, home=home)
         if existing is not None and existing["status"] == "tombstoned":
@@ -297,12 +310,16 @@ def main():
         os.makedirs(acos_dir, exist_ok=True)
         _append_gitignore_line(os.path.join(acos_dir, ".gitignore"), "project-id")
 
-    fields = {"project_uuid": project_uuid, "root": root}
+    # An ADOPTED tab keeps its project's OWN root — never the tab's cwd. Writing
+    # cwd here would silently relocate the project to whatever folder the tab
+    # happens to sit in, which is the one unrecoverable way to lose a row.
+    effective_root = tagged["root"] if adopted_cross_root else root
+    fields = {"project_uuid": project_uuid, "root": effective_root}
     if ws_name:
         fields["workspace_name"] = ws_name
     if session_id:
         fields["last_session_id_hint"] = str(session_id)
-    git = _git_facts(root)
+    git = _git_facts(effective_root)
     if git is not None:
         fields["git"] = git
     # Revive-on-work: a session STARTING here means the project is being worked
@@ -323,8 +340,21 @@ def main():
         )
 
     # cwd==root assertion (risk #7 / f639310): loud, never blocking.
+    # An ADOPTED tab is the one case where cwd != root is CORRECT, not an
+    # anomaly — it is audited under its own event so the audit log never
+    # mislabels a deliberate adoption as contamination.
     real_cwd = os.path.realpath(cwd)
-    if real_cwd != row["root"]:
+    if adopted_cross_root:
+        _note("ADOPTED tab: [key:%s] binds this workspace to %r rooted at %r while cwd is %r — "
+              "identity follows the tag, not the folder (adopt-project.sh / SPINE 2)"
+              % (project_uuid, row["name"], row["root"], real_cwd))
+        registry_lib.audit_append(
+            {"event": "enroll-adopted-cross-root", "project_uuid": project_uuid,
+             "cwd_realpath": real_cwd, "row_root": row["root"],
+             "session_id": session_id},
+            home=home,
+        )
+    elif real_cwd != row["root"]:
         msg = ("ROOT MISMATCH: realpath(cwd)=%r != registry row.root=%r "
                "(project_uuid=%s) — enrollment recorded, session NOT blocked; "
                "investigate before resuming cross-project work" % (real_cwd, row["root"], project_uuid))

@@ -361,6 +361,7 @@ def verification_gate(handoff_path, reentry_path, slug):
 
 
 def main():
+    global ROOT  # re-rooted below when this tab was ADOPTED (SPINE 2)
     if not SID or not re.fullmatch(r"[A-Za-z0-9._-]+", SID):
         refuse("--session-id missing or not filename-safe ([A-Za-z0-9._-]+)", code=2)
     if not INTENT:
@@ -392,12 +393,48 @@ def main():
             ws_name = None
             ws_tag = None
 
+    # ADOPTED-TAB RE-ROOT (SPINE 2, 2026-07-26). adopt-project.sh can bind this
+    # tab to a project whose root is NOT the tab's cwd — a cmux workspace's
+    # folder cannot be changed after creation, so an adopted tab is identified
+    # by its [key:<uuid>] tag, not by where its shell happens to sit. Without
+    # this, ROOT stays the tab's cwd and the close would: (a) fail the tag's
+    # root-equality check below, (b) fall through to find_row(cwd, ws_name),
+    # (c) find nothing, and (d) MINT A DUPLICATE ROW while writing the handoff
+    # into the wrong folder. Re-rooting here fixes all four at once — the
+    # root-equality check below then passes as the assertion it was meant to be,
+    # and closed_dir / git_facts / the upsert all target the real project.
+    # LOUD, never silent: the re-root is printed in the receipt path below.
+    # READ-ONLY here. The D2 rule ("registry access only at step 7") governs
+    # WRITES — a refused close must never park a row. load_row writes nothing,
+    # so resolving identity early cannot re-open that hole.
+    adopted_root_note = None
+    if ws_tag:
+        sys.path.insert(0, os.environ.get("CLOSE_LIB_DIR", ""))
+        import registry_lib as _reg
+        try:
+            _tagged = _reg.load_row(ws_tag, home=REG_HOME)
+        except (ValueError, json.JSONDecodeError):
+            _tagged = None
+        if (_tagged is not None and _tagged["status"] != "tombstoned"
+                and _tagged["root_casefold"] != os.path.realpath(ROOT).casefold()
+                and os.path.isdir(_tagged["root"])):
+            adopted_root_note = ("ADOPTED TAB: [key:%s] binds this tab to %r rooted at %s — "
+                                 "closing THAT project, not the tab's cwd %s"
+                                 % (ws_tag, _tagged["name"], _tagged["root"], ROOT))
+            ROOT = _tagged["root"]
+
     name = ws_name or os.path.basename(ROOT.rstrip(os.sep))
     slug = "%s-%s-close" % (date, re.sub(r"[^A-Za-z0-9._-]+", "-", name))
     closed_dir = os.path.join(ROOT, "memory", "handoffs", "closed", slug)
     handoff_path = os.path.join(closed_dir, "handoff.yaml")
     reentry_path = os.path.join(closed_dir, "%s.reentry.md" % slug)
     stop_marker = os.path.join(STATE_DIR, "stop-%s" % SID)
+
+    # The re-root is a fact the user must see in EVERY run, dry or real — a
+    # close that targets a different folder than the shell is in must never be
+    # a silent surprise.
+    if adopted_root_note:
+        print(adopted_root_note)
 
     # Step 10 semantics: --dry-run stops BEFORE any write, including step 0.
     if DRY:

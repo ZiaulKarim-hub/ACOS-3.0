@@ -227,6 +227,19 @@ def finalize(project_uuid, root, mode, ws_id, desc, delivered, trust_gate):
             tag_ok = bool(listed) and key_tag in (listed[0].get("description") or "")
             print("description tag round-trip: %s" % ("OK — %r on workspace %s" % (key_tag, ws_id)
                                                       if tag_ok else "FAILED — tag not read back"))
+
+        # Auto-rename the tab to the project name (Fix 2, user request
+        # 2026-07-20) — covers BOTH focus and create (finalize runs on both).
+        # Named rows already store workspace_name == name, so custom_title=name
+        # keeps tab and row in agreement (no NAME DRIFT). Non-fatal by design.
+        proj_name = back["name"]
+        rn = cmux(["workspace-action", "--action", "rename",
+                   "--workspace", ws_id, "--title", proj_name])
+        if rn.returncode != 0:
+            print("WARN: rename rc=%d stderr=%s — tab not renamed to %r (non-fatal)"
+                  % (rn.returncode, rn.stderr.strip()[:200], proj_name))
+        else:
+            print("tab renamed: sidebar name -> %r (workspace %s)" % (proj_name, ws_id))
     registry_lib.audit_append(
         {"event": "launch", "project_uuid": project_uuid, "mode": mode,
          "workspace_id": ws_id, "delivered": delivered, "trust_gate": trust_gate,

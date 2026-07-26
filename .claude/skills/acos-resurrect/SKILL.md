@@ -1,6 +1,6 @@
 ---
 name: acos-resurrect
-description: The Resurrection Protocol menu — renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, routes the user's pick (same-root reentry read inline; otherwise launch-project.sh focus-or-launch relayed verbatim), and runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
+description: The Resurrection Protocol menu — renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, routes the user's pick (project already open elsewhere → launch-project.sh FOCUS; otherwise adopt-project.sh ADOPTS the pick into the CURRENT tab and the reentry is read inline — a pick never strands the user in another tab), and runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -8,12 +8,26 @@ user-invocable: true
 # ACOS Resurrect — the menu over the book (Resurrection Protocol proper)
 
 Resurrect = see every project honestly, pick one, land in it with its reentry in
-front of you. ALL computation lives in the scripts:
-`.claude/scripts/resurrection/resurrect-view.py` (the book — computed fresh,
-read-only, BROKEN rows shown) and `.claude/scripts/resurrection/launch-project.sh`
-(focus-or-launch, SPINE 1, delivery verification). Status transitions go through
-`.claude/scripts/resurrection/registry_lib.py` ONLY. This skill routes and
-relays; it computes nothing and decorates nothing.
+front of you — **in the tab you typed the command in**. ALL computation lives in
+the scripts: `.claude/scripts/resurrection/resurrect-view.py` (the book —
+computed fresh, read-only, BROKEN rows shown),
+`.claude/scripts/resurrection/adopt-project.sh` (ADOPT-IN-PLACE, SPINE 2 — the
+default route: this tab BECOMES the picked project), and
+`.claude/scripts/resurrection/launch-project.sh` (focus-or-launch, SPINE 1 —
+used only to JUMP to a project that is already open in another tab). Status
+transitions go through `.claude/scripts/resurrection/registry_lib.py` ONLY. This
+skill routes and relays; it computes nothing and decorates nothing.
+
+**Adopt-in-place, and its one physical limit** (user decision 2026-07-26): a
+pick must land HERE, not in some other tab the user then has to hunt for. But a
+cmux workspace's FOLDER cannot be changed after the workspace is created
+(`--cwd` exists only on `workspace create`; there is no re-point verb), and a
+Claude session's cwd is fixed at launch. So adoption re-binds IDENTITY — sidebar
+name, the durable `[key:<uuid>]` tag, and the registry row — never the tab's
+shell folder. When the picked root differs from the tab's folder,
+`adopt-project.sh` prints a `FOLDER CAVEAT` naming the root every file operation
+must use; relay it verbatim and then USE absolute paths under that root. Never
+paper over it, and never claim the directory changed.
 
 This skill is GLOBAL (installed in `~/.claude/skills/`), but the scripts live
 ONCE — in the ACOS 3.0 install. Every block resolves `RESDIR` to this project's
@@ -23,9 +37,13 @@ canonical path `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurr
 is already global (`~/.acos/registry.d/`), so the book is identical from any
 project. `ROOT` always stays `$(pwd)` — the project you are operating in.
 
-Loop economics (what the verbs mean): **resume flips parked->active** — the
-launcher does that flip itself on every focus/create, and Step 3 does it for a
-same-root pick; every `registry_lib` upsert refreshes `last_verified_at`.
+Loop economics (what the verbs mean): **resume flips parked->active** — both
+`adopt-project.sh` and `launch-project.sh` do that flip themselves on every
+adopt/focus; every `registry_lib` upsert refreshes `last_verified_at`.
+**adopt also RELEASES the outgoing project** — the row this tab previously held
+goes `active -> parked`, which is what stops a released project from sitting in
+the book pretending to be open (and undoes `enroll-project.sh`'s revive-on-work,
+which re-actives any row the moment a session starts in its folder).
 **finish sets completed** — the row moves to ARCHIVED on the next render, hidden
 from the active tiers, never deleted. The book render itself is read-only and
 refreshes nothing.
@@ -39,6 +57,18 @@ matches the live workspace — relay verbatim, never "fix" silently) and
 `UNMATCHED WORKSPACES` (live cmux workspaces matching no row — candidates the
 user may add via the `add` verb below).
 
+On EVERY pick the tab is auto-renamed to the picked project's name (user
+request 2026-07-20), so the sidebar name always matches the row you landed in:
+`adopt-project.sh` renames THIS tab (Step 4) and `launch-project.sh` renames the
+tab it focuses (Step 3, in its `finalize()`). Both are fail-open — a rename miss
+is cosmetic, never a gate. The rename is identity-safe because every named row
+already stores `workspace_name == name`, and because adoption writes the
+`[key:<uuid>]` tag alongside it — the tag is what keeps an adopted tab bound to
+its real row when the tab's folder is not the project's root.
+`rename-workspace.sh` still exists for a bare cosmetic rename, but a PICK never
+uses it alone: a rename without the tag would leave the tab claiming a project
+it is not bound to.
+
 ## Hard rules (violating any one is a defect)
 
 - The book is computed FRESH on every invocation: run `resurrect-view.py` again
@@ -50,10 +80,22 @@ user may add via the `add` verb below).
   rows are always shown with their reason — never hidden, never dropped. No
   green badges, no checkmarks, no "verified" stamps: the renderer prints facts
   only (red/amber only) and you add NOTHING to them.
-- Focus-never-launch is the LAUNCHER'S job. This skill NEVER calls
-  `cmux workspace create` (nor `select` / `close`) directly — the only route to
-  a workspace is `launch-project.sh`. SPINE 1 (focus, never a second workspace)
-  lives there, not here.
+- Workspace actions belong to the SCRIPTS. This skill NEVER calls
+  `cmux workspace create` / `select` / `close` / `rename` / `set-description`
+  directly — the only routes are `adopt-project.sh` (re-bind THIS tab) and
+  `launch-project.sh` (focus a tab that is already open). SPINE 1 (one project,
+  one tab — focus, never a second workspace) and SPINE 2 (a pick lands in the
+  tab it was typed in) live in those scripts, not here.
+- **Adoption never CREATES a tab.** The old different-root behaviour — spawn a
+  new workspace and leave the user behind in the tab they typed in — is a defect
+  (2026-07-26). `launch-project.sh` is now called ONLY when the book shows the
+  picked project already live in another workspace; its create path is not a
+  route this skill takes.
+- **The outgoing project is checked before it is released.** `adopt-project.sh`
+  exits 3 with `OUTGOING NOT-CLOSED` when the tab's current project has no
+  `last_close` record. Relay that verbatim and STOP — offer `/acos-safe-close`
+  or picking that project instead. Never work around it; an unclosed project
+  loses its reentry state when its tab is taken.
 - Registry mutations go through `registry_lib` ONLY — the transition blocks
   below. Never hand-edit a row file. NOTHING here deletes a row: `finish` and
   `tombstone` both HIDE the row in ARCHIVED; the row file stays on disk.
@@ -81,6 +123,7 @@ ROOT="$(pwd)"
 RESDIR="$ROOT/.claude/scripts/resurrection"
 [ -f "$RESDIR/resurrect-view.py" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
 [ -f "$RESDIR/resurrect-view.py" ]  || { echo "STOP: resurrect-view.py not found at $RESDIR"; exit 1; }
+[ -f "$RESDIR/adopt-project.sh" ]   || { echo "STOP: adopt-project.sh not found at $RESDIR"; exit 1; }
 [ -f "$RESDIR/launch-project.sh" ]  || { echo "STOP: launch-project.sh not found at $RESDIR"; exit 1; }
 [ -f "$RESDIR/registry_lib.py" ]    || { echo "STOP: registry_lib.py not found at $RESDIR"; exit 1; }
 echo "resurrection scripts: present (RESDIR=$RESDIR)"
@@ -121,8 +164,10 @@ relay its refusal).
   decides from the description alone. Mention in the question text that the
   loop verbs `finish <project>`, `tombstone <project>`, and `curate` are also
   accepted as a typed reply.
-- **> 4 pickable projects:** ask for a free-text pick — by name, or by number
-  counting top-to-bottom through the book as printed (1-based). The verbs
+- **> 4 pickable projects:** ask for a free-text pick — by name, or by the
+  printed NUMBER next to the row. The renderer prints an explicit pick number
+  (the left gutter) on every pickable row and carries the same integer as
+  `pick_number` in `book.json`; ARCHIVED rows have no number. The verbs
   `finish <project>`, `tombstone <project>`, and `curate` are accepted here too.
 
 When the book's `UNMATCHED WORKSPACES` section is non-empty, say so in the
@@ -130,47 +175,19 @@ question text and offer `add <workspace name>` as an accepted reply — that is
 the user's door for adding a live-but-unregistered workspace to the book (the
 `add` verb in Step 5). Never add one on your own initiative.
 
-Resolve the pick against `book.json` by casefolded name match. Ambiguous →
-list the exact candidates and ask again. NEVER guess between two plausible rows.
+Resolve the pick against `book.json`: a NUMERIC reply → the project whose
+`pick_number` equals it EXACTLY (never re-count the printed rows yourself — the
+renderer already assigned the number the user sees). A NAME reply → casefolded
+name match. Ambiguous → list the exact candidates and ask again. NEVER guess
+between two plausible rows.
 
-## Step 3 — Same-root pick (the user is already in that project)
+## Step 3 — Already open elsewhere? Jump to that tab (relay verbatim)
 
-If `realpath` of the picked row's `root` equals `realpath` of this session's
-cwd, do NOT launch anything — the reentry is read inline and work continues in
-THIS conversation.
-
-```bash
-ROOT="$(pwd)"
-find "$ROOT/memory/handoffs/closed" -name '*.reentry.md' -exec stat -f '%m %N' {} + 2>/dev/null | sort -n | tail -1
-```
-
-Newest `.reentry.md` by mtime, resolved NOW — the row's recorded `reentry_path`
-is only a loud fallback when the scan finds nothing. Read that file with the
-Read tool, tell the user you are continuing from it, and pick up its next step.
-
-If the row's status is `parked`, flip it active (the resume flip — refreshes
-`last_verified_at` too):
-
-```bash
-ROOT="$(pwd)"
-RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/registry_lib.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
-RES_UUID="<project_uuid from book.json>" RES_DIR="$RES_DIR" python3 - <<'PY'
-import os, sys
-sys.path.insert(0, os.environ["RES_DIR"])
-import registry_lib
-home = os.environ.get("ACOS_REGISTRY_HOME") or None
-u = os.environ["RES_UUID"]
-row = registry_lib.load_row(u, home)
-assert row is not None, "REFUSED: no registry row for %s" % u
-assert row["status"] != "tombstoned", "REFUSED: tombstoned row — un-tombstoning is a human act"
-if row["status"] == "parked":
-    registry_lib.upsert_row({"project_uuid": u, "root": row["root"], "status": "active"}, home)
-    registry_lib.audit_append({"event": "resume", "project_uuid": u, "mode": "same-root"}, home)
-print("status read-back:", registry_lib.load_row(u, home)["status"])
-PY
-```
-
-## Step 4 — Different-root pick → the launcher (relay verbatim)
+The ONLY thing that routes a pick away from this tab is the pick already being
+live somewhere else. Read the picked row's `live.workspaces` from `book.json`
+(the fresh render from Step 1). If it is non-empty AND none of those workspace
+ids equals `$CMUX_WORKSPACE_ID`, the project is open in another tab — focus it
+and stop:
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/launch-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
@@ -179,15 +196,52 @@ cat "$SCRATCH/launch-out.txt"; echo "exit=$RC"
 ```
 
 Relay the `cat` output whole and unmodified inside one fenced block. The
-launcher owns focus-or-launch (SPINE 1), delivery verification, the
-parked->active flip, the durable `[key:<uuid>]` tag, and the launch audit
-event — repeat none of it here.
+launcher owns focus (SPINE 1), the parked->active flip, the durable
+`[key:<uuid>]` tag, the tab rename, and the audit event — repeat none of it here.
 
 - `REFUSED — ...` anywhere → that line is the outcome; STOP, no workaround.
 - exit 3 / `DELIVERY NOT-VERIFIED` / `TRUST GATE DETECTED` → quote it loudly;
   never claim delivery the script did not verify.
-- exit 0 → the focused/created workspace is where the user continues; this
-  conversation's job for that pick is done.
+- exit 0 → the focused workspace is where the user continues; this
+  conversation's job for that pick is done. Tell them WHICH tab to look at, by
+  its sidebar name.
+
+If `live.workspaces` is empty — or its only entry IS this tab — do NOT run the
+launcher. Go to Step 4. Running it here would create a second workspace and
+strand the user, which is the defect this routing exists to prevent.
+
+## Step 4 — Adopt the pick into THIS tab (the default route)
+
+```bash
+ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/adopt-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+bash "$RESDIR/adopt-project.sh" --project "<project_uuid>" > "$SCRATCH/adopt-out.txt" 2>&1; RC=$?
+cat "$SCRATCH/adopt-out.txt"; echo "exit=$RC"
+```
+
+Relay the `cat` output whole and unmodified inside one fenced block. The script
+owns every gate and every write: the already-open refusal, the outgoing-close
+check, the outgoing `active -> parked` release, the sidebar rename, the
+`[key:<uuid>]` tag round-trip, the picked row's `parked/completed -> active`
+flip, the reentry resolution, and the audit event. Repeat none of it, and
+NEVER perform any of those steps yourself if the script declined to.
+
+Read the exit code, then act:
+
+- **exit 0** → adoption done. This tab IS the picked project now. Read the
+  `reentry:` path the script printed, using the Read tool, tell the user you are
+  continuing from it, and pick up its next step IN THIS CONVERSATION.
+  If the script printed a `FOLDER CAVEAT`, relay it and treat the printed
+  `working root:` as the project's root for every file operation from here on —
+  absolute paths only. Do not claim the working directory changed; it did not.
+- **exit 3 / `OUTGOING NOT-CLOSED`** → STOP. The project currently in this tab
+  has no close record and adopting would release it with unsaved reentry state.
+  Relay the line, then offer exactly two options: run `/acos-safe-close` on that
+  project first, or pick that project instead. Never override the gate.
+- **exit 4 / already open** → the picked project is live in another workspace.
+  Relay the refusal, then run Step 3's launcher block to focus that tab.
+- **`REFUSED — ...` (exit 1/2)** → that line is the outcome; STOP, no workaround.
+  A `SET-BUT-DEAD` refusal means cmux restarted under this session: the tab this
+  process thinks it is in no longer exists, and nothing can be adopted into it.
 
 ## Step 5 — Loop verbs
 
@@ -219,8 +273,9 @@ PY
 ```
 
 Confirm to the user with the block's printed read-back line only — no badge, no
-stamp. A `finish`ed project remains resurrectable: picking it later relaunches
-it and the launcher flips it back to `active`.
+stamp. A `finish`ed project remains resurrectable: picking it later adopts it
+into the current tab (or focuses its tab if one is open) and that script flips
+it back to `active`.
 
 ### tombstone <project> (HUMAN-initiated ONLY)
 

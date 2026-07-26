@@ -455,6 +455,20 @@ def build_book(home, no_cmux, no_procs):
     projects.sort(key=lambda p: p["ref_time"], reverse=True)
     projects.sort(key=lambda p: TIER_ORDER.index(p["tier"]))
 
+    # Pick numbers: a global 1-based counter over the PICKABLE tiers only, in
+    # exactly the sorted order the human render walks (tier, then recency). The
+    # same integer is the printed gutter AND the book.json `pick_number` the
+    # menu skill resolves a typed number against — assigned ONCE, here, so the
+    # two can never disagree. ARCHIVED rows (sorted last) are not pickable ->
+    # pick_number None (no gutter number in the render).
+    pick_no = 0
+    for p in projects:
+        if p["tier"] == "ARCHIVED":
+            p["pick_number"] = None
+        else:
+            pick_no += 1
+            p["pick_number"] = pick_no
+
     counts = {t: 0 for t in TIER_ORDER}
     for p in projects:
         counts[p["tier"]] += 1
@@ -510,43 +524,42 @@ def render_human(book, use_color):
     for p in book["projects"]:
         by_tier[p["tier"]].append(p)
 
-    name_w = max([len(p["name"]) for p in book["projects"]] + [12])
-    name_w = min(name_w, 44)
+    # Numbered, one-line-per-row menu. The gutter is the pick number (digits
+    # wide enough for the highest number); names cap at 34 (ellipsis past
+    # that); the next-action is trimmed to one line. Full next-action, dirty
+    # count, liveness detail and handoff links all remain in --json — this is a
+    # DISPLAY trim, never a data trim. BROKEN + NAME DRIFT stay (hard rules:
+    # facts are never hidden), rendered as indented sub-notes under their row.
+    pickable = [p for p in book["projects"] if p.get("pick_number")]
+    num_w = max((len(str(p["pick_number"])) for p in pickable), default=1)
+    name_w = min(max([len(p["name"]) for p in book["projects"]] + [12]), 34)
+    next_w = 52
+
+    def _fit(text, width):
+        return text if len(text) <= width else text[: width - 1] + "…"
+
+    if pickable:
+        lines.append(c(DIM, "pick a project by its number (1–%d) · ARCHIVED rows are not numbered"
+                             % len(pickable)))
+        lines.append("")
 
     for tier in TIER_ORDER:
         rows = by_tier[tier]
         lines.append(c(BOLD, "%s (%d)" % (tier, len(rows))))
         for p in rows:
-            bits = []
-            bits.append(p["name"][:name_w].ljust(name_w))
-            bits.append(("next: %s" % p["next_action"]) if p["next_action"] else "next: —")
+            num = p.get("pick_number")
+            gutter = ("%*d." % (num_w, num)) if num else (" " * num_w + " ")
+            name = _fit(p["name"], name_w).ljust(name_w)
+            nxt = ("next: %s" % p["next_action"]) if p["next_action"] else "next: —"
+            nxt = _fit(nxt, next_w).ljust(next_w)
             age = _age_str(p["age_days"])
-            bits.append(c(AMBER, "age %s" % age) if p["age_days"] >= AMBER_DAYS else "age %s" % age)
-            bits.append("dirty %s" % (p["dirty_count"] if p["dirty_count"] is not None else "n/a"))
-            l = p["live"]
-            if l["session_count"]:
-                bits.append("%d live session%s" % (l["session_count"], "" if l["session_count"] == 1 else "s"))
-            if l.get("folder_session_count"):
-                bits.append("%d session%s in folder (shared root — unattributed)"
-                            % (l["folder_session_count"], "" if l["folder_session_count"] == 1 else "s"))
-            if l["workspace_count"]:
-                shown = l["workspaces"][:WS_LIST_CAP]
-                titles = ", ".join(w["title"] or w["id"][:8] for w in shown)
-                ws_bit = "%d workspace%s [%s]" % (
-                    l["workspace_count"], "" if l["workspace_count"] == 1 else "s", titles)
-                if l["workspace_count"] > WS_LIST_CAP:
-                    ws_bit += " (listed %d of %d workspaces)" % (len(shown), l["workspace_count"])
-                if l["workspace_count"] > 1:
-                    ws_bit += " — duplicates"
-                bits.append(ws_bit)
+            age_s = c(AMBER, "age %s" % age) if p["age_days"] >= AMBER_DAYS else "age %s" % age
+            lines.append("  %s %s  %s  %s" % (gutter, name, nxt, age_s))
+            sub_indent = " " * (num_w + 4)
             if p.get("name_drift"):
-                bits.append(c(AMBER, "NAME DRIFT: %s" % "; ".join(p["name_drift"])))
+                lines.append(sub_indent + c(AMBER, "NAME DRIFT: %s" % "; ".join(p["name_drift"])))
             if p["broken"]:
-                bits.append(c(RED, "BROKEN: %s" % p["broken"]))
-            lines.append("  " + "  ".join(bits))
-            link = p["handoff"].get("reentry_link") or p["handoff"].get("handoff_link")
-            if p["handoff"]["present"] and link:
-                lines.append("  " + " " * name_w + "  " + c(DIM, "handoff: %s" % link))
+                lines.append(sub_indent + c(RED, "BROKEN: %s" % p["broken"]))
         lines.append("")
 
     if book["unreadable_rows"]:
