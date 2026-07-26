@@ -24,7 +24,7 @@ import { existsSync, readFileSync, appendFileSync, writeFileSync } from "node:fs
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "./lib/util.ts";
-import { buildRoomState, stateFingerprint } from "./lib/room.ts";
+import { buildIcState, stateFingerprint } from "./lib/room.ts";
 import { paths, resolveSession } from "./lib/session.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -89,7 +89,7 @@ const server = Bun.serve({
 
     if (url.pathname === "/state") {
       try {
-        return Response.json(buildRoomState(sessionId));
+        return Response.json(buildIcState(sessionId));
       } catch (e) {
         return Response.json(
           { error: e instanceof Error ? e.message : String(e) },
@@ -103,7 +103,7 @@ const server = Bun.serve({
         start(controller) {
           subscribers.add(controller);
           try {
-            controller.enqueue(sse("state", buildRoomState(sessionId)));
+            controller.enqueue(sse("state", buildIcState(sessionId)));
           } catch {
             /* first push failed; the poller will retry */
           }
@@ -150,7 +150,7 @@ const poller = setInterval(() => {
     const fp = stateFingerprint(sessionId);
     if (fp !== lastPrint) {
       lastPrint = fp;
-      broadcast("state", buildRoomState(sessionId));
+      broadcast("state", buildIcState(sessionId));
     } else if (ticks % Math.round(15000 / POLL_MS) === 0) {
       for (const c of [...subscribers]) {
         try {

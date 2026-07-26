@@ -184,3 +184,117 @@ export function stateFingerprint(sessionId: string): string {
 export function roomExists(sessionId: string): boolean {
   return existsSync(join(paths(sessionId).root, "manifest.json"));
 }
+
+// ---------------------------------------------------------------------------
+// IC-state adapter: the room PAGE is the Investment Committee's own meeting.html
+// (verbatim, relabeled), so the layout, the call-a-seat buttons, hand-raising,
+// reactions and the typewriter floor all come from IC's real code. That page
+// consumes a `meeting-state.json`-shaped object; this maps a riff RoomState into
+// exactly that shape. Nothing here reimplements the UI — it only translates data.
+
+/** A concise seat label for the arc (IC's `short`): full titles overflow the tiny name slot. */
+function shortLabel(s: string): string {
+  const t = (s || "").trim();
+  if (t.length <= 18) return t;
+  const cut = t.slice(0, 18);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > 8 ? cut.slice(0, sp) : cut).trim() + "…";
+}
+
+export interface IcState {
+  session_id: string;
+  deal: { name: string; amount: string; ltv: string; leaning: string; sub: string };
+  vote: { for: number; against: number };
+  seats: Array<{
+    n: number; short: string; name: string; vote: string; emoji: string;
+    research: number; threads: Array<{ topic: string; status: string }>; objections: unknown[];
+  }>;
+  briefing: Array<{
+    seat: number; short: string; name: string; vote: string;
+    question: string; context: string; mitigant: string; n_objections: number;
+  }>;
+  timeline: Array<{
+    type: string; seat: number; name: string; short: string;
+    text: string; reactions: Record<string, string>; hands: number[];
+  }>;
+  phase: string;
+}
+
+export function buildIcState(sessionId: string): IcState {
+  const s = buildRoomState(sessionId);
+  const dims = s.coverage;
+  const total = dims.length || 1;
+  const covered = dims.filter((d) => d.fill >= 1).length;
+  const blocking = dims.filter((d) => d.blocking).length;
+
+  const claimsBySlug = new Map<string, typeof s.claims_recent>();
+  for (const c of s.claims_recent) {
+    const arr = claimsBySlug.get(c.slug) ?? [];
+    arr.push(c);
+    claimsBySlug.set(c.slug, arr);
+  }
+
+  // A research seat maps to a committee seat. The skeptic votes "against" so it
+  // renders in IC's red — it is the seat whose whole job is to dissent.
+  const seats = s.panel.map((p, i) => {
+    const cs = claimsBySlug.get(p.slug) ?? [];
+    return {
+      n: i + 1,
+      short: shortLabel(p.title || p.slug),
+      name: p.title || p.slug,
+      vote: p.role === "skeptic" ? "against" : "for",
+      emoji: p.role === "skeptic" ? "😠" : "🙂",
+      research: p.claims,
+      threads: cs.slice(0, 4).map((c) => ({ topic: c.claim, status: c.surfaced ? "done" : "running" })),
+      objections: [] as unknown[],
+    };
+  });
+
+  const briefing = seats.map((seat) => ({
+    seat: seat.n,
+    short: seat.short,
+    name: seat.name,
+    vote: seat.vote,
+    question: seat.name,
+    context: `${seat.research} findings gathered`,
+    mitigant: seat.threads[0]?.topic ?? "",
+    n_objections: seat.research,
+  }));
+
+  // The ledger becomes the meeting transcript. IC plays the LAST timeline entry
+  // as the newest turn, so order oldest -> newest; attribute each to a seat in
+  // rotation for visual variety (RoomState ledger rows carry no author slug).
+  const byN = seats.length ? seats : [{ n: 1, name: "Panel", short: "Panel" }];
+  const led = [...s.ledger].sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? ""));
+  const timeline = led.map((e, i) => {
+    const seat = byN[i % byN.length]!;
+    return {
+      type: "turn",
+      seat: seat.n,
+      name: seat.name,
+      short: seat.short,
+      text: e.body,
+      reactions: {} as Record<string, string>,
+      hands: [] as number[],
+    };
+  });
+
+  const sources = (s.corpus as Record<string, number>).unique_sources ?? (s.corpus as Record<string, number>).sources ?? 0;
+  return {
+    session_id: s.session_id,
+    deal: {
+      name: s.topic,
+      amount: `${(s.corpus as Record<string, number>).claims ?? 0} claims`,
+      ltv: `${covered}/${total} covered`,
+      leaning: s.gate.passed ? "COVERAGE MET" : "GATE OPEN",
+      sub: [s.tier ? `${s.tier} tier` : "", s.mode, `${sources} sources`, s.updated ? `updated ${s.updated}` : ""]
+        .filter(Boolean)
+        .join(" · "),
+    },
+    vote: { for: covered, against: blocking },
+    seats,
+    briefing,
+    timeline,
+    phase: s.phase,
+  };
+}

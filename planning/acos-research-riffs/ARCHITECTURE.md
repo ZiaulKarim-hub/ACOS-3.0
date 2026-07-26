@@ -570,6 +570,31 @@ agent actually produces and what the code was written to consume.
     as `ic-server.py` does. Verified by headless screenshot against the live 8-seat
     / 272-claim TTS session; the room-server regression tests still pass.
 
+18. *The first room "match" reimplemented IC instead of reusing it — the same
+    stale-version sin.* Note 17's room copied IC's CSS but hand-wrote its own seat
+    layout and JS, dropping most features. It shipped a broken result: seats
+    overlapped, labels collided, and the call-a-seat / hand-raise / autoplay
+    functionality was gone. The user, correctly, called it an old stale version.
+    Root cause: I never checked which IC file was current, and I rebuilt a worse
+    copy rather than reusing the real one.
+
+    Corrected by REUSING IC's actual page. `scripts/room/room.html` is now
+    generated from `acos-investment-committee/.../committee-room/meeting.html`
+    (the newest room file, `build_meeting.py`'s output) with three transforms:
+    relabel IC → Research Riff, blank the baked demo `MEETING` seats so the first
+    `/state` push always drives `buildArc()`, and swap the "Mitigant:" briefing
+    label for "Latest:". Every feature now comes from IC's own verified code —
+    the correct domed `buildArc` (`x = 8 + 84*(i/(N-1))`, no overlap), `callSeat`/
+    `giveFloor` (the "Call" buttons), hand-raising, reactions, the typewriter
+    floor, the research drawer, the reading-level dial, and the chair bar.
+    `lib/room.ts` gained `buildIcState()`, which maps a riff RoomState into IC's
+    `meeting-state.json` shape (panel → seats with the skeptic voting "against";
+    coverage → the vote bar + briefing; the ledger → the meeting transcript; the
+    gate → the verdict box). `riff-server.ts` serves that shape on `/state` +
+    `/events`; the chair channel (note 17) is unchanged. Verified by headless
+    screenshot against the live 9-seat / 235-claim session. Lesson, again: reuse
+    the current artifact, do not reimplement a stale copy of it.
+
 **Files:**
 
 ```

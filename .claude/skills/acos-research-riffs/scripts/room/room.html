@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=1480, initial-scale=1">
 <title>Research Riff — Live Room</title>
 <style>
-  /* Look ported verbatim from the Investment Committee committee-room
-     (scripts/committee-room/meeting.html) so the two rooms are one family.
-     Only the data feeding it is different: seats are research seats, the floor
-     is the latest finding, the transcript is the ledger, the vote bar is
-     coverage, and the verdict is the coverage gate. */
   :root{ --red:#e2001a; --grn:#2f9e44; --ink:#111; --hair:rgba(17,17,17,.16); --hair2:rgba(17,17,17,.08);
          --grey:#8a8a8a; --bg:#fff; --amber:#e8a33d; }
   *,*::before,*::after{ box-sizing:border-box; }
@@ -30,10 +25,9 @@
   .leaning{ text-align:right; }
   .leaning .lbl{ font-size:10px; letter-spacing:.18em; color:var(--grey); text-transform:uppercase; display:block; margin-bottom:5px; }
   .leaning .val{ font-size:15px; font-weight:700; color:var(--red); border:1.5px solid var(--red); padding:5px 13px; letter-spacing:.05em; }
-  .leaning .val.met{ color:var(--grn); border-color:var(--grn); }
 
   .votebar-track{ display:flex; width:100%; height:9px; border:1px solid var(--ink); overflow:hidden; margin-bottom:4px; }
-  .votebar-seg.against{ background:var(--red); } .votebar-seg.thin{ background:var(--amber); } .votebar-seg.for{ background:#fff; }
+  .votebar-seg.against{ background:var(--red); } .votebar-seg.for{ background:#fff; }
   .votebar-row{ display:flex; justify-content:space-between; font-size:11px; margin-bottom:20px; }
   .votebar-row .a{ color:var(--red); font-weight:700; } .votebar-row .f{ font-weight:700; }
 
@@ -46,6 +40,7 @@
   .seat{ position:absolute; transform:translateX(-50%); text-align:center; width:120px; transition:opacity .3s; }
   .seat.dim{ opacity:.5; }
   .avwrap{ position:relative; width:52px; margin:0 auto; }
+  /* reaction badge — fixed 1 o'clock on every avatar (consistent) */
   .react{ position:absolute; top:-12px; left:30px; width:28px; height:28px; border-radius:50%;
     border:1.5px solid var(--hair); background:#fff; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.08); z-index:4; }
   .react .rx{ font-size:17px; line-height:1; display:block; }
@@ -65,12 +60,17 @@
   .seat.speaking .nm{ color:var(--red); }
   .st{ font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--grey); }
   .st.against{ color:var(--red); }
+  .callbtn{ display:inline-block; margin-top:4px; font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--red); border:1px solid var(--red); padding:1px 6px; cursor:pointer; opacity:.5; transition:opacity .2s; }
+  .seat.can-call .callbtn{ opacity:1; font-weight:700; }
+  .seat.can-call .callbtn::before{ content:"✋ "; }
+  .callbtn:hover{ background:var(--red); color:#fff; }
+  /* research-agent bubble (click to see what the BG agents are working on) */
   .rbub{ display:inline-flex; align-items:center; gap:4px; margin-top:5px; padding:2px 8px 2px 6px; background:#fff;
     border:1px solid var(--red); border-radius:11px; font-size:10px; font-weight:700; color:var(--red);
     font-variant-numeric:tabular-nums; cursor:pointer; position:relative; }
   .rbub .mag{ position:relative; width:8px; height:8px; border:1.4px solid currentColor; border-radius:50%; }
   .rbub .mag::after{ content:''; position:absolute; right:-3px; bottom:-3px; width:4px; height:1.5px; background:currentColor; transform:rotate(45deg); border-radius:1px; }
-  .rbub.live::before{ content:''; position:absolute; inset:-3px; border-radius:13px; border:1px solid var(--red); opacity:.4; animation:pulse2 2.2s ease-out infinite; pointer-events:none; }
+  .rbub::before{ content:''; position:absolute; inset:-3px; border-radius:13px; border:1px solid var(--red); opacity:.4; animation:pulse2 2.2s ease-out infinite; pointer-events:none; }
   @keyframes pulse2{ 0%{transform:scale(.7);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
   .rbub:hover{ background:var(--red); color:#fff; }
   /* research drawer */
@@ -98,22 +98,26 @@
   .floor-empty{ color:#9a9a9a; font-size:13px; }
   .cursor{ display:inline-block; width:2px; height:1em; background:var(--ink); vertical-align:-2px; margin-left:1px; animation:cb .8s steps(1) infinite; }
   @keyframes cb{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  /* thinking / "gathering their point" state */
   .think{ color:#8a8a8a; font-style:italic; }
+  .think .dots i{ font-style:normal; opacity:.25; animation:dot 1.2s infinite; }
+  .think .dots i:nth-child(1){ animation-delay:0s } .think .dots i:nth-child(2){ animation-delay:.2s } .think .dots i:nth-child(3){ animation-delay:.4s }
+  @keyframes dot{ 0%,60%,100%{opacity:.22} 30%{opacity:1} }
   .seat.thinking .avatar{ border-color:#c9a400; box-shadow:0 0 0 4px rgba(201,164,0,.14); animation:pulse 1.1s ease-in-out infinite; }
   .seat.thinking .mouth{ animation:talk .55s infinite; }
+  /* chair input while a call is open */
   #chairInput.oncall{ border-color:var(--grn); box-shadow:0 0 0 3px rgba(47,158,68,.12); }
   /* reading-level dial */
   .level-ctl{ display:inline-flex; align-items:center; gap:5px; margin-left:auto; padding-left:8px; font-size:11px; color:var(--grey); }
   .level-ctl .lvl-lbl{ text-transform:uppercase; letter-spacing:.08em; font-size:9.5px; }
   .level-ctl .btn.lvl{ padding:1px 8px; font-size:13px; line-height:1.1; min-width:0; }
-  .level-ctl #lvlVal{ min-width:104px; text-align:center; font-weight:700; color:var(--ink); }
+  .level-ctl #lvlVal{ min-width:78px; text-align:center; font-weight:700; color:var(--ink); }
 
-  .transcript{ margin-top:14px; max-height:190px; overflow-y:auto; }
+  .transcript{ margin-top:14px; max-height:150px; overflow-y:auto; }
   .t-h{ font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--grey); margin-bottom:8px; }
   .t-turn{ border-top:1px solid var(--hair2); padding:8px 0; font-size:12.5px; line-height:1.5; }
   .t-turn:first-child{ border-top:1px solid var(--ink); }
   .t-turn b{ color:var(--red); }
-  .t-turn.superseded{ text-decoration:line-through; opacity:.5; }
 
   /* briefing sidebar */
   .side{ border-left:1px solid var(--hair); padding-left:20px; }
@@ -124,11 +128,9 @@
   .b-row:first-child{ border-top:1px solid var(--ink); }
   .b-seat{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   .b-seat .nm{ font-size:11px; font-weight:700; margin:0; }
-  .b-seat .v{ font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--grey); } .b-seat .v.against{ color:var(--red); } .b-seat .v.met{ color:var(--grn); }
+  .b-seat .v{ font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--grey); } .b-seat .v.against{ color:var(--red); }
   .b-q{ font-size:12px; font-weight:700; line-height:1.4; color:#000; }
-  .b-bar{ height:6px; border:1px solid var(--ink); margin-top:5px; overflow:hidden; } .b-bar i{ display:block; height:100%; background:var(--grn); }
-  .b-bar i.thin{ background:var(--amber); } .b-bar i.block{ background:var(--red); }
-  .b-m{ font-size:10.5px; color:var(--grey); line-height:1.45; margin-top:4px; }
+  .b-m{ font-size:10.5px; color:var(--grn); line-height:1.45; margin-top:4px; padding-left:8px; border-left:2px solid var(--grn); }
 
   /* chair bar */
   .chair-controls{ display:flex; gap:8px; margin:18px 0 10px; }
@@ -146,55 +148,55 @@
 <div class="wrap">
   <div class="live">
     <div class="left"><div class="dot"></div><span>Research Riff — Live Room</span></div>
-    <div class="phase-pill" id="phasePill">—</div>
+    <div class="phase-pill" id="phasePill">Briefing</div>
   </div>
 
   <div class="header">
-    <div><div class="deal-title" id="dealTitle">Research Riff</div><div class="deal-meta" id="dealMeta"></div></div>
-    <div class="leaning"><span class="lbl">Coverage Gate</span><span class="val" id="leaningVal">—</span></div>
+    <div><div class="deal-title" id="dealTitle"></div><div class="deal-meta" id="dealMeta"></div></div>
+    <div class="leaning"><span class="lbl">Coverage Gate</span><span class="val" id="leaningVal"></span></div>
   </div>
 
-  <div class="votebar-track"><div class="votebar-seg against" id="segA"></div><div class="votebar-seg thin" id="segT"></div><div class="votebar-seg for" id="segF"></div></div>
-  <div class="votebar-row"><span><b class="a" id="cA"></b> &nbsp;·&nbsp; <b class="f" id="cF"></b></span><span style="color:#aaa" id="metaRight">Seats research in parallel · the floor shows the latest finding</span></div>
+  <div class="votebar-track"><div class="votebar-seg against" id="segA"></div><div class="votebar-seg for" id="segF"></div></div>
+  <div class="votebar-row"><span><b class="a" id="cA"></b> &nbsp;·&nbsp; <b class="f" id="cF"></b></span><span style="color:#aaa" id="metaRight">Chair controls the floor · seats raise hands to speak</span></div>
 
   <div class="grid">
     <div class="room">
       <div class="arc" id="arc"></div>
 
       <div class="floor" id="floor">
-        <div class="floor-empty" id="floorEmpty">No findings yet. Seats are gathering evidence — watch the research bubbles, or ask the panel a question below.</div>
+        <div class="floor-empty" id="floorEmpty">No one has the floor yet. Read the Committee Briefing on the right, then call on a seat (click a raised hand or “Call” on any seat) to open the meeting.</div>
         <div id="floorLive" style="display:none">
-          <div class="floor-head"><span class="floor-badge" id="floorBadge">Latest finding</span><span class="floor-who" id="floorWho"></span></div>
+          <div class="floor-head"><span class="floor-badge">Now speaking</span><span class="floor-who" id="floorWho"></span></div>
           <div class="floor-text" id="floorText"></div>
         </div>
       </div>
 
       <div class="transcript" id="transcriptWrap" style="display:none">
-        <div class="t-h">Ledger — the running record</div>
+        <div class="t-h">Meeting transcript</div>
         <div id="transcript"></div>
       </div>
 
       <div class="chair-controls">
-        <button class="btn primary" id="nextBtn">▶ Surface a finding</button>
-        <button class="btn" id="autoBtn">Auto-brief</button>
-        <button class="btn" id="tallyBtn">Status</button>
-        <button class="btn" id="closeBtn">Compile report</button>
-        <span class="level-ctl" title="How plainly the panel answers — 0 Expert … 5 Very simple. Changes future turns; every number stays exact.">
+        <button class="btn primary" id="nextBtn">▶ Call next speaker</button>
+        <button class="btn" id="autoBtn">Auto-run</button>
+        <button class="btn" id="tallyBtn">Tally</button>
+        <button class="btn" id="closeBtn">Close → Verdict</button>
+        <span class="level-ctl" title="How plainly the seats speak — 0 Expert … 5 Very simple. Changes future turns; every number stays exact.">
           <span class="lvl-lbl">Detail</span>
           <button class="btn lvl" id="lvlDown">−</button>
-          <span id="lvlVal">3 · Middle school</span>
+          <span id="lvlVal">0 · Expert</span>
           <button class="btn lvl" id="lvlUp">+</button>
         </span>
       </div>
       <div class="chair">
         <span class="you">You — Chair</span>
-        <input id="chairInput" placeholder="Ask the panel… (the moderator sees this on the next turn)" autocomplete="off">
+        <input id="chairInput" placeholder="Address the whole committee… (seen by every seat at the next turn)" autocomplete="off">
         <button class="btn" id="sendBtn">Send</button>
       </div>
     </div>
 
     <div class="side">
-      <h3>Coverage Briefing</h3>
+      <h3>Committee Briefing</h3>
       <div class="sub" id="briefSub"></div>
       <div class="brief" id="brief"></div>
     </div>
@@ -205,179 +207,352 @@
 <aside class="rdrawer" id="rdrawer"><button class="x" id="rx">&times;</button><h2 id="rname"></h2><div class="rsub" id="rsub"></div><div id="rbody"></div></aside>
 
 <script>
-/* ------------------------------------------------------------------ *
- *  Research Riff live room — maps the riff RoomState onto the IC
- *  committee-room shell. The server (riff-server.ts) recomputes state
- *  from the session directory on every change; this page only renders.
- * ------------------------------------------------------------------ */
-const $ = (id) => document.getElementById(id);
-const LEVELS = ["0 · Expert","1 · Undergrad","2 · High school","3 · Middle school","4 · Elementary","5 · Very simple"];
-let level = 3;
-let state = null;
-const seen = new Set();      // claim ids already reacted to (for the pop animation)
+const MEETING = {"deal": {"name": "Research Riff", "amount": "", "ltv": "", "leaning": "", "sub": ""}, "vote": {"for": 0, "against": 0}, "seats": [], "briefing": [], "timeline": [], "phase": "briefing"};
+const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function pct(x){ return Math.max(0, Math.min(100, Math.round(x*100))); }
-
-/* seats sit on a downward-opening arc (∩) — middle at the back, ends near
- * the floor — so the panel forms a half-moon facing the floor box below. */
-function seatPos(i, n){
-  if (n <= 1) return { left: 50, top: 20 };
-  const t = i/(n-1);
-  const ang = (200 + 140*t) * Math.PI/180;   // 200°..340°
-  return { left: 50 + 40*Math.cos(ang), top: 150 + 150*Math.sin(ang) };
+/* header + vote */
+const arc = $('#arc');
+function renderHeaderVote(){
+  $('#dealTitle').textContent = MEETING.deal.name + ' · ' + MEETING.deal.amount + ' · ' + MEETING.deal.ltv;
+  $('#dealMeta').textContent = MEETING.deal.sub || '';
+  $('#leaningVal').textContent = MEETING.deal.leaning;
+  const vt = (MEETING.vote.for + MEETING.vote.against) || 1;
+  $('#segA').style.width = (MEETING.vote.against/vt*100)+'%'; $('#segF').style.width = (MEETING.vote.for/vt*100)+'%';
+  $('#cA').textContent = MEETING.vote.against+' AGAINST'; $('#cF').textContent = MEETING.vote.for+' FOR';
 }
-
-function seatFace(seat, i, n, speakingSlug){
-  const p = seatPos(i, n);
-  const speaking = seat.slug === speakingSlug;
-  const cls = ["seat", speaking ? "speaking" : "", seat.claims === 0 ? "dim" : ""].join(" ").trim();
-  const name = esc(seat.title || seat.slug);
-  const role = esc(seat.role || seat.status || "");
-  const bubbleLive = speaking ? "live" : "";
-  return `<div class="${cls}" style="left:${p.left}%;top:${p.top}px" data-slug="${esc(seat.slug)}">
-    <div class="avwrap">
-      <div class="hand">✋</div>
-      <div class="react"><span class="rx">${seat.role === "skeptic" ? "🔎" : seat.role === "generalist" ? "🧭" : "📄"}</span></div>
-      <div class="avatar"><div class="eye l"></div><div class="eye r"></div><div class="mouth"></div></div>
-    </div>
-    <div class="nm">${name}</div>
-    <div class="st ${seat.role === "skeptic" ? "against" : ""}">${role}</div>
-    <div class="rbub ${bubbleLive}" data-slug="${esc(seat.slug)}"><span class="mag"></span><span>${seat.claims}</span></div>
-  </div>`;
+function buildArc(){
+  arc.innerHTML = '';
+  const N = MEETING.seats.length;
+  MEETING.seats.forEach(function(s, i){
+    const x = 8 + (84) * (i/((N-1)||1));
+    const dome = Math.sin(Math.PI * (i/((N-1)||1)));
+    const y = 150 - 120*dome;
+    const el = document.createElement('div');
+    el.className = 'seat'; el.id = 'seat-'+s.n;
+    el.style.left = x+'%'; el.style.top = y+'px';
+    el.innerHTML =
+      '<div class="avwrap">' +
+        '<div class="hand" id="hand-'+s.n+'">✋</div>' +
+        '<div class="avatar"><div class="eye l"></div><div class="eye r"></div><div class="mouth"></div></div>' +
+        '<div class="react" id="react-'+s.n+'"><span class="rx">🙂</span></div>' +
+      '</div>' +
+      '<div class="nm">'+esc(s.short)+'</div>' +
+      '<div class="st '+(s.vote==='against'?'against':'')+'">'+ (s.vote||'').toUpperCase() +'</div>' +
+      (s.research>0 ? '<div class="rbub" data-seat="'+s.n+'" title="'+s.research+' research agents running — click to see what they\'re working on"><span class="mag"></span>'+s.research+'</div>' : '') +
+      '<span class="callbtn" data-seat="'+s.n+'">Call</span>';
+    arc.appendChild(el);
+  });
+  MEETING.seats.forEach(function(s){ const rx=$('#react-'+s.n+' .rx'); if(rx) rx.textContent='🙂'; });
 }
+function buildBriefing(){
+  $('#briefSub').textContent = MEETING.briefing.length + ' seats · latest finding per seat (chair prep)';
+  $('#brief').innerHTML = MEETING.briefing.map(function(b){
+    return '<div class="b-row">' +
+      '<div class="b-seat"><span class="nm">'+esc(b.short)+'</span><span class="v '+(b.vote==='against'?'against':'')+'">'+(b.vote||'').toUpperCase()+'</span></div>' +
+      '<div class="b-q">'+esc(b.question)+'</div>' +
+      (b.mitigant ? '<div class="b-m">Latest: '+esc(b.mitigant)+'</div>' : '') +
+    '</div>';
+  }).join('');
+}
+renderHeaderVote(); buildArc(); buildBriefing();
 
-function renderArc(st){
-  const seats = st.panel || [];
-  const speakingSlug = (st.ledger && st.ledger[0] && st.ledger[0].slug)
-    || (st.claims_recent && st.claims_recent[0] && st.claims_recent[0].slug) || null;
-  $("arc").innerHTML = seats.map((s,i) => seatFace(s, i, seats.length, speakingSlug)).join("");
-  for (const b of document.querySelectorAll(".rbub[data-slug]")) {
-    b.addEventListener("click", () => openDrawer(b.getAttribute("data-slug")));
+/* ---- chaired meeting playback ---- */
+const timeline = MEETING.timeline || [];
+let cursor = 0, typing = null, auto = false;
+
+function setReaction(n, glyph){
+  const el = $('#react-'+n+' .rx'); if(!el) return;
+  el.textContent = glyph; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+}
+function setHands(hands){
+  MEETING.seats.forEach(function(s){ $('#hand-'+s.n).classList.toggle('up', hands.indexOf(s.n)>=0); });
+  // seats with a raised hand can be called
+  document.querySelectorAll('.seat').forEach(function(el){ el.classList.remove('can-call'); });
+  hands.forEach(function(n){ const el=$('#seat-'+n); if(el) el.classList.add('can-call'); });
+}
+function speaking(n){
+  MEETING.seats.forEach(function(s){
+    const el=$('#seat-'+s.n); el.classList.toggle('speaking', s.n===n); el.classList.toggle('dim', n!=null && s.n!==n);
+  });
+}
+/* INSTANT feedback: the moment a seat is called (optimistic, or when the daemon flags a miss),
+   show it "gathering their point" with animated dots so the room never sits dead. A real turn
+   arriving via playEvent() overwrites this. */
+function showThinking(n){
+  const s = MEETING.seats.filter(function(x){return x.n===n;})[0]; if(!s) return;
+  $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+  $('#phasePill').textContent='In session'; $('#phasePill').style.color='var(--grn)'; $('#phasePill').style.borderColor='var(--grn)';
+  $('#floorWho').innerHTML = esc(s.name) + (n ? ' <span class="role">Seat '+n+'</span>' : ' <span class="role">chair</span>');
+  clearTimeout(typing);
+  $('#floorText').innerHTML = '<span class="think">'+esc(s.short)+' is gathering their point<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>';
+  MEETING.seats.forEach(function(x){ const el=$('#seat-'+x.n); if(el) el.classList.remove('thinking'); });
+  speaking(n); const el=$('#seat-'+n); if(el) el.classList.add('thinking');
+}
+function typeInto(el, text, done){
+  el.innerHTML=''; const cur=document.createElement('span'); cur.className='cursor'; el.appendChild(cur);
+  const words=text.split(' '); let i=0;
+  (function step(){
+    if(i<words.length){ el.insertBefore(document.createTextNode((i?' ':'')+words[i]), cur); i++;
+      if(REDUCED){ step(); return; } typing=setTimeout(step, 95+Math.random()*80);
+    } else { cur.remove(); if(done) done(); }
+  })();
+}
+let autoRun = false;
+const scriptBySeat = {}; timeline.forEach(function(ev){ scriptBySeat[ev.seat] = ev; });
+const spoken = {};
+const LIVE = /^https?:$/.test(location.protocol);   // served by ic-server -> drive the real engine
+
+function playEvent(ev){
+  $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+  $('#transcriptWrap').style.display='block';
+  $('#phasePill').textContent='In session'; $('#phasePill').style.color='var(--grn)'; $('#phasePill').style.borderColor='var(--grn)';
+  $('#floorWho').innerHTML = esc(ev.name) + (ev.seat ? ' <span class="role">Seat '+ev.seat+'</span>' : ' <span class="role">chair</span>');
+  MEETING.seats.forEach(function(s){ const el=$('#seat-'+s.n); if(el) el.classList.remove('thinking'); });
+  speaking(ev.seat);
+  clearTimeout(typing);
+  typeInto($('#floorText'), ev.text, function(){
+    const t=document.createElement('div'); t.className='t-turn';
+    t.innerHTML='<b>'+esc(ev.short)+':</b> '+esc(ev.text); $('#transcript').appendChild(t);
+    $('#transcriptWrap').scrollTop = 9e9;
+    if(autoRun){ setTimeout(nextSpeaker, REDUCED?600:2800); }
+  });
+  // reactions trickle in WHILE the speaker talks (aliveness), not all at once
+  var _wc = (ev.text||'').split(' ').length, _win = Math.min(7000, Math.max(1500, _wc*70));
+  Object.keys(ev.reactions||{}).forEach(function(n){
+    setTimeout(function(){ setReaction(+n, ev.reactions[n]); }, 400 + Math.random()*_win);
+  });
+  // hands go up a beat into the turn, anticipating who wants in next
+  setTimeout(function(){ setHands(ev.hands||[]); }, 900 + Math.random()*1200);
+}
+function buildOpeningTurn(s){
+  const o = (s.objections||[])[0] || {};
+  const mit = ((o.mitigants||[])[0]||{}).statement;
+  return (o.question || 'Let me state my concern.') + ' ' + (o.statement||'') + (mit ? ' The cure I would propose: ' + mit : '');
+}
+function computeReactions(spk){
+  const sv = (MEETING.seats.filter(function(x){return x.n===spk;})[0]||{}).vote, r = {};
+  MEETING.seats.forEach(function(s){ if(s.n===spk) return;
+    r[s.n] = (s.vote===sv) ? (s.vote==='against'?'🔥':'👍') : (s.vote==='for'?'🤔':'😬'); });
+  return r;
+}
+function remainingHands(exclude){
+  return MEETING.seats.filter(function(s){ return s.vote==='against' && !spoken[s.n] && s.n!==exclude; }).slice(0,3).map(function(s){return s.n;});
+}
+let pendingChair = null;   // last chair message awaiting a seat response
+let activeSeat = null;     // the seat currently ON THE CALL — typed input auto-routes here until you end it
+function setActiveSeat(n){
+  activeSeat = n;
+  const box = $('#chairInput'); if(!box) return;
+  if(n != null){
+    const s = MEETING.seats.filter(function(x){return x.n===n;})[0];
+    box.placeholder = 'On call with ' + (s ? s.short : 'seat') + ' — type to reply · Esc to end call';
+    box.classList.add('oncall');
+  } else {
+    box.placeholder = 'Click a seat to open a call, then type to talk with them…';
+    box.classList.remove('oncall');
   }
 }
+/* A seat responding to a chair message. FR-M13 is REFINED (2026-07-10, user rule): the chair's
+   role is procedural, BUT a genuine personal ASSURANCE (the chair vouching/attesting from their
+   own verification) counts as EVIDENCE — a chair attestation entered on the record — and can move
+   a seat's stance. A mere opinion or suggestion is still weighed as a CLAIM, not evidence. And when
+   the chair asks the seat to double-check, the seat RE-VERIFIES rather than reciting boilerplate.
+   Live, the real Task(ic-0N) generation judges the substance; this drives local/demo playback. */
+function classifyChairIntent(text){
+  const t = (text || '').toLowerCase();
+  // 1) asks the seat to re-verify ITS OWN work — re-derive, don't recite
+  if(/\b(double|dbl)[- ]?check|re-?(run|check|verify|calc|compute)|recompute|recalculat|verify your|check your (number|figure|math|calc|work)|check (it |them |the numbers? )?again|are you sure|run it back|does (that|it) tie|tie out|sanity[- ]?check/.test(t)) return 'ask_verify';
+  // 2) a genuine ASSURANCE — chair vouches / attests from personal verification -> counts as EVIDENCE (user rule)
+  if(/\bi (personally |can |have |already )?(check|verif|confirm|review|vouch|attest|assur|guarantee)|i'?ve (check|verif|review|confirm)|on my (own )?(review|check|diligence)|i take (personal |full )?responsibilit|you have my (word|assurance)|rest assured|i (stake|vouch)|i looked (into|at) (it|this|them|everything)|(everything|it all|all of it|all the (info|information|data|numbers?)) (check|is legit|is verified|is (accurate|correct|clean|good))|(is|are) (all )?(legit|verified|accurate) (and|,|$)/.test(t)) return 'assurance';
+  // 3) an OPINION / SUGGESTION / bare competing assertion -> NOT evidence, weighed as a claim (user rule)
+  if(/\bi think|i believe|i feel|in my (view|opinion|mind)|my (view|opinion|take|sense) is|i'?d (suggest|recommend|lean|argue|say)|maybe (we|it|this|you)|perhaps|it should be|the (number|figure) is|actually it'?s|i have it at|my model says|that'?s (wrong|off|not right)/.test(t)) return 'assert_opinion';
+  // 4) an instruction to change scope / assumptions
+  if(/\b(add|remove|drop|redo|re-?do|use .* instead|adjust|rescope|re-?scope|assume|exclude|include|re-?underwrite|run the case|ignore|set the|change the|treat (it|the) as)\b/.test(t)) return 'instruct';
+  // 5) a direct question
+  if(/\?\s*$/.test((text || '').trim()) || /^(what|why|how|which|when|where|who|can you (explain|walk|clarify|show)|walk me|explain|clarify|tell me)\b/.test(t)) return 'ask_question';
+  return 'general';
+}
+/* Per-seat VOICE — so the 8 seats sound like 8 different people in playback, not one memo.
+   The live path gets its personality from each agent def's "Voice & register" block; this
+   mirrors it for local/demo playback. lead = how they open; sig = their signature line. */
+const VOICE = {
+  1:{lead:'Chair.',  sig:'Strip the story and the number is the number.'},
+  2:{lead:'Chair —', sig:'Net-net, I’m not paid enough for a spread that thin.'},
+  3:{lead:'Chair,',  sig:'Let me tie that out.'},
+  4:{lead:'Chair —', sig:'Absent the instrument, I can’t opine.'},
+  5:{lead:'Chair.',  sig:'Price the tail, not the base case.'},
+  6:{lead:'Chair —', sig:'Until a third party corroborates it, it’s a claim.'},
+  7:{lead:'Chair,',  sig:'Zoom out to the book.'},
+  8:{lead:'Chair —', sig:'Is this even our deal to do?'}
+};
+function respondToChair(s, chairText){
+  const V   = VOICE[s.n] || {lead:'Chair —', sig:''};
+  const obj0 = (s.objections || [])[0] || {};
+  const q   = obj0.question || s.opinion || 'my objection';
+  const ctx = obj0.statement || q;
+  const mit = (((obj0.mitigants) || [])[0] || {}).statement || 'the corroborating evidence, in the file';
+  const sig = V.sig ? (' ' + V.sig) : '';
+  switch(classifyChairIntent(chairText)){
+    case 'ask_verify':
+      return V.lead + ' fair challenge — I’m re-deriving from the source inputs, not restating. '
+           + 'If it holds I’ll confirm it; if I’m off I’ll correct myself on the record and name the exact line that moved.' + sig;
+    case 'assurance':
+      return V.lead + ' I’ll take that as a formal assurance, not an opinion — and by our rule a chair’s attestation goes on the record as evidence. '
+           + 'That moves me: I’m booking this as a condition precedent on your attestation — CP-verified-by-chair. '
+           + 'It’s testimonial, not documentary, so it reopens the moment ' + mit + ' contradicts it — but the veto comes off.' + sig;
+    case 'assert_opinion':
+      return V.lead + ' noted — I take that as a working input, and it’s my job to bring evidence, not yours to prove it. '
+           + 'If my own comps or documents cut against it, I’ll show you exactly where and ask whether it’s documented or your own read; otherwise it stands, logged as a condition to confirm.' + sig;
+    case 'instruct':
+      return V.lead + ' on it — I’ll re-run under that assumption and tell you exactly how it shifts the call.' + sig;
+    case 'ask_question':
+      return V.lead + ' straight answer: ' + ctx + ' What clears it: ' + mit + '.';
+    default:
+      return V.lead + ' my position holds — ' + q + '.' + sig;
+  }
+}
+/* ── the chair gives the floor to a SPECIFIC seat ── */
+function giveFloor(n){
+  const s = MEETING.seats.filter(function(x){return x.n===n;})[0]; if(!s) return;
+  if(LIVE){  // live: opens (or switches) the call to this seat; the moderator generates its turn
+    setActiveSeat(n);  // the call stays open on this seat — your next messages auto-route here
+    showThinking(n);   // OPTIMISTIC — show life the instant you click, before the round-trip
+    fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'speak', seat:n, chair: pendingChair ? pendingChair.text : null})});
+    pendingChair = null;
+    return;
+  }
+  spoken[n] = true;
+  let ev;
+  if(pendingChair && (pendingChair.seatN === null || pendingChair.seatN === n)){
+    ev = {seat:n, name:s.name, short:s.short, text:respondToChair(s, pendingChair.text), reactions:computeReactions(n), hands:remainingHands(n)};
+    pendingChair = null;
+  } else {
+    ev = scriptBySeat[n] || {seat:n, name:s.name, short:s.short, text:buildOpeningTurn(s), reactions:computeReactions(n), hands:remainingHands(n)};
+  }
+  playEvent(ev);
+}
+function callSeat(n){ autoRun=false; $('#autoBtn').textContent='Auto-run'; giveFloor(n); }   // chair click
+function nextSpeaker(){                                                                        // Gap-Hunter picks
+  const raised = MEETING.seats.filter(function(s){ return $('#hand-'+s.n).classList.contains('up') && !spoken[s.n]; });
+  const pool = raised.length ? raised : MEETING.seats.filter(function(s){ return !spoken[s.n]; });
+  if(!pool.length){ finish(); return; }
+  giveFloor(pool[0].n);
+}
+function finish(){
+  autoRun=false; $('#autoBtn').textContent='Auto-run'; speaking(null); setHands([]);
+  MEETING.seats.forEach(function(s){ setReaction(s.n, s.vote==='against'?'👎':'🤔'); });
+  $('#phasePill').textContent='Closed'; $('#phasePill').style.color='var(--red)'; $('#phasePill').style.borderColor='var(--red)';
+  $('#floorWho').innerHTML='Chair'; clearTimeout(typing);
+  $('#floorText').innerHTML='Committee closed. Computed verdict: <b>'+esc(MEETING.deal.leaning)+'</b> — '+MEETING.vote.against+' against, '+MEETING.vote.for+' for. The verdict is computed by rule from the settled ledger, never narrated.';
+}
+$('#nextBtn').onclick = function(){ autoRun=false; $('#autoBtn').textContent='Auto-run'; nextSpeaker(); };
+$('#autoBtn').onclick = function(){ autoRun=!autoRun; this.textContent = autoRun?'Pause':'Auto-run'; if(autoRun) nextSpeaker(); };
+$('#tallyBtn').onclick = function(){ $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block'; $('#floorWho').innerHTML='Chair — interim tally'; $('#floorText').innerHTML='Interim tally: <b>'+MEETING.vote.against+' against</b> · '+MEETING.vote.for+' for. Deal-breaker objections stand un-mitigated.'; };
+$('#closeBtn').onclick = function(){ MEETING.seats.forEach(function(s){ spoken[s.n]=true; }); finish(); };
+/* click a seat's face OR its "Call" chip to give THAT specific agent the floor */
+document.querySelectorAll('.callbtn').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); callSeat(+b.getAttribute('data-seat')); }; });
+MEETING.seats.forEach(function(s){ const el=$('#seat-'+s.n); if(el){ el.style.cursor='pointer'; el.title='Give '+s.short+' the floor'; el.addEventListener('click', function(){ callSeat(s.n); }); } });
+/* research agents: total in header + per-seat bubble opens a drawer of what they're working on */
+const rTotal = MEETING.seats.reduce(function(a,s){ return a + (s.research||0); }, 0);
+$('#metaRight').innerHTML = '🔍 <b style="color:#111">'+rTotal+'</b> research agents running in the background · chair controls the floor';
+const rdrawer=$('#rdrawer'), rbackdrop=$('#rbackdrop');
+function openResearch(s){
+  auto=false;
+  $('#rname').textContent = 'Research — ' + s.name;
+  const threads = s.threads || [];
+  const running = threads.filter(function(t){ return (t.status||'running')!=='done'; }).length;
+  $('#rsub').innerHTML = s.research + ' research agents in the background · ' + running + ' running';
+  $('#rbody').innerHTML = threads.length ? threads.map(function(t){
+    const st = t.status || 'running';
+    return '<div class="rt"><span class="rt-status '+st+'">'+(st==='done'?'done':'running')+'</span>' +
+      '<div class="rt-topic">'+esc(t.topic)+'</div>' +
+      (t.finding ? '<div class="rt-find"><b>Finding:</b> '+esc(t.finding)+'</div>' : '') + '</div>';
+  }).join('') : '<p style="color:#888;font-size:13px">No research agents running for this seat.</p>';
+  rdrawer.classList.add('open'); rbackdrop.classList.add('open');
+}
+function closeResearch(){ rdrawer.classList.remove('open'); rbackdrop.classList.remove('open'); }
+$('#rx').onclick = closeResearch; rbackdrop.onclick = closeResearch;
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeResearch(); });
+document.querySelectorAll('.rbub').forEach(function(b){
+  b.onclick = function(e){ e.stopPropagation(); const n=+b.getAttribute('data-seat'); const s=MEETING.seats.filter(function(x){return x.n===n;})[0]; if(s) openResearch(s); };
+});
 
-function renderVotebar(st){
-  const dims = st.coverage || [];
-  const total = dims.length || 1;
-  const covered = dims.filter(d => d.fill >= 1).length;
-  const blocking = dims.filter(d => d.blocking).length;
-  const thin = dims.filter(d => !d.blocking && d.fill < 1).length;
-  $("segA").style.width = pct(blocking/total) + "%";
-  $("segT").style.width = pct(thin/total) + "%";
-  $("segF").style.width = pct(covered/total) + "%";
-  $("cA").textContent = blocking + " blocking";
-  $("cF").textContent = covered + "/" + total + " covered";
-  const met = st.gate && st.gate.passed;
-  const v = $("leaningVal");
-  v.textContent = met ? "COVERAGE MET" : "GATE OPEN";
-  v.classList.toggle("met", !!met);
+$('#sendBtn').onclick = sendChair;
+$('#chairInput').addEventListener('keydown', function(e){ if(e.key==='Enter') sendChair(); else if(e.key==='Escape'){ setActiveSeat(null); e.target.blur(); } });
+/* reading-level dial (0 Expert … 5 Very simple) — sets how plainly the seats speak on FUTURE turns; numbers stay exact */
+var readingLevel = 0;
+var LVL_LABELS = ['0 · Expert','1 · Advanced','2 · Plain','3 · General','4 · Simple','5 · Very simple'];
+function renderLevel(){ var el=$('#lvlVal'); if(el) el.textContent = LVL_LABELS[readingLevel]; }
+function setLevel(n, push){
+  readingLevel = Math.max(0, Math.min(5, n)); renderLevel();
+  if(push && LIVE){ fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'level', value:readingLevel})}); }
+}
+if($('#lvlUp'))   $('#lvlUp').onclick   = function(){ setLevel(readingLevel+1, true); };
+if($('#lvlDown')) $('#lvlDown').onclick = function(){ setLevel(readingLevel-1, true); };
+/* ---- LIVE auto-refresh: reflect current server state + subscribe to SSE ---- */
+function attachSeatHandlers(){
+  document.querySelectorAll('.callbtn').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); callSeat(+b.getAttribute('data-seat')); }; });
+  document.querySelectorAll('.rbub').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); var n=+b.getAttribute('data-seat'); var s=MEETING.seats.filter(function(x){return x.n===n;})[0]; if(s) openResearch(s); }; });
+  MEETING.seats.forEach(function(s){ var el=$('#seat-'+s.n); if(el && !el._bound){ el._bound=true; el.style.cursor='pointer'; el.title='Give '+s.short+' the floor'; el.addEventListener('click', function(){ callSeat(s.n); }); } });
+}
+var _lastTurns = (MEETING.timeline||[]).length;
+function applyServerState(st){
+  if(!st || !Array.isArray(st.seats) || !st.seats.length) return;
+  var prevSeats = MEETING.seats.length;
+  MEETING.seats = st.seats;
+  MEETING.briefing = st.briefing || MEETING.briefing;
+  MEETING.vote = st.vote || MEETING.vote;
+  MEETING.deal = st.deal || MEETING.deal;
+  MEETING.timeline = st.timeline || MEETING.timeline || [];
+  if(typeof st.reading_level === 'number' && st.reading_level !== readingLevel){ setLevel(st.reading_level, false); }
+  renderHeaderVote(); buildBriefing();
+  if(st.seats.length !== prevSeats){ buildArc(); }
+  attachSeatHandlers();
+  var last = MEETING.timeline[MEETING.timeline.length-1];
+  var grew = (MEETING.timeline.length > _lastTurns) && last;
+  if(grew){
+    _lastTurns = MEETING.timeline.length;
+    playEvent(last);   // playEvent owns this turn's reactions + hands, STAGGERED over the delivery
+  } else {
+    _lastTurns = MEETING.timeline.length;
+    // reactions/hands-only update (no new turn) -> apply immediately
+    if(st.reactions){ Object.keys(st.reactions).forEach(function(n){ setReaction(+n, st.reactions[n]); }); }
+    if(Array.isArray(st.hands)) setHands(st.hands);
+    if(st.thinking && st.thinking.seat){ showThinking(st.thinking.seat); }
+  }
+}
+if (LIVE && window.EventSource){
+  fetch('/state').then(function(r){ return r.json(); }).then(applyServerState).catch(function(){});
+  var _es = new EventSource('/events');
+  _es.addEventListener('state', function(e){ try{ applyServerState(JSON.parse(e.data)); }catch(_){} });
 }
 
-function renderFloor(st){
-  const led = (st.ledger || []).filter(e => e.status !== "superseded");
-  const top = led[0];
-  if (!top){ $("floorEmpty").style.display = ""; $("floorLive").style.display = "none"; return; }
-  $("floorEmpty").style.display = "none";
-  $("floorLive").style.display = "";
-  $("floorBadge").textContent = top.type === "correction" ? "Correction" : "Latest finding";
-  $("floorWho").innerHTML = esc(top.id) + ' <span class="role">' + esc(top.type) + "</span>";
-  $("floorText").innerHTML = esc(top.body);
+function sendChair(){
+  const t=$('#chairInput').value.trim(); if(!t) return; $('#chairInput').value='';
+  // echo the chair line into the transcript
+  const el=document.createElement('div'); el.className='t-turn'; el.innerHTML='<b style="color:#111">Chair:</b> '+esc(t);
+  $('#transcriptWrap').style.display='block'; $('#transcript').appendChild(el); $('#transcriptWrap').scrollTop=9e9;
+  // an explicit #Seat address re-targets the call; otherwise the message goes to the OPEN call
+  let seatN = null;
+  MEETING.seats.forEach(function(s){
+    if(new RegExp('#\\b'+s.short.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(t)) seatN = s.n;
+  });
+  const target = (seatN != null) ? seatN : activeSeat;
+  if(target == null){   // no open call and nobody addressed — tell the chair how to start one
+    const hint=document.createElement('div'); hint.className='t-turn'; hint.style.color='#999';
+    hint.innerHTML='<i>Click a seat (or start your message with #Name) to open a call — then everything you type goes straight to them until you press Esc.</i>';
+    $('#transcript').appendChild(hint); $('#transcriptWrap').scrollTop=9e9; return;
+  }
+  if(LIVE){
+    setActiveSeat(target);   // keep (or switch) the call open on the target — no re-calling needed
+    showThinking(target);
+    fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'speak', seat:target, chair:t})});
+    return;
+  }
+  pendingChair = { text:t, seatN:target }; spoken[target]=false; giveFloor(target);   // demo fallback
 }
-
-function renderTranscript(st){
-  const led = st.ledger || [];
-  if (!led.length){ $("transcriptWrap").style.display = "none"; return; }
-  $("transcriptWrap").style.display = "";
-  $("transcript").innerHTML = led.slice(0, 30).map(e =>
-    `<div class="t-turn ${e.status === "superseded" ? "superseded" : ""}"><b>${esc(e.type)}</b> ${esc(e.body)}</div>`
-  ).join("");
-}
-
-function renderBrief(st){
-  const dims = st.coverage || [];
-  const c = st.corpus || {};
-  $("briefSub").textContent = (dims.length) + " coverage dimensions · " + (c.claims || 0) + " claims";
-  $("brief").innerHTML = dims.map(d => {
-    const fill = pct(d.fill || 0);
-    const barCls = d.blocking ? "block" : (d.fill < 1 ? "thin" : "");
-    const vCls = d.blocking ? "against" : (d.fill >= 1 ? "met" : "");
-    const status = esc(d.status || (d.fill >= 1 ? "covered" : "thin"));
-    return `<div class="b-row">
-      <div class="b-seat"><p class="nm">${esc(d.name || d.id)}</p><span class="v ${vCls}">${status}</span></div>
-      <div class="b-bar"><i class="${barCls}" style="width:${fill}%"></i></div>
-      ${d.why ? `<div class="b-m">${esc(d.why)}</div>` : ""}
-    </div>`;
-  }).join("") || '<div class="b-m">No dimensions declared yet.</div>';
-}
-
-function openDrawer(slug){
-  if (!state) return;
-  const seat = (state.panel || []).find(s => s.slug === slug);
-  const claims = (state.claims_recent || []).filter(c => c.slug === slug);
-  $("rname").textContent = seat ? (seat.title || seat.slug) : slug;
-  $("rsub").textContent = (seat ? (seat.role + " · ") : "") + claims.length + " recent claims";
-  $("rbody").innerHTML = claims.length ? claims.map(c =>
-    `<div class="rt"><span class="rt-status ${c.surfaced ? "done" : ""}">${c.surfaced ? "shown" : "in corpus"}${c.tier ? " · tier " + c.tier : ""}</span>
-      <div class="rt-topic">${esc(c.claim)}</div>
-      <div class="rt-find"><b>${(c.sources||0)}</b> source(s) · as of ${esc(c.as_of || "?")}${c.volatile ? " · <b>volatile</b>" : ""}</div>
-    </div>`).join("") : '<div class="rt"><div class="rt-topic">No claims recorded from this seat yet.</div></div>';
-  $("rbackdrop").classList.add("open");
-  $("rdrawer").classList.add("open");
-}
-function closeDrawer(){ $("rbackdrop").classList.remove("open"); $("rdrawer").classList.remove("open"); }
-
-function render(st){
-  state = st;
-  $("dealTitle").textContent = st.topic || "Research Riff";
-  const c = st.corpus || {};
-  $("dealMeta").textContent = [
-    (st.tier ? st.tier + " tier" : ""), (st.mode || ""),
-    (c.claims || 0) + " claims", (c.unique_sources || c.sources || 0) + " sources",
-    st.updated ? "updated " + st.updated : ""
-  ].filter(Boolean).join("  ·  ");
-  $("phasePill").textContent = st.phase || "—";
-  renderVotebar(st);
-  renderArc(st);
-  renderFloor(st);
-  renderTranscript(st);
-  renderBrief(st);
-  if (typeof st.reading_level === "number"){ level = st.reading_level; $("lvlVal").textContent = LEVELS[level] || (level + ""); }
-}
-
-/* ---- chair channel: POST /chair-cmd, exactly like the IC chair ---- */
-async function chair(cmd){
-  try{
-    await fetch("/chair-cmd", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(cmd) });
-  }catch(e){ /* the moderator picks it up from the inbox regardless */ }
-}
-function sendMessage(){
-  const inp = $("chairInput");
-  const text = inp.value.trim();
-  if (!text) return;
-  chair({ type:"message", text });
-  inp.value = "";
-  inp.classList.add("oncall");
-  setTimeout(() => inp.classList.remove("oncall"), 900);
-}
-$("sendBtn").addEventListener("click", sendMessage);
-$("chairInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
-$("nextBtn").addEventListener("click", () => chair({ type:"surface" }));
-$("autoBtn").addEventListener("click", () => chair({ type:"autobrief" }));
-$("tallyBtn").addEventListener("click", () => chair({ type:"status" }));
-$("closeBtn").addEventListener("click", () => chair({ type:"report" }));
-$("lvlUp").addEventListener("click", () => { level = Math.min(5, level+1); $("lvlVal").textContent = LEVELS[level]; chair({ type:"reading_level", level }); });
-$("lvlDown").addEventListener("click", () => { level = Math.max(0, level-1); $("lvlVal").textContent = LEVELS[level]; chair({ type:"reading_level", level }); });
-$("rx").addEventListener("click", closeDrawer);
-$("rbackdrop").addEventListener("click", closeDrawer);
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
-
-/* ---- live wiring: SSE, exactly like IC ---- */
-const es = new EventSource("/events");
-es.addEventListener("state", e => { try{ render(JSON.parse(e.data)); }catch(err){} });
-es.addEventListener("chair", e => { /* echo of a queued command; the floor updates when the moderator acts */ });
-/* prime once in case the first SSE frame is missed */
-fetch("/state").then(r => r.json()).then(render).catch(()=>{});
 </script>
 </body>
 </html>
