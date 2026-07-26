@@ -1,0 +1,289 @@
+[
+ {
+  "section": "12.7 / 12.10 / 16.8 (write-conflict enforcement)",
+  "missing": "The single-writer file-ownership guarantee for R6 (silent work loss between the browser editor and Claude) is enforced only by a PreToolUse hook on Write/Edit \u2014 but the PRD itself states elsewhere (\u00a714.1) that 'Bash heredoc writes are not blocked,' and Bash is in the skill's own allowed-tools list. No mechanism closes this gap for the exact failure scenario (\u00a712.10) the hook exists to prevent.",
+  "why_it_matters": "R6 is called 'near-certain, not a corner case.' If Claude (main thread, not a subagent) ever writes pages/*.doc.json via Bash instead of Edit/Write \u2014 which nothing in the PRD prevents \u2014 the PreToolUse guard is silently bypassed and the exact silent-clobber scenario the section is designed to stop still happens.",
+  "severity": "blocking",
+  "suggested_fix": "Either extend the hook to intercept Bash commands that touch the owned paths (regex/path-scan on command text), or make the server the sole writer for those paths via filesystem permissions (chmod owned files read-only for the Claude process's uid, with writes only accepted through the semantic-op HTTP endpoint), and state which mechanism is authoritative."
+ },
+ {
+  "section": "16.2 / 16.6 / O5 vs 18 (v1 scope)",
+  "missing": "v1 scope-in commits to a 'Double-fork server + fixed port + curl-across-turn-boundary verification' as delivered, shippable functionality, but the only proven recipe for surviving the harness's turn-boundary SIGTERM is Python double-fork; the TS/Bun equivalent (child_process.spawn + unref()) is explicitly unproven and flagged as O5 ('must be re-proven ... before the PRD assumes it works'). No fallback plan is given if the TS port fails the re-proof test, and v1 scope is not conditioned on O5's resolution.",
+  "why_it_matters": "Literally every editor feature in v1 (the browser-based design surface, autosave, SSE, the agent inbox) depends on a long-running local server surviving across Claude's turn boundary. If the TS spawn approach doesn't survive it the way the Python double-fork does, the entire v1 architecture as scoped is unbuildable in the mandated language, and there is no stated Plan B (e.g., accept a scoped Python exception, or redesign around a server that doesn't need to survive turn boundaries).",
+  "severity": "blocking",
+  "suggested_fix": "Run the O5 re-proof test before writing any more of the PRD's server-dependent scope as committed; make v1 scope explicitly conditional on its result, with a named fallback (e.g., invoke the language-rule Python exception for this one file, or redesign the server lifecycle so it doesn't need cross-turn survival)."
+ },
+ {
+  "section": "16.1 / 16.6 vs O4",
+  "missing": "The two-process architecture (astro dev on one port + wb-server on another, iframe + postMessage, exact routes GET /doc, POST /ops, GET /events SSE, POST /variants, POST /lock) is written up in full concrete implementation detail as the chosen design, complete with named precedent (Onlook/Stackbit/Tina). But \u00a717 O4 explicitly lists 'single-origin proxy vs two-origin iframe + postMessage' as unresolved, to be settled by spiking both 'before locking the architecture.'",
+  "why_it_matters": "An engineer reading \u00a716.6 would start building the two-origin/iframe/postMessage system as the architecture of record. The PRD's own open-questions section says this exact choice hasn't been made. This is the single most consequential architectural fork in the document (per O4's own framing) and it is simultaneously presented as settled and as unsettled.",
+  "severity": "blocking",
+  "suggested_fix": "Either promote the two-process design to a settled decision with rationale (and delete/reword O4), or clearly mark \u00a716.6's detail as 'candidate architecture, pending O4 spike' rather than presenting exact routes and process responsibilities as final."
+ },
+ {
+  "section": "12.9(c) vs 12.10 (git commit cadence)",
+  "missing": "\u00a712.9 layer (c) defines the git-commit cadence as 'milestones only' (LOCK, variant-set import, named checkpoint, session end). \u00a712.10's two-writer mitigation table states 'Every save is a commit: Auto-commit layout.json on save ... to a design/ branch, squash on lock' \u2014 i.e., every save (which per \u00a713.1 fires on every drop/mouseup) becomes a commit. These are two different, incompatible commit policies for the same file, both stated as the design with no reconciliation.",
+  "why_it_matters": "An implementer cannot write the save path without knowing which policy governs it \u2014 commit-per-drag versus commit-only-at-milestones produces wildly different git history size/behavior and different answers to 'what does undo restore.' The two rows contradict each other on the exact question they're each trying to answer.",
+  "severity": "major",
+  "suggested_fix": "Pick one: either 'milestones only' with save/undo handled entirely by the op-log + atomic-write layers (a, b), and drop 'every save is a commit' from \u00a712.10; or explicitly amend \u00a712.9(c) to note the design/ branch exception and reconcile squash-on-lock with the milestone-tag scheme."
+ },
+ {
+  "section": "18 (v1 scope-in) vs O10",
+  "missing": "v1's committed scope-in list explicitly includes 'multi-page manager, global regions, per-page SEO fields.' \u00a717.4 O10 lists 'Is multi-page in scope for v1, or one page?' as an open, unresolved 'User decision' and notes it 'roughly doubles editor scope.'",
+  "why_it_matters": "A scope item that materially doubles effort cannot be simultaneously a committed v1 deliverable and an open question awaiting a decision. This directly affects the v1 effort estimate (\u00a717-R18's table) and the exit-criterion timeline.",
+  "severity": "blocking",
+  "suggested_fix": "Resolve O10 explicitly before finalizing \u00a718, and either remove 'multi-page manager' from v1 scope-in or remove O10 from the open-questions list with a note pointing to \u00a718 as the resolution."
+ },
+ {
+  "section": "12.12 (bearer token bootstrap)",
+  "missing": "Control #2 states Origin validation applies to 'every non-GET and the SSE/WS upgrade' \u2014 explicitly excluding the plain GET / request. Control #4 says the bearer token is 'injected into the editor page at render' (i.e., delivered via that same unauthenticated GET /). The PRD never reconciles how a token delivered over an unauthenticated GET actually 'defeats DNS rebinding,' when DNS rebinding attacks work precisely by getting a victim browser to issue what looks like a same-origin navigation/GET to the rebound host.",
+  "why_it_matters": "This is presented as the load-bearing security control ('this is what actually defeats DNS rebinding and drive-by CSRF') for a threat model the PRD spends a full page establishing as real and cited (CVE-2025-24010). If the token's own delivery path is outside the validated surface, the central security claim needs an explicit argument for why it still holds, which is missing.",
+  "severity": "major",
+  "suggested_fix": "Either extend Origin/Host validation to GET / as well (accepting the cost of a slightly more complex bootstrap), or explicitly walk through why SOP (not CORS) already prevents a rebound origin from reading the token out of the GET / response body, so the reasoning is auditable rather than asserted."
+ },
+ {
+  "section": "12.14 (Step-3 importer security)",
+  "missing": "The 'strict validator' for untrusted pasted code is specified only as a denylist of literal substrings (fetch(, eval(, new Function, process., child_process, etc.). No AST-based static analysis, no sandboxed execution, no CSP-based containment is specified, despite this being explicitly titled 'an unauthenticated code-import channel' whose output is bundled into a published site.",
+  "why_it_matters": "Substring denylists are a well-known-weak defense (bracket-notation property access, string concatenation, unicode escapes, indirect eval via [][\"constructor\"][\"constructor\"](...)() all evade a literal-token filter). Calling this a 'strict validator' overstates what a token-blocklist actually achieves against a channel explicitly acknowledged as untrusted input landing in evaluated, published code.",
+  "severity": "major",
+  "suggested_fix": "Specify an AST-based analysis (e.g., parse with a real JS/TS parser and walk for CallExpression targets resolving to the denied identifiers, not string matching) and/or note that quarantined items are also sandboxed at build/preview time (iframe sandbox + strict CSP) as defense in depth, not just rejected by pattern."
+ },
+ {
+  "section": "16.4 (Task in allowed-tools) vs 14.5 / 16.5 (Task(general-purpose) usage)",
+  "missing": "\u00a716.4 mandates 'Do NOT list Task in allowed-tools,' citing skill-maker's guidance to instead 'set context: fork and agent: architect.' But \u00a714.5 and \u00a716.5 describe Task(general-purpose) being invoked repeatedly and interactively, mid-session, from within an already-running, browser-driven skill process (e.g., when the user clicks 'add custom chart' hours into an edit session). The mechanism by which a long-lived running skill session spawns an on-demand Task call without Task in its own allowed-tools is never explained \u2014 context:fork/agent:architect describes how the skill itself is invoked, not how it spawns subagents later at arbitrary points in a live session.",
+  "why_it_matters": "Custom components (Step 6) and interview synthesis are named, scoped v1/v2 features that structurally depend on being able to spawn a Task(general-purpose) call at an arbitrary point after the skill has already started running the server and editor. If the stated invocation contract genuinely forbids Task, these features have no described way to execute.",
+  "severity": "major",
+  "suggested_fix": "Either explain concretely how a running skill session (already past its own invocation, driven by SSE/inbox events) triggers a Task call without Task in allowed-tools, or add Task to allowed-tools for this skill specifically with a justification for why it differs from the skill-maker precedent."
+ },
+ {
+  "section": "14.6 (chart data states) vs 16.2 (static, zero-shipped-JS build target)",
+  "missing": "\u00a714.6 lists 'empty, loading, partial, error, single-data-point' as 'required' chart data states, and v1 defaults charts to build-time SVG on a static site described elsewhere as shipping 'zero shipped JS.' A build-time-rendered SVG chart has no runtime data fetch in production, so 'loading' and 'error' states \u2014 which only make sense for a live data fetch \u2014 are not reconciled with the static architecture. It's never stated whether these are editor-only preview mockups or an actual shipped requirement.",
+  "why_it_matters": "As written, an implementer cannot tell whether to build four extra static SVG renderings per chart (which have no functional purpose on a static page) or whether this requirement only applies to a future client-library chart mode, making the v1 'required' claim either wasted work or simply wrong for the chosen chart architecture.",
+  "severity": "major",
+  "suggested_fix": "Clarify explicitly: these states apply only inside the editor as design-time previews (so the designer can see what a loading/error chart looks like before any future interactive mode ships), and are NOT rendered into the published static site in v1."
+ },
+ {
+  "section": "15.4 (publish) \u2014 v1 scope-in wording",
+  "missing": "The v1 scope-in bullet list itself states the deliverable as 'Publish (or an explicit runbook, stated)' \u2014 the ambiguity is embedded directly in the committed-scope line, not just discussed in prose.",
+  "why_it_matters": "Whether v1 ships a working `wrangler pages deploy` integration or just documentation materially changes L4 effort (\u00a717-R18) and the v1 exit criterion ('locked, published'). A scope list item phrased as an either/or cannot be estimated or tested.",
+  "severity": "major",
+  "suggested_fix": "Pick one for v1 and update the scope line accordingly: e.g., 'Automated Cloudflare Pages publish via a one-time stored API token' as a hard commitment, moving 'runbook only' to the fallback-if-blocked case with its own explicit trigger condition."
+ },
+ {
+  "section": "R7 mitigation / Local Regeneration Mode \u2014 mechanism undefined",
+  "missing": "Local Regeneration Mode is named as flagship v1 scope-in and repeatedly cited as 'the strongest lever' against R7 (the risk explicitly identified as the most likely way the product dies), but nowhere in the provided text is its actual mechanism specified: what model it calls locally, under what credentials/cost, and how it reproduces the richness of a full claude.ai design-system generation session without the hand-carry.",
+  "why_it_matters": "Given how much weight the PRD places on this single feature to solve its top adoption risk, shipping it without a defined mechanism (model access, cost, quota, output parity with the claude.ai path) means the mitigation for the #1 risk is itself unspecified \u2014 the PRD asserts the fix exists without describing it.",
+  "severity": "major",
+  "suggested_fix": "Specify what Local Regeneration Mode actually invokes (e.g., the same Claude subscription session generating locally via a scripted prompt loop, an API key the user supplies, or a smaller local model), its cost/quota implications, and an explicit note on any quality gap versus the claude.ai hand-carry path."
+ },
+ {
+  "section": "13.4 gate 20 (lhci) \u2014 no time budget for LOCK as a whole",
+  "missing": "\u00a713.1 promises LOCK-TIME operations take 'seconds to tens of seconds,' but no wall-clock budget is given for the full 28-gate lock-time checklist, and specifically gate 20 (Lighthouse median-of-3, simulated Slow-4G, 4x CPU) is a per-run multi-second operation whose total cost across a potentially multi-page site is never estimated or bounded.",
+  "why_it_matters": "If LOCK genuinely takes minutes (plausible given median-of-3 Lighthouse runs per page under throttling, times potentially several pages, plus axe/Pa11y/Playwright sweeps), it violates the 'tens of seconds' promise that presumably shapes the UX (a human waiting synchronously for LOCK to finish), and no acceptance criterion tests total LOCK duration.",
+  "severity": "minor",
+  "suggested_fix": "State an explicit LOCK wall-clock budget (e.g., 'p50 under 90s for a 5-page site') as an acceptance criterion, and design gate 20 to run once against a representative sample of pages rather than every page if the budget can't be met otherwise."
+ },
+ {
+  "section": "12.7 \u2014 override-count threshold",
+  "missing": "'wb doctor warns above a threshold' for accumulated overrides is stated with no numeric value anywhere in the provided text.",
+  "why_it_matters": "Without a number, this is not implementable or testable as written \u2014 'above a threshold' is not a spec.",
+  "severity": "minor",
+  "suggested_fix": "Pick and state a starting number (e.g., warn at 5 overrides per page, escalate at 15) and note it's tunable."
+ },
+ {
+  "section": "19 (Acceptance criteria A49\u2013A59) vs O6",
+  "missing": "The LOCK/export acceptance criteria are written as unconditional pass/fail tests assuming LOCK is implemented as a re-render from layout.json (not copy-and-strip), while \u00a717.4 O6 explicitly says this choice is only 'Settled here as re-render; confirm with the user' \u2014 i.e., not yet confirmed.",
+  "why_it_matters": "If the user does not confirm re-render (e.g., prefers the FruitSync-precedent copy-and-strip approach for some other reason), a chunk of the acceptance suite (byte-identical builds, diff -r verification, etc.) needs to be rewritten, but nothing in \u00a719 flags this dependency.",
+  "severity": "minor",
+  "suggested_fix": "Add an explicit dependency note on the relevant acceptance criteria: 'contingent on O6 resolving to re-render.'"
+ },
+ {
+  "section": "12.8 (determinism) \u2014 asset pipeline not covered by the named hazards",
+  "missing": "\u00a712.8 names four determinism hazards to design out (iteration order, absolute paths, locale sorting, random ids) but never addresses whether the generated/optimized binary assets themselves (e.g., the auto-recompressed images from A35) are produced deterministically. If the image encoder isn't bit-for-bit reproducible across runs/machines, `wb verify`'s diff -r against regenerated output will false-positive on asset files exactly as the section's own 'load-bearing assumption' warning predicts.",
+  "why_it_matters": "The PRD explicitly calls determinism 'the load-bearing assumption of the whole drift story' and warns that any nondeterminism makes verify's guarantee 'silently die' \u2014 yet the most obvious nondeterministic step in the whole pipeline (image recompression/optimization at drop time) is left unaudited against that same warning.",
+  "severity": "minor",
+  "suggested_fix": "Add asset-pipeline determinism (pin the exact encoder version/settings, or exclude binary assets from the diff -r check and hash-compare them separately) as a fifth named hazard in \u00a712.8."
+ },
+ {
+  "section": "Whole document \u2014 \u00a7\u00a71\u201312.6 absent from reviewed text",
+  "missing": "The interview question bank (\u00a75), Step-2 prompt template (\u00a76), design-system item inventory with a variant count for every item (\u00a77\u2013\u00a78), motion/D4 spec (\u00a79), editor feature spec (\u00a710\u2013\u00a711), and LOCK purity gates 1\u20135 (\u00a712.1\u201312.6). Every downstream reference (A6, A14\u2013A24, gate 27, \u00a714.2's '26 slots', \u00a720.1's exclusions) assumes they exist.",
+  "why_it_matters": "The user's single explicit completeness requirement is 'It must include the questions, the components and suggested number of variants of each component.' Those are exactly the sections not present. No reviewer can certify completeness without them, and \u00a720.2 items 3\u20136 show several counts were settled in prose without confirming they were written back into the inventory.",
+  "severity": "blocking",
+  "suggested_fix": "Re-run this adversarial pass against the full document. Add a self-audit table at the end of \u00a78 listing every item id, category, variant count and rationale, with an asserted row count, so inventory completeness is machine-checkable rather than assumed."
+ },
+ {
+  "section": "\u00a718 v1 'Scope cut' \u2014 'No canvas drag. No gridlines, no snapping, no free-position.'",
+  "missing": "An explicit statement that v1 does not deliver Step 4(a) gridlines or Step 4(b) drag-movable components \u2014 two of six editor features in the authoritative vision \u2014 plus a request for user sign-off on that deviation.",
+  "why_it_matters": "The PRD frames this as sequencing (R18, O3) rather than as departure from a settled brief. D2 was negotiated specifically to make dragging safe; cutting dragging entirely from v1 makes D2 inert in the only version that ships first. The user discovers this at the exit criterion, not at approval.",
+  "severity": "blocking",
+  "suggested_fix": "Add a 'Vision deviations requiring sign-off' subsection at the top of \u00a718 naming all eight steps and stating which v1 delivers fully, partially, or not at all. R18's reasoning is already written \u2014 surface it as a decision the user makes."
+ },
+ {
+  "section": "\u00a713.4 ordered lock-time checklist (28 gates)",
+  "missing": "WCAG 2.2.2 Pause, Stop, Hide (Level A). No gate verifies that marquees, tickers, ambient background motion and particle layers moving >5s alongside content have a pause/stop/hide mechanism.",
+  "why_it_matters": "Lens 8 flags this as legal-grade, not stylistic, and marquee/ticker and decorative-background-layer containers are v1 items. The checklist reaches for 2.5.7, 2.5.8, 2.4.11, 2.3.1, 2.5.4 and 1.4.12 while omitting a Level A criterion this product's own component set violates by default. axe-core does not reliably catch it.",
+  "severity": "blocking",
+  "suggested_fix": "Make the pause-affordance ref a required field on the container contract (alongside trigger and reduced-motion-variant-ref) so an unpausable marquee is structurally unbuildable, and add a lock gate asserting it."
+ },
+ {
+  "section": "\u00a713.4 gate list and \u00a718 v1 scope",
+  "missing": "WCAG 2.4.1 Bypass Blocks / skip link \u2014 no gate and no v1 component. The only 'skipLink' in the research is Lens 2's z-index ladder, also absent.",
+  "why_it_matters": "Level A, universally required, trivially cheap. The Playwright tab-walk (gate 12) will not flag its absence because a missing skip link is not a trap. A site can pass all 28 gates and still fail the most basic keyboard-navigation requirement.",
+  "severity": "blocking",
+  "suggested_fix": "Add skip link to the v1 component set (2 variants), add a gate asserting one exists and is first in tab order on every page, and adopt Primer's z-index ladder verbatim with the editor-chrome band reserved above skipLink so \u00a712.5's purity claim is provable."
+ },
+ {
+  "section": "\u00a718 v1 'Scope in'",
+  "missing": "Artwork. D1 settles '20 artworks tagged by which directions they suit' and \u00a77.9/R1 establish three lanes, but the v1 scope list never mentions artwork generation, ingestion, or the lane decision.",
+  "why_it_matters": "Background art/style is one of two categories the user named by example (FruitSync). R1 calls artwork structurally undeliverable from claude.ai and O7 leaves the source unresolved \u2014 the risk register knows it is unsolved while the scope list stays silent. That is how a v1 ships with placeholder rectangles.",
+  "severity": "blocking",
+  "suggested_fix": "Add an explicit artwork line to v1 with the lane decision stated: Lane A (code-drawn, token-referencing, \u226560% per A20) in v1; Lane B (asset-library ingestion, detected per A2) in v1; Lane C (external raster) explicitly out with a named runbook. Do not leave this to O7."
+ },
+ {
+  "section": "\u00a718 v2 \u2014 'Per-section notes \u2192 scoped regeneration, regeneration log'",
+  "missing": "The in-editor notes\u2192regeneration loop in v1, plus the section-boundary markers it depends on.",
+  "why_it_matters": "Lens 5 identifies this as the literal human-authored replacement for the autonomous VLM critique loop the user rejected. Without it, v1's answer to Step 5 ('if nothing looks good') is 'swap a variant or regenerate the whole system' \u2014 there is no middle gear. Lens 5 also notes regeneration accuracy depends entirely on clean section boundaries, which are likewise unlisted.",
+  "severity": "major",
+  "suggested_fix": "Move per-section notes + scoped regeneration into v1 (it needs no canvas \u2014 it works on the section boundaries reorder already requires) and add section boundary markers to the v1 structure feature set. O21 already settles the mechanism as inline via Local Regeneration Mode."
+ },
+ {
+  "section": "\u00a713.4 gate 21 (font-loading audit) and A68",
+  "missing": "Fallback-metric overrides \u2014 a local @font-face with size-adjust, ascent-override, descent-override and line-gap-override computed from the real font file's metrics.",
+  "why_it_matters": "Lens 2 names this 'the highest-leverage invisible token family for CLS' and states it must be computed by the skill after the typeface pick because it needs the actual font binary \u2014 impossible for the claude.ai step to produce. The PRD gates CLS \u22640.1 but omits the single most effective lever for hitting it; font-display:swap without metric overrides is the classic swap-shift.",
+  "severity": "major",
+  "suggested_fix": "Add to \u00a77/\u00a78 as a derived non-pickable token family computed locally; extend gate 21 to assert every @font-face has a metric-matched local fallback and that CLS attributable to font swap is ~0."
+ },
+ {
+  "section": "\u00a713.4 gates (26 covers licence completeness only)",
+  "missing": "Asset-reference resolution \u2014 a gate walking every url(), font-family, SVG id and asset path in the built output and asserting it resolves against assets/manifest.json.",
+  "why_it_matters": "Lens 6 and Lens 7 both call this out and Lens 10 lists it in gates.ts. It closes the hallucinated-URL failure class (the Scale AI lesson). Licence-completeness confirms every recorded asset has a licence; it does not confirm every referenced asset exists. A dangling reference ships as a silently broken image.",
+  "severity": "major",
+  "suggested_fix": "Add a gate between 23 and 24: every asset reference resolves to an entry in assets/manifest.json and to a file on disk; zero dangling references; zero remote hosts. Add a matching acceptance criterion."
+ },
+ {
+  "section": "\u00a77/\u00a78 inventory \u2014 Lens 2's 'six invisible surfaces'",
+  "missing": "scrollbar-color, caret-color, accent-color, color-scheme, ::selection (with per-scheme alpha), and a forced-colors mapping. None appears in the visible PRD or in the \u00a720.1 exclusions table.",
+  "why_it_matters": "Lens 2 documents all six as cheap, derived and visible within one second of the first scroll \u2014 a default OS scrollbar on a dark cinematic site is an immediate amateur tell. forced-colors is an accessibility correctness item: Windows High Contrast strips author backgrounds, silently deleting background-based affordances. Absence from both body and exclusions means these were lost, not traded.",
+  "severity": "major",
+  "suggested_fix": "Add all six to \u00a77 as derived tokens with pickable:false, and add a forced-colors render check to the lock-time gates (it is a media-query render, not a new tool)."
+ },
+ {
+  "section": "\u00a718 v3 \u2014 'RTL/bidi state (unless the interview forces it earlier)'",
+  "missing": "A v1 requirement that all generated CSS uses logical properties (inline-start/end, block-start/end) regardless of RTL scope, plus an early structural RTL gate in the interview.",
+  "why_it_matters": "Lens 1 finding 15 is backed by this user's own first-party incident: FruitSync shipped an English-fallback Arabic workaround because multi-line RTL was found late, then needed a full redo (commits 060a9af, 7dd7544 in this repo). Lens 2 states retrofitting logical properties is substantially more expensive than building with them. Deferring RTL is defensible; deferring logical properties guarantees the retrofit.",
+  "severity": "major",
+  "suggested_fix": "Add a v1 constraint that the token compiler and every generated component emit logical properties only, plus a 7th coherence lint rejecting physical left/right/top/bottom in generated CSS. Keep RTL layout/mirroring in v3 but make it cheap to reach."
+ },
+ {
+  "section": "\u00a718 v1/v2 editor feature lists",
+  "missing": "A recovery bin / trash separate from the undo stack.",
+  "why_it_matters": "Lens 5 is explicit that undo alone is insufficient for 'I deleted this three edits ago' \u2014 chaining undo back also reverts everything since. Figma and Canva both ship recovery independent of undo for this reason. The PRD's history model (\u00a712.9) is an op log with inverse patches, a time-machine not a bin; A31/A32 cover swap and regeneration undo but not delete recovery.",
+  "severity": "major",
+  "suggested_fix": "Add a persistent deleted-nodes panel to v1 backed by the doc (a trash array) with restore-in-place. Cheap, since the op log already carries the inverse patch."
+ },
+ {
+  "section": "\u00a718 v1/v2 editor feature lists; UI copy",
+  "missing": "(a) A per-element lock freezing a settled node against drag/edit/swap, and (b) a naming rule preventing 'Lock element' colliding with the site-wide LOCK.",
+  "why_it_matters": "Lens 5 flags the vocabulary collision as a guaranteed confusion source once both concepts exist in one product; Lens 6 lists node.locked as needed 'once a page is mostly settled and the user is exploring one section, otherwise stray drags accumulate silently.' The PRD uses LOCK as its terminal verb throughout and addresses neither.",
+  "severity": "major",
+  "suggested_fix": "Add node.locked to the doc schema plus a v1 freeze affordance; rename the element-level action to 'Freeze'/'Pin' in all UI copy and state the rule in \u00a711."
+ },
+ {
+  "section": "\u00a718 v1 'Scope in' \u2014 'image replace + focal point + alt gate'",
+  "missing": "An asset/media manager panel: a searchable library of every uploaded and generated image/icon/pattern, tagged by which direction each suits.",
+  "why_it_matters": "Lens 5 lists it as v1 and D1's artwork model is explicitly tagged by direction \u2014 that tagging is useless without a surface that reads it. Per-slot replacement gives no way to see what assets exist, reuse one across sections, or find the token-referencing subset that survives a direction change (A20/A21).",
+  "severity": "major",
+  "suggested_fix": "Add an asset library pane to the v1 editor-lite shell (the acos-image-builder left-pane precedent in \u00a716.1 supplies the pattern), backed by assets/manifest.json with direction-affinity filter chips \u2014 which also satisfies R34's 'filter chips are what makes 20 legal.'"
+ },
+ {
+  "section": "Whole document \u2014 no onboarding/first-run section",
+  "missing": "Any first-run experience, and specifically a guided moment teaching the anchor/pin mental model.",
+  "why_it_matters": "Lens 5's finding is that the highest-value teaching moment is the anchor model, because it has no equivalent in tools the target user has used (Canva and PowerPoint are free-drag). R8 independently names constraint dragging as the top daily-friction risk and predicts the user decides the tool fights them on their fifth edit. The PRD mitigates R8 with UI affordances but never teaches the model.",
+  "severity": "major",
+  "suggested_fix": "Add a first-run section to \u00a711 and a v1 scope line: one guided interaction ('drag this \u2014 watch it snap and pin') plus an always-available 'how placement works' explainer. Instrument free-position usage from day one, since v2's exit criterion depends on that counter."
+ },
+ {
+  "section": "\u00a716.6 two-process arrangement; \u00a716.11 gotchas",
+  "missing": "The viewport-height trap: an auto-height preview iframe makes 100vh/svh/dvh measure the iframe's expanded height, not a device's.",
+  "why_it_matters": "Lens 4 verified Puck ships all four default viewports with height:'auto' and states the consequence \u2014 a hero using viewport-height units is framed and approved in the editor and wrong on a real phone. Hero is this product's highest-value swap (12 variants per \u00a720.2) and viewport-height heroes are the norm. The gotchas list captures eleven traps and misses this one.",
+  "severity": "major",
+  "suggested_fix": "Add gotcha 12: pin device heights (390\u00d7844, 768\u00d71024, 1280\u00d7800, 1440\u00d7900) whenever the page contains any vh/svh/dvh rule, plus an acceptance criterion asserting editor preview height matches the pinned device height for such pages."
+ },
+ {
+  "section": "\u00a713.4 gates; \u00a79 motion spec",
+  "missing": "Per-page concurrency caps for expensive motion: Lens 8 recommends max 1 WebGL/canvas scene, max 1 particle/ambient layer, max 2 autoplay video loops, max 2\u20133 pinned/scrubbed sequences.",
+  "why_it_matters": "Lens 8's reasoning is that these costs are additive, not fixed \u2014 two cheap-looking ambient layers do not cost 2\u00d7 one layer once draw calls, texture memory and JS tick overhead compound. The PRD's only defence is the lhci budget (gate 20), which fails late and gives no attribution. R30 covers token count and R14 covers motion preview; nothing caps simultaneous heavy containers.",
+  "severity": "major",
+  "suggested_fix": "Encode caps as a deterministic lock-time gate keyed to container cost class, and surface the running count in the Design Health pill so the user sees it accumulate rather than discovering it at LOCK."
+ },
+ {
+  "section": "\u00a713.8 anti-slop resolution; \u00a718 feature lists",
+  "missing": "The motion-consistency signal \u2014 Lens 8's distinction between catalogue breadth (6\u201310 scroll-reveal variants offered) and deployment restraint (1\u20132 should ever ship on one site), surfaced as a soft warning at 3+ distinct variants of the same kind.",
+  "why_it_matters": "The PRD demotes the anti-slop lint to Tier-2 and moves the hard gate upstream to the design-system JSON \u2014 but the mixing-inconsistency failure happens downstream, at the moment a human freely swaps. Wide variant banks plus a frictionless component bar plus no consistency signal is a self-inflicted slop risk the upstream gate structurally cannot see.",
+  "severity": "major",
+  "suggested_fix": "Add a Tier-2 Design Health entry ('you are using 4 different section-reveal styles \u2014 sites read as more designed with 1\u20132'), non-blocking with one-click dismiss, consistent with \u00a713.7's severity model."
+ },
+ {
+  "section": "\u00a718 v1 scope; \u00a77/\u00a78 inventory",
+  "missing": "Four v1-priority components present in Lens 3 and in neither the PRD's v1 list nor \u00a720.1: the third-party video facade, the cookie/consent banner + preferences centre, the visible motion toggle, and the favicon/app-icon manifest set (16/32, apple-touch, maskable 192/512, monochrome mask, theme-color).",
+  "why_it_matters": "Each is a shipping defect if absent. A naive YouTube embed costs 500KB\u20131MB of pre-interaction JS and fails gate 20 by itself. The consent banner is legally required where the interview says personal data is collected, is the first thing a visitor sees, and R32 acknowledges the risk without scoping the component. The visible motion toggle is required by the prior report's accessibility position independent of prefers-reduced-motion. Missing favicons are a classic AI-built-site tell and \u00a713.6 does not check them.",
+  "severity": "major",
+  "suggested_fix": "Add all four to the v1 inventory with variant counts (facade 4, consent banner 6 + preferences centre 3, motion toggle 3, favicon set n/a-derived) and add favicon/manifest completeness to gate 22."
+ },
+ {
+  "section": "\u00a718 v1 'Scope in' vs \u00a717.4 O10",
+  "missing": "Internal consistency: v1 scope explicitly includes 'multi-page manager, global regions' and A69/A70 assume a page tree, while O10 asks whether multi-page is in v1 and estimates it 'roughly doubles editor scope.'",
+  "why_it_matters": "A PRD that both ships and questions the same feature gives the builder no answer, and R18's effort estimate does not visibly account for the partials model, the change-once-changes-everywhere contract, or cross-page variant consistency (also unresolved in O11).",
+  "severity": "major",
+  "suggested_fix": "Resolve O10 in the scope section. If multi-page is in v1, state the global-regions contract and price it into R18's L3a estimate; if not, cut the multi-page manager and global regions from the v1 list."
+ },
+ {
+  "section": "\u00a75 interview bank \u2014 Lens 1 mechanisms",
+  "missing": "Four Lens 1 mechanisms with no visible home: (a) an 'I don't know / surprise me' escape hatch on every taste question routing to a skill-proposed default; (b) a documented fallback for the user who cannot name any reference site they like (auto-suggested set by detected vertical); (c) pre-seeding the reference swipe-sort from wave-1 positioning answers instead of a fixed 24 for everyone; (d) a question asking whether the user's claude.ai session has an image-generation MCP connector.",
+  "why_it_matters": "(a) and (b) are named failure modes \u2014 forced answers from a user with no real opinion misdirect the Step-2 prompt more than an honest non-answer, and 'I can't name a site I like' is common. (c) is what makes the Taste wave high-signal rather than a cold start. (d) determines whether R1's raster limitation applies to this user at all, which the PRD treats as a global constant.",
+  "severity": "major",
+  "suggested_fix": "Add all four to \u00a75, and for (a) an acceptance criterion: every Tier-1/Tier-2 taste question accepts 'no preference' and records a stated default that appears in the concept document as skill-chosen."
+ },
+ {
+  "section": "\u00a713.4 gate 20 vs \u00a719 A66/A67",
+  "missing": "Consistency: gate 20 sets INP \u2264200ms and pre-LCP transfer \u22641.5\u20132MB; A66 omits INP entirely (LCP/CLS/TBT only) and A67 states \u22642MB flat.",
+  "why_it_matters": "\u00a713.5 identifies INP as now the most commonly failed vital (~43% of sites) and ties it directly to main-thread cost from motion \u2014 this product's own animation system. An acceptance criterion that drops it means the thing most likely to fail is the thing not asserted. The transfer-budget mismatch resolves to whichever number the implementer reads first.",
+  "severity": "minor",
+  "suggested_fix": "Add INP (or the TBT proxy with its threshold) to A66 and pick one pre-LCP figure across gate 20 and A67."
+ },
+ {
+  "section": "\u00a712.9 history layers",
+  "missing": "The doc serialisation contract: stable key order, 2-space indent, one array element per line.",
+  "why_it_matters": "Lens 6 states plainly that this formatting decision alone determines whether the git history is useful or useless \u2014 and the PRD's entire durability story (layer c, every-save-is-a-commit, A56's checkout of prior locks) rests on doc diffs being readable. \u00a712.8 mandates sorted keys for generated output; the doc itself gets no equivalent rule.",
+  "severity": "minor",
+  "suggested_fix": "State the serialiser contract in \u00a712.9 alongside the atomic-write rule and assert it in wb verify."
+ },
+ {
+  "section": "\u00a712.7 ownership enforcement",
+  "missing": "`.gitattributes` marking `src/generated/** linguist-generated=true -diff`.",
+  "why_it_matters": "Lens 6 pairs this with the PreToolUse hook as the two-part enforcement of the ownership split \u2014 GitHub collapses those diffs in PRs and -diff hides them from the CLI client, which stops generated churn from drowning the human-owned changes a reviewer needs to see. The PRD keeps the hook and drops the gitattributes half.",
+  "severity": "minor",
+  "suggested_fix": "Add to \u00a712.7 alongside the hook, plus the pre-commit check rejecting a commit touching src/generated/** without a corresponding doc change."
+ },
+ {
+  "section": "\u00a77 typography / \u00a713.4 gates",
+  "missing": "The text-wrap policy lock: balance for headings (\u22646 lines Chromium / \u226410 Firefox), pretty for prose (documented perf cost), stable for editable regions \u2014 Lens 2 recommends locking it as an n/a item with no variants because the correct answer is universal.",
+  "why_it_matters": "Lens 2's argument is that every decision removed from the direction vector is a decision the generator cannot get wrong, and ragged headings are a whole class of amateur tell eliminated by three lines of policy. It also carries a real constraint (balance silently no-ops above the line limits) a generator will otherwise apply to body copy.",
+  "severity": "minor",
+  "suggested_fix": "Add as an n/a policy item in \u00a77 with the line limits stated, plus a lint rejecting text-wrap:balance on any block exceeding six lines."
+ },
+ {
+  "section": "\u00a712.5 LOCK purity gates / \u00a719 A49\u2013A51",
+  "missing": "A check for absolute design-time URLs (http://127.0.0.1:8820/\u2026, http://localhost:4321/\u2026) baked into the exported tree.",
+  "why_it_matters": "Lens 12's lock-state ledger lists this explicitly and \u00a712.8's determinism hazards already require relative-only paths \u2014 but the purity assertions grep for editor attributes and dev-toolbar artifacts, not for local origins in href/src/url(). A hardcoded localhost image URL passes every listed gate and 404s for every visitor.",
+  "severity": "minor",
+  "suggested_fix": "Add to the \u00a712.5 assertion set and to A49's grep: zero occurrences of localhost/127.0.0.1/the session port in dist/published."
+ },
+ {
+  "section": "\u00a718 v1/v2 editor feature lists",
+  "missing": "Two low-cost Lens 4/5 features with no home: duplicate/copy/paste of a block including all its breakpoint overrides, and per-breakpoint visibility (hide/show at a breakpoint, compiled to a display rule rather than duplicate markup).",
+  "why_it_matters": "Both are standard across every builder. Copy/paste-with-overrides is what stops the user redoing responsive work on every reused block; per-breakpoint visibility is the sanctioned alternative to maintaining two independent layouts, which \u00a720.1 explicitly rejects (the Squarespace Fluid Engine exclusion). Rejecting the alternative without shipping the sanctioned mechanism leaves a hole.",
+  "severity": "minor",
+  "suggested_fix": "Add both to v1 (neither needs the canvas), with a lint warning when a block is hidden at every breakpoint."
+ }
+]

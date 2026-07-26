@@ -1,0 +1,78 @@
+timestamp: 2026-07-26T02:04:42+00:00
+status: parked
+type: close-project
+session_id: 930f7a92-b7d3-4b32-9a87-293bea9b1afc
+slug: 2026-07-26-Website-builder-close
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/swarm/swarm-20260718-022431
+session_summary: Safe close of Website-builder — non-git; next: Commit the 4 resurrection fixes, then decide whether to /acos-plan the v1 site builder
+git_state: non-git project (no usable git state at root)
+git:
+  branch: null
+  head: null
+  dirty_count: 0
+  dirty_listed: listed 0 of 0
+dirty_files:
+next_actions:
+  - Commit the 4 resurrection fixes, then decide whether to /acos-plan the v1 site builder
+next_action: Commit the 4 resurrection fixes, then decide whether to /acos-plan the v1 site builder
+intent_core: |
+  next_action: Commit the 4 resurrection fixes, then decide whether to /acos-plan the v1 site builder
+  project: Website-builder
+  decisions: |
+    - ADOPT-IN-PLACE (SPINE 2) built: a resurrect pick must land in the tab the user
+      typed in. New adopt-project.sh re-binds THIS tab (sidebar name + [key:<uuid>]
+      tag + registry row). launch-project.sh is now called ONLY to focus a project
+      already live in another workspace; its create path is no longer a route.
+    - Adoption re-binds IDENTITY, never the folder. Verified against the cmux CLI:
+      --cwd exists only on `workspace create`, there is no re-point verb, and the
+      Claude session cwd is fixed at launch (CMUX_AGENT_LAUNCH_CWD). So an adopted
+      tab prints a FOLDER CAVEAT and all file work uses absolute paths under the
+      row's root.
+    - enroll-project.sh patched: its [key:] tag check was root-guarded, so an adopted
+      tab minted a DUPLICATE row keyed (tab-cwd, adopted-name) on the next
+      SessionStart. Guard removed; resurrect-view.py pass-1 was already unguarded, so
+      the two now agree. New audit event enroll-adopted-cross-root.
+    - close-project.sh patched the same class of bug: it re-roots ROOT to the tagged
+      row's root before slug/closed_dir/git_facts are computed, so an adopted tab
+      closes the RIGHT project into the RIGHT folder instead of minting a duplicate.
+    - This tab was adopted Word-gen -> Website-builder this session. Word-gen was
+      released to parked (it had a real close record from 2026-07-26T00:17:55+00:00).
+    - User chose to record THIS close under Website-builder even though the session's
+      work was Resurrection Protocol infrastructure. Explicit decision, asked and
+      answered.
+  rejected_alternatives: |
+    - "Replace the tab" (create a correctly-rooted workspace, switch to it, close the
+      old one): gives a genuinely correct cwd, but the conversation does not travel.
+      User chose rename-in-place instead.
+    - Refusing the close whenever an adopted row's root differs from cwd: safe but a
+      dead end — adopted tabs could never be closed properly. Re-rooting is better.
+    - Keeping the root guard on the [key:] tag: status quo, and the direct cause of
+      duplicate-row creation. Only an EXPLICIT protocol-written tag crosses roots; an
+      inferred name/folder match still cannot, so f639310 stays intact.
+  traps: |
+    - registry_lib.upsert_row REWRITES `root` from the fields passed to it. For an
+      adopted row you MUST pass the ROW's root, never the tab's cwd, or the project
+      silently relocates to whatever folder the tab sits in. Unrecoverable if missed.
+    - The adopt outgoing-close gate checks that last_close EXISTS, not that it is
+      recent. It will NOT protect a session's fresh work — Website-builder passed the
+      gate on a 2026-07-20 record.
+    - close-project.sh imports registry_lib at step 7 by design (D2: a refused close
+      must never park a row). The early re-root needed its own local import; reads
+      before the gate are fine, writes are not.
+    - The Bash tool's cwd persists across calls. A `cd` into
+      .claude/scripts/resurrection broke this skill's SESSION_DIR derivation and made
+      preflight fail; always re-cd to the project root.
+    - THREE scripts each answer "which project is this tab?" independently:
+      enroll-project.sh, resurrect-view.py, close-project.sh. Two had the root guard,
+      one did not. Any future change to that answer must reach all three.
+  open_questions: |
+    - adopt-project.sh has been live-run only on the happy path (exit 0) and dry-run.
+      The tombstoned pick, broken-root, and exit-4 already-open branches are untested.
+    - Four files are UNCOMMITTED on branch acos-deficiency-fixes-2026-06-04:
+      adopt-project.sh (new), enroll-project.sh, close-project.sh, acos-resurrect
+      SKILL.md.
+    - Should the adopt outgoing gate also require a RECENT close record, not merely
+      any close record? Current behaviour can release a tab holding unsaved work.
+    - Website-builder's own pending decision is untouched: whether to /acos-plan the
+      v1 marketing-site builder from the swarm report blueprint. Its 2026-07-20
+      reentry note still exists but is no longer the newest by mtime.
