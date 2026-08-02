@@ -68,6 +68,34 @@ export type StateKey =
   | "BRANCH_WORK"
   | "SYNCED";
 
+/**
+ * A ruling the HUMAN made about a row, recorded so the report stops asking.
+ *
+ * Deliberately NOT a StateKey: a state describes what git found on disk, and
+ * "Zee said no" is not something git can find. Keeping the two apart means a
+ * decided row still reports its true state (NOT_A_REPO stays NOT_A_REPO) while
+ * moving out of the attention list.
+ *
+ * Keyed by absolute path and matched exactly. If the folder is renamed or moved
+ * the decision stops matching and the row RETURNS to needs-attention. That is
+ * deliberate: a moved folder deserves a fresh look, and silently carrying an old
+ * ruling onto a path the human never ruled on would be the worse failure.
+ */
+export interface Decision {
+  /** Absolute path this ruling applies to, exactly as it was when recorded. */
+  path: string;
+  /** Only one verdict exists today. "track later" is just an item still on the list. */
+  decision: "do-not-track";
+  /** YYYY-MM-DD, supplied by the caller — this module never reads the clock. */
+  date: string;
+  /** Why, in the human's terms. Printed on the row's detail card. */
+  reason: string;
+}
+
+export interface DecisionsFile {
+  decisions: Decision[];
+}
+
 /** A branch other than the checked-out one that still has commits to send. */
 export interface BranchWork {
   branch: string;
@@ -145,10 +173,26 @@ export interface RepoRow {
   severity: number;
   /** True when this row belongs in the "needs attention" half of the report. */
   attention: boolean;
+  /**
+   * The human's ruling for this path, or null if none was ever recorded.
+   * Non-null pulls the row into its own table and silences the recommendation.
+   * The row stays VISIBLE — a decision you cannot see is one you cannot reverse.
+   */
+  decided: Decision | null;
   inventory: Inventory;
   /** Repo path this row sits inside, when it is a nested repo or a plain folder. */
   parentRepo: string | null;
   notes: string[];
+  /**
+   * What this row IS and what to do about it. Derived after sorting, because a
+   * duplicate recommendation refers to another row by its printed number.
+   */
+  recommendation?: {
+    kind: "config" | "skills" | "agents" | "code" | "docs";
+    action: string;
+    why: string;
+    duplicateOf: number | null;
+  };
 }
 
 export interface ScanResult {
@@ -166,11 +210,21 @@ export interface ScanResult {
   filteredWeak: { count: number; paths: string[] };
   /** Rows removed by the config's `ignorePaths` / `ignoreNames`. Never silent. */
   ignoredCount: number;
+  /** Where the human's rulings were read from — printed so the file is findable. */
+  decisionsPath: string | null;
+  /**
+   * Rulings in the file that matched no row this run. Almost always a renamed or
+   * moved folder. Surfaced, never dropped, so a stale ruling cannot rot unseen.
+   */
+  orphanDecisions: Decision[];
   totals: {
     repos: number;
     notRepos: number;
+    /** Rows still awaiting a decision. Decided rows are NOT counted here. */
     needAttention: number;
     clean: number;
+    /** Rows the human has ruled on. */
+    decided: number;
     uncommittedFiles: number;
     unpushedCommits: number;
   };

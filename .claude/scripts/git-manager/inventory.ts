@@ -52,6 +52,11 @@ function findSkills(repo: string): { own: string[]; linked: LinkedSkill[] } {
   for (const rel of [join(".claude", "skills"), "skills"]) {
     const dir = join(repo, rel);
     if (!existsSync(dir)) continue;
+    // If the skills folder is ITSELF a repo, its contents belong to that repo's
+    // own row — counting them here would report protected work as at-risk.
+    // This is exactly the ~/.claude case: ~/.claude is untracked, but
+    // ~/.claude/skills is a tracked repo of its own.
+    if (existsSync(join(dir, ".git"))) continue;
 
     let entries: import("node:fs").Dirent[] = [];
     try {

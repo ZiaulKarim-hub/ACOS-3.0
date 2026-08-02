@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { attribute, isForbidden } from "./accounts.ts";
+import { forgetDecision, loadDecisions, recordDecision } from "./decisions.ts";
 import * as G from "./git.ts";
 import { renderHtml } from "./render-html.ts";
 import { renderTerminal } from "./render-terminal.ts";
@@ -88,6 +89,15 @@ const HELP = `git-manager — see where every project lives, and what is not sav
       are found; values are always masked. --acknowledge-secrets overrides that
       block and is a deliberate human decision, never a default.
 
+  bun git-manager.ts decide --repo <path> --not-tracked --why "<reason>" [--date YYYY-MM-DD]
+  bun git-manager.ts decide --repo <path> --undo
+  bun git-manager.ts decide --list
+      Record that the human ruled a folder out, so scan stops asking about it.
+      The row is NOT hidden — it moves to its own "DECIDED — NOT TRACKED" table and
+      keeps its real git state. --undo withdraws the ruling and the row returns to
+      needs-attention. Matching is on the exact absolute path: rename or move the
+      folder and the ruling stops applying, on purpose.
+
 Exit codes: 0 ok · 2 bad input or unknown remote · 3 destination forbidden by rule
             4 suspected secret in the outgoing diff
 `;
@@ -113,7 +123,11 @@ function cmdScan(args: Args): number {
   const cfg = loadConfig(args.flags.config as string | undefined);
   if (args.repeated.root?.length) cfg.roots = args.repeated.root.map((r) => resolve(r));
 
-  const result = scan(cfg, { fetch: !!args.flags.fetch, loose: !!args.flags.loose });
+  const result = scan(cfg, {
+    fetch: !!args.flags.fetch,
+    loose: !!args.flags.loose,
+    decisionsFile: args.flags["decisions-file"] as string | undefined,
+  });
 
   // --open implies --html: there must be a file before anything can open it.
   const htmlPath =
@@ -336,6 +350,104 @@ function cmdPlanPush(args: Args): number {
   return 0;
 }
 
+/**
+ * Record, withdraw, or list the human's rulings.
+ *
+ * This is the ONLY command that writes anything, and it writes one small JSON
+ * file. It never touches a repo, never runs git, and never pushes. Recording a
+ * ruling is a statement about attention, not about content.
+ */
+function cmdDecide(args: Args): number {
+  const file = args.flags["decisions-file"] as string | undefined;
+
+  if (args.flags.list) {
+    const { path, decisions } = loadDecisions(file);
+    console.log(`decisions file: ${path}`);
+    if (!decisions.length) {
+      console.log("  (empty — nothing has been ruled out yet)");
+      return 0;
+    }
+    for (const d of decisions) {
+      console.log(`\n  ${d.path}`);
+      console.log(`    ruled   do-not-track${d.date ? ` on ${d.date}` : ""}`);
+      console.log(`    reason  ${d.reason || "(none recorded)"}`);
+    }
+    return 0;
+  }
+
+  const repoArg = args.flags.repo;
+  if (typeof repoArg !== "string") {
+    console.error('REFUSED — decide needs --repo <path>, or --list to show what is recorded');
+    return 2;
+  }
+  const target = resolve(repoArg);
+
+  if (args.flags.undo) {
+    const { path, removed } = forgetDecision(target, file);
+    if (!removed) {
+      console.error(`REFUSED — no ruling is recorded for that exact path:\n  ${target}`);
+      console.error(`  file: ${path}\n  Run decide --list to see the paths that ARE recorded.`);
+      return 2;
+    }
+    console.log(`WITHDRAWN — the ruling for this path is gone.\n`);
+    console.log(`  path    ${removed.path}`);
+    console.log(`  was     do-not-track${removed.date ? ` on ${removed.date}` : ""}`);
+    console.log(`  reason  ${removed.reason || "(none recorded)"}`);
+    console.log(`  file    ${path}\n`);
+    console.log("  The row returns to NEEDS ATTENTION on the next scan. That is the point:");
+    console.log("  withdrawing a ruling puts the question back rather than leaving a gap.");
+    return 0;
+  }
+
+  if (!args.flags["not-tracked"]) {
+    console.error(
+      'REFUSED — decide needs a verdict. The only one that exists is --not-tracked.\n' +
+        '  "track it later" is not a ruling; it is an item still on the list.',
+    );
+    return 2;
+  }
+
+  const why = args.flags.why;
+  if (typeof why !== "string" || !why.trim()) {
+    console.error(
+      'REFUSED — decide needs --why "<reason>".\n' +
+        "  A ruling with no reason cannot be reviewed later, and an unreviewable\n" +
+        "  ruling is indistinguishable from the tool having simply forgotten.",
+    );
+    return 2;
+  }
+
+  // The date is supplied, never read from the clock here: a module that reads the
+  // clock cannot be tested against a fixed expectation.
+  const dateArg = args.flags.date;
+  const date =
+    typeof dateArg === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
+      ? dateArg
+      : new Date().toISOString().slice(0, 10);
+
+  if (!existsSync(target))
+    console.log(`NOTE: nothing exists at that path right now — recording the ruling anyway.\n`);
+
+  const { path, action, previous } = recordDecision(
+    { path: target, decision: "do-not-track", date, reason: why.trim() },
+    file,
+  );
+
+  console.log(`${action === "added" ? "RECORDED" : "REPLACED"} — this path will stop being asked about.\n`);
+  if (previous) {
+    console.log(`  previous  do-not-track${previous.date ? ` on ${previous.date}` : ""}`);
+    console.log(`            ${previous.reason || "(none recorded)"}\n`);
+  }
+  console.log(`  path      ${target}`);
+  console.log(`  ruled     do-not-track on ${date}`);
+  console.log(`  reason    ${why.trim()}`);
+  console.log(`  file      ${path}\n`);
+  console.log("  The row is NOT hidden. It moves to the DECIDED — NOT TRACKED table and");
+  console.log("  keeps its real git state, so the ruling stays visible and reversible");
+  console.log("  with: decide --repo <path> --undo");
+  return 0;
+}
+
 function main(): number {
   const args = parseArgs(process.argv.slice(2));
   if (args.flags.help || args.cmd === "help") {
@@ -347,10 +459,31 @@ function main(): number {
       return cmdScan(args);
     case "plan-push":
       return cmdPlanPush(args);
+    case "decide":
+      return cmdDecide(args);
     default:
       console.error(`unknown command: ${args.cmd}\n\n${HELP}`);
       return 2;
   }
 }
 
-process.exit(main());
+/**
+ * A refusal this tool raises deliberately must reach the user as the sentence it
+ * was written as, not as a stack trace with the message buried in it. Anything
+ * else is an internal fault and keeps its trace, because hiding one would make a
+ * real bug look like a polite refusal.
+ */
+function isDeliberateRefusal(e: unknown): e is Error {
+  const m = e instanceof Error ? e.message : "";
+  return m.startsWith("decisions file is present but unreadable") || m.startsWith("no config found");
+}
+
+try {
+  process.exit(main());
+} catch (e) {
+  if (isDeliberateRefusal(e)) {
+    console.error(`REFUSED — ${e.message}`);
+    process.exit(2);
+  }
+  throw e;
+}

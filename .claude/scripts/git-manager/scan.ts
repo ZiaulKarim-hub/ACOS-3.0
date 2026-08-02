@@ -11,11 +11,14 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { attribute, rulesFor } from "./accounts.ts";
+import { decisionIndex, loadDecisions } from "./decisions.ts";
 import * as G from "./git.ts";
 import { inventory, isDir, projectKind } from "./inventory.ts";
+import { recommendAll } from "./recommend.ts";
 import type {
   BranchWork,
   Config,
+  Decision,
   RemoteInfo,
   RepoRow,
   RiskFlags,
@@ -178,7 +181,17 @@ function otherBranchWork(dir: string, current: string | null, remotes: RemoteInf
   return out;
 }
 
-export function scan(cfg: Config, opts: { fetch?: boolean; loose?: boolean } = {}): ScanResult {
+export function scan(
+  cfg: Config,
+  opts: { fetch?: boolean; loose?: boolean; decisionsFile?: string } = {},
+): ScanResult {
+  // Read the human's rulings BEFORE walking, so a decided row can be marked in
+  // the same pass. An unreadable file throws here rather than being swallowed —
+  // see decisions.ts for why silently forgetting rulings is the worse failure.
+  const { path: decPath, decisions } = loadDecisions(opts.decisionsFile);
+  const decIndex = decisionIndex(decisions);
+  const decisionsUsed = new Set<string>();
+
   const found: Found[] = [];
   const seen = new Set<string>();
   const weak = { count: 0, paths: [] as string[] };
@@ -241,6 +254,7 @@ export function scan(cfg: Config, opts: { fetch?: boolean; loose?: boolean } = {
         inventory: inv,
         parentRepo: null,
         notes: ["git has never tracked this folder — no backup exists anywhere"],
+        decided: null,
       });
       continue;
     }
@@ -331,17 +345,44 @@ export function scan(cfg: Config, opts: { fetch?: boolean; loose?: boolean } = {
       inventory: inv,
       parentRepo: f.parentRepo,
       notes,
+      decided: null,
     });
   }
 
+  // Attach rulings. This runs BEFORE sorting and before recommendAll, because a
+  // decided row's recommendation has to read the ruling to say "you said no".
+  for (const r of rows) {
+    const d = decIndex.get(r.path);
+    if (!d) continue;
+    r.decided = d;
+    decisionsUsed.add(d.path);
+    // The row leaves the attention list but keeps its real state and severity,
+    // so undoing the ruling restores its exact former position.
+    r.attention = false;
+  }
+
+  // A ruling that matched nothing is almost always a renamed or moved folder.
+  // Surfaced, never dropped: a stale ruling that rots unseen is how a folder
+  // silently stops being watched.
+  const orphanDecisions: Decision[] = decisions.filter((d) => !decisionsUsed.has(d.path));
+
   rows.sort((a, b) => b.severity - a.severity || a.name.localeCompare(b.name));
   rows.forEach((r, i) => (r.index = i + 1));
+
+  // Recommendations come LAST: a duplicate recommendation cites another row by
+  // its printed number, which only exists once sorting and indexing are done.
+  const recs = recommendAll(rows);
+  for (const r of rows) r.recommendation = recs.get(r.index);
 
   const totals = {
     repos: rows.filter((r) => r.isRepo).length,
     notRepos: rows.filter((r) => !r.isRepo).length,
     needAttention: rows.filter((r) => r.attention).length,
-    clean: rows.filter((r) => !r.attention).length,
+    // "clean" means git has nothing outstanding. A decided row is not clean —
+    // it is unfinished business the human chose to leave — so it is counted
+    // separately rather than folded in and made to look safe.
+    clean: rows.filter((r) => !r.attention && !r.decided).length,
+    decided: rows.filter((r) => r.decided).length,
     uncommittedFiles: rows.reduce((n, r) => n + r.flags.uncommitted, 0),
     unpushedCommits: rows.reduce(
       (n, r) => n + Math.max(0, ...r.remotes.map((x) => x.unpushed ?? 0)),
@@ -358,5 +399,7 @@ export function scan(cfg: Config, opts: { fetch?: boolean; loose?: boolean } = {
     totals,
     filteredWeak: weak,
     ignoredCount: ignored,
+    decisionsPath: decisions.length || existsSync(decPath) ? decPath : null,
+    orphanDecisions,
   };
 }
