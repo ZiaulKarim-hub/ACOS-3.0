@@ -1,0 +1,109 @@
+timestamp: "2026-07-02T04:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  The session completed a progressive disclosure loan-resolution upgrade to
+  acos-hypercore-ask (committed as 57a081c, pushed to both remotes) and then
+  built the new acos-xl-update skill end-to-end — SKILL.md + xl_update.py engine
+  tested and verified on a temp copy. The XL skill automates OKOA's weekly "XL
+  Ant" investor portfolio Excel update: roll the file forward one week, pull live
+  Hypercore figures (payoff/outstanding/per-diem) for four loans, draft narrative
+  bullets from acos-fireflies-ask, and write them non-destructively into the new
+  workbook. The skill and its engine are UNCOMMITTED on disk; a dry-run for the
+  2026-07-05 report was offered to the user but not yet started.
+
+current_work:
+  slice_id: "unknown (ad-hoc, no planning/ artifact)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  description: |
+    acos-xl-update skill built and locally tested; two open items remain before
+    the session's work is fully closed: (1) a dry-run for the 07/05/2026 report
+    awaiting user go-ahead, and (2) an unresolved question about where to commit
+    the hypercore-ask work on the business (okoateam) GitHub account.
+
+completed_this_session:
+  - "feat(hca) 57a081c — progressive-disclosure loan resolution: learned alias lookup, partial-signal resolution, and native parentLoan tranche drill-down. Full test suite 680 green. Pushed to origin (okoateam) AND personal (ZiaulKarim-hub)."
+  - "feat(hca) e9f91bb — provenance citation pin + path-safety guard for catalog wiring."
+  - "feat(hca) 402e81c — Hypercore Data Catalog wired into smart_ask explorer fallback."
+  - "Learned alias recorded at runtime: '409 hodson' -> loan 144."
+  - "Built .claude/skills/acos-xl-update/SKILL.md — full skill definition: 5-phase protocol, workbook map (8 worksheets), guardrails, engine commands, Hypercore figure routing per loan, Fireflies narrative protocol."
+  - "Built .claude/skills/acos-xl-update/scripts/xl_update.py — openpyxl engine with prepare/manifest/apply/verify sub-commands; formula-guard (refuses to overwrite formula cells, e.g. Riverdale payoff); fullCalcOnLoad; label-anchored cell lookup (offsets differ per sheet)."
+  - "Validated all 4 Hypercore figures LIVE (2026-07-02): Utah Shoe (loan 88) payoff 959,473.84; Ascent Senior / Beehive Waldorff (loan 134) outstanding 7,745,259.51; Ascent Pref (loan 149) outstanding 3,319,249.996; Lux II (loan 171) per-diem 1,029.24."
+  - "Tested engine on a TEMP copy of the 20260628 workbook: prepare/manifest/apply/verify all pass; formula-guard correctly refused Riverdale payoff cell; format diff clean; 36-page LibreOffice pagination identical to original."
+
+files_modified:
+  - path: ".claude/skills/acos-xl-update/SKILL.md"
+    changes: "NEW (UNCOMMITTED). Full acos-xl-update skill definition: purpose, guardrails, 8-worksheet workbook map with pinned loan ids (88/134/149/171), 5-phase protocol, engine command reference, Hypercore routing per loan, Fireflies narrative protocol, dependencies."
+  - path: ".claude/skills/acos-xl-update/scripts/xl_update.py"
+    changes: "NEW (UNCOMMITTED). openpyxl engine — prepare (duplicate+roll forward+set fullCalcOnLoad+print manifest), manifest (inspect without writing), apply (write payoffs+bullets from spec JSON), verify (post-write sanity checks). Label-anchored cell lookup, formula-guard, --overwrite flag required to re-run prepare on an existing target."
+  - path: ".claude/scripts/hca-ask.py"
+    changes: "COMMITTED (57a081c). Catalog-wiring updates + smart_ask orchestrator."
+  - path: ".claude/scripts/hca-explorer.py"
+    changes: "COMMITTED (57a081c). Depth-1 nested-object support."
+  - path: ".claude/scripts/hca-learned.py"
+    changes: "COMMITTED (57a081c). Learned alias persistence (runtime alias store)."
+  - path: ".claude/scripts/hca-resolve.py"
+    changes: "COMMITTED (57a081c). Progressive-disclosure loan resolution: learned alias, partial-signal, tranche drill-down via native parentLoan field."
+  - path: ".claude/scripts/tests/test_hca_ask_catalog.py"
+    changes: "COMMITTED (e9f91bb). 508-line test suite for catalog wiring."
+  - path: ".claude/scripts/tests/test_hca_resolve_drilldown.py"
+    changes: "COMMITTED (e9f91bb). 299-line test suite for drill-down resolution."
+
+decisions_made:
+  - "Utah Shoe payoff must use hca-figures.py --loan-id 88 directly (NOT hca-ask smart_ask): smart_ask does not route the payoff intent, and 'Utah Shoe' is ambiguous with Utah Shoe II/III. Pinned in SKILL.md."
+  - "XL investor = funding entity id 3. Loan ids pinned in SKILL.md: Utah Shoe=88, Ascent Senior/Beehive=134, Ascent Pref=149, Lux II=171. Per-run name-match guard added as a defensive confabulation check."
+  - "Lux II new balance = manifest current (from XL file) + 7 x per-diem (not fetched from Hypercore as a standalone payoff figure)."
+  - "Riverdale payoff is a date-driven formula — never overwrite. Setting Riverdale!B3 to the new report date is sufficient; Excel recalculates on open via fullCalcOnLoad."
+  - "acos-xl-update produces a DRAFT only — does not email or share. User reviews before any send."
+
+blockers:
+  - "acos-xl-update skill and engine are UNCOMMITTED — they will not be on other machines or in git history until committed. Commit before the 07/05 run if git hygiene matters."
+  - "acos-fireflies-ask (Phase 3 narrative) has NOT been exercised yet in the context of this skill. Its output format and Doppler config (acos-fireflies-ask/dev_personal) are assumed correct from prior work but untested in this context."
+  - "Git account question unresolved: user asked to commit ONLY hypercore-ask work to okoateam business account in isolation (new repo vs clean branch), but pivoted to XL build before the question was answered."
+
+next_actions:
+  - "1. COMMIT acos-xl-update: git add .claude/skills/acos-xl-update/ && git commit -m 'feat(xl-update): acos-xl-update skill + xl_update.py engine' — push to both origin and personal remotes."
+  - "2. DRY-RUN for 2026-07-05 report (user said 'awaiting go-ahead'): run the full 5-phase protocol with --date 20260705, INCLUDING Phase 3 Fireflies narrative for each of the 7 loan worksheets. Present the complete draft (payoff table with provenance + all bullets marked [carried forward] vs [new]) for user review before any write to Dropbox."
+  - "3. Resolve the git/account question: user wants hypercore-ask work committed to okoateam GitHub in isolation. Options surfaced: (a) new repo okoateam/acos-hypercore-ask, or (b) a clean branch on okoateam/ACOS-3.0 containing only hca-* commits cherry-picked. Ask user to choose before proceeding."
+  - "4. After dry-run approval: run apply + verify on the real Dropbox file, then open in Chrome and provide a clickable file:// link."
+
+context_for_next_session: |
+  The two major deliverables this session were: (1) the hypercore-ask
+  progressive-disclosure resolution upgrade (committed, pushed, 680 tests green),
+  and (2) the acos-xl-update skill (built, tested, UNCOMMITTED). The XL skill is
+  the open thread.
+
+  Key facts for the next session to know before starting any XL work:
+  - The source folder is: /Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Investor Relations/Investor Updates/XL/XL Weekly Update
+  - The latest committed file is XL Ant Portfolio Update 20260628.xlsx (next = 20260705).
+  - The engine is at .claude/skills/acos-xl-update/scripts/xl_update.py.
+  - The skill's SKILL.md contains the full protocol with exact Hypercore commands.
+  - Utah Shoe (loan 88): use hca-figures.py --loan-id 88 --date <REPORT_DATE> for payoff. Do NOT use hca-ask for this loan (ambiguity + intent-routing gap).
+  - Ascent Senior (loan 134), Ascent Pref (loan 149), Lux II (loan 171): use hca-ask.py natural-language queries (documented in SKILL.md Phase 2). Verify loan id + investor id == 3 on each response.
+  - Riverdale payoff is a formula — do not write it. Set Riverdale!B3 to the new date; fullCalcOnLoad recalculates everything.
+  - Utah Shoe III and Argent: no Hypercore call, no payoff write.
+  - Lux II new balance = manifest payoff_current + 7 x per-diem (not a standalone Hypercore payoff fetch).
+  - The prior (2026-06-30) handoff documented an unrelated OKOA ridgeline PDF build task (website AI-voice-agent research PDF). That task was apparently NOT completed (the 2026-06-30 handoff shows it mid-build). If the user references the PDF task, check research/okoa-website-agent-research-2026-06-30.md for the content source. The XL update task is the current focus.
+  - Branch: acos-deficiency-fixes-2026-06-04 (~54 commits ahead of main). Both remotes: origin (okoateam/ACOS-3.0) and personal (ZiaulKarim-hub/ACOS-3.0).
+  - Doppler projects: hypercore-ask/dev_personal (HCA figures), acos-fireflies-ask/dev_personal (narrative Phase 3).
+
+reconstruction_sources:
+  - ".claude/skills/acos-xl-update/SKILL.md (read in full)"
+  - "memory/handoffs/2026-06-30-emergency-handoff.yaml (prior session context)"
+  - "git log --oneline -25 (commit history)"
+  - "git status --short (untracked files)"
+  - "git diff --stat HEAD~5..HEAD (recent file changes)"
+  - "git log --format='%H %ai %s' -5 (commit timestamps)"
+  - ".acos/state/ directory listing (runtime state)"
+  - "memory/decisions/ directory listing (recent decisions)"
+  - ".acos/evidence/ directory listing (evidence bundles)"
+  - "memory/handoffs/ directory listing (all handoffs)"
+  - "Dropbox XL Weekly Update folder listing (confirmed latest file = 20260628.xlsx)"
+  - "git remote -v (both remotes confirmed: origin=okoateam, personal=ZiaulKarim-hub)"
+  - "Session context provided by parent session (the load-bearing source for XL test results, Hypercore figure validation, open items)"

@@ -1,0 +1,40 @@
+node_id,short_name,kind,description,actor,date,session,labels,importance,risk_category,notes
+CB-CONC,concurrent-writes-corrupt-index,BLOCKER,A shared registry can be silently corrupted by a crash or a concurrent second writer.,preeng-worker,2026-07-16,preeng-005,registry|durability,high,data-integrity,head of the mandatory chain
+CT-CRASHTEST,atomic-write-crash-test,TOOL,stdlib py3.9.6 contention harness: 6 processes x 60 writes; mkstemp vs fixed .tmp.,preeng-worker,2026-07-16,preeng-005,python|stdlib,high,,chain link 2
+CF-CONC,3of25-valid-but-wrong,FINDING,Without a lock 3/25 concurrent writes survive while remaining VALID JSON; mkstemp 0/360 torn (house 180/360).,preeng-worker,2026-07-16,preeng-005,measurement|T3,high,data-integrity,chain link 3
+CD-SHARDED,per-project-sharded-json,DECISION,"One JSON file per project, one writer per file; never a shared master, never YAML/SQLite.",preeng-worker,2026-07-16,preeng-005,C1|SPINE,high,,chain link 4
+CA-DATAMODEL,data-model-E1-atomic-write,ARTIFACT,data-model.md E1 + registry_lib.py atomic path: mkstemp->fsync(tmp)->os.replace->fsync(dir).,preeng-worker,2026-07-17,preeng-005,artifact|schema,high,,chain link 5
+CO-DURABLE,durable-substrate-0-torn,OUTCOME,A per-project write a crash or a second writer cannot corrupt silently (target 6x60 -> 0 torn).,preeng-worker,2026-07-17,preeng-005,nfr|durability,high,,chain link 6
+CP-ONEWRITER,one-writer-per-file,PATTERN,One writer per file dissolves the lost-update/lock/reaper problem by construction.,preeng-worker,2026-07-17,preeng-005,pattern|canonical,high,,chain tail (PATTERN)
+B-SILENT,silent-failure-base-rate,BLOCKER,"Silent failure is this machine's base rate: ALL-GREEN doctor over 2,000+ failures; head -40 hiding 34/74.",preeng-worker,2026-07-16,preeng-005,trust|honesty,high,trust,the dominant domain fact
+B-FORCEQUIT,force-quit-loses-reasoning,BLOCKER,"Force-quit loses working reasoning with no way back; files survive, the why dies.",preeng-worker,2026-07-16,preeng-005,continuity|DR-8,high,,
+B-CMUX-UNVERIFIED,cmux-0.64.x-behavior-unverified,BLOCKER,"workspace.select/close, surface.resume.*, hibernation, customDescription-restart all UNVERIFIED.",preeng-worker,2026-07-16,preeng-005,cmux|T4,high,platform,gates the close skill
+B-RESIDUAL10,pane-blind-tier3-resume,BLOCKER,eternity-resume-prepend.sh:158-169 offers a non-pane-scoped resume -> cross-pane contamination.,preeng-worker,2026-07-16,preeng-005,eternity|risk10,high,contamination,must be fixed FIRST
+B-GRAVEYARD,17of17-dangling-handoffs,BLOCKER,All 17 top-level .resume.md lost their sibling handoff; ~10/17 never read; unnoticed 5 weeks.,preeng-worker,2026-07-16,preeng-005,handoff|graveyard,high,,the deferred-payoff loop is unused
+T-CMUXPROBE,cmux-rpc-probe-battery,TOOL,cmux rpc workspace.list / read-screen / tree probes on throwaway RESURRECTION-PROBE-* workspaces.,preeng-worker,2026-07-16,preeng-005,cmux|probe,high,platform,Phase-0
+T-REBUILD,rebuild-registry-enumerator,TOOL,Enumerate handoffs+CLAUDE.md+.acos across both parents + ~/.claude.json hint.,preeng-worker,2026-07-17,preeng-005,python|rebuild,high,,proves 16/16
+T-LATTICE,domain-lattice-coverage-computer,TOOL,"build_research.py: builds the lattice, computes CQ coverage by <=2-hop BFS, validates schema.",preeng-worker,2026-07-17,preeng-005,python|lattice,high,,mechanical coverage
+T-BLINDTASK,blind-roundtrip-task,TOOL,A fresh general-purpose Task given the handoff text ONLY (no repo/cwd).,preeng-worker,2026-07-17,preeng-005,agent|verify,high,,tests the tester
+F-REBUILD,16of16-rebuild,FINDING,"rebuild reconstructs 16/16 project rows from handoff artifacts alone, reading no registry file.",preeng-worker,2026-07-16,preeng-005,measurement|T3,high,,a derived index cannot dangle
+F-DUP,21-sessions-7-projects,FINDING,"21 live sessions ~ 7 projects, 13/21 ACOS 3.0; workspaces 4 and 5 both on ACOS 3.0; cmux no dedup.",preeng-worker,2026-07-16,preeng-005,measurement|T3,high,,"duplicate, not switcher, problem"
+F-IDENTITY,sanitize-cwd-nonjective-identify-failopen,FINDING,sanitize(cwd) 5 paths->1 key; identify --surface fails open (live/bogus/dead all exit 0).,preeng-worker,2026-07-16,preeng-005,measurement|T3,high,,bans several identity keys
+F-YAML,yaml-truncates-silently,FINDING,No yaml module in system py3.9.6; truncated YAML parses silently 19/30; JSON fails loudly.,preeng-worker,2026-07-16,preeng-005,measurement|T3,med,,disqualifies YAML
+F-COVERAGE,cq-coverage-100,FINDING,Lattice: 121 nodes / 182 edges; 18/18 CQs covered = 100%; 0 orphans; controlled vocab clean.,preeng-worker,2026-07-17,preeng-005,lattice|T3,high,,research validation
+D-ENROLL,enrollment-on-first-sight,DECISION,"Membership marker-gated on first sight; close ENRICHES, never creates (DR-8).",preeng-worker,2026-07-16,preeng-005,SPINE2|C8,high,,survives force-quit
+D-FOCUS,focus-never-launch,DECISION,A pick focuses the existing workspace; never a second (SPINE 1).,preeng-worker,2026-07-16,preeng-005,SPINE1,high,,worth more than every other window feature
+D-RECEIPT,verified-receipt-no-green,DECISION,"Zero-loss is a verified read-back receipt, never a promise; no green badge ever.",preeng-worker,2026-07-16,preeng-005,SPINE3|honesty,high,trust,antidote to silent failure
+D-DISJOINT,disjoint-eternity-namespace,DECISION,closed/<slug>/ glob-invisible; .reentry.md never .resume.md; only contact state/stop-<sid>.,preeng-worker,2026-07-16,preeng-005,SPINE7|C5,high,contamination,protects f639310
+D-DR1,dr1-ship-gate,DECISION,Nothing ships until one recorded close->resume round-trip with user-confirmed continuity.,preeng-worker,2026-07-16,preeng-005,gate|trust,high,trust,placebo -> trust death
+A-SPEC,spec.md,ARTIFACT,The canonical PRD (13 sections incl. Diagnostics + Demo 1/2/3).,preeng-worker,2026-07-17,preeng-005,artifact|prd,high,,/preeng.specify
+A-RESEARCH,domain-lattice+evidence-ledger,ARTIFACT,domain-lattice.json + evidence-ledger.json + domain-brief/cqs + research.md.,preeng-worker,2026-07-17,preeng-005,artifact|research,high,,/preeng.research
+A-PLAN,plan+tech_prd+data-model,ARTIFACT,"plan.md, tech_prd.md, data-model.md.",preeng-worker,2026-07-17,preeng-005,artifact|plan,high,,/preeng.plan
+A-TASKS,stories.json+tasks,ARTIFACT,stories.json + 14 tasks/<slice-id>.md (PM/Dev/QA + learnings).,preeng-worker,2026-07-17,preeng-005,artifact|backlog,high,,/preeng.tasks
+O-COVERAGE,research-100pct-coverage,OUTCOME,"Research passes: CQ coverage 100%, 0 orphans, 24 tiered ledger entries.",preeng-worker,2026-07-17,preeng-005,outcome|research,high,,QA APPROVED
+O-PHASE0GATE,phase0-gates-the-build,OUTCOME,The Phase-0 diagnostic slice must pass before any registry/close code ships.,preeng-worker,2026-07-17,preeng-005,outcome|gate,high,platform,problem-before-solution
+O-SHIPGATE,dr1-is-the-ship-gate,OUTCOME,Ship is gated on Demo 3 (DR-1); a placebo close is a higher-risk product than none.,preeng-worker,2026-07-17,preeng-005,outcome|gate,high,trust,EPIC-4
+P-RECEIPT,receipt-not-promise,PATTERN,"Deliver verified read-backs, not verdicts; the tab staying open is the failure signal.",preeng-worker,2026-07-17,preeng-005,pattern|canonical,high,,reusable framework-wide
+P-DERIVED,derived-index-cannot-dangle,PATTERN,"A derived, rebuildable index deletes the dangling-pointer class instead of mitigating it.",preeng-worker,2026-07-17,preeng-005,pattern|canonical,high,,reusable
+P-MENUFIRST,menu-first-economics,PATTERN,"Make the way IN the immediate payoff; the safe habit becomes a byproduct, never a tax.",preeng-worker,2026-07-17,preeng-005,pattern|adoption,high,adoption,
+AP-GREEN,green-badge-trust-death,ANTI_PATTERN,A single false green over uncommitted work costs permanent trust in the whole registry.,preeng-worker,2026-07-16,preeng-005,anti|honesty,high,trust,killed
+AP-MASTER,shared-mutable-master,ANTI_PATTERN,A single shared registry file is the worst substrate (valid-but-silently-wrong).,preeng-worker,2026-07-16,preeng-005,anti|durability,high,data-integrity,killed
+AP-CLOSECREATE,rows-created-by-closing,ANTI_PATTERN,A close-populated registry is empty at the force-quit -- its only moment (DR-8).,preeng-worker,2026-07-16,preeng-005,anti|DR-8,high,,killed

@@ -22,7 +22,7 @@ corpus, and flag anything that does not hold.
    actually entail this statement? A citation can be perfectly real and still not
    support the sentence attached to it. That is the failure mode you are here for.
 
-   Three shapes account for every failure found so far. Hunt these first:
+   These shapes account for every failure found so far. Hunt them all:
    - **The confident closing clause.** The citation supports the first half of
      the sentence; the clause after "so", "therefore" or "which means" goes
      further. Check the citation against the *conclusion*, not the setup.

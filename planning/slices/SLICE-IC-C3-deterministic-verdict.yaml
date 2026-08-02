@@ -1,0 +1,91 @@
+slice_id: "SLICE-IC-C3-deterministic-verdict"
+story_id: "STORY-C2"
+epic_id: "EPIC-C"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Deterministic verdict + deal-breaker rule"
+objective: |
+  Compute the overall verdict deterministically via resolve.py as one resolve_conflict()
+  over per-discipline roll-ups -- asymmetric-veto polarity on deal-breaker-flagged claims,
+  quorum/ladder otherwise -- terminating in UNRESOLVED. The verdict is NEVER narrated by an
+  LLM.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/compute_verdict.py derives the deal-breaker set as: state in {ESTABLISHED, CORROBORATED} AND axis_s in {material-risk, deal-breaker-candidate} AND no depends_on mitigant reaches {CORROBORATED, ESTABLISHED} -- computed, not stored"
+  - "[ ] the verdict-fact is built with candidates = per-discipline roll-ups; polarity = asymmetric_veto on deal-breaker claims, quorum/ladder for ordinary limitations"
+  - "[ ] resolve.py is run and mapped to PROCEED | PROCEED-WITH-CONDITIONS | DECLINE | UNRESOLVED, written to verdict.md citing the deciding rung/polarity"
+  - "[ ] running compute_verdict.py twice on the same ledger produces an identical verdict.md (NFR-3 reproducibility)"
+  - "[ ] a fabricated unmitigated deal-breaker fixture yields DECLINE via asymmetric veto"
+  - "[ ] a no-deciding-rung fixture yields UNRESOLVED"
+  - "[ ] NO LLM/Task() call writes the verdict word anywhere in the verdict path"
+  - "[ ] git diff --stat on acos-axiom-synthesis/ is empty"
+  - "[ ] evidence bundle includes two identical verdict runs on the same ledger + a DECLINE fixture + an UNRESOLVED fixture transcript"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-C2-axiom-synthesis-run"
+      what_it_provides: "the hash-chained ledger (truth states + Axis S) this slice reads to compute the verdict"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/compute_verdict.py"
+
+files_prohibited:
+  - ".claude/skills/acos-axiom-synthesis/scripts/resolve.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: acos-axiom-synthesis resolve.py, the ledger/, spec FR-M7 + Appendix C, domain-lattice proc-deterministic-verdict + method-asymmetric-veto + term-deal-breaker + term-unresolved"
+  - "the verdict word is COMPUTED, never written by a model; deal-breaker is a derived predicate at compute time, not an engine field; subscription-only"
+
+# Technical requirements
+technical_requirements:
+  - "deal-breaker set must be recomputed at verdict time (not read from a stored field)"
+  - "resolve.py's asymmetric_veto path gates specifically on deal-breaker-flagged claims"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs compute_verdict.py twice on the same ledger and diffs verdict.md -- must be identical"
+  - "QA recomputes the deal-breaker set by hand from the ledger and confirms it matches"
+  - "QA confirms a fabricated unmitigated deal-breaker yields DECLINE via asymmetric veto"
+  - "QA greps the entire verdict path for any LLM/Task() call that writes the verdict word -- must find NONE"
+  - "QA confirms engine git diff --stat is empty"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on nondeterminism (non-identical
+  re-run) or any narrated verdict; the deal-breaker set and the identical-re-run property must
+  both be recomputed by QA, not trusted from a claim.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-C3-deterministic-verdict.md
+  by acos-preeng-classic Step 5; architect to review before execution.

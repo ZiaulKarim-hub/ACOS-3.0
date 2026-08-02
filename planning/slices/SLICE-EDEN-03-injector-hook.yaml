@@ -1,0 +1,60 @@
+slice_id: "SLICE-EDEN-03"
+story_id: "ST-004-eden-2"
+epic_id: "EP-004-eden-2"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Injector hook (per-turn re-injection)"
+objective: |
+  Implement eden-level-injector.py (UserPromptSubmit): read .acos/state/eden-level and inject
+  the per-turn directive (active level + scope boundary + fidelity-floor compact) as additionalContext.
+
+acceptance_criteria:
+  - "[ ] With a level set, the directive is injected every turn; with no file, zero overhead (passthrough)."
+  - "[ ] The directive names the top-level-chat-only scope boundary (M5) and the fidelity-floor compact (M6)."
+  - "[ ] Registered LAST in the UserPromptSubmit chain; autopilot + eternity injectors still fire (smoke test)."
+  - "[ ] Fail-open: a simulated hook error does not block the turn."
+  - "[ ] Contract matches the SLICE-EDEN-02 verdict (not finalized before it)."
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-02"
+      what_it_provides: "U1 verdict determining the injector contract"
+      status: "in_progress"
+
+files_allowed:
+  - ".claude/scripts/eden-level-injector.py"
+  - ".claude/settings.local.json"
+
+files_prohibited:
+  - ".claude/scripts/autopilot-context-injector.py"
+  - ".claude/scripts/eternity-resume-prepend.sh"
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Directive fields per tech_prd.md §2.2. Fail-open fallback per ACOS hook convention."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-03.md"
+
+technical_requirements:
+  - "file-presence check -> read digit -> build_directive(level); Python 3 stdlib only."
+
+testing_requirements:
+  - "Coexistence smoke test (autopilot + eternity still emit); off = passthrough; fail-open simulated."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "M"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-03. Demo 1. P0. Do NOT finalize before SLICE-EDEN-02.

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "DP1-menu-surface",
+    "question": "Where should the project menu ('the book') live when you come back to resume work? Your confirmed vision says: open Claude Code anywhere, run the Resurrection Protocol as a command, and the menu appears right there in the terminal \u2014 pick a project and it continues. The research team instead designed a small local browser dashboard (a page at localhost:8820, opened in Chrome) that lists every project with its next-action line and can focus or launch the right cmux tab with one click. Both surfaces would show identical rows from the same registry; the terminal menu needs no server and matches your described flow exactly, while the browser page gives an always-glanceable dashboard without occupying a Claude session but adds a small local web server (with its own security hardening) to build and maintain.",
+    "options": [
+      "A) Build the in-Claude terminal menu first; add the browser dashboard later only if the menu proves it earns it",
+      "B) Build only the browser dashboard (the research team's original design)",
+      "C) Build both in version 1"
+    ],
+    "research_recommendation": "Option A. The report favored the browser as 'the way in' for adoption, but it never evaluated an in-terminal menu (it wasn't asked to), and every load-bearing piece of evidence \u2014 one row per project, generated next-action line, focus-never-launch, red/amber facts \u2014 applies to either surface. Your confirmed vision names the in-Claude flow; it is also the smaller build with no web-security surface. The browser page remains a clean additive Phase 5."
+  },
+  {
+    "id": "DP2-sacrificial-tests",
+    "question": "Three safety-critical cmux behaviors are still untested, and testing them costs something: (1) When the close step tells cmux to close a workspace while a live Claude Code session is running in it, does cmux ask for confirmation or just kill it instantly? The safe-close feature's final step relies on this \u2014 the researchers called it 'the single highest-value remaining test' \u2014 and testing it means deliberately sacrificing one throwaway Claude session. (2) Does closing the LAST workspace in a cmux window close the whole window or quit cmux entirely? Testing may briefly close a window. (3) Do the new cmux 0.64 features (hibernation, auto-resume, description survival across restart) actually work as documented? Fully testing these likely requires restarting the cmux app, which interrupts your live sessions. Are you willing to spend a throwaway session and one controlled cmux restart now, before the build, to settle these?",
+    "options": [
+      "A) Yes \u2014 run the full test battery now on throwaway workspaces plus one scheduled cmux restart at a convenient moment",
+      "B) Run only the non-disruptive tests now; do the sacrificial ones right before the close skill ships",
+      "C) Skip the disruptive tests; ship with conservative guards instead (never auto-close the last workspace; treat tab-close as unconfirmed until first real use)"
+    ],
+    "research_recommendation": "Option A. Every one of these behaviors sits directly under a safety promise the system will make you ('SAFE TO CLOSE THIS TAB'). The cost is one throwaway session and one restart you pick the timing of; the alternative is discovering the answer during a real close. The report ranks the live-Claude close test as the highest-value remaining test."
+  },
+  {
+    "id": "DP3-auto-naming-confidentiality",
+    "question": "Your installed cmux (0.64.19) includes an AI auto-naming feature (automation.workspaceAutoNaming) that generates tab titles from your conversation content. It is documented but nobody has verified WHICH AI model or endpoint it sends conversation content to \u2014 the controlling setting (automation.autoNamingAgent: 'auto') is undocumented. Your cmux tabs regularly contain confidential OKOA deal work. Separately, the Resurrection system will already write meaningful tab titles and descriptions itself whenever it launches or updates a project (from your own close notes, locally), which makes auto-naming largely redundant for registry-managed tabs. Should auto-naming be enabled?",
+    "options": [
+      "A) Leave it OFF until we identify exactly what model/endpoint it calls; revisit after that",
+      "B) Leave it OFF permanently \u2014 the registry writes titles anyway; don't spend time investigating",
+      "C) Enable it now and accept the unknown"
+    ],
+    "research_recommendation": "A or B \u2014 never C. The report explicitly flags 'verify what model automation.autoNamingAgent calls before enabling' as an OKOA confidentiality question, and the registry writing tab titles at launch makes auto-naming redundant for every tab the system manages. B is the zero-effort safe default; A only if you want AI titles on hand-opened tabs too."
+  },
+  {
+    "id": "DP4-hibernation",
+    "question": "cmux 0.64 ships 'Agent Hibernation' (terminal.agentHibernation, opt-in): it kills idle background agent processes to free RAM/CPU, then resumes them from saved session state when you next visit the tab. This directly targets the 'my Mac slows down / freezes' half of your problem, independently of closing tabs. However: it is documentation-claimed only (nobody has tested it on your machine), and it kills idle processes by design \u2014 which could interact in unknown ways with the always-running ACOS token-watcher daemons and the in-pane resume hooks that your Eternity continuation system depends on. Opt in?",
+    "options": [
+      "A) Test it on a throwaway workspace first; opt in only after confirming the in-pane hooks still fire and Eternity still works on a hibernated-then-resumed tab",
+      "B) Opt in now, everywhere",
+      "C) Stay off; rely on closing tabs alone for performance"
+    ],
+    "research_recommendation": "Option A. The report's own upgrade warning applies: the single biggest risk on the adopt side is the platform breaking the in-pane hook that actually carries your resumes (a known upstream regression class, #5427). Hibernation is worth having \u2014 it attacks the freeze problem your vision names \u2014 but only after the hook-firing check passes on a hibernated workspace."
+  },
+  {
+    "id": "DP5-seed-vs-organic",
+    "question": "How should the book get its initial contents? Option one: it starts empty and grows organically \u2014 each project auto-enrolls the first time you start a Claude session in it (any directory carrying a project marker: a .acos folder, a CLAUDE.md, or a memory/handoffs folder). Option two: seed it on day one by scanning for those markers \u2014 today that finds about 18 directories with handoff folders across 'Vibe Coding' and 'OKOA' (plus 42 directories Claude Code has ever run in, many of them junk or one-offs). Seeding gives the menu immediate day-one value covering everything, but requires one curation pass from you (roughly 10 minutes) to archive the entries that aren't real active projects \u2014 for example, the 'Vibe Coding' parent folder itself carries a stray memory/handoffs folder and would appear as a row, and several old handoff-bearing folders may be finished work.",
+    "options": [
+      "A) Seed now with the scanner, then do one 10-minute curation pass to archive the dead rows",
+      "B) Organic growth only \u2014 the book starts empty and fills as you touch projects"
+    ],
+    "research_recommendation": "Option A. The rebuild/seed script must exist anyway (the report requires a proven rebuild path in v1, demonstrated at 16/16 rows from handoffs alone), your confirmed vision says the book 'lists every active project' \u2014 which organic growth can't deliver for weeks \u2014 and a one-time human curation pass is exactly the 'explicit enrollment, never naive scan' spirit: a directory is a project because you confirm it is, not because a process once ran there."
+  }
+]

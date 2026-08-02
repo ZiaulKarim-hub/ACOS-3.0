@@ -1,0 +1,54 @@
+timestamp: "2026-06-25T16:49:01Z"
+status: "completed"
+session_id: "unknown"
+estimated_tokens: 0
+session_summary: |
+  Milestone close (/acos-complete). The headline work of this long multi-cycle
+  session was a full reliability hardening of the ACOS eternity protocol, which
+  is now confirmed firing + resuming automatically across days (this session
+  itself spanned several eternity cycles). A concurrent track on branch
+  acos-deficiency-fixes-2026-06-04 added acos-hypercore-ask MCQ-selection +
+  learned-routing (commits de77efa, 39ef8fa) — see the 2026-06-25 emergency
+  handoff for that track's detail.
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: "acos eternity-protocol reliability + acos-hypercore-ask"
+  status: "completed"
+
+completed_this_session:
+  - "Renamed acos-eternity-protocol-cmux → acos-eternity-protocol and acos-eternity-protocol-warp → acos-continue (commit 28c42d8); updated daemon dispatch + all cross-refs."
+  - "Fixed recurring 'eternity didn't run': added AbandonProcessGroup=true to com.acos.token-watcher-backfill.plist (launchd was SIGKILLing every backfill-spawned watcher → 16k-iteration thrash)."
+  - "backfill-watchers.sh: added age-based cmux-unhealthy GC, orphan-watcher reaper (stat-based, not the find -mmin trap), and a 2-cycle coverage self-alert (macOS notification)."
+  - "Created bin/eternity-doctor.sh — one-command GREEN/RED health check across all projects."
+  - "Added a stale-handoff FRESHNESS GUARD to Step 1 of both acos-eternity-protocol and acos-continue."
+  - "Fixed handoff-agent: maxTurns 20→45 + stub-write-first (was hitting the turn cap before writing); verified it now produces a fresh full handoff."
+  - "Reaped 6 leaked orphan watchers; cleared stale unhealthy markers + .failed flags. Verified FruitSync (b6c4dc9b, 627K) is fully armed to auto-fire on its next turn."
+
+files_modified:
+  - path: "~/Library/LaunchAgents/com.acos.token-watcher-backfill.plist"
+    changes: "Added AbandonProcessGroup=true (out-of-repo)."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/backfill-watchers.sh"
+    changes: "GC + reaper + coverage alert (out-of-repo)."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh"
+    changes: "New health-check tool (out-of-repo)."
+  - path: ".claude/skills/acos-eternity-protocol/SKILL.md & acos-continue/SKILL.md"
+    changes: "Step 1 freshness guard."
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "maxTurns 45 + stub-write-first (restricted file, edited with approval)."
+
+decisions_made:
+  - "Eternity has two independent failure domains: TRANSPORT (watcher/cmux/in-pane hook) and CONTENT (handoff-agent). The doctor checks transport; the freshness guard + handoff-agent fix cover content."
+  - "cmux is in-pane-only: the detached daemon cannot inject; the in-pane Stop hook fires at turn-end. So auto-fire happens at the next turn-end, not while a window sits idle."
+
+blockers: []
+
+next_actions:
+  - "Open question from the 2026-06-25 emergency handoff: whether to build the per_diem_interest figure in acos-hypercore-ask (user had not answered)."
+  - "Run eternity-doctor.sh anytime to confirm health: bash \"$HOME/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh\""
+
+context_for_next_session: |
+  Eternity protocol is healthy and self-monitoring across all projects. The full
+  root-cause + fix record is in memory/feedback_eternity_watcher_thrash_and_unhealthy_gc.md.
+  Daemon files are out-of-repo at ~/Library/Application Support/acos-token-monitor/.

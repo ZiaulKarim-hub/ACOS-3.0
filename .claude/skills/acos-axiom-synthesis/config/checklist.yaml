@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# checklist.yaml — the boolean confidence gate for acos-axiom-synthesis
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# A claim's confidence tier is decided by a checklist of yes/no questions, NOT by
+# a model's self-report and NOT by a fake decimal. Two kinds of question:
+#
+#   veto_questions   — critical. Any single NO nullifies the claim outright,
+#                      regardless of how many other answers are yes.
+#   normal_questions — each YES counts toward a percentage. The yes-share on the
+#                      NORMAL questions decides the tier via `thresholds` below.
+#
+# Evaluator per question:
+#   deterministic — computed by code from the claim record (counts, field checks).
+#                   The `expr` field documents exactly what is checked.
+#   semantic      — needs a model judgment. Supplied by a BLIND judge agent that
+#                   is NEVER the model that authored the claim (self-preference
+#                   bias). Offline/tests supply these as fixture inputs.
+#
+# This file is the audit surface: anyone can read WHY a claim earned its tier.
+# Edit freely — ids are the stable handle the code keys on; text/order are yours.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ── Tier thresholds ──────────────────────────────────────────────────────────
+# yes-share is computed over the NORMAL questions only (veto questions gate
+# separately). Bands are inclusive lower bounds.
+thresholds:
+  verified_min: 0.90   # >= 90% yes on normal Qs  -> 'verified'  (boss's example)
+  probable_min: 0.70   # >= 70% and < 90%         -> 'probable'
+  #                      < 70%                     -> 'unverified' (rejected as fact)
+
+# 'verified' has TWO extra hard requirements on top of >= verified_min, mirroring
+# the existing single-source cap in the ledger writer. A claim that clears 90%
+# but fails either of these caps at 'probable' — it can never be 'verified':
+verified_also_requires:
+  - N1-TWO-INDEP-SOURCES
+  - N2-TWO-DISTINCT-FAMILIES
+
+# ── Veto (critical) questions — any NO => nullify ────────────────────────────
+veto_questions:
+  - id: V1-FALSIFIABLE
+    text: "Is the claim falsifiable — can you state an observation that would prove it wrong?"
+    evaluator: semantic
+    on_no: nullify        # unfalsifiable = opinion, not a factual claim
+
+  - id: V2-TRACEABLE-ORIGIN
+    text: "Does the claim have a traceable origin (real provenance, not fabricated)?"
+    evaluator: semantic
+    on_no: nullify
+
+  - id: V3-NO-INTERNAL-CONTRADICTION
+    text: "Is the claim free of contradiction with itself or with an already-ESTABLISHED claim?"
+    evaluator: semantic
+    on_no: nullify
+
+  - id: V4-SURVIVES-REFUTER
+    text: "Did the claim survive the independent refuter with no fatal, unrebutted objection?"
+    evaluator: semantic
+    on_no: nullify        # a NON-fatal objection is a normal-question downgrade, not a veto
+
+# ── Normal questions — each YES counts toward the percentage ─────────────────
+normal_questions:
+  - id: N1-TWO-INDEP-SOURCES
+    text: "Are there at least 2 independent sources after de-circularization?"
+    evaluator: deterministic
+    expr: "confidence_basis.independent_sources >= 2"
+
+  - id: N2-TWO-DISTINCT-FAMILIES
+    text: "Do the sources come from at least 2 distinct model families?"
+    evaluator: deterministic
+    expr: "confidence_basis.distinct_families >= 2"
+
+  - id: N3-PRIMARY-CITATION
+    text: "Is there a primary citation — a direct pointer to an original source, not a paraphrase?"
+    evaluator: deterministic
+    expr: "grading.has_primary_citation == true"
+
+  - id: N4-CITATION-SUPPORTS
+    text: "Does the cited source actually support the claim (not misattributed)?"
+    evaluator: semantic
+
+  - id: N5-NOT-STALE
+    text: "Is the claim current — not stale and not superseded?"
+    evaluator: deterministic
+    expr: "not superseded and grading.freshness_ok"
+
+  - id: N6-REPRODUCIBLE
+    text: "Is the claim reproducible from the stated inputs?"
+    evaluator: semantic
+
+  - id: N7-SPECIFIC
+    text: "Is the claim specific and precise (not vague or hedged into meaninglessness)?"
+    evaluator: semantic
+
+  - id: N8-NO-CONFLICT-OF-INTEREST
+    text: "Is the claim free of an unmanaged source conflict-of-interest?"
+    evaluator: semantic
+
+  - id: N9-TALLY-AGREES
+    text: "Do the equal-weighted and belief-weighted tallies agree (no divergence flag)?"
+    evaluator: deterministic
+    expr: "fused.divergence == false"
+
+  - id: N10-LATERAL-SUPPORT
+    text: "Is the support lateral (independent corroboration), not just the same chain repeated?"
+    evaluator: semantic
+
+# ── Optional topic-specific add-on packs (the 'competency questions') ─────────
+# Each pack appends MORE normal questions when a claim is tagged with that domain.
+# The percentage is then computed over core + pack questions together. Empty by
+# default — the universal core above applies to every claim on its own.
+domain_packs: {}
+  # Example (commented — a future pack for claims about a government):
+  # government:
+  #   - id: G1-OFFICIAL-GAZETTE
+  #     text: "Is the claim backed by an official government record (gazette, filing, registry)?"
+  #     evaluator: semantic

@@ -1,0 +1,119 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol
+# Source task: planning/preeng/005-resurrection-protocol/tasks/SLICE-10-registry-lib.md
+
+slice_id: "SLICE-RES-10-registry-lib"
+story_id: "STORY-1.1"
+epic_id: "EPIC-1"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "registry_lib.py: atomic write, schema, casefold index, inode re-link, tombstone, audit"
+objective: |
+  Implement registry_lib.py — the durable per-project registry substrate: an atomic
+  write that a crash or a second writer can never corrupt silently, plus the row
+  read/upsert API, casefold lookup index, (st_dev,st_ino) re-link/heal, tombstone,
+  and audit append.
+description: |
+  In scope:
+  - Atomic write: mkstemp(dir=target's own dir) -> write -> fsync(tmp) -> os.replace
+    -> fsync(dir); never a fixed .tmp
+  - Row schema (data-model E1); realpath().casefold() lookup index; (st_dev,st_ino) re-link
+  - Tombstone-never-delete; audit append (one os.write per JSONL line) to
+    ~/.acos/registry-audit.jsonl
+  - Loud failure on truncated/invalid JSON load
+  Out of scope (guardrails):
+  - Any lock that blocks (LOCK_EX) or survives SIGKILL (mkdir-lock)
+  - YAML/SQLite; a shared master file
+  - Deleting rows (deletion is a human act only)
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Contention crash-test 6 processes x 60 writes -> 0 errors, 0 torn (mirrors the measured 180/360 -> 0); crash-test output archived in the evidence bundle"
+  - "[ ] A truncated row file load fails LOUDLY (JSON error raised), never a silent partial; loud-truncation unit check passes"
+  - "[ ] Re-link by (st_dev,st_ino) heals a moved root instead of tombstoning it; inode re-link unit check passes"
+  - "[ ] Audit append is one os.write per JSONL line with ordering preserved; verified in the archived crash-test/audit output"
+  - "[ ] Evidence bundle at .acos/evidence/[DATE]/SLICE-10-registry-lib/ is populated (7-part bundle: implementation summary, requirements traceability to spec FR-*/tech_prd TR-*, structural quality, functional checks, security/compliance notes, operational notes, self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections in the source task file are updated (slice is not Done until they are)"
+
+# Dependencies
+dependencies:
+  slices: []
+  # TODO: confirm — the task file states no explicit slice prerequisites; stories.json
+  # marks the EPIC-0 diagnostic slices (SLICE-RES-00-probe, SLICE-RES-01-prereq-fixes)
+  # as "Diagnostic (blocks all builds)"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/registry_lib.py"
+  - "a scratch dir for the contention crash-test (outside the repo)"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Never use a fixed .tmp: mkstemp(dir=target's own dir) -> write -> fsync(tmp) -> os.replace -> fsync(dir)"
+  - "No blocking lock (LOCK_EX) and no lock that survives SIGKILL (mkdir-lock) — anywhere"
+  - "No YAML, no SQLite, no shared master file — per-project row files only"
+  - "Tombstone, never delete: row deletion is a human act only"
+  - "stdlib only, Python 3.9.6"
+  - "Audit append: one os.write per JSONL line to ~/.acos/registry-audit.jsonl"
+  - "Loud failure on truncated/invalid JSON load — never return a silent partial"
+  - "No cmux, no skills yet — this slice is the library only"
+
+# Technical requirements
+technical_requirements:
+  - "Atomic write helper + row read/upsert API, stdlib only (py 3.9.6)"
+  - "Row schema per data-model E1; every field derived/generated per data-model E1"
+  - "realpath().casefold() lookup index"
+  - "(st_dev,st_ino) re-link/heal for moved roots"
+  - "Tombstone and audit-append (one os.write per JSONL line, ordering preserved)"
+
+# Testing requirements
+testing_requirements:
+  - "Contention crash-test: 6 processes x 60 writes; recompute torn/errored counts"
+  - "Unit checks: casefold lookup, inode re-link, loud truncation"
+  - "stdlib-only import audit"
+
+# Verification method (QA zero-trust — skill-mandated extension of the template)
+verification_method:
+  - "Crash-test output archived; QA independently re-runs the crash-test and recomputes torn/errored counts (does not trust the Dev's log)"
+  - "QA truncates a row file by hand and confirms the loader raises, not returns partial"
+  - "Unit checks for casefold lookup, inode re-link, and loud-truncation pass"
+  - "stdlib-only import audit"
+  - "Confirm no blocking lock and no mkdir-lock anywhere"
+  - "Confirm every field is derived/generated per data-model E1"
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; task file mandates a zero-trust QA verifier with REJECT power
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Evidence bundle path: .acos/evidence/[DATE]/SLICE-10-registry-lib/
+  Vertical value: the durable substrate — a per-project write that a crash or a
+  second writer can never corrupt silently. Demo: Demo 1 (enrollment).
+  QA may REJECT and require rework until gates pass (a reject blocks the slice
+  like an INCONCLUSIVE reviewer).

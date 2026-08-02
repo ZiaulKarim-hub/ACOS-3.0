@@ -1,0 +1,111 @@
+# Slice Plan — bridged from preeng task SLICE-40-dr1
+# Source: planning/preeng/005-resurrection-protocol/tasks/SLICE-40-dr1.md
+
+slice_id: "SLICE-RES-40-dr1"
+story_id: "STORY-4.1"
+epic_id: "EPIC-4"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "DR-1 ship gate: one recorded close->resume round-trip on a real project"
+objective: |
+  DR-1 ship gate: prove ONE recorded close->resume round-trip on a real project.
+  Run the full cycle: /acos-safe-close -> receipt "SAFE TO CLOSE THIS TAB" ->
+  tab gone -> later /acos-resurrect -> pick -> work demonstrably continues ->
+  USER confirms continuity. Save the recording/receipts to .acos/evidence/.
+description: |
+  Permission-to-close is the product and it must be a demonstration, not a
+  promise; one silent loss ends the tool. In scope: the full close->resume
+  cycle on a real project plus archiving the recording/receipts to
+  .acos/evidence/. Out of scope: shipping on a promise/placebo, and any step
+  that is not on a real project. Until this evidence exists, the skill is
+  NOT shipped.
+
+# Acceptance criteria (from task Definition-of-Done + QA evidence gates)
+acceptance_criteria:
+  - "[ ] Full cycle executed on a REAL project (not a throwaway): /acos-safe-close issued, receipt 'SAFE TO CLOSE THIS TAB' received, tab gone, later /acos-resurrect -> pick, work demonstrably continues — captured in the recording archived at .acos/evidence/[DATE]/SLICE-40-dr1/"
+  - "[ ] USER explicitly confirms continuity — the user's confirmation itself is captured in the evidence bundle (self-asserted continuity does NOT pass)"
+  - "[ ] Recording and receipts archived to .acos/evidence/[DATE]/SLICE-40-dr1/ — if any piece is missing, the gate is NOT met and nothing ships"
+  - "[ ] 7-part Evidence Bundle populated at .acos/evidence/[DATE]/SLICE-40-dr1/: (1) Implementation Summary; (2) Requirements Traceability (spec FR-* / tech_prd TR-*); (3) Structural Quality Evidence; (4) Functional/structural checks (verification_method below); (5) Security/Compliance notes; (6) Operational/Runtime considerations; (7) Self-assessment (confidence + known limitations)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections updated in planning/preeng/005-resurrection-protocol/tasks/SLICE-40-dr1.md (slice is not Done until they are — §0.7)"
+  # TODO: confirm — task says "a real project" but does not name WHICH real project to run the round-trip on
+  # TODO: confirm — "recording" medium is unspecified in the task (screen capture vs terminal transcript vs receipts-only)
+
+# Dependencies (derived from task "Allowed files / contexts": /acos-safe-close then later /acos-resurrect)
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-21-safe-close-skill"
+      what_it_provides: "The /acos-safe-close skill that produces the 'SAFE TO CLOSE THIS TAB' receipt"
+      status: "planned"
+    - slice_id: "SLICE-RES-32-menu-skill-loop"
+      what_it_provides: "The /acos-resurrect menu skill used to pick and resume the parked project"
+      status: "planned"
+
+# File permissions (from task "Allowed files / contexts")
+files_allowed:
+  - ".acos/evidence/"
+  - "planning/preeng/005-resurrection-protocol/tasks/SLICE-40-dr1.md"
+  # A real project's working tree is also in scope for the round-trip itself
+  # TODO: confirm — real-project path once the target project is chosen
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended (only what the task file supports — none named; this is a demonstration/evidence slice)
+skills_recommended: []
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer (task traps/gotchas, verbatim-ish)
+context:
+  - "Permission-to-close is the product: it must be a demonstration, not a promise; one silent loss ends the tool."
+  - "Out of scope: shipping on a promise/placebo; any step that is not on a real project."
+  - "Continuity must be USER-confirmed, never self-asserted."
+  - "QA assumes the Dev did NOT do the work correctly: spot-check and recompute evidence; no fabricated logs."
+  - "If any piece of the recording/receipts is missing, the gate is NOT met and nothing ships."
+
+# Technical requirements (from Dev steps — execute EXACTLY, no scope expansion)
+technical_requirements:
+  - "Run the full cycle on a real project: /acos-safe-close -> receipt -> tab gone -> later /acos-resurrect -> pick -> work continues."
+  - "Capture the recording and receipts."
+  - "Obtain explicit user confirmation of continuity."
+
+# Testing requirements
+testing_requirements:
+  - "No new automated tests — this slice IS the DR-1 acceptance test; verification is via the archived recording, receipts, and user confirmation."
+
+# Verification method (task QA verification steps — skill-mandated extension of the template)
+verification_method: |
+  The full recording + receipts archived to .acos/evidence/[DATE]/SLICE-40-dr1/;
+  the user's explicit continuity confirmation captured. QA (zero-trust):
+  - Confirm the round-trip was on a REAL project, not a throwaway.
+  - Confirm continuity was USER-confirmed, not self-asserted.
+  - Confirm the recording is archived; if any piece is missing, the gate is
+    NOT met and nothing ships. QA may REJECT and require rework until the
+    gates pass (a reject blocks the slice like an INCONCLUSIVE reviewer).
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "M"
+# S = < 1 hour | M = 1-3 hours | L = 3-8 hours
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  DR-1 SHIP GATE (Demo 3). Until this recorded, user-confirmed round-trip
+  exists, the safe-close/resurrect skill is NOT shipped. Evidence bundle:
+  .acos/evidence/[DATE]/SLICE-40-dr1/.

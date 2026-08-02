@@ -91,12 +91,20 @@ can use it. Structure:
 Every discrete factual claim, machine-readable. Schema:
 
 ```json
-{"claim":"one factual statement, self-contained","dimension":"<dimension id>","question":"the question that led here","sources":[{"source":"title/org","url":"https://…","tier":1,"as_of":"YYYY-MM-DD"}],"as_of":"YYYY-MM-DD","agent":"{{SLUG}}","volatile":false}
+{"claim":"one factual statement, self-contained","dimension":"<dimension id>","question":"the question that led here","sources":[{"source":"title/org","url":"https://…","tier":1,"as_of":"YYYY-MM-DD"}],"as_of":"YYYY-MM-DD","published":"YYYY-MM-DD","agent":"{{SLUG}}","volatile":false}
 ```
 
 Set `"volatile": true` for anything that moves fast — pricing, availability,
 version numbers, limits. It will be flagged for re-verification before anyone
 relies on it.
+
+**Date every claim you can.** `as_of` is the date OF the information — what date
+the fact is true as of; `published` is when the source said it. Both are
+optional ISO dates, but the label machinery reasons with them: a Tier 1-2
+primary claim whose newest date is within 60 days is delivered as `primary-new`
+(dated) instead of being suppressed as merely provisional — youth explains low
+corroboration; it does not disqualify. A claim you leave undated cannot get
+that treatment, so a fresh finding without dates reads worse than it is.
 
 A claim with an empty `sources` array will be excluded from the final report, so
 do not bother recording one.

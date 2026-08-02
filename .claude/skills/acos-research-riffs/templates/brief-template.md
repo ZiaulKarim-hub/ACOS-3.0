@@ -44,6 +44,10 @@ exclusion kept only in memory will silently hold options out of the answer.>
 <maximum: 3+ independent sources for material claims |
  standard: 2+ sources for key claims, single source acceptable for detail |
  exploratory: single sources acceptable, breadth over depth>
+<The bar governs panel behaviour and report language only. The mechanical
+`verified` label is fixed: 2+ independent sources corroborating the answering
+claim — choosing "maximum" does not raise that computation, and choosing
+"exploratory" does not lower it.>
 
 ## Known constraints and must-cover items
 - <anything the reader already named — a tool, a vendor, a regulation, a prior
@@ -55,7 +59,11 @@ exclusion kept only in memory will silently hold options out of the answer.>
 
 ## Coverage dimensions (derived)
 <The checklist the research is measured against. Each becomes a row in
-coverage.json. A dimension that is never probed can never read as covered.>
+coverage.json. A dimension that is never probed can never read as covered.
+Every dimension defaults to `fast_moving: true` — declare `fast_moving: false`
+only for genuinely settled ground (standards, history, mathematics); a
+fast-moving dimension cannot saturate until a last-90-days recency probe has
+been recorded for it.>
 
 | id | dimension | why it must be probed |
 |---|---|---|

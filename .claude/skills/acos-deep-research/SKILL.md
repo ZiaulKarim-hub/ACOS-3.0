@@ -1,5 +1,5 @@
 ---
-name: deep-research
+name: acos-deep-research
 description: Structured deep research methodology with multi-source verification, cross-reference analysis, conflict identification, and executive summary generation. For complex research tasks requiring forensic-level rigor.
 disable-model-invocation: false
 user-invocable: true
@@ -22,6 +22,8 @@ Conduct rigorous, multi-source research on complex topics. Goes beyond surface-l
 - Pre-decision analysis where stakeholders need verified data
 
 **Use `/technology-research` instead for:** library/framework comparison, tooling evaluation, simple tech stack decisions.
+
+**Use `/acos-research-riffs` instead when:** the user wants to think the decision through in conversation while the research happens — a generated panel pre-briefs itself into dossiers, questions are answered from those dossiers with confidence labels, unknown questions abstain and dispatch a probe, and the formal report is compiled from a session ledger at the end. This skill is its one-shot counterpart: no conversation, one report.
 
 ## Skill Protocol
 

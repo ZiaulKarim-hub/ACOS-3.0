@@ -1,0 +1,131 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol
+# Source task: planning/preeng/005-resurrection-protocol/tasks/SLICE-01-prereq-fixes.md
+# Bridged by the acos-preeng-classic Step-5 bridge
+
+slice_id: "SLICE-RES-01-prereq-fixes"
+story_id: "STORY-0.1"
+epic_id: "EPIC-0"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "Close the pre-existing bugs the registry would make routine"
+objective: |
+  Close the pre-existing bugs the Resurrection Protocol registry would make
+  routine — fix residual #10 BEFORE the registry makes two-panes-one-project
+  a routine setup, and remove two live silent-failure sources. Diagnostic
+  slice (blocks all builds).
+description: |
+  In scope:
+  - Pane-scope or remove the pane-blind tier-3 resume at
+    eternity-resume-prepend.sh:158-169 (residual #10).
+  - Fix the head -40 silent truncation at eternity-protocol-core.sh:139 in the
+    repo copy AND its byte-identical Application Support bin twin; regenerate
+    the bin-manifest.
+  - Make the token-watcher.py:1113 orphan-surface branch fail CLOSED;
+    regenerate the bin-manifest.
+  - 0.6: provenance of the 147 /acos-complete runs (hand vs hook).
+  - 0.7: --command internal-handling probe; optional 0.8 archive-project.sh --yes.
+
+# Acceptance criteria (from the task Definition-of-Done + QA evidence gates)
+acceptance_criteria:
+  - "[ ] With two sessions on one project, session B is never offered session A's resume via path (3) — before/after transcript archived to the evidence bundle"
+  - "[ ] A handoff generated now lists count == `git status --porcelain | wc -l`, or prints the explicit '... (listed 40 of N - TRUNCATED)' line; BOTH copies (repo + bin twin) fixed and byte-identical; bin-manifest regenerated"
+  - "[ ] A surface-less artifact is REJECTED by the gate (fails CLOSED); renaming/restoring the 90-byte marker no longer re-arms fail-open; bin-manifest regenerated"
+  - "[ ] 147-run /acos-complete provenance answer (hand vs hook) written to the evidence bundle (adjust adoption expectation if hook-fired)"
+  - "[ ] --command shell-parse-vs-exec probe result documented in the evidence bundle"
+  - "[ ] No pending-resume-*.txt / RESCUED-resume-*.txt deleted or moved — population diff archived as proof"
+  - "[ ] Evidence bundle populated at .acos/evidence/2026-07-16/resurrection-phase0/prereq-fixes/ (7-part bundle per the task file)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' in the task file updated (the slice is not Done until they are)"
+  # TODO: confirm — optional 0.8 (archive-project.sh --yes) is named in scope as optional but has no pass-condition in the task's Definition of Done
+
+# Dependencies
+dependencies:
+  slices: []
+  # The task file states no explicit prerequisite slices.
+  # TODO: confirm — stories.json orders SLICE-00-probe (-> SLICE-RES-00-probe) before this slice within STORY-0.1; confirm whether it must complete first
+
+# File permissions (from the task "Allowed files / contexts" + guardrails)
+files_allowed:
+  - ".claude/scripts/eternity-resume-prepend.sh"
+  - ".claude/scripts/eternity-protocol-core.sh"
+  - "~/Library/Application Support/acos-token-monitor/bin/ — the byte-identical eternity-protocol-core twin + bin-manifest ONLY"
+  - "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+  - "archive-project.sh (optional 0.8 only)"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - "Any registry/close/menu code"
+  - "pending-resume-*.txt / RESCUED-resume-*.txt (never delete or move)"
+  - "register-session-pid.sh (repo and bin copies)"
+  - "The rest of the token-monitor bin (anything beyond the allowed files above)"
+
+# Skills recommended
+skills_recommended:
+  - "bug-investigation"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer (traps / gotchas carried from the task file)
+context:
+  - "Doc-drift lesson: the bin twin must stay byte-identical to the repo copy, and the bin-manifest MUST be regenerated after every bin edit"
+  - "NEVER delete or move pending-resume-*.txt / RESCUED-resume-*.txt (standing preserve rule)"
+  - "Fail-open trap: renaming/restoring the 90-byte marker previously re-armed fail-open on the orphan-surface branch — verify it no longer does"
+  - "Residual #10: the pane-blind tier-3 resume can offer session A's resume to session B on the same project"
+  - "QA is zero-trust: assume the Dev did not do the work; spot-check and recompute evidence — no fabricated logs"
+
+# Technical requirements
+technical_requirements:
+  - "eternity-resume-prepend.sh:158-169 — pane-scope or remove the pane-blind tier-3 resume path (3)"
+  - "eternity-protocol-core.sh:139 — list all files, or print an explicit '... (listed 40 of N - TRUNCATED)' line, in BOTH copies"
+  - "token-watcher.py:1113 — orphan-surface branch must fail CLOSED (reject surface-less artifacts)"
+  - "Regenerate the bin-manifest after each Application Support bin edit"
+  - "Grep settings + registered hooks for automation invoking acos-complete (0.6 provenance)"
+  - "Probe --command with '; touch /tmp/resurrection-cmd-probe;'; document shell-parse vs exec (0.7)"
+
+# Testing requirements (Dev-step simulations from the task file)
+testing_requirements:
+  - "Two-sessions-one-project simulation: confirm session B is never offered session A's resume"
+  - "Handoff-generation check: listed count matches `git status --porcelain | wc -l`, or the explicit truncation line prints"
+  - "Marker rename/restore test: confirm fail-open is no longer re-armed"
+  - "Before/after diff: pending-resume-*.txt / RESCUED-resume-*.txt population unchanged"
+
+# Verification method (QA / zero-trust gates — skill-mandated extension of the template)
+verification_method:
+  - "Archived before/after transcripts for each fix"
+  - "git diff of the two repo-tracked scripts"
+  - "Bin twin and repo copy confirmed byte-identical after the head -40 fix; bin-manifest regeneration confirmed"
+  - "pending-resume population unchanged (diff)"
+  - "QA independently re-runs the residual #10 simulation"
+  - "QA confirms token-watcher.py now fails CLOSED, not merely 'looks fixed'"
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # always; the task defines a zero-trust QA gate that may REJECT (blocks like INCONCLUSIVE)
+  - "ACOS-security-reviewer"  # fail-open -> fail-CLOSED gate change
+
+# Effort estimate
+effort_estimate: "M"
+# M = 1-3 hours: three surgical fixes with simulations + two probes + evidence bundle
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Evidence bundle path: .acos/evidence/2026-07-16/resurrection-phase0/prereq-fixes/
+  7-part bundle: (1) Implementation Summary; (2) Requirements Traceability to
+  spec FR-* / tech_prd TR-*; (3) Structural Quality Evidence; (4) Functional/
+  structural checks (verification_method above); (5) Security/Compliance notes;
+  (6) Operational/Runtime considerations; (7) Self-assessment (confidence +
+  known limitations).
+  QA may REJECT and require rework until the gates pass; a reject blocks the
+  slice like an INCONCLUSIVE reviewer.

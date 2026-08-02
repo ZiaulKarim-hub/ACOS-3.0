@@ -1,0 +1,55 @@
+slice_id: "SLICE-EDEN-05"
+story_id: "ST-004-eden-3"
+epic_id: "EP-004-eden-3"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Fidelity Floor & exempt-content classifier"
+objective: |
+  Encode the 8-invariant Fidelity Floor and the exempt-content rules so no simplification can
+  corrupt protected content (exact numbers, caveats, code, paths, citations, legal terms).
+
+acceptance_criteria:
+  - "[ ] On an adversarial finance battery (exact figure, pending-lien caveat, shell command, legal term, citation), a simplified answer preserves each verbatim."
+  - "[ ] Confidence is never inflated above source; no added claims (subset-only)."
+  - "[ ] The skill never re-simplifies an already-simplified answer (always re-derives from original)."
+  - "[ ] Exempt-content classes (data-model E3) are detected/passed byte-for-byte at every level."
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+  - ".claude/scripts/eden-exempt-check.py"
+
+files_prohibited:
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "This is the load-bearing QA gate for the whole feature's 0-fidelity-violation metric."
+  - "Classifier is stdlib regex/heuristic (no NLP dep) — flagged for extra QA scrutiny."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-05.md"
+
+technical_requirements:
+  - "8 invariants (research.md §3) referenced by the directive + QA; exempt detection via stdlib patterns."
+
+testing_requirements:
+  - "Adversarial finance battery with before/after showing each protected span survived; a negative over-simplification test."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+
+effort_estimate: "L"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-05. Demo 2. P0. ANY fidelity violation = REJECT. Maps M6.

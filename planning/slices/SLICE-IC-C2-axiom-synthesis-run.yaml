@@ -1,0 +1,113 @@
+slice_id: "SLICE-IC-C2-axiom-synthesis-run"
+story_id: "STORY-C1"
+epic_id: "EPIC-C"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Run the vendored synthesis engine over IC facts"
+objective: |
+  Drive the objection facts through the VENDORED synthesis engine copy at
+  .claude/skills/acos-investment-committee/scripts/synthesis/ (decircularize -> grade -> fuse ->
+  falsify -> resolve -> hash-chained ledger), including the independent DIFFERENT-discipline
+  refuter step, producing a per-claim ledger with truth states and preserved dissent -- with NO
+  runtime dependency on the acos-axiom-synthesis skill directory. The IC fact-builder's Axis-S
+  severity field flows through the run untouched and orthogonal to the engine's truth-grading.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] the vendored copy (substrate + pipeline + tests) exists at scripts/synthesis/ with a VENDORED_FROM.md recording the source path + git commit"
+  - "[ ] scripts/run_synthesis.py feeds ledger/facts-input.json into the VENDORED orchestrate.run() (stages 2-7), imported ONLY from the local scripts/synthesis/ copy"
+  - "[ ] run_synthesis.py has ZERO import/reference to .claude/skills/acos-axiom-synthesis/ at runtime (grep-clean)"
+  - "[ ] the vendored test_pipeline.py passes IN-TREE, proving the engine copy is intact"
+  - "[ ] the falsification-gate refuter is assigned to a DIFFERENT discipline than the raiser (or a fresh steelman pass) -- never an aggregator-LLM prose blend"
+  - "[ ] a hash-chained ledger + settled-objections.md are persisted for the fixture run"
+  - "[ ] verify_ledger confirms the hash chain is intact"
+  - "[ ] every objection fact reaches a truth state"
+  - "[ ] at least one same-fact conflict is preserved as `conflict` and NOT arbitrated away by a narrator"
+  - "[ ] the reduced-independence flag from de-circularization propagates correctly"
+  - "[ ] the Axis-S severity field (informational|limitation|material-risk|deal-breaker-candidate) is present on fact/claim records and is orthogonal to (does not alter) the engine's truth-grade"
+  - "[ ] zero edits to the vendored copy's logic relative to VENDORED_FROM.md's recorded source commit"
+  - "[ ] evidence bundle includes the synthesis transcript, verify_ledger output, the vendored test_pipeline.py pass log, VENDORED_FROM.md contents, and a preserved CONTESTED/UNRESOLVED example"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-C1-objection-fact-adapter-axis-s"
+      what_it_provides: "ledger/facts-input.json (the fact records this slice feeds into orchestrate.run()), including the Axis-S severity field this slice must carry through unmodified"
+      status: "complete"
+    - slice_id: "SLICE-IC-DIAG-01"
+      what_it_provides: "the one-time vendored synthesis-engine copy at scripts/synthesis/ + VENDORED_FROM.md this slice runs against (re-vendored here only if absent or stale)"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/run_synthesis.py"
+  - ".claude/skills/acos-investment-committee/scripts/synthesis/"
+
+files_prohibited:
+  - ".claude/skills/acos-axiom-synthesis/scripts/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY (one-time vendoring SOURCE only, NOT a runtime dependency): acos-axiom-synthesis scripts + tests, ledger/facts-input.json, domain-lattice engine-axiom-synthesis + proc-falsification-gate + anti-llm-aggregator-blend"
+  - "refuter MUST be a different discipline (falsification is the cross-examination step); subscription-only for any Task() refuter spawns"
+  - "Axis-S severity is domain-owned by the IC fact-builder (SLICE-IC-C1); this slice's role is to carry it through the synthesis run unmodified, not to redefine it"
+
+# Technical requirements
+technical_requirements:
+  - "orchestrate.run() is invoked as-is (stages 2 through 7) from the VENDORED scripts/synthesis/ copy, no engine logic modification"
+  - "ledger append-only; hash-chain must remain valid"
+  - "no runtime import path may resolve to .claude/skills/acos-axiom-synthesis/"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs the vendored test_pipeline.py in-tree and confirms it passes"
+  - "QA greps run_synthesis.py and its imports to confirm zero references to acos-axiom-synthesis/ at runtime"
+  - "QA runs verify_ledger independently and confirms the hash chain is intact (recompute)"
+  - "QA confirms every objection fact reached a truth state"
+  - "QA confirms at least one same-fact conflict is preserved as `conflict`, greps for any aggregator blend"
+  - "QA confirms the refuter discipline differs from the raiser"
+  - "QA confirms the Axis-S severity field exists on fact records and does not move the truth-grade"
+  - "QA confirms VENDORED_FROM.md records a real source path + git commit"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on a failing vendored test, a live runtime
+  dependency on acos-axiom-synthesis/, hash break, blended conflict, or any edit to the vendored
+  copy's logic; verify_ledger and the refuter-discipline check must both be recomputed
+  independently.
+  Ownership note: Axis-S severity is treated here as owned by SLICE-IC-C1's fact-builder (per
+  its slice_id suffix "-axis-s"); this slice only preserves/surfaces it through the synthesis
+  run. Flagged for architect confirmation since C1 is outside this update's scope.
+  Vendoring-sequencing note: the canonical design places the FIRST vendoring event in
+  SLICE-IC-DIAG-01 (the walking skeleton, which must prove reachability of a vendored engine
+  before any expert logic exists); this slice assumes that copy is already present and only
+  re-vendors defensively if it is missing or stale. Flagged for architect confirmation.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-C2-axiom-synthesis-run.md by
+  acos-preeng-classic Step 5; architect to review before execution.

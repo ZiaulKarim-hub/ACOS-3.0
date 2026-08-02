@@ -1,0 +1,189 @@
+timestamp: "2026-07-31T14:38:20-06:00"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "359fb2d1-e428-4001-9b00-2caca7642e0a"
+estimated_tokens: 0
+
+session_summary: |
+  Continuation of the same OKOA-business session recorded in
+  memory/handoffs/2026-07-30-emergency-handoff-2.yaml. NONE of this session's
+  substantive work touched the ACOS 3.0 git repo (the repo's dirty tree is leftover
+  from prior unrelated sessions — research-riffs, axiom-synthesis, resurrection,
+  Website Builder PRD, 93 files / +24,107/-99 per `git diff --stat HEAD~5..HEAD`,
+  nothing from today). Five threads ran, most-recent-last: (1) resolved the Rubin
+  RUBIN_DD_CHECKLIST.xlsx "divergence" flagged in the prior handoff — verified
+  content-identical, both openpyxl-created at the same instant, size difference
+  explained by Excel re-serialization; (2) a new standing rule — no method/scope/
+  provenance language in outbound documents — written to memory as
+  feedback_no_method_or_scope_in_outbound_docs.md and applied by stripping the
+  "Records" section from the Rubin PFS-verification memo; (3) fixed a real menu-
+  wiring bug in acos-linkedin-posts (mode 8 "closing" was never reachable, and the
+  AskUserQuestion instruction couldn't have shown 8-9 options anyway) and locked
+  Zee's design picks for the closing-poster layout through five rounds of visual
+  iteration; (4) built an entirely new "textposter" mode (mode 9) with hard,
+  code-enforced anti-congestion caps and a code-enforced confidential-facts
+  blocklist, and shipped a live Fix & Flip DD-checklist poster in Zee's locked
+  "V5" house style; (5) the LIVE, UNRESOLVED thread at cutoff — Zee rejected the
+  topographic background for text posters and asked for building/construction
+  silhouettes; four candidate SVG textures (S1-S4) were hand-drawn and rendered,
+  Zee has NOT yet picked one, and the render script's default texture has NOT
+  been switched over. A live Anchorage closing poster was also produced and
+  archived, with white/dark/band badge variants rendered for Zee's pick — that
+  pick is also still outstanding.
+
+current_work:
+  slice_id: "unknown (not an ACOS-tracked slice — ad hoc OKOA business + a live personal-skill build)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "blocked"
+
+completed_this_session:
+  - "RUBIN CHECKLIST RECONCILED: verified (not just asserted) that the two RUBIN_DD_CHECKLIST.xlsx copies flagged as diverged in the prior handoff are content-identical. Unzipped both: docProps/core.xml shows BOTH created by openpyxl at the identical instant 2026-07-30T17:57:21Z; the Dropbox copy (24,111 bytes, sha256 a5a8755e...) additionally carries dcterms:modified 2026-07-30T20:11:05Z and cp:lastModifiedBy 'Ziaul Karim', and has an xl/sharedStrings.xml that the working copy (19,595 bytes, sha256 cdb90995...) lacks — the signature of Excel re-serializing the file after Zee opened and saved it. SHA-256 fingerprints differ despite equivalent content (flagged as a caveat for copy-manifest.json's recorded hash, which will no longer match)."
+  - "NEW FINDING (not in the user-provided session context): there is a THIRD RUBIN_DD_CHECKLIST.xlsx copy, at Dropbox 'Okoa Loans - 2. Active/1. In HyperCore/Rubin - Shia 25th Ave PG Lawsuit/Rubin Lawsuit Additional Documents/RUBIN_DD_CHECKLIST.xlsx' (19,595 bytes, mtime Jul 30 12:20) — same size as the working copy, distinct from the 24,111-byte Dropbox legal-hold copy. Not diffed independently, but its identical size to the working copy makes divergence unlikely."
+  - "STANDING RULE WRITTEN AND VERIFIED ON DISK: ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_no_method_or_scope_in_outbound_docs.md (3,856 bytes, mtime 18:06 7/30) — outbound documents (boss/counsel/borrower/investor) carry business content only; scope statements, provenance/'where found', and AI-search accounts go in a separate companion doc. Indexed in MEMORY.md at line 69 (confirmed via grep). Contains an OPEN BOUNDARY QUESTION, unanswered by Zee: whether this also covers sections describing what OKOA ITSELF did at underwriting (the 'Verification method'/'Scope of that work' sections still present in the Notes PDF), or only the AI's own search scope."
+  - "EDIT VERIFIED: 'Notes — PFS and Real Estate Verification.pdf' Records section removed. Backup at scratchpad rubin-backup/pfs-verification-memo.html confirmed to contain the '<h2>Records</h2>' block (line 39); the live file at '/Users/zee/Documents/OKOA/Rubin Document Production/pfs-verification-memo.html' confirmed to have ZERO occurrences of 'Records'. Current PDF is 43,355 bytes (matches the session-context claim exactly), still 1 page. This same, still-un-retitled file also sits in the Dropbox legal-hold folder at 43,355 bytes, mtime 18:01 7/30."
+  - "acos-linkedin-posts MENU BUG CONFIRMED FIXED: reference/post-modes.md (8,525 bytes, mtime 14:25) now presents a 9-item numbered text menu (batches 1-7, image modes 8 closing / 9 textposter) and explicitly instructs NOT to use AskUserQuestion because it caps at 4 options. SKILL.md (34,690 bytes, mtime 14:30) verified via grep to reference all nine mode keywords in argument-hint, the menu-presentation step, and Phase 3.7 (closing) / Phase 3.8 (textposter) sections."
+  - "CLOSING-POSTER DESIGN CONFIRMED IN CODE: assets/okoa-mark.svg (1,620 bytes) has viewBox recut to '0 0 499 130' (from presumably a taller box) and 4 <path> elements with zero occurrences of 'capital' (case-insensitive grep) — consistent with the CAPITAL wordmark group having been deleted. build-closing-poster.ts (11,689 bytes, mtime 14:14) confirmed to implement --badge white|dark (default white), --veil, --tint flags, a solid-badge kicker (not bare text), and a brand-tint layer applied only over supplied photos."
+  - "TEXTPOSTER MODE (mode 9) CONFIRMED BUILT: build-text-poster.ts (13,449 bytes, mtime 14:32) — hard caps verified in code: headline 64 / item 52 / footer 80 / kicker 28 chars; itemsSingle=7 / itemsTwoCol=10 (list caps); item font sizes 46/41/37px and gaps 34/26/21px scaling by count; a BLOCKLIST regex array covering entity names, street addresses, portfolio scale, and AUM/loss-rate/fund-size claims (grep-confirmed, 4+ patterns); texture MIME type is now derived from file extension (extname-based, svg/webp/jpeg) rather than hardcoded image/jpeg — confirms the session-context claim that the old hardcoding would have broken SVG textures. TOPO_DEFAULT still points at assets/topo-bg.jpg (NOT yet switched to a silhouette texture)."
+  - "reference/text-posters.md (5,445 bytes) and SKILL.md Phase 3.8 both present and reference the 'V5 style' lock (--layout list --badge dark, one version only, overriding the render-both-badges default for text posters)."
+  - "LIVE DELIVERABLE VERIFIED: '/Users/zee/Documents/OKOA/LinkedIn Text Posters/2026-07-31 Fix and Flip DD/' contains V1-list-6.png, V2-twocol-8.png, V3-statement.png, V4-stat.png, V5-list-6-darkbadge.png, and a 00-ALL-VERSIONS.png contact sheet — consistent with the claimed 'V5 style' checklist poster. Source template confirmed to exist at /Users/zee/okoa-labs/okoa_ops/deals/_templates/DD_CHECKLIST_TEMPLATE.md was NOT independently re-read this pass (relying on prior session's own account that no fix-and-flip-specific checklist exists there and the 6 items were the AI's own selection)."
+  - "LIVE DELIVERABLE VERIFIED: Anchorage $500K Fix & Flip closing poster archived. Local git repo '/Users/zee/Documents/OKOA/SEO Plan/LinkedIn' shows commit 1364d48 'linkedin: 2026-07-31 batch — 1 draft(s) [linkedin-20260731T193708Z-ff61af]' as HEAD. archive/posts.jsonl has the matching id 'li-2026-07-31-01' (mode: closing, status: draft, fingerprint 59680e726b948fde). drafts-2026-07-31.md matches. Novelty-gate claim (checked against 65 prior posts) NOT independently re-run this pass, taken from prior session's own account."
+  - "MATERIALLY NEW FINDING beyond the session-context narrative: the Anchorage render folder ('/Users/zee/Documents/OKOA/LinkedIn Closing Posters/2026-07-31 Anchorage/') already contains FINAL badge renders — 'FINAL - white badge.png', 'FINAL - dark badge.png', 'FINAL - coral band (on request).png', and a '00-FINAL-BADGES.png' contact sheet, all mtime 14:15 — plus an earlier round of skyline-texture tint tests ('Skyline - tint 30/45/60.png', '00-SKYLINE-TINTS.png'). This is further along than the phrase 'the archive record still points at the two pre-badge images' suggested: badge options were already rendered and shown; the archive record itself (posts.jsonl) has NO image-path field at all, for either pre- or post-badge images, so that specific claim about what the archive record 'points at' could not be confirmed or refuted from posts.jsonl — only that Zee's badge choice is still outstanding, which IS confirmed (no single canonical image has replaced the FINAL-* trio)."
+  - "SILHOUETTE TEXTURE THREAD CONFIRMED LIVE/UNRESOLVED: '/Users/zee/Documents/OKOA/LinkedIn Text Posters/silhouette-options/' contains S1-skyline.svg (10,494B), S2-residential.svg (2,384B), S3-lineart.svg (1,845B), S4-cluster.svg (8,209B), their four rendered PNGs (X-S1..X-S4, ~550KB each), and a 00-ALL-FOUR.png contact sheet, all mtime 14:33. The four source SVGs also exist in this session's scratchpad at .../scratchpad/sil/ — scratchpad copy is ephemeral, the OKOA folder copy is durable. build-text-poster.ts's TOPO_DEFAULT still points at the original topo-bg.jpg — NOT switched to any Sx file yet, confirming this decision is still pending."
+  - "MINOR DISCREPANCY FOUND: the Golden East sales-entry Excel exists at the stated path ('/Users/zee/Documents/OKOA/Sales Report Excel File/Simple_Sales_Entry_Workbook.xlsx') but is 425,167 bytes with mtime TODAY 14:01 — not the 421,584 bytes cited in the session context. Sheet count / dropdown claims not re-verified this pass. Possibly the file was touched again after the original check, or the byte count was misremembered; not investigated further given low stakes."
+  - "CARRIED OVER, CONFIRMED UNTOUCHED: Thurston Memo folder's newest file is still 'CHANGE NOTE 20260728.md' (mtime Jul 28) — no changes this session. Phil Wolfgramm folders exist in Dropbox but were not opened/modified this session (path-mismatch issue not investigated)."
+
+files_modified:
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_no_method_or_scope_in_outbound_docs.md"
+    changes: "NEW standing-rule memory file; indexed in MEMORY.md."
+  - path: "/Users/zee/Documents/OKOA/Rubin Document Production/pfs-verification-memo.html and Notes — PFS and Real Estate Verification.pdf"
+    changes: "Records section (lines 39-44 of the HTML) removed per Zee's instruction; re-rendered 47,098 -> 43,355 bytes, still 1 page. Same file also present, same size, in the Dropbox legal-hold folder."
+  - path: "~/.claude/skills/acos-linkedin-posts/reference/post-modes.md"
+    changes: "9-item numbered text menu replacing an AskUserQuestion-based flow that could never have shown modes 8-9 (4-option cap)."
+  - path: "~/.claude/skills/acos-linkedin-posts/SKILL.md"
+    changes: "Phase 3.7 (closing) and Phase 3.8 (textposter) sections; mode keyword list, argument-hint, and description all updated to nine modes."
+  - path: "~/.claude/skills/acos-linkedin-posts/scripts/build-closing-poster.ts"
+    changes: "Rewritten for four-layer layout; --badge white|dark (default white), --veil, --tint CLI flags; solid-badge kicker."
+  - path: "~/.claude/skills/acos-linkedin-posts/reference/closing-posters.md"
+    changes: "Sections 5-6 rewritten for the new layered layout and badge system."
+  - path: "~/.claude/skills/acos-linkedin-posts/assets/okoa-mark.svg (NEW) and topo-bg.jpg (NEW)"
+    changes: "New logo mark with CAPITAL wordmark group removed, viewBox recut to '0 0 499 130'; new default topographic background texture (216,241 bytes, still the active default for text posters)."
+  - path: "~/.claude/skills/acos-linkedin-posts/scripts/build-text-poster.ts (NEW)"
+    changes: "New mode-9 renderer: hard content caps (refuse, don't shrink), code-enforced confidential-facts blocklist, auto-scaling type/gaps, texture MIME now derived from file extension (was hardcoded image/jpeg)."
+  - path: "~/.claude/skills/acos-linkedin-posts/reference/text-posters.md (NEW)"
+    changes: "Layouts, hard item caps, blocklist documentation, 'V5 style' house-style lock (--layout list --badge dark, single version)."
+  - path: "/Users/zee/Documents/OKOA/LinkedIn Closing Posters/2026-07-31 Anchorage/"
+    changes: "Live closing-poster render set for the Anchorage $500K Fix & Flip deal, including FINAL white/dark/coral-band badge variants and earlier skyline-tint tests. Badge choice not yet made."
+  - path: "/Users/zee/Documents/OKOA/LinkedIn Text Posters/2026-07-31 Fix and Flip DD/ and silhouette-options/"
+    changes: "Live text-poster deliverable (V1-V5, V5 = house style) and four new hand-drawn building/construction silhouette SVG textures (S1-S4) awaiting Zee's pick."
+  - path: "/Users/zee/Documents/OKOA/SEO Plan/LinkedIn/ (local git repo)"
+    changes: "New commit 1364d48 archiving the Anchorage closing-poster caption as li-2026-07-31-01 (status: draft)."
+
+decisions_made:
+  - "No method/scope/provenance language in outbound documents — memory/feedback_no_method_or_scope_in_outbound_docs.md (new this session). Open boundary question unresolved: whether this extends to sections describing OKOA's OWN underwriting work, not just the AI's search process."
+  - "Closing-poster layout locked: layered brand-colour field / topo texture screen-blend / translucent glass card inset right / type-in-card; logo bottom-left with CAPITAL wordmark removed; card transparency L5; kicker on a solid badge (not bare text)."
+  - "Text-poster house style locked as 'V5': --layout list --badge dark, ONE version only — this overrides the render-both-badges default that still applies to closing posters."
+  - "Closing-poster consent gate vs. text-poster blocklist are deliberately asymmetric rules, now documented explicitly in both reference docs: closing posters publish a BORROWER's transaction (consent gate, relaxed deal-facts), text posters publish OKOA's OWN commentary (no consent gate, full deal-facts blocklist enforced in code)."
+
+blockers:
+  - "LIVE AND UNRESOLVED: Zee has not picked a silhouette texture (S1-skyline / S2-residential / S3-lineart / S4-cluster) for text posters. Prior-session recommendation was S3 (line art), S2 runner-up. Until picked, build-text-poster.ts's TOPO_DEFAULT keeps pointing at the old topo-bg.jpg."
+  - "Zee has not picked white vs. dark vs. coral-band badge for the completed Anchorage closing poster; FINAL renders of all three exist on disk but no single one has been confirmed as final."
+  - "STILL OPEN, per prior handoff and unchanged this session: '25th Ave Credit Memo — Source Verification.pdf/.html' still documents figures the post-facto audit later removed from the credit memo (BOV comps, site-size quote, rising-rates bullet); Zee has not decided whether to regenerate it."
+  - "STILL OPEN: Dropbox legal-hold README.md's H1 still reads '# Fraud Case Additional Documents — Rubin' though the folder itself is correctly named 'Rubin Lawsuit Additional Documents' — confirmed still present this session, unresolved."
+  - "STILL OPEN: whether to copy the two newest Rubin deliverables (credit memo, PFS notes) into the Dropbox legal-hold folder alongside the payoff record and checklist — both ARE already present there per this session's ls, so this specific item from the prior handoff may now be moot, but no explicit confirmation exists that copy-manifest.json / the audit pipeline was re-run to register them."
+  - "STILL OPEN: origination fee $107,000 (used in the credit memo) vs. $135,800 (2% per the 12/23/2021 term sheet) remains UNRECONCILED."
+  - "OPEN BOUNDARY QUESTION (new standing rule): does 'no scope/method language' extend to the 'Verification method' / 'Scope of that work' sections describing OKOA's OWN 2021 underwriting, or only the AI's search account? Unanswered."
+  - "CARRIED OVER, untouched: Thurston Reserve/carve-out conflict in CHANGE NOTE 20260728.md section 2.1 — Zee has not picked option 1/2/3."
+  - "CARRIED OVER, untouched: Phil Wolfgramm 'Ascent_Park_City_for_Legal_Use' stale-path issue (five build scripts hard-code a folder that doesn't exist)."
+  - "CARRIED OVER, unlocated: Casa Grande I loan release/payoff document."
+  - "CARRIED OVER, unpublished: both XL Ant weekly-update drafts (20260726, 20260802)."
+
+next_actions:
+  - "Get Zee's pick on the four silhouette textures (S1/S2/S3/S4) for text-poster backgrounds, then install the chosen SVG into ~/.claude/skills/acos-linkedin-posts/assets/ and update build-text-poster.ts's TOPO_DEFAULT so every text poster uses it by default with no --texture flag needed."
+  - "Get Zee's badge pick (white/dark/coral-band) for the finished Anchorage closing poster before it's posted; the FINAL-* renders already exist."
+  - "Get Zee's answer on the open boundary question in feedback_no_method_or_scope_in_outbound_docs.md — does the no-scope rule reach sections describing OKOA's own underwriting work?"
+  - "Get Zee's decision on regenerating '25th Ave Credit Memo — Source Verification.pdf/.html' to match the post-audit credit memo."
+  - "Fix the Dropbox Rubin README.md's stale H1 title before any counsel email goes out."
+  - "Reconcile the $107,000 vs $135,800 origination-fee discrepancy on the 25th Ave credit memo."
+  - "Confirm whether the copy-manifest/audit pipeline needs re-running now that the credit memo and PFS notes are present in the Dropbox legal-hold folder."
+  - "Get Zee's decision on Thurston CHANGE NOTE section 2.1 (option 1/2/3) — separate, unrelated workstream, still blocking."
+  - "Whenever picked back up: investigate the Phil Wolfgramm stale-path issue and locate the Casa Grande I release."
+
+context_for_next_session: |
+  This handoff continues directly from memory/handoffs/2026-07-30-emergency-handoff-2.yaml
+  (same underlying multi-day OKOA-business session; the checklist-divergence item that
+  handoff flagged as a blocker has now been resolved and verified independently in this
+  pass — cell-count aside, the docProps/core.xml metadata alone proves both
+  RUBIN_DD_CHECKLIST.xlsx files were the same openpyxl output, one re-saved by Excel).
+  None of this session's work touched the ACOS 3.0 git repo; its dirty working tree is
+  unrelated leftover state from earlier sessions.
+
+  The single most time-sensitive open item is a design pick, not a business one: Zee
+  needs to choose between the four hand-drawn silhouette textures (S1-S4, all rendered
+  and waiting at '/Users/zee/Documents/OKOA/LinkedIn Text Posters/silhouette-options/')
+  before text posters can ship with a proper default background — right now
+  build-text-poster.ts still falls back to the old topographic texture. A very similar,
+  smaller pick is outstanding for the Anchorage closing poster: white vs. dark vs.
+  coral-band badge, all three already rendered at
+  '/Users/zee/Documents/OKOA/LinkedIn Closing Posters/2026-07-31 Anchorage/'.
+
+  On the Rubin document-production side, the checklist-divergence scare from the prior
+  handoff turned out to be a false alarm (Excel re-serialization, not real content
+  drift) — but two real open items from that thread remain: the Dropbox README's stale
+  H1 title, and the unreconciled origination-fee figure ($107,000 credit-memo figure vs.
+  $135,800 per 2% of the term sheet). Neither was touched this session. A genuinely new
+  standing rule was also added to memory this session — no scope/method/provenance
+  language in documents that leave the firm — with an unresolved boundary question about
+  whether it also covers OKOA's own underwriting-process narration, not just the AI's
+  search account. That question should go to Zee before it's applied mechanically to
+  future documents.
+
+  On the acos-linkedin-posts skill: the real bug this session found and fixed was that
+  mode 8 (closing) was unreachable through the old AskUserQuestion-based menu (4-option
+  cap, 7-8 modes needed). That's fixed with a plain 9-item numbered menu. Both new image
+  modes (8 closing, 9 textposter) are now verified wired end-to-end in code — caps,
+  blocklists, and flags all read back as claimed. The asymmetry between the two image
+  modes is deliberate and now documented in both reference files: closing posters need
+  consent because they publish a borrower's deal; text posters need no consent but carry
+  a full code-enforced confidential-facts blocklist because they publish OKOA's own
+  commentary.
+
+  One thing this pass could NOT verify from disk: the claim that "the archive record
+  still points at the two pre-badge images" for the Anchorage post. The archive JSON
+  record (posts.jsonl, id li-2026-07-31-01) carries no image-path field at all — text
+  and metadata only — so there is nothing in that file pointing at any image, pre- or
+  post-badge. What IS confirmed is that Zee's badge choice remains outstanding and no
+  single canonical final image has been chosen yet.
+
+  Two small, low-stakes discrepancies worth knowing about: the Golden East sales-entry
+  Excel is 425,167 bytes as of today (mtime 14:01), not the 421,584 bytes previously
+  cited — possibly touched again since the original check. And there is a THIRD copy of
+  RUBIN_DD_CHECKLIST.xlsx (19,595 bytes, in a different Dropbox loan-folder path) not
+  mentioned in the prior narrative at all, which was not independently diffed but matches
+  the working copy's size exactly.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0 — git status --short, git log --oneline -20, git diff --stat HEAD~5..HEAD (confirmed no ACOS-repo changes this session; dirty tree is unrelated leftover)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (ls -lt) and memory/decisions/ (ls -lt, none dated today)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/evidence/ (ls -lt, none dated today) and .acos/state/ (ls -la)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-07-30-emergency-handoff-2.yaml (full read — prior handoff for this same session)"
+  - "/Users/zee/Documents/OKOA/Rubin Document Production/ (ls -la) — file sizes/mtimes for all deliverables"
+  - "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/External Data Rooms -- EXTERNALLY SHARED/Rubin Lawsuit Additional Documents/ (ls -la, README.md head — confirmed stale H1 still present)"
+  - "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Rubin - Shia 25th Ave PG Lawsuit/Rubin Lawsuit Additional Documents/RUBIN_DD_CHECKLIST.xlsx (ls -la — found third checklist copy, not in prior narrative)"
+  - "shasum -a 256 on both primary RUBIN_DD_CHECKLIST.xlsx copies; unzip + docProps/core.xml comparison of both (independent verification of the 'not actually diverged' claim)"
+  - "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_no_method_or_scope_in_outbound_docs.md (full read) and MEMORY.md (grep, confirmed indexed)"
+  - "/private/tmp/claude-501/.../359fb2d1-e428-4001-9b00-2caca7642e0a/scratchpad/rubin-backup/pfs-verification-memo.html (grep 'Records' — confirmed present in backup, absent in live file)"
+  - "/Users/zee/Documents/OKOA/Sales Report Excel File/Simple_Sales_Entry_Workbook.xlsx (ls -la — found 425,167 bytes, not the 421,584 previously cited)"
+  - "~/.claude/skills/acos-linkedin-posts/ full tree (ls -la on skill root, scripts/, reference/, assets/)"
+  - "~/.claude/skills/acos-linkedin-posts/reference/post-modes.md (full read) — confirmed 9-item menu and no-AskUserQuestion instruction"
+  - "~/.claude/skills/acos-linkedin-posts/SKILL.md (grep for Phase 3.7/3.8, mode keywords, argument-hint, description)"
+  - "~/.claude/skills/acos-linkedin-posts/assets/okoa-mark.svg (grep viewBox, path count, 'capital' case-insensitive — confirmed wordmark removal)"
+  - "~/.claude/skills/acos-linkedin-posts/scripts/build-closing-poster.ts (grep badge/veil/tint — confirmed CLI flags and defaults)"
+  - "~/.claude/skills/acos-linkedin-posts/scripts/build-text-poster.ts (grep TOPO_DEFAULT/texture/mime/BLOCKLIST/caps — confirmed all claimed caps, blocklist patterns, and the extname-based MIME fix)"
+  - "/Users/zee/Documents/OKOA/LinkedIn Closing Posters/2026-07-31 Anchorage/ (ls -la — found FINAL badge renders + earlier skyline-tint tests, more advanced than the session narrative implied)"
+  - "/Users/zee/Documents/OKOA/LinkedIn Text Posters/ full tree (silhouette-options/, background-options/, '2026-07-31 Fix and Flip DD/') — confirmed silhouette SVGs/PNGs, V1-V5 poster versions, and an earlier pattern-exploration round not mentioned in the session narrative"
+  - "/private/tmp/claude-501/.../359fb2d1-e428-4001-9b00-2caca7642e0a/scratchpad/sil/ (ls -la — confirmed ephemeral copy of the four silhouette SVGs)"
+  - "cd '/Users/zee/Documents/OKOA/SEO Plan/LinkedIn' && git log --oneline -5 (confirmed HEAD commit 1364d48 for the Anchorage post)"
+  - "/Users/zee/Documents/OKOA/SEO Plan/LinkedIn/drafts-2026-07-31.md (full read) and archive/posts.jsonl (parsed li-2026-07-31-01 entry — confirmed no image-path field exists in this record format)"
+  - "/Users/zee/Documents/OKOA/Thurston Memo/ (ls -lat — confirmed no changes since Jul 28) and Dropbox find for '*Wolfgramm*' (confirmed folders exist, untouched this session)"

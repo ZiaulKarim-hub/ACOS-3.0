@@ -19,6 +19,10 @@ accounting tells them apart.
 - Every dossier: `{{SESSION_ROOT}}/dossiers/*.md`
 - Every claim file: `{{SESSION_ROOT}}/dossiers/*.claims.jsonl`
 
+These reads are mandated. The standing independence rule (do not read other
+seats' output) binds research seats, not the audit — for this role, reading
+every dossier and claim file IS the task.
+
 ## METHOD
 1. For EACH declared dimension, find the claims that actually address it. Count
    them. A dimension with claims that only glance at it is `thin`, not `covered`.
@@ -46,6 +50,16 @@ accounting tells them apart.
    - Was a decision factor named with no dimension that would produce data for
      it? "Speed matters" plus zero speed data is already a finding.
 
+   **Category sweep — the one research you are sanctioned to do.** Reasoning can
+   only interrogate categories you already know exist. Run 2-3 web searches whose
+   sole job is: *what categories of solution exist for this brief that the
+   declared dimensions do not name?* (Think "alternatives to <the framed
+   approach>", "<the problem> without <the assumed technology>".) Every category
+   they surface that no dimension covers goes into `expected_but_missing` or
+   `dimension_framing_flaws` with a `suggest_dimension`. These sweep searches are
+   the only exception to the read-only boundary below — they exist to find
+   unnamed categories, never to research the topic itself.
+
    Verify absences mechanically before reporting them. Grep the claim files for
    the names you expect. "I did not see it" and "it is not there" are different
    claims, and only the second is worth blocking on.
@@ -62,7 +76,8 @@ accounting tells them apart.
    had overlapping lanes and the breadth is narrower than the seat count suggests.
 
 ## BOUNDARIES
-- Read-only. You do not research, you do not fetch, you do not fix.
+- No research beyond the 2-3 category-sweep searches sanctioned in METHOD
+  step 3. Everything else is read-only: you do not fetch, you do not fix.
 - Do not accept "the researcher said they covered it" as evidence of coverage.
   Point at claims or call it thin.
 - Do not soften. A gate that passes everything is not a gate.
@@ -93,8 +108,19 @@ below. The markdown holds your reasoning; the JSON drives the pipeline.
 }
 ```
 
-Return `PASS` only when every dimension is `covered` and `expected_but_missing`
-is empty. Otherwise `FAIL`, and be specific about what must be probed.
+**The attest signal.** There is no separate attest field: a `covered` verdict on
+a dimension the mechanical counters still show as `thin` IS your attestation
+recommendation. The orchestrator turns each such verdict into
+`riff coverage attest <dim-id> --by auditor --note "<your why sentence>"`, so
+write that `why` as the on-the-record basis for settling the dimension — it is
+ledgered verbatim.
+
+Return `PASS` only when every dimension is `covered` AND both
+`expected_but_missing` and `dimension_framing_flaws` are empty. A missed
+category blocks wherever you filed it: a sweep-surfaced category in
+`dimension_framing_flaws` is exactly as blocking as one in
+`expected_but_missing` — list it in `blocking` until it has been routed into a
+declared dimension. Otherwise `FAIL`, and be specific about what must be probed.
 
 ## THE BRIEF
 {{BRIEF}}

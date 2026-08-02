@@ -1,0 +1,339 @@
+{
+  "feature_id": "005-resurrection-protocol",
+  "epics": [
+    {
+      "id": "EPIC-0",
+      "title": "Phase-0 prerequisites & probe battery",
+      "goal": "Settle the UNVERIFIED cmux behaviors and close the pre-existing bugs the registry would make routine. THE DIAGNOSTIC SLICE (problem-before-solution).",
+      "stories": [
+        {
+          "id": "STORY-0.1",
+          "title": "Settle the platform and close the pre-existing bugs",
+          "user_value": "As the operator, I need the cmux behaviors verified and residual #10 / head-40 / P1-F fixed before the registry makes two-panes-one-project routine.",
+          "slices": [
+            "SLICE-00-probe",
+            "SLICE-01-prereq-fixes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-1",
+      "title": "Registry core",
+      "goal": "The book exists, is derived/generated, and rebuilds from disk (16/16).",
+      "stories": [
+        {
+          "id": "STORY-1.1",
+          "title": "The book exists and rebuilds from disk",
+          "user_value": "As the operator, I need every marker directory to become a derived, generated registry row that survives a force-quit and rebuilds from disk alone.",
+          "slices": [
+            "SLICE-10-registry-lib",
+            "SLICE-11-enroll",
+            "SLICE-12-rebuild",
+            "SLICE-13-seed-curate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-2",
+      "title": "Safe close",
+      "goal": "Closing is verified zero-loss: enrich-not-create, receipt read back from disk, validated fail-closed workspace.close.",
+      "stories": [
+        {
+          "id": "STORY-2.1",
+          "title": "Closing is verified zero-loss",
+          "user_value": "As the operator, I need closing a tab to enrich my row, prove zero-loss by reading receipts back from disk, and close the tab as the literal last act.",
+          "slices": [
+            "SLICE-20-close",
+            "SLICE-21-safe-close-skill",
+            "SLICE-22-blind-roundtrip"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-3",
+      "title": "The menu (Resurrection Protocol proper)",
+      "goal": "Coming back is a fresh book that focuses an open project (never duplicates) or launches a parked one at its own root.",
+      "stories": [
+        {
+          "id": "STORY-3.1",
+          "title": "Coming back is a menu that focuses, never duplicates",
+          "user_value": "As the operator, I need a fresh honest book that focuses an open project (constant workspace count) or launches a parked one at its own root with verified reentry.",
+          "slices": [
+            "SLICE-30-resurrect-view",
+            "SLICE-31-launch",
+            "SLICE-32-menu-skill-loop"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-4",
+      "title": "DR-1 ship gate",
+      "goal": "Prove ONE recorded close->resume round-trip on a real project with user-confirmed continuity. Nothing ships until it exists.",
+      "stories": [
+        {
+          "id": "STORY-4.1",
+          "title": "Prove one real restore before asking for the habit",
+          "user_value": "As the operator, I will not trust the tool until I have watched one real close->resume round-trip continue my actual work.",
+          "slices": [
+            "SLICE-40-dr1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-5",
+      "title": "(DP1-conditional, optional) Browser window",
+      "goal": "An always-glanceable dashboard, only if the menu earns it.",
+      "stories": [
+        {
+          "id": "STORY-5.1",
+          "title": "(optional) always-glanceable browser dashboard",
+          "user_value": "As the operator, I might want a glanceable dashboard that does not occupy a Claude session \u2014 only if the terminal menu earns it.",
+          "slices": [
+            "SLICE-50-browser"
+          ]
+        }
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "SLICE-00-probe",
+      "epic": "EPIC-0",
+      "story": "STORY-0.1",
+      "title": "cmux 0.64.19 probe battery + DP2 sacrificial tests",
+      "demo": "Diagnostic (blocks all builds)",
+      "vertical_value": "Settles the UNVERIFIED platform behaviors every downstream guard depends on; without it the close skill cannot ship.",
+      "acceptance_criteria": [
+        "In-pane hook firing on 0.64.19 observed and archived",
+        "rpc workspace.list JSON shape captured; text form never parsed",
+        "--description verbatim round-trip captured",
+        "workspace.select focus behavior recorded",
+        "DP2 results (live-close prompt?, last-workspace behavior, customDescription restart survival) recorded and used to parameterize the Phase-2 guards"
+      ],
+      "verification_method": "Pasted command outputs archived to .acos/evidence/2026-07-16/resurrection-phase0/; each probe workspace closed after; written answers for the DP2 questions.",
+      "evidence_bundle": ".acos/evidence/2026-07-16/resurrection-phase0/",
+      "task_file": "tasks/SLICE-00-probe.md"
+    },
+    {
+      "id": "SLICE-01-prereq-fixes",
+      "epic": "EPIC-0",
+      "story": "STORY-0.1",
+      "title": "Close the pre-existing bugs the registry would make routine",
+      "demo": "Diagnostic (blocks all builds)",
+      "vertical_value": "Fixes residual #10 BEFORE the registry makes two-panes-one-project routine; removes two live silent-failure sources.",
+      "acceptance_criteria": [
+        "With two sessions on one project, session B is never offered session A's resume via path (3) (transcript archived)",
+        "A handoff generated now lists count == git status --porcelain | wc -l, or prints the explicit truncation line; both copies fixed; bin-manifest regenerated",
+        "A surface-less artifact is now REJECTED by the gate; the marker rename/restore no longer re-arms fail-open; bin-manifest regenerated",
+        "147-run provenance answer written to evidence (adjust adoption expectation if hook-fired)",
+        "--command shell-parse-vs-exec result documented"
+      ],
+      "verification_method": "Archived before/after transcripts for each fix; git diff of the two repo-tracked scripts; bin-manifest regen confirmed; pending-resume population unchanged (diff).",
+      "evidence_bundle": ".acos/evidence/2026-07-16/resurrection-phase0/prereq-fixes/",
+      "task_file": "tasks/SLICE-01-prereq-fixes.md"
+    },
+    {
+      "id": "SLICE-10-registry-lib",
+      "epic": "EPIC-1",
+      "story": "STORY-1.1",
+      "title": "registry_lib.py: atomic write, schema, casefold index, inode re-link, tombstone, audit",
+      "demo": "Demo 1 (enrollment)",
+      "vertical_value": "The durable substrate: a per-project write that a crash or a second writer can never corrupt silently.",
+      "acceptance_criteria": [
+        "Contention crash-test 6x60 -> 0 errors, 0 torn (mirrors the measured 180/360 -> 0)",
+        "A truncated file load fails LOUDLY (JSON), never a silent partial",
+        "Re-link by (st_dev,st_ino) heals a moved root instead of tombstoning it",
+        "Audit append is one os.write per line; ordering preserved"
+      ],
+      "verification_method": "Crash-test output archived; unit checks for casefold lookup, inode re-link, and loud-truncation; stdlib-only import audit.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-10-registry-lib/",
+      "task_file": "tasks/SLICE-10-registry-lib.md"
+    },
+    {
+      "id": "SLICE-11-enroll",
+      "epic": "EPIC-1",
+      "story": "STORY-1.1",
+      "title": "enroll-project.sh + additive SessionStart hook + cwd==root assertion",
+      "demo": "Demo 1 (enrollment)",
+      "vertical_value": "Membership on first sight: the book is populated before any close ever runs (survives force-quit, DR-8).",
+      "acceptance_criteria": [
+        "New session in a marker dir -> a row file appears in ~/.acos/registry.d/ with all fields derived",
+        "Session in a scratchpad/non-marker dir -> no row",
+        "Second session in the same project -> same uuid, no duplicate row; .acos/project-id written exactly once",
+        "cwd!=root logs loudly and does not silently continue"
+      ],
+      "verification_method": "Archived transcripts of the four cases; the SessionStart hook shown additive (diff of settings.json); enrollment timed O(1).",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-11-enroll/",
+      "task_file": "tasks/SLICE-11-enroll.md"
+    },
+    {
+      "id": "SLICE-12-rebuild",
+      "epic": "EPIC-1",
+      "story": "STORY-1.1",
+      "title": "rebuild-registry.py: reproduce the 16/16 baseline reading no registry file (+ DP5 seeder)",
+      "demo": "Demo 1 (enrollment)",
+      "vertical_value": "A derived index cannot dangle: rebuild DELETES the 55%-dangling-pointer class instead of mitigating it.",
+      "acceptance_criteria": [
+        "Dry-run lists >=18 candidates across both parents including the Vibe Coding-root anomaly (flagged, not auto-enrolled)",
+        "Reproduces the 16/16-row baseline reading no registry file",
+        "Output reconciles with the rows enrollment creates later"
+      ],
+      "verification_method": "Dry-run output archived; 16/16 reconstruction diffed against enrollment-created rows; anomaly flag shown.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-12-rebuild/",
+      "task_file": "tasks/SLICE-12-rebuild.md"
+    },
+    {
+      "id": "SLICE-13-seed-curate",
+      "epic": "EPIC-1",
+      "story": "STORY-1.1",
+      "title": "Seed + one ~10-minute human curation pass (DP5)",
+      "demo": "Demo 1 (enrollment)",
+      "vertical_value": "Day-one value covering everything; a human confirms each row is a real project (explicit enrollment spirit).",
+      "acceptance_criteria": [
+        "Book lists the real active projects",
+        "Anomaly rows (incl. the Vibe Coding-root row) tombstoned, not deleted"
+      ],
+      "verification_method": "Before/after row listing archived; tombstone events visible in the audit log.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-13-seed-curate/",
+      "task_file": "tasks/SLICE-13-seed-curate.md"
+    },
+    {
+      "id": "SLICE-20-close",
+      "epic": "EPIC-2",
+      "story": "STORY-2.1",
+      "title": "close-project.sh steps 0-10 + four guards + last-workspace guard + agent-03 7-check gate",
+      "demo": "Demo 2 (safe close)",
+      "vertical_value": "Closing is verified zero-loss: the tab vanishing IS the success signal; the tab staying open IS the failure signal.",
+      "acceptance_criteria": [
+        "Delete the handoff between write and read-back -> receipt refuses SAFE, tab stays open",
+        "Unvalidatable CMUX_WORKSPACE_ID -> fail closed, no close, no identify fallback",
+        "Last-workspace case -> close skipped with an explicit message",
+        "state/stop-<sid> exists BEFORE step 1 (directory diff); it is the only daemon-dir write",
+        "Receipt listed N of M == git status --porcelain | wc -l",
+        "Artifacts co-located under closed/<slug>/, status: parked, type: close-project, glob-invisible to Eternity",
+        "pending-resume-*.txt population unchanged before/after"
+      ],
+      "verification_method": "Each tamper test archived; directory diff of the daemon dir; Eternity glob (ls -t memory/handoffs/*.md *.yaml) unchanged; sha256 read-back shown.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-20-close/",
+      "task_file": "tasks/SLICE-20-close.md"
+    },
+    {
+      "id": "SLICE-21-safe-close-skill",
+      "epic": "EPIC-2",
+      "story": "STORY-2.1",
+      "title": "acos-safe-close/SKILL.md thin router",
+      "demo": "Demo 2 (safe close)",
+      "vertical_value": "Safety-critical logic stays in the script (ran 8/8) not skill prose (8/18); the receipt is script-printed, never composed.",
+      "acceptance_criteria": [
+        "Full end-to-end run on a throwaway: receipt says SAFE only after all checks; tab closes as the literal last act",
+        "The skill prints the script's receipt verbatim; composes nothing"
+      ],
+      "verification_method": "End-to-end throwaway run archived; SKILL.md shown to contain no load-bearing logic.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-21-safe-close-skill/",
+      "task_file": "tasks/SLICE-21-safe-close-skill.md"
+    },
+    {
+      "id": "SLICE-22-blind-roundtrip",
+      "epic": "EPIC-2",
+      "story": "STORY-2.1",
+      "title": "Blind round-trip verifier (close step 5)",
+      "demo": "Demo 2 (safe close)",
+      "vertical_value": "The single most likely silent failure is a repo-reading verifier passing a bad handoff; deny it the repo.",
+      "acceptance_criteria": [
+        "A deliberately gutted handoff FAILS the verifier",
+        "The real handoff yields a next-step quote that appears in the receipt",
+        "Cap reached -> DEGRADE, receipt marks DEGRADED, close still allowed; no new agent files"
+      ],
+      "verification_method": "Both test-the-tester transcripts archived; the receipt's quoted next step shown to match the verifier output.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-22-blind-roundtrip/",
+      "task_file": "tasks/SLICE-22-blind-roundtrip.md"
+    },
+    {
+      "id": "SLICE-30-resurrect-view",
+      "epic": "EPIC-3",
+      "story": "STORY-3.1",
+      "title": "resurrect-view.py: fresh book, liveness joins, tiers, BROKEN red, no green",
+      "demo": "Demo 1 + Demo 3 (the book)",
+      "vertical_value": "The way IN: an honest book computed fresh, so a stale registry can never be a lying registry.",
+      "acceptance_criteria": [
+        "Renders today's real state: FruitSync + ACOS 3.0 as OPEN NOW",
+        "ACOS 3.0's two live workspaces (4 and 5) render as ONE row",
+        "A deliberately broken row renders BROKEN in red, not hidden",
+        "No green anything is emitted anywhere"
+      ],
+      "verification_method": "Rendered output archived against the known live state; the two-workspaces-one-row case shown; a broken row injected and shown BROKEN.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-30-resurrect-view/",
+      "task_file": "tasks/SLICE-30-resurrect-view.md"
+    },
+    {
+      "id": "SLICE-31-launch",
+      "epic": "EPIC-3",
+      "story": "STORY-3.1",
+      "title": "launch-project.sh: focus-or-launch + SPINE 1 acceptance + verified argv delivery",
+      "demo": "Demo 3 (focus-never-launch)",
+      "vertical_value": "Focus-never-launch kills the duplicate pile-up at its source (worth more than every other feature in the window).",
+      "acceptance_criteria": [
+        "Picking ACOS 3.0 while open changes focus and the workspace count stays CONSTANT (SPINE 1)",
+        "Launch on a throwaway delivers the multi-line reentry as ONE message (read-screen marker found)",
+        "Untrusted-dir launch is detected and reported, not silently assumed delivered",
+        "No registry-derived string enters --command; names/next_action go via --name/--description list-form"
+      ],
+      "verification_method": "Workspace count before/after an open pick archived; read-screen marker shown for a throwaway launch; trust-gate detection shown; --command inspected.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-31-launch/",
+      "task_file": "tasks/SLICE-31-launch.md"
+    },
+    {
+      "id": "SLICE-32-menu-skill-loop",
+      "epic": "EPIC-3",
+      "story": "STORY-3.1",
+      "title": "acos-resurrect/SKILL.md menu + finish verb + loop mechanics",
+      "demo": "Demo 3 (the loop)",
+      "vertical_value": "The loop, with inverted economics: resume flips parked->active; finish sets completed; /acos-complete untouched.",
+      "acceptance_criteria": [
+        "Resume flips parked->active; finish sets completed (row hidden in ARCHIVED, never deleted)",
+        "Status transitions visible in the row file and the audit log",
+        "/acos-complete is unchanged"
+      ],
+      "verification_method": "Row-file + audit-log deltas archived for each transition; /acos-complete shown untouched (diff).",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-32-menu-skill-loop/",
+      "task_file": "tasks/SLICE-32-menu-skill-loop.md"
+    },
+    {
+      "id": "SLICE-40-dr1",
+      "epic": "EPIC-4",
+      "story": "STORY-4.1",
+      "title": "DR-1 ship gate: one recorded close->resume round-trip on a real project",
+      "demo": "Demo 3 (DR-1 SHIP GATE)",
+      "vertical_value": "Permission-to-close is the product and it must be a demonstration, not a promise; one silent loss ends the tool.",
+      "acceptance_criteria": [
+        "A real project: receipt SAFE, tab gone, later resume, work demonstrably continues, USER confirms continuity",
+        "Recording/receipts archived to .acos/evidence/",
+        "Until this exists, the skill is NOT shipped"
+      ],
+      "verification_method": "The full recording + receipts archived; the user's explicit continuity confirmation captured.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-40-dr1/",
+      "task_file": "tasks/SLICE-40-dr1.md"
+    },
+    {
+      "id": "SLICE-50-browser",
+      "epic": "EPIC-5",
+      "story": "STORY-5.1",
+      "title": "(DP1-conditional) resurrection-server.py: the 8820 browser window",
+      "demo": "Optional (only if DP1 selects it)",
+      "vertical_value": "An always-glanceable dashboard that does not occupy a Claude session (adopted only if the menu earns it).",
+      "acceptance_criteria": [
+        "EADDRINUSE reuse works (singleton via /api/whoami), never port-hops",
+        "A hostile project name renders inert (textContent)",
+        "Cross-origin POST rejected; /api/launch with a path instead of an ID -> 400"
+      ],
+      "verification_method": "Singleton reuse shown; hostile-name render inspected; cross-origin + path-not-ID rejections archived.",
+      "evidence_bundle": ".acos/evidence/[DATE]/SLICE-50-browser/",
+      "task_file": "tasks/SLICE-50-browser.md"
+    }
+  ]
+}

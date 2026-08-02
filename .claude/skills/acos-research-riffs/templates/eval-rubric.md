@@ -1,9 +1,9 @@
 # Charter — session judge (quality half of the evaluation)
 
 `riff eval` already counted what can be counted: coverage completeness, source
-independence and tier, how much research reached the reader, ledger depth,
-whether citations resolve. You do the half a counter cannot do — whether the
-research was any *good*.
+independence and tier, recency sweeps on fast-moving dimensions, how much
+research reached the reader, ledger depth, whether citations resolve. You do
+the half a counter cannot do — whether the research was any *good*.
 
 Score one completed session. Be a hard marker. A session that followed every
 process rule and still answered the question badly should score badly.
@@ -13,7 +13,8 @@ process rule and still answered the question badly should score badly.
 - The report: `{{SESSION_ROOT}}/report/REPORT.md`
 - The compile bundle: `{{SESSION_ROOT}}/report/compile-input.md`
 - The dossiers: `{{SESSION_ROOT}}/dossiers/`
-- The transcript, if one exists: `{{SESSION_ROOT}}/transcript.md`
+- The ledger: `{{SESSION_ROOT}}/ledger.jsonl` (and `{{SESSION_ROOT}}/room-turns.jsonl`
+  if the live room ran)
 
 ## DIMENSIONS — score each 0.0 to 1.0
 
@@ -43,7 +44,9 @@ both and say what the disagreement turns on — or did it quietly pick one?
 
 **7. Confidence calibration.** Does the report's certainty match its evidence?
 Provisional findings must not read as settled. Hedges present in the ledger must
-survive into the prose.
+survive into the prose. A `primary-new` finding must be delivered dated ("per
+<vendor>'s notes of <date>; too new for independent corroboration") — neither
+hardened into settled fact nor suppressed for being new.
 
 **8. The unknown-unknowns test — the important one.** Read the brief, then think
 independently: what would a well-informed practitioner expect this research to

@@ -1,0 +1,289 @@
+timestamp: "2026-06-30T22:58:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active session is mid-build on an OKOA-branded, ridgeline-styled (print media)
+  PDF of a website AI-voice-agent research document. The research markdown is
+  complete (14 sections + comparison tables). The OKOA design MCP brief/attest
+  protocol is ATTESTED for print. The ridgeline design tokens have been resolved
+  and successfully extracted into a flat CSS file (colors, fonts, type scale,
+  spacing, page geometry) by an in-session subagent that crashed/was cut off
+  before writing a final summary — but its intermediate extraction artifacts
+  survived on disk and are captured verbatim below. The git repo
+  (branch acos-deficiency-fixes-2026-06-04) is STALE relative to this task: all
+  recent commits (e9f91bb..2abd2d1) are unrelated Hypercore Data Catalog (HCA)
+  work, fully committed and not part of this task. The live task — research/,
+  the okoa-design tool-result dumps, and the extracted token CSS — is entirely
+  untracked/uncommitted and exists only on the filesystem (research/ dir +
+  session tool-results + session scratchpad), not in git.
+
+current_work:
+  slice_id: "unknown (ad-hoc task, not in planning/ hierarchy)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  description: |
+    Build a print-quality, OKOA-branded PDF of
+    research/okoa-website-agent-research-2026-06-30.md, styled with the
+    "ridgeline" okoa-design variant (print media, US Letter), then QA it with
+    okoa_quality_check and hand the user a Chrome-opened file:// link. HTML/CSS
+    authoring and rendering have NOT started yet — design tokens are resolved
+    and ready, but no HTML draft or CSS file exists yet, and no PDF has been
+    rendered.
+
+completed_this_session:
+  - "Wrote research/okoa-website-agent-research-2026-06-30.md — 14 sections, comparison tables; recommendation = composable voice pipeline: LiveKit Agents -> Deepgram STT -> Claude brain (Haiku default / Sonnet escalation) -> ElevenLabs/Cartesia TTS -> Cloudflare Durable Objects memory; ~$0.24-0.32/session; explicitly recommends AGAINST using Flue as the orchestration spine."
+  - "Ran okoa_design_brief(media=print) and okoa_attest via the okoa-design MCP -> status ATTESTED. brief_id=okoa-brief.print.b2.3.0.p1.0.0, attestation_token=okoa-attest.print.b2.3.0.p1.0.0, variant=ridgeline."
+  - "Ran okoa_resolve_design and okoa_emit_stylesheet via the okoa-design MCP; raw JSON tool results persisted to disk (see files_modified)."
+  - "Verified render toolchain: weasyprint 68.1 importable via ~/Documents/OKOA/.venv-design/bin/python (python -> /opt/homebrew/opt/python@3.13/bin/python3.13); brand fonts Cormorant Garamond, Inter (incl. Inter Display weights referenced by tokens), and JetBrains Mono confirmed present in ~/Library/Fonts."
+  - "Launched a general-purpose subagent (Task id a465a40b7eeeadfb0, description 'Extract OKOA ridgeline design tokens') to extract exact ridgeline values from the two MCP tool-result dumps. The subagent got through ~30 tool calls (wc/jq/grep/Read/diff against scratchpad files) but its transcript ends mid-'thinking' block with stop_reason=null — it never emitted a final text summary. ITS WORK IS NOT LOST: it had already (a) pulled the embedded stylesheet_css field out of both MCP JSON dumps via jq and (b) written it to two scratchpad files, confirmed byte-identical via diff. The handoff agent independently re-read those scratchpad files and inlined the full ridgeline token set below — treat that inlined block as authoritative; do not re-spawn the extraction subagent."
+
+files_modified:
+  - path: "research/okoa-website-agent-research-2026-06-30.md"
+    changes: "NEW. 14-section research doc (Exec Summary, Requirements, Architectural Finding re: no native Claude speech I/O, Agent-Framework Comparison, Brain-Model Comparison, Voice-Stack Comparison, Memory/Persistence Comparison, Autonomous Form-Filling, Recommended Architecture, Cost Model, Risk Register, Final Recommendation/Phased Rollout, Open Questions, Sources). This is the SOURCE CONTENT for the PDF build — read it in full before authoring HTML."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/tool-results/mcp-okoa-design-okoa_resolve_design-1782859972730.txt"
+    changes: "NEW. Raw MCP tool-result JSON from okoa_resolve_design — full resolved token graph for the print/ridgeline brief. Persistent (lives under the Claude project dir, not /tmp), survives across sessions."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/tool-results/mcp-okoa-design-okoa_emit_stylesheet-1782859973038.txt"
+    changes: "NEW. Raw MCP tool-result JSON from okoa_emit_stylesheet — drop-in stylesheet JSON (same token values, stylesheet_css field is byte-identical to the resolve_design dump's stylesheet_css field, confirmed via diff)."
+  - path: "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/scratchpad/resolve_stylesheet.css"
+    changes: "NEW (session-scratchpad, EPHEMERAL — tied to session id a89c6cd9-...; a fresh session will get a DIFFERENT scratchpad path and this file will NOT be reachable). 1202-line flat CSS extracted by the token-extraction subagent: @font-face declarations + full :root token set + all [data-style=...] theme variants (ridgeline, ridgeline-dark, stillness, stillness-dark, +more) + typography role classes (.t-display-xl ... .t-data-lg). Because this path will not survive into a new session, the load-bearing values have been copied verbatim into ridgeline_print_tokens below — use that block as the primary source; only re-derive from the tool-results JSON dumps (which DO persist) if something below seems incomplete."
+  - path: "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/scratchpad/emit_stylesheet.css"
+    changes: "NEW (session-scratchpad, EPHEMERAL, same caveat as above). Byte-identical to resolve_stylesheet.css (confirmed via diff -q, no output)."
+
+decisions_made:
+  - "No memory/decisions/ entries were written today (none found newer than 2026-06-24); the architecture recommendation (composable pipeline, no Flue) lives only in research/okoa-website-agent-research-2026-06-30.md section 12, not yet promoted to a formal ADR."
+
+blockers: []
+
+next_actions:
+  - "1. Read research/okoa-website-agent-research-2026-06-30.md in full (14 sections) — this is the PDF content source."
+  - "2. Author a print-only CSS using ONLY the resolved ridgeline tokens inlined below (do not invent new colors/fonts/spacing): US Letter 216mm x 279mm @ 20mm margins (176mm live text block, matches --okoa-page-letter-w/h and --okoa-page-margin-letter exactly); Cormorant Garamond for display/headline classes only (weight 500 medium per --w-medium, NEVER 700) per .t-display-xl/l/m and .t-quote; Inter Display for .t-title/.t-subhead (weight 600 semibold) and .t-lead (weight 300 light); Inter (sans) for body text; JetBrains Mono for ALL tabular/numeric data (.t-label, .t-label-sm, .t-micro, .t-data, .t-data-lg) — never Cormorant in tables; coral accent (--okoa-semantic-fg-accent / --okoa-component-chrome-accent-rule = #FF795E) used sparingly (<=3% of any spread) and NEVER as a fill (avoid --okoa-accent-fill-surface #A8492F which IS a fill token and should be avoided for this constraint); square corners (use --okoa-radii-none:0 or at most --okoa-radii-sm:2px / --okoa-radii-md:4px, never pill); borders not shadows at rest (use --okoa-border-hair:1px / --okoa-semantic-border-default:#D4D4D4, avoid box-shadow at rest); warm light surfaces (--okoa-semantic-surface-default:#FEFEFE / --okoa-semantic-surface-warm:#F5EEE4), dark only for chrome footer/section-divider bands (--okoa-semantic-surface-chrome:#465D53, --okoa-component-chrome-footer-bg:#465D53 / footer-text:#FEFEFE); totals carry component.table-total-rule (#3C3C3C, 1pt+ rule weight via --okoa-rules-default:1pt or --okoa-rules-emphasis:1.2pt); page-break discipline (orphans/widows:2; h1-h3 break-after:avoid; thead {display:table-header-group} to repeat across pages; table {break-inside:avoid} or allow only with repeating header; landscape-rotate (@page :transform or a `.landscape` page class) any table wider than 176mm); chrome footer bar with page numbers (component.chrome-footer-bg/-text + component.chrome-page-number:#FEFEFE, plus counter(page))."
+  - "3. Build the full 14-section report HTML: cover page (use logo_ink variant per the print brief — confirm exact asset path via okoa-design MCP or design/ dir if not already on disk), TOC, then all 14 sections from the markdown including every comparison table (Agent-Framework, Brain-Model, Voice-Stack, Memory/Persistence, Cost Model)."
+  - "4. Render to PDF via the design venv: ~/Documents/OKOA/.venv-design/bin/python -m weasyprint <html> research/okoa-website-agent-research-2026-06-30.pdf (or equivalent script-based invocation; confirm weasyprint is invoked as `python -m weasyprint`, not a bare `weasyprint` binary on PATH — `which weasyprint` returned nothing on this system, only the venv python import path was verified)."
+  - "5. Run okoa_quality_check({content, media: 'print'}) via the okoa-design MCP and iterate until status=PASS — fix every reported error, do not skip any."
+  - "6. Open the final PDF in Chrome: open -a 'Google Chrome' '<absolute path to the rendered PDF>', and give the user a clickable file:// link per house style (feedback_clickable_links.md / feedback_short_symlink_links.md — full encoded file:// URL, no home-dir symlinks)."
+  - "Do NOT re-spawn the token-extraction subagent — the values it was extracting are already captured in ridgeline_print_tokens below, sourced from its scratchpad output (resolve_stylesheet.css, cross-verified emit_stylesheet.css is byte-identical)."
+
+context_for_next_session: |
+  This is a single, self-contained, ad-hoc deliverable task — NOT part of the
+  ACOS planning hierarchy (no slice/story/epic exists for it; planning/ has no
+  artifact matching this work, only the unrelated planning/acos-axiom-synthesis/
+  dir which was untouched this session). The git repo's recent commit history
+  (e9f91bb back through 2abd2d1, all "feat(hca)"/"fix(hca)"/"test(hca)") belongs
+  to a separate, already-complete Hypercore Data Catalog effort and has nothing
+  to do with this task; do not let it distract a fresh session into thinking
+  there's catalog work pending.
+
+  The actual resumable state is three things on disk: (1) the finished research
+  markdown, (2) two persistent MCP tool-result JSON dumps containing the full
+  resolved ridgeline design-token graph, and (3) this handoff's inlined token
+  extraction below, which is the fastest path to resume — it was reconstructed
+  by re-reading the subagent's own scratchpad output (which captured the
+  decoded `stylesheet_css` field from both JSON dumps) rather than re-parsing
+  the raw JSON. A fresh session can go straight to HTML/CSS authoring using the
+  values below without redoing any MCP calls, AS LONG AS the brief/attestation
+  is still valid for this session — if okoa_quality_check or another design-MCP
+  call complains about a stale/expired attestation token, re-run
+  okoa_design_brief(media=print) + okoa_attest to get a fresh
+  brief_id/attestation_token before rendering; do not assume
+  okoa-brief.print.b2.3.0.p1.0.0 / okoa-attest.print.b2.3.0.p1.0.0 are still
+  live.
+
+  Nothing has been rendered yet — no HTML file, no CSS file, no PDF exist on
+  disk for this task as of this handoff. The very next concrete action is
+  writing the print CSS and the report HTML, then rendering.
+
+reconstruction_sources:
+  - "git status --short, git log --oneline -20, git diff --stat (uncommitted + HEAD~5..HEAD) — confirmed git history is unrelated HCA work and the live task is entirely untracked"
+  - "planning/ directory listing (ls -lt) — confirmed no slice/story/epic exists for this task"
+  - "research/ directory listing (ls -lat) — confirmed only the source markdown exists, no HTML/CSS/PDF yet"
+  - "research/okoa-website-agent-research-2026-06-30.md (grep '^#' for section headers) — confirmed 14-section structure"
+  - ".acos/evidence/ listing (ls -lt) — no evidence bundle today for this task"
+  - "memory/decisions/ listing (ls -lt) — no decision file today"
+  - ".acos/state/ listing (ls -la) — runtime state inspected, nothing task-specific found"
+  - "memory/handoffs/ listing (ls -lt, excluding .resume.md) — prior handoff is 2026-06-26 (unrelated SEO Plan task), used only to confirm YAML schema/formatting conventions"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/tool-results/mcp-okoa-design-okoa_resolve_design-1782859972730.txt (existence + size confirmed)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/tool-results/mcp-okoa-design-okoa_emit_stylesheet-1782859973038.txt (existence + size confirmed)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/subagents/agent-a465a40b7eeeadfb0.meta.json and .jsonl — read in full (61 lines) to confirm the token-extraction subagent never reached a final text/end_turn and to recover its tool-call trail"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/scratchpad/resolve_stylesheet.css (read in full, 1202 lines) — primary source for the inlined token values below"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a89c6cd9-f7cf-4145-be98-b48a2d356b85/scratchpad/emit_stylesheet.css (diff -q against resolve_stylesheet.css — confirmed byte-identical)"
+  - "weasyprint / venv / font verification: `which weasyprint`, `ls ~/Documents/OKOA/.venv-design/bin/python`, `ls ~/Library/Fonts | grep -iE 'cormorant|inter|jetbrains'`"
+  - "In-flight context block supplied directly by the user/parent session at handoff-agent invocation time (the task description was not fully reconstructable from disk alone; the parent conversation's own account of brief_id/attestation_token/subagent id was taken as given and then cross-verified against disk artifacts above)"
+
+# ============================================================
+# ACTIVE TASK DETAIL — OKOA-branded PDF of website-AI-voice-agent research
+# ============================================================
+
+active_task:
+  title: "Render research/okoa-website-agent-research-2026-06-30.md as an OKOA ridgeline-styled print PDF"
+  okoa_design_protocol:
+    media: "print"
+    variant: "ridgeline"
+    brief_id: "okoa-brief.print.b2.3.0.p1.0.0"
+    attestation_token: "okoa-attest.print.b2.3.0.p1.0.0"
+    status_at_handoff: "ATTESTED (re-verify before final render if okoa_quality_check rejects it as stale)"
+  render_toolchain:
+    python: "~/Documents/OKOA/.venv-design/bin/python (symlink -> /opt/homebrew/opt/python@3.13/bin/python3.13)"
+    weasyprint_version: "68.1 (confirmed importable in the venv; no bare `weasyprint` on PATH — invoke via `python -m weasyprint` or a script that imports weasyprint)"
+    fonts_confirmed_in_user_library: "~/Library/Fonts — CormorantGaramond[wght].ttf + Italic variant, Inter-{Thin,ExtraLight,Light,Regular,Medium,SemiBold,Bold}.ttf, JetBrainsMono-{Light,Regular,Medium}.ttf"
+    fonts_referenced_by_resolved_tokens_not_yet_confirmed_present: "Inter Display family (InterDisplay-Light/Medium/SemiBold.otf) and Inter Regular/Medium/SemiBold as .otf (the @font-face block below points at ../assets/fonts/... relative paths from the okoa-design asset bundle, not directly at ~/Library/Fonts — if those relative paths are not resolvable from the render working directory, fall back to the matching ~/Library/Fonts TTFs by family name, since weasyprint can resolve installed system fonts by family/weight without explicit @font-face)"
+
+  ridgeline_print_tokens: |
+    /* Verbatim, hand-verified subset of the resolved ridgeline (print) token
+       graph, copied from the token-extraction subagent's scratchpad output
+       (resolve_stylesheet.css, lines 1-1202, cross-checked against
+       emit_stylesheet.css which is byte-identical). Use these values directly;
+       do not re-derive from scratch unless something below looks incomplete,
+       in which case fall back to the persistent tool-results JSON dumps. */
+
+    /* --- Font chains --- */
+    --okoa-serif: Cormorant Garamond, Georgia, serif;
+    --okoa-sans:  Inter, Helvetica Neue, Arial, sans-serif;
+    --okoa-disp:  Inter Display, Inter, sans-serif;
+    --okoa-mono:  JetBrains Mono, ui-monospace, monospace;
+
+    /* --- Type scale (rem-based for screen tokens; print classes use pt below) --- */
+    --t-display-xl: clamp(2.6rem, 1.6rem + 3.6vw, 5rem);
+    --t-display-l:  clamp(2rem, 1.4rem + 2.6vw, 3.4rem);
+    --t-display-m:  clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+    --t-title:      clamp(1.3rem, 1.05rem + 1vw, 1.9rem);
+    --t-lead:       clamp(1.1rem, 1rem + 0.6vw, 1.4rem);
+    --t-body:       1.0625rem;
+    --t-body-sm:    0.9375rem;
+    --t-fine:       0.8125rem;
+    --t-label:      0.72rem;
+    --t-label-sm:   0.66rem;
+    --t-micro:      0.6rem;
+    --w-light: 300; --w-regular: 400; --w-medium: 500; --w-semibold: 600;
+    --tr-tight: -0.02em; --tr-snug: -0.01em; --tr-normal: 0; --tr-wide: 0.06em;
+    --tr-caps: 0.12em; --tr-caps-wide: 0.18em;
+
+    /* --- Print-specific point sizes (use these for the PDF, not the rem scale) --- */
+    --okoa-pt-display-xl: 40pt; --okoa-pt-display-l: 28pt; --okoa-pt-display-m: 20pt;
+    --okoa-pt-title: 14pt; --okoa-pt-subhead: 11.5pt; --okoa-pt-lead: 11pt;
+    --okoa-pt-body: 9.5pt; --okoa-pt-body-sm: 8.5pt; --okoa-pt-caption: 7.5pt;
+    --okoa-pt-label: 7pt; --okoa-pt-micro: 6pt;
+    --okoa-pt-table: 8pt; --okoa-pt-table-header: 7pt;
+    --okoa-pt-data: 9pt; --okoa-pt-data-lg: 18pt;
+    --okoa-pt-leading-body: 1.42; --okoa-pt-leading-tight: 1.18;
+    --okoa-type-table-cell-size: 8pt; --okoa-type-table-cell-leading: 9pt;
+    --okoa-type-table-cell-tracking: 0; --okoa-type-table-cell-weight: 425;
+    --okoa-type-table-header-size: 8pt; --okoa-type-table-header-leading: 9pt;
+    --okoa-type-table-header-tracking: 0; --okoa-type-table-header-weight: 650;
+
+    /* --- Typography role classes (font-family + weight pairing — load-bearing
+       for the "Cormorant headlines only, never tables; mono for all numeric
+       data" constraint) --- */
+    .t-display-xl, .t-display-l, .t-display-m, .t-quote {
+      font-family: var(--okoa-serif); font-weight: var(--w-medium); /* 500, NEVER 700 */
+    }
+    .t-title, .t-subhead { font-family: var(--okoa-disp); font-weight: var(--w-semibold); } /* Inter Display 600 */
+    .t-lead { font-family: var(--okoa-disp); font-weight: var(--w-light); }
+    .t-body, .t-body-sm, .t-fine, .t-body-strong { font-family: var(--okoa-sans); }
+    .t-label, .t-label-sm, .t-micro, .t-data, .t-data-lg { font-family: var(--okoa-mono); font-weight: var(--w-medium); }
+
+    /* --- Page geometry (US Letter, print) --- */
+    --okoa-page-letter-w: 216mm; --okoa-page-letter-h: 279mm;
+    --okoa-page-margin-letter: 20mm;   /* => 176mm live text block, matches spec exactly */
+    --okoa-grid-letter-columns: 16; --okoa-grid-letter-gutter: 8mm;
+    --okoa-page-bleed: 3mm; --okoa-page-safe: 5mm;
+
+    /* --- Spacing scale (mm, for print) --- */
+    --okoa-sp-0: 0mm; --okoa-sp-1: 1mm; --okoa-sp-2: 2mm; --okoa-sp-3: 3mm;
+    --okoa-sp-5: 5mm; --okoa-sp-8: 8mm; --okoa-sp-13: 13mm; --okoa-sp-21: 21mm;
+
+    /* --- Radii / borders / rules (square corners, borders not shadows) --- */
+    --okoa-radii-none: 0; --okoa-radii-sm: 2px; --okoa-radii-md: 4px; --okoa-radii-pill: 9999px; /* avoid pill in print */
+    --okoa-border-hair: 1px; --okoa-border-thick: 2px; --okoa-border-emphasis: 3px;
+    --okoa-rules-hairline: 0.5pt; --okoa-rules-default: 1pt; --okoa-rules-emphasis: 1.2pt;
+
+    /* --- [data-style="ridgeline"] semantic + component + signal colors (LIGHT,
+       this is the primary print variant) --- */
+    --okoa-semantic-fg1: #3C3C3C;            /* primary text */
+    --okoa-semantic-fg2: #6B6B6B;            /* secondary text */
+    --okoa-semantic-fg3: #757575;            /* tertiary/muted text */
+    --okoa-semantic-fg-accent: #FF795E;      /* CORAL — use <=3%, line/text only, never fill */
+    --okoa-semantic-fg-on-dark: #FEFEFE;
+    --okoa-semantic-surface-default: #FEFEFE;
+    --okoa-semantic-surface-alt: #F0ECE9;
+    --okoa-semantic-surface-warm: #F5EEE4;   /* warm light surface */
+    --okoa-semantic-surface-chrome: #465D53; /* dark green — chrome/footer/divider bands ONLY */
+    --okoa-semantic-border-default: #D4D4D4;
+    --okoa-semantic-border-strong: #3C3C3C;
+    --okoa-semantic-border-accent: #FF795E;
+    --okoa-semantic-entity-primary: #465D53;
+    --okoa-semantic-entity-secondary-a: #678CA7;
+    --okoa-semantic-entity-secondary-b: #104473;
+    --okoa-accent-fill-surface: #A8492F;     /* AVOID — this is a coral FILL, violates "never a fill" */
+    --okoa-accent-fill-text: #FBF6EE;
+
+    --okoa-component-chrome-accent-rule: #FF795E;
+    --okoa-component-chrome-breadcrumb: #6B6B6B;
+    --okoa-component-chrome-footer-bg: #465D53;
+    --okoa-component-chrome-footer-text: #FEFEFE;
+    --okoa-component-chrome-page-number: #FEFEFE;
+    --okoa-component-metric-label: #6B6B6B;
+    --okoa-component-metric-rule: #D4D4D4;
+    --okoa-component-metric-value: #3C3C3C;
+    --okoa-component-table-header-bg: #465D53;
+    --okoa-component-table-header-text: #FEFEFE;
+    --okoa-component-table-rule: #D4D4D4;
+    --okoa-component-table-total-rule: #3C3C3C;   /* totals MUST carry this rule color */
+
+    --okoa-signal-caution: #8A6B22; --okoa-signal-caution-surface: #FDF8EF;
+    --okoa-signal-info: #3A6480;    --okoa-signal-info-surface: #EFF5FA;
+    --okoa-signal-pass: #2D5E33;    --okoa-signal-pass-surface: #F0FAF2;
+    --okoa-signal-risk: #7A2E26;    --okoa-signal-risk-surface: #FAF0F0;
+
+    /* --- [data-style="ridgeline-dark"] equivalents, in case any chrome band
+       needs the dark companion palette (e.g. a true full-bleed dark divider) --- */
+    --okoa-semantic-surface-default-dark: #181B17;
+    --okoa-semantic-surface-chrome-dark: #0E120F;
+    --okoa-semantic-fg1-dark: #F2EEE6;
+    --okoa-component-table-header-bg-dark: #0E120F;
+    --okoa-component-chrome-footer-bg-dark: #0E120F;
+    --okoa-component-table-total-rule-dark: #C8C6BB;
+
+  font_face_paths_as_resolved: |
+    /* From the resolved stylesheet — these point into the okoa-design asset
+       bundle (relative paths), NOT directly at ~/Library/Fonts. If the render
+       working directory can't resolve ../assets/fonts/..., fall back to the
+       installed system fonts by family name (weasyprint can do this without
+       @font-face once the .ttf files are installed, which they are). */
+    @font-face{font-family:'Inter';font-weight:400;src:url('../assets/fonts/inter/Inter-Regular.otf');}
+    @font-face{font-family:'Inter';font-weight:500;src:url('../assets/fonts/inter/Inter-Medium.otf');}
+    @font-face{font-family:'Inter';font-weight:600;src:url('../assets/fonts/inter/Inter-SemiBold.otf');}
+    @font-face{font-family:'Inter Display';font-weight:300;src:url('../assets/fonts/inter/InterDisplay-Light.otf');}
+    @font-face{font-family:'Inter Display';font-weight:500;src:url('../assets/fonts/inter/InterDisplay-Medium.otf');}
+    @font-face{font-family:'Inter Display';font-weight:600;src:url('../assets/fonts/inter/InterDisplay-SemiBold.otf');}
+    @font-face{font-family:'Cormorant Garamond';font-weight:500;src:url('../assets/fonts/cormorant-garamond/CormorantGaramond-Medium.ttf');}
+    @font-face{font-family:'Cormorant Garamond';font-weight:600;src:url('../assets/fonts/cormorant-garamond/CormorantGaramond-SemiBold.ttf');}
+    @font-face{font-family:'JetBrains Mono';font-weight:400;src:url('../assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf');}
+    @font-face{font-family:'JetBrains Mono';font-weight:500;src:url('../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf');}
+
+  source_content:
+    research_doc: "research/okoa-website-agent-research-2026-06-30.md"
+    sections:
+      - "1. Executive Summary"
+      - "2. Requirements Recap"
+      - "3. Key Architectural Finding: Claude Has No Native Speech I/O"
+      - "4. Agent-Framework Comparison"
+      - "5. Brain-Model Comparison"
+      - "6. Voice-Stack Comparison (MOST IMPORTANT)"
+      - "7. Memory / Persistence Comparison"
+      - "8. Autonomous Form-Filling"
+      - "9. End-to-End Recommended Architecture"
+      - "10. Cost Model"
+      - "11. Risk Register"
+      - "12. Final Recommendation & Phased Rollout"
+      - "13. Open Questions / Assumptions"
+      - "14. Sources (deduplicated)"
+    recommendation_one_liner: "Composable voice pipeline: LiveKit Agents -> Deepgram STT -> Claude brain (Haiku default / Sonnet escalation) -> ElevenLabs/Cartesia TTS -> Cloudflare Durable Objects memory; ~$0.24-0.32/session; explicitly NOT Flue as the spine."
+
+  output_target:
+    suggested_path: "research/okoa-website-agent-research-2026-06-30.pdf (or similar, alongside the source .md)"
+    not_yet_created: true

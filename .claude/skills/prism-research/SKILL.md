@@ -12,7 +12,7 @@ allowed-tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
 
 Conduct institutional-grade financial and strategic research using the PRISM (Pattern Recognition Intelligence & Strategic Mastery) methodology. Produces decision-ready analyses for investment committees, regulatory filings, and strategic planning with forensic verification standards and complete audit trails.
 
-**This is a domain-specific skill for finance and private equity research. For general research, use `/deep-research` instead.**
+**This is a domain-specific skill for finance and private equity research. For general research, use `/acos-deep-research` instead.**
 
 ## When to Use
 
@@ -25,7 +25,7 @@ Apply this skill when:
 - Capital markets research (debt, equity, structured products)
 - Risk assessment for investment decisions
 
-**Do NOT use for:** general software research, technology evaluation, non-financial research topics. Use `/deep-research` or `/technology-research` instead.
+**Do NOT use for:** general software research, technology evaluation, non-financial research topics. Use `/acos-deep-research` or `/technology-research` instead.
 
 ## PRISM Operational Standards
 
@@ -196,7 +196,7 @@ executive_summary:
 
 ## Integration with Other Skills
 
-- Use with `/deep-research` for non-financial aspects of the same topic
+- Use with `/acos-deep-research` for non-financial aspects of the same topic
 - Use with `/document-synthesis` to process source documents first
 - Use with `/knowledge-graph` to build entity relationships from findings
 

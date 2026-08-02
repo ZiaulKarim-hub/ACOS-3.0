@@ -1,0 +1,112 @@
+# Slice Plan — bridged from preeng task SLICE-22-blind-roundtrip
+# Source: planning/preeng/005-resurrection-protocol/tasks/SLICE-22-blind-roundtrip.md
+
+slice_id: "SLICE-RES-22-blind-roundtrip"
+story_id: "STORY-2.1"
+epic_id: "EPIC-2"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "Blind round-trip verifier (close step 5)"
+objective: |
+  Wire close step 5 to dispatch a blind round-trip verifier: a fresh
+  general-purpose Task given the handoff text ONLY (no repo, no cwd access),
+  which must state the next step. The single most likely silent failure is a
+  repo-reading verifier passing a bad handoff — deny it the repo.
+description: |
+  In scope:
+  - Fresh general-purpose Task, handoff text ONLY; must state the next step.
+  - Wigum cap 5 then DEGRADE (close still allowed, receipt marks DEGRADED).
+  - Test the tester: a gutted handoff must FAIL; the real one must yield a
+    next-step quote that appears in the receipt.
+  Out of scope (guardrails):
+  - Any repo/cwd access for the verifier.
+  - New .claude/agents/ files.
+  - Halting the close on cap (DEGRADE instead).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] A deliberately gutted handoff FAILS the verifier — gutted-handoff test transcript archived in the evidence bundle"
+  - "[ ] The real handoff yields a next-step quote that appears in the receipt — receipt's quoted next step shown to match the verifier output"
+  - "[ ] Wigum cap 5 reached -> DEGRADE: receipt marks DEGRADED, close still allowed (never halted)"
+  - "[ ] No new .claude/agents/ definition files created — verifier dispatched as a fresh general-purpose Task with handoff text only (dispatch inspectable)"
+  - "[ ] Evidence bundle populated at .acos/evidence/[DATE]/SLICE-22-blind-roundtrip/ with the 7-part bundle (implementation summary, traceability, structural quality, functional checks, security notes, operational notes, self-assessment)"
+  - "[ ] Dev Learnings and QA Learnings sections of the preeng task file updated (slice not Done until both are)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-20-close"
+      what_it_provides: "The close flow whose step 5 this slice wires to the blind verifier dispatch"
+      status: "planned"
+    # TODO: confirm — whether SLICE-RES-21-safe-close-skill is also a prerequisite (which slice owns close step 5); task file states no explicit prerequisites
+
+# File permissions
+files_allowed: []
+  # TODO: confirm — task file names no concrete repo paths; it constrains CONTEXT
+  # ("a fresh general-purpose Task given the handoff text ONLY — no repo, no cwd;
+  # no new agent definition files"), not a file list. Confirm the close step-5
+  # implementation file(s) before assignment.
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "The single most likely silent failure is a repo-reading verifier passing a bad handoff; deny it the repo."
+  - "Do not trust a single pass — the gutted handoff must actually FAIL (test the tester)."
+  - "On Wigum cap (5): DEGRADE, never halt — close still allowed, receipt marks DEGRADED."
+  - "No new .claude/agents/ files; the verifier is a fresh general-purpose Task."
+
+# Technical requirements
+technical_requirements:
+  - "Wire close step 5 to dispatch a general-purpose Task with the handoff text only (no repo, no cwd access)."
+  - "Verifier output must state the next step; that next-step quote is carried into the receipt."
+  - "Implement Wigum cap 5 -> DEGRADE (receipt marks DEGRADED; close proceeds)."
+
+# Testing requirements
+testing_requirements:
+  - "Test-the-tester case 1: a deliberately gutted handoff must FAIL the verifier."
+  - "Test-the-tester case 2: the real handoff must yield a next-step quote that appears in the receipt."
+
+# Verification method (QA — zero-trust; skill-mandated extension of the template)
+verification_method: |
+  - Both test-the-tester transcripts archived; the receipt's quoted next step
+    shown to match the verifier output.
+  - Confirm the verifier truly had no repo/cwd access (inspect the dispatch).
+  - Confirm a gutted handoff fails (do not trust a single pass).
+  - Confirm DEGRADE, never halt, on cap.
+  - QA assumes the Dev did NOT do the work correctly: verify scope respect and
+    evidence authenticity (no fabricated logs — spot-check and recompute).
+    QA may REJECT and require rework until the gates pass.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Evidence bundle path: .acos/evidence/[DATE]/SLICE-22-blind-roundtrip/
+  Vertical value (from preeng): deny the verifier the repo so it cannot
+  rubber-stamp a bad handoff by reading the codebase.

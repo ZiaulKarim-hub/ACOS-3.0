@@ -1,0 +1,128 @@
+timestamp: "2026-07-13T23:55:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "86edc34d-34d2-4712-ace2-97dbab853245"
+estimated_tokens: 0
+
+session_summary: |
+  This session set up open-source/open-weight AI inference for Zee via opencode + Z.ai (Zhipu),
+  outside the ACOS git repo (dotfiles, Doppler secrets, local config). It discovered the
+  Doppler-stored OPENROUTER_API_KEY is invalid, fixed a fully-broken opencode installation
+  (half-migrated SQLite DB), wired a working `zai` provider through opencode.json, updated
+  ~/.zshrc aliases (`oc` verified working end-to-end; `ocpro` unverified/slow), and documented
+  everything in a new memory reference file with a MEMORY.md pointer. Core deliverable (fast,
+  working `oc` command) is DONE and verified; three follow-ups remain open (see next_actions).
+
+current_work:
+  slice_id: "N/A — infra/tooling task outside the planning hierarchy (no planning/ artifact created)"
+  story_id: "N/A"
+  epic_id: "N/A"
+  status: "completed_with_open_followups"
+
+completed_this_session:
+  - "Diagnosed OPENROUTER_API_KEY in Doppler (project acos-3-0, config dev) as INVALID: 49 chars, not sk-or-v1- format; OpenRouter API returns 401 'Missing Authentication header'. Breaks the old `oc` OpenRouter alias AND droid (DROID_DEFAULT_MODEL=openrouter/z-ai/glm-5)."
+  - "Confirmed ZAI_API_KEY in the same Doppler config WORKS against https://api.z.ai/api/paas/v4 (international Z.ai/Zhipu endpoint, NOT open.bigmodel.cn)."
+  - "Fixed opencode v1.17.10 (/opt/homebrew/bin/opencode), which was fully broken with SQLite error 'no such column: name' on every command — caused by a half-migrated DB (both __drizzle_migrations and migration tables present) from an upgrade. Fix: moved ~/.local/share/opencode/opencode.db{,-shm,-wal} aside to *.bak-zai; opencode rebuilt a fresh DB (session history lost, config/keys unaffected)."
+  - "Created ~/.config/opencode/opencode.json defining provider `zai` (options.baseURL=https://api.z.ai/api/paas/v4, options.apiKey={env:ZAI_API_KEY}); opencode already ships built-in zai/* models from models.dev, so only key+endpoint were needed."
+  - "Updated ~/.zshrc: `oc` alias now = `doppler run --project acos-3-0 --config dev -- opencode -m zai/glm-4.5-flash` — VERIFIED working end-to-end (~17s, returned 'OK'). Added `ocpro` = same but `-m zai/glm-4.6` (flagship) — timed out at 2min twice in headless test, NOT verified. Old broken OpenRouter alias kept as a commented-out line for reference."
+  - "Discovered headless `opencode run` hangs with no output unless `--dangerously-skip-permissions` is passed (blocks on an interactive permission prompt otherwise); the interactive TUI (`oc`) does not have this problem."
+  - "Wrote memory reference file /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_zai_opencode_setup.md (originSessionId 86edc34d-34d2-4712-ace2-97dbab853245) and added a pointer line to MEMORY.md (line 115): '[reference_zai_opencode_setup.md](reference_zai_opencode_setup.md) — Z.ai key WORKS via api.z.ai (`oc`→zai/glm-4.5-flash); OpenRouter key in Doppler INVALID (401); opencode DB half-migration fixed; Ollama scaffolded not built'."
+  - "Flagged a privacy caveat for future use: Z.ai routes to a Chinese company's servers — do NOT send confidential OKOA/borrower data through it. The private path (local Ollama via LOCAL_LLM_BASE_URL=http://localhost:11434/v1, LOCAL_LLM_MODEL=qwen2.5-coder:14b, helpers laider/lgoose) is already scaffolded in ~/.zshrc but Ollama itself is NOT yet installed."
+
+files_modified:
+  - path: "~/.zshrc (outside this git repo)"
+    changes: "Rewrote `oc` alias to route through Doppler zai/glm-4.5-flash instead of broken OpenRouter; added new `ocpro` alias for zai/glm-4.6; kept the old OpenRouter `oc` line as a comment. Pre-existing `ocfallback` alias (points to .claude/scripts/fallback-to-opencode.sh, untouched this session) left as-is."
+  - path: "~/.config/opencode/opencode.json (outside this git repo, newly created)"
+    changes: "Defines provider `zai` with baseURL https://api.z.ai/api/paas/v4 and apiKey {env:ZAI_API_KEY}."
+  - path: "~/.local/share/opencode/opencode.db, opencode.db-shm, opencode.db-wal (outside this git repo)"
+    changes: "Original broken half-migrated files preserved as *.bak-zai; a fresh, working DB was rebuilt by opencode on next run."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_zai_opencode_setup.md"
+    changes: "New reference memory file documenting the full diagnosis and fix (verified present on disk, 2917 bytes, mtime 2026-07-13 16:55)."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Added one pointer line (line 115) to the new reference file under the memory index (verified present on disk)."
+  - path: "Doppler secrets (project acos-3-0, config dev) — NOT modified this session"
+    changes: "OPENROUTER_API_KEY remains the known-invalid value; ZAI_API_KEY is the working key already present. No Doppler write actions were taken (secret rotation is an open follow-up, needs the boss's real OpenRouter key)."
+
+decisions_made:
+  - "No formal ADR/decision file was written for this change (it is dotfile/tooling configuration, not a planning-hierarchy or architectural decision) — captured instead as a memory reference file per the project's existing pattern for reference_* notes."
+  - "No memory/decisions/ file exists dated 2026-07-13 — the most recent decision file is memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md (unrelated, pre-dates this session)."
+
+blockers:
+  - "OPENROUTER_API_KEY in Doppler is invalid and has NOT been replaced — the OpenRouter path (and droid, which depends on it via DROID_DEFAULT_MODEL=openrouter/z-ai/glm-5) remains broken until a real sk-or-v1- key is set via `doppler secrets set OPENROUTER_API_KEY --project acos-3-0 --config dev`."
+  - "zai/glm-4.6 (the `ocpro` alias) is UNVERIFIED — it timed out at 2 minutes in headless testing twice. It may simply be slow, or may have a deeper issue; do not assume it works without a longer-timeout test."
+  - "NOTE (unrelated to this session, discovered during gather): a separate, concurrent session (origin_session 49f72902-6b7a-43f3-92a1-72303f0a0c3c) wrote memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md at 21:32 today, diagnosing repeating macOS keychain-unlock prompts possibly caused by Eternity Protocol session-cycling amplification. That session also edited GLOBAL ~/.claude/settings.json to register acos-eden-protocol hooks. This is a live, unresolved cross-session issue that could affect ANY session in this environment (including future ones) — worth checking `~/Library/Application Support/acos-token-monitor/state/` for a fresh storm before assuming a clean start."
+  - "A live `doppler secrets --project acos-3-0 --config dev` list command hung/timed out (2min) during this handoff's gather step — Doppler CLI may be waiting on an interactive prompt (browser auth?) in this environment; be aware `doppler` invocations can hang non-interactively here."
+
+next_actions:
+  - "Replace the invalid OPENROUTER_API_KEY in Doppler (project acos-3-0, config dev) with a real sk-or-v1- key (user mentioned it's likely on the boss's account) to restore the OpenRouter path and unblock droid."
+  - "Optionally install Ollama and pull a model (e.g. qwen2.5-coder:14b per the existing LOCAL_LLM_MODEL scaffold in ~/.zshrc) to establish the private, confidential-data-safe local inference path — currently only scaffolded, not built."
+  - "Decide whether to keep `ocpro` (zai/glm-4.6) given its unverified/slow behavior — either re-test with a longer timeout or drop the alias."
+  - "If picking up keychain/eternity work instead: read memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md in full — it has its own detailed next-steps list (correlate eternity fires to keychain-read bursts, test pausing eternity, test the keychain unlock behavior, consider reverting the global eden hook registration)."
+
+context_for_next_session: |
+  The core task this session — get a working non-Anthropic inference path for Zee — is DONE and
+  verified: `oc` (opencode TUI via Doppler-sourced ZAI_API_KEY, model zai/glm-4.5-flash) works
+  end-to-end. Everything described in the task brief was independently confirmed on disk during
+  this handoff's gather step: ~/.zshrc has the new `oc`/`ocpro` aliases with the old OpenRouter
+  line commented out; ~/.config/opencode/opencode.json defines the `zai` provider correctly;
+  ~/.local/share/opencode/ contains both the rebuilt live DB and the *.bak-zai originals from the
+  broken half-migration; the reference memory file exists at
+  /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_zai_opencode_setup.md
+  and MEMORY.md line 115 points to it. None of this touched the ACOS 3.0 git repository itself —
+  `git status`/`git log` show zero footprint from this work, which is expected since it's
+  environment/dotfile configuration, not project code.
+
+  Three genuine open items remain, in priority order: (1) the Doppler OPENROUTER_API_KEY is still
+  the invalid value — this also silently breaks `droid`, which the user may not have connected yet;
+  (2) `ocpro` (glm-4.6) is unverified due to 2-minute timeouts in headless testing — don't assume
+  it's usable; (3) Ollama for the private/confidential-data path is scaffolded in ~/.zshrc
+  (LOCAL_LLM_* vars, laider/lgoose helpers) but not installed. IMPORTANT privacy note carried
+  forward: Z.ai/GLM is a Chinese-company-hosted endpoint — the working `oc` path must NEVER be used
+  for confidential OKOA/borrower data; only local Ollama qualifies for that.
+
+  Separately — NOT part of this session's work, but discovered while gathering repo state and
+  worth flagging — a different, apparently concurrent session (49f72902-6b7a-43f3-92a1-72303f0a0c3c)
+  left a fresh (21:32 today) diagnosis handoff at
+  memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md about repeating macOS keychain-unlock
+  dialogs possibly caused by Eternity Protocol session-cycling (84 tracked sessions, 33 over the
+  500k-token fire threshold, 22 `.clear-requested` markers observed). That session also modified
+  the GLOBAL ~/.claude/settings.json to register acos-eden-protocol hooks. If the next session's
+  environment feels unstable (repeated keychain prompts, unexpected /clear cycling), read that
+  file first — it has a ranked list of next diagnostic steps.
+
+  Also present in the working tree (pre-existing, untracked, NOT touched this session): a large
+  uncommitted body of work under .claude/agents/ic-*.md, .claude/skills/acos-investment-committee/,
+  .claude/skills/acos-axiom-synthesis/, .claude/skills/acos-peril-scan/,
+  .claude/skills/acos-sponsor-verify/, .claude/skills/okoa-deal-analyzer/,
+  .claude/skills/prism-financial-modeler/, .claude/skills/title-sleuth/, plus ~60 new
+  planning/slices/SLICE-EDEN-*.yaml and SLICE-IC-*.yaml files (Investment Committee build,
+  Eden Protocol build). The most recent related handoff for that track is
+  memory/handoffs/2026-07-09-ic-build-handoff.md. None of this is at risk from this session's
+  changes, but the next session should NOT assume a clean git tree — `git status --short` will
+  show dozens of untracked paths that predate this session and belong to that other track. Also
+  note two small pre-existing modified-but-uncommitted files unrelated to this session:
+  .claude/scripts/session-cleanup.sh (added a comment clarifying eden-level is a global file never
+  touched by cleanup) and .claude/skills/acos-xl-update/SKILL.md.
+
+reconstruction_sources:
+  - "git status --short (ACOS 3.0 repo)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff .claude/scripts/session-cleanup.sh"
+  - "ls -lt planning/"
+  - "ls -lt .acos/evidence/"
+  - "ls -lt memory/decisions/"
+  - "ls -lt memory/handoffs/*.yaml memory/handoffs/*.md (excluding *.resume.md)"
+  - "ls -la .acos/state/"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md (read in full)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_zai_opencode_setup.md (read in full)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md (grepped for zai_opencode pointer)"
+  - "~/.zshrc (grepped for oc/ocpro aliases and zai/glm references)"
+  - "~/.config/opencode/opencode.json (read in full)"
+  - "ls -la ~/.local/share/opencode/ (verified live DB + .bak-zai originals)"
+  - "ls -la .omx/ (new untracked directory, not attributed to this session)"
+  - "ls -la research/ (pre-existing untracked directory, not attributed to this session)"
+  - "ls -la .claude/scripts/fallback-to-opencode.sh + git log for it (pre-existing since 2026-06-11, unrelated to this session)"
+  - "task/session-context brief supplied by the invoking agent (this session's Z.ai/opencode work summary)"

@@ -1,0 +1,97 @@
+slice_id: "SLICE-IC-A3-optionals-advocate-separation"
+story_id: "STORY-A1"
+epic_id: "EPIC-A"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Deal-triggered optionals + advocate separation"
+objective: |
+  Implement deal-triggered optional-seat promotion (#11 Construction/Completion, #12 Tax,
+  #13 Market/Macro, #14 Compliance/Regulatory, #15 Environmental/Physical-Condition), compose
+  the roster resolver with the chair's exclude/include command, and mechanically enforce that
+  the Deal Advocate (#9) NEVER casts a scrutiny vote. Exit/Refinance is NOT an optional — it
+  folded into Finance (#2). Roster: scrutiny #1-8; Advocate #9 (non-voting); Gap-Hunter/Chair
+  #10; optionals #11-15.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] optional_triggers.yaml encodes asset_type/attribute -> optional seat triggers (e.g. asset_type: construction -> #11 Construction/Completion; borrower_entity: SPE-stack -> #12 Tax; collateral_flag: REC -> #15 Environmental/Physical)"
+  - "[ ] scripts/resolve_roster.py accepts a Deal + --seats lean|full + an --exclude/--include-only set and returns the active roster including promoted optionals"
+  - "[ ] lean roster == #1-8 scrutiny + #9 Advocate + #10 Chair; full roster == + all triggered optionals (#11-15); Advocate always present in both"
+  - "[ ] exclude/include is applied AFTER promotion and the resulting active_seats list is written to .acos/investment-committee/<session>/manifest.yaml"
+  - "[ ] excluding a seat emits a Gap-Hunter (#10) uncovered-risk log line (e.g. 'excluding #3 -> normalized-NOI veracity unowned this session')"
+  - "[ ] a hard assertion fails the run if ADVOCATE(#9).voting is ever true or #9 appears in a scrutiny tally"
+  - "[ ] a fixture deal with a construction attribute promotes #11 when run through resolve_roster.py"
+  - "[ ] #9 is excluded from the voting set in both lean and full fixture runs (recomputed, not trusted from a flag)"
+  - "[ ] evidence bundle includes resolve_roster transcripts for lean, full, and an exclude-command run"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-A1-roster-coverage-map"
+      what_it_provides: "roster.yaml, coverage-map.yaml (base #1-10 roster + owning categories that optionals #11-15 are promoted on top of)"
+      status: "planned"
+    - slice_id: "SLICE-IC-D2-tally-chair-hitl"
+      what_it_provides: "the chair-command PARSING that supplies the exclude/include set resolve_roster.py consumes (integration point; D2 calls this resolver)"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/optional_triggers.yaml"
+  - ".claude/skills/acos-investment-committee/scripts/resolve_roster.py"
+
+files_prohibited:
+  - "context note: optional seats' full prompt authoring beyond a charter stub is out of scope (see SLICE-A2); synthesis logic out of scope; the exclude/include chair-command PARSING lives in SLICE-D2 (this slice only exposes the resolver D2 calls)"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: roster.yaml, coverage-map.yaml (SLICE-A1), spec Appendix A, domain-lattice seat-advocate + std-three-lines"
+  - "Roster: scrutiny #1-8; Deal Advocate #9 (defense, NON-voting); Gap-Hunter/Chair #10 (procedural, non-voting); optionals #11-15. Exit/Refi is in Finance (#2), NOT an optional."
+  - "active_seats in the session manifest is the single source of truth the moderator (D1/D2) reads; three-lines-of-defense is load-bearing -- the #9-non-voting rule is an assertion, not a comment; stdlib-only"
+
+# Technical requirements
+technical_requirements:
+  - "resolve_roster.py implements lean (#1-8 + #9 + #10) and full (+ triggered optionals #11-15) modes"
+  - "resolve_roster.py accepts and applies an exclude/include set (from the D2 chair command) after promotion, writes active_seats to the manifest, and logs uncovered risk on any exclusion"
+  - "Advocate (#9) always present but structurally excluded from any voting-set/scrutiny-tally computation"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs resolve_roster.py on a construction fixture and confirms #11 appears"
+  - "QA runs with --exclude 3 and confirms active_seats omits #3 AND an uncovered-risk line is logged"
+  - "QA enumerates the returned voting set in BOTH lean and full and confirms #9 ADVOCATE is absent (recompute, do not trust the flag)"
+  - "QA attempts to construct a scrutiny tally including #9 and confirms the assertion blocks it"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+# Effort estimate
+effort_estimate: "S"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): recompute the voting set directly rather than trusting
+  a non-voting flag; reject if #9 the Advocate can ever vote; confirm exclude/include writes
+  active_seats to the manifest and logs uncovered risk.
+  Reconciled 2026-07-08 to the final roster (Advocate #9, Gap-Hunter #10, optionals #11-15,
+  Exit folded into Finance) + the exclude/include command composition.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-A3-optionals-advocate-separation.md.

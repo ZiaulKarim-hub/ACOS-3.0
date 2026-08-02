@@ -1,0 +1,117 @@
+# Slice Plan — bridged from preeng task SLICE-12-rebuild
+# Source: planning/preeng/005-resurrection-protocol/tasks/SLICE-12-rebuild.md
+
+slice_id: "SLICE-RES-12-rebuild"
+story_id: "STORY-1.1"
+epic_id: "EPIC-1"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "rebuild-registry.py: reproduce the 16/16 baseline reading no registry file (+ DP5 seeder)"
+objective: |
+  Implement rebuild-registry.py so a derived index can never dangle: rebuild
+  DELETES the 55%-dangling-pointer class instead of mitigating it. Reading NO
+  registry file, reproduce the proven 16/16-row baseline from disk alone.
+description: |
+  In scope:
+  - Enumerate find */memory/handoffs (authoritative) + */CLAUDE.md + */.acos
+    across BOTH parents (Vibe Coding, OKOA).
+  - Use ~/.claude.json project paths as a lossy hint (glob-disambiguation
+    only, never a decoder).
+  - Reproduce the proven 16/16 baseline; flag (never auto-enroll) the
+    Vibe Coding-root anomaly.
+  Out of scope (guardrails):
+  - Auto-enrolling the parent-folder anomaly without confirmation.
+  - Treating ~/.claude.json path-mangled keys as authoritative.
+  # TODO: confirm — the title includes "+ DP5 seeder" but the task body does not
+  # specify seeder behavior for this slice (DP5 curation lives in SLICE-13-seed-curate);
+  # confirm whether any seeding logic belongs here before implementation.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Dry-run lists >=18 candidates across both parents including the Vibe Coding-root anomaly (flagged, not auto-enrolled) — dry-run output archived in the evidence bundle"
+  - "[ ] Reproduces the 16/16-row baseline reading no registry file — reconstruction artifact archived and diffed against enrollment-created rows"
+  - "[ ] Output reconciles with the rows enrollment creates later — reconciliation diff archived in the evidence bundle"
+  - "[ ] 7-part evidence bundle populated at .acos/evidence/[DATE]/SLICE-12-rebuild/ (implementation summary, requirements traceability to spec FR-*/tech_prd TR-*, structural quality, functional checks, security/compliance notes, operational notes, self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections updated in tasks/SLICE-12-rebuild.md (slice is not Done until they are)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry_lib.py — the only permitted write path for registry rows (atomic write, schema, audit)"
+      status: "in_progress"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/rebuild-registry.py"
+  # Read-only enumeration of both parents (Vibe Coding, OKOA) and ~/.claude.json.
+  # Registry writes ONLY via registry_lib.py.
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - "~/.claude.json"  # read-only hint source — never written
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "*/memory/handoffs is the AUTHORITATIVE enumeration signal; */CLAUDE.md and */.acos are corroborating markers."
+  - "~/.claude.json project paths are a lossy hint: glob-disambiguation only, never a decoder — a mangled key never becomes identity."
+  - "The Vibe Coding-root anomaly must be FLAGGED in dry-run output, never silently or automatically enrolled."
+  - "All registry writes go through registry_lib.py — rebuild-registry.py never writes registry files directly."
+
+# Technical requirements
+technical_requirements:
+  - "Enumerate candidate projects across BOTH parents (Vibe Coding, OKOA) via find on */memory/handoffs + */CLAUDE.md + */.acos"
+  - "Rebuild reads NO registry file — reconstruction from disk artifacts alone"
+  - "Dry-run mode that lists candidates (>=18) with the anomaly flagged"
+  - "Reconcile rebuilt rows against the rows enrollment creates (SLICE-11 path)"
+
+# Testing requirements
+testing_requirements:
+  - "Delete the registry.d contents and confirm rebuild reconstructs 16/16 from disk alone"
+  - "Confirm the Vibe Coding-root anomaly is flagged, never silently enrolled"
+  - "Confirm ~/.claude.json is used as a hint only (a mangled key never becomes identity)"
+
+# Verification method (QA — zero-trust; skill-mandated extension of the template)
+verification_method: |
+  Dry-run output archived; 16/16 reconstruction diffed against
+  enrollment-created rows; anomaly flag shown in the archived output.
+  QA assumes the Dev did NOT do the work correctly: verifies scope respect,
+  evidence authenticity (spot-check and recompute — no fabricated logs), and
+  re-runs the registry.d-wipe rebuild, anomaly-flag, and hint-only checks
+  above. QA may REJECT and require rework until the gates pass.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "M"
+# M = 1-3 hours: enumeration across two parents + hint reconciliation +
+# dry-run/flag logic + 16/16 reconstruction diff harness.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged by acos-preeng-classic Step-5 from preeng feature
+  005-resurrection-protocol. Evidence bundle path:
+  .acos/evidence/[DATE]/SLICE-12-rebuild/. Vertical value: a derived index
+  cannot dangle — rebuild deletes the dangling-pointer class instead of
+  mitigating it. Demo: Demo 1 (enrollment).

@@ -1,0 +1,2237 @@
+{
+ "synth": {
+  "task_playbooks": [
+   {
+    "name": "Internal web app development & security remediation (okoa-wiki, okoa-loan-intake-system, pe-strategy/financial-model)",
+    "evidence_count": 25,
+    "trigger_phrases": [
+     "fix the wiki",
+     "loan intake system",
+     "deploy to Vercel",
+     "Convex",
+     "security findings",
+     "swarm review the intake app",
+     "FlexCade",
+     "financial model page"
+    ],
+    "inputs": [
+     "repo at /Users/zee/Documents/Vibe Coding/okoa-wiki or okoa-loan-intake-system or private-equity-hedge-fund-strategy",
+     "swarm-review findings reports",
+     "Doppler project okoa-loan-intake",
+     "Vercel dashboard (~20 production secrets)"
+    ],
+    "steps": [
+     "Identify the repo and its stack: okoa-wiki = Next.js 15 + React 19 + Tailwind + Supabase (migrated FROM Convex 2026-02-26); okoa-loan-intake-system = Next.js + Convex + Clerk + Box + HubSpot, package manager bun, linter Biome; pe-strategy = Next.js App Router + Convex + 5 pure-TS engines in src/lib/",
+     "For security work: run /acos-swarm-review, fix findings, then ALWAYS run a verification re-review anchored to current HEAD (verification catches regressions the fixes introduced, e.g. the deleteApiKey auth-boundary regression)",
+     "Apply the eight codified secure-Convex patterns: internal.* for httpAction/self-scheduling, *Internal variants for server actions, rate limits read from DB not caller args, stripSensitiveFields on all REST responses, sanitizeMimeHeader, validateTransition, Zod enums derived from the single APPLICATION_STATUSES constant, shared PII field registry (convex/lib/piiFields.ts) consumed by BOTH API redaction and log sanitization",
+     "Deploy Convex schema/index changes to BOTH deployments: dev (posh-ferret-469) AND prod (amiable-mammoth-199) \u2014 they are separate",
+     "tsc --noEmit before every commit (partial internalMutation conversions slip through slices)",
+     "For prod outages: check Supabase free-tier pause first (projects pause after ~7 days inactivity and take the site down); check env vars for trailing newlines (.trim() all API keys \u2014 strict SDK header validation rejects them)",
+     "Push deliberately: source repo is github.com:okoateam/okoa-loan-intake-system (SSH) with personal-org copies \u2014 route pushes on purpose"
+    ],
+    "tools_skills": [
+     "acos-swarm-review",
+     "convex",
+     "bun",
+     "biome",
+     "doppler",
+     "vercel",
+     "gitleaks",
+     "zod",
+     "clerk",
+     "playwright"
+    ],
+    "outputs": [
+     "code commits deployed to Convex dev+prod and Vercel",
+     "review reports"
+    ],
+    "gotchas": [
+     "httpAction / self-scheduling functions must ONLY call internal.* mutations, never api.* with requireAuth \u2014 scheduler/http contexts have no Clerk identity",
+     "sanitizeMimeHeader must strip CR/LF before user input (company_name) reaches MIME Subject headers \u2014 email header injection",
+     "CSV formula injection prevention required when exporting applicant-supplied data to Excel-opened CSVs; applicant access tokens must NEVER be written into exported CSVs",
+     "Supabase magic-link needs a server-side /auth/callback PKCE code-exchange route; signInWithOtp emails and the auth.users allowed_emails trigger are two separate failure points; free-tier email limit ~3-4/hour masquerades as auth failure",
+     "Resend onboarding@resend.dev sandbox sender is rejected by okoacapital.com mail (SPF/DKIM); Gmail accepts it \u2014 custom-domain sender needs DNS access nobody has",
+     "Clerk: a JWT template named exactly 'convex' must exist or ConvexProviderWithClerk auth silently fails; Convex statically scans auth.config.ts for process.env references",
+     "Box refresh tokens expire after 60 days of inactivity \u2014 manual re-authorization; only delete Convex _storage blobs AFTER Box upload confirmed and box_file_id persisted",
+     "bun run <script> fails on paths with spaces ('/Users/zee/Documents/Vibe Coding/') \u2014 use npx or direct binaries",
+     "Deleting a committed credentials file does NOT revoke exposure \u2014 rotate + BFG/git-filter-repo purge; .checkpoints-style local env history is a disk exposure risk even gitignored",
+     "Tightening a live-table schema field (v.any()\u2192typed) breaks deployment against existing data \u2014 migrate or revert",
+     "Next.js dev CSS cache breakage after edits \u2192 unstyled page; rm -rf .next + restart + hard refresh",
+     "Fail-open patterns (webhook returns valid:true when secret missing, Clerk middleware passing through unconfigured) are the highest-risk class"
+    ]
+   },
+   {
+    "name": "Hypercore portfolio query (payoffs, balances, per-diem, investor figures)",
+    "evidence_count": 15,
+    "trigger_phrases": [
+     "what's the payoff on",
+     "ask Hypercore",
+     "outstanding balance",
+     "per diem interest",
+     "how much does XL have on",
+     "amount due"
+    ],
+    "inputs": [
+     "natural-language portfolio question",
+     "Doppler creds: project hypercore-ask, config dev_personal (CLIENT_ID + HYPERCORE_CLIENT_SECRET)"
+    ],
+    "steps": [
+     "Run live: doppler run --project hypercore-ask --config dev_personal -- python3 .claude/scripts/hca-deliver.py --ask \"...\" (hca-ask.py is the PRIMARY entry: deterministic spine \u2192 funding interpretation \u2192 explorer fallback)",
+     "Resolve loan names via loans(filter:{searchString}) list query, NEVER loan(id) singular (intermittent 500); retry 3x on 500; strip filler/tranche/date words (how/much/senior/junior/mezz/tranche, natural-language dates) from ask strings first",
+     "Fundings: dual-filter loanId+fundingEntityId returns HTTP 500 \u2014 always 2-step assetId\u2192loanFundingId",
+     "Payoff/early redemption: getLoanRepaymentDistribution is input-shape-sensitive \u2014 only the exact known-good full field set (isPrepayment:false etc., carried verbatim in hca-figures.py) works; reconcile components (principal+indexedPrincipal+interest+compoundingInterest+accruedCompoundingInterest+totalFees+totalPenalties+totalTaxes == total) to $0.01 or refuse",
+     "Deliver Hypercore's OWN fetched value; compute only as cross-check or explicitly-labeled computed_fallback",
+     "Always state the as-of date \u2014 payoffs reconcile to the cent but differ by date",
+     "Look up field paths in the Hypercore Data Catalog (.claude/skills/acos-hypercore-ask/catalog/, 5,204 fields / 559 named) via hca-catalog-lookup.py"
+    ],
+    "tools_skills": [
+     "acos-hypercore-ask",
+     "hca-deliver.py",
+     "hca-ask.py",
+     "hca-figures.py",
+     "hca-funding.py",
+     "hca-entities.py",
+     "hca-catalog-lookup.py",
+     "doppler",
+     "Hypercore GraphQL (https://api.hypercore.ai/graphql, OAuth\u2192JWT TTL 1800s)"
+    ],
+    "outputs": [
+     "verified figure with provenance citation",
+     "reports/tables/CSV feeds"
+    ],
+    "gotchas": [
+     "Rates are PERCENTS (14 = 14%), not fractions; totalOutstanding.total is NET of fees \u2014 use .principal for interest basis; capitalizedBalance is a non-additive MEMO equal to principal \u2014 never sum into outstanding",
+     "Per-diem lives at repaymentSchedule.scheduleTable[row].due.interest ONLY on isInterestAccrualDate:true rows (payment rows show period-due); Lux II XL = $1,029.24/day proving Actual/360",
+     "Access boundaries: loans/loanFundings(2-step)/fundingEntities reliable; equities=403 always; clients=500; multi-tranche facilities: only parentLoan (child\u2192parent) is populated, groupSubLoans returns EMPTY \u2014 enumerate tranches by parentLoan.id",
+     "Hypercore is liability-side only \u2014 collateral/NOI come from the OKOA knowledge graph CSVs (~/okoa-labs/okoa_ops/knowledge-graph/)",
+     "Learn ROUTING (metric aliases, entity resolutions), never learned VALUES",
+     "Key IDs: XL Ant = fundingEntity 3; Utah Shoe = loan 88, Ascent Senior = 134 (Beehive Waldorff), Ascent Pref = 149, Lux II = 171 (loanFunding 338); portfolio 141 loans / $434.99M commitment / $201.0M outstanding"
+    ]
+   },
+   {
+    "name": "Prospectus build & maintenance (OKOA fund-raising prospectus)",
+    "evidence_count": 12,
+    "trigger_phrases": [
+     "prospectus",
+     "update the mgmt fee",
+     "case study pages",
+     "waterfall slide",
+     "page 11 map"
+    ],
+    "inputs": [
+     "/Users/zee/Documents/OKOA/OKOA_Prospectus/ (folder renamed from 'OKOA Prospectus' \u2014 no space)",
+     "fund-inputs.yaml (all live numbers)",
+     "PPM - Version 1B.docx (terms source of truth \u2014 legal owns it, never edit)"
+    ],
+    "steps": [
+     "All data lives in fund-inputs.yaml / an authoritative_numbers block \u2014 nothing hardcoded; charts read from the central inputs file",
+     "Edit the ~7MB HTML (base64 images) via Python exact-match str.replace with assert count==1, never the Edit tool or bulk rewrites; anchor row keys like '>5% Gross<' to avoid substring collisions ('5% Gross' \u2282 '15% Gross')",
+     "Waterfall (slide 18) is a COMPUTED model: fee off top \u2192 8% pref \u2192 $200k GP catch-up \u2192 80/20 split; catch-up solves C=0.20\u00d7(800k+C)\u2192$200k independent of mgmt fee; fee mentions live in 3 text spots + waterfall intro + footnote \u2014 update all together (update_mgmt_fee.py)",
+     "Render: ~/.nvm/versions/node/v22.22.3/bin/node html-to-pdf.js --landscape --margin 0 with NODE_PATH=/Users/zee/.npm/_npx/7d92d9a2d2ccc630/node_modules (puppeteer not installed project/global); Chrome headless on 5.5MB+ HTML needs ~20-25s sleep, success signal = 'X bytes written' on stderr not exit code",
+     "Verify case studies against executed loan docs/payoff statements, never deck text (draft conflated Lux I/II and had the wrong city for English Hotel)",
+     "QA: screenshot-first dual-rubric (60% substance / 40% execution) via /acos-doc-design-qa; pixel-band sampling of bottom rows (\u226595% background = clean) diagnoses clipping; compare pixel scans across structurally identical pages to localize bugs"
+    ],
+    "tools_skills": [
+     "update_mgmt_fee.py",
+     "html-to-pdf.js (Node 22 + NODE_PATH)",
+     "Chrome headless",
+     "pdftoppm",
+     "acos-doc-design-qa",
+     "acos-loan-doc-generator-with-visual-verification",
+     "build_prospectus_theme_maps.py"
+    ],
+    "outputs": [
+     "PDF (20pp, 11x8.5 landscape) + PPTX",
+     "PNG map variants"
+    ],
+    "gotchas": [
+     "Desktop is TCC-blocked \u2014 all prospectus I/O via /Users/zee/Documents/OKOA/",
+     "Never repeat photos across pages; wording/brand/20-page structure locked without explicit approval",
+     "Case-study photo bindings: Oberland.jpg=Utah townhomes, Lux.jpg=Hawaii oceanfront, English Hotel.png=Las Vegas; Lux collateral = luxury residential estates, never label hotels (only pg15 is a hotel)",
+     "OKOA positioning: secured RE lender, NOT first-lien-only; lien position deal-by-deal; organized in Utah (domestic LLC, not 'licensed')",
+     "Current terms 2026-06-29: 2% mgmt fee, 8% pref, 20% carry, 100% catch-up; track record block: 62 loans/$143M/22.83% gross/19.22% net/0 losses; fund block: $300M target / 118 loans / $172M committed / 1yr lockup / Park City HQ",
+     "flex-grow:1 + margin-top:auto can starve a sibling banner \u2014 fix with max-height cap, not min-height"
+    ]
+   },
+   {
+    "name": "Outbound dataroom preparation (loan sale / property sale / lender package)",
+    "evidence_count": 10,
+    "trigger_phrases": [
+     "build a dataroom",
+     "buyer dataroom",
+     "include/exclude analysis",
+     "data room for the sale"
+    ],
+    "inputs": [
+     "source Dropbox loan folder",
+     "deal type: loan_sale / loan_participation / property_sale / foreclosure_auction / lender_package",
+     "one-line objective"
+    ],
+    "steps": [
+     "Use acos-dataroom-v2 (autonomous, multi-model blind consensus, zero human gates) \u2014 v1's human-gated output failed the boss's cold look",
+     "Invoke from project-root pwd and keep multi-GB deliberation/audit trails OUT of Dropbox-synced folders (write to invocation pwd); resumable runs must re-invoke from the same pwd",
+     "COPY-only, source untouched, files keep original names; default-EXCLUDE on irreducible disagreement; dedicated privilege-scanner phase for legal docs; pending_redaction subcategory for sensitive docs (C-PACE agreements, org charts)",
+     "Property-sale datarooms strip ALL lender-internal material: loan docs, payoff/IRR, foreclosure strategy, investor participation, PII, embedded valuation tabs, payment-card numbers",
+     "After create, verify the folder list ON DISK (stale proposed_room_path values leaked INTERNAL/SUPERSEDED folders into a buyer room once)",
+     "Two-workbook architecture: buyer index generated only from the boss-finalized internal workbook \u2014 cannot leak internal data by construction",
+     "Flag source gaps explicitly (e.g. Golden East: no formal appraisal, no Phase I \u2014 BOV/BCA is the only valuation); final release set is advisory \u2014 confirm with counsel"
+    ],
+    "tools_skills": [
+     "acos-dataroom-v2",
+     "acos-dataroom (v1, superseded)",
+     "openpyxl",
+     "pdfplumber/pypdf/pytesseract/pdf2image"
+    ],
+    "outputs": [
+     "organized dataroom folder + index",
+     "XLSX internal workbook + buyer guide",
+     "QA report + audit trail (votes, quarantine, manual-review notes)"
+    ],
+    "gotchas": [
+     "Hotel-sale datarooms must flag brand-license/HMA assignability and liquor-license transferability as critical; C-PACE assessments run with the land \u2014 buyer takes subject-to unless cured/released; trustee's-sale title needs foreclosure-counsel opinion + new title policy",
+     "macOS TCC blocks shell enumeration of ~/Library/CloudStorage/Dropbox-* in some contexts \u2014 Finder-copy to a local staging path (e.g. /Users/zee/Thurston Staging) or grant Full Disk Access + restart terminal",
+     "Never write work-in-progress into 'External Data Rooms -- EXTERNALLY SHARED' (externally visible)",
+     "Never call external APIs / ANTHROPIC_API_KEY \u2014 all model work via Task() under the Max subscription"
+    ]
+   },
+   {
+    "name": "Document diligence sweep / data extraction (find, extract, or prove ABSENT)",
+    "evidence_count": 10,
+    "trigger_phrases": [
+     "is the executed X in the folder",
+     "extract the loan terms",
+     "find the soils report",
+     "prove it's not there",
+     "diligence questions"
+    ],
+    "inputs": [
+     "Dropbox deal folder(s)",
+     "user-supplied schema file (domain knowledge lives in the schema, not the skill)"
+    ],
+    "steps": [
+     "Triage first, then read the 3-4 most authoritative docs in the MAIN THREAD (large PDFs >20MB overflow subagent context; Opus subagents reading >3 large PDFs hit stream-idle timeouts)",
+     "Authority hierarchy: executed docs.PDF is the single most authoritative source; loan lifecycle sources = Loan Agreements, Settlement Statements, Escrow Instructions, Payoff Letters, Distribution Spreadsheets, Deeds of Reconveyance",
+     "To prove ABSENCE: full content-read + OCR of EVERY scanned PDF (pdftotext sweep; <500 chars output = scanned \u2192 tesseract at 300 DPI), never filename search; trace every keyword hit ('ACORD' + a policy number is the reliable insurance-cert discriminator; bare 'builders risk' in loan agreements is covenant boilerplate)",
+     "Cache page:line text-map extractions (extract_textmap.py) so follow-up questions need no re-extraction",
+     "Distinguish NOT_IN_ASSIGNED_DOCS vs NOT_FOUND in parallel extraction \u2014 required for correctness when work is partitioned across agents",
+     "Asymmetric QA spot-check rates: 100% verification for currency figures/names (legal liability), ~30% for page citations, 50% for NOT_FOUND claims",
+     "Cite everything file + page:line; deliver findings with a retrieval recommendation (deal counsel Ballard Spahr \u2014 'BTJD' marks \u2014 is the source for missing executed agreements)"
+    ],
+    "tools_skills": [
+     "acos-data-extractor",
+     "acos-loan-doc-finder",
+     "extract_textmap.py",
+     "pdftotext",
+     "tesseract",
+     "soffice (docx\u2192pdf, xlsx recalc)"
+    ],
+    "outputs": [
+     "EXTRACTION_REPORT.md + YAML results with provenance",
+     "diligence DOCX with page:line citations",
+     "absence finding + recommendation"
+    ],
+    "gotchas": [
+     "tesseract 5.x returns EMPTY on absolute /tmp paths \u2014 invoke from cwd with basename",
+     "macOS has NO timeout/gtimeout command \u2014 `timeout 25 pdftotext` silently yields empty output (easy to misread as 'scanned'); guard hung reads with run_in_background+poll",
+     "Title policies: only Schedule A matters (pages 1-3 text, 9-20 scanned)",
+     "Watch for non-Okoa loans mixed into folders (Deer Fund, Boardwalk Capital) \u2014 exclude",
+     "LOC loans: separate inception (first advance) and closing (payoff) dates; bridge/construction: closing = inception; capital-first-at-risk (funding date) wins over contract execution date on conflicts",
+     "Some OKOA loans are secured by all business assets (personal property lien) \u2014 report 'no real property', don't substitute a business address"
+    ]
+   },
+   {
+    "name": "Lender memo / debt preso rebuild & design QA",
+    "evidence_count": 9,
+    "trigger_phrases": [
+     "rebuild the lender memo",
+     "debt preso",
+     "design audit the deck",
+     "magazine version"
+    ],
+    "inputs": [
+     "source PDFs (when two decks describe the same deal a year apart, the NEWER memo is source of truth for numbers; older deck = descriptive enrichment only \u2014 drop its financials wholesale)",
+     "~/Documents/OKOA/Ascent LK Cap preso/rebuild/ tooling"
+    ],
+    "steps": [
+     "Reconcile sources into A-verbatim and B-corrected YAMLs; FOOT EVERY TABLE \u2014 even the 'truth' Memo had 3 footing errors (Unit Mix rows sum $106.77M vs printed $110.78M; Use of Proceeds Preferred $63.40M vs $61.76M; Alternative $87.38M vs $88.26M)",
+     "Build via brad-build.py (YAML\u2192Brad-HTML) or business-report-build.py; render via brad-render-pdf.js / html-to-pdf.js Puppeteer",
+     "Puppeteer must page.goto('file://...') not setContent() (about:blank origin blocks file:// images); absolute file:// img src; strip loading=\"lazy\" (IntersectionObserver never fires headless); gate page.pdf() on img.complete Promise.all",
+     "Table pages: acos-ultimate-designer has NO table template (tables: YAML silently dropped) \u2014 inject via inject-table-pages.py <yaml> <in.html> <out.html> between Phase 2 and 3; okoa-design MCP can't render tables/images either \u2014 combine tools",
+     "Visual QA: pdftoppm -r 150 -png (never 200 DPI) + sips -Z 1800 *.png; batch ~5-8 pages, /compact between batches; first 'image could not be processed' = stop and /compact immediately",
+     "Design-audit method: benchmark = internal consistency when no style guide exists; three root causes cover most deck defects \u2014 font substitution on PDF export, stale hardcoded data/footers, template drift (heading styles/band colors); need the editable (Canva) source to fix cleanly"
+    ],
+    "tools_skills": [
+     "brad-build.py",
+     "business-report-build.py",
+     "html-to-pdf.js",
+     "inject-table-pages.py",
+     "acos-ultimate-designer",
+     "okoa-design MCP",
+     "acos-document-design-brad",
+     "pdftoppm",
+     "render-doc-audit.py"
+    ],
+    "outputs": [
+     "PDF (Brad/magazine-styled memorandum) + HTML",
+     "severity-tagged punch-list DOCX"
+    ],
+    "gotchas": [
+     "Renderer only reads declared keys \u2014 a tables_2: YAML key is silently dropped and content vanishes; raw_html escape-hatch fields handle one-off layouts",
+     "Same-offset insertions must sort by (-offset,-insertion_index) or tables reverse; roman-numeral renumber regex must use [IVXLCDM]* not +",
+     "IMAGE-CATALOG.md labels can be stale \u2014 verify image bindings visually",
+     "Reusable CSS mechanics: .t + .t adjacent-sibling for inter-table breathing; flex-column page-body + margin-top:auto bottom-pins only when space allows; eyebrow folding on continuation pages reclaims ~25mm",
+     "Even corrected tables may not balance to stated loan amounts ($63.4M vs $57M) \u2014 deal-team reconciliation issue, flag not fix",
+     "Quality bar for lender-review docs is institutional \u2014 no visible layout bugs acceptable"
+    ]
+   },
+   {
+    "name": "Loan document sorting (Dropbox loan folders \u2192 categorized copies)",
+    "evidence_count": 5,
+    "trigger_phrases": [
+     "sort the loan folder",
+     "organize the Dropbox folder",
+     "fix the sorted folders"
+    ],
+    "inputs": [
+     "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/ (31 active folders)"
+    ],
+    "steps": [
+     "Run /acos-loan-doc-sorter (3-tier swarm: main orchestrator \u2192 sonnet per-folder sorters \u2192 haiku batch classifiers) into a '1. <Name> - Sorted' subfolder per deal using the 22-category OKOA DD framework",
+     "Check categories 21-Foreclosure and 22-Payoff BEFORE general matching (they were misclassified into Loan Agreements/Title/Legal)",
+     "Identify unsorted folders by scanning for a missing '1. <Name> - Sorted' child; existing '- Sorted' folder = SKIP safeguard",
+     "Audit output with /acos-sort-fixer (50+ parallel agents); chunk reviewers must be sonnet not haiku (reclassification reasoning), 50 files/chunk \u2014 scales to 1,300-file folders",
+     "Safety: copies only (cp -p), never rm/mv originals; expect many rm -rf Oracle escalations (skill re-creates sorted folders)"
+    ],
+    "tools_skills": [
+     "acos-loan-doc-sorter",
+     "acos-sort-fixer",
+     "loan_doc_sorter.py",
+     "rename_loan_categories.sh"
+    ],
+    "outputs": [
+     "sorted Dropbox folder trees (copies)"
+    ],
+    "gotchas": [
+     "Per-deal file counts (sizing input for swarm partitioning): Warburton Motel 6 Flip 131, Free_Legation 176, Darwin Provo Airpark 149, Thurston Lux 2 764, Kohan_Golden East 1,305 (largest)",
+     "acos-loan-doc-sorter = OKOA-specific 22-category sorter; acos-loan-doc-finder = category-agnostic copy tool; acos-sort-fixer = audits sorter output"
+    ]
+   },
+   {
+    "name": "Font design / type-forge (Xyntax Titles for the OKOA website)",
+    "evidence_count": 6,
+    "trigger_phrases": [
+     "custom font",
+     "titling font",
+     "glyph spacing",
+     "type forge",
+     "Xyntax"
+    ],
+    "inputs": [
+     "/Users/zee/Documents/Vibe Coding/OKOA Website/font-foundry/ (build output in font-foundry/xyntax/build/)",
+     "donor font (Cinzel Decorative)"
+    ],
+    "steps": [
+     "Run Type-Forge: typeforge.sh serves glyph+spacing+specimen editors on ONE server, port 8800 (editing assets/*.html requires relaunching typeforge.sh); earlier serve.py glyph editor used port 8787",
+     "Vectorize recipe: vectorize.py --space 30 --uc-space 10 --letter-space \"ANRUVWX:-20\" --lc-scale 0.75; --spacing-file spacing.json has highest priority",
+     "Re-spacing MUST strip inherited donor GPOS/kern (donor kerning fuses pairs \u2014 Cinzel h\u2192e kern is \u2212337)",
+     "Auto-spacing: set glyph advance = ink_width + 2*sidebearing so letters never touch; center glyphs by INK not advance",
+     "Judge spacing by rendered ink (pixel overlap), NOT metric numbers; iterate visually in the browser one letter at a time \u2014 never abstract MCQs (render per-glyph specimens and words-together views)",
+     "Export TTF/WOFF2 with OFL license + FONTLOG (rename_export.py, proof.sh); wire into the Astro site via wire_astro.py"
+    ],
+    "tools_skills": [
+     "acos-type-forge",
+     "acos-font-forge",
+     "typeforge.sh",
+     "vectorize.py",
+     "fonttools",
+     "shapely",
+     "potrace",
+     "fontforge"
+    ],
+    "outputs": [
+     "TTF + WOFF2 + FONTLOG + OFL license"
+    ],
+    "gotchas": [
+     "Cinzel has an EMPTY GSUB \u2014 no OpenType small-caps/titling alternates exist ('title case' is capitalization, not glyphs); Cinzel Decorative has NO roman lowercase (small caps ~73-82% cap height)",
+     "FontForge removeOverlap FILLS empty regions \u2014 use Shapely difference instead",
+     "Web fonts need localhost serving, not file://; cache-bust woff2 with ?v=<timestamp>"
+    ]
+   },
+   {
+    "name": "Brand-asset design (LinkedIn covers/banners, logo work)",
+    "evidence_count": 4,
+    "trigger_phrases": [
+     "LinkedIn cover",
+     "banner",
+     "logo variants",
+     "recreate the logo in higher res"
+    ],
+    "inputs": [
+     "OKOA logo SVG (Dropbox Okoa Marketing/Brand Assets; Official Logo PNG in Dropbox 'Okoa Letters/Okoa Official Logo.png')",
+     "okoa-design palette tokens at website-design-okoa/okoa-design/{variant}/v{1-3}/ (README palette+typography per variant)"
+    ],
+    "steps": [
+     "Generate variants at 1584x396 (LinkedIn cover) via cairosvg + PIL with Inter static TTFs + JetBrains Mono",
+     "Anchor hairlines to glyph-contour intersections (circle-line math), NOT bbox edges \u2014 bbox fails for curved letters",
+     "Branch renderers on is_light: bokeh/bloom effects only work on dark backgrounds",
+     "Dark JPEG export: quality=95 + 4:4:4 chroma subsampling + pure-black background \u2014 kills dark-edge quantization banding",
+     "For palette-only comparisons, lock ALL other dimensions; reuse okoa-design palette tokens rather than inventing per-asset palettes",
+     "Logo 'recreate at higher resolution' = pixel-faithful Lanczos upscale (2x/4x/8x/16x) + base64-bitmap-embedded SVG; offer vector reconstruction only as an extra option"
+    ],
+    "tools_skills": [
+     "cairosvg",
+     "PIL",
+     "sips"
+    ],
+    "outputs": [
+     "JPEG covers + SVG sources + contact sheets"
+    ],
+    "gotchas": [
+     "Verify curl-downloaded fonts are real TTFs \u2014 an HTML error page saved under a .ttf name (broken Inter-VariableFont.ttf) sabotaged a whole session",
+     "Inter Medium 11pt @0.16em tracking beats thin-weight + wide-tracking for small dark-bg text",
+     "Pure SVG/PIL can't fake photographic studio-lighting speculars \u2014 drop the effect rather than smudge"
+    ]
+   },
+   {
+    "name": "Deal sheet (OKOA house format, broker/lender submissions)",
+    "evidence_count": 4,
+    "trigger_phrases": [
+     "deal sheet",
+     "loan submission",
+     "tear sheet for the new deal"
+    ],
+    "inputs": [
+     "deal memo/underwriting facts",
+     "template tokens in reference_okoa_deal_sheet_format.md (Ville 7877 is the house template)",
+     "/Users/zee/Documents/New deals/ or /Users/zee/Documents/OKOA/New deals"
+    ],
+    "steps": [
+     "Build HTML against the Ville 7877 token set (see formatting rules); structure: header \u2192 green rule \u2192 mono eyebrow (asset class) \u2192 Georgia title \u2192 coral rule \u2192 one-line facility summary \u2192 hero image \u2192 5-cell stat strip \u2192 numbered sections \u2192 cream tables \u2192 callouts \u2192 pull-quote \u2192 indication-of-interest checkboxes \u2192 green footer",
+     "Render: NODE_PATH=\"/Users/zee/.npm/_npx/7d92d9a2d2ccc630/node_modules\" node html-to-pdf.js in.html out.pdf --margin 0 --no-footer (--no-footer REQUIRED or Puppeteer stamps 'Page N of M' over the footer)",
+     "Financial logic: payoff is the PLUG, not an input (loan \u2212 reserve \u2212 origination points); LTV on primary collateral ONLY (exclude sponsor cross-collateral equity); keep city \u00b7 lien position attached to each collateral item",
+     "Disclose funding gaps via coral callout rather than solving them (Herriman: months 7-12 interest $552,500 had no funding source)",
+     "After ANY edit to tight pages: re-render and re-run the PIL ink-below-runhead overflow check on EVERY page before shipping"
+    ],
+    "tools_skills": [
+     "html-to-pdf.js (puppeteer)",
+     "PIL ink-below-runhead check"
+    ],
+    "outputs": [
+     "HTML + PDF (4 pages typical)"
+    ],
+    "gotchas": [
+     "Never call collateral 'free and clear' when a senior lien is being refinanced (net cash $0)",
+     "Do not re-add sections the user removed (diligence checklist, risks & mitigants, facility summary) \u2014 instruction-driven cuts persist",
+     "Herriman basis trap: April's 58.6% LTV was on TOTAL collateral, not primary; OKOA was broker/originator on Herriman, not lender",
+     "Herriman AutoMall and Ville 7877 have NO dedicated Dropbox loan folders \u2014 deal sheets live in New deals only"
+    ]
+   },
+   {
+    "name": "Credit memo / loan document generation (loan-doc-generator pipeline)",
+    "evidence_count": 5,
+    "trigger_phrases": [
+     "credit memo",
+     "term sheet",
+     "executive summary for the loan",
+     "generate loan docs"
+    ],
+    "inputs": [
+     "Dropbox loan folder",
+     "design source (lux-Brad-design = Lux 2 Portfolio Credit Memo; Wall Street Classic)",
+     "document type"
+    ],
+    "steps": [
+     "Run /acos-loan-doc-generator (thin dispatcher + 3 phase-orchestrator agents, keeps primary context ~25K); batch mode produces Internal Credit Memo, Term Sheet, Executive Summary, Scoping Letter",
+     "Phase 3 designers write HTML, never markdown (STRUCT-003 auto-fails on markdown bleed-through); Puppeteer html-to-pdf.js converts",
+     "Give agents file PATHS not contents; embed only files <5KB",
+     "LOI-dependent fields (Rate/Term/Fee/Guarantee/IRR) stay TBD placeholders \u2014 never fabricated",
+     "Output format convention: PDF in \u2192 PDF out (match the design example's format)",
+     "DOCX deliverables: use .claude/scripts/html-to-docx.py (python-docx, navy headers/zebra striping/badges) \u2014 NEVER plain pandoc (strips all CSS)"
+    ],
+    "tools_skills": [
+     "acos-loan-doc-generator",
+     "acos-loan-doc-generator-with-visual-verification",
+     "loan-doc-phase1/2/34 agents",
+     "html-to-pdf.js",
+     "html-to-docx.py"
+    ],
+    "outputs": [
+     "PDF + HTML + DOCX"
+    ],
+    "gotchas": [
+     "Banned memo terms: 'fully entitled', 'approximately', 'exposure', 'extraordinary'; percentage format X.X%; footnote every derived value",
+     "Deferred fees and default preparedness are standard items in all credit memos",
+     "Relative image/CSS paths fail in html-to-pdf.js \u2014 absolute paths or inline resources"
+    ]
+   },
+   {
+    "name": "Counsel email / legal evidence package",
+    "evidence_count": 6,
+    "trigger_phrases": [
+     "email to counsel",
+     "counsel package",
+     "answer counsel's questions",
+     "evidence bundle"
+    ],
+    "inputs": [
+     "counsel's questions",
+     "Dropbox closing folders (system of record)",
+     "Fireflies meeting transcripts"
+    ],
+    "steps": [
+     "Cross-check meeting transcripts BEFORE document review \u2014 the boss's colloquial names mislead (his 'SNDA' was the C-PACE/Greenworks/Wolfgramm-captive manager subordination, NOT an OKOA/Hilton doc); verify parties as EXECUTED before relying on a document's colloquial name",
+     "Copy-not-move docs from Dropbox closing folders; verify MD5 identity; chain-of-custody: copy recovered evidence into the bundle folder structure",
+     "Verify every pleading quotation against the source PDF before quoting in correspondence",
+     "Compress counsel emails hard (~1100\u2192~400 words); attachments carry detail, quote bodies only when every phrase is material",
+     "Internal OKOA emails relaying counsel asks to Ty/Brad/Jason: state the ask + deadline + data gathered + follow-up offer; strip ALL legal-procedure explainers (Rule 26.1 etc.) \u2014 they read condescending. Full procedural context IS welcome to outside counsel or when explaining to Zee",
+     "Strip memo-style To/From/Re/Date headers from counsel deliverables (email forwarding duplicates them \u2014 reads as templated AI output); renumber sections after deletions"
+    ],
+    "tools_skills": [
+     "pdftotext",
+     "pandoc",
+     "html-to-pdf.js",
+     "ZIP packaging",
+     "Fireflies transcripts",
+     "MD5 verification"
+    ],
+    "outputs": [
+     "email + evidence ZIPs",
+     "cover note + \u00a7-by-\u00a7 memo + prioritized counsel questions PDF"
+    ],
+    "gotchas": [
+     "Claude cannot upload to external ShareFile URLs \u2014 user uploads manually",
+     "Never infer formal loan default from draft letters alone \u2014 require servicing-system or user confirmation",
+     "Keep payoff figures inside non-anchoring 'not less than' language in default notices"
+    ]
+   },
+   {
+    "name": "Legal analysis (franchise/foreclosure/lien/IP diligence)",
+    "evidence_count": 4,
+    "trigger_phrases": [
+     "legal analysis",
+     "does the franchise survive foreclosure",
+     "lien priority",
+     "run legal-analysis"
+    ],
+    "inputs": [
+     "deal folder docs (main-thread PDF pre-extract)",
+     "an authoritative current-state cross-check doc (latest appraisal/operating report) in the agent brief"
+    ],
+    "steps": [
+     "Run /acos-legal-analysis (spawns legal-analyst agent, opus); memory-read + main-thread PDF pre-extract + anti-confabulation gate + citation-QA Wigum loop + Phase 5 IC strategy memo",
+     "Brand/party/asset identifications require 3 independent SOURCE-DOCUMENT confirmations \u2014 folder/file names are NOT authoritative (v1 confabulated 'Waldorf Astoria Park City' from the folder name; the Waldorf in the joint title policy = Dakota Mountain Lodge, a different property)",
+     "Add grep triangulation for asserted brand/party terms (zero hits across the folder = wrong attribution); on user correction, grep-audit both candidates before re-dispatching",
+     "Deliverable style: Brad-rendered offensive-framed IC strategy memo beats compliance-style report \u2014 lead with wins, quantify leverage",
+     "Every finding cites [file \u00a7clause]; mandatory adversarial counter-argument on CRITICAL/HIGH; LEGAL DISCLAIMER block on every output; outputs land in .acos/sessions/legal-analysis/{session-id}/ (entry point SUMMARY.md)"
+    ],
+    "tools_skills": [
+     "acos-legal-analysis",
+     "legal-analyst agent",
+     "acos-document-design-brad",
+     "Puppeteer render (preferCSSPageSize:true)"
+    ],
+    "outputs": [
+     "IC-memo.pdf + lending-report.pdf + SUMMARY.pdf + findings/red-flags YAMLs + citation-QA report"
+    ],
+    "gotchas": [
+     "Citation QA catches quote-fabrication but NOT higher-order misattribution",
+     "Key precedent: Tapestry franchise does NOT survive foreclosure (FA \u00a7\u00a712.2.3/13.2.5) \u2014 but Hilton's stated position (5/26/26 letter) is that foreclosure does NOT shed flag/manager and transferee assumes Owner obligations incl. unamortized key-money; both live in the record"
+    ]
+   },
+   {
+    "name": "Weekly XL Ant investor Excel report",
+    "evidence_count": 3,
+    "trigger_phrases": [
+     "XL update",
+     "weekly investor report",
+     "roll the XL Ant update forward"
+    ],
+    "inputs": [
+     "/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft/",
+     "Hypercore payoff figures (loans 88 Utah Shoe / 134 Ascent Senior / 149 Ascent Pref / 171 Lux II)",
+     "Fireflies narrative"
+    ],
+    "steps": [
+     "Run /acos-xl-update (xl_update.py + hca-figures.py + acos-fireflies-ask)",
+     "Continuity rule: carried bullets marked [CARRIED], new ones [NEW] with verbatim timestamped Fireflies citations",
+     "Excel engine must be non-destructive: formula-guard + identical-pagination verification",
+     "Produce a provenance companion that passes machine audit",
+     "Lux II payoff computed as prior payoff + days \u00d7 per-diem from the Hypercore repayment-schedule accrual row, Actual/360"
+    ],
+    "tools_skills": [
+     "acos-xl-update",
+     "acos-hypercore-ask",
+     "acos-fireflies-ask",
+     "hca-figures.py"
+    ],
+    "outputs": [
+     "XLSX + provenance MD"
+    ],
+    "gotchas": [
+     "XL Ant = funding entity 3 in Hypercore",
+     "Business-account (okoateam) commits may need isolation from personal repos"
+    ]
+   },
+   {
+    "name": "Excel report editing & analysis (rent rolls, sales reports, rosters, pro formas)",
+    "evidence_count": 6,
+    "trigger_phrases": [
+     "sales report",
+     "rent roll",
+     "buyer roster",
+     "pro forma",
+     "populate the workbook"
+    ],
+    "inputs": [
+     "source XLSX in Dropbox deal folder (e.g. Kohan_Golden East/1. Property Financials for Sharing/Rent Rolls & Sales Report/)",
+     "~/Documents/OKOA/Sales Report Excel File/"
+    ],
+    "steps": [
+     "Keep a .BACKUP-*.xlsx before EACH openpyxl edit",
+     "openpyxl save silently DELETES x14-extension data validations (cross-sheet dropdowns like Lists!$A$2:$A$105 \u2014 the load warning means dropdowns WILL be lost): extract each sheet's <extLst> block from raw XML pre-edit, re-inject before </worksheet> post-save stripping xr:uid attrs; map sheetN.xml\u2192tab via workbook.xml rels; verify by re-scanning for <x14:dataValidation + headless LibreOffice convert",
+     "Golden East Historical Sales Report is block-structured: anchor on 'Sq. Ft.' rows and scan UP for the name (one block has a blank-row gap); it contains NO unit numbers \u2014 unit numbers exist only in the Simple workbook Lists tab and the rent-roll Occupancy tab; assign a unit only when the rent roll positively names the store, never sqft-guess",
+     "Strip #unit/DBA/kiosk before tenant matching; a 'legacy' brand with an ACTIVE lease in the Rents sheet is CURRENT; 2023 is a partial reporting period file-wide (legacy_2023 tags can understate exit years)",
+     "Verify all populated totals to the cent against source YTDs; for pro formas, distinguish blue-italic input cells vs formula cells",
+     "For blind note-sale packages use the anonymize_seller pattern: replace seller/fund entity names with 'Seller'"
+    ],
+    "tools_skills": [
+     "openpyxl",
+     "zipfile (extLst surgery)",
+     "LibreOffice soffice (verification + xlsx recalc)",
+     "python-docx (for DOCX cousins)"
+    ],
+    "outputs": [
+     "XLSX (dashboards, rosters, Legacy/Departed 3-column outputs, pro formas)"
+    ],
+    "gotchas": [
+     "Don't prefix soffice with timeout on macOS (no such command)",
+     "Buyer roster ground truth: Ascent 73 units tie $42,654,019 agreed / $8,530,795 deposits"
+    ]
+   },
+   {
+    "name": "Internal strategy / research doc, boss-facing (SEO plan, voice-agent research)",
+    "evidence_count": 5,
+    "trigger_phrases": [
+     "plan for my boss",
+     "internal memo",
+     "research report PDF",
+     "SEO plan"
+    ],
+    "inputs": [
+     "markdown source in ~/Documents/OKOA/<topic>/",
+     "OKOA design venv"
+    ],
+    "steps": [
+     "Research via /acos-swarm-research when breadth needed (15-agent swarm produced the SEO plan)",
+     "Voice/content constraints for boss-facing internal docs: first-person 'we', zero jargon, no named individuals, NEVER reveal loan-book scale (~30 active loans) or claim 'proprietary data' publicly, national framing not Utah-local ('market pages' not 'local pages'; specialty = real estate credit), hard page cap",
+     "Render via the design venv: ~/Documents/OKOA/.venv-design/bin/python -m weasyprint (no bare weasyprint binary on PATH)",
+     "Each '## ' section forces a page break in the house CSS \u2014 control page count by section count; verify with pdfinfo after EVERY render",
+     "Re-read the live .md before editing \u2014 the user may have tweaked it; render scripts in session scratchpads are ephemeral (recreate or relocate)",
+     "For okoa-design MCP branded renders: run okoa_design_brief/attest \u2192 resolve_design \u2192 emit_stylesheet \u2192 okoa_quality_check until PASS; attestation tokens expire \u2014 re-run brief/attest if quality_check rejects"
+    ],
+    "tools_skills": [
+     "acos-swarm-research",
+     "WeasyPrint 68.1 via ~/Documents/OKOA/.venv-design/",
+     "okoa-design MCP",
+     "pdfinfo",
+     "build_seo_pdf_v2.py"
+    ],
+    "outputs": [
+     "MD + branded PDF (e.g. 'OKOA Capital - 6-Month SEO Plan.pdf', 39pp; v2 10pp)"
+    ],
+    "gotchas": [
+     "YMYL finance SEO: every indexed page needs a named-human expert review; PBN link-scheme vendors = Google violation, DECLINE (Scott Paxton $42k-84k/yr proposal declined)",
+     "100 clicks/day is a months-9-12 outcome, not month 6 \u2014 re-baseline stakeholder expectations early",
+     "Open deliverables with `open -a \"Google Chrome\"` and give clickable file:// links"
+    ]
+   },
+   {
+    "name": "Underwriting pipeline (full 6-phase deal underwrite)",
+    "evidence_count": 2,
+    "trigger_phrases": [
+     "underwrite this deal",
+     "full underwriting run",
+     "should we do this loan"
+    ],
+    "inputs": [
+     "In-Process Dropbox loan folder (e.g. Okoa Loans - 1. In Process/Lattice Red Line Development)"
+    ],
+    "steps": [
+     "6 phases: triage \u2192 reconciliation \u2192 dual-track underwriting math \u2192 sponsor/risk web research \u2192 synthesis \u2192 institutional PDF generation (credit memo, term sheet, deal memo, exec summary, dashboards, briefs)",
+     "Partition triage agents one-per-subdirectory when the folder is pre-organized; heavy PDFs (156-page appraisal) get a dedicated agent",
+     "Check sponsor proforma opex ratios against T-12 actuals (26.7% claimed vs 46.8% actual caught this way)",
+     "Always include @page {size:letter; margin:0} (Puppeteer hardcodes 1.25in bottom margin)",
+     "Visual verification loop (render \u2192 pdftoppm \u2192 Read PNG) is DEFAULT for all generated PDFs, not just short briefs",
+     "Verdict may be NEED MORE INFO with explicit sponsor blocker questions \u2014 that is a valid deliverable"
+    ],
+    "tools_skills": [
+     "acos-underwriting-pipeline",
+     "acos-loan-doc-generator (Phase 1 cache reusable)",
+     "Puppeteer/Chrome headless",
+     "compute-metrics.py",
+     "WebSearch"
+    ],
+    "outputs": [
+     "PDF suite (11 docs / 98pp precedent) + DOCX + YAML data files"
+    ],
+    "gotchas": [
+     "Underwriting outputs land in <loan folder>/underwriting-zee/generated-documents/"
+    ]
+   },
+   {
+    "name": "Loan lifecycle legal docs (NOD, extension letters, payoff letters, lease renewals)",
+    "evidence_count": 6,
+    "trigger_phrases": [
+     "notice of default",
+     "extension letter",
+     "payoff letter",
+     "lease renewal",
+     "fill the template"
+    ],
+    "inputs": [
+     "OKOA template DOCX (Dropbox Forms and Templates or prior deal doc)",
+     "verified figures (Hypercore for payoffs/maturities)"
+    ],
+    "steps": [
+     "Edit DOCX with python-docx preserving formatting; save a pristine backup first",
+     "Payoff figures in default notices go inside non-anchoring 'not less than' language",
+     "Extension letters: fee basis must reconcile with the stated outstanding balance in the letter body; verify maturity dates against Hypercore before sending",
+     "Payoff letters / 'match the template': EXTRACT exact metrics \u2014 pdffonts for family/weights, PyMuPDF get_text('dict') for per-span size/font/color/baseline, get_drawings() for bands/rules, get_images()+get_image_rects() for logos; rebuild as SVG viewBox 0 0 612 792; lock fixed phrases with textLength+lengthAdjust=\"spacing\"; explicit @font-face per weight (numeric font-weight:300 mis-resolves to Inter-Thin); QA with red/green channel overlay; render html-to-pdf.js --margin 0 --no-footer; verify with pdffonts",
+     "Lease renewals: inspect word/document.xml for floating drawingML signature-line shapes drawn ON TOP of typed underscore lines before delivery (unzip + XML grep); verify layout via soffice --headless --convert-to pdf + pdftoppm 300 DPI + tesseract crops \u2014 but flag that LibreOffice render is not a Word render",
+     "For exact-wording verification in legal docs cross-check with python-docx run-by-run (findall on w:t) \u2014 pandoc plaintext can misrender runs ('three percent (5%)' vs actual 'five percent (5%)')"
+    ],
+    "tools_skills": [
+     "python-docx",
+     "PyMuPDF",
+     "pdffonts",
+     "html-to-pdf.js",
+     "soffice",
+     "tesseract"
+    ],
+    "outputs": [
+     "DOCX + verification PNG crops",
+     "PDF payoff letters"
+    ],
+    "gotchas": [
+     "python-docx re-save introduces uniform -1-byte XML serialization noise in diffs \u2014 not user edits",
+     "OKOA payoff template font = Inter; OKOA header wordmark is a PNG at rect (57,24.7)-(120,41.2), not text",
+     "Golden East landlord chain (affects signature blocks): Hendon Golden East \u2192 Trigild receiver \u2192 GECRH LLC \u2192 OKOA Capital LLC (Landlord) / OKOA Golden East LLC (Manager) \u2014 entity chain not yet paper-trailed"
+    ]
+   },
+   {
+    "name": "OKOA website build (Astro, three.js)",
+    "evidence_count": 5,
+    "trigger_phrases": [
+     "OKOA website",
+     "loan maps page",
+     "hero variant",
+     "dev site"
+    ],
+    "inputs": [
+     "/Users/zee/Documents/Vibe Coding/OKOA Website/{dev,stable} (remote git@github.com:OKOA-Labs/okoa-website.git)"
+    ],
+    "steps": [
+     "Export PATH=$HOME/.nvm/versions/node/v22.22.3/bin:$PATH first \u2014 Astro needs Node >=22.12, default node is 20",
+     "Content/tone: the website is BORROWER-focused, NOT investor-focused; the prospectus PDF is tone source only",
+     "Work in dev, never touch stable; experiments self-contained, never push to main, user verifies 3D visually",
+     "Headless WebGL screenshots: Chrome --headless=new --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader --virtual-time-budget=6000 --screenshot renders three.js (CDP full-page screenshot fails to init marble-town WebGL \u2014 headless limitation)",
+     "After relocating a repo: delete node_modules/.vite, .astro, .wrangler caches (stale hashed chunks \u2192 transient 500s) and hand-carry .dev.vars; cp -Rc for instant node_modules copies"
+    ],
+    "tools_skills": [
+     "Astro",
+     "@astrojs/cloudflare",
+     "three.js",
+     "nvm Node 22",
+     "Chrome headless"
+    ],
+    "outputs": [
+     "webpage (dev 39 pages incl. /loan-maps; stable 13 pages)"
+    ],
+    "gotchas": [
+     "Port assignment CONFLICTS across sources: MEMORY.md says dev:4322/stable:4321, the 2026-05-18 handoff says dev on 4321/stable (okoa-website-stable) on 4322 \u2014 confirm before assuming (listed in open_questions)",
+     "APFS is case-insensitive: 'OKOA-Website' collides with 'okoa-website' \u2014 distinct names",
+     "Astro routes with leading _ are private (404)",
+     "Crane animation must skip under prefers-reduced-motion; dispose() must cancel rafId; two WebGL canvases link via window.__okoaCraneHooks + okoa-hooks DOM event"
+    ]
+   },
+   {
+    "name": "Loan location dataset & maps (2D prospectus + 3D web)",
+    "evidence_count": 4,
+    "trigger_phrases": [
+     "loan map",
+     "where are our loans",
+     "collateral map",
+     "footprint map"
+    ],
+    "inputs": [
+     "verified CSVs: loans_location.csv (118 loans) + collateral_properties_location.csv (~209-232 property rows) in /Users/zee/Documents/OKOA/OKOA_Prospectus/_session_assets/ with per-loan provenance JSONs"
+    ],
+    "steps": [
+     "Dataset edits: multi-agent extract + independent two-source verify; audits are great at finding OMISSIONS but occasionally wrong on CORRECTIONS \u2014 tiebreak conflicts against source docs, never bulk-apply",
+     "Address fields street/city/state/zip only \u2014 geocoding is a separate pass; loans with non-RE collateral use borrower address with a location_type column; never fabricate an address for an empty folder",
+     "Geocode via Nominatim ZIP-centroid (send city/ZIP only, no street); cache in _geocode_cache.json",
+     "2D maps: locked pin style v01 \u2014 head #D1352B on silver needle #C4C7CC, PIN_SZ 0.62, HEAD_R 0.29, LEAN_AMP 0.16; IBM Plex Mono, sage states, HI+PR insets; theme-8 state-highlight map colors cream #EFE7D8 fill, navy #104473 border, white background",
+     "3D maps: two three.js maps (117 loan pins, 216 collateral pins) at okoa-website /loan-maps",
+     "Embed into prospectus page 11 via base64 swap + Puppeteer re-render (@page 11x8.5 landscape margin:0; strip lazy imgs; verify via headless-Chrome screenshot)"
+    ],
+    "tools_skills": [
+     "build_address_maps_2d.py",
+     "build_prospectus_theme_maps.py",
+     "three.js",
+     "Nominatim",
+     "html-to-pdf.js --landscape --margin 0"
+    ],
+    "outputs": [
+     "CSV + XLSX audit report + PNG/PDF maps + webpage"
+    ],
+    "gotchas": [
+     "57 loans in the CSV carry manual_hint state inference \u2014 verify against loan-folder addresses"
+    ]
+   },
+   {
+    "name": "LinkedIn posts (OKOA voice + recency gate)",
+    "evidence_count": 2,
+    "trigger_phrases": [
+     "LinkedIn post",
+     "post about this article",
+     "company page post"
+    ],
+    "inputs": [
+     "topic/article links"
+    ],
+    "steps": [
+     "Voice: first-person observation/anecdote-led practitioner voice, real opinion, contractions, OKOA connection as a light aside; no boilerplate pitch, no CTAs, no hashtag blocks; end on a thought/question; company page swaps 'I' for 'we/the team'; market figures soft-attributed",
+     "Recency gate (non-negotiable): article-mode citations \u22647 days old; other modes \u226414d per link with strict majority \u22647d",
+     "Run ~/.claude/skills/acos-linkedin-posts/scripts/check_recency.py (article: --max-days 7 --ideal-days 7; others: --max-days 14 --ideal-days 7 --majority-fresh); fails closed on undated pages",
+     "Older durable figures: soft-attribute to the firm and cite a fresh in-window carrier, never the stale source"
+    ],
+    "tools_skills": [
+     "acos-linkedin-posts",
+     "check_recency.py",
+     "WebFetch"
+    ],
+    "outputs": [
+     "LinkedIn posts + QC table"
+    ],
+    "gotchas": [
+     "Never reveal OKOA portfolio scale (~30 active loans) or claim 'proprietary data' in public content"
+    ]
+   },
+   {
+    "name": "Valuation / ARV / comp research",
+    "evidence_count": 3,
+    "trigger_phrases": [
+     "ARV",
+     "what's it worth",
+     "comp set",
+     "appraisal check"
+    ],
+    "inputs": [
+     "property facts, assessor data, appraisals in deal folder"
+    ],
+    "steps": [
+     "Use swarm-research for comp sets (12-agent precedent on Ascent: upscale ski-resort trades $300-400k/key, condo $1,200-1,500/SF)",
+     "Never ship an unlabeled best case \u2014 headline may be the high number but the case must be NAMED, with base + range in-document (Thompson: base $528,497 at $147.46/SF comp median; $620k = 'High Case' only)",
+     "Alaska (and other NON-DISCLOSURE states): no sold prices in public records; Redfin shows last LIST price on SOLD listings; all comps are asking prices \u2014 don't re-attempt without AKMLS access",
+     "For appraisal diligence: enumerate ALL distinct appraisals with dates/values and hash-verify (shasum) copies (Ascent: 2022 Millcreek $39.6M; Dec-2023 LWHA $43.8M; Dec-2025 LWHA $41.3M; Waldorf Sept-2024 $81.5M)"
+    ],
+    "tools_skills": [
+     "acos-swarm-research",
+     "pdftotext",
+     "tesseract",
+     "shasum",
+     "Chrome extension (Zillow/Redfin block WebFetch with 403)"
+    ],
+    "outputs": [
+     "analysis PDF (house format) / MD report"
+    ],
+    "gotchas": [
+     "Zillow Rent Zestimate is junk for multi-unit (models the whole building as one rental)",
+     "assessor property.muni.org needs form POST; 1Password intercepts form fields"
+    ]
+   },
+   {
+    "name": "Investment committee run (adversarial multi-seat review)",
+    "evidence_count": 2,
+    "trigger_phrases": [
+     "run the IC",
+     "investment committee",
+     "committee room"
+    ],
+    "inputs": [
+     "deal folder (e.g. Okoa Loans - 1. In Process/Alaska Fix and Flip)",
+     ".acos/investment-committee/<deal>/"
+    ],
+    "steps": [
+     "Run /acos-investment-committee Mode A: 8 blind scrutiny seats \u2192 objections \u2192 deterministic verdict (severity axis + asymmetric veto; corroborated fraud = un-mitigable) \u2192 13-section IC memo; UNRESOLVED is never fabricated",
+     "All 8 seats are tooled: Credit/Finance=PRISM, Accounting=data-extractor, Legal=title-sleuth+legal-analysis, Insurance=peril-scan, Fraud=sponsor-verify, Portfolio=hypercore-ask, Strategy=okoa-deal-analyzer",
+     "Browser committee room: ic-launch.sh \u2192 ic-server.py on :8930 (committee-room.html), warm claude-pool 5-7s turns; --safe-mode is load-bearing for warm pools (strips hooks/CLAUDE.md, keeps OAuth)",
+     "Chair-input doctrine: seats bring evidence; chair input accepted as working assumption unless a seat has contradicting documents",
+     "Main conversation must be the Mode-B moderator (subagents can't call AskUserQuestion); autopilot-active silently auto-answers human pauses \u2014 disable first"
+    ],
+    "tools_skills": [
+     "acos-investment-committee",
+     "ic-server.py",
+     "ic-pool.py",
+     "claude -p --safe-mode stream-json"
+    ],
+    "outputs": [
+     "ic-memo.md + live committee-room webpage"
+    ],
+    "gotchas": [
+     "Consensus \u2260 correctness \u2014 never terminate on 'all agree'; preserve dissent; blind opening pass is the top anti-groupthink lever"
+    ]
+   },
+   {
+    "name": "Tax form extraction (IRS 1098 etc.)",
+    "evidence_count": 1,
+    "trigger_phrases": [
+     "1098",
+     "tax form",
+     "lender EIN",
+     "interest paid"
+    ],
+    "inputs": [
+     "loan folder docs + payoff spreadsheets",
+     "Okoa W-9 in the Dropbox 'Okoa Taxes' directory"
+    ],
+    "steps": [
+     "Run acos-data-extractor against the loan folder for all form fields with provenance",
+     "Lender identity: Okoa Capital LLC EIN 87-1011507, sourced from the Okoa W-9 in the Dropbox Okoa Taxes directory \u2014 the canonical source for any lender-identity/tax-form task",
+     "Box 1 interest requires exact calculation from payoff spreadsheets, not stated figures",
+     "Deliver clickable file:// URIs with percent-encoded spaces for every cited document"
+    ],
+    "tools_skills": [
+     "acos-data-extractor"
+    ],
+    "outputs": [
+     "YAML extraction results"
+    ],
+    "gotchas": [
+     "agent:architect in a skill loads architect's skills into the forked context, causing confusion \u2014 avoid"
+    ]
+   },
+   {
+    "name": "Hypercore intake-form / vendor schema building",
+    "evidence_count": 2,
+    "trigger_phrases": [
+     "intake form",
+     "borrower form fields",
+     "schema for Hypercore",
+     "vendor spreadsheet"
+    ],
+    "inputs": [
+     "OKOA Loan Intake Schema (Phase 1+2)",
+     "boss's schema photos if any"
+    ],
+    "steps": [
+     "Hypercore field-type mapping: Dropdown\u2192Select, Yes/No\u2192CheckBox, Textarea\u2192TextArea, File Upload\u2192File, URL\u2192Text",
+     "Show Field Condition logic uses 3-tier AND conditions (asset type + branch + field-level)",
+     "Run a full round-trip fidelity audit (150+69 fields precedent, zero discrepancies) before delivery",
+     "Vendor-facing deliverables must strip internal notes and color coding and carry a self-contained instructions/specifications tab"
+    ],
+    "tools_skills": [
+     "openpyxl",
+     "Claude vision (schema photos)"
+    ],
+    "outputs": [
+     "vendor-ready XLSX (e.g. 'Loan Intake Schema for Hypercore.xlsx', 3 tabs + 12-section specs tab)"
+    ],
+    "gotchas": []
+   },
+   {
+    "name": "PPTX deck generation & slide redesign",
+    "evidence_count": 4,
+    "trigger_phrases": [
+     "pitch deck",
+     "redesign slide",
+     "PPTX",
+     "investor deck"
+    ],
+    "inputs": [
+     "deck source (PPTX/Keynote)",
+     "OKOA deck palette + fonts"
+    ],
+    "steps": [
+     "python-pptx rules: shape.text_frame with add_paragraph(), never overlaid floating textboxes; MSO_ANCHOR.MIDDLE on single-line elements; textbox height = font_size \u00d7 line_count \u00d7 1.4; zero internal margins; anchor setter doesn't persist on TEXT_BOX \u2014 set via XML bodyPr.set('anchor','ctr')",
+     "Font roles: Courier New (numbers), Georgia (display/prose), Calibri (labels); number detection = digit-RATIO \u226560% after stripping $,%,\u00b7; monospace ~30% wider \u2014 auto-shrink 0.5pt increments on overflow",
+     "python-pptx outerShdw theme-shadow bug: run post-build cleanup with explicit shadow removal + explicit background fills",
+     "Preserve the user's manual Keynote font edits (44pt subtitle, 88pt hero Cormorant precedent) on programmatic rebuilds",
+     "Blended IRR on defaulted-timeline notes: coupon pre-maturity, default rate post-maturity",
+     "data-to-pptx.py carries the Okoa brand palette + IBM Plex fonts + CarbonGrid 16-column layout class"
+    ],
+    "tools_skills": [
+     "python-pptx",
+     "data-to-pptx.py",
+     "validate-pptx.py",
+     "Keynote"
+    ],
+    "outputs": [
+     "PPTX"
+    ],
+    "gotchas": [
+     "macOS TCC grants are inode-bound: Keynote save cycles replace the inode and invalidate python3's per-file grant \u2014 move the file into an already-granted directory",
+     "Never let defaulting developers (Phil Wolfgramm) appear in marketing materials; presale data wiped in foreclosure \u2014 mark TBD, never reconstruct"
+    ]
+   }
+  ],
+  "folder_map": [
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital",
+    "label": "OKOA company Dropbox (root)",
+    "purpose": "Canonical source-of-truth for loan/deal folders, org docs, marketing, modeling, investor relations. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process",
+    "label": "Pipeline deals",
+    "purpose": "In-process deals at TOP level (no HyperCore subfolder): Alaska Fix and Flip, Fruitland UT, Lehi & St George Blanket Loan, Mountain West Pest, TreeBox Ohio Bridge. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore",
+    "label": "Active loans",
+    "purpose": "~30 active deal folders \u2014 one level DOWN inside '1. In HyperCore', not at the Active root (exception: Warburton_Ville 9 sits at the Active root). Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore",
+    "label": "Paid-off loans",
+    "purpose": "~90 paid-off deal folders (also inside '1. In HyperCore'). Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 4. Archived",
+    "label": "Archived deals",
+    "purpose": "~60 archived/dead deals at top level (no HyperCore subfolder). Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Forms and Templates",
+    "label": "Company templates",
+    "purpose": "OKOA forms and document templates (extension letters, lease renewals etc.). Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Marketing",
+    "label": "Marketing",
+    "purpose": "Marketing materials; Brand Assets subfolder holds fonts (Univers, Graphik, Minion Pro, Feijoa-Display), Design Assets, OkoaCapital logo black.svg. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Letters",
+    "label": "Okoa Letters",
+    "purpose": "Letterhead assets incl. the Official Logo PNG (Okoa Official Logo.png). Handoff-sourced (parent Dropbox live-verified)."
+   },
+   {
+    "path": "Dropbox-OkoaCapital 'Okoa Taxes' directory",
+    "label": "Okoa Taxes",
+    "purpose": "HANDOFF-ONLY path (exact location not live-verified): home of the Okoa W-9 \u2014 the documented source of the OKOA lender EIN 87-1011507 for any tax-form or lender-identity task."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Capital Formation",
+    "label": "Capital Formation",
+    "purpose": "Fund Formation & PPM 2025/PPM - Version 1B.docx (legal terms source of truth \u2014 flag, never edit); representative transactions q1 2025.xlsx. Handoff-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/External Data Rooms -- EXTERNALLY SHARED",
+    "label": "External datarooms",
+    "purpose": "EXTERNALLY VISIBLE shared datarooms (Golden East Crossing Mall - Sale Data Room). Never write work-in-progress here. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA",
+    "label": "Zee's OKOA working dir",
+    "purpose": "Primary personal working directory \u2014 per-deal work folders, deliverables, brand refs (OKOA Brand Reference.pdf, Colors and Hex Codes.png), OKOA_Prospectus, New deals, Rubin_Counsel_Bundle, Ascent* folders, SEO Plan, GE*, Lux II NOD, assets/ (ty-corbridge signature PNG). VERY FLAT (~200 top-level items) \u2014 target known subfolders, don't glob. Desktop is TCC-blocked; use this instead. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/.venv-design",
+    "label": "Design venv",
+    "purpose": "Pinned Python 3.13 venv for ALL OKOA HTML/PDF/PPTX generation (weasyprint 68.1, jinja2, python-pptx 1.0.2, Pillow, markdown). Invoke as ~/Documents/OKOA/.venv-design/bin/python, never bare python3; weasyprint via python -m weasyprint. Recreate: uv venv --python python3.13 + requirements-design.txt. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/New deals",
+    "label": "New-deal deal sheets",
+    "purpose": "Deal-sheet PDFs/HTML for new submissions (Herriman AutoMall, Herriman 73 Partners $28.0M, Ville 7877). Note handoffs also reference /Users/zee/Documents/New deals/ \u2014 both spellings appear. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/OKOA_Prospectus",
+    "label": "Prospectus workspace",
+    "purpose": "Prospectus HTML/PDF + _session_assets/ (loan-location CSVs, geocode cache, update_mgmt_fee.py). Folder renamed from 'OKOA Prospectus' (space) \u2014 scripts updated to no-space name. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/ACOS 3.0",
+    "label": "ACOS framework repo",
+    "purpose": "Orchestration framework: skills (.claude/skills/), hca-* scripts (.claude/scripts/), session outputs (.acos/sessions/, e.g. data-extractor/DDE-20260618-Waldorf/), dataroom v2 outputs (_acos_dataroom_v2_output/), hypercore-learning/ Playwright crawler. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/OKOA Website/dev",
+    "label": "Website dev repo",
+    "purpose": "OKOA website dev repo (port 4322 per MEMORY.md \u2014 but 2026-05-18 handoff says 4321; see open_questions). Sibling stable/ and font-foundry/ (Xyntax font build). Node >=22. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/OKOA Website/stable",
+    "label": "Website stable repo",
+    "purpose": "Stable site (port 4321 per MEMORY.md / 4322 per 2026-05-18 handoff) \u2014 do not touch. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-wiki",
+    "label": "okoa-wiki code repo",
+    "purpose": "Internal wiki app (Next.js 15 + Supabase, deployed https://okoa-wiki.vercel.app, GitHub okoateam/okoa-wiki). Distinct from content folder /Users/zee/Documents/OKOA/OKOA Wiki. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-loan-intake-system",
+    "label": "Loan intake repo",
+    "purpose": "Loan intake app (Next.js + Convex dev posh-ferret-469 / prod amiable-mammoth-199; prod https://okoa-loan-intake-system.vercel.app, admin at /admin/dashboard; GitHub okoateam/okoa-loan-intake-system). Siblings: 'Backup okoa-loan-intake-system', 'Clone-okoa-loan-intake-system'. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-task-management-system",
+    "label": "Task mgmt repo",
+    "purpose": "OKOA task management system repo. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/private-equity-hedge-fund-strategy",
+    "label": "FlexCade PE strategy app",
+    "purpose": "PE hedge-fund strategy platform (Next.js + Convex + pure-TS engines; /model page). Handoff-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/website-design-okoa/okoa-design/",
+    "label": "okoa-design token data",
+    "purpose": "okoa-design MCP variant tokens at {variant}/v{1-3}/ with README palette+typography per variant; _build/ and _source/okoacapital_content.yaml from the 210-page redesign. Handoff-verified."
+   },
+   {
+    "path": "/Users/zee/okoa-labs/okoa_ops",
+    "label": "okoa_ops knowledge",
+    "purpose": "OKOA ops repo: origination-side DD checklists (NOT outbound-diligence) + knowledge-graph/ CSVs (collateral/NOI joined by hypercore-ask). Handoff-verified."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/GoogleDrive-ziaul@okoacapital.com",
+    "label": "OKOA Google Drive",
+    "purpose": "Secondary store: misc deal email zips (Stein, Rubin Phoenix), pitch decks, internship folder. NOT the primary deal store; Shared drives not enumerated. Live-verified."
+   },
+   {
+    "path": "/Users/zee/Documents/private_credit_design_reference",
+    "label": "Design reference",
+    "purpose": "Private-credit design reference (v3 Private Credit Capabilities aesthetic; also duplicated inside Documents/OKOA and at /Users/zee/Desktop/Private Credit Capabilities/v3/). Live-verified."
+   },
+   {
+    "path": "~/Library/Application Support/acos-token-monitor/state/",
+    "label": "Eternity daemon state",
+    "purpose": "pending-resume-*.txt / RESCUED-resume-*.txt \u2014 NEVER delete (preserve rule). Handoff-verified."
+   }
+  ],
+  "deal_index": [
+   {
+    "deal": "Ascent Park City (Wolfgramm / Beehive)",
+    "key_paths": [
+     "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)",
+     "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_LKCAP Okoa Preferred Equity",
+     "~/Documents/OKOA/Ascent LK Cap preso/",
+     "~/Documents/OKOA/Ascent Updates/",
+     "~/Documents/OKOA/ascent_SNDA/",
+     ".acos/sessions/data-extractor/DDE-20260618-Waldorf/"
+    ],
+    "key_facts": "120-key condo-hotel, Tapestry Collection by Hilton. Hypercore: Ascent Senior = loan 134 (Beehive Waldorff), Ascent Pref = loan 149. OKOA senior payoff $32,468,242.75; payoff verifications $31,821,009.41 (6/23), $31,888,682.99 (6/30), $31,903,676.72 (6/28); XL outstanding $6,922,294.60; Ascent Pref XL amount due $3,313,999.996. C-PACE (NGC P 1 LLC / Greenworks\u2192Nuveen) $30,321,016.01 runs with the land. Liens: Cobble Creek $92M, ServTek $140,640.53. Appraisals: 2022 Millcreek $39.6M; Dec-2023 LWHA $43.8M; Dec-2025 LWHA $41.3M (as-is; as-complete $84.0-84.1M/$700k-key, stabilized hotel-only $47.0M; 58% occ/$583 ADR/$338 RevPAR). 73 condo buyers: $42,654,019 agreed / $8,530,795 staged deposits (pre-OKOA, whereabouts unknown \u2014 NOT a paydown source); 60/120 units under contract avg $1,286/SF. Franchise: FA \u00a7\u00a712.2.3/13.2.5 says flag doesn't survive foreclosure; Hilton's 5/26/26 letter says transferee assumes Owner incl. unamortized key-money. Missing docs: Second A&R LLC Agreement (Beehive Hospitality Ascent PC LLC), OKOA Comfort Letter 3/14/25, OKOA SNDA 3/12/25 \u2014 retrieve from Ballard Spahr ('BTJD'). Depositor TRO lawsuit Char v. OKOA Capital, Summit County 260500343; trustee sale 2026-07-22. GC = Westland Construction (Builder's Risk $48.5M Zurich IM4282864); EarthTec soils #188107 proven ABSENT. Interior CDs held by GC Verity Built (Job #V2401).",
+    "aka_traps": "FOLDER-NAME TRAP: 'Waldorf (30M)' folder name is an adjacency misnomer \u2014 collateral is Tapestry by Hilton, NEVER Waldorf. The Waldorf in the joint title policy = Dakota Mountain Lodge (different property, Sept-2024 appraisal $81.5M). Related folders: Paid Off Qelo:Wolfgramm_Ascent_Senior ($20M, 851d) + Wolfgramm_Ascent_Bridge ($10M, 128d); Archived Wolfgramm_Ascent_Mezz. 'The SNDA' colloquially = the 12/28/23 C-PACE/Greenworks/Wolfgramm-captive manager subordination, NOT an OKOA/Hilton doc. LKCap/Lamming Klein Capital = takeover sponsor; Phil Wolfgramm must never appear in marketing."
+   },
+   {
+    "deal": "Thurston / Lux I / Lux II / Haystack",
+    "key_paths": [
+     "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Thurston Lux 2",
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Thurston_Lux Loan",
+     "~/Documents/OKOA/Lux II NOD/",
+     "/Users/zee/Thurston Staging"
+    ],
+    "key_facts": "Lux II = Hypercore loan 171 (loanFunding 338, 14% Actual/360, per-diem $1,029.24/day on $2,646,609.23 basis); NOD payoff $55,853,549.47 (non-anchoring language). Lux I (paid off): 6 properties UT/HI/ID/PR, 90-day note, payoff ~June 2025, 34.15% gross XIRR (0.34286 in files = Aclaime participation share, NOT an IRR). 'Single $55M note over 12 properties' doesn't reconcile \u2014 spans Lux II ~$48M + Haystack; Haystack in active foreclosure (NOD/RFN/SOT recorded). Executed Guaranty gap: only unsigned drafts found. 764 files in Thurston Lux 2; dataroom analysis 846 files (lender_package).",
+    "aka_traps": "Lux I \u2260 Lux II (prospectus pg14 = Lux I). Borrower Wright Thurston has pending SEC fraud allegations \u2014 anonymize in marketing. Lux collateral = luxury residential estates, never hotels. In-scope entities in the Thurston dataroom include Haystack AND Family Farmers. Lux2 Variant Note Sale deck: buyer IRRs 19.2%/23.8% on $57M master note; anonymize_seller pattern."
+   },
+   {
+    "deal": "Family Farmers",
+    "key_paths": [
+     "/Users/zee/Thurston Staging",
+     "_acos_dataroom_v2_output/run_20260518_164627_dcc9992b/"
+    ],
+    "key_facts": "In-scope entity in the Thurston Lux II / Haystack dataroom include-exclude analysis (2026-05-18).",
+    "aka_traps": "Easy to drop \u2014 travels with Thurston/Haystack material, not its own Dropbox folder."
+   },
+   {
+    "deal": "Golden East Crossing Mall (Kohan)",
+    "key_paths": [
+     "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Kohan_Golden East",
+     "External Data Rooms -- EXTERNALLY SHARED/Golden East Crossing Mall - Sale Data Room",
+     "~/Documents/OKOA/GE Lease Agreement/",
+     "~/Documents/OKOA/Sales Report Excel File/"
+    ],
+    "key_facts": "Rocky Mount NC mall; largest loan folder (1,305 files). OKOA acquired via foreclosure; landlord chain Hendon Golden East \u2192 Trigild receiver \u2192 GECRH LLC \u2192 OKOA Capital LLC (Landlord) / OKOA Golden East LLC (Manager) \u2014 not yet paper-trailed. Sale dataroom: 646 files from 1,536; NO formal appraisal, NO Phase I (BOV/BCA only). Sales Excel: Historical (block-structured, no units) vs Simple 'Lists' tab (66-tenant roster). Leasing/mgmt comparison Rev 2: RockStep diligence value $6.0M, JLL is incumbent manager; 'do not sign as-is' + 5 redlines. 12 tenant leases OCR'd; tenants incl. Wilson Area Railroad Modelers (Space 1030, $0-fee specialty license), Ross, Books-A-Million.",
+    "aka_traps": "Rev-1 failure mode: wrong valuation source (BCA BOV vs diligence figure) and wrong management baseline (JLL incumbent, not self-managed)."
+   },
+   {
+    "deal": "Herriman AutoMall (Herriman 73 Partners)",
+    "key_paths": [
+     "/Users/zee/Documents/OKOA/New deals",
+     "/Users/zee/Documents/New deals/"
+    ],
+    "key_facts": "$8.5M bridge refinance, 13% fixed 12-mo bullet; payoff $7,607,500 = plug (loan \u2212 $552,500 6-mo reserve \u2212 $340,000 4-pt origination); LTV 22.5% on primary collateral only; months 7-12 interest $552,500 unfunded (disclosed via coral callout). Cross-collateral: $10M Brixton Park (Saratoga Springs) sponsor equity \u2014 excluded from LTV.",
+    "aka_traps": "NO Dropbox loan folder \u2014 deal sheets only in New deals. April memo's 58.6% LTV was on TOTAL collateral (basis trap). OKOA is broker/originator here, NOT lender. Never say 'free and clear' while a senior lien is being refinanced."
+   },
+   {
+    "deal": "Ville 7877 / Warburton",
+    "key_paths": [
+     "/Users/zee/Documents/OKOA/New deals/Ville 7877 - Loan Submission Deal Sheet.pdf",
+     "Okoa Loans - 2. Active/1. In HyperCore/Warburton Ville 1990",
+     "Okoa Loans - 2. Active/1. In HyperCore/Warburton Ville 25 Bridge",
+     "Okoa Loans - 2. Active/Warburton_Ville 9"
+    ],
+    "key_facts": "Ville 7877 deal sheet = the OKOA house deal-sheet template (exact tokens in formatting rules). Warburton Motel 6 Flip = 131 files (sorting run).",
+    "aka_traps": "No folder named '7877'. Warburton_Ville 9 sits at the Active ROOT, outside '1. In HyperCore'."
+   },
+   {
+    "deal": "English Hotel (Capella, Las Vegas)",
+    "key_paths": [
+     "Okoa Loans - 4. Archived/Zhang - English Hotel",
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Capella - Main St (English)"
+    ],
+    "key_facts": "1025 Main St, LAS VEGAS (not Park City); $14.18M; 18.97% gross annualized / 14.2% net. OKOA return methodology: Loan Income / Net Funding, simple-annualized \u00d7365/days; net \u2248 75-82% of gross. Prospectus CS03.",
+    "aka_traps": "Two folder homes (Archived Zhang + Paid Off Capella). Early prospectus drafts had the wrong city."
+   },
+   {
+    "deal": "Rubin / 25th Ave (Diamond Elite Park)",
+    "key_paths": [
+     "Okoa Loans - 2. Active/1. In HyperCore/Rubin - Shia 25th Ave PG Lawsuit",
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Rubin_25th Ave",
+     "/Users/zee/Documents/OKOA/Rubin_Counsel_Bundle_20260423/"
+    ],
+    "key_facts": "$6.79M Phoenix; OKOA v. Rubin fraud case; Answer \u00b612 conflation refuted \u2014 PFS/SREO came from Stein Aug 2021, not Rubin Nov 2021 (3 transmission emails Aug 19/Nov 23/Dec 29 2021); counsel = Natalya/Cody at MSH. Related: Casa Grande.",
+    "aka_traps": "Paid Off holds a duplicate 'Rubin_25th Ave (1)' AND 'Zach Hoffman's conflicted copy 2026-07-09' \u2014 Dropbox sync artifacts, don't treat as distinct deals."
+   },
+   {
+    "deal": "Alaska Fix and Flip / 4618 Thompson Ave, Anchorage",
+    "key_paths": [
+     "Okoa Loans - 1. In Process/Alaska Fix and Flip",
+     "~/Documents/OKOA/Anchorage Thompson/"
+    ],
+    "key_facts": "4-plex, 11bd/4ba, 3,584 SF, Mountain View; ARV base $528,497 ($147.46/SF), $620k labeled High Case ONLY; master lease has $355k purchase option. IC committee-room dogfood deal (verdict trending 7-against/1-for).",
+    "aka_traps": "Alaska = NON-DISCLOSURE state: no sale comps exist in public records; Redfin 'sold' prices are last LIST prices."
+   },
+   {
+    "deal": "Beehive Waldorff (Hypercore loan 134)",
+    "key_paths": [],
+    "key_facts": "Hypercore name for the Ascent SENIOR loan. Verified payoffs: $31,821,009.41 (as of 2026-06-23), $31,888,682.99 (as of 2026-06-30), $31,903,676.72 (28 June 2026). XL funding outstanding $6,922,294.60.",
+    "aka_traps": "Spelled 'Waldorff' (double f) in Hypercore; same Tapestry-not-Waldorf trap as Ascent. Loan 774 also appears in Beehive contexts."
+   },
+   {
+    "deal": "Utah Shoe",
+    "key_paths": [],
+    "key_facts": "Hypercore loan 88; one of the 4 loans in the weekly XL Ant update (88/134/149/171).",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Albert Ave (Gonzalez, loan 173)",
+    "key_paths": [
+     "~/Documents/OKOA/Albert Ave Extension/"
+    ],
+    "key_facts": "Loan-173 extension letter: 90-day extension, 12%, $4,800 fee; principal figures $420k/$336,220/$320k UNRECONCILED at handoff. Also the payoff-letter coordinate-exact rebuild deal (template = True American; font Inter).",
+    "aka_traps": "Extension-fee basis must reconcile with the stated outstanding balance before sending."
+   },
+   {
+    "deal": "Free_Legation",
+    "key_paths": [
+     "Okoa Loans - 2. Active/1. In HyperCore/Free_Legation"
+    ],
+    "key_facts": "Active loan folder, 176 files (2026-02/03 sorting runs).",
+    "aka_traps": "Underscore in the folder name."
+   },
+   {
+    "deal": "Darwin Provo Airpark",
+    "key_paths": [
+     "Okoa Loans - 2. Active/1. In HyperCore/Darwin Provo Airpark"
+    ],
+    "key_facts": "Active loan folder, 149 files (sorting runs).",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Ward / Coslin Ave",
+    "key_paths": [],
+    "key_facts": "IRS Form 1098 extraction deal (2026-03-12): all fields extracted from 9 docs; Okoa Capital LLC EIN 87-1011507 from the W-9 in the Dropbox Okoa Taxes directory; Box 1 interest needs exact calc from payoff spreadsheets.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Wohali",
+    "key_paths": [],
+    "key_facts": "Appears in 2026-04-11/12 prospectus handoffs alongside Ascent/Waldorf (prospectus imagery/case material).",
+    "aka_traps": "No dedicated working folder surfaced \u2014 prospectus context only."
+   },
+   {
+    "deal": "409 High Point",
+    "key_paths": [],
+    "key_facts": "Hypercore deal probed during API-boundary mapping.",
+    "aka_traps": "ALIAS TRAP: the user calls it '409 Hodson' \u2014 resolve both names to the same loan."
+   },
+   {
+    "deal": "North Carolina II Multi Tranche",
+    "key_paths": [],
+    "key_facts": "Multi-tranche Hypercore facility.",
+    "aka_traps": "Enumerate tranches by parentLoan.id (child\u2192parent) \u2014 groupSubLoans returns EMPTY."
+   },
+   {
+    "deal": "Monarch Townhomes (Rexburg ID)",
+    "key_paths": [
+     "Okoa Loans - 1. In Process/Monarch Townhomes Rexburg ID"
+    ],
+    "key_facts": "External Credit Memo delivered (409KB PDF, lux-Brad-design); LOI-dependent fields kept TBD.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Kelso, WA Warehouse",
+    "key_paths": [],
+    "key_facts": "loan-doc-generator batch run: Internal Credit Memo, Term Sheet, Executive Summary, Scoping Letter in Wall Street Classic design (Deal Memo missing).",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Lattice Red Line Development",
+    "key_paths": [
+     "Okoa Loans - 1. In Process/Lattice Red Line Development",
+     ".../underwriting-zee/generated-documents/"
+    ],
+    "key_facts": "SLC hotel-to-apartment conversion; full 6-phase underwrite \u2192 NEED MORE INFO with 5 blocker questions; sponsor opex 26.7% claimed vs 46.8% T-12 actual. Related names: Point on Flamingo, Six South Residential Tower.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Vaughn / Mora Drive",
+    "key_paths": [
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Vaughn_Mora Drive"
+    ],
+    "key_facts": "10700 Mora Dr, Los Altos Hills CA, $11.5M, paid off, 196 files; acos-dataroom v1 validation deal. A separate 10718 Mora Dr row was REJECTED in the location audit.",
+    "aka_traps": "10700 vs 10718 Mora Dr \u2014 the latter was a rejected location row."
+   },
+   {
+    "deal": "Murdock-Oberland / Mapleton Village (Loan #57)",
+    "key_paths": [
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Murdock_Oberland"
+    ],
+    "key_facts": "Prospectus Case Study 01; photo Oberland.jpg = Utah townhomes.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Nielson_Roosevelt",
+    "key_paths": [
+     "Okoa Loans - 2. Active or Paid Off/1. In HyperCore/Nielson_Roosevelt"
+    ],
+    "key_facts": "88 files; extraction found 3 DD gaps (missing extension agreement, unsigned reconveyance, collateral disposition); non-Okoa loans (Deer Fund, Boardwalk Capital) mixed in folder.",
+    "aka_traps": "Folder contains NON-OKOA loan docs \u2014 exclude."
+   },
+   {
+    "deal": "Lorian_LOC",
+    "key_paths": [
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/Lorian_LOC/"
+    ],
+    "key_facts": "LOC: separate inception (first advance) and closing (payoff) dates; 28 docs.",
+    "aka_traps": "LOC lifecycle rule differs from bridge/construction (closing=inception)."
+   },
+   {
+    "deal": "Phoenix Rising Corpus Christi",
+    "key_paths": [
+     "Okoa Loans - 3. Paid Off/1. In HyperCore/"
+    ],
+    "key_facts": "$5.5M TX, 214-day hold, paid off.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Lakeside Landing",
+    "key_paths": [
+     "/Users/zee/Documents/OKOA/Lakeside",
+     "Okoa Loans - 4. Archived/Crandall Farms (PSA draft inside)"
+    ],
+    "key_facts": "PPTX presentation deal (python-pptx rules born here); easement/consent redlines in Documents/OKOA/Lakeside.",
+    "aka_traps": "NO dedicated Dropbox loan folder; 'RE Lakeside Landing PSA draft.pdf' lives inside Archived/Crandall Farms \u2014 appears related to Crandall Farms."
+   },
+   {
+    "deal": "Wright (Park Apartments?)",
+    "key_paths": [
+     "Okoa Loans - 4. Archived/Broadmark_Caesars Apartments (appraisal PDF only)"
+    ],
+    "key_facts": "Only hit on disk: 'A22-0174 Wright Park Apartments 20220217.pdf' inside Archived/Broadmark_Caesars Apartments.",
+    "aka_traps": "'Wright' in memory usually means Wright THURSTON (Lux borrower), not a Wright deal folder \u2014 disambiguate before searching."
+   },
+   {
+    "deal": "Broadbent-Springville (loan 30)",
+    "key_paths": [],
+    "key_facts": "Hypercore probe deal during hca build.",
+    "aka_traps": ""
+   },
+   {
+    "deal": "Fuller_Glendale / Flug loans / Afflalo / Swain-Gold / Perkins NV",
+    "key_paths": [
+     "Okoa Loans folders per name"
+    ],
+    "key_facts": "Loan-location dataset deals; Perkins NV 89104 was a REJECTED location row.",
+    "aka_traps": "Perkins NV rejected in the 2026-06 audit \u2014 don't resurrect."
+   }
+  ],
+  "learnings": [
+   {
+    "topic": "Folder names are not authoritative",
+    "lesson": "Never propagate folder/file-name inferences as fact (the 'Waldorf (30M)' folder holds a Tapestry-by-Hilton hotel; the boss's 'SNDA' was a C-PACE doc). Brand/party/asset IDs require 3 independent source-document confirmations + grep triangulation (zero hits = wrong).",
+    "applies_to": "all deal work, legal analysis, dataroom, extraction"
+   },
+   {
+    "topic": "Boss review model",
+    "lesson": "The boss never reviews intermediate artifacts \u2014 every final deliverable must be criticism-proof on first cold look. 'Mostly right with a few wrong items' = whole output dismissed and trust loss propagates to all future AI deliverables. Push quality enforcement into the pipeline (consensus, blind re-dispatch, adversarial QA, default-exclude).",
+    "applies_to": "every OKOA deliverable"
+   },
+   {
+    "topic": "Parallel-extraction correctness",
+    "lesson": "Distinguish NOT_IN_ASSIGNED_DOCS vs NOT_FOUND when extraction is partitioned across agents \u2014 conflating them corrupts absence claims.",
+    "applies_to": "acos-data-extractor, acos-loan-doc-mapper, any swarm extraction"
+   },
+   {
+    "topic": "Extraction QA calibration",
+    "lesson": "Asymmetric spot-check rates: 100% verification for currency figures and names (legal liability), ~30% for page citations, 50% for NOT_FOUND claims.",
+    "applies_to": "extraction QA design"
+   },
+   {
+    "topic": "Lender EIN source",
+    "lesson": "Okoa Capital LLC EIN = 87-1011507, sourced from the Okoa W-9 in the Dropbox Okoa Taxes directory \u2014 the canonical fetch for tax forms and lender-identity fields.",
+    "applies_to": "tax form extraction, any doc needing lender identity"
+   },
+   {
+    "topic": "python-pptx theme shadows",
+    "lesson": "python-pptx outerShdw theme-shadow bug requires post-build cleanup with explicit shadow removal and explicit background fills.",
+    "applies_to": "PPTX generation"
+   },
+   {
+    "topic": "anonymize_seller pattern",
+    "lesson": "Blind note-sale / participation packages replace seller/fund entity names with 'Seller' via an anonymize_seller flag \u2014 distinct from the Wright Thurston SEC-driven borrower anonymization in marketing.",
+    "applies_to": "note-sale decks, participation offerings"
+   },
+   {
+    "topic": "Website positioning red line",
+    "lesson": "The OKOA website is BORROWER-focused, not investor-focused; the prospectus PDF is the tone source only. Don't port investor-pitch copy onto the site.",
+    "applies_to": "website content, marketing"
+   },
+   {
+    "topic": "ADR-002 brand-first image sourcing",
+    "lesson": "OKOA documents must use actual OKOA property photos when they exist (generic stock breaks the institutional feel; Unsplash/Pexels is fallback only). SHA-256 hash-cache skips unchanged images; ATTRIBUTION.md auto-generated per run; similarity threshold 0.6 with user rejections persisted in user_rejected_for.",
+    "applies_to": "any branded document with images (ultimate-designer, prospectus, memos)"
+   },
+   {
+    "topic": "ADR-003 skip-trace / property search",
+    "lesson": "No free nationwide owner-name property search exists (~3,100 counties, 48+ statutes) \u2014 widest net = union of independent channels (assessor, recorder grantor-grantee, mailing-address pivot, entity graph). DPPA/FCRA/FDCPA/GLBA require a BLOCKING compliance gate every run ('asset location/debt recovery \u2014 NOT for eligibility'). Mass registered agents (CT Corp, CSC) cause N\u00b2 false entity links \u2014 hub stop-list + frequency threshold + 2-hop limit; hedged language mandatory ('owns' only with direct title support).",
+    "applies_to": "borrower/sponsor asset search, collections, skip-tracing"
+   },
+   {
+    "topic": "Vendor-facing deliverables",
+    "lesson": "Strip internal notes and color coding from anything vendor-facing; include a self-contained instructions/specifications tab.",
+    "applies_to": "external spreadsheets, schema deliverables"
+   },
+   {
+    "topic": "Branded-HTML render failure modes",
+    "lesson": "A missing </style> closing tag silently swallows page bodies; Google Fonts URLs need the ital,wght axis or <em> renders synthesized italic; use white-space:nowrap (+ clamp-range reduction) to prevent mid-number wraps in metric tiles; universal CSS-template fixes beat per-variant tuning.",
+    "applies_to": "all HTML\u2192PDF and website deliverables"
+   },
+   {
+    "topic": "Deck-defect root-cause taxonomy",
+    "lesson": "Three root causes cover most deck defects: font substitution on PDF export, stale hardcoded data/footers, and template drift. When no style guide exists, benchmark = internal consistency; the editable (Canva) source is needed to fix cleanly.",
+    "applies_to": "design audits / preso QA"
+   },
+   {
+    "topic": "Render QA beyond visual",
+    "lesson": ".page{overflow:hidden} silently CLIPS table rows \u2014 test with pdftotext text-PRESENCE (+ -bbox footer-collision), not visual-only; grep case-insensitively (CSS text-transform uppercases). Also: zsh `rm -f glob*` with no match aborts an && chain \u2192 stale PDF passes tests.",
+    "applies_to": "any paginated PDF deliverable"
+   },
+   {
+    "topic": "Handoff provenance",
+    "lesson": "Some handoffs were authored on Bradley Heitmann's machine (/Users/bradleyheitmann/OKOA-Labs/...) \u2014 the intake repo is shared with an OKOA-Labs teammate; paths in handoffs may reference other machines. Also: git history was rewritten once (bloat cleanup) \u2014 verify git HEAD before trusting handoff SHAs/'completed' claims.",
+    "applies_to": "reading old handoffs, resumes"
+   },
+   {
+    "topic": "Team infrastructure",
+    "lesson": "Zee's OKOA email = ziaul@okoacapital.com; Linear org = okoa-labs (team key OKO); ~20 production secrets live in the Vercel dashboard (mirror into Doppler); per-developer orchestration systems must be gitignored in shared repos \u2014 only a neutral docs/ surface is shared. Push to BOTH remotes (origin + personal); okoateam business-account commits may need isolation from personal repos.",
+    "applies_to": "shared repos, secrets, git workflow"
+   },
+   {
+    "topic": "Swarm partition sizing",
+    "lesson": "Per-deal file counts drive swarm partitioning: Warburton Motel 6 131, Free_Legation 176, Darwin Provo Airpark 149, Thurston Lux 2 764, Kohan Golden East 1,305; Ascent folders ~2,888 + 751 files; 50 files/chunk with sonnet reviewers scales to 1,300-file folders.",
+    "applies_to": "sorting, extraction, dataroom swarms"
+   },
+   {
+    "topic": "macOS environment traps",
+    "lesson": "No timeout/gtimeout (silently empty output); tesseract needs cwd+basename; Desktop and Dropbox enumeration can be TCC-blocked (use ~/Documents/OKOA/ or Finder-copy staging); TCC grants are inode-bound (Keynote resaves invalidate them); APFS is case-insensitive; 1Password intercepts form fields.",
+    "applies_to": "all local tooling"
+   },
+   {
+    "topic": "Screenshot QA budget",
+    "lesson": "pdftoppm -r 150 (or 130) max for Claude QA \u2014 letter@200DPI trips the 2000px many-image cap which poisons the WHOLE conversation buffer (only /compact or /clear rescues). Chain sips -Z 1800 *.png; batch 5-8 pages; first 'image could not be processed' = stop and /compact.",
+    "applies_to": "all visual QA loops"
+   },
+   {
+    "topic": "Subscription-only Claude",
+    "lesson": "$200/mo Max subscription \u2014 NEVER use or suggest ANTHROPIC_API_KEY; all model/vision work via main-thread Read or Task() subagents (note: Task() subagents are policy-blocked from Write; Bash file-writes work).",
+    "applies_to": "every skill/script design"
+   },
+   {
+    "topic": "Deliverable links & opening",
+    "lesson": "Always give clickable file:// links with percent-encoded paths (spaces %20, # %23, & %26, parens %28/%29) and short labels \u2014 never home-dir symlinks or plain paths; open browser deliverables with `open -a \"Google Chrome\"`.",
+    "applies_to": "every deliverable message"
+   },
+   {
+    "topic": "Named-skill directive",
+    "lesson": "When the user names a skill, run the WHOLE skill (its verification gates catch defects custom pipelines miss); raise fit concerns at the confirmation gate, never silently substitute or strip its distinguishing feature.",
+    "applies_to": "all task routing"
+   },
+   {
+    "topic": "Two-source truth reconciliation",
+    "lesson": "When two documents describe the same deal at different dates, the NEWER memo is numbers-truth; the older is descriptive enrichment only. Foot every table regardless \u2014 even 'truth' sources had footing errors. Audits find omissions well but their corrections need source-doc tiebreaks.",
+    "applies_to": "memo rebuilds, dataset audits, case studies"
+   },
+   {
+    "topic": "Preserve resume files",
+    "lesson": "NEVER delete pending-resume-*.txt / RESCUED-resume-*.txt in ~/Library/Application Support/acos-token-monitor/state/ \u2014 move to consumed/, don't rm.",
+    "applies_to": "session management"
+   },
+   {
+    "topic": "Confirmation gate & teaching style",
+    "lesson": "Restate + confirm before executing interpretive instructions; 'I am creating X' = context not a build request; multi-phase visual plans need explicit yes; teach in chunks (F = forward); visual decisions get rendered examples one at a time, never MCQs.",
+    "applies_to": "all interaction"
+   }
+  ],
+  "formatting_rules": [
+   {
+    "rule": "Deal-sheet (Ville 7877 house format) tokens: OKOA green #465d53, cream #f5eee4, coral #ff795e, steel #3a6480, body ink #3c3c3c, muted #9d9d9d, secondary #6c6c6c, border #d4d4d4; fonts Georgia (titles/pull-quote), Inter/InterDisplay (body), Menlo (mono labels); 8.5\u00d711in, ~0.79in side margins",
+    "source": "reference_okoa_deal_sheet_format.md"
+   },
+   {
+    "rule": "Deal-sheet render command (verbatim): NODE_PATH=\"/Users/zee/.npm/_npx/7d92d9a2d2ccc630/node_modules\" node html-to-pdf.js in.html out.pdf --margin 0 --no-footer \u2014 --no-footer is REQUIRED or Puppeteer stamps 'Page N of M' over the footer",
+    "source": "reference_okoa_deal_sheet_format.md, 2026-07-14 handoff"
+   },
+   {
+    "rule": "Prospectus brand palette: navy #0A2340, coral #D94C3F (signature accent), yellow #F4D90D, magenta #8A1F7A, grey #7A7A7A, medium navy #104A78; typography Univers Bold throughout \u2014 Title 82/1.2, Headline 54/1.1, Subhead 32/1.2, Body 27/1.48, Small 22/1.48; grid ~30\u00d718 with corner-bracket marks; topographic-map PNGs as section dividers; brand fonts Univers + Graphik + Minion Pro + Feijoa-Display in Dropbox Brand Assets/Fonts",
+    "source": "project_okoa_marketing_prospectus.md"
+   },
+   {
+    "rule": "Prospectus map colors: cream #EFE7D8 fill, navy #104473 border, white background (theme-8 21-state footprint); 2D pin style v01: head #D1352B on silver needle #C4C7CC, PIN_SZ 0.62, HEAD_R 0.29, LEAN_AMP 0.16, IBM Plex Mono labels, sage states, HI+PR insets",
+    "source": "2026-06-07 resume, project_okoa_loan_location_3d_maps.md"
+   },
+   {
+    "rule": "Okoa deck palette (Lux2/editorial): sage #465D53, coral #FF795E, pale sage #DCE7E1; Cormorant Garamond headlines + IBM Plex Mono captions; earlier LKCap deck used sage #455D52, Georgia headers/Calibri body, 10x5.625in landscape \u2014 sage hex varies by artifact (#455D52 vs #465D53), see open_questions",
+    "source": "2026-04-22 + 2026-03-30 handoffs"
+   },
+   {
+    "rule": "OKOA ridgeline PRINT rules (okoa-design MCP): Cormorant Garamond headlines weight 500 (never 700, \u2264600); Inter body; JetBrains Mono for ALL numeric/tabular data; coral #FF795E \u22643% of page, line/text only NEVER fill; dark green #465D53 chrome bands/footer only; US Letter 20mm margins = 176mm text block; borders not shadows; square corners \u22644px; landscape-rotate tables wider than 176mm; run okoa_quality_check until PASS",
+    "source": "2026-06-30 handoffs"
+   },
+   {
+    "rule": "okoa-design MCP caps: only 5 honored section keys (heading, body, metrics, table, bullets); silent caps ~12 sections/call and ~425 chars/bullet; no images (composite post-MCP); single-column card grid only; ridgeline variant uses Inter Display headlines NOT Cormorant \u2014 use stillness for Cormorant display; chunk long docs into \u226412-section calls and stitch",
+    "source": "reference_okoa_design_mcp_quirks.md"
+   },
+   {
+    "rule": "Puppeteer/html-to-pdf.js: always include @page { size: letter; margin: 0; } (script hardcodes a 1.25in bottom margin; alternatively .page height 9.75in or preferCSSPageSize:true + printBackground:true); page.goto('file://...') never setContent(); absolute file:// img src; strip loading=\"lazy\"; gate page.pdf() on img.complete",
+    "source": "feedback_puppeteer_* , 2026-05-21/22 handoffs, ADR-001"
+   },
+   {
+    "rule": "Visual QA rasterization: pdftoppm -r 150 -png (never 200; -r 130 also used) + sips -Z 1800 *.png; batch ~5-8 pages per read; /compact between batches",
+    "source": "feedback_screenshot_qa_2000px_cap.md, 2026-05-26 handoff"
+   },
+   {
+    "rule": "Business-report type discipline: snap all font sizes to the 11 canonical OKOA type stops; V1 minimal Google-Fonts weights = {300,400,600}",
+    "source": "2026-05-26 handoff"
+   },
+   {
+    "rule": "Credit memo style: banned terms 'fully entitled', 'approximately', 'exposure', 'extraordinary'; percentages formatted X.X%; footnote every derived value; deferred fees + default preparedness are standard sections",
+    "source": "2026-03-11 handoff"
+   },
+   {
+    "rule": "DOCX deliverables: html-to-docx.py (python-docx) with navy header backgrounds, zebra striping, colored badges \u2014 never plain `pandoc -f html -o file.docx`",
+    "source": "feedback_docx_quality.md"
+   },
+   {
+    "rule": "PPTX: shape.text_frame + add_paragraph(); MSO_ANCHOR.MIDDLE on single-line; height = font_size \u00d7 line_count \u00d7 1.4; zero internal margins; fonts Courier New (numbers) / Georgia (display) / Calibri (labels); number detection = digit-ratio \u226560% after stripping $,%,\u00b7; monospace ~30% wider (auto-shrink 0.5pt steps); TEXT_BOX anchor via XML bodyPr.set('anchor','ctr'); post-build outerShdw shadow cleanup",
+    "source": "feedback_pptx_generation.md, 2026-04-22 handoff"
+   },
+   {
+    "rule": "OKOA payoff letter template: font Inter (explicit @font-face per weight \u2014 numeric font-weight:300 mis-resolves to Inter-Thin); header wordmark is a PNG at rect (57,24.7)-(120,41.2); rebuild as SVG viewBox 0 0 612 792 with textLength+lengthAdjust=\"spacing\" on fixed phrases; QA via red/green channel overlay",
+    "source": "feedback_template_match_extract_dont_eyeball.md"
+   },
+   {
+    "rule": "LinkedIn recency: article-mode citations \u22647 days; other modes \u226414d/link with strict majority \u22647d; check_recency.py (article: --max-days 7 --ideal-days 7; others: --max-days 14 --ideal-days 7 --majority-fresh); fails closed on undated pages",
+    "source": "feedback_okoa_linkedin_article_recency.md"
+   },
+   {
+    "rule": "XL Ant weekly update: carried bullets tagged [CARRIED], new bullets [NEW] with verbatim timestamped Fireflies citations; Excel edits formula-guarded with identical pagination verified",
+    "source": "2026-07-16 handoff"
+   },
+   {
+    "rule": "Boss-facing internal docs: first-person 'we', zero jargon, no named individuals, never reveal ~30-loan book scale, national framing ('market pages' not 'local pages'), hard page cap verified via pdfinfo after EVERY render; each '## ' heading forces a page break in the house CSS",
+    "source": "2026-06-26 handoffs"
+   },
+   {
+    "rule": "Waterfall model (prospectus slide 18): fee off top \u2192 8% pref \u2192 $200k GP catch-up (C=0.20\u00d7(800k+C)) \u2192 80/20; current terms 2% mgmt fee / 8% pref / 20% carry / 100% catch-up (2026-06-29); at 10% gross the pref is exactly met (8.0% net); fee appears in 3 text spots + waterfall intro + footnote",
+    "source": "project_okoa_prospectus_waterfall_model.md"
+   },
+   {
+    "rule": "Xyntax vectorize recipe (verbatim): vectorize.py --space 30 --uc-space 10 --letter-space \"ANRUVWX:-20\" --lc-scale 0.75 (--spacing-file spacing.json highest priority); auto-advance = ink_width + 2*sidebearing; Type-Forge server port 8800",
+    "source": "project_acos_font_forge.md, 2026-06-05/06 resumes"
+   },
+   {
+    "rule": "Dark JPEG brand exports: quality=95 + 4:4:4 chroma subsampling + pure-black background; small dark-bg text = Inter Medium 11pt @0.16em tracking",
+    "source": "2026-05-07 handoffs"
+   },
+   {
+    "rule": "Hypercore live invocation (verbatim): doppler run --project hypercore-ask --config dev_personal -- python3 .claude/scripts/hca-deliver.py --ask \"...\"; API https://api.hypercore.ai/graphql, OAuth client-credentials \u2192 JWT TTL 1800s via auth.hypercore.ai .../auth/v1/api-token",
+    "source": "project_acos_hypercore_ask.md"
+   },
+   {
+    "rule": "Prospectus render (verbatim): ~/.nvm/versions/node/v22.22.3/bin/node html-to-pdf.js --landscape --margin 0 with NODE_PATH=/Users/zee/.npm/_npx/7d92d9a2d2ccc630/node_modules; @page 11x8.5in landscape margin:0",
+    "source": "2026-06-07 resume, project_okoa_prospectus_case_studies.md"
+   },
+   {
+    "rule": "Design venv invocation: ~/Documents/OKOA/.venv-design/bin/python (Py 3.13.12; weasyprint 68.1 via `python -m weasyprint` \u2014 no PATH binary)",
+    "source": "project_okoa_design_venv.md, 2026-06-30 handoff"
+   },
+   {
+    "rule": "Headless WebGL screenshots: Chrome --headless=new --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader --virtual-time-budget=6000 --screenshot",
+    "source": "reference_okoa_website_build.md, 2026-05-17 handoff"
+   },
+   {
+    "rule": "Brad design system defaults: US Letter portrait, 0.75in margins, 8px grid; Swiss/IBM-Carbon language, warm earth palette + coral accents",
+    "source": "project_html_to_pdf_visual_composer.md, acos-document-design-brad"
+   },
+   {
+    "rule": "Default-notice payoff language: always 'not less than $X' (non-anchoring), e.g. Lux II $55,853,549.47",
+    "source": "2026-07-02 completion handoff"
+   },
+   {
+    "rule": "OKOA wiki brand: dark blue + sage green; Tailwind tokens okoa-blue-{50-900}/okoa-green-{50-900}; classes btn-primary/okoa-gradient/wiki-content/glossary-term; borrower doc naming CompanyName_DocUploadName_OriginalFile",
+    "source": "2026-02-23/24 wiki + intake handoffs"
+   }
+  ],
+  "suggested_skill_structure": {
+   "sections": [
+    {
+     "name": "SKILL.md",
+     "purpose": "Front door + router. Keep under ~300 lines.",
+     "contents": "Trigger description (any OKOA deal/marketing/portfolio/webapp task); the folder-map quick table (Dropbox tiers + Documents/OKOA + repos) with the '1. In HyperCore' nesting rule; a task-router table mapping trigger phrases \u2192 playbook reference file \u2192 skill to invoke (hypercore-ask, dataroom-v2, loan-doc-generator, xl-update, legal-analysis, ultimate-designer, type-forge...); the 6 universal red lines (boss cold-look rule, folder-names-not-authoritative, copies-only in Dropbox, subscription-not-API, never write to External Data Rooms, clickable file:// links); pointer to reference files."
+    },
+    {
+     "name": "references/deal-index.md",
+     "purpose": "Per-deal fact sheets with aka_traps.",
+     "contents": "One section per deal from deal_index (Ascent first \u2014 largest trap surface), each with canonical paths, Hypercore loan IDs (88/134/149/171/173, fundingEntity 3 = XL Ant), verified dollar figures with as-of dates, and the naming traps block (Waldorf\u2260Tapestry, Lux I\u2260Lux II, 409 High Point='409 Hodson', Beehive 'Waldorff' spelling, Wright Thurston vs Wright folder, Rubin conflicted-copy duplicates)."
+    },
+    {
+     "name": "references/folder-map.md",
+     "purpose": "Full canonical location list.",
+     "contents": "folder_map content verbatim, split into Dropbox / Documents/OKOA / code repos / secondary stores; flags for handoff-only (Okoa Taxes) vs live-verified paths; the TCC/staging workarounds; the junk-artifact list (maxdesk.ini2, conflicted copies)."
+    },
+    {
+     "name": "references/formatting-rules.md",
+     "purpose": "Exact tokens and commands \u2014 the 'never re-derive' file.",
+     "contents": "All formatting_rules verbatim: hex palettes (deal sheet, prospectus, deck, ridgeline), fonts, render command lines with NODE_PATH/--no-footer, Puppeteer CSS rules, screenshot-QA DPI budget, memo style rules, recency thresholds, waterfall math, vectorize recipe, venv invocations."
+    },
+    {
+     "name": "references/playbooks/",
+     "purpose": "One file per recurring task type.",
+     "contents": "hypercore-queries.md, prospectus.md, datarooms.md, diligence-extraction.md, lender-memos-presos.md, deal-sheets.md, credit-memos.md, counsel-and-legal.md, xl-weekly-update.md, excel-editing.md, webapps.md (all Convex/Supabase/Clerk/Box/Resend rules), fonts-and-brand.md, website.md, maps-and-locations.md, valuation.md, ic-runs.md, misc.md (tax forms, intake schemas, PPTX). Each: triggers, inputs, numbered steps, gotchas \u2014 taken from task_playbooks."
+    },
+    {
+     "name": "references/gotchas.md",
+     "purpose": "Cross-cutting environment + process traps.",
+     "contents": "learnings content: macOS traps (timeout, tesseract, TCC, APFS), image-cap budget, subagent limits (Write-blocked, PDF timeouts), git/remote rules, handoff provenance cautions, preserve-resume rule, confirmation-gate and teaching-style norms."
+    },
+    {
+     "name": "references/open-questions.md",
+     "purpose": "Things only Zee can settle \u2014 checked/updated as answered.",
+     "contents": "open_questions list with date raised; instruct the skill to ASK rather than assume when a task touches one of these (e.g. website ports, current sage hex, mgmt-fee currency of 2%)."
+    }
+   ]
+  },
+  "open_questions": [
+   "Website ports contradiction: MEMORY.md says dev:4322 / stable:4321, but the 2026-05-18 handoff says the dev worktree ran on 4321 and okoa-website-stable on 4322. Which assignment is current after the OKOA Website/{dev,stable} reorg?",
+   "Canonical OKOA sage hex: #465d53 (deal sheet / ridgeline #465D53) vs #455D52 (2026-03-30 LKCap deck) \u2014 is #455D52 a one-off deck value or a legitimate variant?",
+   "Management fee: prospectus corrected to 1.5% on 2026-05-12, then set to 2% on 2026-06-29 \u2014 is 2% still current, and is the 8% pref / $200k catch-up unchanged?",
+   "Fund-figure currency: which loan-count figure applies where \u2014 118 loans/$172M committed (prospectus), 141 loans/$434.99M commitment (Hypercore full history), ~30 active loans (never disclose publicly), 62 loans/$143M track record (PPM)?",
+   "Ascent trustee sale was scheduled 2026-07-22 (Char v. OKOA TRO pending) \u2014 did it proceed, and what is the deal's current state (owned REO, sold, enjoined)?",
+   "Do executed OKOA Comfort Letter (3/14/25) and OKOA SNDA (3/12/25) exist at Ballard Spahr / Hilton, and were they retrieved?",
+   "What is the exact Dropbox path of the 'Okoa Taxes' directory (source of the W-9 / EIN 87-1011507)? It was never captured verbatim.",
+   "Golden East landlord entity chain (GECRH LLC \u2192 OKOA Capital LLC / OKOA Golden East LLC) is not paper-trailed \u2014 which entity signs leases today?",
+   "Albert Ave (loan 173): which principal figure governs \u2014 $420k, $336,220, or $320k \u2014 for the extension-fee basis?",
+   "Should acos-okoa-works cover the internal web apps (okoa-wiki, loan-intake, task-management, FlexCade) as first-class playbooks, or only reference them and defer to repo-local CLAUDE.md files?",
+   "Are Free_Legation and Darwin Provo Airpark still active, and are there any working conventions/traps for them beyond file counts?",
+   "Is '409 Hodson' the only alias for 409 High Point, and are there other deal-name aliases Zee uses verbally that should be in the resolver list?",
+   "New deals location: both /Users/zee/Documents/New deals/ and /Users/zee/Documents/OKOA/New deals appear in sources \u2014 which is canonical going forward?",
+   "Wright: does a Wright deal exist beyond the Wright Park Apartments appraisal PDF in Archived/Broadmark_Caesars Apartments, or does 'Wright' always mean Wright Thurston?",
+   "Google Drive Shared drives were never enumerated \u2014 do they hold anything a deal task should search (e.g. executed docs not in Dropbox)?",
+   "Wohali: what is/was the deal (prospectus references only) \u2014 does it need a deal_index entry with paths?",
+   "Is the Herriman AutoMall engagement still live (OKOA as broker), and should it ever get a Dropbox folder, or do broker deals stay in New deals by convention?"
+  ]
+ },
+ "critic": {
+  "complete": false,
+  "missing_tasks": [
+   "Internal web app development & security remediation (okoa-wiki, okoa-loan-intake-system, pe-strategy/financial-model apps): ~25 digest files (2026-02-13 through 2026-03-27 plus 2026-05-17/18 website handoffs) with zero playbook. The folder_map has the repo rows but ALL reusable engineering patterns were dropped: Convex httpAction/self-scheduling must call internal.* never api.*; MIME Subject CRLF-injection sanitization; CSV formula-injection prevention on applicant exports; shared PII field registry for redaction+log sanitization; Supabase free-tier pauses after ~7 days idle and takes the site down; magic-link needs a server-side /auth/callback PKCE exchange; Resend onboarding@resend.dev sender is rejected by okoacapital.com mail; Clerk JWT template 'convex' requirement; Box refresh tokens expire after 60 days inactivity; deploy Convex indexes to BOTH dev and prod; 'bun run' fails on paths with spaces.",
+   "Font design / type-forge (Xyntax Titles font for the OKOA website): recurring across 6 digest entries (2026-06-05/06 resumes, project_acos_font_forge, feedback_visual_iteration) with no playbook and no learnings carried: Cinzel has an empty GSUB (no small-caps/titling alternates); Cinzel Decorative has no roman lowercase; re-spacing must strip donor GPOS/kern; judge spacing by rendered ink (pixel overlap) not metrics; vectorize.py flag recipe (--space 30 --uc-space 10 --letter-space 'ANRUVWX:-20' --lc-scale); auto-advance = ink_width + 2*sidebearing; Type-Forge server port 8800; web fonts need localhost not file:// + ?v= cache-bust.",
+   "Brand-asset design (LinkedIn covers/banners, logo work): 4 digest entries (2026-05-07 x2, duplicated) with no playbook and dropped learnings \u2014 dark JPEG export needs quality=95 + 4:4:4 chroma subsampling + pure-black background to kill banding; anchor hairlines to glyph-contour intersections (circle-line math) not bbox edges; branch renderers on is_light (bokeh/bloom only works on dark bg); Inter Medium 11pt @0.16em tracking beats thin-weight+wide-tracking for small dark text; verify curl-downloaded fonts are real TTFs (error pages save silently under .ttf names).",
+   "Tax form extraction (2026-03-12 Ward/Coslin Ave completion handoff): no playbook or mention; carries the reusable fact that the lender EIN is sourced from the Okoa W-9 in the Dropbox Okoa Taxes directory.",
+   "Hypercore intake-form building (2026-04-03): type mapping Dropdown->Select, Yes/No->CheckBox, Textarea->TextArea, and 3-tier AND Show-Field-Condition logic \u2014 minor but reusable if intake forms recur."
+  ],
+  "missing_deals": [
+   "Free_Legation \u2014 active loan folder, 176 files (named in three 2026-02-28/03-01 sorting handoffs); absent from deal_index",
+   "Darwin Provo Airpark \u2014 active loan folder, 149 files (same sorting handoffs); absent from deal_index",
+   "Ward / Coslin Ave \u2014 tax form extraction deal (2026-03-12); absent from deal_index",
+   "Wohali \u2014 appears in 2026-04-11 and 2026-04-12 prospectus handoffs alongside Ascent/Waldorf; absent from deal_index",
+   "409 High Point \u2014 user calls it '409 Hodson' (reference_hypercore_api_access_boundaries); this naming alias is exactly the aka_traps material the deal_index exists for; North Carolina II Multi Tranche similarly unlisted (its parentLoan lesson survives in gotchas but the deal name doesn't)",
+   "Family Farmers \u2014 in-scope entity from the Thurston dataroom analysis (project_thurston_dataroom_analysis); absent from deal_index (Haystack made it in, Family Farmers didn't)"
+  ],
+  "missing_paths": [
+   "Dropbox 'Okoa Taxes' directory \u2014 the documented source of the OKOA W-9 / lender EIN (2026-03-12 handoff); absent from folder_map despite being the only known place to fetch a fact needed for any tax-form or lender-identity task",
+   "Dropbox 'Okoa Letters/' \u2014 cited as home of the Official Logo PNG only inside the Brand Assets row's prose; acceptable, but note it is not its own row (borderline, not counted as material on its own)"
+  ],
+  "missing_learnings": [
+   "NOT_IN_ASSIGNED_DOCS vs NOT_FOUND distinction required for parallel-extraction correctness (2026-03-03 completion handoff) \u2014 a core acos-data-extractor/loan-doc-mapper correctness rule, no trace anywhere in the synthesis",
+   "Asymmetric QA spot-check rates: 100% verification for currency figures/names (legal liability), ~30% for page counts (2026-03-03) \u2014 reusable extraction-QA calibration, dropped",
+   "Lender EIN sourced from the Okoa W-9 in the Okoa Taxes directory (2026-03-12) \u2014 dropped along with the deal and path",
+   "python-pptx outerShdw theme-shadow bug requires post-build cleanup + explicit shadow removal (2026-04-22) \u2014 the PPTX formatting rule set carries every other python-pptx rule but not this one",
+   "anonymize_seller flag pattern: replace seller/fund entity names with 'Seller' in blind note-sale packages (2026-04-22 Lux2 Variant Note Sale) \u2014 reusable blind-marketing-package convention, distinct from the Wright Thurston anonymization that did survive",
+   "OKOA website is BORROWER-focused, not investor-focused; the prospectus PDF is the tone source (2026-05-18) \u2014 a positioning/voice red line missing from both the website row and voice/marketing learnings",
+   "ADR-002 brand-first image sourcing: OKOA documents must use actual OKOA property photos when they exist (generic stock is a fallback); SHA-256 hash-cache skips unchanged images; ATTRIBUTION.md auto-generated; similarity threshold 0.6 with persisted user rejections \u2014 an accepted ADR governing image selection in branded docs, no trace",
+   "ADR-003 skip-trace/property-search design: no free nationwide owner-name search exists (~3,100 counties); DPPA/FCRA/FDCPA/GLBA require a BLOCKING compliance gate; mass registered agents (CT Corp, CSC) cause N-squared false entity links needing a hub stop-list \u2014 reusable domain knowledge for any future borrower/sponsor asset search",
+   "Vendor-facing deliverables must strip internal notes and color coding (2026-03-27) \u2014 small but generalizable external-deliverable rule",
+   "HTML/CSS render gotcha cluster from 2026-05-12 website-design completion: a missing </style> closing tag silently swallows page bodies; Google Fonts URL needs the ital,wght axis or <em> renders synthesized italic; white-space:nowrap to prevent mid-number wraps in metric tiles \u2014 recurring branded-HTML failure modes, dropped",
+   "Debt-preso design-audit root-cause taxonomy: font substitution on PDF export, stale data, (third root cause) cover most deck defects; benchmark = internal consistency when no style guide exists (project_ascent_debt_preso_design_audit) \u2014 the audit's reusable method dropped (only deal facts survived)"
+  ],
+  "other_gaps": [
+   "Port conflict unresolved: the 2026-05-18 handoff says dev on 4321 / stable on 4322, while MEMORY.md says dev:4322 / stable:4321. The synthesis silently adopted MEMORY.md's version; given the digest contains the contradiction, this belongs in open_questions.",
+   "Team-infrastructure facts dropped: Linear org is okoa-labs; ~20 production secrets live in the Vercel dashboard; per-developer orchestration dirs must be gitignored in shared repos (2026-03-02 pm-infra-setup). Zee's work email survives only implicitly via the GoogleDrive path label.",
+   "The 2026-03-02 swarm-review note that a handoff was authored on Bradley Heitmann's machine implies shared-repo/multi-author handoff provenance \u2014 worth a one-line caution that handoff paths may reference other machines (e.g. /Users/bradleyheitmann/).",
+   "Sorting playbook lost the per-deal file-count table (Warburton Motel 6 131, Free_Legation 176, Darwin Provo Airpark 149) \u2014 it kept only Kohan 1,305 and Thurston 764; the counts are the sizing input for swarm partitioning.",
+   "Alaska/Anchorage gotcha partially dropped: '.page{overflow:hidden} silently clips table rows \u2014 test with pdftotext text-presence, not visual-only' is a render-QA rule that generalizes beyond that deal and is not in the Puppeteer/QA rule set."
+  ]
+ },
+ "folderMap": {
+  "candidate_roots": [
+   {
+    "path": "/Users/zee/Library/CloudStorage/",
+    "exists": true,
+    "purpose": "Cloud mounts: Dropbox-OkoaCapital + two Google Drive accounts"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital",
+    "exists": true,
+    "purpose": "OKOA Capital company Dropbox \u2014 the canonical source-of-truth for loan/deal folders, org docs, marketing, modeling, investor relations"
+   },
+   {
+    "path": "/Users/zee/Dropbox",
+    "exists": false,
+    "purpose": "Does not exist (Dropbox mounts only under CloudStorage)"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA",
+    "exists": true,
+    "purpose": "Zee's personal OKOA working directory \u2014 deal work-in-progress, deliverables, brand assets, payoffs, analysis outputs (very flat/messy, ~200 items at top level)"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding",
+    "exists": true,
+    "purpose": "All code projects: ACOS 3.0, OKOA Website, okoa-wiki, okoa-loan-intake-system, okoa-task-management-system, etc."
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/GoogleDrive-ziaul@okoacapital.com",
+    "exists": true,
+    "purpose": "OKOA Google Drive (My Drive + Shared drives) \u2014 misc deal emails/zips, pitch decks, internship folder; not the primary deal store"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/GoogleDrive-ziaul@bus.uiu.ac.bd",
+    "exists": true,
+    "purpose": "Personal/university Google Drive \u2014 not OKOA (not explored)"
+   },
+   {
+    "path": "/Users/zee/Documents/private_credit_design_reference",
+    "exists": true,
+    "purpose": "Design reference material (also duplicated inside Documents/OKOA)"
+   }
+  ],
+  "loan_folders": [
+   {
+    "deal": "Ascent (Park City hotel, Wolfgramm)",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)",
+    "note": "Active $30M position; related: .../Wolfgramm_Ascent_LKCAP Okoa Preferred Equity (active), Paid Off/1. In HyperCore/Qelo:Wolfgramm_Ascent_Senior and Wolfgramm_Ascent_Bridge (10M), Archived/Wolfgramm_Ascent_Mezz. Heavy working files under /Users/zee/Documents/OKOA/ (Ascent LK Cap preso, ascent_SNDA, Ascent GC Insurance & Soils, Ascent-Waldorf-Docs, etc.)"
+   },
+   {
+    "deal": "Thurston / Lux II",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Thurston Lux 2",
+    "note": "Active. Also Thurston_Haystack (active) and Paid Off/1. In HyperCore/Thurston_Lux Loan (Lux I). Working files: /Users/zee/Documents/OKOA/Mini Loan (Lux II), Lux II NOD, Lux Variant Note Sale"
+   },
+   {
+    "deal": "Golden East (Kohan, mall)",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Kohan_Golden East",
+    "note": "Active. Working folders in /Users/zee/Documents/OKOA/: Kohan Golden East Sale, GE comparison, GE Lease Agreement, Golden East ACH, Golden-East-Crossing-Brand-Package, Sales Report Excel File"
+   },
+   {
+    "deal": "Herriman AutoMall",
+    "path": "/Users/zee/Documents/OKOA/New deals",
+    "note": "NO dedicated Dropbox loan folder found under any Okoa Loans tier; deal sheets/memos live in New deals (Herriman AutoMall - Loan Submission Deal Sheet.pdf/.html, Herriman 73 Partners $28.0M PDF)"
+   },
+   {
+    "deal": "Lakeside Landing",
+    "path": "/Users/zee/Documents/OKOA/Lakeside",
+    "note": "No dedicated Dropbox loan folder found. Working files: Documents/OKOA/Lakeside (easement/consent redlines), lakeside-tmp, and a participation-offering PNG at top level. A 'RE Lakeside Landing PSA draft.pdf' sits inside Dropbox Archived/Crandall Farms \u2014 Lakeside Landing appears related to Crandall Farms"
+   },
+   {
+    "deal": "Ville 7877 (Warburton)",
+    "path": "/Users/zee/Documents/OKOA/New deals/Ville 7877 - Loan Submission Deal Sheet.pdf",
+    "note": "No folder named 7877. Related Warburton Ville loan folders: Active/1. In HyperCore/Warburton Ville 1990 and Warburton Ville 25 Bridge; Active/Warburton_Ville 9 (sits OUTSIDE the '1. In HyperCore' subfolder)"
+   },
+   {
+    "deal": "English Hotel (Las Vegas)",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 4. Archived/Zhang - English Hotel",
+    "note": "Archived. Possibly related: Paid Off/1. In HyperCore/Capella - Main St (English)"
+   },
+   {
+    "deal": "Wright",
+    "path": "",
+    "note": "NOT FOUND as a deal folder in any Okoa Loans tier or Documents/OKOA. Only hit: 'A22-0174 Wright Park Apartments 20220217.pdf' appraisal inside Archived/Broadmark_Caesars Apartments"
+   },
+   {
+    "deal": "Rubin (25th Ave / Shia)",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Rubin - Shia 25th Ave PG Lawsuit",
+    "note": "Active lawsuit folder. Paid off: .../Okoa Loans - 3. Paid Off/1. In HyperCore/Rubin_25th Ave (plus duplicate 'Rubin_25th Ave (1)' and a 'Zach Hoffman's conflicted copy 2026-07-09'). Counsel bundle: /Users/zee/Documents/OKOA/Rubin_Counsel_Bundle_20260423"
+   },
+   {
+    "deal": "Anchorage / 4618 Thompson (Alaska 4-plex)",
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Alaska Fix and Flip",
+    "note": "In-process; contains Borrower and Org Docs, Loan Docs, Property Info, Payoff AK 4-Plex Rehab .xlsx. Working folder: /Users/zee/Documents/OKOA/Anchorage Thompson"
+   }
+  ],
+  "key_folders": [
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process",
+    "purpose": "Pipeline deals (deal folders directly at top level: Alaska Fix and Flip, Fruitland UT, Lehi & St George Blanket Loan, Mountain West Pest, TreeBox Ohio Bridge)"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore",
+    "purpose": "Active loan deal folders (~30) \u2014 most active deals are one level down inside '1. In HyperCore', NOT at the 'Active' root"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 3. Paid Off/1. In HyperCore",
+    "purpose": "Paid-off loan deal folders (~90)"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 4. Archived",
+    "purpose": "Archived/dead deals (~60, directly at top level, no HyperCore subfolder)"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Forms and Templates",
+    "purpose": "Company forms and document templates"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Marketing",
+    "purpose": "Marketing materials"
+   },
+   {
+    "path": "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/External Data Rooms -- EXTERNALLY SHARED",
+    "purpose": "Externally shared data rooms \u2014 treat as sensitive/shared"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA",
+    "purpose": "Zee's primary working directory: per-deal work folders, deliverables, brand assets (okoa logos, OKOA Brand Reference.pdf, Colors and Hex Codes.png), New deals deal sheets, OKOA Deal Tearsheet, OKOA_Prospectus, Private Credit Capabilities"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/.venv-design",
+    "purpose": "Design Python venv (Py 3.13 + weasyprint/jinja2/python-pptx) \u2014 confirmed present"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/New deals",
+    "purpose": "Deal-sheet PDFs for new submissions (Herriman AutoMall, Herriman 73 Partners, Ville 7877)"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/OKOA Wiki",
+    "purpose": "Wiki content folder (distinct from the code repo okoa-wiki)"
+   },
+   {
+    "path": "/Users/zee/Documents/OKOA/assets",
+    "purpose": "Signature/image assets (e.g. ty-corbridge signature PNG + datauri)"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/OKOA Website/dev",
+    "purpose": "OKOA website dev repo (port 4322); sibling 'stable' (4321) and 'font-foundry'"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/OKOA Website/stable",
+    "purpose": "OKOA website stable repo"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-wiki",
+    "purpose": "okoa-wiki code repo"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-loan-intake-system",
+    "purpose": "Loan intake system repo (plus 'Backup okoa-loan-intake-system' and 'Clone-okoa-loan-intake-system' siblings)"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/okoa-task-management-system",
+    "purpose": "OKOA task management system repo"
+   },
+   {
+    "path": "/Users/zee/Documents/Vibe Coding/ACOS 3.0",
+    "purpose": "ACOS orchestration framework repo (current project)"
+   }
+  ],
+  "notes": [
+   "Deal-folder layout is tiered and inconsistent: Active and Paid Off keep deals inside a '1. In HyperCore' subfolder, while In Process and Archived keep them at top level; Warburton_Ville 9 sits at the Active root outside '1. In HyperCore'.",
+   "Junk/sync artifacts inside loan roots: maxdesk.ini2, PP11Thumbs.ptn, subfolder_list.csv/.txt in 'Okoa Loans - 2. Active'; a Dropbox conflicted copy 'Rubin_25th Ave (Zach Hoffman's conflicted copy 2026-07-09)' and duplicate 'Rubin_25th Ave (1)' in Paid Off.",
+   "Deals with NO dedicated Dropbox loan folder: Herriman AutoMall and Ville 7877 (deal sheets only, in /Users/zee/Documents/OKOA/New deals), Lakeside Landing (working files in Documents/OKOA/Lakeside; PSA draft found inside Archived/Crandall Farms), and Wright (only a Wright Park Apartments appraisal PDF inside Archived/Broadmark_Caesars Apartments).",
+   "'Waldorf' in the Ascent folder name is a known folder-name trap \u2014 collateral is actually Tapestry Collection by Hilton (per project memory); do not trust folder names as fact.",
+   "/Users/zee/Documents/OKOA is very flat (~200 top-level items mixing folders, PDFs, screenshots); navigation should target known subfolders rather than globbing.",
+   "No permission errors or cloud-only download stalls encountered; all listings were plain ls and returned instantly. zsh gotcha: multi-pattern globs need null_glob or they abort on first non-match.",
+   "Google Drive OKOA mount (My Drive) holds scattered deal email zips (Stein, Rubin Phoenix) and pitch decks but is not the primary deal store; Shared drives not enumerated.",
+   "'External Data Rooms -- EXTERNALLY SHARED' in Dropbox is externally visible \u2014 a future skill should never write work-in-progress there."
+  ]
+ },
+ "coverage": {
+  "scanAgentsReturned": 21,
+  "filesReported": 349,
+  "okoaRelevant": 204,
+  "reportedFiles": [
+   "2026-02-08-session-handoff.yaml",
+   "2026-02-08T2-session-handoff.yaml",
+   "2026-02-10-session-handoff.yaml",
+   "2026-02-10T2-session-handoff.yaml",
+   "2026-02-13-completion-handoff.yaml",
+   "2026-02-13T2-completion-handoff.yaml",
+   "2026-02-13T3-completion-handoff.yaml",
+   "2026-02-14-completion-handoff.yaml",
+   "2026-02-14-session-handoff.yaml",
+   "2026-02-22T-session-handoff.yaml",
+   "2026-02-23-completion-handoff.yaml",
+   "2026-02-23T-final-session-handoff.yaml",
+   "2026-02-23T-session-handoff.yaml",
+   "2026-02-23T-warp-fix-handoff.yaml",
+   "2026-02-23T-warp-fix-v2-handoff.yaml",
+   "2026-02-25-adversarial-review-handoff.yaml",
+   "2026-02-25-global-hooks-system-review-handoff.yaml",
+   "2026-02-25-mechanical-stop-handoff.yaml",
+   "2026-02-25-model-profile-handoff.yaml",
+   "2026-02-25-remediation-completion-handoff.yaml",
+   "2026-02-27-handoff-agent-session-handoff.yaml",
+   "2026-02-27-mechanical-stop-handoff.yaml",
+   "2026-02-27-multi-provider-handoff.yaml",
+   "2026-02-28-emergency-handoff-2.yaml",
+   "2026-02-28-emergency-handoff.yaml",
+   "2026-02-28-mechanical-stop-handoff.yaml",
+   "2026-03-01-emergency-handoff.yaml",
+   "2026-03-03-completion-handoff.yaml",
+   "2026-03-03-emergency-handoff-2.yaml",
+   "2026-03-03-emergency-handoff-3.yaml",
+   "2026-03-03-emergency-handoff-4.yaml",
+   "2026-03-03-emergency-handoff-5.yaml",
+   "2026-03-03-emergency-handoff.yaml",
+   "2026-03-05-emergency-handoff.yaml",
+   "2026-03-06-completion-handoff.yaml",
+   "2026-03-06-emergency-handoff-2.yaml",
+   "2026-03-06-emergency-handoff.yaml",
+   "2026-03-11-completion-handoff-2.yaml",
+   "2026-03-11-completion-handoff.yaml",
+   "2026-03-11-emergency-handoff-2.yaml",
+   "2026-03-11-emergency-handoff.yaml",
+   "2026-03-12-completion-handoff.yaml",
+   "2026-03-14-emergency-handoff.yaml",
+   "2026-03-16-emergency-handoff.yaml",
+   "2026-03-23-emergency-handoff.yaml",
+   "2026-03-30-emergency-handoff.yaml",
+   "2026-04-03-completion-handoff.yaml",
+   "2026-04-11-emergency-handoff.yaml",
+   "2026-04-12-coffee-table-refresh-handoff.yaml",
+   "2026-04-14-mechanical-stop-handoff.yaml",
+   "2026-04-22-emergency-handoff-2.yaml",
+   "2026-04-22-emergency-handoff.yaml",
+   "2026-05-06T08-48-30Z-eternity-cycle-3.yaml",
+   "2026-05-07T08-08-13Z-session-handoff.yaml",
+   "2026-05-07T09-30-00Z-completion-handoff.yaml",
+   "2026-05-08T07-08-34Z-acos-dataroom-build-and-verify.yaml",
+   "2026-05-12-completion-handoff.yaml",
+   "2026-05-12-emergency-handoff-2.yaml",
+   "2026-05-12-emergency-handoff-3.yaml",
+   "2026-05-12-emergency-handoff-4.yaml",
+   "2026-05-12-emergency-handoff.yaml",
+   "2026-05-12-rubin-counsel-email-handoff.yaml",
+   "2026-05-12T2-completion-handoff.yaml",
+   "2026-05-13-emergency-handoff.yaml",
+   "2026-05-13-pre-ascent-restart-handoff.yaml",
+   "2026-05-06T08-48-30Z-eternity-cycle-3.yaml",
+   "2026-05-07T08-08-13Z-session-handoff.yaml",
+   "2026-05-07T09-30-00Z-completion-handoff.yaml",
+   "2026-05-08T07-08-34Z-acos-dataroom-build-and-verify.yaml",
+   "2026-05-12-completion-handoff.yaml",
+   "2026-05-12-emergency-handoff-2.yaml",
+   "2026-05-12-emergency-handoff-3.yaml",
+   "2026-05-12-emergency-handoff-4.yaml",
+   "2026-05-12-emergency-handoff.yaml",
+   "2026-05-12-rubin-counsel-email-handoff.yaml",
+   "2026-05-12T2-completion-handoff.yaml",
+   "2026-05-13-emergency-handoff.yaml",
+   "2026-05-13-pre-ascent-restart-handoff.yaml",
+   "2026-05-19-eternity-protocol-fixes.yaml",
+   "2026-05-19-eternity-protocol-mid-decision.yaml",
+   "2026-05-19-hypercore-exploration.yaml",
+   "2026-05-20-eternity-protocol-bug-fixes-complete.yaml",
+   "2026-05-20-eternity-protocol-daemon-clear-arch.yaml",
+   "2026-05-20-eternity-protocol-end-to-end-test-retry.yaml",
+   "2026-05-20-eternity-protocol-fix-implemented.yaml",
+   "2026-05-20-eternity-protocol-live-test-fire.yaml",
+   "2026-05-20-eternity-protocol-rerun-verification.yaml",
+   "2026-05-21-emergency-handoff-2.yaml",
+   "2026-05-21-emergency-handoff.yaml",
+   "2026-05-21-eternity-cycle-test-fire.yaml",
+   "2026-05-22-emergency-handoff.yaml",
+   "2026-05-19-eternity-protocol-fixes.yaml",
+   "2026-05-19-eternity-protocol-mid-decision.yaml",
+   "2026-05-19-hypercore-exploration.yaml",
+   "2026-05-20-eternity-protocol-bug-fixes-complete.yaml",
+   "2026-05-20-eternity-protocol-daemon-clear-arch.yaml",
+   "2026-05-20-eternity-protocol-end-to-end-test-retry.yaml",
+   "2026-05-20-eternity-protocol-fix-implemented.yaml",
+   "2026-05-20-eternity-protocol-live-test-fire.yaml",
+   "2026-05-20-eternity-protocol-rerun-verification.yaml",
+   "2026-05-21-emergency-handoff-2.yaml",
+   "2026-05-21-emergency-handoff.yaml",
+   "2026-05-21-eternity-cycle-test-fire.yaml",
+   "2026-05-22-emergency-handoff.yaml",
+   "2026-05-26-ascent-park-city-business-report.yaml",
+   "2026-05-26-completion-handoff.yaml",
+   "2026-05-26-design-mechanics-RESUME-PROMPT.md",
+   "2026-05-26-design-mechanics-discussion.yaml",
+   "2026-05-26-emergency-handoff.yaml",
+   "2026-05-26-slice-003-001-01-completed.yaml",
+   "2026-05-26-slice-003-001-02-completed.yaml",
+   "2026-05-26-slice-003-001-03-completed.yaml",
+   "2026-05-26-slice-003-001-04-completed.yaml",
+   "2026-05-26-slice-003-001-05-completed.yaml",
+   "2026-05-26-slice-003-001-06-completed.yaml",
+   "2026-05-27-eternity-protocol-saga-emergency.yaml",
+   "2026-05-28-ascent-snda-counsel-prep-completed.yaml",
+   "2026-06-14-completion-handoff.yaml",
+   "2026-06-16-emergency-handoff.yaml",
+   "2026-06-21-emergency-handoff.yaml",
+   "2026-06-23-emergency-handoff.yaml",
+   "2026-06-24-emergency-handoff-2.yaml",
+   "2026-06-24-emergency-handoff.yaml",
+   "2026-06-25-completion-handoff.yaml",
+   "2026-06-25-emergency-handoff.resume.md",
+   "2026-06-25-emergency-handoff.yaml",
+   "2026-06-26-emergency-handoff-2.yaml",
+   "2026-06-26-emergency-handoff.yaml",
+   "2026-06-30-emergency-handoff.yaml",
+   "2026-07-02-completion-handoff.yaml",
+   "2026-06-14-completion-handoff.yaml",
+   "2026-06-16-emergency-handoff.yaml",
+   "2026-06-21-emergency-handoff.yaml",
+   "2026-06-23-emergency-handoff.yaml",
+   "2026-06-24-emergency-handoff-2.yaml",
+   "2026-06-24-emergency-handoff.yaml",
+   "2026-06-25-completion-handoff.yaml",
+   "2026-06-25-emergency-handoff.resume.md",
+   "2026-06-25-emergency-handoff.yaml",
+   "2026-06-26-emergency-handoff-2.yaml",
+   "2026-06-26-emergency-handoff.yaml",
+   "2026-06-30-emergency-handoff.yaml",
+   "2026-07-02-completion-handoff.yaml",
+   "2026-07-16-completion-handoff.yaml",
+   "2026-07-16-emergency-handoff.yaml",
+   "2026-06-04-emergency-handoff.resume.md",
+   "2026-06-05-emergency-handoff.resume.md",
+   "2026-06-06-emergency-handoff.resume.md",
+   "2026-06-07-emergency-handoff.resume.md",
+   "2026-06-10-eternity-protocol-hardening-complete.resume.md",
+   "2026-06-11-emergency-handoff.resume.md",
+   "2026-06-16-emergency-handoff.resume.md",
+   "2026-06-23-emergency-handoff.resume.md",
+   "2026-06-24-emergency-handoff-2.resume.md",
+   "2026-06-24-emergency-handoff.resume.md",
+   "2026-06-26-emergency-handoff-2.resume.md",
+   "2026-07-16-completion-handoff.yaml",
+   "2026-07-16-emergency-handoff.yaml",
+   "2026-06-04-emergency-handoff.resume.md",
+   "2026-06-05-emergency-handoff.resume.md",
+   "2026-06-06-emergency-handoff.resume.md",
+   "2026-06-07-emergency-handoff.resume.md",
+   "2026-06-10-eternity-protocol-hardening-complete.resume.md",
+   "2026-06-11-emergency-handoff.resume.md",
+   "2026-06-16-emergency-handoff.resume.md",
+   "2026-06-23-emergency-handoff.resume.md",
+   "2026-06-24-emergency-handoff-2.resume.md",
+   "2026-06-24-emergency-handoff.resume.md",
+   "2026-06-26-emergency-handoff-2.resume.md",
+   "2026-06-26-emergency-handoff.resume.md",
+   "2026-06-30-emergency-handoff.resume.md",
+   "2026-07-02-emergency-handoff.resume.md",
+   "2026-07-06-emergency-handoff.resume.md",
+   "2026-07-07-emergency-handoff.resume.md",
+   "2026-07-09-ic-build-handoff.resume.md",
+   "2026-07-14-emergency-handoff.resume.md",
+   "2026-07-16-emergency-handoff-2.yaml",
+   "2026-07-16-emergency-handoff.yaml",
+   "MEMORY.md",
+   "feedback_approval_questions_self_contained.md",
+   "feedback_boss_no_intermediate_review.md",
+   "feedback_browser_native_over_terminal.md",
+   "feedback_cgevent_to_node_pid_is_noop.md",
+   "feedback_chunked_teaching.md",
+   "feedback_chunked_teaching_f_shortcut.md",
+   "feedback_clickable_links.md",
+   "feedback_confirmation_gate.md",
+   "feedback_context_vs_build_request.md",
+   "feedback_cross_session_keystroke_misfire.md",
+   "feedback_direct_execution.md",
+   "feedback_docx_quality.md",
+   "feedback_eternity_cmux_rpc_method_name.md",
+   "feedback_eternity_cross_pane_resume_contamination.md",
+   "feedback_eternity_launchd_path_and_carrier_arbitration.md",
+   "feedback_eternity_protocol_broken_pipe_glob_bugs.md",
+   "feedback_eternity_protocol_cmux_send_rewrite.md",
+   "feedback_eternity_protocol_daemon_resume_unverified.md",
+   "feedback_eternity_protocol_handoff_pointer.md",
+   "feedback_eternity_protocol_universal_coverage.md",
+   "feedback_eternity_protocol_variants.md",
+   "feedback_eternity_resume_stale_cross_contamination.md",
+   "feedback_eternity_resume_step5_violates_preserve.md",
+   "feedback_eternity_skill_cannot_inject_own_clear.md",
+   "feedback_eternity_stale_handoff_freeze_early.md",
+   "feedback_eternity_watcher_thrash_and_unhealthy_gc.md",
+   "feedback_github_routing_personal_priority.md",
+   "feedback_hypercore_native_over_computed.md",
+   "feedback_internal_email_no_legal_explainers.md",
+   "feedback_legal_analyst_metadata_confabulation.md",
+   "feedback_logo_replication_pixel_faithful.md",
+   "feedback_macos_no_timeout_command.md",
+   "feedback_named_skill_means_full_skill.md",
+   "feedback_no_abbreviations.md",
+   "feedback_okoa_linkedin_article_recency.md",
+   "feedback_okoa_linkedin_natural_voice.md",
+   "feedback_open_in_chrome.md",
+   "feedback_openpyxl_strips_x14_validations.md",
+   "feedback_opus_subagent_timeouts.md",
+   "feedback_orphan_resume_jsonl_mtime_false_positive.md",
+   "feedback_pandoc_docx_text_mismatch.md",
+   "feedback_pptx_generation.md",
+   "feedback_preserve_pending_resumes.md",
+   "feedback_puppeteer_bottom_margin.md",
+   "feedback_puppeteer_lazy_load_headless.md",
+   "feedback_screenshot_qa_2000px_cap.md",
+   "feedback_short_symlink_links.md",
+   "feedback_subscription_not_api.md",
+   "feedback_template_match_extract_dont_eyeball.md",
+   "feedback_tesseract_relative_path.md",
+   "feedback_tmux_ipc_integration.md",
+   "feedback_trust_prior_summaries.md",
+   "feedback_user_skill_directives.md",
+   "feedback_visual_iteration_show_dont_mcq.md",
+   "project_acos_dataroom.md",
+   "project_acos_dataroom_v2.md",
+   "project_acos_font_forge.md",
+   "project_acos_genesis_protocol.md",
+   "project_acos_grader.md",
+   "project_acos_grader_vision.md",
+   "project_acos_hypercore_ask.md",
+   "project_acos_ic_committee_room.md",
+   "project_acos_investment_committee.md",
+   "project_anchorage_thompson_arv.md",
+   "project_ascent_debt_preso_design_audit.md",
+   "project_ascent_gc_insurance_soils.md",
+   "project_ascent_magazine_rebuild.md",
+   "project_ascent_park_city_hotel.md",
+   "project_ascent_snda_finding.md",
+   "project_electronics_repair.md",
+   "project_eternity_swarm_review_2026_06_11.md",
+   "project_genesis_protocol_hardening_gate.md",
+   "project_html_to_pdf_visual_composer.md",
+   "project_legal_analyst.md",
+   "project_okoa_design_venv.md",
+   "project_okoa_golden_east_dataroom.md",
+   "project_okoa_golden_east_sales_reports.md",
+   "project_okoa_herriman_automall_deal_sheet.md",
+   "project_okoa_lending_lien_philosophy.md",
+   "project_okoa_loan_location_3d_maps.md",
+   "project_okoa_loan_location_dataset.md",
+   "project_okoa_marketing_prospectus.md",
+   "project_okoa_prospectus_case_studies.md",
+   "project_okoa_prospectus_waterfall_model.md",
+   "project_robust_review_2026_06_11.md",
+   "project_thurston_dataroom_analysis.md",
+   "reference_cmux_send_submit_paste_absorption.md",
+   "reference_eternity_inpane_hook_hardening_2026_07_06.md",
+   "reference_eternity_learned_dead_surface.md",
+   "reference_eternity_stale_cmux_surface_binding.md",
+   "reference_guided_reader_server_idle_timeout.md",
+   "reference_hypercore_api_access_boundaries.md",
+   "reference_okoa_deal_sheet_format.md",
+   "reference_okoa_design_mcp_quirks.md",
+   "reference_okoa_website_build.md",
+   "reference_subagent_write_blocked.md",
+   "reference_ultimate_designer_table_injection.md",
+   "reference_workflow_script_gotchas.md",
+   "reference_zai_opencode_setup.md",
+   "user_role.md",
+   "user_zed_learning.md",
+   ".template.md",
+   "2026-06-11-robust-review-punch-list.md",
+   "2026-06-18-hca-build-ground-rules.md",
+   "2026-06-19-hypercore-early-redemption-input.md",
+   "2026-07-05-eternity-protocol-nonfiring-audit.md",
+   "ADR-001-page-as-canvas-composition.md",
+   "ADR-002-brand-first-image-sourcing.md",
+   "ADR-003-acos-property-search-design.md",
+   "acos-update-2026-02-22.md",
+   "2026-02-23T15-session-handoff.yaml",
+   "2026-02-23T22:14:51Z-enforced-handoff.yaml",
+   "2026-02-24T10-session-handoff.yaml",
+   "2026-02-25-mechanical-stop-handoff.yaml",
+   "2026-02-26-mechanical-stop-handoff.yaml",
+   "2026-02-26-supabase-migration-handoff.yaml",
+   "2026-02-27-deployment-email-handoff.yaml",
+   "2026-02-27-mechanical-stop-handoff.yaml",
+   "2026-03-09-mechanical-stop-handoff.yaml",
+   "2026-03-10-emergency-handoff.yaml",
+   "2026-02-23T22-15-00Z-phase2-wiki-pages.md",
+   "2026-05-12-completion-handoff.yaml",
+   "2026-03-16-epic004-fixes-handoff.md",
+   "2026-03-13-mechanical-stop-handoff.yaml",
+   "2026-03-16-security-hardening-complete-handoff.md",
+   "2026-03-16-epic004-complete-handoff.md",
+   "2026-04-14-session-handoff.yaml",
+   "2026-03-27-mechanical-stop-handoff.yaml",
+   "2026-03-16-swarm-review-complete-handoff.md",
+   "2026-03-16-deep-review-pending-handoff.md",
+   "2026-03-16-mechanical-stop-handoff.yaml",
+   "2026-03-13-epic002-progress-handoff.md",
+   "2026-03-24-mechanical-stop-handoff.yaml",
+   "2026-03-16-final-fixes-handoff.md",
+   "2026-03-15-mechanical-stop-handoff.yaml",
+   "2026-03-16-security-audit-handoff.md",
+   "2026-03-17-mechanical-stop-handoff.yaml",
+   "2026-03-19-mechanical-stop-handoff.yaml",
+   "2026-03-11-security-remediation-p0.md",
+   "2026-03-11-mechanical-stop-handoff.yaml",
+   "2026-03-16-all-findings-complete-handoff.md",
+   "2026-03-15-epic002-complete-handoff.md",
+   "2026-03-23-mechanical-stop-handoff.yaml",
+   "archive/2026-03-11-completion-handoff.yaml",
+   "archive/2026-02-24T23-30-session-handoff.yaml",
+   "archive/2026-02-23-mechanical-stop-handoff.yaml",
+   "archive/2026-02-13-acos-bootstrap-fix-completion.yaml",
+   "archive/2026-02-25-mechanical-stop-handoff.yaml",
+   "archive/2026-02-24-mechanical-stop-handoff.yaml",
+   "archive/2026-02-24T23:22:19Z-enforced-handoff.yaml",
+   "archive/2026-02-13-security-hardening-complete-handoff.yaml",
+   "archive/2026-03-11-mechanical-stop-handoff.yaml",
+   "archive/2026-02-24T22-50-session-handoff.yaml",
+   "archive/2026-02-13-security-hardening-session-handoff.yaml",
+   "archive/2026-03-11-swarm-review-skill.md",
+   "archive/2026-02-25-completion-handoff.yaml",
+   "TEMPLATE.md",
+   "2026-03-02-swarm-review.md",
+   "2026-03-02_18-30-00-pm-infra-setup.md",
+   "2026-02-20-clerk-auth-activation-handoff.yaml",
+   "2026-02-22-security-fixes-session-handoff.yaml",
+   "2026-02-19-manual-testing-session-handoff.yaml",
+   "2026-05-17-okoa-website-handoff.yaml",
+   "2026-05-18-okoa-website-handoff.yaml",
+   "2026-02-14T07-55-54Z-session-handoff.yaml",
+   "2026-02-15T05-12-14Z-session-handoff.yaml",
+   "2026-02-15T05-25-22Z-session-handoff.yaml",
+   "2026-02-22T-session-handoff.yaml",
+   "2026-02-23-mechanical-stop-handoff.yaml",
+   "(empty directory)"
+  ]
+ }
+}

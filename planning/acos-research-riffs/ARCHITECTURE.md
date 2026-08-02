@@ -618,6 +618,56 @@ agent actually produces and what the code was written to consume.
     correctly overrode a secondary summary's cloning claim with four Liquid primary
     sources — the primary-source discipline holding inside a live spoken turn.
 
+20. *Auto-run looped on one seat — the live path never marked a turn taken.* The
+    room's Auto-run button (inherited from IC's page) chains `nextSpeaker()` after
+    each turn, picking from the pool of seats where `!spoken[s.n]` — but
+    `giveFloor`'s `if(LIVE)` branch returned before the `spoken[n] = true` line,
+    which only the demo-playback path reached. Live, the pool never shrank, so
+    auto-run re-called the first seat forever. Fixed with two edits: (a) the LIVE
+    branch now marks `spoken[n] = true` at dispatch, so the rotation advances;
+    (b) an empty pool in LIVE mode calls a new `liveRoundDone()` — stops auto-run,
+    resets `spoken`, clears the active call, and shows "Round complete" — instead
+    of `finish()`, which would have fake-announced "Committee closed" over a live
+    session. One Auto-run click = exactly one full round through the seats.
+
+    Applied identically to THREE files, because the bug is inherited: the true
+    source `meeting_template.html` (what `build_meeting.py` fills), IC's generated
+    `meeting.html` (what the riff room is derived from, per note 18's re-derive
+    rule), and the riff's `scripts/room/room.html`. Fixing only the riff copy
+    would have resurrected the bug on the next regeneration. Verified live against
+    the running 9-seat session: one Auto-run click dispatched seat 1
+    (02:42:52Z), then — after the turn landed, typed out, and the 2.8s beat —
+    seat 2 (02:44:44Z), with seat 1's turn grounded and citing its claim ids;
+    Pause stopped the chain. 154 tests + strict tsc still clean.
+
+21. *Two full line-by-line reviews and a fix pass (2026-07-25..27).* Review 1
+    (workflow `wf_9460331c-b65`, 14 reviewers + adversarial verify + synthesis)
+    produced REVIEW-2026-07-25.md: 122 verified findings (30 must-fix / 50
+    improvements / 25 polish). A file-owner fix pass (`wf_fa07f4c8-340`, 11
+    fixers + 1 test agent, no shared files; room edits applied identically to
+    room.html + IC's meeting_template.html + meeting.html) applied all M/I items
+    (3 documented skips), grew the suite 154 -> 320 green checks with a stub
+    claude worker harness, and was re-verified end to end live: 127.0.0.1 bind,
+    room-live.status starting->ready handshake, transcript backfill on reload,
+    live seat turn grounded and cited. Two cross-file seams (conflicts surfaced
+    in CLI output; panel add warnings) were wired by hand afterward. The skill
+    was also made global: ~/.claude/skills/acos-research-riffs -> this directory
+    (symlink, matching the house pattern).
+
+    Review 2 (`wf_c8bf0b6d-a90`, 15 reviewers incl. a fix-audit of every prior
+    item; resumed once after a session-limit interruption) produced
+    REVIEW-2026-07-27.md: fixes overwhelmingly landed, but 5 half-landed (M19
+    stale status beacon trust, I8 vote labels adapter-side, I42 grounding
+    assertions, M16 transcript replay unfenced, I15/I27 eval half + dead force
+    param) and 2 regressions (M12 fallback-to-live switchover swallows the first
+    live turn; M11/M19 dual zero-offset Bun.file handles corrupt room-live.out).
+    Net: 36 must-fix / 69 improvements / 7-theme robustness roadmap, the
+    empirically confirmed core being the claims trust chain (conflicting sources
+    counted as corroboration; negations merged into the claims they refute;
+    permutation-blind sameNumbers). A recency-aware evidence policy was proposed
+    (RECENCY-DESIGN-PROPOSAL.md, two-axis labels + primary-new + recency probes)
+    and awaits sign-off. None of review 2's fixes are applied yet.
+
 **Files:**
 
 ```

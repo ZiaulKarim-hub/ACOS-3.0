@@ -1,0 +1,109 @@
+slice_id: "SLICE-IC-B1-deal-intake"
+story_id: "STORY-B1"
+epic_id: "EPIC-B"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Shared deal extraction layer + session scaffold"
+objective: |
+  Read a deal dataroom directory exactly ONCE -- not once per seat -- and build the Deal +
+  SessionManifest, a structured shared deal-brief + evidence-index that every subsequent
+  expert reads as its deal-materials context, and scaffold the durable session layout so
+  downstream slices have a Deal object and a place for all artifacts. This shared extraction
+  pass is the CORE of this slice: it removes N redundant per-seat reads and gives #3
+  Accounting's normalized-NOI claim exactly one canonical place to live (a reserved slot in
+  deal-brief.yaml that only the Accounting seat populates).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/intake.py resolves --deal <dir> and builds a Deal object (deal_id, asset_type, ask, jurisdictions, fund_id)"
+  - "[ ] intake.py enumerates dataroom documents into EvidenceCitation stubs (source_ref + tier) exactly once and assembles them into a single evidence-index.yaml"
+  - "[ ] intake.py runs ONE upfront structured-extraction pass over the dataroom into deal-brief.yaml (asset overview, key terms, rent-roll/T-12/financial-statement summary)"
+  - "[ ] deal-brief.yaml reserves a normalized_noi field/slot that intake.py does NOT populate -- it is the single canonical location Accounting (#3) later writes into and #1/#2 read from"
+  - "[ ] intake.py writes manifest.yaml with status: open, a roster placeholder, and round_config defaults (5-6 rounds / 150-250 words / every-3)"
+  - "[ ] intake.py scaffolds rounds/, ledger/, transcript.md via the DIAG-01 session_scaffold routine (idempotent)"
+  - "[ ] unknown/uncertain Deal fields are Assumption-marked, never fabricated from the folder name"
+  - "[ ] the normalized_noi slot in deal-brief.yaml is present but unset/Assumption-marked after intake -- never fabricated at intake time"
+  - "[ ] running intake.py on a fixture deal directory produces a valid manifest.yaml, a non-empty evidence-index.yaml, and a deal-brief.yaml with the reserved normalized_noi slot"
+  - "[ ] the EvidenceCitation catalog count in evidence-index.yaml matches the actual file count on disk (QA recount)"
+  - "[ ] the intake transcript demonstrates the dataroom is read exactly once (no per-seat raw-document re-read within this slice's scope)"
+  - "[ ] evidence bundle includes an intake transcript + the rendered manifest + the rendered deal-brief + evidence-index for the fixture deal"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-DIAG-01"
+      what_it_provides: "session_scaffold.py routine (manifest/rounds/ledger/transcript scaffold) reused by intake.py"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/intake.py"
+
+files_prohibited:
+  - "context note: per-seat DEEP or external research is each expert's own private swarm (SLICE-B3), not this slice; seat dispatch (SLICE-B2) and synthesis are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "document-synthesis"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: the deal directory itself, session_scaffold.py (SLICE-DIAG-01), tech_prd section 2 layout, data-model Deal/SessionManifest/EvidenceCitation"
+  - "subscription-only; do NOT confabulate deal metadata from folder names (names are not authoritative -- cross-check current-state); stdlib-only"
+  - "the shared deal-brief is a read-many/write-once-per-field artifact -- intake writes the raw/reported shared facts and the reserved (empty) normalized_noi slot; only the Accounting seat's own opening pass (a later slice) ever writes into that slot"
+  - "this shared extraction layer exists so seats read deal-brief.yaml + evidence-index.yaml as their deal-materials context instead of each seat independently re-reading the raw dataroom -- one read, not N reads"
+
+# Technical requirements
+technical_requirements:
+  - "deal_id slug is derived from the directory name"
+  - "asset_type/ask/jurisdictions are best-effort; unknowns are Assumption-marked"
+  - "fund_id is set only when a loan-tape reference is present"
+  - "deal-brief.yaml's normalized_noi field is schema-reserved but left unpopulated by intake.py -- populating it is exclusively the Accounting (#3) seat's job in a later slice"
+  - "the dataroom directory is traversed exactly once during intake; no code path in this slice re-reads raw source documents per seat"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs intake.py on the fixture and confirms manifest.yaml validates against the data-model shape"
+  - "QA confirms every uncertain field is Assumption-marked, not silently guessed from the folder name"
+  - "QA recounts the EvidenceCitation catalog in evidence-index.yaml against the actual files on disk"
+  - "QA confirms scaffold idempotency"
+  - "QA confirms deal-brief.yaml's normalized_noi slot is present but unset/Assumption-marked, never fabricated at intake time"
+  - "QA confirms the intake transcript shows exactly one dataroom read, not a read-per-seat pattern"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on any confabulated metadata;
+  recompute the citation count against the filesystem rather than trusting the catalog.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-B1-deal-intake.md by
+  acos-preeng-classic Step 5; architect to review before execution.
+  UPDATED 2026-07-08 (delta 3): reframed from plain document cataloging to the shared deal
+  extraction layer -- the CORE of this slice is now the single upfront read producing
+  deal-brief.yaml (structured shared facts + reserved normalized_noi slot) and
+  evidence-index.yaml (the citation catalog), read by every downstream expert instead of each
+  seat re-reading the raw dataroom. This slice feeds SLICE-B3 (per-expert private research
+  swarms), which layer discipline-specific deep/external research on top of this shared
+  baseline.

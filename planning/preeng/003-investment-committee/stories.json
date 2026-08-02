@@ -1,0 +1,102 @@
+{
+  "feature_id": "003-investment-committee",
+  "product_name": "ACOS Investment Committee (IC)",
+  "epics": [
+    { "id": "EPIC-A", "title": "Seat roster + expert-agent definitions + coverage map" },
+    { "id": "EPIC-B", "title": "Deal intake + independence-first blind opening pass" },
+    { "id": "EPIC-C", "title": "Mode A synthesis (axiom-synthesis adapter + severity axis + deterministic verdict + IC memo render)" },
+    { "id": "EPIC-D", "title": "Mode B live deliberation (main-conversation moderator, transcript, chair vocabulary, tally, HITL)" },
+    { "id": "EPIC-E", "title": "Legal/compliance seat (legal-analyst reuse + compliance companion + conflicts-disclosure)" },
+    { "id": "EPIC-F", "title": "Guardrails + governance (anti-sycophancy, kill criteria, autopilot detection, evidence bundles)" }
+  ],
+  "stories": [
+    {
+      "id": "STORY-B0",
+      "epic": "EPIC-B",
+      "title": "Diagnostic + walking-skeleton harness",
+      "user_value": "As the IC chair/builder, I need the diagnosed problem validated and the session scaffold + engine reachability proven before any expert logic, so the walking skeleton has solid ground.",
+      "acceptance_summary": "A diagnostic note maps each symptom (D1-D6) to a requirement; a session directory scaffolds deterministically; acos-axiom-synthesis is reachable and runs on a fixture; smoke evidence bundle produced.",
+      "slices": ["SLICE-DIAG-01"]
+    },
+    {
+      "id": "STORY-A1",
+      "epic": "EPIC-A",
+      "title": "Seat roster schema + 16-risk coverage map",
+      "user_value": "As the IC chair, I need a fixed roster with zero uncovered risk category and the Deal Advocate (#9) structurally separated from both the adversarial scrutiny seats and the procedural Gap-Hunter (#10), so no discipline-specific hole is nobody's job and no role gets collapsed into another.",
+      "acceptance_summary": "Seat/ExpertProfile schema; 8 core voting seats (#1-8) + non-voting Deal Advocate (#9, steelmans the deal under the same falsification gate as objections, owns no risk category) + non-voting Gap-Hunter/Chair-agent (#10); a coverage map asserting every one of the 16 risk categories has a named owning seat; Portfolio seat marked fund-scoped.",
+      "slices": ["SLICE-A1-roster-coverage-map", "SLICE-A3-optionals-advocate-separation"]
+    },
+    {
+      "id": "STORY-A2",
+      "epic": "EPIC-A",
+      "title": "Expert seat agent definitions",
+      "user_value": "As the IC chair, I need each seat instantiated as an isolated expert agent with a falsifiable-objection (or, for the Advocate, a good-faith-mitigant) mandate, diversity config, and its own private research capability, so seats find real holes -- and real mitigants -- independently.",
+      "acceptance_summary": "Seat agent prompt templates for the 8 core voting seats + the non-voting Deal Advocate (#9, NEW -- steelman/good-faith-mitigant mandate under the same falsification gate as objections) + Gap-Hunter/Chair-agent (#10, renumbered from the former #9) with independence-first, >=1 falsifiable objection for scrutiny seats, procedural-not-evidentiary chair note, per-seat model-class/persona diversity via resolve-agent-model.sh, and a Task(general-purpose) private-research-swarm capability granted to the 9 expert seats (#1-9) but withheld from the procedural Gap-Hunter (#10).",
+      "slices": ["SLICE-A2-expert-agent-defs"]
+    },
+    {
+      "id": "STORY-B1",
+      "epic": "EPIC-B",
+      "title": "Shared deal extraction layer + session scaffold",
+      "user_value": "As the IC chair, I need the skill to read a deal dataroom exactly ONCE and scaffold a durable session so every run has a Deal + SessionManifest, a shared deal-brief every expert reads, and a place for all artifacts -- not N redundant per-seat reads.",
+      "acceptance_summary": "Intake reads a deal directory ONCE, builds Deal + SessionManifest, scaffolds the .acos/investment-committee/<session-id>/ layout, catalogs documents into evidence-index.yaml, and produces a shared deal-brief.yaml (including the reserved normalized_noi slot that only #3 Accounting populates) every expert reads instead of re-reading the raw dataroom.",
+      "slices": ["SLICE-B1-deal-intake"]
+    },
+    {
+      "id": "STORY-B2",
+      "epic": "EPIC-B",
+      "title": "Independence-first blind opening pass + private research swarms",
+      "user_value": "As the IC chair, I need every seat's opening verdict -- including its own private discipline-specific research -- formed in isolation with zero cross-visibility, so correlated groupthink is structurally prevented in both modes.",
+      "acceptance_summary": "Parallel isolated Task() fan-out; each seat reads the shared deal-brief alone, spawns its own private 2-4-bot Task(general-purpose) research swarm (the 9 expert seats #1-9 only, sized to need, one mode only), and emits an opening verdict + >=1 falsifiable objection (or, for the Deal Advocate #9, a good-faith mitigant) to rounds/round-00/opening/{seat}.json; no cross-visibility between seats OR between swarms; every swarm citation captured into the evidence ledger; reduced-independence flag emitted when single-provider.",
+      "slices": ["SLICE-B2-blind-opening-pass", "SLICE-B3-expert-research-swarms"]
+    },
+    {
+      "id": "STORY-C1",
+      "epic": "EPIC-C",
+      "title": "Objection->fact adapter + Axis S + synthesis run",
+      "user_value": "As the IC chair, I need expert objections fused through the real axiom-synthesis engine with a severity axis, so truth-grading and materiality are both captured without forking the engine.",
+      "acceptance_summary": "IC fact-builder maps each Objection onto orchestrate.py::process_fact fields + _ic_extension_severity (Axis S); axiom-synthesis runs decircularize->grade->fuse->falsify->resolve->ledger; no engine script changed.",
+      "slices": ["SLICE-C1-objection-fact-adapter-axis-s", "SLICE-C2-axiom-synthesis-run"]
+    },
+    {
+      "id": "STORY-C2",
+      "epic": "EPIC-C",
+      "title": "Deterministic verdict + 13-section IC memo",
+      "user_value": "As a decision-maker, I need a verdict computed deterministically from the ledger and a boss-criticism-proof 13-section memo, so the recommendation is auditable and never a fabricated narration.",
+      "acceptance_summary": "resolve.py verdict-as-fact over discipline roll-ups with asymmetric-veto on deal-breakers -> verdict.md; derived deal-breaker rule; 13-section memo with Risk->Mitigant->Residual triplet + CP tagging rendered from the ledger.",
+      "slices": ["SLICE-C3-deterministic-verdict", "SLICE-C4-ic-memo-render"]
+    },
+    {
+      "id": "STORY-D1",
+      "epic": "EPIC-D",
+      "title": "Mode B moderator loop + append-only transcript + tally",
+      "user_value": "As the IC chair, I need a live moderated relay run by the main conversation with an on-disk transcript and a deterministic tally, so I can watch and audit a real deliberation.",
+      "acceptance_summary": "Main-conversation moderator loop; bounded rounds; per-turn stance schema written to disk before next dispatch; deterministic consensus_check.py-style tally; never terminate on consensus; scoreboard/checkpoints.",
+      "slices": ["SLICE-D1-moderator-loop-transcript", "SLICE-D2-tally-chair-hitl"]
+    },
+    {
+      "id": "STORY-D2",
+      "epic": "EPIC-D",
+      "title": "Chair HITL + resume/durability",
+      "user_value": "As the IC chair, I need to inject questions as first-class turns and resume an interrupted deliberation, so human oversight is real and no state is lost to /clear or crash.",
+      "acceptance_summary": "Chair command vocabulary + round-boundary menu; HUMAN_OVERSEER injection with mandatory address-next-round; resume from manifest.yaml + round-status.yaml at the last-closed round.",
+      "slices": ["SLICE-D3-resume-durability"]
+    },
+    {
+      "id": "STORY-E1",
+      "epic": "EPIC-E",
+      "title": "Legal reuse + compliance companion + conflicts-disclosure",
+      "user_value": "As the IC chair, I need the legal seat to reuse legal-analyst and cover its four compliance gaps plus emit a conflicts record, so legal diligence is complete and governance-defensible.",
+      "acceptance_summary": "Delegate to /acos-legal-analysis --mode lending; re-project red-flags.yaml into voting format; compliance companion (usury/licensing, AML/KYC/OFAC, foreclosure mechanics, Phase I currency); emit conflicts-disclosure.yaml.",
+      "slices": ["SLICE-E1-legal-reuse-compliance-conflicts"]
+    },
+    {
+      "id": "STORY-F1",
+      "epic": "EPIC-F",
+      "title": "Guardrail suite + autopilot detection + governance",
+      "user_value": "As the IC chair, I need the anti-groupthink guardrails and autopilot detection enforced mechanically, so accuracy rests on structure, not on hoping agents behave.",
+      "acceptance_summary": "Independence enforcement; kill criteria run FIRST; anti-sycophancy schema (derived confidence, forbid agreement-without-evidence); 10th-man on lopsided distribution; reduced-independence flag; autopilot-active detection with safe Recommended pause; evidence bundles per slice.",
+      "slices": ["SLICE-F1-guardrails-governance"]
+    }
+  ]
+}

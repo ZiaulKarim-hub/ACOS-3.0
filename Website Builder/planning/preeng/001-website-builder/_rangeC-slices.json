@@ -1,0 +1,783 @@
+[
+  {
+    "id": "S51-slot-contracts-and-swap-safety",
+    "epic": "E10",
+    "story": "ST-17",
+    "title": "Typed slot contracts, superset-only swaps, content orphanage and lock-blocking placeholders",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Make a variant swap incapable of destroying hand-written copy and incapable of shipping an unfilled placeholder.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo",
+      "S25-pure-renderer-and-resolution-policy"
+    ],
+    "fr_ids": [
+      "FR-138",
+      "FR-139",
+      "FR-140",
+      "FR-141",
+      "FR-142"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A29",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A30",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A38",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S51-1",
+        "statement": "The bar offers only superset-or-exact contract matches and states the slot delta in words before the swap is applied.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S51-2",
+        "statement": "Cross-direction swaps are absent from v1 by construction; the coherence-debt ledger exists but has no cross-direction producer.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ14"
+    ],
+    "evidence_refs": [
+      "EL-037"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S51-slot-contracts-and-swap-safety.md",
+    "_epic": {
+      "id": "E10",
+      "title": "Component bar and deterministic variants"
+    },
+    "_story": {
+      "id": "ST-17",
+      "title": "Swaps that never destroy copy and never ship a placeholder"
+    }
+  },
+  {
+    "id": "S52-variant-axis-schema",
+    "epic": "E10",
+    "story": "ST-17",
+    "title": "Hand-authored variant-axis schema",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Define structural distinctness machine-checkably, per component, so the variant budget stays finite.",
+    "depends_on": [
+      "S21-token-compiler-dtcg-and-forge"
+    ],
+    "fr_ids": [
+      "FR-130",
+      "FR-131",
+      "FR-132"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S52-1",
+        "statement": "Every component in the v1 set declares an axis vector; a selftest asserts full coverage of the v1 target of 88 rows (NA-B08).",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S52-2",
+        "statement": "Computed axes (size, theme, density, state, icon slot, semantic colour) are excluded from the variant budget by construction, and a test proves two variants differing only on a computed axis are treated as the same variant.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ14"
+    ],
+    "evidence_refs": [
+      "EL-037"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S52-variant-axis-schema.md",
+    "_epic": {
+      "id": "E10",
+      "title": "Component bar and deterministic variants"
+    },
+    "_story": {
+      "id": "ST-17",
+      "title": "Swaps that never destroy copy and never ship a placeholder"
+    }
+  },
+  {
+    "id": "S53-deterministic-lazy-variant-generator",
+    "epic": "E10",
+    "story": "ST-17",
+    "title": "Deterministic, lazy, append-only variant generator with the indistinguishability rule",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Generate variants from tokens with no model call, only on first panel open, and never offer two the eye cannot tell apart.",
+    "depends_on": [
+      "S52-variant-axis-schema",
+      "S51-slot-contracts-and-swap-safety"
+    ],
+    "fr_ids": [
+      "FR-133",
+      "FR-135",
+      "FR-136",
+      "FR-137"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A33",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A34",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S53-1",
+        "statement": "The generator is a pure function of the direction's tokens and the axis schema; a grep proves no model call and no subagent write exists on this path.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S53-2",
+        "statement": "Variants are generated on first open of a family panel only, cached per direction, and never generated for unused families; an instrumentation counter proves it.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S53-3",
+        "statement": "Indices are append-only and collision-free across repeated generation rounds.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ14"
+    ],
+    "evidence_refs": [
+      "EL-037"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S53-deterministic-lazy-variant-generator.md",
+    "_epic": {
+      "id": "E10",
+      "title": "Component bar and deterministic variants"
+    },
+    "_story": {
+      "id": "ST-17",
+      "title": "Swaps that never destroy copy and never ship a placeholder"
+    }
+  },
+  {
+    "id": "S54-art-motion-container-contract",
+    "epic": "E11",
+    "story": "ST-18",
+    "title": "One container contract for art and motion, with the pause affordance field",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Implement the container contract and its seven rules so unpausable or unreduced motion is structurally unbuildable.",
+    "depends_on": [
+      "S21-token-compiler-dtcg-and-forge",
+      "S25-pure-renderer-and-resolution-policy"
+    ],
+    "fr_ids": [
+      "FR-160",
+      "FR-161",
+      "FR-162",
+      "FR-163",
+      "FR-164",
+      "FR-165",
+      "FR-166",
+      "FR-167",
+      "FR-168",
+      "FR-169",
+      "FR-170"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A22",
+        "verification_method": "screenshot-diff"
+      },
+      {
+        "id": "SL-S54-1",
+        "statement": "Validation fails a motion-capable container with no reduced-motion sibling reference, and fails an autoplay video container that is not muted.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S54-2",
+        "statement": "Animation inside a container can only touch transform, opacity and filter; a test proves a rule touching grid placement, width or height is rejected.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S54-3",
+        "statement": "The pause affordance field exists on the contract and a container that needs one and lacks it cannot be constructed.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S54-4",
+        "statement": "Motion is disabled in edit mode and judged in preview mode; the limitation is stated in the UI rather than worked around (R14 has no known mitigation).",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ12"
+    ],
+    "evidence_refs": [
+      "EL-044",
+      "EL-062",
+      "EL-064"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S54-art-motion-container-contract.md",
+    "_epic": {
+      "id": "E11",
+      "title": "Artwork lanes, asset library and containers"
+    },
+    "_story": {
+      "id": "ST-18",
+      "title": "Art and motion in one container contract"
+    }
+  },
+  {
+    "id": "S55-lane-a-code-drawn-artwork",
+    "epic": "E11",
+    "story": "ST-18",
+    "title": "Lane A - code-drawn, token-parameterised artwork that re-skins with the direction",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Deliver the artwork lane that is actually available from the generation channel, and make it move with the hue anchors.",
+    "depends_on": [
+      "S54-art-motion-container-contract"
+    ],
+    "fr_ids": [
+      "FR-150",
+      "FR-155"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A20",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A21",
+        "verification_method": "screenshot-diff"
+      },
+      {
+        "id": "A23",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ1"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S55-lane-a-code-drawn-artwork.md",
+    "_epic": {
+      "id": "E11",
+      "title": "Artwork lanes, asset library and containers"
+    },
+    "_story": {
+      "id": "ST-18",
+      "title": "Art and motion in one container contract"
+    }
+  },
+  {
+    "id": "S56-lane-b-asset-library-and-chips",
+    "epic": "E11",
+    "story": "ST-18",
+    "title": "Lane B ingestion, asset manifest, affinity filter chips, Lane C runbook and the honest warning",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Ingest a real asset library with licence classes and affinity tags, and tell the user the truth at interview time when there is none.",
+    "depends_on": [
+      "S54-art-motion-container-contract",
+      "S10-warm-start-and-asset-library-detection"
+    ],
+    "fr_ids": [
+      "FR-151",
+      "FR-152",
+      "FR-153",
+      "FR-154"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S56-1",
+        "statement": "Every ingested asset lands in the manifest with a licence class, a direction-affinity tag set and a file hash; an asset without a licence class fails ingestion.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S56-2",
+        "statement": "The asset pane filters by direction affinity with chips; presenting twenty artworks without chips is treated as a defect.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S56-3",
+        "statement": "The external-raster runbook exists as a document and its output ingests through the same manifest path; no external generation is invoked by the skill in v1.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S56-4",
+        "statement": "A project with no asset library receives an explicit warning at interview time, before a design system the pipeline cannot fully deliver is generated.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ10"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S56-lane-b-asset-library-and-chips.md",
+    "_epic": {
+      "id": "E11",
+      "title": "Artwork lanes, asset library and containers"
+    },
+    "_story": {
+      "id": "ST-18",
+      "title": "Art and motion in one container contract"
+    }
+  },
+  {
+    "id": "S57-more-variants-and-more-like-this",
+    "epic": "E12",
+    "story": "ST-19",
+    "title": "More variants and more like this",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "S",
+    "objective": "Give the two cheapest regeneration gears: extend the set, or explore the neighbourhood of something already approved.",
+    "depends_on": [
+      "S53-deterministic-lazy-variant-generator"
+    ],
+    "fr_ids": [
+      "FR-134"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S57-1",
+        "statement": "More variants appends the next N from the current highest index with no collisions; more like this appends exactly five deterministic neighbours of the approved variant.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S57-2",
+        "statement": "Both paths respect the indistinguishability rule against everything already offered in the same bar.",
+        "verification_method": "recompute"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ14"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S57-more-variants-and-more-like-this.md",
+    "_epic": {
+      "id": "E12",
+      "title": "Step 5 regeneration"
+    },
+    "_story": {
+      "id": "ST-19",
+      "title": "Regeneration with a middle gear and no silent substitution"
+    }
+  },
+  {
+    "id": "S58-section-notes-scoped-regeneration",
+    "epic": "E12",
+    "story": "ST-19",
+    "title": "Per-section notes driving scoped inline regeneration as one undo step",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Ship the middle gear between swapping one variant and regenerating everything, executed inline with no second hand-carry.",
+    "depends_on": [
+      "S57-more-variants-and-more-like-this",
+      "S20-local-regeneration-mode",
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-180"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A32",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S58-1",
+        "statement": "A note attached to a section regenerates that section only; a document diff proves no other section changed.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S58-2",
+        "statement": "The regeneration runs inline through the local path, never a second hand-carry, and every run appends to the regeneration log.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S58-3",
+        "statement": "Section notes are stripped from published output at LOCK.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ15"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S58-section-notes-scoped-regeneration.md",
+    "_epic": {
+      "id": "E12",
+      "title": "Step 5 regeneration"
+    },
+    "_story": {
+      "id": "ST-19",
+      "title": "Regeneration with a middle gear and no silent substitution"
+    }
+  },
+  {
+    "id": "S59-redesign-fork-and-migration",
+    "epic": "E12",
+    "story": "ST-19",
+    "title": "Redesign as a fork, reviewed application, and the migration report",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Make a new direction a reviewed operation that never silently substitutes and never silently drops a node.",
+    "depends_on": [
+      "S25-pure-renderer-and-resolution-policy",
+      "S58-section-notes-scoped-regeneration"
+    ],
+    "fr_ids": [
+      "FR-181",
+      "FR-182",
+      "FR-183",
+      "FR-184"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "section 12.17-A99",
+        "statement": "After importing a new direction every affected node carries a migration flag, the editor lists them, LOCK is refused until they are acknowledged, and the migration report names every changed reference.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S59-1",
+        "statement": "Migration snapshots the documents before touching anything, shows a plan with counts before applying, and applies through the same typed-op path so every change is individually undoable.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S59-2",
+        "statement": "Unmappable nodes are listed explicitly for human resolution; a test proves no node is dropped silently.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S59-3",
+        "statement": "Variant matching is canonical fallback only in v1; semantic slot-signature matching is absent (NA-B04).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S59-4",
+        "statement": "Redesign forks via save-as-variation and does not replace in place.",
+        "verification_method": "hash-compare"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ16",
+      "CQ15"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S59-redesign-fork-and-migration.md",
+    "_epic": {
+      "id": "E12",
+      "title": "Step 5 regeneration"
+    },
+    "_story": {
+      "id": "ST-19",
+      "title": "Regeneration with a middle gear and no silent substitution"
+    }
+  },
+  {
+    "id": "S60-registry-table-embed-form",
+    "epic": "E13",
+    "story": "ST-20",
+    "title": "Whitelisted registry components: table, embed and form",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Ship the narrow custom-component registry against the direction's tokens, with a real placement path.",
+    "depends_on": [
+      "S51-slot-contracts-and-swap-safety",
+      "S23-versioned-coherence-lint-set"
+    ],
+    "fr_ids": [
+      "FR-190",
+      "FR-191",
+      "FR-194"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S60-1",
+        "statement": "Only the four whitelisted kinds can be inserted; anything else is refused with a message naming the v1 scope.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S60-2",
+        "statement": "Each kind has a working insertion path in the editor, because shipping a capability with no insertion path silently cuts it; this row and the chart-data field carry a sign-off note.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S60-3",
+        "statement": "The inline-authored path runs the full coherence lint set before acceptance and registers through the custom-slot contract that enforces token usage.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ1"
+    ],
+    "evidence_refs": [
+      "EL-084"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S60-registry-table-embed-form.md",
+    "_epic": {
+      "id": "E13",
+      "title": "Step 6 custom components"
+    },
+    "_story": {
+      "id": "ST-20",
+      "title": "A narrow custom-component path that stays on-system"
+    }
+  },
+  {
+    "id": "S61-build-time-svg-charts",
+    "epic": "E13",
+    "story": "ST-20",
+    "title": "Build-time SVG charts with dataviz sub-tokens and two shipped data states",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make charts read as one system with the site, colourblind-safe in both schemes, and ship no chart runtime.",
+    "depends_on": [
+      "S60-registry-table-embed-form"
+    ],
+    "fr_ids": [
+      "FR-192",
+      "FR-193"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S61-1",
+        "statement": "Charts are emitted as build-time SVG with at most four mark types; a grep proves no chart runtime ships in the published tree.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S61-2",
+        "statement": "Colour ramps are derived from the direction's colour anchors and validated colourblind-safe in both light and dark schemes.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S61-3",
+        "statement": "Only the empty and single-data-point states ship; loading and error states exist as editor-only previews labelled as not shown to visitors.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S61-4",
+        "statement": "The chrome kit treatments are applied consistently across all mark types, which is what makes a site's charts read as one system.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ1"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S61-build-time-svg-charts.md",
+    "_epic": {
+      "id": "E13",
+      "title": "Step 6 custom components"
+    },
+    "_story": {
+      "id": "ST-20",
+      "title": "A narrow custom-component path that stays on-system"
+    }
+  },
+  {
+    "id": "S62-inline-authored-path-and-coherence-debt",
+    "epic": "E13",
+    "story": "ST-20",
+    "title": "Inline-authored components, coherence debt, the signature-moment rule and third-party marks",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Allow bespoke work through one audited door, record what it costs in coherence, and never redraw a third-party mark.",
+    "depends_on": [
+      "S23-versioned-coherence-lint-set",
+      "S60-registry-table-embed-form"
+    ],
+    "fr_ids": [
+      "FR-195",
+      "FR-196",
+      "FR-197"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A75",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S62-1",
+        "statement": "The opaque custom-code-block container is absent from v1 by construction and is recorded as the v2 home of the quality ceiling.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S62-2",
+        "statement": "The signature moment is 2-3 bespoke concept candidates per direction, and a lint flags a second signature moment.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S62-3",
+        "statement": "Accepted off-system values are written to the coherence-debt ledger with a reason.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ1"
+    ],
+    "evidence_refs": [
+      "EL-084"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S62-inline-authored-path-and-coherence-debt.md",
+    "_epic": {
+      "id": "E13",
+      "title": "Step 6 custom components"
+    },
+    "_story": {
+      "id": "ST-20",
+      "title": "A narrow custom-component path that stays on-system"
+    }
+  },
+  {
+    "id": "S63-gates-ts-verdicts-and-tiers",
+    "epic": "E17",
+    "story": "ST-21",
+    "title": "Structured gate verdicts and the four severity tiers",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Give every gate one shape - measured value, threshold, verdict, evidence reference - and never throw on a normal fail.",
+    "depends_on": [
+      "S23-versioned-coherence-lint-set",
+      "S25-pure-renderer-and-resolution-policy"
+    ],
+    "fr_ids": [
+      "FR-230",
+      "FR-233",
+      "FR-237"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S63-1",
+        "statement": "Every gate returns a structured verdict; a forced failure returns a verdict rather than an exception, and an inconclusive verdict blocks exactly like a fail.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S63-2",
+        "statement": "Tier semantics are enforced in code: tier zero blocks the individual edit, tier one blocks LOCK only, tier two is advisory and batched into the health pill, tier three is silent.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S63-3",
+        "statement": "Repeated violations collapse into one counted badge rather than a stream.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11"
+    ],
+    "evidence_refs": [
+      "EL-061"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S63-gates-ts-verdicts-and-tiers.md",
+    "_epic": {
+      "id": "E17",
+      "title": "Quality gates and capture"
+    },
+    "_story": {
+      "id": "ST-21",
+      "title": "Gates that measure, and captures that are valid evidence"
+    }
+  },
+  {
+    "id": "S64-live-checks-scoped",
+    "epic": "E17",
+    "story": "ST-21",
+    "title": "Live checks: scoped, sub-100ms, drop and mouseup only",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Run the live half of the gate suite without ever fighting the drag, including the running motion-concurrency counter.",
+    "depends_on": [
+      "S63-gates-ts-verdicts-and-tiers",
+      "S43-drag-to-place-and-drop-algorithm"
+    ],
+    "fr_ids": [
+      "FR-231",
+      "FR-234"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A27",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S64-1",
+        "statement": "Live checks fire on drop and mouseup only; an instrumentation trace proves zero checks run mid-drag or per frame, and the scoped run stays under the latency budget on the reference fixture.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S64-2",
+        "statement": "Contrast is recomputed for every touched pair in both the standing ratio and the advisory perceptual measure; the standing ratio is the gate.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S64-3",
+        "statement": "The motion-concurrency counter accumulates visibly turn by turn rather than surfacing at LOCK; the anti-slop lint appears here only as a dismissible advisory, never as a block.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11",
+      "CQ12"
+    ],
+    "evidence_refs": [
+      "EL-005",
+      "EL-064"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S64-live-checks-scoped.md",
+    "_epic": {
+      "id": "E17",
+      "title": "Quality gates and capture"
+    },
+    "_story": {
+      "id": "ST-21",
+      "title": "Gates that measure, and captures that are valid evidence"
+    }
+  }
+]

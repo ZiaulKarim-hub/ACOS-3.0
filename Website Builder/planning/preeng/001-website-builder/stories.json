@@ -1,0 +1,4612 @@
+{
+  "feature_id": "001-website-builder",
+  "schema_version": "1.0-acos-preeng",
+  "generated_by": "/preeng.tasks",
+  "schema_note": "No stories schema is defined by the command spec (NA-B13). This minimal deterministic schema was adopted in plan.md section 7 and recorded in planning_qa_report.json: {feature_id, schema_version, scope_of_record, epics[], stories[], slices[]}. Each slice.id equals its task file name under tasks/ without the .md extension. acceptance_criteria entries cite section-qualified ids because criteria above A90 collide two ways (NA-B05).",
+  "marker_key": {
+    "V": "verified against a named, read source",
+    "I": "inference",
+    "U": "unsourced or explicitly low-confidence",
+    "rule": "Every schedule, effort, duration and volume estimate is [I] with low confidence. size_class is ordinal and explicitly non-temporal; no per-slice day estimate is published (plan.md section 6.4)."
+  },
+  "scope_of_record": {
+    "component_inventory_of_record": "216 rows / 1,228 variants [V - section 8.2/8.3; NA-02]",
+    "component_v1_target": "88 rows / 675 variants [I on the cut mapping] - 87/674 from DECISIONS item 2 plus the skip-link row lock check 11a requires (NA-B08); radio group and toggle switch non-demotable; the v1 cut list must be regenerated mechanically from the priority column",
+    "editor_rows_of_record": "116 rows (56 v1 / 55 v2 / 5 v3 under editor-lite) [V - section 10 recount; NA-12]",
+    "editor_v1_target": "66 of 116 [I] - 56 editor-lite plus the 10 canvas rows DECISION-1 option B promotes (NA-B09); inside the carried 65-70 band; no recount performed",
+    "interview_bank": "90 questions [V - section 5 self-audit; NA-01]; ~45-55 Tier-1 asked in fast mode [I]; A3 (<=45 answered) unachievable as written",
+    "purity_gates": "8 [V - section 12.5; NA-03]",
+    "lock_time_checks": "32 = 28 base + 4a + 11a + 13a + 23a [V - section 13.4; NA-04]",
+    "acceptance_criteria": "A1-A90 [V - section 19 read in full; NA-20]; two disjoint A91-A101 sets exist (section 12.17 and section 18) and are cited section-qualified (NA-B05)",
+    "security_controls": "8 [V - section 12.12; NA-B02] - the carried six-control posture is understated",
+    "binding_scope_decision": "DECISION-1 option B (2026-07-26): v1 ships gridlines AND full constraint dragging. Section 18's editor-lite v1 scope is REJECTED; its timeline, its v1 scope-in list and section 13's gate budgets are stale and re-baselined. R47 retired.",
+    "effort_posture": "The DECISION-1 delta (+16-24 days) and the editor-full band (30-60 days) describe the same layer and disagree by ~2x. Both are carried verbatim; neither is averaged; no reconciled v1 total is published (NA-B10, EL-065)."
+  },
+  "totals": {
+    "epics": 20,
+    "stories": 26,
+    "slices": 78,
+    "diagnostic_slices": 6,
+    "build_slices": 68,
+    "demo_slices": 4
+  },
+  "epics": [
+    {
+      "id": "E0",
+      "title": "Phase-0 spikes and blocking gates",
+      "phase": 0,
+      "size_class": "M",
+      "effort_band": "not in the source L-list [I]",
+      "story_ids": [
+        "ST-01"
+      ],
+      "gate": "Gate 16-A blocks everything server-dependent"
+    },
+    {
+      "id": "E1",
+      "title": "Skill scaffold and the TypeScript spine",
+      "phase": 1,
+      "size_class": "M",
+      "effort_band": "L1 2-4 d [I]",
+      "story_ids": [
+        "ST-02"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E2",
+      "title": "Step 0 warm start",
+      "phase": 1,
+      "size_class": "S",
+      "effort_band": "L1 2-4 d [I]",
+      "story_ids": [
+        "ST-03"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E3",
+      "title": "Step 1 interview (90 questions)",
+      "phase": 1,
+      "size_class": "L",
+      "effort_band": "L1 2-4 d [I] - sized against 78 questions; NA-01 raises the volume",
+      "story_ids": [
+        "ST-04"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E4",
+      "title": "Step 2 prompt generator",
+      "phase": 1,
+      "size_class": "L",
+      "effort_band": "L1 2-4 d [I]",
+      "story_ids": [
+        "ST-05"
+      ],
+      "gate": "O1 font-policy answer must precede the prompt spec"
+    },
+    {
+      "id": "E5",
+      "title": "Step 3 ingest and Local Regeneration Mode",
+      "phase": 1,
+      "size_class": "L",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-06"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E6",
+      "title": "Token compiler and coherence lints",
+      "phase": 1,
+      "size_class": "M",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-07"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E7",
+      "title": "Document model and pure renderer",
+      "phase": 1,
+      "size_class": "L",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-08"
+      ],
+      "gate": "Demo 1"
+    },
+    {
+      "id": "E8",
+      "title": "Editor shell and core operations",
+      "phase": 2,
+      "size_class": "XL",
+      "effort_band": "L3a 8-12 d [I]",
+      "story_ids": [
+        "ST-09",
+        "ST-10",
+        "ST-11"
+      ],
+      "gate": "Demo 2"
+    },
+    {
+      "id": "E16",
+      "title": "Security, concurrency and lifecycle",
+      "phase": 2,
+      "size_class": "M",
+      "effort_band": "not separately sized [I]",
+      "story_ids": [
+        "ST-12"
+      ],
+      "gate": "lands WITH the first live editor, not after it"
+    },
+    {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)",
+      "phase": 3,
+      "size_class": "XL",
+      "effort_band": "L3b 30-60 d [I] vs the +16-24 d delta [I] - irreconcilable, both carried",
+      "story_ids": [
+        "ST-13",
+        "ST-14",
+        "ST-15",
+        "ST-16"
+      ],
+      "gate": "Demo 3"
+    },
+    {
+      "id": "E10",
+      "title": "Component bar and deterministic variants",
+      "phase": 4,
+      "size_class": "L",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-17"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E11",
+      "title": "Artwork lanes, asset library and containers",
+      "phase": 4,
+      "size_class": "M",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-18"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E12",
+      "title": "Step 5 regeneration",
+      "phase": 4,
+      "size_class": "M",
+      "effort_band": "L2 8-12 d [I]",
+      "story_ids": [
+        "ST-19"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E13",
+      "title": "Step 6 custom components",
+      "phase": 4,
+      "size_class": "M",
+      "effort_band": "L5 ~5 d per family [I]",
+      "story_ids": [
+        "ST-20"
+      ],
+      "gate": "sign-off rows 5 and 6 unsigned"
+    },
+    {
+      "id": "E17",
+      "title": "Quality gates and capture",
+      "phase": 5,
+      "size_class": "L",
+      "effort_band": "L4 3-5 d [I]",
+      "story_ids": [
+        "ST-21"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E14",
+      "title": "Step 7 LOCK",
+      "phase": 5,
+      "size_class": "L",
+      "effort_band": "L4 3-5 d [I]",
+      "story_ids": [
+        "ST-22",
+        "ST-23"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E15",
+      "title": "Step 8 publish and evidence",
+      "phase": 5,
+      "size_class": "M",
+      "effort_band": "L4 3-5 d [I]",
+      "story_ids": [
+        "ST-24"
+      ],
+      "gate": "Demo 4"
+    },
+    {
+      "id": "E18",
+      "title": "Durability and diagnostics",
+      "phase": 6,
+      "size_class": "S",
+      "effort_band": "unsized [I]",
+      "story_ids": [
+        "ST-25"
+      ],
+      "gate": null
+    },
+    {
+      "id": "E19",
+      "title": "Acceptance, demos and learning capture",
+      "phase": 6,
+      "size_class": "M",
+      "effort_band": "unsized [I]",
+      "story_ids": [
+        "ST-26"
+      ],
+      "gate": "the v1 ship bar"
+    }
+  ],
+  "stories": [
+    {
+      "id": "ST-01",
+      "epic": "E0",
+      "title": "Prove the product is buildable as written before committing scope",
+      "as_a": "ACOS owner about to spend weeks on a browser editor",
+      "i_want": "the six cheap unknowns answered first",
+      "so_that": "no server-dependent scope is committed against an unproven harness behaviour",
+      "demo": null,
+      "priority": 1,
+      "slice_ids": [
+        "S01-gate-16a-and-launcher-rung",
+        "S02-o1-font-policy-probe",
+        "S03-o8-substrate-spike",
+        "S04-o4-topology-spike-adr",
+        "S05-byte-reproducibility-spike",
+        "S06-channel-fidelity-and-ceiling-battery"
+      ],
+      "key_criteria": [
+        "A80"
+      ],
+      "cqs": [
+        "CQ6",
+        "CQ9",
+        "CQ18"
+      ],
+      "risks": [
+        "R5",
+        "R2",
+        "R44"
+      ]
+    },
+    {
+      "id": "ST-02",
+      "epic": "E1",
+      "title": "A TypeScript spine that installs once and resumes from disk",
+      "as_a": "ACOS owner",
+      "i_want": "the skill installed by symlink with a server written in TypeScript from day one",
+      "so_that": "Python-gravity never establishes itself and copy-drift cannot start",
+      "demo": null,
+      "priority": 2,
+      "slice_ids": [
+        "S07-skill-router-and-confirmation-gate",
+        "S08-server-ts-port",
+        "S09-install-config-session-selftest"
+      ],
+      "key_criteria": [
+        "A84",
+        "A85",
+        "A86",
+        "A87",
+        "A88",
+        "A90",
+        "A83"
+      ],
+      "cqs": [
+        "CQ6"
+      ],
+      "risks": [
+        "R12",
+        "R37"
+      ]
+    },
+    {
+      "id": "ST-03",
+      "epic": "E2",
+      "title": "Start warm without inheriting the last site's identity",
+      "as_a": "ACOS owner building a second and third venture site",
+      "i_want": "reusable system assets carried forward and identity deliberately excluded",
+      "so_that": "the portfolio does not become a house style I never chose",
+      "demo": null,
+      "priority": 3,
+      "slice_ids": [
+        "S10-warm-start-and-asset-library-detection",
+        "S11-identity-split-and-negative-constraints"
+      ],
+      "key_criteria": [
+        "A1",
+        "A2"
+      ],
+      "cqs": [
+        "CQ16"
+      ],
+      "risks": [
+        "R26",
+        "R1"
+      ]
+    },
+    {
+      "id": "ST-04",
+      "epic": "E3",
+      "title": "An interview that ends with a concept, not a questionnaire",
+      "as_a": "technically-capable non-designer",
+      "i_want": "to answer a bounded set of questions and receive a concept document I recognise",
+      "so_that": "every later visual decision traces back to something I actually said",
+      "demo": null,
+      "priority": 4,
+      "slice_ids": [
+        "S12-interview-bank-90-questions",
+        "S13-interview-engine-tiers-waves-branching",
+        "S14-concept-document-synthesis"
+      ],
+      "key_criteria": [
+        "A3",
+        "A5"
+      ],
+      "cqs": [
+        "CQ1"
+      ],
+      "risks": [
+        "R21"
+      ]
+    },
+    {
+      "id": "ST-05",
+      "epic": "E4",
+      "title": "A prompt that cannot silently lose or invent anything",
+      "as_a": "ACOS owner",
+      "i_want": "a two-stage prompt with a frozen manifest, embedded fonts and a truncation-detecting envelope",
+      "so_that": "what comes back is judgeable and verifiable rather than plausible",
+      "demo": null,
+      "priority": 5,
+      "slice_ids": [
+        "S15-font-catalog-and-snapshot",
+        "S16-token-manifest-and-stage-a-prompt",
+        "S17-stage-b-envelope-and-chunking"
+      ],
+      "key_criteria": [
+        "A4",
+        "A6"
+      ],
+      "cqs": [
+        "CQ5",
+        "CQ13",
+        "CQ18"
+      ],
+      "risks": [
+        "R2",
+        "R3",
+        "R46"
+      ]
+    },
+    {
+      "id": "ST-06",
+      "epic": "E5",
+      "title": "An ingest that refuses rather than half-applies",
+      "as_a": "ACOS owner pasting generated code back",
+      "i_want": "validation, quarantine and a zero-paste alternative",
+      "so_that": "a truncated or unsafe payload never becomes a silently wrong site",
+      "demo": null,
+      "priority": 6,
+      "slice_ids": [
+        "S18-import-parser-and-envelope-validation",
+        "S19-ast-validator-quarantine-and-reverification",
+        "S20-local-regeneration-mode"
+      ],
+      "key_criteria": [
+        "A7",
+        "A8",
+        "A9",
+        "A10",
+        "A11",
+        "A12"
+      ],
+      "cqs": [
+        "CQ13"
+      ],
+      "risks": [
+        "R3",
+        "R17",
+        "R7"
+      ]
+    },
+    {
+      "id": "ST-07",
+      "epic": "E6",
+      "title": "Coherence by computation, enforced by lints",
+      "as_a": "ACOS owner",
+      "i_want": "derived values computed and un-pickable, with logical properties enforced",
+      "so_that": "the system cannot drift out of coherence one hand-edit at a time",
+      "demo": null,
+      "priority": 7,
+      "slice_ids": [
+        "S21-token-compiler-dtcg-and-forge",
+        "S22-flat-variable-layer-and-extract-override",
+        "S23-versioned-coherence-lint-set"
+      ],
+      "key_criteria": [
+        "A14",
+        "A15",
+        "A16",
+        "A17",
+        "A18",
+        "A19",
+        "A24"
+      ],
+      "cqs": [
+        "CQ5"
+      ],
+      "risks": [
+        "R30"
+      ]
+    },
+    {
+      "id": "ST-08",
+      "epic": "E7",
+      "title": "One document, one renderer, one deterministic output",
+      "as_a": "ACOS owner",
+      "i_want": "a scene graph that is the only source of truth and a render that is pure and total",
+      "so_that": "the DOM is never the truth and the export can be proven clean later",
+      "demo": "Demo 1",
+      "priority": 8,
+      "slice_ids": [
+        "S24-doc-schema-and-canonical-serialisation",
+        "S25-pure-renderer-and-resolution-policy",
+        "S26-breakpoint-vocabulary-and-cascade",
+        "S27-determinism-contract",
+        "S28-demo-1-static-direction-render"
+      ],
+      "key_criteria": [
+        "A41",
+        "A46",
+        "A53",
+        "section 12.17-A91",
+        "section 12.17-A92",
+        "section 12.17-A98"
+      ],
+      "cqs": [
+        "CQ3",
+        "CQ9"
+      ],
+      "risks": [
+        "R4",
+        "R15"
+      ]
+    },
+    {
+      "id": "ST-09",
+      "epic": "E8",
+      "title": "A surface where everything is reachable",
+      "as_a": "ACOS owner editing my own site",
+      "i_want": "three panes, a layers tree and selection that never traps me",
+      "so_that": "a full-bleed art container cannot swallow every click",
+      "demo": null,
+      "priority": 9,
+      "slice_ids": [
+        "S29-editor-shell-and-overlay",
+        "S30-navigator-tree-and-selection-parity"
+      ],
+      "key_criteria": [
+        "A25"
+      ],
+      "cqs": [
+        "CQ3"
+      ],
+      "risks": [
+        "R25",
+        "R4"
+      ]
+    },
+    {
+      "id": "ST-10",
+      "epic": "E8",
+      "title": "Edits that are typed, atomic and undoable as one thought",
+      "as_a": "ACOS owner",
+      "i_want": "text, image and structure edits that autosave through typed ops with transactional undo",
+      "so_that": "one Cmd+Z never leaves a broken hybrid",
+      "demo": null,
+      "priority": 10,
+      "slice_ids": [
+        "S31-typed-ops-autosave-history-undo",
+        "S32-inline-plaintext-editing",
+        "S33-image-replace-focal-point-alt-gate",
+        "S34-reorder-duplicate-paste-freeze"
+      ],
+      "key_criteria": [
+        "A31",
+        "A32",
+        "A35",
+        "A36"
+      ],
+      "cqs": [
+        "CQ15",
+        "CQ7"
+      ],
+      "risks": [
+        "R22",
+        "R36"
+      ]
+    },
+    {
+      "id": "ST-11",
+      "epic": "E8",
+      "title": "A safety net that makes experimenting cheap",
+      "as_a": "ACOS owner",
+      "i_want": "snapshots, variations, a recovery bin, per-page SEO and one honest health indicator",
+      "so_that": "I can try things without fear and see problems without a toast stream",
+      "demo": null,
+      "priority": 11,
+      "slice_ids": [
+        "S35-snapshots-variations-recovery-bin",
+        "S36-page-ops-seo-preview-and-health-hud"
+      ],
+      "key_criteria": [
+        "A37",
+        "section 12.17-A97"
+      ],
+      "cqs": [
+        "CQ15"
+      ],
+      "risks": [
+        "R20"
+      ]
+    },
+    {
+      "id": "ST-12",
+      "epic": "E16",
+      "title": "Two writers, no lost work, and a localhost that is not a doorway",
+      "as_a": "ACOS owner alternating between talking to Claude and dragging in the browser",
+      "i_want": "one writer, hash reconciliation and an eight-control server posture",
+      "so_that": "nothing is silently clobbered and no website can reach my design server",
+      "demo": "Demo 2",
+      "priority": 12,
+      "slice_ids": [
+        "S37-eight-control-security-posture",
+        "S38-reconciliation-409-lock-and-tab-claim",
+        "S39-ownership-guard-wb-op-and-inbox",
+        "S40-demo-2-live-surface-across-boundaries"
+      ],
+      "key_criteria": [
+        "A76",
+        "A77",
+        "A78",
+        "A79",
+        "A80",
+        "A81",
+        "A82",
+        "A89",
+        "section 12.17-A95",
+        "section 12.17-A96",
+        "section 12.17-A100"
+      ],
+      "cqs": [
+        "CQ7",
+        "CQ8",
+        "CQ6"
+      ],
+      "risks": [
+        "R6",
+        "R16",
+        "R17",
+        "R5"
+      ]
+    },
+    {
+      "id": "ST-13",
+      "epic": "E9",
+      "title": "Drag that writes grid integers, not pixels",
+      "as_a": "ACOS owner who asked for direct manipulation",
+      "i_want": "gridlines I snap to and drops that commit integer placement",
+      "so_that": "a layout approved at 1440 still works at 320 with no manual responsive work",
+      "demo": null,
+      "priority": 13,
+      "slice_ids": [
+        "S41-gridline-overlay",
+        "S42-snap-engine",
+        "S43-drag-to-place-and-drop-algorithm"
+      ],
+      "key_criteria": [
+        "A39",
+        "A40",
+        "A47"
+      ],
+      "cqs": [
+        "CQ2",
+        "CQ4"
+      ],
+      "risks": [
+        "R8",
+        "R13"
+      ]
+    },
+    {
+      "id": "ST-14",
+      "epic": "E9",
+      "title": "Direct manipulation that cannot destroy the token system",
+      "as_a": "ACOS owner",
+      "i_want": "span and spacing handles that commit token names, with full keyboard parity",
+      "so_that": "dragging teaches the system instead of eroding it, and the editor itself stays accessible",
+      "demo": null,
+      "priority": 14,
+      "slice_ids": [
+        "S44-span-resize-and-spacing-handles",
+        "S45-keyboard-parity-and-target-size"
+      ],
+      "key_criteria": [
+        "A26",
+        "A27",
+        "A28"
+      ],
+      "cqs": [
+        "CQ4",
+        "CQ11"
+      ],
+      "risks": [
+        "R8"
+      ]
+    },
+    {
+      "id": "ST-15",
+      "epic": "E9",
+      "title": "Responsive authoring where nothing is invisible",
+      "as_a": "ACOS owner",
+      "i_want": "a pre-commit chip, overridden-here dots, a reading-order guarantee and a narrow free-position hatch",
+      "so_that": "I always know which sizes my edit affects and mobile never silently reorders my meaning",
+      "demo": null,
+      "priority": 15,
+      "slice_ids": [
+        "S46-override-cascade-and-precommit-chip",
+        "S47-reading-order-and-stack-preview",
+        "S48-free-position-anchored-offset"
+      ],
+      "key_criteria": [
+        "A42",
+        "A43",
+        "A44",
+        "A45",
+        "A48"
+      ],
+      "cqs": [
+        "CQ2",
+        "CQ11"
+      ],
+      "risks": [
+        "R9",
+        "R13"
+      ]
+    },
+    {
+      "id": "ST-16",
+      "epic": "E9",
+      "title": "The canvas tail, and proof that D2 works",
+      "as_a": "ACOS owner",
+      "i_want": "zoom, rulers and multi-select where budget allows, and a demonstrated end-to-end canvas",
+      "so_that": "the first tradeable scope is explicit and D2 is exercised before ship, not after",
+      "demo": "Demo 3",
+      "priority": 16,
+      "slice_ids": [
+        "S49-canvas-tail-zoom-rulers-multiselect",
+        "S50-demo-3-d2-exercised"
+      ],
+      "key_criteria": [
+        "A39",
+        "A40",
+        "A41",
+        "A42",
+        "A43",
+        "A47"
+      ],
+      "cqs": [
+        "CQ4"
+      ],
+      "risks": [
+        "R8",
+        "R18",
+        "R47-retired"
+      ]
+    },
+    {
+      "id": "ST-17",
+      "epic": "E10",
+      "title": "Swaps that never destroy copy and never ship a placeholder",
+      "as_a": "ACOS owner choosing between variants",
+      "i_want": "typed slot contracts, a visible orphanage and lock-blocking placeholders",
+      "so_that": "a swap cannot silently delete my writing or ship a fake statistic",
+      "demo": null,
+      "priority": 17,
+      "slice_ids": [
+        "S51-slot-contracts-and-swap-safety",
+        "S52-variant-axis-schema",
+        "S53-deterministic-lazy-variant-generator"
+      ],
+      "key_criteria": [
+        "A29",
+        "A30",
+        "A33",
+        "A34",
+        "A38"
+      ],
+      "cqs": [
+        "CQ14"
+      ],
+      "risks": [
+        "R11",
+        "R29",
+        "R33"
+      ]
+    },
+    {
+      "id": "ST-18",
+      "epic": "E11",
+      "title": "Art and motion in one container contract",
+      "as_a": "ACOS owner",
+      "i_want": "artwork that re-skins with the direction and motion that always has a reduced-motion sibling",
+      "so_that": "the art category is honest about what it can deliver and motion never traps a visitor",
+      "demo": null,
+      "priority": 18,
+      "slice_ids": [
+        "S54-art-motion-container-contract",
+        "S55-lane-a-code-drawn-artwork",
+        "S56-lane-b-asset-library-and-chips"
+      ],
+      "key_criteria": [
+        "A20",
+        "A21",
+        "A22",
+        "A23"
+      ],
+      "cqs": [
+        "CQ12"
+      ],
+      "risks": [
+        "R1",
+        "R14",
+        "R31",
+        "R34",
+        "R45"
+      ]
+    },
+    {
+      "id": "ST-19",
+      "epic": "E12",
+      "title": "Regeneration with a middle gear and no silent substitution",
+      "as_a": "ACOS owner",
+      "i_want": "per-section notes, more-like-this, and a reviewed direction application with a migration report",
+      "so_that": "I can change my mind at any scale without losing track of what changed",
+      "demo": null,
+      "priority": 19,
+      "slice_ids": [
+        "S57-more-variants-and-more-like-this",
+        "S58-section-notes-scoped-regeneration",
+        "S59-redesign-fork-and-migration"
+      ],
+      "key_criteria": [
+        "A32",
+        "section 12.17-A99"
+      ],
+      "cqs": [
+        "CQ15",
+        "CQ16"
+      ],
+      "risks": [
+        "R10",
+        "R22"
+      ]
+    },
+    {
+      "id": "ST-20",
+      "epic": "E13",
+      "title": "A narrow custom-component path that stays on-system",
+      "as_a": "ACOS owner needing a table, a chart, an embed or a form",
+      "i_want": "a whitelisted registry generated against my direction's tokens",
+      "so_that": "the one capability most likely to break coherence is the one most tightly constrained",
+      "demo": null,
+      "priority": 20,
+      "slice_ids": [
+        "S60-registry-table-embed-form",
+        "S61-build-time-svg-charts",
+        "S62-inline-authored-path-and-coherence-debt"
+      ],
+      "key_criteria": [
+        "A75"
+      ],
+      "cqs": [
+        "CQ1"
+      ],
+      "risks": [
+        "R24",
+        "R23",
+        "R27"
+      ]
+    },
+    {
+      "id": "ST-21",
+      "epic": "E17",
+      "title": "Gates that measure, and captures that are valid evidence",
+      "as_a": "ACOS owner",
+      "i_want": "structured verdicts, live checks that never fight the drag, and device-pinned captures",
+      "so_that": "the evidence bundle contains measurements rather than assertions",
+      "demo": null,
+      "priority": 21,
+      "slice_ids": [
+        "S63-gates-ts-verdicts-and-tiers",
+        "S64-live-checks-scoped",
+        "S65-capture-wrapper-and-device-pinning"
+      ],
+      "key_criteria": [
+        "A27",
+        "A37"
+      ],
+      "cqs": [
+        "CQ11",
+        "CQ17"
+      ],
+      "risks": [
+        "R19",
+        "R14"
+      ]
+    },
+    {
+      "id": "ST-22",
+      "epic": "E14",
+      "title": "An export that proves it is clean",
+      "as_a": "ACOS owner publishing my site",
+      "i_want": "a re-render with eight purity gates and a two-build comparison",
+      "so_that": "zero editor runtime is asserted from evidence, not claimed in prose",
+      "demo": null,
+      "priority": 22,
+      "slice_ids": [
+        "S66-lock-render-scrub-and-absence-mechanisms",
+        "S67-eight-purity-gates"
+      ],
+      "key_criteria": [
+        "A49",
+        "A50",
+        "A51",
+        "A52",
+        "A53",
+        "A57",
+        "section 12.17-A93",
+        "section 12.17-A94",
+        "section 12.17-A98"
+      ],
+      "cqs": [
+        "CQ9"
+      ],
+      "risks": [
+        "R19",
+        "R15"
+      ]
+    },
+    {
+      "id": "ST-23",
+      "epic": "E14",
+      "title": "A lock that is reversible and a checklist that is complete",
+      "as_a": "ACOS owner",
+      "i_want": "32 ordered checks, snapshots, a tag and an unlock that changes nothing",
+      "so_that": "I can keep editing after publishing without divergence",
+      "demo": null,
+      "priority": 23,
+      "slice_ids": [
+        "S68-lock-time-checklist-32-checks",
+        "S69-lock-snapshots-manifest-and-unlock"
+      ],
+      "key_criteria": [
+        "A54",
+        "A55",
+        "A56",
+        "A58",
+        "A59",
+        "A60",
+        "A61",
+        "A62",
+        "A63",
+        "A64",
+        "A65",
+        "A66",
+        "A67",
+        "A68",
+        "A69",
+        "A70",
+        "A71"
+      ],
+      "cqs": [
+        "CQ11"
+      ],
+      "risks": [
+        "R20"
+      ]
+    },
+    {
+      "id": "ST-24",
+      "epic": "E15",
+      "title": "Published, with the licence question answered",
+      "as_a": "ACOS owner",
+      "i_want": "an automated deploy and a bundle that records every licence, gate and stated reason",
+      "so_that": "I can answer what I am allowed to ship and why the site looks the way it does",
+      "demo": "Demo 4",
+      "priority": 24,
+      "slice_ids": [
+        "S70-publish-automated-with-runbook-fallback",
+        "S71-licence-and-evidence-bundle",
+        "S72-demo-4-locked-published-evidence"
+      ],
+      "key_criteria": [
+        "A72",
+        "A73",
+        "A74",
+        "A75",
+        "A51"
+      ],
+      "cqs": [
+        "CQ10"
+      ],
+      "risks": [
+        "R41",
+        "R23"
+      ]
+    },
+    {
+      "id": "ST-25",
+      "epic": "E18",
+      "title": "A project that survives month six and a context reset",
+      "as_a": "ACOS owner returning to a site months later",
+      "i_want": "resume from disk, re-attach not relaunch, and diagnostics that name the rot",
+      "so_that": "the site remains maintainable by its own author",
+      "demo": null,
+      "priority": 25,
+      "slice_ids": [
+        "S73-resume-from-disk-and-reattach",
+        "S74-verify-and-doctor",
+        "S75-gotchas-provenance-and-banners"
+      ],
+      "key_criteria": [
+        "A13",
+        "A53"
+      ],
+      "cqs": [
+        "CQ6"
+      ],
+      "risks": [
+        "R20",
+        "R15"
+      ]
+    },
+    {
+      "id": "ST-26",
+      "epic": "E19",
+      "title": "The ship bar, proven and instrumented",
+      "as_a": "ACOS owner deciding whether v1 is done",
+      "i_want": "every acceptance criterion mapped, selftest green and learnings captured",
+      "so_that": "done is a measured statement rather than a feeling",
+      "demo": null,
+      "priority": 26,
+      "slice_ids": [
+        "S76-acceptance-criteria-sweep",
+        "S77-selftest-and-evidence-bundles",
+        "S78-agent-metrics-and-learning-capture"
+      ],
+      "key_criteria": [
+        "A84",
+        "A85",
+        "A86",
+        "A87",
+        "A88",
+        "A89"
+      ],
+      "cqs": [
+        "CQ1"
+      ],
+      "risks": [
+        "R18"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S01-gate-16a-and-launcher-rung",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Gate 16-A turn-boundary probe and launcher-rung decision",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Determine whether a long-running local server survives this harness's turn boundary, and at which rung of the F1-F5 ladder.",
+      "depends_on": [],
+      "fr_ids": [
+        "FR-001",
+        "FR-002"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A80",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S01-1",
+          "statement": "The probe passes at least three post-turn-boundary checks and one across an eternity /clear, with the original pid still in ps at each check.",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S01-2",
+          "statement": "The chosen rung is recorded as ADR-01; if it is F4 or F5 the slice halts pending explicit user sign-off and records the halt.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ6"
+      ],
+      "evidence_refs": [],
+      "blocking": true,
+      "task_file": "tasks/S01-gate-16a-and-launcher-rung.md"
+    },
+    {
+      "id": "S02-o1-font-policy-probe",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Generation-surface font-policy probe (60 seconds)",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Establish whether a generation-surface artifact renders a linked web font or silently falls back, before the Step-2 prompt spec is written.",
+      "depends_on": [],
+      "fr_ids": [
+        "FR-004"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S02-1",
+          "statement": "A devtools observation records whether the font file loads or is blocked, with the network entry captured as evidence.",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S02-2",
+          "statement": "The result is recorded as ADR-02 and the base64 embedding mandate is either confirmed or relaxed in writing.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ5"
+      ],
+      "evidence_refs": [
+        "EL-067"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S02-o1-font-policy-probe.md"
+    },
+    {
+      "id": "S03-o8-substrate-spike",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Build-substrate spike: framework versus plain generated HTML",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Choose the preview and build substrate, or confirm that invariant I6 keeps the choice open, without hard-depending on any framework.",
+      "depends_on": [],
+      "fr_ids": [
+        "FR-005"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S03-1",
+          "statement": "The same one-page render is produced on both candidate substrates and scored on live-editability, LOCK cleanliness and dependency surface.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S03-2",
+          "statement": "ADR-03 records the outcome and states which gate-2 installer invocation it implies (NA-11).",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [
+        "EL-085"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S03-o8-substrate-spike.md"
+    },
+    {
+      "id": "S04-o4-topology-spike-adr",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Process-topology spike and ADR",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Decide single-origin proxy versus two-origin iframe plus message passing on measured evidence, not preference.",
+      "depends_on": [
+        "S01-gate-16a-and-launcher-rung",
+        "S03-o8-substrate-spike"
+      ],
+      "fr_ids": [
+        "FR-003"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S04-1",
+          "statement": "The same two-page vertical slice runs on both topologies, scored on channel LOC, preview-only screenshot achievability, HMR round-trip latency for a move op, and behaviour after killing and restarting the preview process.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S04-2",
+          "statement": "ADR-04 is written and names which of I1-I6 it changes and which it leaves untouched.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ3"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S04-o4-topology-spike-adr.md"
+    },
+    {
+      "id": "S05-byte-reproducibility-spike",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Two-build byte-reproducibility spike",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Establish whether byte-identical two-build comparison is achievable on the selected toolchain before success criterion S4 is treated as committed.",
+      "depends_on": [
+        "S03-o8-substrate-spike"
+      ],
+      "fr_ids": [
+        "FR-006"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S05-1",
+          "statement": "Two clean builds are compared by sorted-path SHA-256 manifest and the result is recorded with the exact environment pinning used.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S05-2",
+          "statement": "If it fails, the normalised-comparison fallback is specified with an enumerated, individually justified exception set, and the slice records that D3's proof is weakened and sign-off is required.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S05-byte-reproducibility-spike.md"
+    },
+    {
+      "id": "S06-channel-fidelity-and-ceiling-battery",
+      "epic": "E0",
+      "story": "ST-01",
+      "title": "Channel-fidelity, output-ceiling, latency and licence battery",
+      "type": "diagnostic",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Measure the hand-carry channel's real behaviour and re-verify every adopted dependency licence against its actual licence file, plus the non-blocking subagent-availability probe.",
+      "depends_on": [],
+      "fr_ids": [
+        "FR-007",
+        "FR-008"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S06-1",
+          "statement": "Copy-paste fidelity is tested across all three paste paths (rendered view, per-block copy control, conversation export) and the fenced-block contract is confirmed or revised.",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S06-2",
+          "statement": "An empirical output ceiling is measured from real artifacts; no published figure is used (one referenced model name in published guides appears fabricated).",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S06-3",
+          "statement": "Every adopted dependency's licence is re-verified against the actual LICENSE file at pin time and the result recorded per dependency.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S06-4",
+          "statement": "The subagent-availability probe result is recorded as ADR-06 and is explicitly not a v1 blocker.",
+          "verification_method": "probe"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ18",
+        "CQ10"
+      ],
+      "evidence_refs": [
+        "EL-066",
+        "EL-068"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S06-channel-fidelity-and-ceiling-battery.md"
+    },
+    {
+      "id": "S07-skill-router-and-confirmation-gate",
+      "epic": "E1",
+      "story": "ST-02",
+      "title": "Thin router SKILL.md with the mandatory Confirmation Gate",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Ship a router skill whose frontmatter is exactly as specified and whose Phase 0 refuses to write anything before an explicit human confirmation.",
+      "depends_on": [
+        "S01-gate-16a-and-launcher-rung"
+      ],
+      "fr_ids": [
+        "FR-010",
+        "FR-011"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A90",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A87",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A86",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S07-skill-router-and-confirmation-gate.md"
+    },
+    {
+      "id": "S08-server-ts-port",
+      "epic": "E1",
+      "story": "ST-02",
+      "title": "Port the in-estate Python server to server.ts (the TypeScript spine)",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Establish the TypeScript spine as the first code written, serving the route contract on the fixed loopback port with state.json at boot.",
+      "depends_on": [
+        "S01-gate-16a-and-launcher-rung"
+      ],
+      "fr_ids": [
+        "FR-012",
+        "FR-227"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A84",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A80",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S08-1",
+          "statement": "state.json carries {phase, step, awaiting, nextAction, port, pid, url, sessionId} at boot and regenerate-if-stale runs on startup.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ6"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S08-server-ts-port.md"
+    },
+    {
+      "id": "S09-install-config-session-selftest",
+      "epic": "E1",
+      "story": "ST-02",
+      "title": "Symlink installer, project config, session tree, nested git repo, selftest harness",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make installation drift-proof and every session resumable, versioned and self-testable from the first run.",
+      "depends_on": [
+        "S07-skill-router-and-confirmation-gate"
+      ],
+      "fr_ids": [
+        "FR-013",
+        "FR-014",
+        "FR-015",
+        "FR-016"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A88",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A83",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A85",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S09-1",
+          "statement": "The session tree matches the specified directory layout exactly, with an ACTIVE marker written at init and a config snapshot in audit/.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S09-install-config-session-selftest.md"
+    },
+    {
+      "id": "S10-warm-start-and-asset-library-detection",
+      "epic": "E2",
+      "story": "ST-03",
+      "title": "Warm-start scan and asset-library detection",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Offer any reusable prior system inside the first three exchanges and determine, early, whether the artwork category is real for this project.",
+      "depends_on": [
+        "S09-install-config-session-selftest"
+      ],
+      "fr_ids": [
+        "FR-020",
+        "FR-021"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A1",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A2",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ16"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S10-warm-start-and-asset-library-detection.md"
+    },
+    {
+      "id": "S11-identity-split-and-negative-constraints",
+      "epic": "E2",
+      "story": "ST-03",
+      "title": "System/identity split, negative constraints and mined-source pre-fill",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Carry forward what is reusable and deliberately exclude what is identity, injecting prior identities as negative constraints.",
+      "depends_on": [
+        "S10-warm-start-and-asset-library-detection"
+      ],
+      "fr_ids": [
+        "FR-022",
+        "FR-023",
+        "FR-024"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S11-1",
+          "statement": "The carried set and the excluded set match the specified split exactly, item for item, and are recorded in session.json.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S11-2",
+          "statement": "Prior hue anchors and type pairings appear in the Step-2 prompt as explicit negative constraints unless the sibling-site question was answered yes.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ16"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S11-identity-split-and-negative-constraints.md"
+    },
+    {
+      "id": "S12-interview-bank-90-questions",
+      "epic": "E3",
+      "story": "ST-04",
+      "title": "The 90-question interview bank with its ID grammar",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Author the bank as a reference file with stable ids, correct tier labels and no id collisions with the tier notation.",
+      "depends_on": [
+        "S09-install-config-session-selftest"
+      ],
+      "fr_ids": [
+        "FR-030",
+        "FR-033"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S12-1",
+          "statement": "The bank contains 90 questions [V] and a mechanical row count in the selftest asserts it.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S12-2",
+          "statement": "The ten taste questions are TS1-TS10; a grep proves no question id matches ^T[0-9] (which would collide with tier labels and break A4).",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [
+        "EL-060"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S12-interview-bank-90-questions.md"
+    },
+    {
+      "id": "S13-interview-engine-tiers-waves-branching",
+      "epic": "E3",
+      "story": "ST-04",
+      "title": "Interview engine: tiers, waves, real branch map, policy questions, instrumentation",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Deliver the interview in hard-gated waves with honest tier semantics, a branch map that matches the bank, and elapsed-time instrumentation from day one.",
+      "depends_on": [
+        "S12-interview-bank-90-questions"
+      ],
+      "fr_ids": [
+        "FR-031",
+        "FR-032",
+        "FR-034",
+        "FR-035",
+        "FR-036",
+        "FR-037",
+        "FR-039"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A3",
+          "statement": "Recorded as unachievable as written: the bank's own estimate is 45-55 Tier-1 questions in fast mode (NA-01). The slice implements the fast-mode path and records the measured count rather than asserting compliance.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S13-1",
+          "statement": "Every Tier-1 'I don't know / surprise me' answer records a stated concrete default value with source skill-default, and never a null.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S13-2",
+          "statement": "The branch map is asserted in the selftest: C6 gates B4 and conditionally D8; L1 prunes L2-L4; G1 with G0 prunes G2 but not G3; D4 prunes nothing; no-forms skips D7 and D11.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S13-3",
+          "statement": "The audience-access-needs answer can only tighten a gate threshold; a selftest asserts no code path loosens one.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1",
+        "CQ11"
+      ],
+      "evidence_refs": [
+        "EL-060"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S13-interview-engine-tiers-waves-branching.md"
+    },
+    {
+      "id": "S14-concept-document-synthesis",
+      "epic": "E3",
+      "story": "ST-04",
+      "title": "Concept-document synthesis, inline, with the refusal requirement",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Turn answers into a 200-300 word concept the human recognises, and refuse to advance without a stated refusal.",
+      "depends_on": [
+        "S13-interview-engine-tiers-waves-branching"
+      ],
+      "fr_ids": [
+        "FR-038"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A5",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S14-1",
+          "statement": "The synthesis runs inline in the main session against the role prompt using only already-declared tools; no subagent call exists on this path.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S14-2",
+          "statement": "answers.json is question-ID-keyed and tier-tagged with source in {asked, pre-filled, inferred-default, skill-default} plus an override flag.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S14-concept-document-synthesis.md"
+    },
+    {
+      "id": "S15-font-catalog-and-snapshot",
+      "epic": "E4",
+      "story": "ST-05",
+      "title": "Font catalog with pre-subsetted cuts, and the per-session snapshot",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Build a skill-owned font catalog whose base64 cuts are computed locally ahead of time, and pin a hash-stamped copy per session.",
+      "depends_on": [
+        "S02-o1-font-policy-probe"
+      ],
+      "fr_ids": [
+        "FR-040"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S15-1",
+          "statement": "Every catalog entry carries familyId, classification, foundry, licence source URL, fileHash, glyphCoverage and pre-subsetted latin cuts; a missing licence class fails the build.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S15-2",
+          "statement": "A session snapshot is written at Step-2 start and its hash is compared at prompt emission, so a mid-run library refresh cannot change what the session is judging.",
+          "verification_method": "hash-compare"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ10",
+        "CQ5"
+      ],
+      "evidence_refs": [
+        "EL-067"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S15-font-catalog-and-snapshot.md"
+    },
+    {
+      "id": "S16-token-manifest-and-stage-a-prompt",
+      "epic": "E4",
+      "story": "ST-05",
+      "title": "Mechanical token manifest and the Stage-A capsule prompt",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Emit a frozen token-name manifest generated mechanically from the inventory, and a Stage-A prompt that is greppably complete and traceable to interview ids.",
+      "depends_on": [
+        "S14-concept-document-synthesis",
+        "S15-font-catalog-and-snapshot"
+      ],
+      "fr_ids": [
+        "FR-041",
+        "FR-042",
+        "FR-043",
+        "FR-044",
+        "FR-046"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A6",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A4",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S16-1",
+          "statement": "The token manifest is generated from the inventory item list (names only, no values) and is re-pasted verbatim into every chunk; a diff proves byte equality across chunks.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S16-2",
+          "statement": "Capsules are over-generated, machine pre-filtered on the self-audit fields, then cut by the user; any relaxation of the direction floor is written to session.json as a signed-off deviation.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ5",
+        "CQ14"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S16-token-manifest-and-stage-a-prompt.md"
+    },
+    {
+      "id": "S17-stage-b-envelope-and-chunking",
+      "epic": "E4",
+      "story": "ST-05",
+      "title": "Stage-B prompt, envelope manifest, terminator and runtime chunk computation",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make truncation detectable by construction and size chunks from measured artifacts rather than any published ceiling.",
+      "depends_on": [
+        "S16-token-manifest-and-stage-a-prompt",
+        "S06-channel-fidelity-and-ceiling-battery"
+      ],
+      "fr_ids": [
+        "FR-045",
+        "FR-047",
+        "FR-048"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S17-1",
+          "statement": "The envelope declares the file list, per-file line counts, sha256 prefixes, smallest-first ordering and a per-run random terminator.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S17-2",
+          "statement": "Chunk sizes are computed from measured artifact sizes at runtime; a grep proves no published ceiling constant exists in the code.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S17-3",
+          "statement": "The usage-tier cost of a two-stage run across N directions is surfaced to the user before the first chunk is emitted.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ18",
+        "CQ13"
+      ],
+      "evidence_refs": [
+        "EL-066"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S17-stage-b-envelope-and-chunking.md"
+    },
+    {
+      "id": "S18-import-parser-and-envelope-validation",
+      "epic": "E5",
+      "story": "ST-06",
+      "title": "Tolerant FILE-block parser with envelope validation and no partial writes",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Ingest a complete chunk in one paste, and fail a truncated chunk loudly without writing a partial system.",
+      "depends_on": [
+        "S17-stage-b-envelope-and-chunking"
+      ],
+      "fr_ids": [
+        "FR-050",
+        "FR-051"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A7",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A8",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S18-1",
+          "statement": "A deliberately truncated fixture leaves zero files written under the system directory, proven by a directory diff before and after.",
+          "verification_method": "hash-compare"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ13"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S18-import-parser-and-envelope-validation.md"
+    },
+    {
+      "id": "S19-ast-validator-quarantine-and-reverification",
+      "epic": "E5",
+      "story": "ST-06",
+      "title": "AST-resolving validator, quarantine, deterministic re-verification and substitution",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Treat the paste as untrusted input: resolve bindings through an AST, fail closed on the undecidable, and re-verify every claimed contrast and font.",
+      "depends_on": [
+        "S18-import-parser-and-envelope-validation"
+      ],
+      "fr_ids": [
+        "FR-052",
+        "FR-053",
+        "FR-054",
+        "FR-055",
+        "FR-057"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A9",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A10",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A11",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "section 12.17-A101",
+          "statement": "An imported component using window[\"fe\"+\"tch\"](...) is quarantined by the AST validator, and a parse failure quarantines rather than passes.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S19-1",
+          "statement": "The anti-slop lint runs as a hard gate on the generated design-system JSON before the human sees any menu of choices.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ13",
+        "CQ8"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S19-ast-validator-quarantine-and-reverification.md"
+    },
+    {
+      "id": "S20-local-regeneration-mode",
+      "epic": "E5",
+      "story": "ST-06",
+      "title": "Local Regeneration Mode: the zero-paste path",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make the web hop a UX preference rather than a technical dependency by producing an identical-format bundle with zero pastes.",
+      "depends_on": [
+        "S19-ast-validator-quarantine-and-reverification"
+      ],
+      "fr_ids": [
+        "FR-056"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A12",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S20-1",
+          "statement": "The bundle produced locally passes the identical validator path used for pasted bundles, proven by running the same validator binary on both fixtures.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ18"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S20-local-regeneration-mode.md"
+    },
+    {
+      "id": "S21-token-compiler-dtcg-and-forge",
+      "epic": "E6",
+      "story": "ST-07",
+      "title": "Token compiler: DTCG JSON, forge YAML, custom properties and theme layer",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Emit both consumers from one importer and make derived values structurally un-pickable.",
+      "depends_on": [
+        "S19-ast-validator-quarantine-and-reverification"
+      ],
+      "fr_ids": [
+        "FR-060",
+        "FR-061",
+        "FR-064",
+        "FR-065",
+        "FR-066",
+        "FR-068"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A14",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A15",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A16",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A18",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A19",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A24",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S21-1",
+          "statement": "Font fallback metrics are emitted as a derived token family computed from the real selected font binary, and carry pickable false.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S21-2",
+          "statement": "Every in-direction-repickable row ships a per-direction validity list; a row that cannot supply one is demoted to direction-slot by the compiler, not by a human.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ5"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S21-token-compiler-dtcg-and-forge.md"
+    },
+    {
+      "id": "S22-flat-variable-layer-and-extract-override",
+      "epic": "E6",
+      "story": "ST-07",
+      "title": "Flat variable layer per direction change, machine-owned stylesheet, extract-override",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Keep drag-time cost off the token graph and give hand-tuning one sanctioned door.",
+      "depends_on": [
+        "S21-token-compiler-dtcg-and-forge"
+      ],
+      "fr_ids": [
+        "FR-062",
+        "FR-067"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S22-1",
+          "statement": "The custom-property set is compiled to a flat layer exactly once per direction change; an instrumentation counter proves zero re-resolutions during a drag.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S22-2",
+          "statement": "The compiled stylesheet carries a do-not-hand-edit banner and extract-override produces a valid override file that survives regeneration.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ5"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S22-flat-variable-layer-and-extract-override.md"
+    },
+    {
+      "id": "S23-versioned-coherence-lint-set",
+      "epic": "E6",
+      "story": "ST-07",
+      "title": "The versioned coherence-lint set, run at ingest and at LOCK",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Replace an unstable lint count with a versioned set whose required members are named, including logical-properties-only.",
+      "depends_on": [
+        "S21-token-compiler-dtcg-and-forge"
+      ],
+      "fr_ids": [
+        "FR-063"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A17",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S23-1",
+          "statement": "A grep over generated CSS returns zero physical-direction declarations (left, right, top, bottom, margin-left, text-align: left) at ingest and at LOCK.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S23-2",
+          "statement": "The lint set carries a version number; gates cite the version and never a count (NA-05).",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ5"
+      ],
+      "evidence_refs": [
+        "EL-087"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S23-versioned-coherence-lint-set.md"
+    },
+    {
+      "id": "S24-doc-schema-and-canonical-serialisation",
+      "epic": "E7",
+      "story": "ST-08",
+      "title": "Document schema and canonical serialisation",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Define the scene graph as per-page documents plus a project record, serialised canonically so a re-serialise is always a zero diff.",
+      "depends_on": [
+        "S03-o8-substrate-spike",
+        "S21-token-compiler-dtcg-and-forge"
+      ],
+      "fr_ids": [
+        "FR-070",
+        "FR-074"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "section 12.17-A98",
+          "statement": "Re-serialising every doc-owned JSON file produces a zero diff; a file with collapsed arrays or reordered keys fails the pre-commit hook and purity gate 8.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "section 12.17-A92",
+          "statement": "A doc containing an upward override key is rejected by the schema validator with a message naming the desktop-down rule.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S24-1",
+          "statement": "No file named layout.json is created anywhere; the canonical names are used throughout (NA-07).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S24-2",
+          "statement": "Absent optional keys are omitted entirely rather than written null, so the key-presence override test stays valid.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ3"
+      ],
+      "evidence_refs": [
+        "EL-071"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S24-doc-schema-and-canonical-serialisation.md"
+    },
+    {
+      "id": "S25-pure-renderer-and-resolution-policy",
+      "epic": "E7",
+      "story": "ST-08",
+      "title": "Pure, total renderer with the normative resolution policy",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Render from documents with one code path for the design surface and for LOCK, and define exactly what happens when a reference does not resolve.",
+      "depends_on": [
+        "S24-doc-schema-and-canonical-serialisation"
+      ],
+      "fr_ids": [
+        "FR-071",
+        "FR-076",
+        "FR-118"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A46",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S25-1",
+          "statement": "An unknown component id opens the editor read-only in a migration-required state and refuses both generate and LOCK, naming every affected node and page.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S25-2",
+          "statement": "An unknown variant falls back to the direction's canonical variant, writes a migration flag, and blocks LOCK until acknowledged.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S25-3",
+          "statement": "A removed slot moves its content to the node's orphan store; no migration path deletes content.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S25-4",
+          "statement": "The DOM is never serialised back into the document; a grep proves no reverse-parse code path exists.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ3"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S25-pure-renderer-and-resolution-policy.md"
+    },
+    {
+      "id": "S26-breakpoint-vocabulary-and-cascade",
+      "epic": "E7",
+      "story": "ST-08",
+      "title": "Breakpoint vocabulary and the desktop-down cascade compiler",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make one breakpoint vocabulary normative across switcher, cascade, free-position rules, save format and gates.",
+      "depends_on": [
+        "S24-doc-schema-and-canonical-serialisation"
+      ],
+      "fr_ids": [
+        "FR-072",
+        "FR-073"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A41",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "section 12.17-A91",
+          "statement": "A node with a base entry and no small-key entry compiles to grid-column: 1 / -1 inside the small media query, and the emitted rule order is base, then md, then sm.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S26-1",
+          "statement": "No emitted rule uses !important to win the cascade; ordering alone decides.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ2"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S26-breakpoint-vocabulary-and-cascade.md"
+    },
+    {
+      "id": "S27-determinism-contract",
+      "epic": "E7",
+      "story": "ST-08",
+      "title": "Determinism contract: six hazards designed out",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make generation a pure function of documents, system lock and generator version, so verify can be trusted.",
+      "depends_on": [
+        "S25-pure-renderer-and-resolution-policy"
+      ],
+      "fr_ids": [
+        "FR-075"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A53",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S27-1",
+          "statement": "Every generated file carries the generated marker, document hash, system-lock hash and generator version, and contains no timestamp.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S27-2",
+          "statement": "Binary assets are hash-compared using their recorded encoder record and are never re-encoded during verification.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S27-3",
+          "statement": "A grep proves generate-time code reads no clock, no network, no random source, no environment and no path outside the session root.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S27-determinism-contract.md"
+    },
+    {
+      "id": "S28-demo-1-static-direction-render",
+      "epic": "E7",
+      "story": "ST-08",
+      "title": "DEMO 1 - interview to prompt to ingest to one direction rendered static",
+      "type": "demo",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Prove end to end that a conversation becomes a coherent, licence-clean design system and a page a human can look at.",
+      "depends_on": [
+        "S14-concept-document-synthesis",
+        "S20-local-regeneration-mode",
+        "S22-flat-variable-layer-and-extract-override",
+        "S26-breakpoint-vocabulary-and-cascade",
+        "S27-determinism-contract"
+      ],
+      "fr_ids": [],
+      "acceptance_criteria": [
+        {
+          "id": "A4",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A5",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A7",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A12",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S28-1",
+          "statement": "A single recorded run produces answers.json, concept.md, both prompt stages, an ingested system and a rendered static page, with screenshots at 390 and 1280 captured at pinned device heights.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": "Demo 1",
+      "cqs": [
+        "CQ1",
+        "CQ5",
+        "CQ13"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S28-demo-1-static-direction-render.md"
+    },
+    {
+      "id": "S29-editor-shell-and-overlay",
+      "epic": "E8",
+      "story": "ST-09",
+      "title": "Three-pane editor shell with the out-of-iframe overlay and same-origin preview",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Stand up the editing surface with zero DOM injection for hit-testing and a preview that can be captured without chrome.",
+      "depends_on": [
+        "S25-pure-renderer-and-resolution-policy",
+        "S08-server-ts-port"
+      ],
+      "fr_ids": [
+        "FR-080",
+        "FR-082",
+        "FR-120"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S29-1",
+          "statement": "Selection overlay and handles are drawn outside the iframe with pointer-events none; a grep proves no injected hit-test node is added to the page tree.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S29-2",
+          "statement": "The preview is a same-origin iframe, and device heights are pinned with the measured iframe height asserted whenever the page contains a viewport-unit rule.",
+          "verification_method": "recompute"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ3",
+        "CQ17"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S29-editor-shell-and-overlay.md"
+    },
+    {
+      "id": "S30-navigator-tree-and-selection-parity",
+      "epic": "E8",
+      "story": "ST-09",
+      "title": "Navigator/layers tree and three-way selection parity",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Guarantee everything is reachable, including what canvas clicking provably cannot reach.",
+      "depends_on": [
+        "S29-editor-shell-and-overlay"
+      ],
+      "fr_ids": [
+        "FR-081"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A25",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S30-1",
+          "statement": "A fixture containing a zero-height wrapper, a fully covered element, a pointer-events-none decoration and an empty slot is fully selectable from the tree, and each case is recorded.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ3"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S30-navigator-tree-and-selection-parity.md"
+    },
+    {
+      "id": "S31-typed-ops-autosave-history-undo",
+      "epic": "E8",
+      "story": "ST-10",
+      "title": "Typed-op engine, autosave, op log and transactional undo",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Make every edit a validated typed op applied atomically by the single writer, with one command stack over the document.",
+      "depends_on": [
+        "S29-editor-shell-and-overlay"
+      ],
+      "fr_ids": [
+        "FR-085",
+        "FR-086",
+        "FR-087"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A31",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A32",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S31-1",
+          "statement": "The browser never sends a raw patch or a file path; a request carrying either is rejected with 400 and the rejection is logged.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S31-2",
+          "statement": "Writes are atomic (write-temp then rename) and every applied op appends op, patch and inverse to the op log.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S31-3",
+          "statement": "A continuous drag coalesces into exactly one undo entry.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ7",
+        "CQ15"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S31-typed-ops-autosave-history-undo.md"
+    },
+    {
+      "id": "S32-inline-plaintext-editing",
+      "epic": "E8",
+      "story": "ST-10",
+      "title": "Inline plaintext-only text editing",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Let the human edit copy in place without source-app markup surviving into the type system.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-083"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S32-1",
+          "statement": "Pasting rich text from a word processor into any editable node yields plain text only, proven by inspecting the stored content value.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S32-2",
+          "statement": "Inline editing is available on the named text node classes (headings, eyebrows, buttons, nav items, labels, stat numbers) and each edit commits as a typed op.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S32-inline-plaintext-editing.md"
+    },
+    {
+      "id": "S33-image-replace-focal-point-alt-gate",
+      "epic": "E8",
+      "story": "ST-10",
+      "title": "Image replace, focal point, blocking alt gate and auto-recompression",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make image handling preserve composition and make missing alt text impossible to place, not merely impossible to ship.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-084"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A35",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A36",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S33-1",
+          "statement": "Replacing an image preserves container size, crop and position; cropping uses a single draggable focal point, never a crop rectangle.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S33-2",
+          "statement": "Every derived image records encoder, encoder version, settings hash and output hash in the asset manifest.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S33-image-replace-focal-point-alt-gate.md"
+    },
+    {
+      "id": "S34-reorder-duplicate-paste-freeze",
+      "epic": "E8",
+      "story": "ST-10",
+      "title": "Section reorder, duplicate, copy/paste with overrides, and element freeze",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Give the structural edits that precede the canvas, without losing breakpoint overrides or overloading the word lock.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-089",
+        "FR-090"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S34-1",
+          "statement": "Copy-paste and duplicate round-trip a fragment including every breakpoint override, proven by a document diff of the pasted subtree.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S34-2",
+          "statement": "A grep over all user-visible strings proves the element-level protection verb is Freeze and the word Lock is never used for it.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S34-3",
+          "statement": "A frozen node rejects move, resize, swap, reorder and delete, and says why.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S34-reorder-duplicate-paste-freeze.md"
+    },
+    {
+      "id": "S35-snapshots-variations-recovery-bin",
+      "epic": "E8",
+      "story": "ST-11",
+      "title": "Named snapshots, save-as-variation and the recovery bin",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make experimenting cheap and deletion non-destructive, with a recovery path independent of undo.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-088"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S35-1",
+          "statement": "A deleted subtree is restorable in place after ten subsequent unrelated edits, without reverting those edits.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S35-2",
+          "statement": "Autosave stores small document diffs through the server; a grep proves no base64 blob is written to browser storage.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S35-3",
+          "statement": "Save-as-variation forks the document set without mutating the source, proven by unchanged source hashes.",
+          "verification_method": "hash-compare"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ15"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S35-snapshots-variations-recovery-bin.md"
+    },
+    {
+      "id": "S36-page-ops-seo-preview-and-health-hud",
+      "epic": "E8",
+      "story": "ST-11",
+      "title": "Page-scoped ops (Branch A+), per-page SEO, preview mode and the Design Health HUD",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Ship page-scoped operations and per-page metadata now so multi-page is a later feature rather than a later migration, plus one honest health surface.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-091",
+        "FR-092",
+        "FR-093",
+        "FR-094"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A37",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "section 12.17-A97",
+          "statement": "The asset manager, page manager, per-page SEO fields and inline text editing each complete successfully against the write allowlist with no path outside the table written.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S36-1",
+          "statement": "Every op is page-scoped and the project record carries a pages array of length one under Branch A+ (NA-B01); the multi-page manager UI and global regions are explicitly out of scope for v1.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S36-2",
+          "statement": "The health pill shows three dots, a page-weight bar and a projected largest-contentful-paint from a live performance observer entry, and is the only surfacing channel for advisory findings.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S36-page-ops-seo-preview-and-health-hud.md"
+    },
+    {
+      "id": "S37-eight-control-security-posture",
+      "epic": "E16",
+      "story": "ST-12",
+      "title": "The eight-control local-server security posture",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Treat localhost as a hostile boundary: bind, origin, exact CORS, bearer token, pinned host settings, idle shutdown, Host validation and security headers.",
+      "depends_on": [
+        "S08-server-ts-port",
+        "S29-editor-shell-and-overlay"
+      ],
+      "fr_ids": [
+        "FR-220",
+        "FR-229"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A76",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A77",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "section 12.17-A100",
+          "statement": "A bootstrap GET carrying a foreign Host header is rejected before any response body is produced; the same GET with a loopback Host succeeds.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S37-1",
+          "statement": "The bearer token file is mode 0600 and never appears in any committed file or log.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S37-2",
+          "statement": "Idle shutdown fires after the configured window and is recorded in the event log.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S37-3",
+          "statement": "Any hook the skill registers is fail-open and is removed at close; a forced hook error still allows the tool call.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ8"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S37-eight-control-security-posture.md"
+    },
+    {
+      "id": "S38-reconciliation-409-lock-and-tab-claim",
+      "epic": "E16",
+      "story": "ST-12",
+      "title": "Hash-journal reconciliation, 409 concurrency, process lock and tab claim",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make silent work loss impossible in either direction, with reconciliation as the authoritative mechanism rather than the guard hook.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo",
+        "S37-eight-control-security-posture"
+      ],
+      "fr_ids": [
+        "FR-222",
+        "FR-225",
+        "FR-226"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A82",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "section 12.17-A95",
+          "statement": "A doc-owned file written out of band by a shell heredoc while the editor holds the lock is detected before the next save, the divergent version is preserved under the conflicts directory, and neither version is silently overwritten.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S38-1",
+          "statement": "If the file-watch mechanism is unavailable the editor falls back to a hash re-check before every save and on window focus, and says so in the status bar; a silently degraded detector fails the slice.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S38-2",
+          "statement": "A second browser tab is read-only, and the claim is carried over the event stream.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ7"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S38-reconciliation-409-lock-and-tab-claim.md"
+    },
+    {
+      "id": "S39-ownership-guard-wb-op-and-inbox",
+      "epic": "E16",
+      "story": "ST-12",
+      "title": "Ownership guard with stated limits, the sanctioned agent write path, and the inbox",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Give the agent a legal write path so the ownership rule is followed rather than routed around, and keep one validation path for both writers.",
+      "depends_on": [
+        "S38-reconciliation-409-lock-and-tab-claim"
+      ],
+      "fr_ids": [
+        "FR-221",
+        "FR-223",
+        "FR-224",
+        "FR-228"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A78",
+          "statement": "Amended to the write-allowlist table (NA-B15): the server writes only the allowlisted path shapes, verified by realpath plus prefix assertion, and a symlinked path is rejected.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A79",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A81",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A89",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "section 12.17-A96",
+          "statement": "A typed op whose derived patch targets the system-lock pointer is rejected with 400, whichever op produced it.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S39-1",
+          "statement": "The command-line write path applies the same typed op through the same server, and starts a headless server when none is running, so the agent path never depends on a browser being open.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S39-2",
+          "statement": "The guard's limits are documented in the skill instructions: it is a heuristic defeatable by indirection, and reconciliation is the authoritative mechanism.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ7",
+        "CQ8"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S39-ownership-guard-wb-op-and-inbox.md"
+    },
+    {
+      "id": "S40-demo-2-live-surface-across-boundaries",
+      "epic": "E8",
+      "story": "ST-12",
+      "title": "DEMO 2 - a live editable surface proven across at least two turn boundaries",
+      "type": "demo",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Prove the editor premise holds in this harness, with survival evidence rather than a same-turn response.",
+      "depends_on": [
+        "S32-inline-plaintext-editing",
+        "S33-image-replace-focal-point-alt-gate",
+        "S34-reorder-duplicate-paste-freeze",
+        "S35-snapshots-variations-recovery-bin",
+        "S36-page-ops-seo-preview-and-health-hud",
+        "S39-ownership-guard-wb-op-and-inbox"
+      ],
+      "fr_ids": [],
+      "acceptance_criteria": [
+        {
+          "id": "A80",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S40-1",
+          "statement": "Inline text edit, section reorder, variant swap and autosave are demonstrated in one session, and the server answers a health check in a separate tool call after each of at least two turn boundaries with the original pid alive.",
+          "verification_method": "probe"
+        },
+        {
+          "id": "SL-S40-2",
+          "statement": "The demo recording notes which launcher rung was in use, because that is the fact worth carrying into the estate's memory.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": "Demo 2",
+      "cqs": [
+        "CQ6",
+        "CQ7"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S40-demo-2-live-surface-across-boundaries.md"
+    },
+    {
+      "id": "S41-gridline-overlay",
+      "epic": "E9",
+      "story": "ST-13",
+      "title": "Gridline overlay derived from computed styles",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Paint the real resolved grid tracks as the snap target, in the out-of-iframe overlay so they vanish at LOCK by construction.",
+      "depends_on": [
+        "S29-editor-shell-and-overlay",
+        "S26-breakpoint-vocabulary-and-cascade"
+      ],
+      "fr_ids": [
+        "FR-100"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A39",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S41-1",
+          "statement": "The overlay is never a hand-authored decorative grid; a test proves the painted track positions equal the computed template columns for three different section archetypes.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S41-2",
+          "statement": "A capture of the preview with the overlay active contains zero overlay pixels, because the overlay lives outside the iframe.",
+          "verification_method": "screenshot-diff"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S41-gridline-overlay.md"
+    },
+    {
+      "id": "S42-snap-engine",
+      "epic": "E9",
+      "story": "ST-13",
+      "title": "Snap engine with prioritised target classes and zoom-scaled tolerance",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Snap to the four target classes in priority order with tolerance divided by zoom, using interval indexes rather than per-frame scans.",
+      "depends_on": [
+        "S41-gridline-overlay"
+      ],
+      "fr_ids": [
+        "FR-107"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A47",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S42-1",
+          "statement": "Two one-dimensional interval indexes per section are built once per layout change; a counter proves no full sibling scan happens per pointer move.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S42-2",
+          "statement": "Priority order is asserted by test: grid lines beat sibling edges and centres, which beat section padding and content rails, which beat spacing-scale increments.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S42-snap-engine.md"
+    },
+    {
+      "id": "S43-drag-to-place-and-drop-algorithm",
+      "epic": "E9",
+      "story": "ST-13",
+      "title": "Drag-to-place writing grid integers, with the normative drop algorithm",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "XL",
+      "objective": "Implement the full normative drop algorithm including row derivation, span preservation, displace-down occupancy with ghost preview, re-parenting and the three legal rejections.",
+      "depends_on": [
+        "S42-snap-engine",
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-101",
+        "FR-102",
+        "FR-103",
+        "FR-104",
+        "FR-105",
+        "FR-106"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A40",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S43-1",
+          "statement": "Nine acceptance branches are covered by tests: column derivation, row derivation, span preservation with clamping shown before commit, displace-down cascade with ghost preview, art-container z-order resolution, opt-in overlap with a counter, cross-section re-parenting with no auto-compaction, boundary-zone append, and the three rejection cases with an inline message rather than a silent clamp.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S43-2",
+          "statement": "Persisted placement is integers only; a grep proves no pixel coordinate is ever written to a document.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4",
+        "CQ2"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S43-drag-to-place-and-drop-algorithm.md"
+    },
+    {
+      "id": "S44-span-resize-and-spacing-handles",
+      "epic": "E9",
+      "story": "ST-14",
+      "title": "Span resize, padding/gap handles on the scale, and smart guides",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make direct manipulation teach the token system rather than erode it, with token-named readouts and fluid-consequence feedback.",
+      "depends_on": [
+        "S43-drag-to-place-and-drop-algorithm"
+      ],
+      "fr_ids": [
+        "FR-108",
+        "FR-109",
+        "FR-110"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A28",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S44-1",
+          "statement": "Span resize commits whole cells and displays a fraction-and-percentage readout during the drag.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S44-2",
+          "statement": "Padding and gap handles snap only to discrete spacing-scale steps; an attempt to commit an off-scale value is impossible by construction, not merely warned about.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S44-3",
+          "statement": "Alignment guides show live distance labels and an equal-spacing indicator appears when three or more siblings match.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S44-span-resize-and-spacing-handles.md"
+    },
+    {
+      "id": "S45-keyboard-parity-and-target-size",
+      "epic": "E9",
+      "story": "ST-14",
+      "title": "Keyboard parity for every drag, three verbs, and editor target size",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Satisfy the two accessibility criteria that apply to the tool itself, and keep the anchor vocabulary to exactly three verbs.",
+      "depends_on": [
+        "S43-drag-to-place-and-drop-algorithm"
+      ],
+      "fr_ids": [
+        "FR-111",
+        "FR-112",
+        "FR-232"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A26",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A27",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S45-1",
+          "statement": "Arrow moves one cell, shift-arrow changes span by one, tab walks siblings, and a select-then-click-destination path exists for every drag operation.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S45-2",
+          "statement": "The anchor control exposes exactly three verbs (align to, space above/below over the scale, order among siblings) and no fourth appears in the UI.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S45-3",
+          "statement": "A live bounding-rect check runs on render over all editor chrome and reports any control below the minimum target size with its documented exception, if any.",
+          "verification_method": "recompute"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4",
+        "CQ11"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S45-keyboard-parity-and-target-size.md"
+    },
+    {
+      "id": "S46-override-cascade-and-precommit-chip",
+      "epic": "E9",
+      "story": "ST-15",
+      "title": "Per-breakpoint override cascade, pre-commit chip and overridden-here dots",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Make invisible overrides visible and make every breakpoint-scoped edit announce its blast radius before it commits.",
+      "depends_on": [
+        "S43-drag-to-place-and-drop-algorithm",
+        "S26-breakpoint-vocabulary-and-cascade"
+      ],
+      "fr_ids": [
+        "FR-113"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A42",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S46-1",
+          "statement": "The breakpoint indicator is structurally prominent chrome, not a dropdown; the active key is also persisted in session UI state.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S46-2",
+          "statement": "Every overridden property shows a dot with one-click reset to inherited, and the panel lists every breakpoint-specific value for the selected node.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S46-3",
+          "statement": "Override accumulation escalates at the recorded starting thresholds and the counts land in the gate report; the thresholds are read from the project record, not hardcoded.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ2"
+      ],
+      "evidence_refs": [
+        "EL-063"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S46-override-cascade-and-precommit-chip.md"
+    },
+    {
+      "id": "S47-reading-order-and-stack-preview",
+      "epic": "E9",
+      "story": "ST-15",
+      "title": "Reading-order invariant, focusable-node hard block and numbered mobile stack preview",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Guarantee document order is reading order, and make any mobile reordering visible before it is committed.",
+      "depends_on": [
+        "S46-override-cascade-and-precommit-chip"
+      ],
+      "fr_ids": [
+        "FR-114",
+        "FR-115"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S47-1",
+          "statement": "Visual order is achieved only by grid placement; a test proves no editor path reorders the document tree to achieve a visual effect.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S47-2",
+          "statement": "An order override on a focusable node is refused outright with an explanation; on a non-focusable node it warns and raises a persistent chip.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S47-3",
+          "statement": "Any commit that changes mobile stacking first renders a numbered list preview of the resulting top-to-bottom sequence.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11",
+        "CQ2"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S47-reading-order-and-stack-preview.md"
+    },
+    {
+      "id": "S48-free-position-anchored-offset",
+      "epic": "E9",
+      "story": "ST-15",
+      "title": "Free-position escape hatch: anchored offset, authored flow fallback, demotion and lock gate",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Ship the escape hatch narrowly: parent or grid-cell anchors only, with reserved space, an authored fallback, a visible counter and a hard lock gate.",
+      "depends_on": [
+        "S46-override-cascade-and-precommit-chip"
+      ],
+      "fr_ids": [
+        "FR-116",
+        "FR-117"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A43",
+          "statement": "Auto-demotion fires at the recorded demotion width; note NA-06 - the demotion trigger and the small media-query boundary are NOT the same number, and the criterion text must be read against the project record value.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A44",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A45",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A48",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S48-1",
+          "statement": "Anchors are restricted to parent or grid line/cell; sibling anchoring is absent from the schema, not merely hidden in the UI (the compile strategy behind it is unprototyped).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S48-2",
+          "statement": "Every free-position drop writes an authored flow fallback that is independently editable in the navigator, and drops z-stacking at the small key unless the fallback carries an explicit z.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S48-3",
+          "statement": "The per-section cap is enforced with a visible counter, and the locked export contains no runtime positioning script.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ2",
+        "CQ4"
+      ],
+      "evidence_refs": [
+        "EL-072"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S48-free-position-anchored-offset.md"
+    },
+    {
+      "id": "S49-canvas-tail-zoom-rulers-multiselect",
+      "epic": "E9",
+      "story": "ST-16",
+      "title": "Canvas tail: zoom/pan, rulers, guides, marquee multi-select, align and distribute",
+      "type": "build",
+      "moscow": "COULD",
+      "size_class": "L",
+      "objective": "Deliver the tail of the canvas if budget allows, knowing it is the first scope traded back out.",
+      "depends_on": [
+        "S44-span-resize-and-spacing-handles",
+        "S45-keyboard-parity-and-target-size"
+      ],
+      "fr_ids": [
+        "FR-119",
+        "FR-121"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A47",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S49-1",
+          "statement": "Zoom spans the documented range with tolerance divided by zoom and space-drag panning; guides are stored as fractions, not pixels.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S49-2",
+          "statement": "Section archetypes ship as template areas per direction, and dragging a block off its area promotes THAT BLOCK ONLY to explicit integer placement on the same grid.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S49-3",
+          "statement": "This slice is explicitly first in the trade-back-out order; if it is dropped, the drop is recorded rather than silently omitted.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ4"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S49-canvas-tail-zoom-rulers-multiselect.md"
+    },
+    {
+      "id": "S50-demo-3-d2-exercised",
+      "epic": "E9",
+      "story": "ST-16",
+      "title": "DEMO 3 - gridlines, constraint drag, per-breakpoint overrides and the free-position hatch",
+      "type": "demo",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Exercise the settled constraint-layout decision for the first time and either survive or diagnose the friction risk it carries.",
+      "depends_on": [
+        "S43-drag-to-place-and-drop-algorithm",
+        "S44-span-resize-and-spacing-handles",
+        "S45-keyboard-parity-and-target-size",
+        "S46-override-cascade-and-precommit-chip",
+        "S47-reading-order-and-stack-preview",
+        "S48-free-position-anchored-offset"
+      ],
+      "fr_ids": [],
+      "acceptance_criteria": [
+        {
+          "id": "A39",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A40",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A41",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A42",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A43",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S50-1",
+          "statement": "The recorded session includes the friction test: move a hero headline up by one spacing step using each of the three verbs and the keyboard path, and record whether the tool fought the user.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S50-2",
+          "statement": "Elapsed effort for the three placement sub-slices is recorded, because it is the only path from inference to a defensible schedule number (NA-B10).",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": "Demo 3",
+      "cqs": [
+        "CQ2",
+        "CQ4"
+      ],
+      "evidence_refs": [
+        "EL-065"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S50-demo-3-d2-exercised.md"
+    },
+    {
+      "id": "S51-slot-contracts-and-swap-safety",
+      "epic": "E10",
+      "story": "ST-17",
+      "title": "Typed slot contracts, superset-only swaps, content orphanage and lock-blocking placeholders",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Make a variant swap incapable of destroying hand-written copy and incapable of shipping an unfilled placeholder.",
+      "depends_on": [
+        "S31-typed-ops-autosave-history-undo",
+        "S25-pure-renderer-and-resolution-policy"
+      ],
+      "fr_ids": [
+        "FR-138",
+        "FR-139",
+        "FR-140",
+        "FR-141",
+        "FR-142"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A29",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A30",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A38",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S51-1",
+          "statement": "The bar offers only superset-or-exact contract matches and states the slot delta in words before the swap is applied.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S51-2",
+          "statement": "Cross-direction swaps are absent from v1 by construction; the coherence-debt ledger exists but has no cross-direction producer.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ14"
+      ],
+      "evidence_refs": [
+        "EL-037"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S51-slot-contracts-and-swap-safety.md"
+    },
+    {
+      "id": "S52-variant-axis-schema",
+      "epic": "E10",
+      "story": "ST-17",
+      "title": "Hand-authored variant-axis schema",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Define structural distinctness machine-checkably, per component, so the variant budget stays finite.",
+      "depends_on": [
+        "S21-token-compiler-dtcg-and-forge"
+      ],
+      "fr_ids": [
+        "FR-130",
+        "FR-131",
+        "FR-132"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S52-1",
+          "statement": "Every component in the v1 set declares an axis vector; a selftest asserts full coverage of the v1 target of 88 rows (NA-B08).",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S52-2",
+          "statement": "Computed axes (size, theme, density, state, icon slot, semantic colour) are excluded from the variant budget by construction, and a test proves two variants differing only on a computed axis are treated as the same variant.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ14"
+      ],
+      "evidence_refs": [
+        "EL-037"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S52-variant-axis-schema.md"
+    },
+    {
+      "id": "S53-deterministic-lazy-variant-generator",
+      "epic": "E10",
+      "story": "ST-17",
+      "title": "Deterministic, lazy, append-only variant generator with the indistinguishability rule",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Generate variants from tokens with no model call, only on first panel open, and never offer two the eye cannot tell apart.",
+      "depends_on": [
+        "S52-variant-axis-schema",
+        "S51-slot-contracts-and-swap-safety"
+      ],
+      "fr_ids": [
+        "FR-133",
+        "FR-135",
+        "FR-136",
+        "FR-137"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A33",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A34",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S53-1",
+          "statement": "The generator is a pure function of the direction's tokens and the axis schema; a grep proves no model call and no subagent write exists on this path.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S53-2",
+          "statement": "Variants are generated on first open of a family panel only, cached per direction, and never generated for unused families; an instrumentation counter proves it.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S53-3",
+          "statement": "Indices are append-only and collision-free across repeated generation rounds.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ14"
+      ],
+      "evidence_refs": [
+        "EL-037"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S53-deterministic-lazy-variant-generator.md"
+    },
+    {
+      "id": "S54-art-motion-container-contract",
+      "epic": "E11",
+      "story": "ST-18",
+      "title": "One container contract for art and motion, with the pause affordance field",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Implement the container contract and its seven rules so unpausable or unreduced motion is structurally unbuildable.",
+      "depends_on": [
+        "S21-token-compiler-dtcg-and-forge",
+        "S25-pure-renderer-and-resolution-policy"
+      ],
+      "fr_ids": [
+        "FR-160",
+        "FR-161",
+        "FR-162",
+        "FR-163",
+        "FR-164",
+        "FR-165",
+        "FR-166",
+        "FR-167",
+        "FR-168",
+        "FR-169",
+        "FR-170"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A22",
+          "verification_method": "screenshot-diff"
+        },
+        {
+          "id": "SL-S54-1",
+          "statement": "Validation fails a motion-capable container with no reduced-motion sibling reference, and fails an autoplay video container that is not muted.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S54-2",
+          "statement": "Animation inside a container can only touch transform, opacity and filter; a test proves a rule touching grid placement, width or height is rejected.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S54-3",
+          "statement": "The pause affordance field exists on the contract and a container that needs one and lacks it cannot be constructed.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S54-4",
+          "statement": "Motion is disabled in edit mode and judged in preview mode; the limitation is stated in the UI rather than worked around (R14 has no known mitigation).",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ12"
+      ],
+      "evidence_refs": [
+        "EL-044",
+        "EL-062",
+        "EL-064"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S54-art-motion-container-contract.md"
+    },
+    {
+      "id": "S55-lane-a-code-drawn-artwork",
+      "epic": "E11",
+      "story": "ST-18",
+      "title": "Lane A - code-drawn, token-parameterised artwork that re-skins with the direction",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Deliver the artwork lane that is actually available from the generation channel, and make it move with the hue anchors.",
+      "depends_on": [
+        "S54-art-motion-container-contract"
+      ],
+      "fr_ids": [
+        "FR-150",
+        "FR-155"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A20",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A21",
+          "verification_method": "screenshot-diff"
+        },
+        {
+          "id": "A23",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S55-lane-a-code-drawn-artwork.md"
+    },
+    {
+      "id": "S56-lane-b-asset-library-and-chips",
+      "epic": "E11",
+      "story": "ST-18",
+      "title": "Lane B ingestion, asset manifest, affinity filter chips, Lane C runbook and the honest warning",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Ingest a real asset library with licence classes and affinity tags, and tell the user the truth at interview time when there is none.",
+      "depends_on": [
+        "S54-art-motion-container-contract",
+        "S10-warm-start-and-asset-library-detection"
+      ],
+      "fr_ids": [
+        "FR-151",
+        "FR-152",
+        "FR-153",
+        "FR-154"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S56-1",
+          "statement": "Every ingested asset lands in the manifest with a licence class, a direction-affinity tag set and a file hash; an asset without a licence class fails ingestion.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S56-2",
+          "statement": "The asset pane filters by direction affinity with chips; presenting twenty artworks without chips is treated as a defect.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S56-3",
+          "statement": "The external-raster runbook exists as a document and its output ingests through the same manifest path; no external generation is invoked by the skill in v1.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S56-4",
+          "statement": "A project with no asset library receives an explicit warning at interview time, before a design system the pipeline cannot fully deliver is generated.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ10"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S56-lane-b-asset-library-and-chips.md"
+    },
+    {
+      "id": "S57-more-variants-and-more-like-this",
+      "epic": "E12",
+      "story": "ST-19",
+      "title": "More variants and more like this",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Give the two cheapest regeneration gears: extend the set, or explore the neighbourhood of something already approved.",
+      "depends_on": [
+        "S53-deterministic-lazy-variant-generator"
+      ],
+      "fr_ids": [
+        "FR-134"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S57-1",
+          "statement": "More variants appends the next N from the current highest index with no collisions; more like this appends exactly five deterministic neighbours of the approved variant.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S57-2",
+          "statement": "Both paths respect the indistinguishability rule against everything already offered in the same bar.",
+          "verification_method": "recompute"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ14"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S57-more-variants-and-more-like-this.md"
+    },
+    {
+      "id": "S58-section-notes-scoped-regeneration",
+      "epic": "E12",
+      "story": "ST-19",
+      "title": "Per-section notes driving scoped inline regeneration as one undo step",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Ship the middle gear between swapping one variant and regenerating everything, executed inline with no second hand-carry.",
+      "depends_on": [
+        "S57-more-variants-and-more-like-this",
+        "S20-local-regeneration-mode",
+        "S31-typed-ops-autosave-history-undo"
+      ],
+      "fr_ids": [
+        "FR-180"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A32",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S58-1",
+          "statement": "A note attached to a section regenerates that section only; a document diff proves no other section changed.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S58-2",
+          "statement": "The regeneration runs inline through the local path, never a second hand-carry, and every run appends to the regeneration log.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S58-3",
+          "statement": "Section notes are stripped from published output at LOCK.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ15"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S58-section-notes-scoped-regeneration.md"
+    },
+    {
+      "id": "S59-redesign-fork-and-migration",
+      "epic": "E12",
+      "story": "ST-19",
+      "title": "Redesign as a fork, reviewed application, and the migration report",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Make a new direction a reviewed operation that never silently substitutes and never silently drops a node.",
+      "depends_on": [
+        "S25-pure-renderer-and-resolution-policy",
+        "S58-section-notes-scoped-regeneration"
+      ],
+      "fr_ids": [
+        "FR-181",
+        "FR-182",
+        "FR-183",
+        "FR-184"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "section 12.17-A99",
+          "statement": "After importing a new direction every affected node carries a migration flag, the editor lists them, LOCK is refused until they are acknowledged, and the migration report names every changed reference.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S59-1",
+          "statement": "Migration snapshots the documents before touching anything, shows a plan with counts before applying, and applies through the same typed-op path so every change is individually undoable.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S59-2",
+          "statement": "Unmappable nodes are listed explicitly for human resolution; a test proves no node is dropped silently.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S59-3",
+          "statement": "Variant matching is canonical fallback only in v1; semantic slot-signature matching is absent (NA-B04).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S59-4",
+          "statement": "Redesign forks via save-as-variation and does not replace in place.",
+          "verification_method": "hash-compare"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ16",
+        "CQ15"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S59-redesign-fork-and-migration.md"
+    },
+    {
+      "id": "S60-registry-table-embed-form",
+      "epic": "E13",
+      "story": "ST-20",
+      "title": "Whitelisted registry components: table, embed and form",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Ship the narrow custom-component registry against the direction's tokens, with a real placement path.",
+      "depends_on": [
+        "S51-slot-contracts-and-swap-safety",
+        "S23-versioned-coherence-lint-set"
+      ],
+      "fr_ids": [
+        "FR-190",
+        "FR-191",
+        "FR-194"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S60-1",
+          "statement": "Only the four whitelisted kinds can be inserted; anything else is refused with a message naming the v1 scope.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S60-2",
+          "statement": "Each kind has a working insertion path in the editor, because shipping a capability with no insertion path silently cuts it; this row and the chart-data field carry a sign-off note.",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S60-3",
+          "statement": "The inline-authored path runs the full coherence lint set before acceptance and registers through the custom-slot contract that enforces token usage.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [
+        "EL-084"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S60-registry-table-embed-form.md"
+    },
+    {
+      "id": "S61-build-time-svg-charts",
+      "epic": "E13",
+      "story": "ST-20",
+      "title": "Build-time SVG charts with dataviz sub-tokens and two shipped data states",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make charts read as one system with the site, colourblind-safe in both schemes, and ship no chart runtime.",
+      "depends_on": [
+        "S60-registry-table-embed-form"
+      ],
+      "fr_ids": [
+        "FR-192",
+        "FR-193"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S61-1",
+          "statement": "Charts are emitted as build-time SVG with at most four mark types; a grep proves no chart runtime ships in the published tree.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S61-2",
+          "statement": "Colour ramps are derived from the direction's colour anchors and validated colourblind-safe in both light and dark schemes.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S61-3",
+          "statement": "Only the empty and single-data-point states ship; loading and error states exist as editor-only previews labelled as not shown to visitors.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S61-4",
+          "statement": "The chrome kit treatments are applied consistently across all mark types, which is what makes a site's charts read as one system.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S61-build-time-svg-charts.md"
+    },
+    {
+      "id": "S62-inline-authored-path-and-coherence-debt",
+      "epic": "E13",
+      "story": "ST-20",
+      "title": "Inline-authored components, coherence debt, the signature-moment rule and third-party marks",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Allow bespoke work through one audited door, record what it costs in coherence, and never redraw a third-party mark.",
+      "depends_on": [
+        "S23-versioned-coherence-lint-set",
+        "S60-registry-table-embed-form"
+      ],
+      "fr_ids": [
+        "FR-195",
+        "FR-196",
+        "FR-197"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A75",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S62-1",
+          "statement": "The opaque custom-code-block container is absent from v1 by construction and is recorded as the v2 home of the quality ceiling.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S62-2",
+          "statement": "The signature moment is 2-3 bespoke concept candidates per direction, and a lint flags a second signature moment.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S62-3",
+          "statement": "Accepted off-system values are written to the coherence-debt ledger with a reason.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [
+        "EL-084"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S62-inline-authored-path-and-coherence-debt.md"
+    },
+    {
+      "id": "S63-gates-ts-verdicts-and-tiers",
+      "epic": "E17",
+      "story": "ST-21",
+      "title": "Structured gate verdicts and the four severity tiers",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Give every gate one shape - measured value, threshold, verdict, evidence reference - and never throw on a normal fail.",
+      "depends_on": [
+        "S23-versioned-coherence-lint-set",
+        "S25-pure-renderer-and-resolution-policy"
+      ],
+      "fr_ids": [
+        "FR-230",
+        "FR-233",
+        "FR-237"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S63-1",
+          "statement": "Every gate returns a structured verdict; a forced failure returns a verdict rather than an exception, and an inconclusive verdict blocks exactly like a fail.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S63-2",
+          "statement": "Tier semantics are enforced in code: tier zero blocks the individual edit, tier one blocks LOCK only, tier two is advisory and batched into the health pill, tier three is silent.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S63-3",
+          "statement": "Repeated violations collapse into one counted badge rather than a stream.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11"
+      ],
+      "evidence_refs": [
+        "EL-061"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S63-gates-ts-verdicts-and-tiers.md"
+    },
+    {
+      "id": "S64-live-checks-scoped",
+      "epic": "E17",
+      "story": "ST-21",
+      "title": "Live checks: scoped, sub-100ms, drop and mouseup only",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Run the live half of the gate suite without ever fighting the drag, including the running motion-concurrency counter.",
+      "depends_on": [
+        "S63-gates-ts-verdicts-and-tiers",
+        "S43-drag-to-place-and-drop-algorithm"
+      ],
+      "fr_ids": [
+        "FR-231",
+        "FR-234"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A27",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S64-1",
+          "statement": "Live checks fire on drop and mouseup only; an instrumentation trace proves zero checks run mid-drag or per frame, and the scoped run stays under the latency budget on the reference fixture.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S64-2",
+          "statement": "Contrast is recomputed for every touched pair in both the standing ratio and the advisory perceptual measure; the standing ratio is the gate.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S64-3",
+          "statement": "The motion-concurrency counter accumulates visibly turn by turn rather than surfacing at LOCK; the anti-slop lint appears here only as a dismissible advisory, never as a block.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11",
+        "CQ12"
+      ],
+      "evidence_refs": [
+        "EL-005",
+        "EL-064"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S64-live-checks-scoped.md"
+    },
+    {
+      "id": "S65-capture-wrapper-and-device-pinning",
+      "epic": "E17",
+      "story": "ST-21",
+      "title": "Capture wrapper with the inherited wait recipe and device-height pinning",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Produce captures that are valid evidence, especially for viewport-height layouts, with zero npm dependencies.",
+      "depends_on": [
+        "S63-gates-ts-verdicts-and-tiers"
+      ],
+      "fr_ids": [
+        "FR-235",
+        "FR-236"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S65-1",
+          "statement": "Capture uses the browser command line with no package dependency and asserts a non-empty output file.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S65-2",
+          "statement": "The wait recipe is implemented in TypeScript: navigate rather than set content, network idle with a load fallback, strip lazy-loading attributes, fonts-ready plus per-image decode, and a deferred-style settle.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S65-3",
+          "statement": "Any capture judging a viewport-height layout pins both the window and the preview frame to a real device size and asserts the measured frame height; full-page tall captures are labelled content-review-only.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "SL-S65-4",
+          "statement": "Fonts-ready is awaited before any bounding-rect measurement in both the editor and the capture path.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ17"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S65-capture-wrapper-and-device-pinning.md"
+    },
+    {
+      "id": "S66-lock-render-scrub-and-absence-mechanisms",
+      "epic": "E14",
+      "story": "ST-22",
+      "title": "LOCK as a re-render, with five layered editor-absence mechanisms",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Build the published tree by re-rendering with the editor flag false, never by copying and stripping.",
+      "depends_on": [
+        "S27-determinism-contract",
+        "S63-gates-ts-verdicts-and-tiers"
+      ],
+      "fr_ids": [
+        "FR-200",
+        "FR-201",
+        "FR-206"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A49",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A50",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S66-1",
+          "statement": "All five absence mechanisms exist: separate configs, commands and output directories; dev-only injection gated on the build command; toolbar-class chrome that cannot leak; the design flag explicitly defined false in the publish config; and a post-build scrub that then asserts.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S66-2",
+          "statement": "LOCK strips the recovery bin, freeze flags, section notes and asset-pane state from published output while the asset manifest stays in the project and in the evidence bundle.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S66-lock-render-scrub-and-absence-mechanisms.md"
+    },
+    {
+      "id": "S67-eight-purity-gates",
+      "epic": "E14",
+      "story": "ST-22",
+      "title": "The eight purity gates, with isolated two-build comparison",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Prove the published tree is clean rather than claim it, and run the two-build comparison without touching the live dependency tree.",
+      "depends_on": [
+        "S66-lock-render-scrub-and-absence-mechanisms",
+        "S05-byte-reproducibility-spike",
+        "S65-capture-wrapper-and-device-pinning"
+      ],
+      "fr_ids": [
+        "FR-202",
+        "FR-203"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A51",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "A52",
+          "verification_method": "screenshot-diff"
+        },
+        {
+          "id": "A53",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "A57",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "section 12.17-A93",
+          "statement": "A grep for design-time origins across the published tree returns zero matches, including inside srcset, inline style, stylesheet url() and structured data.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "section 12.17-A94",
+          "statement": "Gate two runs from a clean worktree with its own dependency tree; the live manifest, lockfile and dependencies are unmodified afterwards and a concurrently running design server is unaffected.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S67-1",
+          "statement": "There are eight gates, not five (NA-03); gate six fails with the node list rather than a count; gate eight re-serialises every document and requires a zero diff.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S67-2",
+          "statement": "Gate two above the escalation budget demotes to CI-only with a recorded waiver in the gate report, never a silent skip.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [
+        "EL-022",
+        "EL-088",
+        "EL-085"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S67-eight-purity-gates.md"
+    },
+    {
+      "id": "S68-lock-time-checklist-32-checks",
+      "epic": "E14",
+      "story": "ST-23",
+      "title": "The 32-check ordered lock-time checklist",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "L",
+      "objective": "Run all 32 checks cheapest-and-most-foundational first, including the four lettered insertions and their build prerequisites.",
+      "depends_on": [
+        "S67-eight-purity-gates",
+        "S64-live-checks-scoped"
+      ],
+      "fr_ids": [
+        "FR-204"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A60",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A61",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A62",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A63",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A64",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A65",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A66",
+          "statement": "Recorded as inconsistent with the canonical performance threshold (NA-16): it omits the interaction metric. The gate implements the canonical statement and the criterion text is flagged for amendment.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A67",
+          "statement": "Recorded as inconsistent with the canonical pre-load transfer range (NA-16). The gate implements the canonical range.",
+          "verification_method": "recompute"
+        },
+        {
+          "id": "A68",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A69",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A70",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A71",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "SL-S68-1",
+          "statement": "The checklist contains 32 checks including motion-concurrency caps, skip-link presence and first tab order, the pause affordance, and asset-reference resolution (NA-04).",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S68-2",
+          "statement": "Licence completeness and reference resolution are two separate gates; a hallucinated asset path fails the second even though it passes the first.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ11",
+        "CQ10"
+      ],
+      "evidence_refs": [
+        "EL-061",
+        "EL-005"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S68-lock-time-checklist-32-checks.md"
+    },
+    {
+      "id": "S69-lock-snapshots-manifest-and-unlock",
+      "epic": "E14",
+      "story": "ST-23",
+      "title": "Snapshots, lock manifest, git tag, non-mutating LOCK and the unlock path",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make LOCK reversible and hand-edits inside the exported tree detectable rather than silently overwritten.",
+      "depends_on": [
+        "S67-eight-purity-gates"
+      ],
+      "fr_ids": [
+        "FR-205",
+        "FR-207",
+        "FR-208",
+        "FR-209"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A54",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "A55",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A56",
+          "statement": "Amended to restore the system lock and content alongside the documents.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A58",
+          "verification_method": "manual-observation"
+        },
+        {
+          "id": "A59",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S69-1",
+          "statement": "The snapshot contains every document, the project record, content, the system lock, the asset manifest, the distribution hash manifest, the scrub output, the lock manifest and the gate report; the built tree is excluded because it is reproducible.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S69-2",
+          "statement": "Restoring an older lock stops and prints the migrate command when library files no longer hash-match the restored system lock, rather than opening a half-resolved project.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S69-lock-snapshots-manifest-and-unlock.md"
+    },
+    {
+      "id": "S70-publish-automated-with-runbook-fallback",
+      "epic": "E15",
+      "story": "ST-24",
+      "title": "Automated publish with an honest runbook fallback",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Commit automated deploy as the v1 behaviour and record plainly when the fallback means the site is locked but not published.",
+      "depends_on": [
+        "S69-lock-snapshots-manifest-and-unlock"
+      ],
+      "fr_ids": [
+        "FR-210",
+        "FR-211"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S70-1",
+          "statement": "After a one-time credential setup, lock-and-publish runs the static deploy non-interactively and records the publish path used.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S70-2",
+          "statement": "With no valid credential, the run emits a runbook and records that the site is locked but NOT published; the fallback does not satisfy the locked-and-published exit criterion (NA-09).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S70-3",
+          "statement": "This commitment carries an unsigned sign-off row and the slice records that fact rather than assuming approval.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [
+        "EL-059"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S70-publish-automated-with-runbook-fallback.md"
+    },
+    {
+      "id": "S71-licence-and-evidence-bundle",
+      "epic": "E15",
+      "story": "ST-24",
+      "title": "The licence-and-evidence bundle with fixed disclosure wording",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make the bundle the deliverable: every licence, every measured gate value, the direction tour, and a claim ceiling that is never exceeded.",
+      "depends_on": [
+        "S69-lock-snapshots-manifest-and-unlock",
+        "S56-lane-b-asset-library-and-chips"
+      ],
+      "fr_ids": [
+        "FR-212",
+        "FR-213",
+        "FR-214",
+        "FR-215",
+        "FR-216"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A72",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A73",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A74",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S71-1",
+          "statement": "A grep over the bundle and all product copy returns zero conformance claims (compliant, conformant, certified).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S71-2",
+          "statement": "The direction tour is rendered from the tour log including every heat's pick and stated reason, and the reference triangulation records at least three abstracted references per direction with a regeneration trigger above the overlap threshold.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S71-3",
+          "statement": "A one-line verdict is mirrored into the framework evidence directory.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ10",
+        "CQ11"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S71-licence-and-evidence-bundle.md"
+    },
+    {
+      "id": "S72-demo-4-locked-published-evidence",
+      "epic": "E15",
+      "story": "ST-24",
+      "title": "DEMO 4 - locked, published, evidence-complete",
+      "type": "demo",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Demonstrate the full exit condition: a locked site with proof of purity, published, with a complete bundle.",
+      "depends_on": [
+        "S70-publish-automated-with-runbook-fallback",
+        "S71-licence-and-evidence-bundle"
+      ],
+      "fr_ids": [],
+      "acceptance_criteria": [
+        {
+          "id": "A51",
+          "statement": "Or the signed-off normalised-comparison fallback, recorded as weakening the export proof.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "A72",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A73",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S72-1",
+          "statement": "One recorded run produces a locked tree passing all eight purity gates and all tier-one lock checks, a publish record, and a bundle with zero missing licence classes.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": "Demo 4",
+      "cqs": [
+        "CQ9",
+        "CQ10"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S72-demo-4-locked-published-evidence.md"
+    },
+    {
+      "id": "S73-resume-from-disk-and-reattach",
+      "epic": "E18",
+      "story": "ST-25",
+      "title": "Resume from disk and re-attach rather than relaunch",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Reconstruct the pipeline phase from on-disk state alone and survive a context reset without restarting a live server.",
+      "depends_on": [
+        "S09-install-config-session-selftest",
+        "S37-eight-control-security-posture"
+      ],
+      "fr_ids": [
+        "FR-240",
+        "FR-241"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A13",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S73-1",
+          "statement": "The resume path reads the frontier from populated directories and passed gates; a test proves no branch depends on conversation memory.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S73-2",
+          "statement": "After a context clear, the resume text instructs re-attaching to the fixed port through the server state file and never instructs a relaunch.",
+          "verification_method": "grep-assert"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ6"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S73-resume-from-disk-and-reattach.md"
+    },
+    {
+      "id": "S74-verify-and-doctor",
+      "epic": "E18",
+      "story": "ST-25",
+      "title": "verify and doctor",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Ship the two diagnostics that keep the drift guarantee real and name month-six rot before it is fatal.",
+      "depends_on": [
+        "S27-determinism-contract",
+        "S69-lock-snapshots-manifest-and-unlock"
+      ],
+      "fr_ids": [
+        "FR-242"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A53",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S74-1",
+          "statement": "verify regenerates to a temporary directory, diffs text files, hash-compares binaries separately and re-serialises every document to canonical form.",
+          "verification_method": "hash-compare"
+        },
+        {
+          "id": "SL-S74-2",
+          "statement": "doctor reports hash mismatches, orphaned overrides and stale locks, and escalates override accumulation at the thresholds read from the project record.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S74-3",
+          "statement": "A false-positive verify is treated as a defect of the highest severity, because a verify users learn to ignore removes the guarantee while appearing to keep it.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ9"
+      ],
+      "evidence_refs": [
+        "EL-063"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S74-verify-and-doctor.md"
+    },
+    {
+      "id": "S75-gotchas-provenance-and-banners",
+      "epic": "E18",
+      "story": "ST-25",
+      "title": "Gotchas reference, provenance and do-not-hand-edit banners",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Write down the harness facts that cost time, and make generated files say what to edit instead.",
+      "depends_on": [
+        "S09-install-config-session-selftest"
+      ],
+      "fr_ids": [
+        "FR-243",
+        "FR-244",
+        "FR-245"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S75-1",
+          "statement": "The gotchas reference carries every harness fact: cwd resets between shell calls, the missing timeout binary yielding empty output rather than an error, explicit browser invocation for previews, case-insensitive sibling directory names, and destructive-command scoring.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S75-2",
+          "statement": "The generation RESULT is persisted as the artifact of record and the prompt is stored for provenance only; a grep proves no code path re-derives a system from a stored prompt.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S75-3",
+          "statement": "Durable artifacts live outside the framework state directory that session cleanup touches.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ6"
+      ],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S75-gotchas-provenance-and-banners.md"
+    },
+    {
+      "id": "S76-acceptance-criteria-sweep",
+      "epic": "E19",
+      "story": "ST-26",
+      "title": "Acceptance-criteria sweep with the collision handled",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Map all 90 criteria to a gate, a script or an observable behaviour, and cite the unstable ones section-qualified.",
+      "depends_on": [
+        "S68-lock-time-checklist-32-checks",
+        "S72-demo-4-locked-published-evidence"
+      ],
+      "fr_ids": [
+        "FR-250"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S76-1",
+          "statement": "All 90 criteria are mapped with a named verification method, and the mapping is machine-checkable against this stories file.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S76-2",
+          "statement": "Criteria above ninety are cited section-qualified because two disjoint sets share the same numbers; the renumbering recommendation is recorded (NA-B05, NA-19).",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S76-3",
+          "statement": "The three criteria recorded as inconsistent with their own canonical statements (the answered-question cap and the two performance rows) are reported as amendments owed, not silently satisfied.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [
+        "CQ1"
+      ],
+      "evidence_refs": [
+        "EL-069",
+        "EL-070"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S76-acceptance-criteria-sweep.md"
+    },
+    {
+      "id": "S77-selftest-and-evidence-bundles",
+      "epic": "E19",
+      "story": "ST-26",
+      "title": "Selftest at full assertion pass and per-slice evidence bundles",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "M",
+      "objective": "Make the release claim testable and make every slice's evidence reproducible from disk.",
+      "depends_on": [
+        "S09-install-config-session-selftest",
+        "S76-acceptance-criteria-sweep"
+      ],
+      "fr_ids": [
+        "FR-251"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "A85",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "A84",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A86",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A87",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A88",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "A89",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S77-1",
+          "statement": "Every slice's evidence bundle exists under the framework evidence path with all seven sections present.",
+          "verification_method": "exit-code"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [],
+      "blocking": false,
+      "task_file": "tasks/S77-selftest-and-evidence-bundles.md"
+    },
+    {
+      "id": "S78-agent-metrics-and-learning-capture",
+      "epic": "E19",
+      "story": "ST-26",
+      "title": "Agent-metrics scaffolding and the learning-capture loop",
+      "type": "build",
+      "moscow": "MUST",
+      "size_class": "S",
+      "objective": "Define the performance formulas and their logging locations, and lift the run's learnings into the estate.",
+      "depends_on": [
+        "S77-selftest-and-evidence-bundles"
+      ],
+      "fr_ids": [
+        "FR-252",
+        "FR-253"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "SL-S78-1",
+          "statement": "The metrics document defines story points delivered, quality-adjusted productivity, token efficiency ratio and the universal score, names each input's source, and computes nothing.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S78-2",
+          "statement": "Instrumentation points at the existing agent-completions log plus per-slice evidence bundles.",
+          "verification_method": "grep-assert"
+        },
+        {
+          "id": "SL-S78-3",
+          "statement": "Every slice in this feature has non-empty Dev Learnings and QA Learnings; a slice with empty learnings is reported as not Done.",
+          "verification_method": "exit-code"
+        },
+        {
+          "id": "SL-S78-4",
+          "statement": "The three named learning obligations are captured: the passing launcher rung, the measured canvas sub-slice effort, and every source contradiction found by reading two sections against each other.",
+          "verification_method": "manual-observation"
+        }
+      ],
+      "demo": null,
+      "cqs": [],
+      "evidence_refs": [
+        "EL-065"
+      ],
+      "blocking": false,
+      "task_file": "tasks/S78-agent-metrics-and-learning-capture.md"
+    }
+  ]
+}

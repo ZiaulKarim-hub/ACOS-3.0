@@ -1,0 +1,90 @@
+slice_id: "SLICE-IC-E1-legal-reuse-compliance-conflicts"
+story_id: "STORY-E1"
+epic_id: "EPIC-E"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Legal-analyst reuse + compliance companion + conflicts-disclosure"
+objective: |
+  Wire the Legal & Structural seat to reuse legal-analyst via /acos-legal-analysis --mode
+  lending, re-project red-flags.yaml into IC voting format, run the compliance companion for
+  legal-analyst's four gaps, and emit the per-run conflicts-disclosure.yaml.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/legal_seat.py dispatches legal-analyst via /acos-legal-analysis --mode lending"
+  - "[ ] legal_seat.py parses findings-manifest.yaml + red-flags.yaml and maps each red flag to an Objection (+ Axis S + deal-breaker-vs-curable classification per spec Appendix D)"
+  - "[ ] every legal Objection traces back to a real red-flags.yaml entry (no parallel/invented legal framework)"
+  - "[ ] the compliance companion runs the four gap checks: lender-side usury/licensing per-deal jurisdiction (+ Utah CFR), AML/KYC/OFAC/beneficial-ownership, structured foreclosure fields (foreclosure_type/timeline_days/deficiency_available), and the ASTM E1527-21 Phase I currency gate"
+  - "[ ] the Phase I currency gate flags a pre-2024-02-13 / E1527-13 report"
+  - "[ ] OKOA governance unknowns (e.g. Advisers Act / SPE-threshold rules) are Assumption-marked, never hardcoded"
+  - "[ ] scripts/conflicts_disclosure.py emits conflicts-disclosure.yaml per run, listing each seat's disclosure + process attestations + reduced-independence flag"
+  - "[ ] evidence bundle includes the legal delegation transcript, the four-gap checks, and the conflicts artifact"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-A2-expert-agent-defs"
+      what_it_provides: "TODO: confirm -- the Legal & Structural seat definition this slice wires legal-analyst reuse into (not an explicit READ-ONLY reference in the task file; inferred from the \"wire the Legal & Structural seat\" objective wording)"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/legal_seat.py"
+  - ".claude/skills/acos-investment-committee/scripts/conflicts_disclosure.py"
+
+files_prohibited:
+  - "context note: rebuilding legal logic legal-analyst already covers is forbidden (re-derivation is a defect); non-legal seats are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "document-synthesis"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: legal-analyst agent + /acos-legal-analysis outputs, spec Appendix D/E, domain-lattice proc-legal-delegation + engine-legal-analyst + conflicts-disclosure + std-astm-e1527 + std-utah-cfr + std-sec-2026"
+  - "Assumption note from task file: do NOT hardcode Advisers Act / SPE-threshold rules; surface OKOA governance unknowns as gaps"
+  - "REUSE, don't rebuild -- re-derivation of legal-analyst's framework is a defect; subscription-only via Task()/skill dispatch; do not confabulate OKOA registration status"
+
+# Technical requirements
+technical_requirements:
+  - "red-flag re-projection must be 1:1 traceable to legal-analyst's own red-flags.yaml output"
+  - "per-deal jurisdiction usury/licensing footprint is Assumption-marked, not hardcoded"
+
+# Testing requirements
+testing_requirements:
+  - "QA confirms every legal Objection maps to a real red-flags.yaml entry (no invented legal framework -- recomputes the mapping)"
+  - "QA confirms all four compliance gaps produce a check and the Phase I gate rejects a stale/E1527-13 report"
+  - "QA confirms OKOA governance unknowns are Assumption-marked, NOT hardcoded as rules"
+  - "QA confirms conflicts-disclosure.yaml exists and lists each seat's disclosure"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on re-derivation of legal-analyst's
+  framework, hardcoded governance rules, or a missing conflicts record; the red-flag mapping must
+  be recomputed by QA, not trusted from a summary.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-E1-legal-reuse-compliance-conflicts.md
+  by acos-preeng-classic Step 5; architect to review before execution.

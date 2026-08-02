@@ -19,15 +19,26 @@ final section carries the required report structure.
 The report is a projection of the record, not a recollection of the conversation.
 Every statement must trace to something in the bundle. Specifically:
 
+- Cite every material claim BY ITS CLAIM ID, verbatim, next to the statement it
+  supports — e.g. `vendor-scout-003`. The mechanical citation audit recognizes
+  ONLY these verbatim ids: citing by source name, URL, or footnote number counts
+  as zero citations, and a report with zero id citations fails the
+  `citations-resolve` check no matter how well sourced the prose is.
 - Never state a number that is not in the bundle, and never change one that is.
 - Never cite a claim whose `sources` list is empty — drop it instead.
 - Never assert a relationship between two claims unless a source asserts it.
   Two findings sitting near each other in the outline is not evidence they are
   connected. This is the most common way a synthesis goes wrong.
 - Preserve disagreements. Where sources conflict, present both and say what the
-  conflict turns on. Do not resolve it by picking the more convenient one.
+  conflict turns on. Do not resolve it by picking the more convenient one. Where
+  the conflict is a versioned figure, lead with the newer primary-sourced value
+  — corroboration count does not outvote a newer primary — but both values still
+  appear.
 - Carry confidence labels through. `provisional` in the ledger stays provisional
   in the report; your prose may not sound more certain than the record is.
+  `primary-new` claims keep their date: deliver them dated ("per <vendor>'s
+  release notes of <date>; too new for independent corroboration yet") — never
+  hardened into settled fact, and never buried for being single-source.
 - Mark every claim tagged VOLATILE as needing re-verification before reliance.
 - Where a dimension hit its budget cap rather than saturating, say so plainly in
   the coverage section. Those are the thin spots and the reader must know.

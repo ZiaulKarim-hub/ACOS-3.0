@@ -1,0 +1,58 @@
+slice_id: "SLICE-EDEN-04"
+story_id: "ST-004-eden-2"
+epic_id: "EP-004-eden-2"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Re-arm across /clear (SessionStart)"
+objective: |
+  Guarantee the active level survives /clear via a SessionStart (matcher 'clear') re-arm hook
+  (state already on disk; ensure the directive is present immediately post-clear).
+
+acceptance_criteria:
+  - "[ ] After /clear, the very next turn still reflects the active level (directive present)."
+  - "[ ] If off, the re-arm hook is a no-op."
+  - "[ ] Does not collide with eternity's own SessionStart matcher 'clear' hook."
+  - "[ ] Fail-open."
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-03"
+      what_it_provides: "the injector + directive that re-arm relies on"
+      status: "in_progress"
+
+files_allowed:
+  - ".claude/scripts/eden-rearm.sh"
+  - ".claude/settings.local.json"
+
+files_prohibited:
+  - ".claude/scripts/eternity-cmux-resume-inpane.sh"
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Mirrors eternity's cross-/clear arming; state on disk means no model-memory dependency."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-04.md"
+
+technical_requirements:
+  - "SessionStart matcher 'clear'; fail-open."
+
+testing_requirements:
+  - "Set level -> /clear -> confirm next turn shows the directive; confirm no eternity disruption."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "S"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-04. Demo 1. P0. Maps M4.

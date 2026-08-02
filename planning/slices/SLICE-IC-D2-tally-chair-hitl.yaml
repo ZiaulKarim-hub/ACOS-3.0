@@ -1,0 +1,128 @@
+slice_id: "SLICE-IC-D2-tally-chair-hitl"
+story_id: "STORY-D1"
+epic_id: "EPIC-D"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Deterministic tally + Gap-Hunter selection + chair menu + ESC interject + one-to-one"
+objective: |
+  Add the deterministic tally (mechanical-only, plain Python, NEVER an LLM), Gap-Hunter (#10,
+  procedural/no-vote) per-round speaker selection, the Deal Advocate's (#9) participation as
+  deliberation defense (mitigant turns against scrutiny objections, same falsification gate, no
+  vote), the round-boundary chair pause+menu (chair addresses seats BY NUMBER, incl.
+  exclude/include only active-roster commands), an ESC mid-turn interject path, and a
+  one-to-one sidebar toggle -- with the chair's authority procedural, never evidentiary, in
+  both team deliberation and 1:1.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/tally.py is pure Python and answers ONLY mechanical questions (responded? majority/veto? stagnation -- 2 rounds with no new claim?)"
+  - "[ ] tally.py NEVER declares a verdict and NEVER terminates a round/session on \"all agree\" or on stagnation"
+  - "[ ] tally.py hides numeric confidence between agents"
+  - "[ ] every Turn conforms to the stance schema {round, seat, stance in SUPPORT|REBUT|ABSTAIN|CONDITIONAL|FLAG_RISK, argument, addresses_prior_turn_ids, would_change_mind_if}"
+  - "[ ] reversals render a visible UPDATED marker"
+  - "[ ] Gap-Hunter (#10, procedural, no vote) selects each round which seat(s) have something material to add; unselected seats stay silent; Gap-Hunter never selects a seat excluded from the session's active roster"
+  - "[ ] the Deal Advocate (#9) may respond to a scrutiny objection when Gap-Hunter (#10) calls on it, submitting a mitigant claim that passes the SAME falsification gate as an objection (survives -> downgrades that objection's severity; refuted -> discarded); the Advocate hunts no holes, casts no scrutiny vote, and never appears in the tally"
+  - "[ ] the loop pauses after EVERY round and shows the chair menu: Continue / call <n> / challenge <n> <claim> / ask <n[,n]> <q> / vote / premortem / one to one #n / exclude #n[, #n ...] / include only #n[, ...] / end, plus a plain-English fallback"
+  - "[ ] the chair can address seats BY NUMBER against the stable 1-14 roster"
+  - "[ ] `exclude #n[, #n ...]` / `include only #n[, ...]` set the session's ACTIVE roster (manifest.yaml active_seats) at session start OR mid-session; excluded seats are skipped by Gap-Hunter selection and never open; on exclusion, Gap-Hunter (#10) logs what coverage is left unowned that session"
+  - "[ ] ESC interjects at any time mid-turn: the in-flight turn is aborted and discarded (not saved); the tagged seat (or else the last seat that spoke) resumes, marks an UPDATED <- CHAIR marker, folds in the new fact, and re-comments"
+  - "[ ] after an ESC interject, Gap-Hunter re-selects any other seat the new fact now affects; already-spoken seats are re-called only if Gap-Hunter deems the fact material"
+  - "[ ] an ESC interject during the parallel Round 1 opening re-issues the openers, then proceeds to Round 2"
+  - "[ ] \"one to one #n\" sets manifest.mode to one_to_one:n, pauses all other seats, and saves the exchange to sidebars/chair-with-<n>.md"
+  - "[ ] \"team deliberation\" resumes normal mode and injects a sidebar summary (new facts + seat #n's position changes) into transcript.md as a first-class entry visible to all seats; the raw 1:1 chat stays only in the sidebar file"
+  - "[ ] chair authority is procedural, NEVER evidentiary, in team deliberation AND in 1:1 -- a chair statement like \"I like this deal\" does NOT raise any claim's grade in either mode"
+  - "[ ] the loop never terminates on consensus; dissent is preserved through to the memo"
+  - "[ ] evidence bundle includes a tally transcript + a Gap-Hunter selection example + a Deal Advocate mitigant example + an exclude/include roster example + an ESC-interject UPDATED <- CHAIR example + a one-to-one sidebar round-trip example"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-D1-moderator-loop-transcript"
+      what_it_provides: "the round loop + turn/transcript persistence (incl. Round 1 two-line openers, Advocate turn rendering, and the .acos/investment-committee/<session>/ session layout, incl. sidebars/) this slice's tally, Gap-Hunter selection, chair menu, ESC interject, one-to-one, and exclude/include logic hooks into"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/tally.py"
+  - ".claude/skills/acos-investment-committee/SKILL.md"
+
+files_prohibited:
+  - "context note: resume/autopilot (SLICE-D3) and the moderator loop mechanics + Round 1 opener persistence (SLICE-D1) are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "task file notes dual parentage: STORY-D1 (tally) / STORY-D2 (chair HITL); stories.json lists this slice under STORY-D1 -- followed here as the authoritative mapping"
+  - "READ-ONLY inputs: transcript.md, turn JSONs, spec section UX + FR-M11..14 + FR-S6/S7, dr2 consensus_check.py, domain-lattice method-justification-forcing"
+  - "the tally is mechanical ONLY; argument-quality judgment stays with the LLM but the tally never decides; the round-boundary menu and ESC interject are both called by the main conversation (never a subagent); subscription-only"
+  - "seat numbering per architect delta (this pass): Deal Advocate is #9 (participates via mitigant turns, no vote); Gap-Hunter/Chair-agent is #10 (procedural per-round selection, no vote) -- supersedes the #9-Gap-Hunter numbering still on disk in SLICE-A1/A2/A3 and spec.md/tech_prd.md as of this writing; those files need their own reconciliation pass (out of scope here)"
+
+# Technical requirements
+technical_requirements:
+  - "tally.py must be reusable in the consensus_check.py style but purpose-built for mechanical-only questions, including stagnation detection (2 rounds, no new claim)"
+  - "the chair menu vocabulary is canonical: Continue / call <n> / challenge <n> <claim> / ask <n[,n]> <q> / vote / premortem / one to one #n / exclude #n[, #n ...] / include only #n[, ...] / end (plus plain-English fallback) -- seats addressed by number"
+  - "ESC interject must be a hard abort of the in-flight turn (discarded, never persisted) followed by a deterministic resume target (tagged seat, else last speaker)"
+  - "one-to-one sidebar files (sidebars/chair-with-<n>.md) hold the raw 1:1 chat; only a summary crosses back into transcript.md"
+  - "active_seats in manifest.yaml is the single source of truth for the session's roster; exclude/include commands are the only way to mutate it; Gap-Hunter's per-round selection must filter against it before choosing speakers"
+  - "the Deal Advocate's mitigant turns are persisted via the identical Turn schema as any seat (round, seat=9, stance, argument, addresses_prior_turn_ids, would_change_mind_if); the falsification-gate grading of a mitigant reuses the same mechanism as an objection's (owned by axiom-synthesis / the fact-builder, not re-implemented here) -- this slice wires the Advocate's turn into the round loop and excludes it from tally.py's vote count"
+
+# Testing requirements
+testing_requirements:
+  - "QA greps tally.py to confirm it NEVER outputs a verdict and NEVER short-circuits on unanimity or stagnation (recomputes the tally by hand on a fixture)"
+  - "QA confirms every turn matches the stance schema and reversals show the UPDATED marker"
+  - "QA confirms Gap-Hunter silences seats with nothing material and re-selects correctly after an ESC interject"
+  - "QA triggers an ESC interject mid-turn and confirms the in-flight turn is discarded, the correct seat resumes with UPDATED <- CHAIR, and a Round-1 ESC re-issues openers before Round 2"
+  - "QA confirms the round-boundary menu matches the canonical vocabulary and seats are addressable by number"
+  - "QA toggles one-to-one and confirms other seats pause, raw chat lands only in the sidebar file, and a sidebar summary (not raw chat) is injected into transcript.md on return"
+  - "QA confirms a chair \"I like this deal\" comment (team OR 1:1) does not raise any claim's grade"
+  - "QA confirms exclude/include correctly set manifest.yaml active_seats at session start and mid-session, that Gap-Hunter never selects or opens an excluded seat, and that Gap-Hunter logs what coverage is left unowned on exclusion"
+  - "QA confirms the Deal Advocate's mitigant turns clear the same falsification gate as objections (survive -> downgrade severity, refuted -> discarded), that the Advocate casts no scrutiny vote, and that the Advocate never appears in tally.py's counts"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on consensus-termination,
+  stance-schema violation, capitulation-to-chair, a lost/duplicated ESC turn, or sidebar-privacy
+  leakage; the mechanical-only property of the tally must be proven by hand-recomputing a
+  fixture, not by trusting the code's self-description. Excluded-seat selection, a missing
+  Gap-Hunter uncovered-risk log line on exclusion, and an Advocate mitigant bypassing the
+  falsification gate (or appearing in a vote count) are added reject conditions this pass.
+  Stance enum: this slice's Turn stance schema (SUPPORT|REBUT|ABSTAIN|CONDITIONAL|FLAG_RISK) is
+  now matched by SLICE-D1's per-turn schema (previously narrower; aligned this pass) -- no
+  remaining cross-slice stance-enum inconsistency.
+  Scope growth note: Gap-Hunter selection, the round-boundary chair menu redesign, ESC
+  mid-turn interject, and the one-to-one sidebar toggle were added to this slice's canonical
+  design after the original M effort estimate was set; architect should confirm sizing.
+  Scope growth note (cont'd): the Deal Advocate's (#9) deliberation-defense participation and
+  the exclude/include active-roster chair commands were added to this slice's canonical design
+  in the same pass that renumbered Gap-Hunter to #10 -- further scope growth on top of the
+  already-flagged growth above; architect should confirm M sizing still holds.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-D2-tally-chair-hitl.md by
+  acos-preeng-classic Step 5; architect to review before execution. Updated 2026-07-08 for the
+  Deal-Advocate (#9) / Gap-Hunter-renumbering (#10) / exclude-include-roster design delta;
+  re-review recommended before execution.

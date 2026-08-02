@@ -1,0 +1,106 @@
+slice_id: "SLICE-IC-F1-guardrails-governance"
+story_id: "STORY-F1"
+epic_id: "EPIC-F"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Guardrail suite + autopilot pre-flight assertion + governance"
+objective: |
+  Mechanically enforce the anti-groupthink guardrail suite and an autopilot-active pre-flight
+  assertion so accuracy rests on structure, not persona: independence enforcement, kill criteria
+  FIRST, anti-sycophancy schema, 10th-man on lopsided distribution, reduced-independence flag,
+  and an autopilot pre-flight ABORT (no fallback branch).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/guardrails.py enforces independence: asserts no cross-seat context exists in round 0, rejecting any fixture where it does"
+  - "[ ] scripts/kill_criteria.py runs FIRST, before any narrative mitigant reasoning; a kill match short-circuits to a logged deal-breaker; any override requires an explicit, separately-logged policy-exception entry"
+  - "[ ] the anti-sycophancy schema forbids agreement without a named new fact, uses derived (not self-reported) confidence, and hides mid-debate numeric confidence"
+  - "[ ] a consensus-triggered 10th-man contrarian pass fires on a lopsided approve-leaning distribution"
+  - "[ ] the reduced_independence flag is set correctly when all seats resolve to a single provider"
+  - "[ ] the autopilot pre-flight assertion checks test -f .acos/state/autopilot-active at Mode B entry; if the file exists, the run ABORTS IMMEDIATELY with a clear message and takes NO fallback action (no batch mode, no degraded-pause path, no menu shown)"
+  - "[ ] the standing hole-checklist (concentration, leverage exceptions, statement veracity, tenant concentration, refi/maturity) is explicitly cleared and cannot be silently skipped"
+  - "[ ] evidence bundle includes each guardrail's fire/no-fire transcript + the autopilot pre-flight-abort proof"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-B2-blind-opening-pass"
+      what_it_provides: "the round-0 blind-opening dispatch this slice's independence-enforcement assertion wraps around"
+      status: "complete"
+    - slice_id: "SLICE-IC-C2-axiom-synthesis-run"
+      what_it_provides: "the synthesis/mitigant-reasoning path that kill_criteria.py must run before"
+      status: "complete"
+    - slice_id: "SLICE-IC-D2-tally-chair-hitl"
+      what_it_provides: "the turn/stance schema the anti-sycophancy hooks attach to"
+      status: "complete"
+    - slice_id: "SLICE-IC-DIAG-01"
+      what_it_provides: "the minimal autopilot pre-flight assertion stub this slice hardens into the full, no-fallback guardrail"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/guardrails.py"
+  - ".claude/skills/acos-investment-committee/scripts/kill_criteria.py"
+  - ".claude/skills/acos-investment-committee/SKILL.md"
+
+files_prohibited:
+  - "context note: the seats (SLICE-A2), the tally (SLICE-D2), and synthesis (SLICE-C2/C3) are out of scope for this slice -- it enforces around them, not within them"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+  - "security-hardening"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: spec FR-M20/M21 + FR-S1/S3/S8/S9, domain-lattice proc-autopilot-detection + method-kill-criteria + method-devils-advocate + anti-sycophancy + metric-independence-flag, CLAUDE.md autopilot notes"
+  - "guardrails are ASSERTIONS, not advice -- a violated guardrail fails the run; the autopilot check is a simple pre-flight assertion (abort only, no fallback branch, no mode-detection logic); subscription-only"
+
+# Technical requirements
+technical_requirements:
+  - "kill_criteria.py execution order is enforced ahead of any mitigant reasoning path"
+  - "autopilot pre-flight assertion reads .acos/state/autopilot-active per the existing ACOS autopilot convention and has exactly one behavior on match: abort with a clear message -- no batch-mode or degraded-pause fallback branch may exist in the code"
+
+# Testing requirements
+testing_requirements:
+  - "QA feeds a cross-seat-context round-0 fixture and confirms independence enforcement rejects it"
+  - "QA confirms kill_criteria.py runs before any mitigant reasoning (ordering check) and that an override leaves a logged policy exception"
+  - "QA feeds a lopsided approve distribution and confirms the 10th-man fires"
+  - "QA forces single-provider and confirms the reduced_independence flag"
+  - "QA creates .acos/state/autopilot-active and confirms Mode B entry ABORTS immediately with a clear message and that no fallback branch executes"
+  - "QA confirms the standing hole-checklist cannot be silently skipped"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): verify each guardrail by trying to BREAK it
+  (adversarial fixture per guardrail); reject if any guardrail can be bypassed or if the
+  autopilot check takes any action other than a clean abort (no fallback code path permitted).
+  Design change note: the prior "detect autopilot-active and fall back to batch mode" behavior
+  is REPLACED by a simple pre-flight assertion (file exists -> abort, full stop). There is no
+  "(Recommended)" safe-option concern anymore because no menu is ever shown when autopilot is
+  active.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-F1-guardrails-governance.md
+  by acos-preeng-classic Step 5; architect to review before execution.

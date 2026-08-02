@@ -1,0 +1,57 @@
+timestamp: "2026-07-17T00:20:00Z"
+status: "completed"
+session_summary: "Hardened the acos-eden-protocol skill (global output-simplicity filter). Added mechanical enforcement (eden-selfcheck.py Stop hook), built the missing-gloss gate that closes the backtick-and-run hole, merged the Orientation Layer, and fixed 5 documentation-vs-runtime coherence bugs found in a line-by-line review."
+
+current_work:
+  slice_id: null
+  story_id: "004-acos-eden-protocol (post-build hardening, beyond SLICE-EDEN-01..10)"
+  epic_id: "acos-eden-protocol"
+  status: "completed"
+
+completed_this_session:
+  - "Built eden-selfcheck.py — a Stop hook that MEASURES the finished reply and returns {decision: block, reason} to force ONE rewrite when it misses the level band. Previously the level was honor-system only (root cause of the Level-3-renders-as-college complaint). Registered as a 2nd Stop hook in ~/.claude/settings.json (backup: settings.json.bak-eden-20260714-232730)."
+  - "Primary gate is BARE_JARGON (identifier shapes surviving into stripped prose), NOT Flesch-Kincaid: proved the original failing reply scores FK grade 7.03, INSIDE the Level-3 band (6-8) — a readability-only gate would have passed it."
+  - "Closed the 'may' hole: Fidelity Floor #3 gloss changed from 'may be added' to MANDATORY (levels 2-5), in both SKILL.md and the injector's per-turn directive."
+  - "Merged the Orientation Layer (per PROPOSED-orientation-layer.md): full section in SKILL.md + Check 0 in Self-verification + new footer; PLUS a condensed 1745-char runtime carrier in eden-level-injector.py (ORIENTATION), gated to levels 2-5 via ORIENTATION_LEVELS. Deviation from the doc's 'SKILL.md only' intent — SKILL.md is not read per-turn, so doc-only would never fire (the SLICE-EDEN-08 failure pattern). User-confirmed."
+  - "Built the MISSING-GLOSS gate (missing_glosses() in eden-selfcheck.py): scans the RAW reply for backticked identifier-shaped terms that are never explained anywhere, and blocks. Closes the backtick-and-run evasion — backticked spans are stripped before the other gates score, so an unglossed `buildAppBundle` was previously invisible. Forgiving detector (GLOSS_AFTER/GLOSS_BEFORE/GLOSS_DEFINE); runs regardless of the 60-word floor."
+  - "Fixed 5 coherence bugs from a line-by-line review: (1) Floor #7 'never register' contradiction; (2) Floor #8 'optional gloss' vs #3 mandatory; (3) injector carried only 7 of 8 invariants — added #8; (4) stale frontmatter description; (5) Self-verification header said 'mechanical' while its own Check 0 says no hook can verify it."
+  - "Corrected the SLICE-EDEN-08 record: was falsely marked complete 2026-07-13 with a script that never existed; added correction_log, documented path + mechanism deviations, 3/3 acceptance criteria now [x]."
+
+files_modified:
+  - path: "~/.claude/skills/acos-eden-protocol/hooks/eden-selfcheck.py"
+    changes: "NEW. Stop-hook checker: bare-jargon + missing-gloss + FK + sentence-length gates; one-rewrite-per-turn cap via ~/.claude/state/eden-redo-<session_id>; fail-open."
+  - path: "~/.claude/skills/acos-eden-protocol/hooks/eden-level-injector.py"
+    changes: "Added BANDS (machine-readable per-level numbers, imported by the checker), ORIENTATION + ORIENTATION_LEVELS, mandatory-gloss wording, scope-not-topic clause, PRECEDENCE + CHECK 0 + ENFORCEMENT directive lines, Fidelity Floor invariant (8)."
+  - path: "~/.claude/skills/acos-eden-protocol/SKILL.md"
+    changes: "Orientation Layer section; Check 0; Fidelity Floor #3/#7/#8 rewordings; Self-verification split (Check 0 vs mechanical gates) + gates table incl. Missing-gloss row; refreshed frontmatter description; new footer; honest-limitations incl. the documented (unfixed) glued-sentence false positive."
+  - path: "~/.claude/skills/acos-eden-protocol/PROPOSED-orientation-layer.md"
+    changes: "Marked MERGED 2026-07-15 with a merge record, deviation rationale, measured cost (1745 chars/~436 tokens at L2-5, 0 at L1), and the not-implemented note (Check 0 unenforceable)."
+  - path: "~/.claude/settings.json"
+    changes: "Registered eden-selfcheck.py as a 2nd Stop hook. Backup at settings.json.bak-eden-20260714-232730."
+  - path: "planning/slices/SLICE-EDEN-08-self-verification-heuristic.yaml"
+    changes: "correction_log added; false 'complete 2026-07-13' record corrected; 3/3 acceptance criteria marked [x]."
+
+decisions_made:
+  - "Enforcement over nudge: the checker BLOCKS (forces a rewrite), because the honor-system nudge was the exact failure mode. User chose 'Block and redo once'."
+  - "Global, not project-local: checker lives with the global skill (~/.claude/skills/...) because Eden's dial is global; a project-local script would never fire cross-project. User-confirmed."
+  - "Bare-jargon (shape test) is the primary gate, not Flesch-Kincaid — FK is structurally blind to short-but-opaque jargon (proved via the FK 7.03 finding)."
+  - "Missing-gloss detector is deliberately FORGIVING (accept missed glosses over wasted rewrites): 0/11 false positives and 0/3 false negatives on the test set."
+  - "Orientation Layer also injected at runtime (not SKILL.md-only) so it actually fires; gated to levels 2-5 so L1/off pay zero tokens."
+
+blockers: []
+
+next_actions:
+  - "OPTIONAL (offered, not yet approved): fix the glued-sentence false positive — score each assistant text block independently in last_assistant_text()/split_sentences() then pool, and/or score only the final answer block, not mid-work narration. This false positive fired live on 2 of this session's own replies."
+  - "Consider tuning MISSING_GLOSS_MAX / the gloss-signal patterns on more real replies before fully trusting the gate."
+
+context_for_next_session: |
+  The acos-eden-protocol skill is a GLOBAL output-simplicity filter (~/.claude/skills/acos-eden-protocol/),
+  not in-repo — so this work does not appear in `git status` for the ACOS 3.0 repo. State dial:
+  ~/.claude/state/eden-level (single digit 1-5; absent = off). Two Stop hooks now run: the eternity
+  in-pane hook and eden-selfcheck.py. Test harness (session scratchpad, NOT committed):
+  /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/3007585d-0af7-4a37-b119-6d57db278fb2/scratchpad/test_eden_selfcheck.py
+  — 15/15 pass. The one known, DELIBERATELY-unfixed issue is the glued-sentence false positive (see
+  next_actions); it is documented in SKILL.md's honest-limitations, not hidden. Prior-day handoffs
+  archived alongside this one cover UNRELATED threads (OKOA tasks, IC build waves 3-5 still planned,
+  keychain/eternity diagnosis) — those remain RAG-searchable in memory/handoffs/archive/ but will no
+  longer auto-load.

@@ -1,0 +1,102 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol
+# Source task: planning/preeng/005-resurrection-protocol/tasks/SLICE-13-seed-curate.md
+
+slice_id: "SLICE-RES-13-seed-curate"
+story_id: "STORY-1.1"
+epic_id: "EPIC-1"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "Seed + one ~10-minute human curation pass (DP5)"
+objective: |
+  Seed the registry (run the seeder to populate the book), then perform one
+  ~10-minute human curation pass in which junk/anomaly rows are tombstoned
+  by hand. Day-one value covering everything: a human confirms each row is
+  a real project (explicit enrollment spirit). Demo: Demo 1 (enrollment).
+description: |
+  In scope: run the seeder; one ~10-min human curation pass with junk/anomaly
+  rows tombstoned by hand. Out of scope: any age-based reaper; auto-deletion
+  of rows (deletion is a human act only).
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Book lists the real active projects after the seeder runs — before/after row listing archived in the evidence bundle"
+  - "[ ] Anomaly rows (incl. the Vibe Coding-root row) tombstoned, NOT deleted — tombstone events visible in the audit log"
+  - "[ ] Tombstoned rows still exist on disk (tombstone-never-delete) — QA spot-check confirms rows present after curation"
+  - "[ ] No row was auto-deleted — deletion occurred only as a human act during the curation pass"
+  - "[ ] Evidence bundle populated at .acos/evidence/[DATE]/SLICE-13-seed-curate/ (7-part bundle: implementation summary, requirements traceability, structural quality, functional checks, security/compliance notes, operational notes, self-assessment)"
+  - "[ ] Dev Learnings and QA Learnings sections updated in the source task file (slice is not Done until they are — preeng §0.7)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-12-rebuild"
+      what_it_provides: "rebuild-registry.py — the seeder (DP5) this slice runs to populate the book"
+      status: "in_progress"
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry_lib.py tombstone + audit-log primitives used when tombstoning rows by hand"
+      status: "in_progress"
+    # TODO: confirm — task names 'the menu for tombstoning' but the menu is built later (SLICE-32); confirm whether curation uses the menu or registry_lib directly
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/rebuild-registry.py"  # run the seeder
+  # TODO: confirm — exact path of 'the menu for tombstoning' (task names the menu but gives no path)
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended: []  # task file names no skills; run/curate work only
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Human curation ONLY for deletions — deletion is a human act, never automated"
+  - "Guardrail: NO age-based reaper of any kind"
+  - "Guardrail: NO auto-deletion of rows"
+  - "Tombstone-never-delete: tombstoned rows must remain on disk"
+  - "QA is zero-trust: assumes Dev did not do the work; spot-checks and recomputes evidence"
+
+# Technical requirements
+technical_requirements:
+  - "Run the seeder (rebuild-registry.py) to populate the book"
+  - "Tombstone junk/anomaly rows by hand (including the Vibe Coding-root row)"
+
+# Testing requirements
+testing_requirements:
+  - "QA check: confirm tombstoned rows still exist on disk (tombstone-never-delete)"
+  - "QA check: confirm no row was auto-deleted"
+
+# Verification method (preeng QA gate — skill-mandated extension)
+verification_method: |
+  Before/after row listing archived; tombstone events visible in the audit log.
+  QA verifies scope respect and evidence authenticity (no fabricated logs —
+  spot-check and recompute); every acceptance criterion and evidence gate must
+  be satisfied or QA REJECTs and requires rework.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+
+# Effort estimate
+effort_estimate: "S"
+# S = < 1 hour of work (seeder run + one ~10-minute human curation pass)
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged from preeng task SLICE-13-seed-curate. Evidence bundle path:
+  .acos/evidence/[DATE]/SLICE-13-seed-curate/. This slice is deliberately
+  human-in-the-loop (DP5): the curation pass itself is the deliverable.

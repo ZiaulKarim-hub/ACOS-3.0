@@ -6,6 +6,7 @@
 **Source research:** `.acos/swarm/swarm-20260625-113200/synthesis/report.md` (12 isolated agents, cross-referenced)
 **One-line purpose:** Fuse outputs from multiple AI agents and/or different LLMs into ONE coherent, authoritative, *defeasible* source-of-truth file — or an explicit refusal — never a fabricated consensus.
 **Revised:** 2026-07-06 — added §15 Runtime rigor (single-writer invariants · formal state-machine spec · pure-function resumable frontier · oscillation guard) + three open decisions (§12.6–8), adapted from `acos-synthesis-protocol`.
+**Revised:** 2026-07-22 — implemented two boss-requested improvements (§17): the boolean **confidence checklist** (veto + percentage → tier) and the concrete **four-family fan-out** (Claude · Gemini · z.ai/GLM · ChatGPT-browser). Closes/updates open decisions §12.2 and §12.4.
 
 ---
 
@@ -474,6 +475,61 @@ The Stage-5 refuter is deliberately *fresh each round* (for independence), so it
 | Runtime rigor — single-writer invariants, formal state-machine, resumable frontier, oscillation guard | ADOPTED (§15); 3 tensions logged as open decisions (§12.6–8) | borrowed from `acos-synthesis-protocol` |
 
 **Full evidence & citations:** `.acos/swarm/swarm-20260625-113200/synthesis/report.md` and `agent-{01..12}/findings.md`.
+
+---
+
+## 17. Implemented improvements — 2026-07-22 (boss feedback)
+
+Two of the five boss-requested improvements were designed and built this pass. The other
+three (a `FOLLOW_UP_REQUIRED` claim state, large-data quality at scale, standalone
+competency-question tooling) remain **out of scope** and are logged for a later pass.
+
+### 17.1 The boolean confidence checklist (Point 1) — BUILT
+
+Confidence is now decided by an **auditable YES/NO checklist**, not a buried derivation.
+`scripts/checklist.py` + `config/checklist.yaml`:
+
+- **Veto + percentage** (decided with the user): 4 **veto** questions (any single NO — or
+  unanswered, fail-closed — nullifies the claim outright); the remaining **normal**
+  questions are scored to a percentage. This keeps the boss's threshold idea *and* the
+  existing hard-nullify safety net, so a fatally-flawed claim can't ride a high score.
+- **Graded into the existing tiers** (decided with the user): yes-share ≥ `verified_min`
+  (default **0.90**, the boss's example) → `verified`; ≥ `probable_min` (default 0.70) →
+  `probable`; below → `unverified`. The single-source cap is preserved via
+  `verified_also_requires` (N1 + N2): a claim can hit 90% and still cap at `probable`
+  without ≥2 independent sources from ≥2 families.
+- **Universal core + optional domain packs** (decided with the user): 10 core normal
+  questions apply to every claim; per-topic `domain_packs` add more (the "competency
+  questions" idea), extending the denominator.
+- **Deterministic vs semantic split:** N1/N2/N3/N5/N9 are computed by code; the vetoes and
+  N4/N6/N7/N8/N10 are answered by a **blind judge that is never the claim's author**
+  (`prompts/grader.md`), preserving "derived, not self-reported."
+- **Integration:** `orchestrate.py` runs the checklist at stage 4.5 when a fact carries
+  `checklist_answers`; the falsification gate still owns the `falsification` field +
+  disconfirmers. Legacy facts (no judge answers) use the prior grade path unchanged.
+- **Proof:** `tests/test_checklist.py` (21 assertions) — veto override, the 9/10 example,
+  the single-source cap, domain packs, fail-closed, and end-to-end through the ledger.
+  Total offline suite now **75 assertions**, all passing, no model calls.
+
+Resolves **§12.2** (confidence thresholds are now configurable in `checklist.yaml`).
+
+### 17.2 The four-family fan-out (Point 5) — WIRED (code) + human last-mile
+
+Concrete cross-family diversity (SKILL.md "Model strategy"; `prompts/README.md`):
+
+- **Claude** via `Task()`; **Gemini** via `run-external-agent.py --model google:...` (free
+  Google AI Studio key); **z.ai/GLM** via a new `zai` provider in `providers.yaml` (the
+  user's Coding Plan key via Doppler); **ChatGPT** via the Claude-in-Chrome **browser
+  voice** (Plus has no API — documented with its ToS/fragility/scale caveats as an
+  optional 4th family).
+- The four agent prompts (`elicitor`, `grader`, `refuter`, `synthesizer`) are built and
+  family-neutral, so the same prompt runs on every transport.
+- **Human last mile (cannot be automated unattended):** create the free Gemini key, export
+  the z.ai key, and log into ChatGPT for the browser voice. See SKILL.md "Wake-up
+  checklist."
+
+Updates **§12.4** (Claude-only fallback remains, but real cross-family is now the default
+path when keys are present).
 
 ---
 *Plan derived from cross-referenced swarm research. Build it as a refutation engine, not a merger.*

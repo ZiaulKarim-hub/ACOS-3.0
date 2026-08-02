@@ -1,0 +1,57 @@
+slice_id: "SLICE-EDEN-02"
+story_id: "ST-004-eden-2"
+epic_id: "EP-004-eden-2"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"
+
+title: "SPIKE — multi-hook additionalContext concatenation (U1)"
+# VERDICT 2026-07-13: CONCATENATES (HIGH). Official docs: all additionalContext values included;
+# hooks run in parallel (order NOT guaranteed). Injector design validated; directive made order-independent.
+objective: |
+  Resolve U1: does Claude Code concatenate additionalContext from multiple same-event
+  UserPromptSubmit hooks, or use only one? This gates the injector design (SLICE-EDEN-03).
+
+acceptance_criteria:
+  - "[ ] A throwaway probe hook is registered alongside autopilot + eternity injectors and its marker is observed (or not) in context."
+  - "[ ] A written verdict (CONCATENATES | SINGLE-ONLY | OTHER) with the observed evidence quoted."
+  - "[ ] If not concatenated: the injector redesign is documented (single coordinating injector or SessionStart-only arming)."
+  - "[ ] The temp probe + temp registration are removed afterward."
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - ".claude/scripts/eden-probe-TEMP.py"
+  - ".claude/settings.local.json"
+
+files_prohibited:
+  - ".claude/scripts/eden-level-injector.py"
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Inference (autopilot + eternity coexist) suggests concatenation, but it is NOT doc-confirmed."
+  - "This is a diagnostic slice per §0.3 — resolve before finalizing the injector contract."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-02.md"
+
+technical_requirements:
+  - "Probe must not disturb autopilot/eternity; remove cleanly."
+
+testing_requirements:
+  - "Observe context with all three hooks emitting; quote the actual result."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "S"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-02. Demo 1. P0 (GATING for SLICE-EDEN-03).

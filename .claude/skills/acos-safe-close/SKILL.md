@@ -20,6 +20,14 @@ receipt line is printed BY A SCRIPT from disk read-backs.
 - NEVER compose, retype, summarize, reorder, trim, decorate, or badge a receipt line.
   Receipts reach the user only as unmodified `cat` output of the captured receipt
   file. No green badges, no checkmarks added by you.
+  - SOLE EXCEPTION — the Step 7 verdict banner, which is MANDATORY and always last.
+    It repeats the receipt's OWN verdict line byte-for-byte as an unmissable
+    heading. It adds no words, no emoji, no checkmark, and no judgement of yours; it
+    is a typographic repeat of a line the script already printed, never a substitute
+    for the verbatim receipt block, which is still shown in full above it. It is
+    CONDITIONAL on that exact line being present in the receipt file — see Step 7.
+    A banner printed when the script did not print that line is a fabricated verdict
+    and the worst defect this skill can produce.
 - NEVER write to top-level `memory/handoffs/`, `memory/handoffs/archive/`, or the
   daemon state dir (`~/Library/Application Support/acos-token-monitor/state/` — the
   close script's step 0 is that dir's ONLY writer, ever). NEVER touch
@@ -210,6 +218,58 @@ fenced block. The SAFE line exists only if the script printed it.
   re-dispatches), do not work around. The open tab is the warning.
 - `DEGRADED` banner in the receipt → quote it too; the reopener must read the reentry
   with extra care.
+
+### Step 7b — The verdict banner (MANDATORY, and it goes LAST)
+
+The verdict is the one thing the user must not miss, and a verbatim receipt buries it
+in the middle of a wall of step lines. So the reply ENDS with the verdict, rendered
+unmissably. Required reply order, every time:
+
+1. the verbatim receipt, whole and unmodified, in one fenced block
+2. the `exit=` line
+3. any prose you owe the user (what was verified, what is still open)
+4. the receipt's own `close instruction:` line, in a copyable code block
+5. **the banner — the last thing in the reply, with nothing after it**
+
+Decide which banner MECHANICALLY, never by impression:
+
+```bash
+grep -c '^SAFE TO CLOSE THIS TAB$' "$SCRATCH/close-receipt-final.txt"   # 1 = safe
+grep -n 'NOT SAFE' "$SCRATCH/close-receipt-final.txt"                    # any hit = not safe
+```
+
+**Safe** — only when that grep returns `1` AND `exit=0`. Emit exactly:
+
+```
+---
+
+# <u>SAFE TO CLOSE THIS TAB</u>
+```
+
+**Not safe** — the grep returns `0`, or `NOT SAFE` appears, or `exit != 0`. Emit the
+heading below, then the receipt's own `NOT SAFE — ...` line verbatim beneath it (if
+the script printed one). Never soften it, never add a workaround:
+
+```
+---
+
+# <u>DO NOT CLOSE THIS TAB</u>
+```
+
+**Degraded** — receipt carries the `DEGRADED` banner but is still safe: emit the SAFE
+banner, then on the line under it, verbatim, the receipt's own DEGRADED line. A
+degraded close is still a close; the reopener just reads the reentry harder.
+
+Rules for the banner, all load-bearing:
+- The words inside it are the script's, byte-for-byte. Add nothing — no emoji, no
+  checkmark, no "✅", no "all good", no restatement in your own words.
+- One `#` heading (large + bold) wrapped in `<u>…</u>` (underlined). Nothing louder,
+  nothing quieter.
+- NOTHING follows it. Not a question, not an offer, not a sign-off. If you owe the
+  user a question, it goes in the prose at position 3.
+- It NEVER replaces the verbatim receipt block. Both appear, receipt first.
+- If you cannot read the receipt file to run that grep, you have no verdict to
+  banner: say so plainly and emit no banner at all.
 
 ---
 

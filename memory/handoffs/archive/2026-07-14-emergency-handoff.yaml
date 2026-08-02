@@ -1,0 +1,172 @@
+timestamp: "2026-07-14T13:55:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "753c9e55-ef50-4051-a33f-074cf466212c"
+estimated_tokens: 0
+
+session_summary: |
+  This session did NOT touch the ACOS 3.0 repo. Two OKOA Capital deal-document
+  tasks were performed against files under ~/Documents/New deals/ and a Dropbox
+  external dataroom. Task 1 (main work): rebuilt a lost-source Herriman AutoMall
+  loan submission deal sheet from an April 2026 PDF-only memo, converting it to
+  OKOA's current house format (Ville 7877 template) as a 4-page broker submission
+  for an $8.5M bridge refinance — VERIFIED COMPLETE against the final HTML/PDF on
+  disk, with structural checks (section count, absence of "free and clear" text,
+  page count) run in this handoff session as independent confirmation. Task 2
+  (Q&A only, no deliverable): answered an owner-use-day-cap question for Ascent
+  Park City by reading the rental agreement PDF, with a finding that the only
+  cap applies to a unit type ("Cottage Sub-Unit") that does not appear to exist
+  in the property's actual unit mix.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+  note: >
+    Not an ACOS planning-hierarchy task; no SLICE/STORY/EPIC IDs apply. Herriman
+    deal sheet is COMPLETE and rendered; user characterized it as "COMPLETE but
+    iterating" so further refinement requests should be expected next session.
+
+completed_this_session:
+  - "Rebuilt Herriman AutoMall - Loan Submission Deal Sheet.html (+ matching .pdf, 4 pages) in ~/Documents/New deals/, reformatted from a lost-HTML April 2026 20-page memo (PDF-only source) into OKOA's current house format sampled from Ville 7877 - Loan Submission Deal Sheet.pdf."
+  - "Verified (independently, in this handoff session) that the shipped HTML contains exactly 6 numbered sections (01 Requested Financing Terms, 02 Collateral & Security, 03 Valuation & Underwriting, 04 Sources & Uses, 05 Sponsor & Guaranty, 06 Investment Highlights) via grep on section markers — matches user's stated final structure."
+  - "Verified (independently) the string 'free and clear' / 'free & clear' does NOT appear anywhere in the shipped HTML — matches the reversed premise that Herriman land is encumbered, not free and clear."
+  - "Verified (independently) the shipped PDF is 4 pages via mdls kMDItemNumberOfPages — matches the stated page budget."
+  - "Confirmed no standalone 'Lender Diligence Items' section (§07) exists in the final HTML — only an inline prose phrase ('verification is a lender diligence item') survives at line ~401. This RESOLVES an apparent conflict with the memory file (see decisions_made / blockers below)."
+  - "Answered the Ascent Park City owner-use-day-cap question by reading HOTEL ASCENT RENTAL AGREEMENT.12.8.20.pdf (confirmed present at the expected Dropbox path) — no new deliverable file produced for this task, it was pure Q&A."
+  - "Wrote two ACOS cross-session memory files: project_okoa_herriman_automall_deal_sheet.md and reference_okoa_deal_sheet_format.md, both already indexed in MEMORY.md (confirmed on disk, both present)."
+
+files_modified:
+  - path: "/Users/zee/Documents/New deals/Herriman AutoMall - Loan Submission Deal Sheet.html"
+    changes: "Full rebuild (28,853 bytes) into OKOA house deal-sheet format; final mtime 13:24 today. Section/text/page-count spot-checks passed in this handoff session."
+  - path: "/Users/zee/Documents/New deals/Herriman AutoMall - Loan Submission Deal Sheet.pdf"
+    changes: "Rendered from the HTML above via puppeteer (see render command below); 407,464 bytes, 4 pages, mtime 13:24 today."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_okoa_herriman_automall_deal_sheet.md"
+    changes: "New memory file (3,403 bytes, mtime 13:13) capturing the deal-sheet's final structure, figures, and open issues. NOTE: this file's line 12 still references a '§07 Lender Diligence Items' section as present in the document — that section was apparently removed in a later edit (HTML mtime 13:24 postdates this memory file's 13:13). Treat the live HTML as the source of truth over this memory note for section structure."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_okoa_deal_sheet_format.md"
+    changes: "New memory file (2,365 bytes, mtime 12:05) documenting the Ville 7877 house-format design tokens (colors, fonts, layout) and the exact puppeteer render command/NODE_PATH needed to render OKOA deal-sheet HTML to PDF from outside the ACOS repo."
+  - path: "(ACOS 3.0 repo)"
+    changes: "NOT MODIFIED this session. All git status entries shown by `git status --short` (modified session-cleanup.sh/acos-xl-update SKILL.md, deleted 2026-06-16/06-21 handoff yamls, many untracked planning/slices/handoffs/skills files including the acos-investment-committee and acos-axiom-synthesis buildout) predate this session per user instruction and were confirmed unchanged by cross-referencing git log (no commits since cc62ecd, timestamp not today) and `git log --since='2026-07-14 00:00'` returning empty."
+
+decisions_made:
+  - "OKOA is BROKER/originator on the Herriman deal, NOT lender of record — stated twice in the document. This reversed an earlier lender-posture assumption made mid-session (per user's task framing and confirmed by memory file line 12)."
+  - "Herriman land is NOT free and clear — this reversed an earlier 'free and clear' premise mid-session. Confirmed absent from final HTML."
+  - "Senior-debt payoff of $7,607,500 is treated as a PLUG (Loan $8.5M minus $552,500 interest reserve minus $340,000 origination points), not as an independently sourced input — user's explicit framing: 'whatever remains, that is the payoff.'"
+  - "Interest reserve sized to 6 months ($552,500), not 12 months, leaving months 7-12 interest ($552,500) unfunded — flagged in-document as an open issue via a coral callout in §03, not silently resolved."
+  - "Brixton Park (167 ac, Saratoga Springs) is confirmed as ONE property (not two, despite ambiguous phrasing) and its $10,000,000 sponsor-stated equity is EXCLUDED from all LTV calculations, which rest solely on the primary Herriman collateral (Lang MAI, File LAS-214-2025, eff. Nov 18 2025)."
+  - "Sections explicitly excluded from the final document by user instruction: Honest Characterization, Principal Risks & Mitigants, Facility Summary, credit-committee Indication-of-Interest box, Lender Diligence Items (as a standalone section), April-memo comparison, sponsor project-portfolio table, tenant LOIs. Confirmed via grep that no such section headers exist in the final HTML — only one inline sentence-level reference to 'a lender diligence item' survives in the Sponsor & Guaranty prose."
+  - "No decisions logged in memory/decisions/ today (2026-07-14) for either OKOA task — the most recent decision file is memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md, unrelated to this session's work. Both OKOA tasks' outcomes are captured only in the two memory-project files listed above, not in memory/decisions/."
+
+blockers:
+  - "Herriman deal sheet: no property photos exist for Herriman AutoMall — the hero graphic uses a computed equity-cushion bar instead of a photo. Not resolved this session; flagged as a known limitation in the memory file."
+  - "Herriman deal sheet: Brixton Park release mechanics (what happens to the second-DOT cross-collateral upon Herriman payoff/maturity) are undocumented — flagged as open, not resolved."
+  - "Herriman deal sheet: Phase I environmental is marked optional in the current document rather than a hard closing condition — a scope decision, not verified against lender requirements this session."
+  - "Herriman deal sheet: the months 7-12 interest funding gap ($552,500 with no identified source) is disclosed in-document via a coral callout but is NOT resolved — a payoff letter and/or Borrower-funded reserve top-up remains on the critical path per the memory file (target date referenced: July 21, 2026)."
+  - "Ascent Park City: the condominium Declarations (CC&Rs), which could independently impose an owner-use cap, are NOT present in the Mogul Capital dataroom — this is a genuine evidentiary gap, not something this session could close."
+  - "Ascent Park City: the rental agreement copy reviewed (HOTEL ASCENT RENTAL AGREEMENT.12.8.20.pdf) is an unsigned TEMPLATE (blank signature block and blank Schedule 1) — findings are based on template language, not an executed, unit-specific agreement."
+  - "Minor documentation staleness (non-blocking): memory/project_okoa_herriman_automall_deal_sheet.md line 12 references a '§07 Lender Diligence Items' section that no longer exists as a standalone section in the shipped HTML (confirmed via grep in this handoff session). Next session should treat the live HTML file as authoritative over this specific line of the memory note, or update the memory note to match."
+
+next_actions:
+  - "If continuing Herriman AutoMall work: read the live files directly — /Users/zee/Documents/New deals/Herriman AutoMall - Loan Submission Deal Sheet.html and its .pdf — rather than relying solely on the memory-project note, since the note is 11 minutes stale relative to the final HTML on at least one structural detail (see blockers)."
+  - "If re-rendering the Herriman PDF is needed, use the exact command captured in reference_okoa_deal_sheet_format.md: NODE_PATH=\"/Users/zee/.npm/_npx/7d92d9a2d2ccc630/node_modules\" node \"/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/html-to-pdf.js\" \"Herriman AutoMall - Loan Submission Deal Sheet.html\" \"Herriman AutoMall - Loan Submission Deal Sheet.pdf\" --margin 0 --no-footer. The --no-footer flag is required or Puppeteer will stamp 'Page N of M' over the custom footer."
+  - "After any content edit to pages 3 or 4, re-run the ink-below-runhead overflow check (render to PNG at 150dpi, scan with PIL) before shipping — those pages are already tight per the memory note and this session's own page-count confirmation (4 pages, no slack observed)."
+  - "Consider resolving the unfunded months 7-12 interest gap ($552,500) before this deal sheet goes to an actual lender — currently only disclosed via callout, not solved. Likely next step is either sizing the reserve to 12 months (which would reduce payoff proceeds and needs a payoff-letter re-check) or identifying a Borrower-funded top-up source."
+  - "If continuing Ascent Park City diligence: request or locate the condominium Declarations (CC&Rs) from Mogul Capital or the Ascent dataroom sponsor contact — this is the one document type that could override the 'no owner-use cap' finding."
+  - "If asked to formalize the Ascent finding, note it currently exists only as in-conversation Q&A output — no memory file or written deliverable was created for Task 2 this session. Consider writing a memory note (e.g. project_ascent_owner_use_cap.md) if this finding will be referenced again, since existing Ascent memory files (project_ascent_gc_insurance_soils.md, project_ascent_park_city_hotel.md, project_ascent_debt_preso_design_audit.md, project_ascent_snda_finding.md, project_ascent_magazine_rebuild.md per MEMORY.md) do not yet cover this specific finding."
+  - "The ACOS 3.0 repo itself has substantial pre-existing uncommitted work (investment-committee committee-room build, axiom-synthesis pipeline, ~20+ untracked SLICE-EDEN-*/SLICE-IC-* planning files, modified session-cleanup.sh and acos-xl-update SKILL.md) that predates this session per explicit user instruction. Do NOT attribute any of that state to this session's work; if the next session needs to resume THAT thread, it should look at memory/handoffs/2026-07-13-emergency-handoff-2.yaml, memory/handoffs/2026-07-13-emergency-handoff.yaml, or memory/handoffs/2026-07-13-session-handoff.yaml (all present, from the prior day, not read in depth by this handoff agent since the user's instructions scoped this handoff strictly to the two OKOA tasks)."
+
+context_for_next_session: |
+  The work synthesized here happened entirely outside the ACOS 3.0 repo, in two
+  independent OKOA Capital deal contexts, and this handoff agent independently
+  verified (not merely transcribed) several claims against the actual files on
+  disk rather than trusting the task framing alone.
+
+  TASK 1 — Herriman AutoMall deal sheet is DONE and internally consistent. The
+  live deliverable is /Users/zee/Documents/New deals/Herriman AutoMall - Loan
+  Submission Deal Sheet.html (28,853 bytes, mtime 13:24 today) and its rendered
+  .pdf (407,464 bytes, 4 pages confirmed via `mdls -name kMDItemNumberOfPages`).
+  Independent checks run in this handoff session: (1) grep confirms exactly six
+  numbered sections 01-06 matching the user's stated final structure exactly,
+  with no seventh "Lender Diligence Items" section; (2) grep confirms the
+  strings "free and clear" / "free & clear" are absent everywhere in the file,
+  consistent with the mid-session reversal that the Herriman land is encumbered;
+  (3) the template source Ville 7877 - Loan Submission Deal Sheet.pdf and the
+  April-2026 source memo PDF (Herriman 73 Partners - $28.0M First-Lien Bridge...
+  v2 ridgeline canonical.pdf) are both still present in ~/Documents/New deals/
+  for reference. The one wrinkle found: the memory-project note (written at
+  13:13, eleven minutes before the HTML's final mtime of 13:24) still describes
+  a "§07 Lender Diligence Items" checkbox section as present in the document —
+  it is NOT present in the final HTML (only a single inline sentence survives
+  in the Sponsor & Guaranty prose: "verification is a lender diligence item").
+  This is most likely a late edit that removed the standalone section after the
+  memory note was written, and is not a contradiction requiring investigation —
+  but the next session should trust the live HTML over that one line of the
+  memory note if the two ever appear to disagree. The two genuinely open items
+  carried forward from the memory note (not resolved by this handoff, since
+  they are business/lending decisions, not verification questions) are: (a) the
+  months 7-12 interest shortfall of $552,500 with no identified funding source,
+  disclosed via an in-document coral callout in §03 rather than silently
+  fixed; and (b) undocumented Brixton Park release mechanics. Both were
+  apparently left open deliberately per the user's stated approach of
+  disclosing rather than papering over gaps, and no property photos exist for
+  the Herriman hero graphic (a computed equity-cushion bar is used instead).
+
+  TASK 2 — Ascent Park City owner-use question was pure Q&A with no deliverable
+  file. This handoff session confirmed the source document (HOTEL ASCENT
+  RENTAL AGREEMENT.12.8.20.pdf) exists at the expected path under
+  Brand Franchise & Hotel Management/ inside the Mogul Capital Ascent dataroom.
+  The finding as given — that the agreement's only owner-use cap (56 days/year
+  under §5(c)) applies to a "Cottage Sub-Unit" type that doesn't appear in the
+  property's actual unit mix (Types A-D, all studios per the June 2022
+  appraisal, reconciling to Hilton's "120 residential condominium units"),
+  meaning there is effectively no enforceable owner-use cap at Ascent under
+  this document — was NOT independently re-derived word-for-word by this
+  handoff agent (that would require re-reading and cross-referencing the full
+  rental agreement and appraisal, which is out of scope for state
+  reconstruction), but the underlying source file's existence and location were
+  confirmed. The critical caveat to carry forward is that the Declarations
+  (CC&Rs), which could impose their own separate owner-use cap, are absent from
+  the dataroom entirely, and the rental agreement itself is an unsigned
+  template (blank signature block and Schedule 1) — so this finding should be
+  presented as "no cap found in reviewed documents" rather than "no cap exists."
+  No memory file was written for this finding; if it needs to be referenced
+  again, a dedicated project_ascent_* memory note may be worth creating,
+  following the pattern of the five existing Ascent-related memory notes
+  indexed in MEMORY.md.
+
+  ACOS 3.0 REPO NOTE — per explicit user instruction, this repo's working tree
+  was not touched by the session being handed off. The git status/log gathered
+  in this handoff (matching modified session-cleanup.sh, acos-xl-update
+  SKILL.md, deleted 2026-06-16/06-21 handoff yamls, and a large batch of
+  untracked investment-committee / axiom-synthesis / SLICE-EDEN / SLICE-IC
+  planning and skill files, latest commit cc62ecd "feat(investment-committee):
+  live pool-backed committee room...") all predates this session and belongs to
+  a separate, earlier thread of work. Three same-day-prior handoffs already
+  exist for that thread (memory/handoffs/2026-07-13-emergency-handoff.yaml,
+  -emergency-handoff-2.yaml, and -session-handoff.yaml) and were not deeply
+  read by this handoff agent since the user's instructions explicitly scoped
+  this handoff to the two OKOA tasks only — if the next session needs to
+  resume the ACOS repo-internal thread (investment-committee build, eternity
+  protocol work, etc.), start from those three files instead of this one.
+
+reconstruction_sources:
+  - "git status --short (ACOS 3.0 repo)"
+  - "git log --oneline -20 (ACOS 3.0 repo)"
+  - "git diff --stat HEAD~5..HEAD (ACOS 3.0 repo)"
+  - "git log --since='2026-07-14 00:00' --oneline (ACOS 3.0 repo) — empty, confirms no commits today"
+  - "ls -lt planning/ (ACOS 3.0 repo)"
+  - "ls -lt .acos/evidence/ (ACOS 3.0 repo) — most recent entry .acos/evidence/2026-07-14/axiom-swarm-20260714-084532/run.log, unrelated to OKOA tasks"
+  - "ls -lt memory/decisions/ (ACOS 3.0 repo) — no decision file dated 2026-07-14"
+  - "ls -lt memory/handoffs/*.yaml memory/handoffs/*.md (ACOS 3.0 repo)"
+  - "ls -la .acos/state/ (ACOS 3.0 repo)"
+  - "ls -la .omx/ (ACOS 3.0 repo) — confirmed mtime 2026-07-07, predates this session"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_okoa_herriman_automall_deal_sheet.md (read in full)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_okoa_deal_sheet_format.md (read in full)"
+  - "ls -la '/Users/zee/Documents/New deals/' — confirmed 4 files present with mtimes"
+  - "grep -n section markers in '/Users/zee/Documents/New deals/Herriman AutoMall - Loan Submission Deal Sheet.html' — confirmed 6 sections, no §07"
+  - "grep -n 'free and clear|free & clear' in the same HTML file — confirmed absent"
+  - "mdls -name kMDItemNumberOfPages on the same-named .pdf — confirmed 4 pages"
+  - "find '.../Ascent_Park_City_Dataroom Mogul Capital/' -iname '*RENTAL AGREEMENT*' — confirmed HOTEL ASCENT RENTAL AGREEMENT.12.8.20.pdf exists at Brand Franchise & Hotel Management/"
+  - "user-supplied task instructions (this handoff invocation's prompt) — primary source for Task 1 and Task 2 substantive content, cross-checked rather than transcribed verbatim where independently verifiable"

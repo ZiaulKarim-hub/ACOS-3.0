@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "acos-reverse-cleanroom/intent-claims",
+  "title": "Intent claim ledger (JSONL — one object per line)",
+  "description": "Each line is one atomic intent claim about the target app. Confidence is BEHAVIORAL (agreement across the 9 blind extractions = 3 POV lenses × 3 instances), never self-reported. Merge is two-level: (L1) within a POV lens, ≥2/3 instances agree; (L2) across lenses, UNION unique coverage and treat only cross-lens contradiction as a defect. Every claim must cite a concrete Phase-0 observation, and a verifier separately checks that the observation ENTAILS the claim (not just that a citation exists).",
+  "type": "object",
+  "required": ["intent_id", "statement", "why", "status", "evidence", "abstraction"],
+  "properties": {
+    "intent_id": {
+      "type": "string",
+      "pattern": "^INT-[0-9]{4}$",
+      "description": "Stable id used by the Phase-6 traceability hard gate."
+    },
+    "statement": { "type": "string", "description": "WHAT the feature must accomplish, tool-agnostic (no framework/library nouns)." },
+    "why": { "type": "string", "description": "WHY it exists — the goal/job it serves; what it prevents or enables." },
+    "pov": {
+      "type": "string",
+      "enum": ["pov-user", "pov-operator", "pov-risk"],
+      "description": "The extraction lens that produced this claim (set by rc-intent-extractor). The synthesizer keeps the source lens(es); a claim confirmed in ≥2 lenses is strongest."
+    },
+    "actors": { "type": "array", "items": { "type": "string" }, "description": "Who depends on this (roles, external systems, integrations)." },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "confirmed-in-lens", "inferred", "unresolved", "gap"],
+      "description": "confirmed = lens-confirmed in ≥2 different POV lenses AND observation entails it (strongest); confirmed-in-lens = ≥2/3 instances of ONE lens agree (Level-1 intermediate); inferred = single-source or model inference; unresolved = failed QA entailment/falsification after the 3-round cap — surfaced to Gate B, NEVER silently kept as confirmed; gap = surface item with no recovered intent."
+    },
+    "provenance": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Which of the ≤9 blind reads asserted this claim (e.g. 'pov-user/A', 'pov-risk/C'). Set by rc-intent-synthesizer for auditability + the traceability spine."
+    },
+    "abstraction": {
+      "type": "string",
+      "enum": ["intent", "rule-ledger", "behavior-critical"],
+      "description": "intent = safe to abstract; rule-ledger = numeric/regulatory, captured VERBATIM elsewhere; behavior-critical = Hyrum's-Law surface requiring same-behavior parity."
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["screenshot", "har", "ax-tree", "openapi", "structure", "probe", "source-map", "human-tacit"] },
+          "ref": { "type": "string", "description": "path into 00-capture/ (or 'human-tacit' for Gate-B elicited intent)." },
+          "entails": { "type": "boolean", "description": "Set by rc-intent-qa: does this observation actually support the claim?" }
+        }
+      }
+    },
+    "surface_ref": { "type": "string", "description": "route/screen/endpoint id from surface-census.json this claim covers (for completeness accounting)." },
+    "open_question": { "type": "string", "description": "Present only if blind extractions contradicted; the conservative working assumption is in `statement`." }
+  }
+}

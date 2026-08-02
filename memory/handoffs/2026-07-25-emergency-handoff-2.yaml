@@ -1,0 +1,140 @@
+timestamp: "2026-07-26T01:10:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active work is building out the /acos-research-riffs skill
+  (.claude/skills/acos-research-riffs/), on branch acos-deficiency-fixes-2026-06-04,
+  three commits deep this session (f435d3e, 42fdc51, d5f352a), all committed and
+  confirmed pushed to both origin and personal remotes. This session added
+  verify-first evidentiary guardrails to the research engine, rebuilt the live
+  "committee room" dashboard to reuse the Investment Committee's actual
+  committee-room page instead of a stale hand-rolled copy, and then wired a live
+  warm-pool responder so clicking "Call" on a seat gets a grounded, cited answer
+  in ~5-7 seconds with no moderator in the loop. All 154 engine tests pass and
+  `bunx tsc --noEmit -p .` is clean; the third build (live responder) was also
+  verified end-to-end against a real running session. A separate, uncommitted
+  /acos-skill-breakdown skill was also built earlier and is not part of this
+  commit chain.
+
+current_work:
+  slice_id: "not applicable — /acos-research-riffs is an ad hoc skill build tracked via planning/acos-research-riffs/ARCHITECTURE.md, not the Vision/Epic/Story/Slice hierarchy (no planning/slices/SLICE-RIFF-* entries exist)"
+  story_id: "not applicable"
+  epic_id: "not applicable"
+  status: "in_progress — engine + room + live responder are built, tested, committed, and pushed; an open UX question (wiring the room's 'auto-run' button so seats take turns on their own without a human clicking 'Call' each time) is unresolved and unstarted"
+
+completed_this_session:
+  - "Verify-first guardrails (commit f435d3e, ARCHITECTURE.md as-built note 16): a live run had surfaced a cluster of failures — figures asserted from memory/blogs (ElevenLabs latency cited as ~264ms when the vendor's own figure is ~75ms model / ~100-200ms end-to-end; a third-party ~188ms worn as Cartesia's own), invented framing not stated by the user (a 'regulated lender' lens, a 'cost-first' priority), a narrowed proxy question, blog-heavy sourcing, and a category-shaped search that missed whole model families. Fixed by moving each guardrail before the answer: the sufficiency router (`assess` in lib/claims.ts) now caps any measurement claim to `provisional` unless it has a Tier 1-2 primary source, judged on the answering (top-hit) claim so a different vendor's primary source can't launder a blog figure; a new `figures-primary-sourced` eval check fails a session containing any unsourced measurement claim; invariants I9 (verify-first) and I10 (given-not-assumed) added to SKILL.md; Phase-1 interview gained a proxy/reframe question plus a stated-priority (not inferred) rule; Phase-3 auditor gained a mandatory category sweep + `scope_reframe` output; Phase-4 register rewritten to deliver-first/verify-first-in-conversation/latest-version-check; researcher, auditor, citer, and brief-template charters all updated to name these failure shapes explicitly."
+  - "Committee-room rebuild, take 1 then corrected (commits f435d3e then 42fdc51, ARCHITECTURE.md as-built notes 17-18): the user asked for the room to look and behave exactly like the Investment Committee's committee room. The first attempt (note 17) hand-copied IC's CSS but hand-wrote its own seat layout/JS and shipped broken — seats overlapping, labels colliding, call/hand-raise/autoplay missing. The user correctly called it a stale reimplementation. Corrected (note 18, commit 42fdc51) by generating scripts/room/room.html directly from acos-investment-committee's own current committee-room/meeting.html (the output of its build_meeting.py) with three transforms — relabel IC to Research Riff, blank the baked demo seats so the first /state push drives buildArc(), swap the 'Mitigant:' label for 'Latest:'. lib/room.ts gained buildIcState(), which maps a riff RoomState into IC's meeting-state.json shape (panel to seats, coverage to vote bar + briefing, ledger to transcript, gate to verdict box). riff-server.ts serves that shape on /state and /events. Verified by headless screenshot against a live 9-seat/235-claim session."
+  - "Live responder (commit d5f352a, ARCHITECTURE.md as-built note 19): the room had Call/hand-raise/autoplay buttons but nothing consumed the chair-inbox — a called seat only spoke if the moderator hand-wrote its turn. Built scripts/riff-live.ts, a Bun daemon that ports IC's warm-pool engine (ic-pool.py / ic-live.py) to the riff stack verbatim: a warm pool of `claude -p --safe-mode` workers using stream-json framing, `result` = end-of-turn, subscription OAuth (refuses to run if ANTHROPIC_API_KEY is set). It tails chair-inbox.jsonl and for each `speak` command builds the called seat's prompt strictly from its own dossier claims, writes the answer to room-turns.jsonl in ~5-7s with the moderator entirely out of the loop. `riff room` now auto-starts this daemon (self-locking, one per session; `--no-live` opts out). buildIcState surfaces room-turns.jsonl as the live transcript plus a `thinking` seat and the reading-level dial; stateFingerprint watches the room-* files so the server SSE-pushes the instant a turn lands. Hard rule enforced in the prompt, not softened: a seat answers ONLY from its own dossier claims and must cite claim ids; if the chair's question isn't in its corpus it says so and does not guess (invariants I2 + I9)."
+  - "Verified live end-to-end: calling seat 3 (Liquid AI) with 'Does Liquid AI actually support voice cloning, or not?' returned a grounded turn citing [liquid-ai-010] and [liquid-ai-024], explicitly overriding a secondary summary's incorrect cloning claim with four Liquid primary sources (blog post, two Hugging Face model cards, the liquid-audio repo) — confirmed directly by reading room-turns.jsonl and chair-inbox.jsonl on disk during this handoff's reconstruction, matching ARCHITECTURE.md note 19's claim verbatim."
+  - "Test suite confirmed green during this handoff's reconstruction: `bun .claude/skills/acos-research-riffs/scripts/test-riff.ts` -> 154 passed, 0 failed (re-run live, not just taken on faith)."
+  - "Confirmed both git remotes (origin and personal) are at the same commit as local HEAD (d5f352a) — nothing is unpushed on this branch."
+
+files_modified:
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/claims.ts"
+    changes: "Sufficiency router (`assess`) gained MEASUREMENT_RE detection + primary-source gating: a claim stating a figure/measurement is capped to provisional unless backed by a Tier 1-2 source; new `numeric`/`primary_sourced` fields on `ask` output."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/report.ts"
+    changes: "New `figures-primary-sourced` eval check; fails a session with any measurement claim lacking a primary source and names the offenders."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/room.ts"
+    changes: "Added `buildIcState()` mapping riff RoomState into Investment Committee's meeting-state.json shape; `stateFingerprint` extended to watch room-turns.jsonl, room-thinking.json, and the other room-* files so live turns trigger SSE pushes."
+  - path: ".claude/skills/acos-research-riffs/scripts/riff-server.ts"
+    changes: "Serves the IC-shaped state on /state and /events; retains the two-way chair channel (POST /chair-cmd appends to chair-inbox.jsonl, never to session state)."
+  - path: ".claude/skills/acos-research-riffs/scripts/riff-live.ts"
+    changes: "NEW file — the warm-pool live-responder daemon ported from ic-pool.py/ic-live.py; tails chair-inbox.jsonl, dispatches grounded per-seat turns to room-turns.jsonl."
+  - path: ".claude/skills/acos-research-riffs/scripts/room/room.html"
+    changes: "Regenerated from acos-investment-committee's committee-room/meeting.html (build_meeting.py output) with IC->Research-Riff relabeling, blanked demo seats, and a 'Mitigant:'->'Latest:' label swap, replacing the earlier hand-rolled v1 dashboard entirely."
+  - path: "SKILL.md, templates/researcher-charter.md, templates/auditor-charter.md, templates/citer-charter.md, templates/brief-template.md (acos-research-riffs)"
+    changes: "Added invariants I9 (verify-first) and I10 (given-not-assumed); Phase-1 proxy/reframe question + stated-priority rule; Phase-3 category-sweep + scope_reframe; Phase-4 deliver-first register; charters updated to name the specific failure shapes found in the live run (invented framing, false staleness, third-party-number-as-vendor's)."
+  - path: "planning/acos-research-riffs/ARCHITECTURE.md"
+    changes: "As-built notes 14-19 appended, documenting the room build (14), verdict/report contradiction fix (15), verify-first guardrails (16), the two room-rebuild attempts (17-18), and the live responder (19)."
+
+decisions_made: []
+
+blockers:
+  - "The room's 'auto-run' button (seats taking turns on their own without a human clicking Call each time) is an explicitly open, unresolved design question the user was exploring at handoff time — not started, no code or plan for it exists yet."
+  - "The /acos-skill-breakdown skill (.claude/skills/acos-skill-breakdown/) built earlier this session is UNCOMMITTED (confirmed via `git log --oneline --all -- .claude/skills/acos-skill-breakdown/` returning nothing) and untracked in `git status`. It is unrelated to the research-riffs commit chain and should not be conflated with it."
+  - "Discrepancy worth flagging: the .acos/skill-breakdowns/ output files (acos-research-riffs-skill-breakdown.docx, acos-axiom-synthesis-skill-breakdown.docx, and their .json companions) all carry filesystem mtimes of 2026-07-23, not today — despite being described as built 'earlier this session.' The containing directory's own mtime (2026-07-25 14:53) shows something changed in it today, but no file with today's date is present. Could not resolve this from disk alone; worth double-checking with the user rather than assuming which is stale."
+  - "Two background daemons for the 2026-07-24 OKOA riff session are still running and were NOT stopped by this handoff process (PID 50321 riff-server.ts, PID 50323 riff-live.ts, room at http://localhost:50931/, per `ps aux` and room.port at handoff time) — confirmed still live during this handoff's reconstruction, including a room-turns.jsonl entry timestamped 2026-07-26T00:58:22Z. These are unref'd background processes designed to survive /clear; the next session can reuse them via `riff room` (which reuses a running server through room.port rather than starting an orphan) or stop them manually if no longer needed."
+  - "The working tree carries a large body of substantial, UNRELATED uncommitted work from other sessions (Investment Committee build, Resurrection Protocol scripts, acos-axiom-synthesis, acos-reverse-cleanroom, several new planning/slices/SLICE-* files, a deleted-then-recreated pair of older handoff yamls, and more — see `git status --short`). Per explicit instruction from this session: do NOT git commit anything unprompted; the research-riffs work is already safely committed and pushed, so no urgency there, but an unprompted `git add -A` would sweep in unrelated work."
+
+next_actions:
+  - "Resolve the open question: whether/how to wire the room's 'auto-run' button so seats take turns answering on their own (extending riff-live.ts's dispatch loop beyond single chair-commanded `speak` calls into an autonomous round-robin or moderator-paced sequence) — this was the explicit open question at handoff time; needs a design decision from the user before building."
+  - "Decide whether to commit the /acos-skill-breakdown skill (currently untracked) in a separate, unrelated commit, or leave it uncommitted for now — do not bundle it with any research-riffs commit."
+  - "Consider stopping or intentionally handing off the two live background processes for the 2026-07-24 OKOA riff session (PIDs 50321/50323) if that research thread is done, or leave them running if the OKOA voice-agent research (see the separate, unrelated 2026-07-25 handoff at memory/handoffs/2026-07-25-emergency-handoff.yaml) is still active — these two handoffs describe two different uses of the same skill in the same repo and should not be merged."
+  - "If picking this back up, start from planning/acos-research-riffs/ARCHITECTURE.md section 11 (as-built notes), which is the authoritative, already-written record of exactly what was built and why across this entire session — it is more complete than this handoff's summary and was the primary source for this reconstruction."
+
+context_for_next_session: |
+  This session's work is entirely inside .claude/skills/acos-research-riffs/ (the
+  /acos-research-riffs skill: a from-scratch TypeScript research-panel engine with
+  seats, a coverage gate, an append-only ledger, a concept tree, a report compiler,
+  and — as of this session — a live browser "committee room"). The skill deliberately
+  mirrors and, where possible, directly reuses code from the sibling
+  acos-investment-committee skill (same warm-pool `claude -p --safe-mode` live-agent
+  pattern in ic-pool.py/ic-live.py, same committee-room page shape in meeting.html/
+  build_meeting.py). That reuse relationship is load-bearing context: the second room
+  build (note 18) failed specifically because it reimplemented IC's UI from memory
+  instead of generating it from IC's own current file, and the fix was to literally
+  regenerate room.html from IC's build_meeting.py output rather than hand-copy it —
+  if the next session touches the room again, it should re-derive from IC's current
+  meeting.html rather than editing room.html by hand, to avoid repeating that mistake.
+
+  All three of this session's commits (f435d3e verify-first guardrails, 42fdc51 IC-page
+  reuse fix, d5f352a live responder) are committed and confirmed pushed to both origin
+  and personal remotes as of HEAD d5f352a — there is no unpushed research-riffs work to
+  lose. The test suite (154 assertions) and strict TypeScript typecheck were both
+  re-verified live during this handoff's reconstruction, not merely taken from the
+  session's own claims, and both pass. A real live session
+  (.acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/)
+  is still running its room server and live-responder daemon in the background (ports
+  and PIDs above) and was used as this session's own end-to-end verification target for
+  the live responder — note that this SAME riff session directory is ALSO the subject of
+  a separate, unrelated handoff (memory/handoffs/2026-07-25-emergency-handoff.yaml, not
+  written by this reconstruction) documenting a different, OKOA-business-facing use of
+  that session's research output (a voice-agent tech-stack recommendation for OKOA
+  Capital). The two threads share the same riff session on disk but are otherwise
+  independent: this handoff is about the SKILL's engineering; the other is about the
+  BUSINESS QUESTION that particular skill run was answering. Do not conflate next-actions
+  between them.
+
+  The single explicitly open item is the room's auto-run button — right now a seat only
+  speaks when a human clicks "Call" and riff-live.ts dispatches one grounded turn per
+  chair command. Making seats "take turns on their own" was the question the user was
+  actively exploring when this handoff was triggered, and no design or code exists for it
+  yet; ARCHITECTURE.md as-built note 19 and the riff-live.ts source are the right starting
+  points to reason about how an autonomous dispatch loop would fit the existing
+  chair-inbox.jsonl / room-turns.jsonl / warm-pool architecture without breaking the
+  grounded-only-from-own-dossier hard rule (I2 + I9).
+
+reconstruction_sources:
+  - "bash .claude/scripts/acos-preflight.sh"
+  - "git status --short"
+  - "git log --oneline -30"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "git show --stat -1 d5f352a"
+  - "git log origin/acos-deficiency-fixes-2026-06-04 -1 --oneline"
+  - "git log personal/acos-deficiency-fixes-2026-06-04 -1 --oneline"
+  - "git remote -v"
+  - "git branch -vv"
+  - "git log --oneline --all -- .claude/skills/acos-skill-breakdown/ (confirmed zero commits — skill is uncommitted)"
+  - "ls -lt planning/"
+  - "ls -la planning/acos-research-riffs/"
+  - "Read planning/acos-research-riffs/ARCHITECTURE.md sections 11 (as-built notes 14-19) and the Files list at the end — primary source for this handoff's technical detail"
+  - "ls -lt .acos/evidence/ (no evidence bundle dated today for this thread — consistent with ad hoc skill-build work outside the planning hierarchy)"
+  - "ls -lt memory/decisions/ (no decision file today)"
+  - "ls -lt memory/handoffs/*.yaml memory/handoffs/*.md excluding *.resume.md (found memory/handoffs/2026-07-25-emergency-handoff.yaml already present, written earlier today by a different session documenting an unrelated OKOA voice-agent research thread)"
+  - "Read memory/handoffs/2026-07-25-emergency-handoff.yaml in full — confirmed it documents a different, business-facing thread using the same riff session directory; used to correctly scope this handoff and avoid conflation"
+  - "ls -la .acos/state/ (general runtime state only; nothing riff-specific)"
+  - "ls -la .acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/ (confirmed room-live.lock, room-turns.jsonl, chair-inbox.jsonl, room.port present and recently modified)"
+  - "cat .acos/riffs/2026-07-24-.../room.port (50931)"
+  - "ps aux | grep -i riff-live/riff-server (confirmed PIDs 50321, 50323 still running)"
+  - "tail .acos/riffs/2026-07-24-.../room-turns.jsonl (confirmed the Liquid AI grounded-turn claim from ARCHITECTURE.md note 19 verbatim on disk)"
+  - "cat .acos/riffs/2026-07-24-.../chair-inbox.jsonl"
+  - "cat .acos/riffs/2026-07-24-.../room-live.out"
+  - "ls -la .claude/skills/acos-skill-breakdown/ (confirmed exists, untracked)"
+  - "ls -la .acos/skill-breakdowns/ (confirmed docx/json outputs, mtimes 2026-07-23 — flagged as a discrepancy in blockers)"
+  - "bun .claude/skills/acos-research-riffs/scripts/test-riff.ts (re-ran live: 154 passed, 0 failed)"

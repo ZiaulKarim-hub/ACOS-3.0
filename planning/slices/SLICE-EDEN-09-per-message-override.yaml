@@ -1,0 +1,55 @@
+slice_id: "SLICE-EDEN-09"
+story_id: "ST-004-eden-5"
+epic_id: "EP-004-eden-5"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Per-message override (raw: / L1:)"
+objective: |
+  Let the user get ONE reply at a different level (or raw/unfiltered) without changing the session
+  default; the state file is never mutated.
+
+acceptance_criteria:
+  - "[ ] 'raw: <msg>' returns an unfiltered reply while the session stays at its level; state file unchanged."
+  - "[ ] 'L{n}: <msg>' applies level n to that one reply only."
+  - "[ ] The following turn returns to the session level."
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-01"
+      what_it_provides: "the level state + grammar this override sits beside"
+      status: "in_progress"
+
+files_allowed:
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+
+files_prohibited:
+  - ".acos/state/eden-level"
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Escape hatch so a precision request at L4-5 isn't harmful; reuses a single-token steering convention."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-09.md"
+
+technical_requirements:
+  - "Parse prefix from the user message; apply to one reply; NEVER write .acos/state/eden-level (E8)."
+
+testing_requirements:
+  - "session=L4, raw: reply unfiltered, state file still 4, next turn back to L4; L1: one-off works."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "S"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-09. Demo 3+. P1. Maps S4, CQ15.

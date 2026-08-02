@@ -1,0 +1,90 @@
+slice_id: "SLICE-IC-C4-ic-memo-render"
+story_id: "STORY-C2"
+epic_id: "EPIC-C"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "13-section IC memo render (Risk->Mitigant->Residual + CP)"
+objective: |
+  Render recommendation.md from the ledger (never hand-edited) in the 13-section IC canon,
+  with a BLUF verdict box and the repeating Risk -> Mitigant -> Residual triplet table where
+  every Condition Precedent is tagged to the risk it retires. For Demo 1, a short 3-seat memo;
+  for Demo 2, the full 13 sections.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/render_memo.py reads verdict.md + ledger/ and emits all 13 canonical sections (BLUF, Exec Summary, Transaction/Loan, Sponsor & Guarantor, Collateral & Valuation, Market, Financial Analysis, Sensitivities/Downside, Risks & Mitigants triplet, Structure & Covenants, Conditions Precedent, Legal/Title/Environmental, Exit/Repayment, Recommendation + Key Judgment Calls) for Demo 2"
+  - "[ ] Demo 1 emits the required subset (short 3-seat memo)"
+  - "[ ] every Risks & Mitigants triplet row has a named risk + a named mitigant + an explicit non-empty residual (bare \"mitigated\" with no residual is disallowed)"
+  - "[ ] every Condition Precedent references a real risk id"
+  - "[ ] the memo is rendered_from_ledger == true -- byte-derivable from the ledger, no manual prose injected (confirmed via diff against a re-render)"
+  - "[ ] the BLUF verdict box equals verdict.md exactly"
+  - "[ ] the memo surfaces the reduced-independence note when applicable and maps the 4-tier severity language"
+  - "[ ] evidence bundle includes the rendered memo + a triplet-completeness check + a BLUF/verdict match proof"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-C3-deterministic-verdict"
+      what_it_provides: "verdict.md and the ledger this slice renders recommendation.md from"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/render_memo.py"
+
+files_prohibited:
+  - "context note: no hand-editing of the memo is permitted; verdict computation (SLICE-C3) and Mode B are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "document-synthesis"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: verdict.md, ledger/, spec section UX (memo content) + Appendix A, domain-lattice artifact-ic-memo + pattern-risk-mitigant-residual"
+  - "the memo is a projection of the ledger, not authored prose; must be boss-criticism-proof on a first cold look (OKOA final-artifact standard); subscription-only"
+
+# Technical requirements
+technical_requirements:
+  - "render logic must be deterministic and traceable to ledger fields (no free-text generation outside the render)"
+  - "each CP must carry an explicit risk-id cross-reference"
+
+# Testing requirements
+testing_requirements:
+  - "QA confirms all 13 sections exist (Demo 2) / the required subset (Demo 1)"
+  - "QA confirms a non-empty residual on EVERY triplet row (recomputed from the ledger, rejecting any bare \"mitigated\")"
+  - "QA confirms every CP tags a real risk id"
+  - "QA confirms the BLUF box verdict equals verdict.md exactly"
+  - "QA confirms no manual prose was injected outside the render (diff against a re-render)"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on missing residual, orphan CP, or
+  BLUF mismatch; the rendered-from-ledger property must be proven by diffing a re-render, not by
+  trusting a flag.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-C4-ic-memo-render.md by
+  acos-preeng-classic Step 5; architect to review before execution.

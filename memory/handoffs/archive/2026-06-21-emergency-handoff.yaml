@@ -1,0 +1,162 @@
+timestamp: "2026-06-21T04:30:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  This session performed deep reliability hardening of the ACOS eternity protocol.
+  Two root causes for the recurring "eternity silently didn't fire" failure were
+  diagnosed and fixed: (1) the backfill LaunchAgent was SIGKILLing every watcher
+  it spawned (lacked AbandonProcessGroup), causing 16,000+ thrash iterations and
+  zero coverage for sessions that missed their SessionStart spawn; (2) stale
+  cmux-unhealthy markers from a Jun 16-20 cmux outage permanently suppressed
+  eternity dispatch. Both are now fixed, plus three global hardening additions:
+  orphan-watcher reaper, coverage self-alert, and a new eternity-doctor.sh
+  one-command health check. The session also renamed both eternity skill variants
+  to cleaner canonical names, added a freshness guard to both skills' Step 1 to
+  reject stale handoffs, raised handoff-agent maxTurns 20→45, and added the
+  stub-write-first protocol to handoff-agent.
+
+current_work:
+  slice_id: "unknown — no ACOS slice was open; work was direct framework hardening"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+
+completed_this_session:
+  - "Diagnosed two root causes of 'eternity didn't run' (FruitSync session b6c4dc9b): (1) missing AbandonProcessGroup in backfill plist → launchd killed every watcher on spawn; (2) stale cmux-unhealthy markers from Jun 16-20 cmux outage suppressed all dispatch."
+  - "Fixed Cause 1: added <key>AbandonProcessGroup</key><true/> to ~/Library/LaunchAgents/com.acos.token-watcher-backfill.plist. Verified backfill-spawned watchers now survive."
+  - "Fixed Cause 2: added age-based cmux-unhealthy marker GC to backfill-watchers.sh — clears when (a) cmux ping succeeds OR (b) marker >10 min old. Path (b) is the launchd-safe path (cmux CLI only works in-pane; launchd jobs cannot ping). Written using stat-based age, NOT find -mmin (find exits 0 even on no match — documented as CRITICAL BASH GOTCHA)."
+  - "Added orphan-watcher reaper to backfill-watchers.sh — reaps watchers whose jsonl is gone or stale >360 min. Found 6 leaked watchers live (one 5 days old) when first run."
+  - "Added coverage self-alert to backfill-watchers.sh — writes state/.eternity-ALERT + fires macOS notification if a genuinely-active session is still unwatched across 2 consecutive cycles."
+  - "Built eternity-doctor.sh (new file in ~/Library/Application Support/acos-token-monitor/bin/) — one-command health check: cmux ping, LaunchAgent+AbandonProcessGroup, in-pane gate+hook, threshold, per-session coverage, orphan watchers, stale markers, standing alerts. Exit 0=all green, exit 1=problems found."
+  - "Renamed acos-eternity-protocol-cmux → acos-eternity-protocol (reclaims retired monolithic name; canonical auto/cmux engine). Renamed acos-eternity-protocol-warp → acos-continue (manual Warp counterpart). Committed as 28c42d8."
+  - "Updated global skill symlinks for both renamed skills. Updated acos-eternity-protocol-threshold/SKILL.md dispatch description. Updated all in-repo cross-references."
+  - "Added 2026-06-21 FRESHNESS GUARD to Step 1 of both eternity skills (acos-eternity-protocol and acos-continue): rejects handoff >10 min old to prevent /clear being triggered with a stale prior handoff when handoff-agent fails silently. Uses stat -f %m + arithmetic (not find -mmin)."
+  - "Added surface-keyed clear flag to acos-eternity-protocol Step 5 (.clear-requested-surface-<surface_id>) alongside the existing sid-keyed flag — solves session-id churn where one cmux pane cycles through many session ids and the in-pane Stop hook (eternity-cmux-inpane.sh Priority 1) can miss the current sid."
+  - "Raised handoff-agent maxTurns from 20 to 45 (in .claude/agents/handoff-agent.md) — the agent was hitting the turn cap before writing a handoff on large repos."
+  - "Added stub-write-first protocol (Step 1.5) to handoff-agent.md — the agent now writes a minimal valid stub BEFORE gathering, then overwrites with the full handoff in Step 4. Eliminates the failure mode of turn-cap with nothing written."
+  - "Committed autopilot-stop-handler.py fix for goal-complete marker missed due to transcript flush race (commit 912722c — pre-dates this session, part of the rob-review work that converged Jun 11-21)."
+  - "Documented root causes + fixes in ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_watcher_thrash_and_unhealthy_gc.md (user's auto-memory, not git-tracked)."
+
+files_modified:
+  - path: "~/Library/LaunchAgents/com.acos.token-watcher-backfill.plist"
+    changes: "Added <key>AbandonProcessGroup</key><true/> — the core fix for spawned watchers being killed by launchd. Updated mtime 2026-06-21 03:30. NOT in ACOS 3.0 git repo."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/backfill-watchers.sh"
+    changes: "Added cmux-unhealthy GC (age-based, stat not find), orphan-watcher reaper (kills stale >360min watchers), coverage self-alert (macOS notification + state/.eternity-ALERT). Updated mtime 2026-06-21 04:03. NOT in ACOS 3.0 git repo."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh"
+    changes: "NEW FILE — 115-line one-command health check script. Checks cmux transport, backfill LaunchAgent, in-pane gate+hook, threshold config, per-session coverage, orphan watchers, stale markers, standing alerts. Exit 0=all green. Updated mtime 2026-06-21 04:03. NOT in ACOS 3.0 git repo."
+  - path: ".claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: "Was acos-eternity-protocol-cmux. Renamed. Added 2026-06-21 FRESHNESS GUARD to Step 1. Added surface-keyed clear flag (.clear-requested-surface-<id>) to Step 5. Description and title updated to canonical name. Committed 28c42d8."
+  - path: ".claude/skills/acos-continue/SKILL.md"
+    changes: "Was acos-eternity-protocol-warp. Renamed to acos-continue. Added 2026-06-21 FRESHNESS GUARD to Step 1. Updated description, title, header. Committed 28c42d8."
+  - path: ".claude/skills/acos-eternity-protocol-threshold/SKILL.md"
+    changes: "Updated dispatch description to reference canonical renamed skill names. Committed 28c42d8."
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "maxTurns raised 20→45. Added Step 1.5 stub-write-first protocol with shell command and minimal YAML template. Modified in this session (git status shows M)."
+  - path: ".claude/scripts/autopilot-stop-handler.py"
+    changes: "Added 0.4s retry on transcript flush race for goal-complete marker detection. Committed 912722c (Jun 11, end of robust-review phase)."
+
+decisions_made:
+  - "AbandonProcessGroup=true is now mandatory in any launchd plist that spawns child processes via nohup+disown — shell job-control detach (nohup/disown) does NOT protect from launchd's pgroup SIGKILL."
+  - "cmux-unhealthy GC must be age-based (>10 min), not cmux-ping-based, when running under launchd — cmux CLI is in-pane-only and always fails from detached daemon context."
+  - "find -mmin exit code is NOT a reliable 'any matches found' test (exits 0 even on no match). Always use stat -f %m + arithmetic for age-gated logic."
+  - "Canonical skill names going forward: /acos-eternity-protocol (cmux auto-fire) and /acos-continue (Warp manual). The -cmux and -warp suffix names are retired."
+  - "Freshness guard on handoff: 10-minute maximum age enforced by both eternity skills before they'll write a .clear-requested flag. If handoff is stale, the skills ABORT (session not cleared) so the user can investigate."
+  - "handoff-agent must write a stub first (Step 1.5) because turn-cap on large repos kills it before Step 4 — stub-write-first is a mechanical guarantee that SOMETHING is always written."
+  - "Architecture clarification: watcher DETECTS tokens (writes .last-total-<sid>), SKILL GENERATES handoff (writes .clear-requested-<sid>), IN-PANE HOOK INJECTS (eternity-cmux-inpane.sh reads .clear-requested and calls cmux send). Watcher's own fire_inject_cmux is vestigial from before in-pane hook; it marks sessions unhealthy but is benign noise (age-GC clears within 10 min)."
+
+blockers:
+  - "None known for eternity protocol — both root causes fixed, verified by observation that backfill-spawned watchers now survive."
+  - "handoff-agent.md changes to maxTurns and Step 1.5 are unstaged (git status shows M) — not yet committed. If the next session wants these changes committed, they should be staged."
+  - "The HCA (hypercore ask) project has many unstaged new files (planning/preeng/001-hypercore-ask/, planning/slices/SLICE-HCA-*.yaml, .claude/scripts/hca-*.py) — a separate active work thread that was in progress before this eternity session. The last evidence for HCA is 2026-06-19 (SLICE-HCA-16-hardening). If returning to HCA, check evidence dir."
+
+next_actions:
+  - "OPTIONAL: commit the handoff-agent.md changes (maxTurns + stub-write-first) that are currently unstaged."
+  - "Run eternity-doctor.sh to verify all-green after the fixes: bash \"$HOME/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh\""
+  - "If returning to HCA work: check planning/preeng/001-hypercore-ask/tasks/ for the last completed slice (SLICE-HCA-16-hardening from evidence 2026-06-19) and pick up the next task."
+  - "If returning to acos-guided-reader Tier H (image capture mode): see the Jun 16 handoff for full design spec. The prior session ended with user saying 'say go and I'll ship it.' Work lives in ~/.claude/skills/acos-guided-reader/ (global skill, not in ACOS 3.0 git)."
+
+context_for_next_session: |
+  This session was entirely focused on diagnosing and fixing the eternity protocol's
+  recurring "silently didn't fire" failures. The investigation was triggered by a
+  FruitSync session (b6c4dc9b) that blew 227k tokens PAST the 400k threshold with
+  no eternity fire. Root cause analysis found TWO independent bugs, both in recovery
+  paths (the happy path worked fine):
+
+  BUG 1 — backfill-watchers.sh's launchd plist lacked AbandonProcessGroup. launchd
+  SIGKILLs every child in the job's process group the instant the job's main process
+  exits. nohup+disown only detaches from shell job-control, NOT launchd's pgroup.
+  Result: 16,000+ iterations in backfill-launchd.log of "[spawn] ... spawned: 2"
+  repeating every 2 minutes, with 0-byte watcher logs (killed before first write).
+  Sessions that missed their SessionStart spawn (due to a known JSONL-doesn't-
+  exist-yet race at session start) were therefore NEVER covered by backfill.
+  FIX: Added AbandonProcessGroup=true to the plist.
+
+  BUG 2 — stale cmux-unhealthy markers. The daemon marks a session cmux-unhealthy
+  after 2 consecutive injection failures. During a Jun 16-20 cmux app outage, every
+  pane got marked. When cmux recovered, the markers stayed because the only recovery
+  path is "a future dispatch ping succeeds" — but if the session was idle, no dispatch
+  ever fired again. Permanently suppressed.
+  FIX: Added age-based GC to backfill-watchers.sh: clear any cmux-unhealthy marker
+  >10 min old, unconditionally. cmux ping is the preferred clear trigger but only
+  works in-pane; the age path is launchd-safe.
+
+  Both fixes are in out-of-repo files (~/.../acos-token-monitor/). Verified working.
+
+  IMPORTANT GOTCHA: find -mmin's exit code is 0 whether or not it found any matches.
+  The first cut of the reaper used "if find $path -mmin +N >/dev/null" and would have
+  killed EVERY watcher every 120s (opposite of intended). Caught in dry-run. All age
+  tests in backfill-watchers.sh now use stat -f %m + bash arithmetic.
+
+  ARCHITECTURE (clarified this session, must know when touching eternity):
+  - Watcher DETECTS crossing (writes .last-total-<sid>)
+  - Skill GENERATES handoff + arms .clear-requested-<sid> AND .clear-requested-surface-<sid>
+  - In-pane Stop hook (eternity-cmux-inpane.sh) INJECTS via cmux send
+  - Watcher's own fire_inject_cmux is vestigial/benign noise
+  - cmux CLI ONLY works in-pane (detached daemon context always gets EPIPE)
+
+  SKILL RENAMES (28c42d8):
+  - /acos-eternity-protocol = the cmux/auto-fire engine (was /acos-eternity-protocol-cmux)
+  - /acos-continue = the Warp/manual handoff (was /acos-eternity-protocol-warp)
+
+  FRESHNESS GUARD (added this session, both skills Step 1):
+  Both skills now abort with an error if the handoff-agent wrote nothing or only a
+  stale handoff — "test -s" was the prior check but it passed for any pre-existing
+  handoff. The guard requires the handoff mtime < 10 min.
+
+  HANDOFF-AGENT IMPROVEMENTS (this session, not yet committed):
+  - maxTurns: 20 → 45 (was hitting cap before writing on large repos)
+  - Step 1.5: stub-write-first — writes a minimal YAML stub immediately after
+    preflight, then overwrites with the full handoff. Guarantees something useful
+    is written even if the agent is cut off mid-gather.
+
+  CONCURRENT WORK THREAD — HCA (hypercore-ask):
+  There is a large parallel work thread for planning/preeng/001-hypercore-ask/.
+  Last evidence: SLICE-HCA-16-hardening (2026-06-19). Many new files unstaged.
+  This was NOT the focus of this session; eternity fixes took priority.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/agents/handoff-agent.md (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-eternity-protocol/SKILL.md (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-continue/SKILL.md (full read)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/autopilot-stop-handler.py (lines 1-60)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-06-16-emergency-handoff.yaml (full read — prior session context)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/decisions/ADR-003-acos-property-search-design.md (lines 1-30 — identified as unrelated Jun 19 work)"
+  - "~/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh (full read)"
+  - "~/Library/Application Support/acos-token-monitor/bin/backfill-watchers.sh (lines 1-210)"
+  - "~/Library/Application Support/acos-token-monitor/bin/ (directory listing)"
+  - "~/Library/Application Support/acos-token-monitor/ (directory listing)"
+  - "~/Library/LaunchAgents/com.acos.token-watcher-backfill.plist (full read)"
+  - "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_eternity_watcher_thrash_and_unhealthy_gc.md (full read)"
+  - "git status --short (ACOS 3.0 project)"
+  - "git log --oneline -25"
+  - "git diff --stat HEAD~3..HEAD"
+  - "git show 28c42d8 --stat (rename commit detail)"
+  - "git show 912722c --stat (autopilot fix commit detail)"
+  - "ls -lt .acos/evidence/ (listed dates; most recent: 2026-06-19 SLICE-HCA-16-hardening)"
+  - "ls -lt memory/decisions/ (listed; most recent: ADR-003 2026-06-19)"
+  - "ls -la ~/Library/Application Support/acos-token-monitor/state/ (listed recent pids/surfaces)"
+  - "ls -la .acos/state/ (project runtime state)"

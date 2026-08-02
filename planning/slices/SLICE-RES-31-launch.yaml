@@ -1,0 +1,117 @@
+# Slice Plan — bridged from preeng task SLICE-31-launch
+# Source (authoritative): planning/preeng/005-resurrection-protocol/tasks/SLICE-31-launch.md
+
+slice_id: "SLICE-RES-31-launch"
+story_id: "STORY-3.1"
+epic_id: "EPIC-3"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "launch-project.sh: focus-or-launch + SPINE 1 acceptance + verified argv delivery"
+objective: |
+  launch-project.sh implements focus-or-launch three-way routing with SPINE 1
+  acceptance and verified argv reentry delivery. Focus-never-launch kills the
+  duplicate-workspace pile-up at its source.
+description: |
+  In scope:
+  - (a) same-root -> newest .reentry.md re-resolved AT OPEN TIME, loaded inline
+  - (b) open elsewhere -> cmux rpc workspace.select focus, NEVER a second workspace
+  - (c) not open -> new-workspace with argv reentry delivery, read-screen delivery
+    verification + one retry, trust-gate detection ('Quick safety check'),
+    [ -d "$CWD" ] precheck
+  - Write --name/--description from the registry (<next_action> [key:<uuid>])
+    via list-form subprocess
+  Out of scope (guardrails):
+  - cmux send / surface.send_text for the prompt (shred at \n)
+  - Any registry-derived string entering --command (only the reentry file PATH)
+  - Recency as a selector (exact identity match first)
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Picking ACOS 3.0 while open changes focus and the workspace count stays CONSTANT (SPINE 1) — artifact: before/after workspace counts archived in the evidence bundle"
+  - "[ ] Launch on a throwaway delivers the multi-line reentry as ONE message — artifact: read-screen marker output captured in the evidence bundle"
+  - "[ ] Untrusted-dir launch is detected and reported, not silently assumed delivered — artifact: trust-gate ('Quick safety check') detection shown"
+  - "[ ] No registry-derived string enters --command; names/next_action go via --name/--description list-form — artifact: --command invocation inspected and archived"
+  - "[ ] Evidence bundle at .acos/evidence/[DATE]/SLICE-31-launch/ populated with the 7-part bundle (Implementation Summary; Requirements Traceability to FR-*/TR-*; Structural Quality Evidence; Functional/structural checks; Security/Compliance notes; Operational/Runtime considerations; Self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections updated in the source preeng task file (slice is not Done until they are — §0.7)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "The registry rows (<next_action> [key:<uuid>]) read for --name/--description"
+      status: "planned"
+  # TODO: confirm — task file states no explicit prerequisites section; whether
+  # SLICE-RES-00-probe (verified cmux rpc behaviors) and SLICE-RES-30-resurrect-view
+  # (the picking menu) are hard dependencies needs confirmation.
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/launch-project.sh"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended: []
+# TODO: confirm — the task file names no methodology skills.
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "cmux does no dedup — a routing bug here creates a 5th ACOS 3.0 workspace"
+  - "cmux send / surface.send_text shreds multi-line prompts at \\n — the prompt must go via argv, never send_text"
+  - "newest .reentry.md must be re-resolved AT OPEN TIME, not cached"
+  - "Trust gate ('Quick safety check') can swallow delivery — detect and report, never assume delivered"
+  - "Recency is never a selector — exact identity match first"
+  - "[ -d \"$CWD\" ] precheck before any launch"
+  - "cmux rpc invoked via absolute binary path (workspace.select / new-workspace / read-screen)"
+
+# Technical requirements
+technical_requirements:
+  - "Three-way routing: same-root inline reentry load; open-elsewhere workspace.select focus (never a second workspace); not-open new-workspace launch"
+  - "Argv reentry delivery with read-screen marker verification plus exactly one retry"
+  - "Trust-gate detection ('Quick safety check') on launch"
+  - "--name/--description written from the registry via list-form subprocess; only the reentry file PATH enters --command"
+
+# Testing requirements
+testing_requirements:
+  - "SPINE 1 acceptance test: open-pick keeps workspace count constant"
+  - "Throwaway-directory launch test: multi-line reentry arrives as ONE message (read-screen marker found)"
+
+# Verification method (QA — zero-trust; skill-mandated extension of the template)
+verification_method:
+  - "Archive workspace count before/after an open pick; independently confirm the count is constant (cmux does no dedup)"
+  - "Show the read-screen marker for a throwaway launch; confirm delivery is verified via read-screen + retry, not assumed"
+  - "Show trust-gate detection for an untrusted-dir launch"
+  - "Inspect --command: confirm the reentry PATH, not its contents or any registry-derived string, is what enters it"
+  - "Verify scope respect and evidence authenticity — spot-check and recompute; no fabricated logs. QA may REJECT (blocks like INCONCLUSIVE) until gates pass"
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; task QA section defines zero-trust checks
+  - "ACOS-security-reviewer"  # Command-injection guardrail: no registry-derived string may enter --command
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged by acos-preeng-classic Step 5. The preeng task file is authoritative:
+  planning/preeng/005-resurrection-protocol/tasks/SLICE-31-launch.md
+  Vertical value: focus-never-launch kills the duplicate pile-up at its source
+  (worth more than every other feature in the window). Evidence bundle path keeps
+  the preeng slice id: .acos/evidence/[DATE]/SLICE-31-launch/

@@ -1,0 +1,94 @@
+slice_id: "SLICE-IC-C1-objection-fact-adapter-axis-s"
+story_id: "STORY-C1"
+epic_id: "EPIC-C"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Objection->fact adapter + Axis S"
+objective: |
+  Build the IC fact-builder adapter that maps each expert Objection onto an axiom-synthesis
+  fact record and attaches the domain-owned Axis S (_ic_extension_severity) -- WITHOUT modifying
+  any of the six engine scripts.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/fact_builder.py reads rounds/round-00/opening/{seat}.json and emits one fact per objection"
+  - "[ ] each fact matches process_fact's expected fields exactly: fact_id, statement, claim_type, candidates, grading, flags, refuter, conflict, depends_on, covers"
+  - "[ ] each fact carries _ic_extension_severity {axis_s_materiality, raised_by_role, rationale}"
+  - "[ ] axis_s_materiality values are restricted to the exact 4-rung ladder: informational < limitation < material-risk < deal-breaker-candidate"
+  - "[ ] Axis S is stored alongside Axis A/B and is NEVER arithmetically combined (averaged/summed) with them anywhere in the adapter"
+  - "[ ] a refuter-surfaced mitigant is emitted as a NEW fact with depends_on the original objection"
+  - "[ ] covers tags are populated on each fact for the 16-risk coverage assertion"
+  - "[ ] git diff --stat on acos-axiom-synthesis/ is empty (zero engine scripts modified)"
+  - "[ ] evidence bundle includes a fact-builder transcript + a sample fact showing A/B/S kept separate"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-B2-blind-opening-pass"
+      what_it_provides: "rounds/round-00/opening/{seat}.json opening objections consumed as adapter input"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/fact_builder.py"
+
+files_prohibited:
+  - ".claude/skills/acos-axiom-synthesis/scripts/decircularize.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/grade_fuse.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/falsify.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/resolve.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/lifecycle.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/coverage.py"
+  - ".claude/skills/acos-axiom-synthesis/scripts/orchestrate.py"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: acos-axiom-synthesis orchestrate.py signature + STATE-MACHINE.md, opening JSONs, spec section 4.2 engine contract + Appendix B/C, domain-lattice method-severity-axis-s + metric-severity-ladder"
+  - "the ONLY engine extension allowed is _ic_extension_severity on the fact -- do not touch the six engine scripts listed in files_prohibited"
+
+# Technical requirements
+technical_requirements:
+  - "fact dicts must match process_fact's field contract exactly (no extra/missing required fields)"
+  - "Axis S must be a separate, non-blended field alongside Axis A/B"
+
+# Testing requirements
+testing_requirements:
+  - "QA loads produced facts and confirms each has the 10 process_fact fields + a well-formed _ic_extension_severity"
+  - "QA confirms axis_s_materiality values are ONLY from the 4-rung ladder"
+  - "QA greps the adapter to prove Axis S is never averaged/summed with Axis A or B"
+  - "QA confirms git diff --stat shows ZERO changes under acos-axiom-synthesis/"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): the A/B/S separation is the load-bearing
+  check and must be proven by grep, not by trusting a compliance claim; reject if Axis S is
+  blended or any engine script changed.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-C1-objection-fact-adapter-axis-s.md
+  by acos-preeng-classic Step 5; architect to review before execution.

@@ -1,0 +1,163 @@
+timestamp: "2026-06-26T15:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active session was iterating on an OKOA Capital 6-Month SEO Plan document rewrite
+  for the user to present to their boss as their own work. The document is a 10-page
+  PDF (v2) built from a Markdown source via WeasyPrint with OKOA house CSS. The git
+  repo (branch acos-deficiency-fixes-2026-06-04) is stale relative to this task —
+  the Hypercore Data Catalog work committed there is fully complete. The live task is
+  entirely outside the git repo, under ~/Documents/OKOA/SEO Plan/.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  description: |
+    OKOA Capital 6-Month SEO Plan document rewrite. Iterating with user on internal
+    SEO strategy document (10 pages, v2 draft). User reviews each rendered PDF and
+    requests edits; loop continues until user is satisfied. No open errors; doc renders
+    clean at 10 pages.
+
+completed_this_session:
+  - "Produced OKOA Capital - 6-Month SEO Plan (v2).md (10-page structured draft, 8 sections)"
+  - "Built render pipeline: build_seo_pdf_v2.py (markdown + WeasyPrint + OKOA house CSS)"
+  - "Generated OKOA Capital - 6-Month SEO Plan (v2).pdf (confirmed 10 pages)"
+  - "Applied all locked user constraints across multiple edit rounds (voice, jargon, page cap, national framing, etc.)"
+  - "Completed and committed Hypercore Data Catalog work on git branch (separate from SEO task)"
+
+files_modified:
+  - path: "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).md"
+    changes: "Live editable source for the SEO plan draft. 8 sections, first-person we-voice, plain language, no SEO jargon. This is the file to edit on resume."
+  - path: "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).pdf"
+    changes: "Current rendered output, 10 pages. Rebuilt after every edit round."
+  - path: "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/89d8187e-8605-4ac0-83f4-67d517c3c527/scratchpad/build_seo_pdf_v2.py"
+    changes: "WeasyPrint render script. Converts (v2).md to (v2).pdf using OKOA house CSS."
+
+decisions_made: []
+
+blockers: []
+
+next_actions:
+  - "Reopen the v2 PDF for the user: open -a 'Google Chrome' '/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).pdf'"
+  - "Re-read the current (v2).md before editing — user may have made manual tweaks since last session"
+  - "Await the user's next round of review comments and apply requested edits"
+  - "After every edit: re-render via build_seo_pdf_v2.py, then verify page count with: pdfinfo '/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).pdf' | grep Pages"
+  - "Hard cap: 10 pages MAX. Each '## ' section forces a new page in CSS; keep to ~8 sections."
+
+# ============================================================
+# ACTIVE TASK DETAIL — OKOA Capital 6-Month SEO Plan
+# ============================================================
+
+active_task:
+  title: "OKOA Capital — 6-Month SEO Plan rewrite"
+  description: |
+    Iterating with the user (OKOA employee) on an internal SEO strategy document
+    they will present to their boss as their own work. The user reviews each
+    rendered PDF and requests edits; loop continues.
+
+  working_files:
+    editable_source: "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).md"
+    current_output: "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).pdf"
+    original_reference: "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan.pdf"
+    original_reference_note: "39 pages — ORIGINAL, keep untouched for user's personal reference. DO NOT edit."
+    render_script: "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/89d8187e-8605-4ac0-83f4-67d517c3c527/scratchpad/build_seo_pdf_v2.py"
+    render_command: |
+      /Users/zee/Documents/OKOA/.venv-design/bin/python3 \
+        /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/89d8187e-8605-4ac0-83f4-67d517c3c527/scratchpad/build_seo_pdf_v2.py
+    render_open_after: |
+      open -a "Google Chrome" "/Users/zee/Documents/OKOA/SEO Plan/OKOA Capital - 6-Month SEO Plan (v2).pdf"
+    render_pipeline_note: "python markdown + WeasyPrint; md -> HTML -> WeasyPrint with OKOA house CSS"
+    source_research_readonly: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/swarm/swarm-20260625-110031/synthesis/seo-6-month-plan-aggressive-100clicks.md"
+    source_research_note: "READ-ONLY. Original 39-page basis. Do not edit."
+
+  current_doc_structure: |
+    8 sections, 10 pages:
+    1. What we're proposing
+    2. Why this is worth it for us
+    3. What we'll publish
+    4. Sharing on LinkedIn
+    5. Getting found / turning visitors into borrowers
+    6. The 6-month plan (month-by-month)
+    7. Why we should pass on the outside SEO proposal
+    8. What it takes, the risks, and what I recommend
+
+  locked_requirements:
+    - id: 1
+      rule: "First-person 'we' voice — user presents it as their OWN work. NEVER third-person 'OKOA'."
+    - id: 2
+      rule: "Plain language, zero SEO jargon. No YMYL/E-E-A-T/schema/indexed/organic/etc. Audience is non-technical (the boss)."
+    - id: 3
+      rule: "Reads human, not AI-generated. It is an INTERNAL document, NOT a contract."
+    - id: 4
+      rule: "No meta about how the doc was made. No AI/adversarial-review/process language."
+    - id: 5
+      rule: "10 PAGES MAX — HARD CAP. Each '## ' section forces a new page in the CSS; keep to ~8 sections. Verify page count after every render with: pdfinfo '<pdf>' | grep Pages"
+    - id: 6
+      rule: "Target = 100 visits per DAY by end of month 6 (~3,000/mo), stated confidently as the headline goal. Tone honest-but-simplified: first months are foundation, quiet click numbers are normal, the real win is qualified inquiries/funded deals."
+    - id: 7
+      rule: "LinkedIn is its own section. Share every piece the day it publishes from the company page AND everyone's personal profiles. Brings direct traffic while search builds. Do NOT name individuals."
+    - id: 8
+      rule: "Section 7 debunks an outside SEO vendor proposal in PLAIN language. It's a sales pitch; private-blog-network + spun/AI content = methods Google penalizes finance sites for, can get the whole site removed. It misstates our robots.txt; its stats are unverifiable; it ignores our real edge."
+    - id: 9
+      rule: "A NEW website is launching — mention it POSITIVELY as our foundation. Do NOT criticize the current website. Keep build internals (Cloudflare, etc.) OUT of the doc."
+    - id: 10
+      rule: "We serve the WHOLE US — Utah is only our home base. National framing throughout. Use 'market pages' (NOT 'local pages'); national examples (Denver, Phoenix)."
+    - id: 11
+      rule: "Our specialty = REAL ESTATE CREDIT (private lending secured by real estate). The earlier condo-hotel/resort/hospitality emphasis was REMOVED — do not reintroduce it as the specialty."
+    - id: 12
+      rule: "NO videos anywhere in the plan."
+    - id: 13
+      rule: "Do NOT name individuals (no Jason/Ty/Brad). Use 'our team' / 'our senior team'. Content is 'reviewed and approved' / 'bylined by a senior member of our team' — never naming who."
+    - id: 14
+      rule: "Market reports are built on PUBLIC/INDUSTRY data + our own analysis — NOT our own loan book. We have only ~30 active loans; NEVER reveal scale; no 'proprietary data'/'nobody else can publish' claims."
+
+# ============================================================
+# GIT STATE (for completeness — NOT the live task)
+# ============================================================
+
+git_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  head_commit: "e9f91bb test(hca): pin provenance citation + path-safety guard for catalog wiring"
+  note: |
+    The git branch reflects completed Hypercore Data Catalog work. That work is
+    fully committed and is NOT the active task. The SEO plan work described above
+    lives outside this git repo under ~/Documents/OKOA/SEO Plan/ and is the
+    session's real active task.
+
+context_for_next_session: |
+  The session was iterating on a 10-page internal SEO strategy document for OKOA Capital.
+  The user (an OKOA associate) is authoring this document to present to their boss as their
+  own work. The document is a plain-language 6-month plan to reach 100 daily visits via
+  search and LinkedIn distribution.
+
+  On resume, open the v2 PDF in Chrome so the user can review it, then wait for their next
+  edit request. Before making ANY edits, re-read the (v2).md source in case the user made
+  manual tweaks between sessions. After every edit cycle, re-render via build_seo_pdf_v2.py
+  and verify the page count stays at exactly 10 (never exceed).
+
+  The 14 locked requirements above are non-negotiable constraints established across many
+  prior edit rounds. Do not regress any of them. The most common regressions to guard
+  against are: slipping into third-person "OKOA", reintroducing SEO jargon, naming
+  individuals, referencing the loan book scale, reintroducing the condo-hotel/hospitality
+  framing as our specialty, adding video references, or exceeding 10 pages.
+
+  The render script (build_seo_pdf_v2.py) is in the session-scoped scratchpad. If it is
+  missing (scratchpad is ephemeral per session), it will need to be recreated — ask the
+  user to confirm the CSS and pipeline before rebuilding.
+
+  The git repo (acos-deficiency-fixes-2026-06-04) is a separate, completed workstream.
+  Do not conflate it with the SEO plan task.
+
+reconstruction_sources:
+  - "User-provided task description (verbatim, in this handoff)"
+  - "/Users/zee/Documents/OKOA/SEO Plan/ (directory listing confirmed all working files)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/89d8187e-8605-4ac0-83f4-67d517c3c527/scratchpad/build_seo_pdf_v2.py (confirmed present)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/swarm/swarm-20260625-110031/synthesis/seo-6-month-plan-aggressive-100clicks.md (confirmed present)"
+  - "git status + git log (branch acos-deficiency-fixes-2026-06-04, HEAD e9f91bb)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-06-26-emergency-handoff.yaml (prior handoff from today, Hypercore-focused, now superseded for this task)"

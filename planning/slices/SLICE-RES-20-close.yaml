@@ -1,0 +1,153 @@
+# Slice Plan — bridged from preeng task planning/preeng/005-resurrection-protocol/tasks/SLICE-20-close.md
+# Bridge: acos-preeng-classic Step 5
+
+slice_id: "SLICE-RES-20-close"
+story_id: "STORY-2.1"
+epic_id: "EPIC-2"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "close-project.sh steps 0-10 + four guards + last-workspace guard + agent-03 7-check gate"
+objective: |
+  Implement close-project.sh steps 0-10 in order with four guards plus the
+  last-workspace guard and the agent-03 7-check verification gate, so that
+  closing a project tab is verified zero-loss: the tab vanishing IS the
+  success signal; the tab staying open IS the failure signal.
+description: |
+  In scope:
+  - Step 0 writes state/stop-<sid> FIRST (the only daemon-dir write).
+  - Step 1: the parent writes the intent core (never delegated).
+  - Enrich from disk; delegate to handoff-agent only if context-starved,
+    via Bash heredoc not Write.
+  - Write co-located handoff.yaml + <slug>.reentry.md + git-state/drift
+    under memory/handoffs/closed/<slug>/.
+  - Wire the 7-check verification gate (agent-03); the blind round-trip
+    (step 5) is a separate slice (SLICE-RES-22-blind-roundtrip).
+  - Atomic row upsert (enrich, never create); read-back sha256 assert;
+    inline cleanup.
+  - Validated workspace.close as the literal last statement; four guards
+    plus the last-workspace guard.
+  Out of scope (guardrails):
+  - Any identify --surface fallback (fails open).
+  - Auto-stash (record state, never mutate the tree).
+  - Creating a registry row at close (enrollment already did).
+  - Writing .resume.md or top-level memory/handoffs/*.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Tamper test: delete the handoff between write and read-back -> receipt refuses SAFE and the tab stays open (archived tamper-test transcript in .acos/evidence/[DATE]/SLICE-20-close/)"
+  - "[ ] Unvalidatable CMUX_WORKSPACE_ID -> fail closed: no close, no identify fallback (archived transcript; code inspection shows no identify --surface path exists)"
+  - "[ ] Last-workspace case -> close skipped with an explicit message (archived transcript)"
+  - "[ ] state/stop-<sid> exists BEFORE step 1 and is the ONLY daemon-dir write (before/after directory diff of the daemon dir archived)"
+  - "[ ] Receipt listed N of M == git status --porcelain | wc -l (N of M independently recomputed by QA)"
+  - "[ ] Artifacts co-located under memory/handoffs/closed/<slug>/ with status: parked, type: close-project, and glob-invisible to Eternity (ls -t memory/handoffs/*.md *.yaml output unchanged, archived before/after)"
+  - "[ ] pending-resume-*.txt population unchanged before/after (diff archived)"
+  # TODO: confirm — exact contents of the agent-03 7-check gate (task defers to agent-03/findings.md "at build time"; the 7 checks are not enumerated in the task file)
+  # TODO: confirm — last-workspace guard parameterization (task says "parameterized by SLICE-00 DP2 result"; the DP2 result is not stated in the task file)
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-00-probe"
+      what_it_provides: "DP2 results (live-close prompt, last-workspace behavior) that parameterize the last-workspace guard"
+      status: "planned"
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry_lib.py atomic write/upsert used for the enrich-never-create row upsert"
+      status: "planned"
+    - slice_id: "SLICE-RES-11-enroll"
+      what_it_provides: "Enrollment creates the registry row that close-project.sh enriches (close never creates rows)"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/close-project.sh"
+  - "memory/handoffs/closed/"
+  - "state/stop-<sid> (daemon state dir — the SINGLE permitted daemon write)"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - "memory/handoffs/*.md (top-level — glob-visible to Eternity)"
+  - "memory/handoffs/*.yaml (top-level — glob-visible to Eternity)"
+  - "*.resume.md"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Step 0 state/stop-<sid> FIRST — it is the only daemon-dir write allowed."
+  - "Step 1: parent writes the intent core itself (never delegated)."
+  - "Enrich from disk; delegate to handoff-agent ONLY if context-starved, via Bash heredoc not Write (subagent Write is policy-blocked)."
+  - "Validate CMUX_WORKSPACE_ID via grep -qx against rpc workspace.list; fail CLOSED. No identify --surface fallback — it fails open."
+  - "Auto-stash is prohibited: record git state, never mutate the tree."
+  - "Do not create a registry row at close — enrollment already did; enrich only."
+  - "Closed-project artifacts must be glob-invisible to Eternity (never top-level memory/handoffs/*, never .resume.md)."
+  - "Pull agent-03's 7-check list from agent-03/findings.md at build time."
+  - "workspace.close must be the literal last statement of the script."
+
+# Technical requirements
+technical_requirements:
+  - "Implement steps 0-10 in order; validated workspace.close is the literal last statement."
+  - "CMUX_WORKSPACE_ID validated via grep -qx against rpc workspace.list output; fail closed on non-match."
+  - "Last-workspace guard, parameterized by the SLICE-00 DP2 result."
+  - "Four guards + agent-03 7-check verification gate wired before close."
+  - "Atomic registry row upsert (enrich, never create) with read-back sha256 assert; inline cleanup."
+  - "Co-located outputs: memory/handoffs/closed/<slug>/handoff.yaml + <slug>.reentry.md + git-state/drift."
+
+# Testing requirements
+testing_requirements:
+  - "Tamper tests: (a) handoff deleted between write and read-back; (b) unvalidatable CMUX_WORKSPACE_ID; (c) last-workspace case — each archived."
+  - "Before/after directory diff of the daemon state dir (only stop-<sid> may appear)."
+  - "Receipt N of M recomputed against git status --porcelain | wc -l."
+  - "Before/after diff of pending-resume-*.txt population and of the Eternity glob (ls -t memory/handoffs/*.md *.yaml)."
+
+# Verification method (skill-mandated extension; from the task's QA section)
+verification_method: |
+  QA assumes the Dev did NOT do the work correctly:
+  - Independently re-run all tamper tests; archive each transcript.
+  - Recompute the receipt's listed N of M against git status --porcelain | wc -l.
+  - Diff the whole daemon dir to confirm the ONLY daemon write is state/stop-<sid>.
+  - Inspect the code to confirm no identify fallback path exists.
+  - Read the script tail to confirm close is literally the last statement.
+  - Confirm the Eternity glob (ls -t memory/handoffs/*.md *.yaml) is unchanged
+    and show the sha256 read-back assert output.
+  Evidence bundle populated at .acos/evidence/[DATE]/SLICE-20-close/ with the
+  7-part Dev bundle (implementation summary, requirements traceability to
+  spec FR-* / tech_prd TR-*, structural quality, functional checks, security/
+  compliance notes, operational notes, self-assessment). QA may REJECT and
+  require rework; a reject blocks the slice like an INCONCLUSIVE reviewer.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+  - "ACOS-security-reviewer"  # fail-closed guards, tamper testing, security/compliance evidence section
+  - "ACOS-integration-reviewer"  # daemon-dir contract + Eternity glob invisibility cross-component surface
+
+# Effort estimate
+effort_estimate: "L"
+# L = 3-8 hours: 11 script steps, five guards, 7-check gate, and a tamper-test battery
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged from preeng task tasks/SLICE-20-close.md (feature 005-resurrection-protocol,
+  EPIC-2 "Safe close" / STORY-2.1 "Closing is verified zero-loss", Demo 2).
+  The blind round-trip verifier (close step 5) is deliberately OUT of this slice —
+  it is SLICE-RES-22-blind-roundtrip. The slice is not Done until the evidence
+  bundle is populated AND the task file's "## Dev Learnings" and "## QA Learnings"
+  sections are updated (preeng section 0.7).

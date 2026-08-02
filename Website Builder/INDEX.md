@@ -9,7 +9,8 @@ scratch folder, git-ignored). This is now the project root.
 
 ## What this project is
 
-A Claude Code skill (working name `acos-website-builder`) that builds a website through a
+A Claude Code skill — will ship as **`/acos-website-forge`** (decided 2026-07-26; PRD prose
+still uses the old working name `acos-website-builder`) — that builds a website through a
 **human-in-the-loop** loop, not an autonomous one. The human is the aesthetic judge at every
 step. Eight steps:
 

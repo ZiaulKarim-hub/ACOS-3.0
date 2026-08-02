@@ -1,0 +1,151 @@
+timestamp: "2026-07-23T02:40:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "ad4a4cb6-15ed-47da-bbf0-0d7758184b0d"
+estimated_tokens: 0
+
+session_summary: |
+  This session designed and BUILT the new `/acos-reverse-cleanroom` skill end-to-end:
+  an orchestrator that reverse-engineers an app into tool-agnostic functional INTENT,
+  fans that intent out to N blind heterogeneous AI models for independent rebuild
+  proposals, and fuses them (backbone-first, security/edge=union) into one executable
+  spec landing natively into ACOS Vision/Epic/Story/Slice + Genesis, with a fail-closed
+  clean-room egress guard and parity oracles. All authoring is complete and mechanically
+  self-verified (12/12 selftest assertions, full cross-reference audit, both YAML
+  configs parse). Autopilot was activated to finish this goal and reached completion
+  (marker `AUTOPILOT_GOAL_COMPLETE` reported emitted by the launching agent; the
+  underlying `.acos/state/` autopilot marker file itself was not found on disk at
+  gather time — likely cleaned up post-completion, see gaps below). Nothing has been
+  run live against a real target yet; that is gated on user-supplied prerequisites
+  (Playwright install, API keys) and a live target choice.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+  note: >
+    This was skill-authoring work, not tracked against a planning/ Vision>Epic>Story>Slice
+    hierarchy artifact — no SLICE-*/STORY-*/EPIC-* file exists under planning/ for the
+    reverse-cleanroom skill itself (design docs live at planning/acos-reverse-cleanroom/
+    instead of the planning/slices/ convention used by other active workstreams, e.g.
+    planning/slices/SLICE-IC-*, SLICE-EDEN-*, SLICE-RES-*). The build is authoring-complete;
+    "next work" is either (a) a live end-to-end run, gated on user prerequisites, or
+    (b) the Phase-5 fact-lane rewiring noted below.
+
+completed_this_session:
+  - "Authored orchestrator .claude/skills/acos-reverse-cleanroom/SKILL.md (190 lines, 6 phases + 3 gates: Phase -1 Init through capture/intent/wall/prioritize/rebuild/synthesis/emit) plus 3 references (build-status.md, capture-layers.md, egress-and-cleanroom.md, fusion-rules.md — 4 total) and 4 templates (intent-claims.schema.json, parity-cases.example.json, proposer-prompt.md, rule-ledger.example.yaml)."
+  - "Authored 9 new agents under .claude/agents/rc-*.md: rc-capture-orchestrator, rc-fusion-synthesizer, rc-intent-extractor, rc-intent-qa, rc-intent-synthesizer, rc-prioritizer, rc-rebuild-proposer, rc-red-team, rc-spec-wall."
+  - "Authored 6 TypeScript scripts under .claude/scripts/cleanroom/ (run via bun, per user's TS/Rust-over-Python default): egress-guard.ts, fingerprint-build.ts, capture.ts, har-to-openapi.ts, parity.ts, selftest.ts, plus lib/fingerprint.ts and package.json."
+  - "Authored .acos/config/cleanroom.yaml (target/scope, rebuild model roster, synthesis rules, egress enforcement, human gates)."
+  - "Authored design + research corpus: planning/acos-reverse-cleanroom/ARCHITECTURE.md (238 lines), research/deep-research-report.md, research/COMBINED-riff-brief.md, and axiom-synthesis-reuse-map.md (97 lines, dated 2026-07-22)."
+  - "Ran a 10-agent research swarm (.acos/swarm/swarm-20260721-231940/, plan.md + agent-01..10/findings.md + synthesis/report.md) that hardened the design: 7-layer capture truth-stack, quality-first (not diversity-first) ensemble strategy, backbone-first fusion, parity golden tests, intent_id traceability spine."
+  - "Fixed 4 build-blocking issues found during self-verification, all recorded in build-status.md and the memory project file: (1) reasoning-model param shim in run-external-agent.py (o1/o3/o4/gpt-5.x need max_completion_tokens + no temperature) — modified .claude/scripts/run-external-agent.py; (2) Kimi routing (added moonshot provider + moonshotai/kimi-k2 + deepseek/deepseek-chat to providers.yaml, Kimi excluded from proprietary-target runs since it trains by default); (3) Gemini seat provider-name bug (gemini: -> google: in cleanroom.yaml); (4) proposer dispatch gap — run-external-agent.py requires --agent, so wired rc-rebuild-proposer as the real dispatched agent for both Task() and the external runner, --max-tokens 32000."
+  - "Wrote planning/acos-reverse-cleanroom/axiom-synthesis-reuse-map.md analyzing which parts of .claude/skills/acos-axiom-synthesis to reuse for Phase-5 fusion: REUSE DIRECTLY the de-circularization firewall (decircularize.py), corroboration gate + single-source cap (axiom_ledger.py/grade_fuse.py), hash-chained ledger (axiom_ledger.py/ledger_writer.py/verify_ledger.py), falsification gate + oscillation guard (falsify.py/oscillation_guard.py), and the confirmed cheaper transports (zai:glm-4.7, google:gemini-flash-latest). REUSE WITH CAVEAT the precedence-ladder resolver (resolve.py) for facts only, never for design choices. Net recommendation: split Phase 5 into a Fact lane (axiom-synthesis engine, shelled out to from TS since it's Python stdlib and editing existing Python is allowed) and a Design lane (rc-fusion-synthesizer backbone+graft judge)."
+  - "Ran bun selftest.ts: 12/12 assertions pass (fingerprint functions, egress-guard's 4 decision paths, HAR-to-OpenAPI inference incl. numeric-id generalization + request-schema inference), per build-status.md."
+  - "Ran a full cross-reference audit: every agent/script/template/reference the skill names exists on disk; every agent frontmatter `name:` matches its filename."
+  - "Wrote the cross-session memory file project_acos_reverse_cleanroom.md documenting the full build."
+
+files_modified:
+  - path: ".claude/scripts/run-external-agent.py"
+    changes: "Added is_reasoning_model() helper (matches o1/o3/o4/gpt-5.x by final path segment, so vendor-prefixed OpenRouter names like 'openai/gpt-5.6-sol' also match) and branched call_openai_compatible()'s payload construction: reasoning-family models get max_completion_tokens (no temperature key at all); classic chat models keep max_tokens + temperature. Confirmed via git diff — this is the ONLY pre-existing tracked file this session modified; it is currently UNCOMMITTED (working tree)."
+  - path: ".claude/skills/acos-reverse-cleanroom/ (new directory)"
+    changes: "SKILL.md + references/{build-status,capture-layers,egress-and-cleanroom,fusion-rules}.md + templates/{intent-claims.schema.json,parity-cases.example.json,proposer-prompt.md,rule-ledger.example.yaml}. All untracked (new)."
+  - path: ".claude/agents/rc-*.md (9 new files)"
+    changes: "New agent definitions for the reverse-cleanroom pipeline stages. All untracked (new)."
+  - path: ".claude/scripts/cleanroom/ (new directory)"
+    changes: "egress-guard.ts, fingerprint-build.ts, capture.ts, har-to-openapi.ts, parity.ts, selftest.ts, lib/fingerprint.ts, package.json. All untracked (new)."
+  - path: ".acos/config/cleanroom.yaml"
+    changes: "New per-project config for the skill: target/scope, 5-seat rebuild model roster (2 Claude via Task, 3 external via run-external-agent.py), synthesis rules, egress enforcement, human gates. Untracked (new). NOTE per axiom-synthesis-reuse-map.md this roster is now known to be misconfigured (see next_actions)."
+  - path: "planning/acos-reverse-cleanroom/ (new directory)"
+    changes: "ARCHITECTURE.md, research/{deep-research-report,COMBINED-riff-brief}.md, axiom-synthesis-reuse-map.md. All untracked (new)."
+  - path: ".acos/swarm/swarm-20260721-231940/"
+    changes: "10-agent research swarm plan + findings + synthesis report backing the ARCHITECTURE.md design decisions. Untracked (new)."
+
+decisions_made:
+  - "No memory/decisions/ ADR was filed for this build (most recent decision doc is 2026-07-05-eternity-protocol-nonfiring-audit.md, unrelated). The design rationale instead lives in planning/acos-reverse-cleanroom/ARCHITECTURE.md and the swarm synthesis report — consider filing a proper ADR if this skill graduates past self-test into a live run, per ACOS convention of memory/decisions/ for durable architectural choices."
+  - "Design decision (recorded in axiom-synthesis-reuse-map.md): acos-axiom-synthesis's UNRESOLVED-capable precedence resolver is right for FACTUAL contradictions between proposals but wrong as the terminal for DESIGN choices — a build spec must decide, so design conflicts stay with rc-fusion-synthesizer's backbone+graft judge, never a vote count."
+
+blockers:
+  - "Live end-to-end run is blocked on user-side prerequisites documented in references/build-status.md: (1) `cd .claude/scripts/cleanroom && bun add playwright && bunx playwright install chromium`; (2) OPENROUTER_API_KEY (GLM+DeepSeek+Kimi) and a billing-linked PAID GOOGLE_API_KEY for the Gemini seat as currently configured; (3) per-role Playwright storage-state for any authed roles to be captured (the skill deliberately never automates a login-wall bypass)."
+  - "cleanroom.yaml's model roster is now known-stale per this session's own later research (axiom-synthesis-reuse-map.md): it assumes OpenRouter GLM + paid Gemini 2.5 Pro, but zai:glm-4.7 (direct z.ai Coding-Plan key via Doppler) and google:gemini-flash-latest (FREE Google AI Studio key) were confirmed working the same day by the acos-axiom-synthesis skill's own model-strategy section. This is flagged as an open next step, not yet fixed."
+  - "No live target has been chosen/run against; the first intended target noted in the memory file is okoa-loan-intake-system (its 2026-04-14 vendor-neutral blueprint serves as built-in ground truth), but this has not been confirmed as the actual first run target for the next session."
+  - "The autopilot completion marker (AUTOPILOT_GOAL_COMPLETE) reported by the launching agent could not be independently verified on disk — no matching file was found under .acos/state/ at gather time (likely session-cleanup.sh already removed ephemeral autopilot state, which is expected/normal per CLAUDE.md's SessionEnd cleanup description, not necessarily a fault)."
+
+next_actions:
+  - "Wire acos-axiom-synthesis into Phase 5 as the FACT lane per planning/acos-reverse-cleanroom/axiom-synthesis-reuse-map.md's 'Net recommendation': (1) decompose each rebuild proposal into atomic claims and build the {fact_id, candidates:[{source:{id,family,origin,context_id,text}, value}], claim_type, grading, conflict, refuter, checklist_answers} structure (real work, not yet started); (2) shell out from the TS orchestrator to .claude/skills/acos-axiom-synthesis/scripts/orchestrate.py for de-circularize -> grade -> fuse -> falsify -> resolve -> ledger; (3) keep rc-fusion-synthesizer's backbone+graft judge for the DESIGN lane only, with security/edge still merged by union and rc-red-team backed by falsify.py + oscillation_guard.py for auditable, non-oscillating rejections instead of prose ACCEPT/REJECT."
+  - "Align .acos/config/cleanroom.yaml's rebuild.seats model roster to the proven transports: replace P-glm's 'openrouter:z-ai/glm-4.7' with the direct 'zai:glm-4.7' transport, and replace P-gemini's 'google:gemini-2.5-pro' (requires_paid_tier: true) with 'google:gemini-flash-latest' (confirmed FREE-tier working 2026-07-22 per the axiom-synthesis skill's SKILL.md model-strategy section — dated model names like gemini-2.5-flash 404 on the free key)."
+  - "Consider whether a Vision/Epic/Story/Slice planning artifact should be retroactively filed for this skill (it currently has no planning/slices/SLICE-* tracking, unlike the IC/Eden/Resurrection workstreams also in flight in this repo) — or whether skill-authoring work is intentionally out-of-band from the planning hierarchy."
+  - "When ready for a live run: satisfy the 3 user-side prerequisites in references/build-status.md (Playwright install, API keys, per-role auth storage-state), then invoke `/acos-reverse-cleanroom --base <url> --repo <path> ...` per the SKILL.md Invocation section, likely against okoa-loan-intake-system as the first target."
+  - "Consider filing a memory/decisions/ ADR for the clean-room architecture (dirty room / spec wall / clean room + fail-closed egress guard) given it is a durable, security-relevant design choice — none currently exists for this build."
+
+context_for_next_session: |
+  The `/acos-reverse-cleanroom` skill is a complete, self-verified authoring deliverable
+  sitting entirely as UNCOMMITTED, mostly UNTRACKED work in the current working tree
+  (branch: acos-deficiency-fixes-2026-06-04). It has never been run live. Start any
+  resumed work by reading, in order: (1) the memory file
+  ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_acos_reverse_cleanroom.md
+  for the compact summary, (2) .claude/skills/acos-reverse-cleanroom/references/build-status.md
+  for exactly what's done/tested/pending, (3) planning/acos-reverse-cleanroom/ARCHITECTURE.md
+  for the full design, and (4) planning/acos-reverse-cleanroom/axiom-synthesis-reuse-map.md
+  for the specific, concrete open next step the user was weighing when this session ended:
+  rewiring Phase 5 (synthesis/fusion) to split into a Fact lane that reuses
+  acos-axiom-synthesis's de-circularization + corroboration-gate + hash-chained-ledger +
+  falsification-gate machinery (Python, shelled out to — do not port to TypeScript, per
+  the reuse map's explicit "MISMATCH / boundary" note) versus a Design lane that keeps
+  rc-fusion-synthesizer's backbone-first judged fusion. The SECOND open thread is a known
+  model-roster staleness bug in .acos/config/cleanroom.yaml: it was authored assuming
+  OpenRouter-routed GLM and a paid-tier Gemini 2.5 Pro key, but this session's OWN later
+  research (reading acos-axiom-synthesis's SKILL.md) discovered that zai:glm-4.7 (direct,
+  via Doppler) and google:gemini-flash-latest (free-tier Google AI Studio) are the proven,
+  cheaper, already-working transports — this has been documented but NOT yet applied to
+  cleanroom.yaml. Neither of these two threads has any code written yet; both are pure
+  design decisions captured in axiom-synthesis-reuse-map.md ready to implement.
+
+  Separately, note that the git working tree also contains a substantial set of OTHER
+  uncommitted modifications (eternity-protocol-core.sh, session-cleanup.sh,
+  acos-axiom-synthesis skill files, resurrection scripts, a SKILL.md rename from
+  deep-research to acos-deep-research, etc.) and many untracked planning/slices/SLICE-*
+  files for unrelated workstreams (Investment Committee, Eden, Resurrection Protocol).
+  These do NOT appear to be part of this session's reverse-cleanroom work — the only
+  pre-existing tracked file this session touched, confirmed via `git diff`, is
+  .claude/scripts/run-external-agent.py. Do not conflate these unrelated pending changes
+  with the cleanroom deliverable when deciding what to commit; if a commit is requested,
+  scope it deliberately to the reverse-cleanroom files (or ask the user which of the
+  many concurrent in-flight threads to stage).
+
+  Full recent commit history (git log) shows heavy parallel activity across several other
+  features that landed in the last ~20 commits (resurrection identity/sidebar rename,
+  eternity-protocol dead-surface guards, a live pool-backed Investment Committee room,
+  axiom-synthesis Phases 2-7) — none of which are this session's subject matter but which
+  establish that this is an actively multi-threaded repo; do not assume the working tree
+  is "clean except for cleanroom" without re-checking `git status`.
+
+  No planning/ Vision>Epic>Story>Slice artifact exists for this skill — it was authored
+  directly as a skill+agents+scripts deliverable outside that hierarchy, consistent with
+  how other ACOS meta-skills (e.g. acos-axiom-synthesis) appear to have been built.
+
+reconstruction_sources:
+  - "git status --short (working tree)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff .claude/scripts/run-external-agent.py (full diff of the reasoning-model param shim)"
+  - "planning/acos-reverse-cleanroom/ARCHITECTURE.md (header + phase list via SKILL.md)"
+  - "planning/acos-reverse-cleanroom/axiom-synthesis-reuse-map.md (full read)"
+  - ".acos/swarm/swarm-20260721-231940/plan.md (header)"
+  - ".acos/swarm/swarm-20260721-231940/synthesis/report.md (header/executive summary)"
+  - ".acos/evidence/ directory listing (most recent: 2026-07-18, none from this session)"
+  - "memory/decisions/ directory listing (most recent: 2026-07-05, none from this session)"
+  - "memory/handoffs/ directory listing (found existing 2026-07-22-emergency-handoff.yaml and .resume.md written earlier same day by a different mechanism, not read in full — this is a second/-2 handoff for a later point in the same day)"
+  - ".acos/state/ directory listing (checked for autopilot markers; none found matching AUTOPILOT_GOAL_COMPLETE)"
+  - ".acos/state/continue.log (tail; unrelated to this session, dated 2026-02-23)"
+  - ".acos/state/agent-lifecycle.log (tail; confirmed parent session_id = ad4a4cb6-15ed-47da-bbf0-0d7758184b0d via matching handoff-agent SPAWN entry and cross-checked against the memory file's originSessionId)"
+  - ".claude/skills/acos-reverse-cleanroom/ directory listing (full file tree)"
+  - ".claude/agents/rc-*.md (directory listing, 9 files)"
+  - ".claude/scripts/cleanroom/ directory listing (full file tree)"
+  - ".acos/config/cleanroom.yaml (full read)"
+  - ".claude/skills/acos-reverse-cleanroom/references/build-status.md (full read)"
+  - ".claude/skills/acos-reverse-cleanroom/SKILL.md (first ~60 lines: frontmatter, purpose, invocation, governing principle, Phase -1)"
+  - "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_acos_reverse_cleanroom.md (full read)"
+  - ".claude/skills/acos-research-riffs/ directory listing (adjacent/related skill, not read in depth)"

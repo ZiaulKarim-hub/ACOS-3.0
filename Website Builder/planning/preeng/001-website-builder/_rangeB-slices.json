@@ -1,0 +1,799 @@
+[
+  {
+    "id": "S37-eight-control-security-posture",
+    "epic": "E16",
+    "story": "ST-12",
+    "title": "The eight-control local-server security posture",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Treat localhost as a hostile boundary: bind, origin, exact CORS, bearer token, pinned host settings, idle shutdown, Host validation and security headers.",
+    "depends_on": [
+      "S08-server-ts-port",
+      "S29-editor-shell-and-overlay"
+    ],
+    "fr_ids": [
+      "FR-220",
+      "FR-229"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A76",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A77",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "section 12.17-A100",
+        "statement": "A bootstrap GET carrying a foreign Host header is rejected before any response body is produced; the same GET with a loopback Host succeeds.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S37-1",
+        "statement": "The bearer token file is mode 0600 and never appears in any committed file or log.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S37-2",
+        "statement": "Idle shutdown fires after the configured window and is recorded in the event log.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S37-3",
+        "statement": "Any hook the skill registers is fail-open and is removed at close; a forced hook error still allows the tool call.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ8"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S37-eight-control-security-posture.md",
+    "_epic": {
+      "id": "E16",
+      "title": "Security, concurrency and lifecycle"
+    },
+    "_story": {
+      "id": "ST-12",
+      "title": "Two writers, no lost work, and a localhost that is not a doorway"
+    }
+  },
+  {
+    "id": "S38-reconciliation-409-lock-and-tab-claim",
+    "epic": "E16",
+    "story": "ST-12",
+    "title": "Hash-journal reconciliation, 409 concurrency, process lock and tab claim",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make silent work loss impossible in either direction, with reconciliation as the authoritative mechanism rather than the guard hook.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo",
+      "S37-eight-control-security-posture"
+    ],
+    "fr_ids": [
+      "FR-222",
+      "FR-225",
+      "FR-226"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A82",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "section 12.17-A95",
+        "statement": "A doc-owned file written out of band by a shell heredoc while the editor holds the lock is detected before the next save, the divergent version is preserved under the conflicts directory, and neither version is silently overwritten.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S38-1",
+        "statement": "If the file-watch mechanism is unavailable the editor falls back to a hash re-check before every save and on window focus, and says so in the status bar; a silently degraded detector fails the slice.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S38-2",
+        "statement": "A second browser tab is read-only, and the claim is carried over the event stream.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ7"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S38-reconciliation-409-lock-and-tab-claim.md",
+    "_epic": {
+      "id": "E16",
+      "title": "Security, concurrency and lifecycle"
+    },
+    "_story": {
+      "id": "ST-12",
+      "title": "Two writers, no lost work, and a localhost that is not a doorway"
+    }
+  },
+  {
+    "id": "S39-ownership-guard-wb-op-and-inbox",
+    "epic": "E16",
+    "story": "ST-12",
+    "title": "Ownership guard with stated limits, the sanctioned agent write path, and the inbox",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Give the agent a legal write path so the ownership rule is followed rather than routed around, and keep one validation path for both writers.",
+    "depends_on": [
+      "S38-reconciliation-409-lock-and-tab-claim"
+    ],
+    "fr_ids": [
+      "FR-221",
+      "FR-223",
+      "FR-224",
+      "FR-228"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A78",
+        "statement": "Amended to the write-allowlist table (NA-B15): the server writes only the allowlisted path shapes, verified by realpath plus prefix assertion, and a symlinked path is rejected.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A79",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A81",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A89",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "section 12.17-A96",
+        "statement": "A typed op whose derived patch targets the system-lock pointer is rejected with 400, whichever op produced it.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S39-1",
+        "statement": "The command-line write path applies the same typed op through the same server, and starts a headless server when none is running, so the agent path never depends on a browser being open.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S39-2",
+        "statement": "The guard's limits are documented in the skill instructions: it is a heuristic defeatable by indirection, and reconciliation is the authoritative mechanism.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ7",
+      "CQ8"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S39-ownership-guard-wb-op-and-inbox.md",
+    "_epic": {
+      "id": "E16",
+      "title": "Security, concurrency and lifecycle"
+    },
+    "_story": {
+      "id": "ST-12",
+      "title": "Two writers, no lost work, and a localhost that is not a doorway"
+    }
+  },
+  {
+    "id": "S40-demo-2-live-surface-across-boundaries",
+    "epic": "E8",
+    "story": "ST-12",
+    "title": "DEMO 2 - a live editable surface proven across at least two turn boundaries",
+    "type": "demo",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Prove the editor premise holds in this harness, with survival evidence rather than a same-turn response.",
+    "depends_on": [
+      "S32-inline-plaintext-editing",
+      "S33-image-replace-focal-point-alt-gate",
+      "S34-reorder-duplicate-paste-freeze",
+      "S35-snapshots-variations-recovery-bin",
+      "S36-page-ops-seo-preview-and-health-hud",
+      "S39-ownership-guard-wb-op-and-inbox"
+    ],
+    "fr_ids": [],
+    "acceptance_criteria": [
+      {
+        "id": "A80",
+        "verification_method": "probe"
+      },
+      {
+        "id": "SL-S40-1",
+        "statement": "Inline text edit, section reorder, variant swap and autosave are demonstrated in one session, and the server answers a health check in a separate tool call after each of at least two turn boundaries with the original pid alive.",
+        "verification_method": "probe"
+      },
+      {
+        "id": "SL-S40-2",
+        "statement": "The demo recording notes which launcher rung was in use, because that is the fact worth carrying into the estate's memory.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": "Demo 2",
+    "cqs": [
+      "CQ6",
+      "CQ7"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S40-demo-2-live-surface-across-boundaries.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-12",
+      "title": "Two writers, no lost work, and a localhost that is not a doorway"
+    }
+  },
+  {
+    "id": "S41-gridline-overlay",
+    "epic": "E9",
+    "story": "ST-13",
+    "title": "Gridline overlay derived from computed styles",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Paint the real resolved grid tracks as the snap target, in the out-of-iframe overlay so they vanish at LOCK by construction.",
+    "depends_on": [
+      "S29-editor-shell-and-overlay",
+      "S26-breakpoint-vocabulary-and-cascade"
+    ],
+    "fr_ids": [
+      "FR-100"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A39",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S41-1",
+        "statement": "The overlay is never a hand-authored decorative grid; a test proves the painted track positions equal the computed template columns for three different section archetypes.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S41-2",
+        "statement": "A capture of the preview with the overlay active contains zero overlay pixels, because the overlay lives outside the iframe.",
+        "verification_method": "screenshot-diff"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S41-gridline-overlay.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-13",
+      "title": "Drag that writes grid integers, not pixels"
+    }
+  },
+  {
+    "id": "S42-snap-engine",
+    "epic": "E9",
+    "story": "ST-13",
+    "title": "Snap engine with prioritised target classes and zoom-scaled tolerance",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Snap to the four target classes in priority order with tolerance divided by zoom, using interval indexes rather than per-frame scans.",
+    "depends_on": [
+      "S41-gridline-overlay"
+    ],
+    "fr_ids": [
+      "FR-107"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A47",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S42-1",
+        "statement": "Two one-dimensional interval indexes per section are built once per layout change; a counter proves no full sibling scan happens per pointer move.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S42-2",
+        "statement": "Priority order is asserted by test: grid lines beat sibling edges and centres, which beat section padding and content rails, which beat spacing-scale increments.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S42-snap-engine.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-13",
+      "title": "Drag that writes grid integers, not pixels"
+    }
+  },
+  {
+    "id": "S43-drag-to-place-and-drop-algorithm",
+    "epic": "E9",
+    "story": "ST-13",
+    "title": "Drag-to-place writing grid integers, with the normative drop algorithm",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "XL",
+    "objective": "Implement the full normative drop algorithm including row derivation, span preservation, displace-down occupancy with ghost preview, re-parenting and the three legal rejections.",
+    "depends_on": [
+      "S42-snap-engine",
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-101",
+      "FR-102",
+      "FR-103",
+      "FR-104",
+      "FR-105",
+      "FR-106"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A40",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S43-1",
+        "statement": "Nine acceptance branches are covered by tests: column derivation, row derivation, span preservation with clamping shown before commit, displace-down cascade with ghost preview, art-container z-order resolution, opt-in overlap with a counter, cross-section re-parenting with no auto-compaction, boundary-zone append, and the three rejection cases with an inline message rather than a silent clamp.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S43-2",
+        "statement": "Persisted placement is integers only; a grep proves no pixel coordinate is ever written to a document.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4",
+      "CQ2"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S43-drag-to-place-and-drop-algorithm.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-13",
+      "title": "Drag that writes grid integers, not pixels"
+    }
+  },
+  {
+    "id": "S44-span-resize-and-spacing-handles",
+    "epic": "E9",
+    "story": "ST-14",
+    "title": "Span resize, padding/gap handles on the scale, and smart guides",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make direct manipulation teach the token system rather than erode it, with token-named readouts and fluid-consequence feedback.",
+    "depends_on": [
+      "S43-drag-to-place-and-drop-algorithm"
+    ],
+    "fr_ids": [
+      "FR-108",
+      "FR-109",
+      "FR-110"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A28",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S44-1",
+        "statement": "Span resize commits whole cells and displays a fraction-and-percentage readout during the drag.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S44-2",
+        "statement": "Padding and gap handles snap only to discrete spacing-scale steps; an attempt to commit an off-scale value is impossible by construction, not merely warned about.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S44-3",
+        "statement": "Alignment guides show live distance labels and an equal-spacing indicator appears when three or more siblings match.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S44-span-resize-and-spacing-handles.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-14",
+      "title": "Direct manipulation that cannot destroy the token system"
+    }
+  },
+  {
+    "id": "S45-keyboard-parity-and-target-size",
+    "epic": "E9",
+    "story": "ST-14",
+    "title": "Keyboard parity for every drag, three verbs, and editor target size",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Satisfy the two accessibility criteria that apply to the tool itself, and keep the anchor vocabulary to exactly three verbs.",
+    "depends_on": [
+      "S43-drag-to-place-and-drop-algorithm"
+    ],
+    "fr_ids": [
+      "FR-111",
+      "FR-112",
+      "FR-232"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A26",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A27",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S45-1",
+        "statement": "Arrow moves one cell, shift-arrow changes span by one, tab walks siblings, and a select-then-click-destination path exists for every drag operation.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S45-2",
+        "statement": "The anchor control exposes exactly three verbs (align to, space above/below over the scale, order among siblings) and no fourth appears in the UI.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S45-3",
+        "statement": "A live bounding-rect check runs on render over all editor chrome and reports any control below the minimum target size with its documented exception, if any.",
+        "verification_method": "recompute"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4",
+      "CQ11"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S45-keyboard-parity-and-target-size.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-14",
+      "title": "Direct manipulation that cannot destroy the token system"
+    }
+  },
+  {
+    "id": "S46-override-cascade-and-precommit-chip",
+    "epic": "E9",
+    "story": "ST-15",
+    "title": "Per-breakpoint override cascade, pre-commit chip and overridden-here dots",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Make invisible overrides visible and make every breakpoint-scoped edit announce its blast radius before it commits.",
+    "depends_on": [
+      "S43-drag-to-place-and-drop-algorithm",
+      "S26-breakpoint-vocabulary-and-cascade"
+    ],
+    "fr_ids": [
+      "FR-113"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A42",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S46-1",
+        "statement": "The breakpoint indicator is structurally prominent chrome, not a dropdown; the active key is also persisted in session UI state.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S46-2",
+        "statement": "Every overridden property shows a dot with one-click reset to inherited, and the panel lists every breakpoint-specific value for the selected node.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S46-3",
+        "statement": "Override accumulation escalates at the recorded starting thresholds and the counts land in the gate report; the thresholds are read from the project record, not hardcoded.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ2"
+    ],
+    "evidence_refs": [
+      "EL-063"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S46-override-cascade-and-precommit-chip.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-15",
+      "title": "Responsive authoring where nothing is invisible"
+    }
+  },
+  {
+    "id": "S47-reading-order-and-stack-preview",
+    "epic": "E9",
+    "story": "ST-15",
+    "title": "Reading-order invariant, focusable-node hard block and numbered mobile stack preview",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Guarantee document order is reading order, and make any mobile reordering visible before it is committed.",
+    "depends_on": [
+      "S46-override-cascade-and-precommit-chip"
+    ],
+    "fr_ids": [
+      "FR-114",
+      "FR-115"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S47-1",
+        "statement": "Visual order is achieved only by grid placement; a test proves no editor path reorders the document tree to achieve a visual effect.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S47-2",
+        "statement": "An order override on a focusable node is refused outright with an explanation; on a non-focusable node it warns and raises a persistent chip.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S47-3",
+        "statement": "Any commit that changes mobile stacking first renders a numbered list preview of the resulting top-to-bottom sequence.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11",
+      "CQ2"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S47-reading-order-and-stack-preview.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-15",
+      "title": "Responsive authoring where nothing is invisible"
+    }
+  },
+  {
+    "id": "S48-free-position-anchored-offset",
+    "epic": "E9",
+    "story": "ST-15",
+    "title": "Free-position escape hatch: anchored offset, authored flow fallback, demotion and lock gate",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Ship the escape hatch narrowly: parent or grid-cell anchors only, with reserved space, an authored fallback, a visible counter and a hard lock gate.",
+    "depends_on": [
+      "S46-override-cascade-and-precommit-chip"
+    ],
+    "fr_ids": [
+      "FR-116",
+      "FR-117"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A43",
+        "statement": "Auto-demotion fires at the recorded demotion width; note NA-06 - the demotion trigger and the small media-query boundary are NOT the same number, and the criterion text must be read against the project record value.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A44",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A45",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A48",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S48-1",
+        "statement": "Anchors are restricted to parent or grid line/cell; sibling anchoring is absent from the schema, not merely hidden in the UI (the compile strategy behind it is unprototyped).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S48-2",
+        "statement": "Every free-position drop writes an authored flow fallback that is independently editable in the navigator, and drops z-stacking at the small key unless the fallback carries an explicit z.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S48-3",
+        "statement": "The per-section cap is enforced with a visible counter, and the locked export contains no runtime positioning script.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ2",
+      "CQ4"
+    ],
+    "evidence_refs": [
+      "EL-072"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S48-free-position-anchored-offset.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-15",
+      "title": "Responsive authoring where nothing is invisible"
+    }
+  },
+  {
+    "id": "S49-canvas-tail-zoom-rulers-multiselect",
+    "epic": "E9",
+    "story": "ST-16",
+    "title": "Canvas tail: zoom/pan, rulers, guides, marquee multi-select, align and distribute",
+    "type": "build",
+    "moscow": "COULD",
+    "size_class": "L",
+    "objective": "Deliver the tail of the canvas if budget allows, knowing it is the first scope traded back out.",
+    "depends_on": [
+      "S44-span-resize-and-spacing-handles",
+      "S45-keyboard-parity-and-target-size"
+    ],
+    "fr_ids": [
+      "FR-119",
+      "FR-121"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A47",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S49-1",
+        "statement": "Zoom spans the documented range with tolerance divided by zoom and space-drag panning; guides are stored as fractions, not pixels.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S49-2",
+        "statement": "Section archetypes ship as template areas per direction, and dragging a block off its area promotes THAT BLOCK ONLY to explicit integer placement on the same grid.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S49-3",
+        "statement": "This slice is explicitly first in the trade-back-out order; if it is dropped, the drop is recorded rather than silently omitted.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ4"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S49-canvas-tail-zoom-rulers-multiselect.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-16",
+      "title": "The canvas tail, and proof that D2 works"
+    }
+  },
+  {
+    "id": "S50-demo-3-d2-exercised",
+    "epic": "E9",
+    "story": "ST-16",
+    "title": "DEMO 3 - gridlines, constraint drag, per-breakpoint overrides and the free-position hatch",
+    "type": "demo",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Exercise the settled constraint-layout decision for the first time and either survive or diagnose the friction risk it carries.",
+    "depends_on": [
+      "S43-drag-to-place-and-drop-algorithm",
+      "S44-span-resize-and-spacing-handles",
+      "S45-keyboard-parity-and-target-size",
+      "S46-override-cascade-and-precommit-chip",
+      "S47-reading-order-and-stack-preview",
+      "S48-free-position-anchored-offset"
+    ],
+    "fr_ids": [],
+    "acceptance_criteria": [
+      {
+        "id": "A39",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A40",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A41",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A42",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A43",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S50-1",
+        "statement": "The recorded session includes the friction test: move a hero headline up by one spacing step using each of the three verbs and the keyboard path, and record whether the tool fought the user.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S50-2",
+        "statement": "Elapsed effort for the three placement sub-slices is recorded, because it is the only path from inference to a defensible schedule number (NA-B10).",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": "Demo 3",
+    "cqs": [
+      "CQ2",
+      "CQ4"
+    ],
+    "evidence_refs": [
+      "EL-065"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S50-demo-3-d2-exercised.md",
+    "_epic": {
+      "id": "E9",
+      "title": "The canvas (DECISION-1 option B)"
+    },
+    "_story": {
+      "id": "ST-16",
+      "title": "The canvas tail, and proof that D2 works"
+    }
+  }
+]

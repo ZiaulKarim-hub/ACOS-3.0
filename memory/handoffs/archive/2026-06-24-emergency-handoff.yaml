@@ -1,0 +1,243 @@
+timestamp: "2026-06-24T13:15:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  This session had TWO independent work streams. Primary stream: OKOA Capital loan
+  diligence Q&A against the Wolfgramm / Ascent / Beehive-Waldorf (30M) deal folder,
+  producing three deliverables (operating pro forma xlsx, 5-question diligence DOCX
+  report, depositor price+deposit xlsx) and ending with a confirmed finding that the
+  Second Amended and Restated LLC Agreement for Beehive Hospitality Ascent PC LLC is
+  absent from both Dropbox folders. Secondary stream (separately queued, NOT part of
+  the diligence session): the /acos-robust-code-review of acos-hypercore-ask completed
+  3 rounds on branch acos-deficiency-fixes-2026-06-04, closing 36+ findings across
+  trust-critical consensus-bypass, PII drift, provenance corruption, and doc staleness;
+  tests grew from 457 to 492, all green, committed in 3 commits.
+
+# ============================================================
+# STREAM 1 — OKOA DILIGENCE (primary session focus)
+# ============================================================
+
+current_work:
+  slice_id: "none — diligence Q&A, not a planning slice"
+  story_id: "Wolfgramm / Ascent / Beehive-Waldorf (30M) loan diligence"
+  epic_id: "OKOA Capital active loan diligence"
+  status: "paused — Second A&R finding delivered; next Q&A question not yet posed"
+
+completed_this_session:
+  # --- Diligence deliverables ---
+  - "Built and populated 20250818_Tap_Ascent_Proforma.xlsx: reconstructed Hilton 114-room operating pro forma. Blue-italic cells = hardcoded inputs; black cells = formulas. User hand-edited the file after delivery."
+  - "Produced Ascent_Waldorf_Data_Extraction_Report.docx (5-question diligence report): presale volume + deposit math / Okoa paydown mechanics / Okoa-vs-C-PACE debt split / outside date / recorded liens. Citations use Dropbox file location + page:line. DOCX copy also in session dir."
+  - "Built Ascent_Depositor_Price_and_Deposit_Summary.xlsx: 73 condo depositors with agreed price (from Ascent Condo Pricing 12.27.2024.xlsx col F, verified to tie to executed contracts) and staged 20% deposit amounts. Total deposits ~$8.5M across 73 contracts."
+  - "Confirmed entity structure finding: full-content sweep (text PDFs/DOCX/DOC + OCR screen of 481 scanned PDFs) of BOTH Dropbox folders confirmed Second Amended and Restated LLC Agreement for Beehive Hospitality Ascent PC LLC is NOT present in either folder. Only present: First A&R (eff. 12/27/23, including executed 53-pg DocuSign in AAA PREF EQUITY SIGNED DOCS) and First Amendment to the Second A&R (signed 4/1/25, eff. 12/27/23 — corrects Exhibit A preferred-units only). Recommendation: obtain executed Second A&R from Ballard Spahr (BTJD drafting marks visible on the amendment)."
+  - "Built reusable extraction infra: extract_textmap.py (PDF/DOCX/XLSX -> [pN:Lm] page+line text maps); ~30 cached extractions in extractions/ subdir."
+
+files_modified:
+  - path: "~/Documents/OKOA/Ascent Proforma/20250818_Tap_Ascent_Proforma.xlsx"
+    changes: "Reconstructed Hilton 114-room operating pro forma (blue-italic = hardcoded inputs, black = formulas). User further hand-edited after delivery."
+  - path: "~/Documents/OKOA/Ascent Proforma/Ascent_Depositor_Price_and_Deposit_Summary.xlsx"
+    changes: "73 condo depositors: agreed price + 20% deposit breakdown. Prices sourced from Ascent Condo Pricing 12.27.2024.xlsx col F, cross-verified to executed contracts."
+  - path: "~/Documents/OKOA/Ascent_Waldorf_Data_Extraction_Report.docx"
+    changes: "5-question diligence report (presales / paydown / debt split / outside date / liens) with page:line citations."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260618-Waldorf/Ascent_Waldorf_Data_Extraction_Report.docx"
+    changes: "Session-dir copy of the diligence report."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260618-Waldorf/extract_textmap.py"
+    changes: "Reusable extraction tool (PDF/DOCX/XLSX -> [pN:Lm] text maps)."
+
+decisions_made:
+  - "Second A&R is absent from both Dropbox folders. Must be obtained from deal counsel (Ballard Spahr) before relying on entity governance terms."
+  - "C-PACE payoff as of 6/30/26 = $30,321,016.01 (principal $29,611,548.58); original commitment $30M. Lender: NGC P 1 LLC / Greenworks-Nuveen."
+  - "Okoa senior note payoff = $32,468,242.75 good through 3/20/26 (from payoff statement)."
+  - "Total condo units = 120 (114 in Hilton rental program; 95 in LKcap model; 'Hilton requires 25 unsold')."
+  - "Presale deposit structure: staged 20% (Initial $5,000 -> Pre-Construction 10% -> Final to 20%). Buyer contracts have NO fixed outside date — settlement is 10 days after Substantial Completion/CO; seller may terminate + keep deposit if buyer doesn't close within 20 days of CO notice."
+  - "C-PACE 'Outside Completion Date' = Nov 28 2024 is a LOAN COVENANT in the C-PACE Financing Agreement, NOT a buyer contract outside date."
+  - "2 recorded mechanic's liens per ALTA: Cobble Creek $92,000,000 and ServTek $140,640.53."
+  - "RMA revenue split = 50/50 of NET after ~19% off-the-top (franchise <=5%, reservations/Honors, marketing, 4% capital reserve [2% owner + 2% manager], OTA/credit-card commissions, Park City fees). Owner-use personal cap ~56 days/yr."
+
+blockers:
+  - "Second Amended and Restated LLC Agreement for Beehive Hospitality Ascent PC LLC is not in either Dropbox folder. Must request from Ballard Spahr before entity-governance questions can be fully answered."
+  - "No new diligence question has been posed — session ended after the Second A&R finding was delivered."
+
+next_actions:
+  - "PRIORITY 1 (diligence) — Continue OKOA diligence Q&A against the two Dropbox folders using cached extraction infra. Likely next questions: (a) Series A Preferred Units / return terms from Exhibit A of the executed First A&R; (b) EB-5 / intercreditor stack; (c) construction budget status; (d) hotel brand franchise agreement terms."
+  - "PRIORITY 2 (diligence) — Request executed Second A&R from Ballard Spahr (deal counsel) and load it into extractions/ for entity-governance questions."
+  - "SEPARATELY QUEUED (not diligence) — acos-hypercore-ask robust-code-review is NOW COMPLETE (3 rounds, 492 tests green, committed). No further code-review action needed. See Stream 2 below."
+
+# ============================================================
+# STREAM 2 — ACOS-HYPERCORE-ASK ROBUST CODE REVIEW (secondary)
+# ============================================================
+
+acos_hypercore_ask_review_complete:
+  summary: |
+    The /acos-robust-code-review of acos-hypercore-ask ran 3 full rounds on
+    branch acos-deficiency-fixes-2026-06-04, starting from the post-payoff-fix
+    baseline (commit 12714522, 457 tests). All 36+ findings were closed. Three
+    commits land on the branch:
+
+    - 22b518b7 — Round 1: 25 files changed, +1333/-156 lines, tests 457→489.
+      Groups: PII unification (hca-vocab.py new leaf module), consensus-bypass
+      fix (superlative/ratio vocab into aggregation gate), cache single-flag
+      heuristic fix, consensus none-group exclusion, analyze top_n=0 fix, cred
+      const canonicalization, doc rewrite (README + SKILL.md + demo).
+    - aef3a7b7 — Round 2 fix: 4 files, tests 489→490.
+      Residual: worst/best/priciest/cheapest + fraction/portion vocab gaps;
+      analysis-intent plans carrying trivial tier; most_at_risk LTV full locator.
+    - 63e98804 — Round 3 fix (root-cause structural): 4 files, tests 490→492.
+      Replaced flat allowlist with SHAPE detection in hca-vocab.has_structural_aggregation_shape()
+      ("-est" superlative suffix + comparator+threshold-number filter + statistical
+      terms). All 21 reproduced bypasses + 14 novel phrasings now correctly route
+      to report tier. Two previously mis-tiered analysis-shape queries now
+      produce loan_name=None (correct) instead of fabricating a loan name.
+
+  final_test_count: 492
+  all_tests_pass: true
+  trust_invariants_preserved:
+    - "No fabrication — refuse or NO_LIVE_DATA always"
+    - "Read-only — no mutating methods"
+    - "Stdlib-only — no third-party deps"
+    - "Secrets via env/Doppler — nothing committed"
+    - "Subscription-only Claude — Task(), never ANTHROPIC_API_KEY"
+    - "2-of-3 asymmetric consensus for reports/aggregations — now structurally enforced"
+
+  unstaged_files_from_prior_session:
+    - "hca-deliver.py and tests/test_hca_deliver.py: the payoff-filler fix from the Jun 23 session was committed as 12714522 (already in git). Verify with: git show 12714522 --name-only"
+
+# ============================================================
+# DILIGENCE CORPUS REFERENCE (for next session)
+# ============================================================
+
+diligence_corpus:
+  folder_1:
+    path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)"
+    file_count: "~2,888"
+    content: "Primary deal folder — loan docs, title, LLC agreements, hotel docs, construction"
+  folder_2:
+    path: "/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_LKCAP Okoa Preferred Equity"
+    file_count: "751"
+    content: "73 condo presale contracts, RMA, appraisal, pro formas"
+
+extraction_infra:
+  session_dir: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/data-extractor/DDE-20260618-Waldorf/"
+  extractor_script: "extract_textmap.py (in session dir)"
+  extractions_dir: "extractions/ (in session dir) — ~30 cached text maps"
+  cached_extractions:
+    - "Q_appraisal.txt"
+    - "Q_rma_agreement.txt"
+    - "Q1_condo_pricing.txt"
+    - "MULTI_debt_preso_v7.txt"
+    - "MULTI_exec_summary_531.docx.txt"
+    - "Q23_okoa_payoff_20260320.txt"
+    - "Q23_nuveen_cpace_payoff_20260630.txt"
+    - "Q5_alta_commitment.txt"
+    - "condo_contracts/ (subdirectory — all 73 extracted)"
+    - "Q23_intercreditor.txt, Q23_loan_mod_20251024.txt, Q23_settlement_20250423.txt, Q23_settlement_20250514.txt"
+    - "Q34_cpace_financing_agreement.txt, Q34_termsheet_*.txt"
+    - "Q4_assignment_purchase_agreements.txt, Q4_condo_legal_opinion.docx.txt"
+    - "Q5_schedule_of_values.txt"
+    - "MULTI_lender_memo.txt, MULTI_loan_memo_exec_summary.docx.txt, Q234_loanmod_v3.docx.txt"
+    - "Q1_condo_sales_analysis.txt, Q1_unit_payoff_analysis.txt"
+    - "Q_rental_program_summary.txt"
+  tooling_notes:
+    - "pdftotext for text PDFs"
+    - "tesseract OCR — MUST invoke from cwd=<dir> with basename (NOT absolute /tmp paths — returns empty)"
+    - "LibreOffice: /Applications/LibreOffice.app/Contents/MacOS/soffice for docx->pdf page numbers and xlsx recalc"
+    - "macOS has no timeout command — do not use timeout/gtimeout with pdftotext"
+    - "macOS tail -f on a not-yet-created commands file exits immediately — touch first"
+
+established_facts:
+  units:
+    total: 120
+    hilton_rental_program: 114
+    lkcap_model: 95
+    hilton_requires_unsold: 25
+  payoffs:
+    okoa_senior_note: "$32,468,242.75 (good through 3/20/26)"
+    cpace_total: "$30,321,016.01 (good through 6/30/26, principal $29,611,548.58)"
+    cpace_original_commitment: "$30M"
+    cpace_lender: "NGC P 1 LLC / Greenworks-Nuveen"
+  presales:
+    total_contracts: 73
+    total_deposits_approx: "~$8.5M"
+    deposit_structure: "Staged 20%: Initial $5,000 -> Pre-Construction 10% -> Final to 20%"
+    pricing_source: "Ascent Condo Pricing 12.27.2024.xlsx col F"
+    outside_date_in_buyer_contracts: "NONE — settlement is 10 days after Substantial Completion/CO; seller may terminate + keep deposit if buyer doesn't close within 20 days of CO notice"
+    cpace_outside_completion_date: "Nov 28 2024 — a C-PACE Financing Agreement LOAN COVENANT, not a buyer contract date"
+  liens:
+    - lienor: "Cobble Creek"
+      amount: "$92,000,000"
+      source: "ALTA commitment"
+    - lienor: "ServTek"
+      amount: "$140,640.53"
+      source: "ALTA commitment"
+  rma:
+    split: "50/50 of NET after ~19% off-the-top"
+    deductions: "franchise <=5%, reservations/Honors, marketing, 4% capital reserve (2% owner + 2% mgr), OTA/credit-card commissions, Park City fees"
+    owner_use_cap: "~56 days/yr personal"
+  entity_governance:
+    first_amended_restated_llc: "PRESENT — effective 12/27/23; executed 53-pg DocuSign copy in AAA PREF EQUITY SIGNED DOCS"
+    second_amended_restated_llc: "ABSENT from both Dropbox folders — must obtain from Ballard Spahr"
+    first_amendment_to_second_ar: "PRESENT — signed 4/1/25, effective 12/27/23; corrects Exhibit A preferred-units only"
+
+deliverables:
+  - path: "~/Documents/OKOA/Ascent Proforma/20250818_Tap_Ascent_Proforma.xlsx"
+    description: "Hilton 114-room operating pro forma. Blue-italic = hardcoded inputs, black = formulas. User hand-edited after delivery."
+  - path: "~/Documents/OKOA/Ascent_Waldorf_Data_Extraction_Report.docx"
+    description: "5-question diligence report with page:line citations. DOCX copy also in session dir."
+  - path: "~/Documents/OKOA/Ascent Proforma/Ascent_Depositor_Price_and_Deposit_Summary.xlsx"
+    description: "73 condo depositors: agreed price + staged 20% deposit. Prices cross-verified to executed contracts."
+
+# ============================================================
+# CONTEXT FOR NEXT SESSION
+# ============================================================
+
+context_for_next_session: |
+  TWO independent work streams; they do NOT block each other.
+
+  STREAM 1 — OKOA DILIGENCE (primary, most likely to continue):
+  The session was analyzing the Wolfgramm / Ascent / Beehive-Waldorf (30M) deal
+  on behalf of OKOA Capital. Three deliverables are done (pro forma xlsx, 5-Q
+  diligence DOCX, depositor summary xlsx). The session ended after delivering the
+  finding that the Second Amended and Restated LLC Agreement for Beehive Hospitality
+  Ascent PC LLC is absent from both Dropbox folders — only the First A&R (eff.
+  12/27/23) and First Amendment to the Second A&R (signed 4/1/25, corrects Exhibit A)
+  are present. Recommendation given: obtain the executed Second A&R from Ballard Spahr
+  (BTJD drafting marks on the amendment).
+
+  TO RESUME DILIGENCE: load the session context from the established_facts block above
+  and the extraction infra at /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/sessions/
+  data-extractor/DDE-20260618-Waldorf/. The ~30 cached text extractions mean most
+  follow-up questions can be answered without re-extracting. Tesseract (OCR) must be
+  invoked from cwd=<dir> with basename only (not absolute /tmp paths). Use
+  extract_textmap.py in the session dir for new extractions.
+
+  STREAM 2 — ACOS-HYPERCORE-ASK (separately queued, now COMPLETE):
+  The /acos-robust-code-review is DONE — 3 rounds, 492 tests green, committed. This
+  stream needs NO further action unless a specific follow-on is requested. The skill
+  is FULL + live-verified (Beehive Waldorff loan 134 payoff confirmed live via Doppler
+  hypercore-ask/dev_personal). Live invocation:
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-deliver.py --ask "<question>"
+
+  PENDING CODE REVIEW BRANCH: acos-deficiency-fixes-2026-06-04 has the HCA commits
+  but is NOT merged to main. A PR or merge may be appropriate before moving on.
+
+reconstruction_sources:
+  - "git status --short (3 untracked handoff files; no modified tracked files)"
+  - "git log --oneline -20 (confirmed: 63e98804 → aef3a7b7 → 22b518b7 → 12714522 are the 4 HCA commits at tip)"
+  - "git diff --stat HEAD~5..HEAD (27 files, +1534/-161 lines — all HCA modules)"
+  - "git diff --name-only HEAD~3..HEAD (25 HCA files changed across 3 rounds)"
+  - ".acos/evidence/2026-06-24/robust-review-hca/round1-findings.md (full read — 3-round ledger)"
+  - ".acos/evidence/2026-06-24/SLICE-HCA-DOCFIX/verify.log"
+  - "memory/handoffs/2026-06-23-emergency-handoff.yaml (full read — prior session state)"
+  - "memory/decisions/2026-06-19-hypercore-early-redemption-input.md (full read)"
+  - "memory/decisions/ listing (confirmed hca-build-ground-rules.md + hypercore-early-redemption present)"
+  - "ls .acos/evidence/ (confirmed 2026-06-24 and 2026-06-18 dirs)"
+  - "ls .acos/evidence/2026-06-24/ (robust-review-hca + SLICE-HCA-DOCFIX)"
+  - "ls .acos/sessions/data-extractor/DDE-20260618-Waldorf/ (extraction infra + ~30 cached extractions)"
+  - "ls .acos/sessions/data-extractor/DDE-20260618-Waldorf/extractions/ (full list of cached text maps)"
+  - "ls ~/Documents/OKOA/Ascent\\ Proforma/ (3 xlsx deliverables confirmed)"
+  - "ls ~/.acos/state/ (runtime state listing)"
+  - "Session focus narrative provided by user (authoritative primary source for diligence stream)"

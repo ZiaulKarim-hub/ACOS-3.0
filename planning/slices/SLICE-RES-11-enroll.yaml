@@ -1,0 +1,141 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol / SLICE-11-enroll
+# Source of truth: planning/preeng/005-resurrection-protocol/tasks/SLICE-11-enroll.md
+# Created by the acos-preeng-classic Step-5 bridge
+
+slice_id: "SLICE-RES-11-enroll"
+story_id: "STORY-1.1"
+epic_id: "EPIC-1"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "enroll-project.sh + additive SessionStart hook + cwd==root assertion"
+objective: |
+  Build .claude/scripts/resurrection/enroll-project.sh and register it as an
+  ADDITIVE user-level SessionStart hook so every session started in a real
+  project directory enrolls that project in the registry: marker gate
+  (<root>/.acos/ OR CLAUDE.md OR memory/handoffs/), uuid4 minted once into
+  <root>/.acos/project-id (git-ignored), row upserted with derived fields via
+  registry_lib.py, and a realpath(cwd)==registry.root assertion that logs
+  loudly on mismatch. Vertical value: membership on first sight — the book is
+  populated before any close ever runs (survives force-quit, DR-8).
+description: |
+  Epic EPIC-1 / Story STORY-1.1 — Demo 1 (enrollment).
+  In scope: the marker gate; mint uuid4 once -> <root>/.acos/project-id;
+  upsert row with derived fields via registry_lib.py; assert
+  realpath(cwd)==registry.root with a loud log on mismatch (risk #7);
+  O(1), fail-open, never blocks session start; registered as an ADDITIVE
+  SessionStart hook whose name is distinct from autopilot-enroll-project.sh.
+  Out of scope (guardrails): naive filesystem scan; close-time row creation;
+  touching the existing hook chain or the daemon dir.
+
+# Acceptance criteria (from the preeng Definition-of-Done + QA evidence gates)
+acceptance_criteria:
+  - "[ ] New session in a marker dir -> a row file appears in ~/.acos/registry.d/ with all fields derived (archived transcript, case 1)"
+  # TODO: confirm the exact derived-field set against the SLICE-RES-10 registry_lib.py schema
+  - "[ ] Session in a scratchpad/non-marker dir -> no row created (archived transcript, case 2)"
+  - "[ ] Second session in the same project -> same uuid, no duplicate row; .acos/project-id written exactly once across re-runs (archived transcript, case 3)"
+  - "[ ] cwd!=root logs loudly and does not silently continue (forced-mismatch transcript, case 4 — protects the f639310 fix)"
+  - "[ ] SessionStart hook shown ADDITIVE via diff of ~/.claude/settings.json; register-session-pid.sh and the existing hook chain untouched"
+  - "[ ] Marker gate rejects a naive-scan candidate (memory/ stray) — rejection transcript archived"
+  - "[ ] Enrollment timed O(1) (timing evidence archived)"
+  - "[ ] Evidence bundle populated at .acos/evidence/[DATE]/SLICE-11-enroll/ (7-part bundle) and the task file's Dev Learnings + QA Learnings sections updated (slice not Done without them — §0.7)"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry_lib.py upsert with derived fields (atomic write, schema, casefold index)"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/enroll-project.sh"
+  - "~/.claude/settings.json"  # ONE additive user-level SessionStart entry only
+
+files_prohibited:
+  - ".claude/scripts/register-session-pid.sh"  # never touch (task guardrail)
+  - ".claude/settings.local.json"  # the existing project hook chain — do not touch
+  - "~/Library/Application Support/acos-token-monitor/"  # the daemon dir — out of scope
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer (traps / gotchas from the task file)
+context:
+  - "Marker gate = <root>/.acos/ OR CLAUDE.md OR memory/handoffs/ — never a naive filesystem scan"
+  - "Hook name must be distinct from autopilot-enroll-project.sh; register at the absolute repo path"
+  - "O(1), fail-open, never blocks session start"
+  - "cwd==root assertion protects the f639310 project-scoped-resume fix (risk #7) — loud log on mismatch, never silent"
+  - ".acos/project-id is git-ignored; uuid4 minted exactly once"
+  - "Never touch register-session-pid.sh, the existing hook chain, or the daemon dir"
+
+# Technical requirements
+technical_requirements:
+  - "Marker gate: enroll only when <root>/.acos/ OR CLAUDE.md OR memory/handoffs/ exists"
+  - "Mint uuid4 once -> <root>/.acos/project-id (git-ignored)"
+  - "Upsert row with derived fields via registry_lib.py"
+  - "assert realpath(cwd)==registry.root; log loudly on mismatch"
+  - "O(1), fail-open, never blocks session start"
+  - "Register as ADDITIVE user-level SessionStart hook (absolute repo path), name distinct from autopilot-enroll-project.sh"
+
+# Testing requirements
+testing_requirements:
+  - "Four-case transcripts: marker-dir enrollment, non-marker no-row, same-project idempotency, forced cwd!=root loud log"
+  - "Re-run enrollment to prove .acos/project-id is written exactly once"
+  - "Marker-gate rejection of a naive-scan candidate (memory/ stray)"
+  - "Hook additivity proven by diff of settings.json; existing chain untouched"
+
+# Verification method (skill-mandated extension — from the task's QA section)
+verification_method: |
+  Archived transcripts of the four acceptance cases; the SessionStart hook
+  shown additive (diff of settings.json); enrollment timed O(1).
+  QA runs zero-trust (assume the Dev did NOT do the work correctly; spot-check
+  and recompute — no fabricated logs):
+  - Confirm the hook is additive and does not touch register-session-pid.sh
+    or the existing chain
+  - Force a cwd!=root case and confirm the loud log fires (protects the
+    f639310 fix)
+  - Confirm the marker gate rejects a naive-scan candidate (memory/ stray)
+  - Confirm .acos/project-id is written exactly once (re-run enrollment)
+  Evidence bundle at .acos/evidence/[DATE]/SLICE-11-enroll/ (7-part:
+  implementation summary; requirements traceability to spec FR-* / tech_prd
+  TR-*; structural quality; functional/structural checks; security/compliance
+  notes; operational/runtime considerations; self-assessment).
+  QA may REJECT and require rework; a reject blocks the slice like an
+  INCONCLUSIVE reviewer.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always
+  - "ACOS-integration-reviewer"  # additive hook must not disturb the existing SessionStart chain
+  - "ACOS-performance-reviewer"  # O(1), never blocks session start
+
+# Effort estimate
+effort_estimate: "M"
+# S = < 1 hour of work
+# M = 1-3 hours of work
+# L = 3-8 hours of work
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged from planning/preeng/005-resurrection-protocol/tasks/SLICE-11-enroll.md
+  (authoritative source). Evidence bundle path uses the execution date:
+  .acos/evidence/[DATE]/SLICE-11-enroll/. The slice is not Done until the task
+  file's Dev Learnings and QA Learnings sections are filled in.

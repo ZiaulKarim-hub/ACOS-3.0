@@ -1,0 +1,145 @@
+timestamp: "2026-07-25T00:00:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active work is an OKOA Capital website-chat + phone voice-agent technology-stack
+  research effort, run via the /acos-research-riffs skill plus manual live web
+  verification. Two riff sessions exist on disk under .acos/riffs/: a 2026-07-22
+  TTS-only riff (FAILED its coverage gate — no phone-band [8kHz] quality data) and a
+  2026-07-24 re-scoped "self-hostable brain-plus-voice" riff (ALSO FAILED its coverage
+  gate — six named gaps, see blockers). Neither riff produced a finished REPORT.md.
+  Instead, the session ran six targeted live-verification passes (verify-brain.md,
+  verify-grok.md, verify-quants.md, verify-qwen-newest.md, verify-openai-voice.md,
+  verify-voice.md — all dated 2026-07-24, all in the session scratchpad, NOT in the
+  repo) to fact-check and correct the riffs' claims, and used those to hand-assemble
+  an updated TOP-5 tech-stack recommendation. That top-5 is the current state of the
+  deliverable; a one-page boss-facing comparison and a build/benchmark plan for the
+  #1 pick have not yet been produced.
+
+current_work:
+  slice_id: "not applicable — ad hoc OKOA product research via /acos-research-riffs, outside the ACOS Vision/Epic/Story/Slice planning hierarchy (no planning/ entry exists for this work)"
+  story_id: "not applicable"
+  epic_id: "not applicable"
+  status: "in_progress — verification/correction phase is substantially done; synthesis into a boss-facing one-pager and a build/benchmark plan has not started"
+
+completed_this_session:
+  - "Corrected prior scoping errors from the 2026-07-22 TTS-only riff: identified that Opus 4.8 was only ever a stand-in brain (too slow to ship, confirmed by verify-brain.md B6: Anthropic's own docs show Opus 4.8's comparative latency as only 'Moderate' vs Haiku 'Fastest'/Sonnet 'Fast', and it is now itself a Legacy model behind Opus 5); that the one-model (multimodal speech-to-speech) architecture had never been assessed; and that whole model families (Liquid AI, 'Inkling') were missing. Opened a re-scoped riff on 2026-07-24 to fix this (.acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/brief.md)."
+  - "Ran verify-brain.md: confirmed Qwen3-30B-A3B-Instruct-2507 (Apache-2.0, 30.5B total/3.3B active MoE) real; confirmed LiveKit Agents (Apache-2.0 + Telnyx SIP docs) and Pipecat (BSD-2-Clause, barge-in on by default) as viable open orchestration layers with documented Telnyx integration; confirmed SSML say-as/telephone/characters is W3C-real (W3C Rec 2010-09-07 + WG Note 2005-05-26) though the specific 'digits' value is a vendor extension (Amazon Polly), not W3C; confirmed Telnyx Voice API + Messaging API (SIP, bi-directional RTP streaming, 140+ countries)."
+  - "Ran verify-grok.md: confirmed grok-4.5 is real, cloud-API-only (no self-host/open-weights path), and its real-time voice-turn latency is UNVERIFIABLE — no published TTFT/latency figures and no fast/low-latency tier exists (grok-4-fast returns HTTP 404). Concluded Grok is structurally poor for live voice (reasoning model, no speed data) and should be dropped from the shipping shortlist absent a live benchmark."
+  - "Ran verify-quants.md: mapped the full quantization/pruning ladder for Qwen3-30B-A3B-Instruct-2507 (Unsloth/bartowski/mradermacher GGUF, official FP8, cpatonn AWQ-4bit ~18.1GB, and community REAP-pruned variants incl. SamsungSAILMontreal's 96-expert/~23B/44GB-bf16 REAP and a REAP+W4A16 that fits 24GB). Confirmed a Q4_K_M/IQ4_XS/AWQ-4bit quant (~16.5-18.6GB) fits a single 24GB consumer GPU with headroom. Flagged that real tokens/sec and latency are UNVERIFIABLE from any primary source — must be live-benchmarked."
+  - "Ran verify-qwen-newest.md: discovered Qwen3.6-35B-A3B (Apache-2.0, same ~3B active params, 262k native context, released ~Apr 2026 per HF createdAt) supersedes Qwen3-30B-A3B-Instruct-2507 as the newest fast self-hostable text brain — this is the corrected #4 pick's brain. Also confirmed Qwen3-Omni-30B-A3B (Sept 2025) remains the newest Qwen that can literally talk (real-time speech out) but has only 3 FIXED preset voices with NO cloning support — this is why Qwen3-Omni was dropped from the top-5."
+  - "Ran verify-openai-voice.md: confirmed gpt-realtime-2.1 / gpt-realtime-2.1-mini (released 2026-07-06/07, the newest OpenAI voice release) as a one-model speech-to-speech brain+voice option with gated custom-voice cloning (eligible customers only, consent + sample recording), prompt-based (not SSML) digit-by-digit number read-back, cloud-only deployment (Azure OpenAI offers regional residency + Zero Data Retention for approved customers), and NO officially published latency figure. Pricing confirmed: $32/$64 per 1M audio in/out tokens (mini: $10/$20)."
+  - "Ran verify-voice.md: confirmed Cartesia Sonic's 'sub-90ms' latency is vendor-published (the commonly-cited ~188ms P50 TTFA is third-party, not Cartesia's own figure); confirmed Cartesia native 8kHz mu-law/a-law telephony encoding AND a native `<spell>` SSML-equivalent tag for digit-by-digit read-back (the load-bearing number-safety advantage); confirmed Cartesia self-hosted deployment explicitly EXCLUDES voice cloning creation. Confirmed ElevenLabs Flash v2.5 is actually ~75ms model inference / 100-200ms end-to-end TTFB (corrected down from a commonly-cited ~264ms), has NO native say-as/digit tag (only a phoneme/pronunciation-dictionary alias workaround limited to eleven_flash_v2/eleven_v3), and that ElevenLabs now offers a gated 'Private Deployment' running inside the customer's OWN AWS account (SageMaker/Nitro Enclaves) — enterprise/sales-gated, not self-serve GA."
+  - "Assembled the corrected, updated TOP-5 stack recommendation (see decisions_made) from the six verify passes above, replacing the TTS-only framing of the 2026-07-22 riff."
+  - "Drafted (but did not launch) a further re-scope toward a 'cloud-cost' seat (scratchpad cloudseat.json / costdim.json, written 2026-07-24 15:59, ~30-45 min BEFORE the six verify-*.md passes) premised on 'self-hosting is now optional and cost-effectiveness IS the priority' — this premise was itself later corrected within the same session to 'cost is NOT the priority' (self-host merely optional). Treat cloudseat.json/costdim.json as a superseded, unexecuted draft — no riff seat/dimension for it exists in the actual 2026-07-24 8-seat panel (confirmed via that riff's coverage-audit.md and manifest.json)."
+
+files_modified: []
+files_created_or_touched_outside_git:
+  - path: ".acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/ (brief.md, charters/, dossiers/, coverage-audit.md, coverage.json, ledger.jsonl, manifest.json, panel.json)"
+    changes: "Re-scoped riff session; panel-research phase completed with panel_approved/gate_passed true in manifest.json, but coverage-audit.md verdict is FAIL (see blockers) — no report/ directory has been generated yet for this riff."
+  - path: ".acos/riffs/2026-07-22-which-self-hostable-text-to-speech-tts-engine-should-okoa-s-/ (coverage-audit.md, dossiers/, etc.)"
+    changes: "Earlier, narrower TTS-only riff; also FAILED its coverage gate (8kHz telephony-band quality unmeasured, failure-modes dimension thin); superseded in scope by the 2026-07-24 riff, but its dossier data (oss-selfhost, commercial-selfhost, latency-telephony, quality-voice engine enumeration) is still valid background material."
+  - path: "[session scratchpad]/verify-brain.md, verify-grok.md, verify-quants.md, verify-qwen-newest.md, verify-openai-voice.md, verify-voice.md"
+    changes: "Six live-web-verification fact-check documents (all dated 2026-07-24) that corrected and superseded several riff claims; these are the direct evidentiary basis for the current top-5. NOT saved anywhere in the git repo — see blockers, this is at risk."
+  - path: "[session scratchpad]/brief2.md, dims2.json, panel2.json, cloudseat.json, costdim.json, gap-seat.json, gap-seat-obj.json"
+    changes: "Working scratch copies of the 2026-07-24 riff's brief/dimensions/panel plus a drafted-but-superseded cloud-cost seat addition."
+  - path: "research/okoa-voice-agent-stack-deep-research-2026-07-20.html"
+    changes: "Earlier (2026-07-20), separate deep-research pass on the same OKOA voice-agent stack question, predating both riffs — part of the same overall research lineage but produced via a different skill (deep-research, not research-riffs); untracked/uncommitted like the rest of research/."
+
+decisions_made:
+  - "Deliverable format: a TOP-5 tech stack (updated, not a single pick), all five sharing one backbone — LiveKit or Pipecat orchestration + Telnyx (phone/SMS) + Cloudflare Durable Objects (per-client memory) — with a cascade architecture (separate brain -> separate TTS) preferred over one-model speech-to-speech for deterministic number read-back and constitutional-prompt governance."
+  - "Updated top-5, in order: (1) Cloud cascade + Cartesia — native 8kHz mu-law/a-law + native <spell> digit read-back + cloud voice cloning; leads on number-safety. (2) OpenAI Realtime gpt-realtime-2.1 — one-model brain+voice, 2026-07-06 release, gated brand-voice cloning, prompt-based (not SSML) number read-back, cloud-only, Azure Zero Data Retention available. (3) Cloud cascade + ElevenLabs — best-in-class cloning, Flash v2.5 ~75ms model / ~100-200ms TTFB, no native say-as (pronunciation-dictionary alias workaround only), gated Private Deployment option in customer's own AWS. (4) Self-hosted cascade = Qwen3.6-35B-A3B (Apr 2026, Apache-2.0, 35B total/3B active; Q4 quant ~16-18GB fits a 24GB GPU; REAP-pruned variants exist) + an open cloning TTS (Fish/XTTS-class, trailing premium cloud voices by roughly 90-114 Elo). (5) ElevenLabs Private Deployment inside OKOA's own AWS account."
+  - "Qwen3-Omni was DROPPED from the top-5 despite being a genuine self-hostable one-model speech-to-speech option, because it only has 3 fixed preset voices and NO cloning support — fails the brand-voice requirement outright."
+  - "Grok 4.5 excluded as a brain candidate: cloud-only, no published latency/TTFT figures, no fast tier exists, and it's a reasoning model (added thinking latency) — structurally unproven for sub-second live voice turns."
+  - "Constraints corrected mid-session (supersedes any earlier framing, including the abandoned cloud-cost seat draft): self-hosting is OPTIONAL, not required; cost is explicitly NOT the priority; OKOA is NOT a regulated lender (drop compliance-driven framing); brand-voice cloning is desired; number read-back accuracy is required; the website and phone channels must share one consistent voice."
+  - "Two items are flagged as must-benchmark-live for whichever option is chosen, because no vendor publishes either figure: (a) real live-call latency, and (b) voice quality specifically at 8kHz telephony bandwidth (all published quality/MOS scores are 24kHz wideband/studio)."
+
+blockers:
+  - "Both riffs (2026-07-22 TTS-only and 2026-07-24 re-scoped brain+voice) FAILED their own coverage-gate audits and neither has a finished report/ synthesis. The 2026-07-24 auditor (.acos/riffs/2026-07-24-.../coverage-audit.md) specifically flags six unresolved gaps: (1) Microsoft Phi family (Phi-4/Phi-4-mini) entirely absent from the self-host-brains dimension; (2) 8kHz telephony-band voice quality unmeasured for every single candidate; (3) one-model (S2S) number-read-back safety is unestablished (only proven for the two-model/cascade path); (4) no shipping-stack total-cost-of-ownership model exists; (5) cross-channel (web 24kHz vs phone 8kHz) same-cloned-voice consistency was only glanced at, never probed; (6) Fixie AI Ultravox and Freeze-Omni were named as leads but never actually researched (WebSearch budget exhausted). The current top-5 was hand-assembled from six manual verify-*.md passes layered on TOP of this incomplete riff corpus, not from a completed riff synthesis — treat the top-5 as verification-corrected but not gap-closed."
+  - "The six verify-*.md files (and brief2.md/dims2.json/panel2.json/cloudseat.json/costdim.json) that the current top-5 rests on live ONLY in the session's OS-level scratchpad (/private/tmp/claude-501/.../scratchpad/), NOT in the git repo or anywhere under .acos/riffs/. Scratchpad directories are ephemeral and session-scoped — if not copied into the repo (e.g., into the 2026-07-24 riff's dossiers/ or into research/) before that scratchpad is cleared, this verification work could be lost with no other record."
+  - "cloudseat.json/costdim.json in the scratchpad reflect a stale, superseded interim scope ('cost-effectiveness is the priority') that contradicts the session's later, final correction ('cost is NOT the priority'). Do not act on those two files' framing without re-confirming with the user first."
+  - "Real live-call latency and 8kHz-band voice quality remain unverified for every one of the five shortlisted options — no vendor publishes either figure; both require an actual live benchmark before any final commitment."
+
+next_actions:
+  - "Render the updated top-5 as a one-page comparison for the boss: pieces/architecture per option, relative cost, and the two must-test items (live latency, 8kHz voice quality) — this was the explicitly offered next step at the point this handoff was triggered."
+  - "Write the build-and-benchmark plan for the #1 pick (cloud cascade + Cartesia): what to stand up (LiveKit/Pipecat + Telnyx + Cloudflare Durable Objects + Cartesia TTS with <spell> digit tags), and how to measure the two unverified items live."
+  - "Before anything else is lost: copy the six verify-*.md files plus brief2.md/dims2.json/panel2.json out of the ephemeral scratchpad and into a permanent repo location (e.g. .acos/riffs/2026-07-24-.../dossiers/ or a new research/ subfolder) so this verification work survives past this session."
+  - "Decide whether to go back and close the six specific coverage-gate items the 2026-07-24 riff auditor flagged (Phi family, 8kHz quality, one-model number-safety, TCO, cross-channel consistency, Ultravox/Freeze-Omni) before treating the riff as 'done', or explicitly accept the manual verify-pass as sufficient for a business decision and move straight to building/benchmarking."
+  - "Re-confirm with the user whether cost should factor in at all before touching cloudseat.json/costdim.json again, since the session's own scope correction ('cost is NOT the priority') post-dates and contradicts those draft files."
+
+context_for_next_session: |
+  This is a multi-generation research effort on the same question — 'what tech stack
+  should power OKOA's website + phone voice agent' — that has been iterated at least
+  three times: an initial deep-research pass on 2026-07-20 (research/okoa-voice-agent-
+  stack-deep-research-2026-07-20.html), a narrower /acos-research-riffs run on 2026-07-22
+  scoped only to self-hostable TTS engines (which failed its own coverage gate over
+  missing 8kHz-band quality data), and a corrected, broadened re-scope opened 2026-07-24
+  that explicitly named its own predecessor's three mistakes (fixed Opus 4.8 as the
+  brain, never assessed one-model speech-to-speech, missed whole model families like
+  Liquid AI and 'Inkling') and set a stricter primary-source-only evidence bar. That
+  2026-07-24 riff also failed its coverage gate, but for a different, narrower set of
+  reasons (see blockers). Rather than iterating the riff mechanism a fourth time, the
+  session pivoted to six hand-run, live-WebFetch-verified fact-check passes
+  (verify-brain/grok/quants/qwen-newest/openai-voice/voice.md, all 2026-07-24) that
+  directly interrogated the riff's most load-bearing and highest-uncertainty claims —
+  this is a sound and efficient way to close a coverage gate without re-running the
+  whole multi-seat panel, and produced a materially corrected, more current top-5 (e.g.
+  swapping in Qwen3.6-35B-A3B over the one-generation-older Qwen3-30B-A3B, correcting
+  ElevenLabs' latency figure down from ~264ms to ~75-200ms, dropping Qwen3-Omni for its
+  lack of voice cloning, and dropping Grok for its unproven real-time fitness).
+
+  The single most urgent risk is that all of this verification work — the six verify
+  files and their supporting scratch JSON — exists ONLY in an OS temp directory scoped
+  to this session, not in the git repo or under .acos/riffs/. If the next session
+  starts fresh without that scratchpad, this entire corrective pass would need to be
+  redone from scratch (though this handoff document itself now preserves the substantive
+  findings and citations at a fairly granular level, so redoing from zero should not be
+  necessary — but re-verifying against the original primary sources cited within each
+  verify-*.md excerpt above would still be prudent given how fast these model/vendor
+  facts move).
+
+  The next session's highest-value first action is almost certainly to render the
+  one-page boss comparison and/or the build/benchmark plan for the #1 pick (cloud
+  cascade + Cartesia), per the explicit next-action note given at handoff time — NOT to
+  re-litigate the riff coverage gaps, unless the user specifically wants those six named
+  gaps (Phi family, 8kHz quality, one-model number-safety, TCO, cross-channel
+  consistency, Ultravox/Freeze-Omni) closed first. Separately and unrelated: this repo's
+  git status/log show a large body of uncommitted ACOS-framework work (Investment
+  Committee committee-room, Resurrection Protocol, acos-axiom-synthesis, acos-reverse-
+  cleanroom, new skills acos-research-riffs/acos-skill-breakdown) — none of it was
+  touched by this session and it should not be confused with the OKOA voice-agent
+  research thread documented here.
+
+reconstruction_sources:
+  - "bash .claude/scripts/acos-preflight.sh"
+  - "git status --short (this repo — large uncommitted ACOS-framework body of work, unrelated to this session's focus)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "ls -lt planning/ (no slice/story/epic exists for this OKOA research thread, confirming it sits outside the planning hierarchy)"
+  - "ls -lt .acos/evidence/ (no evidence bundle dated today; consistent with this being ad hoc research, not a tracked slice)"
+  - "ls -lt memory/decisions/ (no decision file exists for this topic; latest on disk is 2026-07-05-eternity-protocol-nonfiring-audit.md)"
+  - "ls -la .acos/state/ (general runtime state only; nothing riff- or OKOA-specific)"
+  - "ls -lt memory/handoffs/*.yaml memory/handoffs/*.md excluding *.resume.md (found 2026-07-24-emergency-handoff.yaml as the most recent prior handoff)"
+  - "ls -lt memory/handoffs/*.resume.md"
+  - "find .acos/riffs -maxdepth 3 -type f (enumerated both the 2026-07-22 TTS-only and 2026-07-24 brain+voice riff sessions' full file trees; also confirmed a third, unrelated 2026-07-22 'test-runner' riff exists and is out of scope for this thread)"
+  - "ls -la [session scratchpad] (enumerated verify-*.md, brief2.md, dims2.json, panel2.json, cloudseat.json, costdim.json, gap-seat*.json, plus unrelated book.json/book.txt and okoa-voice-agent-architecture(-full).html files)"
+  - "Read [session scratchpad]/verify-brain.md"
+  - "Read [session scratchpad]/verify-grok.md"
+  - "Read [session scratchpad]/verify-quants.md"
+  - "Read [session scratchpad]/verify-qwen-newest.md"
+  - "Read [session scratchpad]/verify-openai-voice.md"
+  - "Read [session scratchpad]/verify-voice.md"
+  - "Read [session scratchpad]/brief2.md"
+  - "Read [session scratchpad]/cloudseat.json"
+  - "Read [session scratchpad]/costdim.json"
+  - "Read .acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/brief.md"
+  - "Read .acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/manifest.json"
+  - "Read .acos/riffs/2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa/coverage-audit.md"
+  - "Read .acos/riffs/2026-07-22-which-self-hostable-text-to-speech-tts-engine-should-okoa-s-/coverage-audit.md"
+  - "Read memory/handoffs/2026-07-24-emergency-handoff.yaml (prior handoff — confirmed it documents a separate, unrelated set of OKOA deal-analysis deliverables, not this research thread; used to avoid conflating the two)"
+  - "find research -maxdepth 3 (confirmed research/okoa-voice-agent-stack-deep-research-2026-07-20.html as an earlier, separate pass on the same question)"

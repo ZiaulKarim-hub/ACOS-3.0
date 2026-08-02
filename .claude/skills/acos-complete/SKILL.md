@@ -129,12 +129,28 @@ Remove any stale legacy session markers from `.acos/state/` (defensive cleanup â
 rm -f .acos/state/handoff-triggered-*
 ```
 
+### Step 6.5: Resurrect-book sync (auto-finish, user policy 2026-07-18)
+
+Flip this project's row in the Resurrection Protocol registry to `completed`
+(ARCHIVED tier in `/acos-resurrect`). No prompt â€” "Auto-finish always" was the
+user's explicit choice. The row is never deleted, tombstoned rows are never
+touched, and enroll-project.sh auto-revives the row to `active` the next time
+a session starts in this project (so a milestone-only complete self-heals).
+
+```bash
+bash "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection/complete-book-sync.sh" --root "$PWD"
+```
+
+Relay the script's one-line output verbatim in the Step 7 report. The script is
+fail-open: any book-sync error prints a note and never blocks completion.
+
 ### Step 7: Confirm
 
 Report to the user:
 - Whether a new completion handoff was created for this session (Step 3) or an existing one was found (Step 2)
 - How many total handoffs were archived
 - The filenames that were moved
+- The resurrect-book sync line from Step 6.5 (verbatim)
 - Confirm that the next session will start with clean context
 
 ### Step 8: Exit Session (auto-typed `/exit`)

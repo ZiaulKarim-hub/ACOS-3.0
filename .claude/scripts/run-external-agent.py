@@ -281,9 +281,15 @@ def call_openai_compatible(api_base, api_key, model_name, system_prompt,
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
     }
+    # Param shim: reasoning-family models (o1/o3/o4/gpt-5.x) use
+    # `max_completion_tokens` and reject a custom `temperature`. Classic chat
+    # models keep `max_tokens` + `temperature`.
+    if is_reasoning_model(model_name):
+        payload["max_completion_tokens"] = max_tokens
+    else:
+        payload["max_tokens"] = max_tokens
+        payload["temperature"] = temperature
 
     data = json.dumps(payload).encode("utf-8")
 
@@ -368,6 +374,18 @@ def parse_model_spec(model_spec):
 
     # Unknown bare name — assume claude
     return "claude", model_spec
+
+
+def is_reasoning_model(model_name):
+    """True for OpenAI reasoning-family models (o1/o3/o4/gpt-5.x).
+
+    These endpoints reject the classic `max_tokens` field (they require
+    `max_completion_tokens`) and reject any non-default `temperature`. Detect by
+    the final path segment so vendor-prefixed OpenRouter names also match
+    (e.g. 'openai/gpt-5.6-sol').
+    """
+    base = model_name.lower().split("/")[-1]
+    return base.startswith(("o1", "o3", "o4", "gpt-5"))
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

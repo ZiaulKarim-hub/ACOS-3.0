@@ -1,0 +1,60 @@
+slice_id: "SLICE-EDEN-10"
+story_id: "ST-004-eden-5"
+epic_id: "EP-004-eden-5"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Cross-session persistence, status UX & docs"
+objective: |
+  Make the level persist across sessions (exclude .acos/state/eden-level from session-cleanup.sh
+  purge), polish discoverability (banner on change, status subcommand), and document the skill.
+
+acceptance_criteria:
+  - "[ ] Level survives SessionEnd (excluded from cleanup purge) and is restored in the next session."
+  - "[ ] A one-time banner fires only on level CHANGE (not every turn)."
+  - "[ ] status reports the active level clearly; first-use prints the grammar table."
+  - "[ ] Docs state all non-guarantees (heuristic self-check, U1 assumption, L1/L2 interpolation)."
+  - "[ ] .acos/state/eden-level is gitignored (never committed)."
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-01"
+      what_it_provides: "the state file whose lifecycle this slice finalizes"
+      status: "in_progress"
+
+files_allowed:
+  - ".claude/scripts/session-cleanup.sh"
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+  - ".gitignore"
+
+files_prohibited:
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "session-cleanup.sh change must be ADDITIVE (an exclusion) and human-reviewed — it is a shared script."
+  - "Mirrors oracle-session-threshold's preserved-across-sessions posture."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-10.md"
+
+technical_requirements:
+  - "Additive exclusion of eden-level from the SessionEnd purge list."
+
+testing_requirements:
+  - "Set level -> end session -> new session still has it; banner-on-change demo; status output; docs excerpt."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+effort_estimate: "M"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-10. Demo 3+. P1/P2. Maps M3 persistence, S5, R6.

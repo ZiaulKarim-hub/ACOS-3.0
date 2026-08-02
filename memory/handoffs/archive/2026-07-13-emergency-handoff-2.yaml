@@ -1,0 +1,164 @@
+timestamp: "2026-07-14T06:05:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown (multi-session day — see notes)"
+estimated_tokens: 0
+
+session_summary: |
+  2026-07-13 was a multi-pane/multi-session day with at least three concurrent Claude Code
+  sessions. Session 49f72902 built and shipped acos-eden-protocol (global skill, Level 3
+  currently active). A separate session committed the IC live committee-room engine (cc62ecd).
+  This session (current) diagnosed and partially mitigated a macOS keychain-unlock prompt storm
+  caused by 84 tracked Claude sessions + eternity cycling, applied three eternity fix commits
+  (df1b0ca, daf36ae, 6654c06 — all on branch acos-deficiency-fixes-2026-06-04, pushed to both
+  remotes), raised the eternity threshold to 2000000 as emergency mitigation, and directed the
+  user to unlock/reset the login keychain. The keychain issue is NOT yet confirmed resolved.
+
+current_work:
+  slice_id: "SLICE-IC-B2 through SLICE-IC-F1 (IC Waves 3-5, still planned); SLICE-EDEN-01..10 (all complete)"
+  story_id: "IC build track (003-investment-committee); eden-protocol track (004-acos-eden-protocol)"
+  epic_id: "acos-investment-committee; acos-eden-protocol"
+  status: "in_progress"
+
+completed_this_session:
+  - "eternity fix df1b0ca: learned-dead-surface self-expiring marker. eternity-cmux-inpane.sh counts per-surface send failures (at 2, writes .cmux-surface-dead-<surf>); register-session-pid.sh refuses to re-capture a surface whose dead marker is fresh (<30min). Self-expiring design avoids deadlock where naive suppress severs the only un-mark path."
+  - "eternity fix daf36ae: de-mislead the 'warp manual-only' NOOP log + Priority-2 fire escalation (osascript one-shot alert when daemon fires but all carriers fail)."
+  - "eternity fix 6654c06: invalidate stale cmux-surface binding + escalate dead-surface /clear path."
+  - "eternity reference copies edd63d5: version-controlled copies of the two in-pane hooks added to .claude/scripts/acos-token-monitor-bin-reference/. Live external hooks remain under ~/Library/Application Support/acos-token-monitor/bin/."
+  - "IC build cc62ecd (committed 2026-07-13 17:30 local, appears to be a separate pane/session): live pool-backed committee room. ic-pool.py (warm claude -p subprocess pool), ic-live.py (chair-inbox consumer, grounded per-seat prompts, reading-level dial), ic-server.py (SSE bridge), ic_turns.py (cache + single-consumer lock), ic-launch.sh, ic-meeting-runner.py, ic-turn-daemon.py. 8 tooled seats: #2=PRISM, #4=title-sleuth+acos-legal-analysis, #7=acos-hypercore-ask, #8=okoa-deal-analyzer, #3=acos-data-extractor, #5=acos-peril-scan (new), #6=acos-sponsor-verify (new)."
+  - "acos-eden-protocol (session 49f72902): all 10 SLICE-EDEN slices built and marked complete. Global skill at ~/.claude/skills/acos-eden-protocol/ (SKILL.md, hooks/eden-level-injector.py, hooks/eden-rearm.sh). Registered in global ~/.claude/settings.json. Eden Level 3 currently active (~/.claude/state/eden-level = 3). Planning artifacts untracked in planning/preeng/004-acos-eden-protocol/ and planning/slices/SLICE-EDEN-01..10."
+  - "Keychain storm diagnosis: full findings in memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md (origin_session 49f72902). Ruled out: eternity/token-monitor scripts issue ZERO security/gh/git calls (grep-confirmed). Leading hypothesis: eternity session-cycling amplifies claude re-auth reads against a locked keychain."
+  - "Emergency mitigation: raised threshold to 2000000 in ~/Library/Application Support/acos-token-monitor/config.yaml (from 500000). Hot-reloads. Killed 68+ blocked security find-generic-password processes. Restarted secd."
+  - "IC Waves 0-2 (from July 9, already committed or verified before this session): vendored axiom-synthesis engine (54/54 tests), session_scaffold.py, roster.yaml, coverage-map.yaml, 11 agent defs (ic-01..10 + ic-research-bot), resolve_roster.py, optional_triggers.yaml, extract_deal.py, build_facts.py, run_synthesis.py, verdict.py, render_memo.py."
+
+files_modified:
+  - path: ".claude/scripts/acos-token-monitor-bin-reference/eternity-cmux-inpane.sh"
+    changes: "Reference copy: dead-surface failure counting and self-expiring marker logic (mirrors live bin/)."
+  - path: ".claude/scripts/acos-token-monitor-bin-reference/register-session-pid.sh"
+    changes: "Reference copy: refuses to re-capture a cmux surface with a fresh dead marker (<30min)."
+  - path: ".claude/scripts/acos-token-monitor-bin-reference/token-watcher.py"
+    changes: "Reference copy: Priority-2 escalation and warp-manual-only log clarity fix."
+  - path: ".claude/skills/acos-investment-committee/scripts/committee-room/ (new directory)"
+    changes: "All committee-room engine scripts: ic-pool.py, ic-live.py, ic-server.py, ic_turns.py, ic-launch.sh, ic-meeting-runner.py, ic-turn-daemon.py, meeting_state.py, templates, concept prototypes."
+  - path: ".claude/skills/acos-peril-scan/SKILL.md"
+    changes: "New skill — insurance and climate risk scanner for IC seat #5."
+  - path: ".claude/skills/acos-sponsor-verify/SKILL.md"
+    changes: "New skill — sponsor and fraud forensics scanner for IC seat #6."
+  - path: ".claude/scripts/session-cleanup.sh (tracked, uncommitted)"
+    changes: "Comment addition only: clarifies eden-level is global (~/.claude/state/), never touched by this script."
+  - path: ".claude/skills/acos-xl-update/SKILL.md (tracked, uncommitted)"
+    changes: "Description tweak: carry-forward rule for loans with <2 updates in 2-week window. Low priority."
+  - path: "~/.claude/settings.json (GLOBAL, outside this git repo)"
+    changes: "Eden hooks registered globally: UserPromptSubmit->eden-level-injector.py (last in chain), SessionStart/clear->eden-rearm.sh. This affects ALL Claude Code sessions in this environment."
+  - path: "~/Library/Application Support/acos-token-monitor/config.yaml (outside this git repo)"
+    changes: "TEMPORARY: threshold raised from 500000 to 2000000. MUST be restored after keychain is fixed."
+  - path: "memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md (untracked)"
+    changes: "New: complete keychain storm diagnosis from session 49f72902. Status active, do NOT archive."
+  - path: "~/.claude/skills/acos-eden-protocol/ (outside this git repo, new)"
+    changes: "New global skill: SKILL.md (command grammar, Fidelity Floor, reading-level dial), hooks/eden-level-injector.py, hooks/eden-rearm.sh."
+  - path: "~/.claude/state/eden-level (outside this git repo)"
+    changes: "Runtime state: currently '3' (Level 3 active, middle-school reading level)."
+  - path: "planning/preeng/004-acos-eden-protocol/ (untracked)"
+    changes: "Full preeng artifact set for eden protocol: spec.md, tech_prd.md, data-model.md, plan.md, tasks/, agent_instructions/, qa reports, etc."
+  - path: "planning/slices/SLICE-EDEN-01..10-*.yaml (untracked)"
+    changes: "All 10 eden slices, all status: complete."
+
+decisions_made:
+  - "TEMPORARY threshold raise (2000000) is NOT a design change — eternity code/functionality intact. Must restore to 500000 after keychain fix."
+  - "Eden registered as a GLOBAL skill (not project-local) — a deliberate scope upgrade from the plan's original project-local design. Documented in SKILL.md Architecture section."
+  - "IC committee-room runs moderator-free, subscription-only (claude -p, no API key). Chair input counts as accepted evidence (CP-verified-by-chair doctrine). Seats must bring evidence, not personal assurances."
+  - "acos-peril-scan and acos-sponsor-verify created as standalone skills reusable outside IC context."
+  - "IC build discipline: VERIFY by recomputing gates (run scripts together for interop), never trust agent self-reports/logs. Two hidden bugs caught this way (engine layout, C1-seat contract)."
+
+blockers:
+  - "CRITICAL (user-side): macOS login keychain is locked or has a password mismatch (entering the macOS login password did not stop the prompts, suggesting keychain password != login password). User was attempting to unlock via Keychain Access which was freezing. NOT YET CONFIRMED FIXED."
+  - "CRITICAL (restore when keychain resolved): eternity threshold is 2000000. Restore to 500000 in ~/Library/Application Support/acos-token-monitor/config.yaml after keychain is stable. Daemon hot-reloads on save."
+  - "IC harmonization fix still required: seat agent defs ic-01..09 emit a loose objection format; build_facts.py requires a precise JSON wrapper. Mode A will fail at first real run. Fix was assigned to an agent that died (July 9) with no output. MUST fix before Mode A produces a real memo."
+  - "Two uncommitted changes: .claude/scripts/session-cleanup.sh (comment only, low risk) and .claude/skills/acos-xl-update/SKILL.md (continuity-rule tweak, verify authorship before committing)."
+  - "acos-deficiency-fixes-2026-06-04 branch not merged to main — all eternity fixes and IC build remain on this branch."
+  - "Eden build verification gap: no .acos/evidence/ bundle dated 2026-07-13 found. Slice YAMLs self-report 'built + verified' but the plan.md Definition of Done (fidelity-violation test battery, finance-flavored prompts) has no independent evidence artifact. Worth closing before treating eden as fully done."
+  - "415 cmux-surface state markers in ~/Library/Application Support/acos-token-monitor/state/. Zero clear-requested and zero compact-fired as of this handoff (threshold raise paused new fires). Marker cleanup may be warranted."
+
+next_actions:
+  - "FIRST — Verify keychain is resolved: let eternity cycle naturally (or test a single /clear) and watch for 'security wants to use login keychain' dialogs. If still firing, follow ranked steps in memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md."
+  - "SECOND — Restore eternity threshold: edit ~/Library/Application Support/acos-token-monitor/config.yaml, change threshold: 2000000 back to threshold: 500000. Save file — daemon hot-reloads, no restart needed."
+  - "THIRD (IC) — Apply harmonization fix: rewrite 'Objection schema' + 'Output' sections of .claude/agents/ic-01 through ic-09 to emit the precise JSON that build_facts.py parses. Then verify with a realistic seat-04.json + seat-09.json fixture run."
+  - "FOURTH (IC) — Wire SKILL.md Mode-A router + blind-opening-pass step. Run a full Mode A pass on .claude/skills/acos-investment-committee/fixtures/sample-deal/ and produce a real ic-memo.md to show the user."
+  - "THEN (IC Waves 4-5) — Mode B: D1 moderator loop + transcript, D2 tally/chair-vocab/ESC/one-to-one/exclude, D3 resume/durability. Then E1 (legal-analyst reuse), F1 (guardrails/governance)."
+  - "BACKGROUND — Commit planning artifacts for eden: git add planning/preeng/004-acos-eden-protocol/ planning/slices/SLICE-EDEN-*.yaml .acos/swarm/swarm-20260707-eden-protocol/ .claude/scripts/session-cleanup.sh. The global ~/.claude/skills/acos-eden-protocol/ and ~/.claude/settings.json are outside this repo and cannot be committed."
+  - "BACKGROUND — Consider eden global hook registration as a contributing keychain variable: if isolating the keychain issue, temporarily remove the eden UserPromptSubmit + SessionStart hooks from ~/.claude/settings.json as a test. Revert if not the cause."
+  - "BACKGROUND — Clean up noise: memory/handoffs/2026-07-13-emergency-handoff.yaml is an abandoned, never-enriched stub from session 86edc34d's handoff-agent. Safe to archive once this -2 file is accepted as the authoritative 2026-07-13 emergency handoff."
+
+context_for_next_session: |
+  ENVIRONMENT WARNING: The next session may open into an unstable macOS environment. As of
+  the end of this session, the login keychain was locked (or had a password mismatch), 84
+  tracked Claude sessions were active, and eternity was paused (threshold 2000000) to suppress
+  the keychain-unlock dialog storm. If you see 'security wants to use the login keychain'
+  dialogs immediately, check: (1) is the keychain still locked? (2) is the threshold still
+  2000000 vs the normal 500000? Read memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md
+  for the full diagnosis and ranked next steps before taking any action.
+
+  CRITICAL: eternity threshold MUST be restored to 500000 after confirming the keychain is
+  stable. Edit ~/Library/Application Support/acos-token-monitor/config.yaml — file save is
+  enough (daemon hot-reloads). Do NOT leave it at 2000000 long-term; that permanently pauses
+  context cycling and defeats the Eternity Protocol's purpose.
+
+  EDEN IS ACTIVE: Every top-level chat reply in this environment is currently filtered to
+  ~middle-school reading level (Level 3). To turn it off: invoke /acos-eden-protocol off.
+  To check: /acos-eden-protocol status. Level persists across /clear and sessions via hooks.
+  The global ~/.claude/settings.json now has eden hooks in both UserPromptSubmit and
+  SessionStart chains — this affects ALL Claude Code sessions on this machine.
+
+  GIT STATE: branch acos-deficiency-fixes-2026-06-04. HEAD = cc62ecd (IC committee room).
+  All three eternity fix commits (df1b0ca, daf36ae, 6654c06) are committed and pushed to
+  both origin and personal remotes. Two small uncommitted tracked-file changes exist:
+  .claude/scripts/session-cleanup.sh (comment only) and .claude/skills/acos-xl-update/SKILL.md
+  (description tweak). Large body of untracked files: IC planning slices, eden planning
+  artifacts, .claude/agents/ic-*.md agents, research/, .omx/ — all legitimate work product.
+
+  IC BUILD PRIORITY: The harmonization fix between seat agents and build_facts.py is the
+  immediate blocker for Mode A. Read memory/handoffs/archive/2026-07-09-ic-build-handoff.md
+  (section "IMMEDIATE NEXT STEP") for exact instructions — the fix is two-sided (pin the
+  PRODUCERS' output schema; make the CONSUMER minimally forgiving). After that fix, wire Mode A
+  router and run a demo on the sample-deal fixture.
+
+  ETERNITY CODE: The three commits this session applied Stage-2 residuals from the 2026-07-05
+  audit. Reference copies in .claude/scripts/acos-token-monitor-bin-reference/; live hooks
+  in ~/Library/Application Support/acos-token-monitor/bin/. The remaining deferred items
+  (surface re-discovery on rc=5, per-session heartbeat, resume path-(3) pane-scoping) are
+  lower priority and not blocking normal operation.
+
+reconstruction_sources:
+  - "git status --short (branch acos-deficiency-fixes-2026-06-04)"
+  - "git log --oneline -25"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git show --stat cc62ecd df1b0ca daf36ae 6654c06 (confirmed present)"
+  - "git log --oneline 6654c06 daf36ae (confirmed ordering)"
+  - "git log --oneline daf36ae~1..df1b0ca~1 (confirmed daf36ae directly precedes df1b0ca)"
+  - "ls -lt memory/handoffs/ (first 20 entries — timestamps and sizes)"
+  - "memory/handoffs/2026-07-13-keychain-eternity-diagnosis.md (read in full)"
+  - "memory/handoffs/2026-07-13-emergency-handoff.yaml (read in full — abandoned stub from 86edc34d)"
+  - "memory/handoffs/2026-07-13-emergency-handoff-2.yaml (read in full — prior content from session 49f72902 handoff-agent)"
+  - "memory/handoffs/archive/2026-07-09-ic-build-handoff.md (read, first 125 lines)"
+  - "memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md (read, first 60 lines)"
+  - "ls -lt memory/decisions/ (confirmed no 2026-07-13 decision doc)"
+  - "planning/slices/SLICE-EDEN-01-command-grammar-state.yaml (read)"
+  - "planning/slices/SLICE-EDEN-10-persistence-status-docs.yaml (read)"
+  - "planning/slices/SLICE-IC-DIAG-01.yaml (read)"
+  - "grep -h status SLICE-EDEN-*.yaml (result: 10/10 complete)"
+  - "grep -h status SLICE-IC-*.yaml (result: 16/16 planned)"
+  - "ls planning/preeng/ (003-investment-committee and 004-acos-eden-protocol present)"
+  - "ls ~/Library/Application Support/acos-token-monitor/bin/ (full listing)"
+  - "cat ~/Library/Application Support/acos-token-monitor/config.yaml (confirmed threshold: 2000000)"
+  - "ls ~/Library/Application Support/acos-token-monitor/state/ | grep -E clear-requested|compact-fired (0, 0)"
+  - "ls ~/Library/Application Support/acos-token-monitor/state/ | grep -c cmux-surface (415)"
+  - "cat ~/.claude/state/eden-level (confirmed: 3)"
+  - "ls ~/.claude/skills/acos-eden-protocol/ and hooks/ (SKILL.md, hooks/eden-level-injector.py, eden-rearm.sh)"
+  - "head -30 ~/.claude/skills/acos-eden-protocol/SKILL.md (verified global skill structure)"
+  - "ls -la .acos/evidence/ (most recent: 2026-06-24, none from 2026-07-13 — verification gap)"
+  - "ls -la .acos/state/ (oracle-audit.log, agent-lifecycle.log, oracle-session-threshold)"
+  - "git diff HEAD -- .claude/scripts/session-cleanup.sh (comment addition only)"
+  - "git diff HEAD -- .claude/skills/acos-xl-update/SKILL.md (description tweak)"
+  - "cat ~/.acos/state/oracle-session-threshold (value: 9 = default)"
+  - "In-session state brief provided by the invoking agent (keychain/eternity/IC/eden summary)"

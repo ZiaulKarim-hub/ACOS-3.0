@@ -1,0 +1,118 @@
+slice_id: "SLICE-IC-D1-moderator-loop-transcript"
+story_id: "STORY-D1"
+epic_id: "EPIC-D"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Mode B moderator loop + append-only transcript"
+objective: |
+  Implement the Mode B moderated-relay loop in the top-level SKILL.md (main conversation) --
+  the main conversation IS the moderator; subagents cannot pause or call AskUserQuestion, so no
+  dispatched seat may own the loop -- blind openings (Round 1), then bounded Gap-Hunter-directed
+  (#10) serial rebuttal rounds (cap 5-6, Rounds 2+), including the Deal Advocate's (#9) defense
+  turns when called, with every turn persisted to an append-only transcript on disk IMMEDIATELY
+  (survives /clear + resume) BEFORE the next dispatch.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] the SKILL.md Mode B branch dispatches implicated seats per round via Task() -- for Rounds 2+, \"implicated\" means the seats Gap-Hunter (#10) selects that round (selection logic owned by SLICE-D2; this slice dispatches/persists against it)"
+  - "[ ] the moderator loop lives ONLY in the main conversation -- no spawned agent owns/calls the round loop, and no subagent invokes AskUserQuestion"
+  - "[ ] Round 1 is the blind parallel two-line opener pass per seat (line 1: number of gaps found + why the chair should care; line 2: overall recommendation), rendered one-line-per-seat in transcript.md"
+  - "[ ] Rounds 2+ are serial rebuttal turns among the Gap-Hunter-selected (#10) seats, including the Deal Advocate (#9) when called to defend against a just-raised objection; each returned Turn is recorded to rounds/round-NN/*.json (one file per seat turn) and conforms to {round, seat, stance: SUPPORT|REBUT|ABSTAIN|CONDITIONAL|FLAG_RISK, argument (<=250w), addresses_prior_turn_ids, would_change_mind_if}"
+  - "[ ] the Deal Advocate's (#9) turns persist and render via the IDENTICAL Turn schema/pipeline as any other seat's turn -- no bespoke advocate-only code path; the Advocate is never treated as an \"implicated\" scrutiny seat by the dispatch logic and casts no vote"
+  - "[ ] each turn is appended to the human-readable transcript.md"
+  - "[ ] the on-disk session layout under .acos/investment-committee/<session>/ includes manifest.yaml (mode: deliberation|one_to_one:<n>, status: open|paused|closed, current_round), transcript.md, rounds/, sidebars/, ledger/, evidence/"
+  - "[ ] manifest.status / manifest.current_round is updated after each round"
+  - "[ ] the round cap (5-6) is enforced and halts the loop"
+  - "[ ] rolling-synthesis + last-K verbatim context window bounds per-call cost"
+  - "[ ] every turn's JSON is on disk IMMEDIATELY, BEFORE the next dispatch (durability proof: interrupt mid-round, confirm the last turn survived and would survive /clear + resume)"
+  - "[ ] the transcript.md render is faithful to (matches) the per-turn JSON records, including the Round 1 one-line-per-seat opener render"
+  - "[ ] evidence bundle includes a multi-round fixture run transcript (incl. at least one Deal Advocate turn) + a durability proof"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-B1-deal-intake"
+      what_it_provides: "manifest.yaml / session scaffold the moderator loop dispatches and updates against"
+      status: "complete"
+    - slice_id: "SLICE-IC-A2-expert-agent-defs"
+      what_it_provides: "seats/*.md templates used to dispatch implicated seats via Task()"
+      status: "complete"
+    - slice_id: "SLICE-IC-B2-blind-opening-pass"
+      what_it_provides: "blind_openings.py / Round 1 two-line opener output that this slice's round loop persists and renders, then builds Rounds 2+ from"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/SKILL.md"
+  - ".claude/skills/acos-investment-committee/scripts/transcript_append.py"
+
+files_prohibited:
+  - "context note: the tally + chair vocabulary (SLICE-D2), resume (SLICE-D3), and the verdict (reuses SLICE-C3) are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: manifest.yaml, seats/*.md, blind_openings.py, tech_prd section 1.7 + 2, domain-lattice proc-mode-b + pattern-main-convo-moderator + pattern-transcript-on-disk"
+  - "ONLY the main conversation moderates (subagents can't pause or call AskUserQuestion); disk-first is load-bearing for resume (SLICE-D3); subscription-only; respect Oracle/check-scope hooks"
+  - "seat numbering per architect delta (this pass): Deal Advocate is #9 (participates via mitigant turns, no vote); Gap-Hunter/Chair-agent is #10 (procedural per-round selection, no vote) -- supersedes the #9-Gap-Hunter numbering still on disk in SLICE-A1/A2/A3 and spec.md/tech_prd.md as of this writing; those files need their own reconciliation pass (out of scope here)"
+
+# Technical requirements
+technical_requirements:
+  - "no nested moderator agent -- architecture must be verifiable via grep for a moderator Task() (must find none) and grep for any subagent AskUserQuestion call (must find none)"
+  - "context window must use rolling synthesis + last-K verbatim to bound per-call cost"
+  - "per-turn JSON path is rounds/round-NN/*.json -- one file per seat turn, not a shared per-round file"
+  - "Rounds 2+ seat selection (Gap-Hunter #10) and the Deal Advocate's (#9) mitigant-turn triggering are owned by SLICE-D2; this slice's dispatch loop must accept an externally-selected seat list per round rather than hardcoding which seats speak"
+
+# Testing requirements
+testing_requirements:
+  - "QA confirms the loop is in SKILL.md and NO spawned agent owns the round loop (grep-based architecture check)"
+  - "QA interrupts mid-round and confirms the last turn's JSON survived on disk before the next dispatch"
+  - "QA recomputes whether transcript.md render is faithful to the JSON records, including the Round 1 opener render"
+  - "QA confirms the round cap halts the loop"
+  - "QA confirms a Deal Advocate (#9) turn, when present, persists and renders through the identical Turn schema/pipeline as any scrutiny seat's turn (no bespoke advocate-only code path)"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-performance-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "L"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject if the moderator is nested (any
+  spawned agent owns the loop), if a subagent calls AskUserQuestion, or if a turn is lost on
+  interrupt; durability and transcript-fidelity must be proven by an interrupt test, not a claim.
+  Stance enum aligned: this slice's per-turn schema now uses the full set
+  (SUPPORT|REBUT|ABSTAIN|CONDITIONAL|FLAG_RISK), matching SLICE-D2's Turn stance schema --
+  resolves the prior narrower-enum flag.
+  Renumbering delta (this pass): Gap-Hunter/Chair-agent is now seat #10 (was #9); seat #9 is now
+  the Deal Advocate, which participates in deliberation via mitigant turns (subject to the same
+  falsification gate as objections) but casts no scrutiny vote. This slice's round-flow language
+  reflects the new numbering. SLICE-A1/A2/A3 and spec.md/tech_prd.md still show the pre-delta
+  #9-Gap-Hunter numbering as of this writing and need their own reconciliation pass (out of
+  scope here).
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-D1-moderator-loop-transcript.md
+  by acos-preeng-classic Step 5; architect to review before execution. Updated 2026-07-08 for the
+  Deal-Advocate (#9) / Gap-Hunter-renumbering (#10) design delta; re-review recommended before
+  execution.

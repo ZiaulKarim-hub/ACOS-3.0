@@ -1,0 +1,91 @@
+slice_id: "SLICE-IC-B2-blind-opening-pass"
+story_id: "STORY-B2"
+epic_id: "EPIC-B"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Independence-first blind opening pass"
+objective: |
+  Dispatch every roster seat as an isolated, parallel Task() that reads the deal materials
+  ALONE with zero cross-visibility and emits an opening verdict + >=1 falsifiable objection to
+  rounds/round-00/opening/{seat}.json. This is the #1 anti-groupthink lever and applies in BOTH
+  modes.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/blind_openings.py resolves the active roster and spawns each seat as a parallel Task()"
+  - "[ ] each seat's Task() context contains ONLY the seat template + deal materials -- never another seat's output"
+  - "[ ] each seat's opening verdict is persisted to rounds/round-00/opening/{seat}.json immediately as it returns"
+  - "[ ] N seats produce N opening JSONs, each with a verdict + >=1 falsifiable objection + Axis S self-score"
+  - "[ ] manifest.reduced_independence is set to true when all seats share one model provider"
+  - "[ ] independence proof: inspection confirms zero seats had sibling output in their context (the load-bearing check)"
+  - "[ ] evidence bundle includes the dispatch transcript, the opening JSONs, and an independence attestation"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-A2-expert-agent-defs"
+      what_it_provides: "seats/*.md templates + resolve_seat_model.sh used as each seat's Task() prompt/model"
+      status: "complete"
+    - slice_id: "SLICE-IC-B1-deal-intake"
+      what_it_provides: "manifest.yaml (active roster) and the scaffolded session the openings are written into"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/blind_openings.py"
+
+files_prohibited:
+  - "context note: Round 2+ cross-talk (Mode B) is owned by SLICE-D1; the fact-builder by SLICE-C1; the tally is out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: seats/*.md, resolve_seat_model.sh, manifest.yaml, domain-lattice proc-independence-first + method-blind-first-pass"
+  - "subscription-only via Task(); strictly no cross-seat context bleed; write-to-disk is immediate (durability); respect the Independence Wall / Oracle hooks"
+
+# Technical requirements
+technical_requirements:
+  - "seats are spawned in parallel, never sequentially with visibility of prior seat output"
+  - "each opening verdict is written to disk the moment it returns (not batched)"
+
+# Testing requirements
+testing_requirements:
+  - "QA counts opening JSONs and confirms count == roster voting seats"
+  - "QA recomputes presence of verdict + >=1 falsifiable objection + Axis S score per JSON (does not trust a summary)"
+  - "QA inspects the dispatch to confirm each seat's prompt/context contained ZERO sibling output"
+  - "QA forces single-provider and confirms the reduced_independence flag is set"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): the zero-sibling-output check is the
+  load-bearing independence proof and must be verified by inspection, not by trusting a claim;
+  reject if any seat could see another's opening.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-B2-blind-opening-pass.md by
+  acos-preeng-classic Step 5; architect to review before execution.

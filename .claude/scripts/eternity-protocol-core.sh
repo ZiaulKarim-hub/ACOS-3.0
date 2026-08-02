@@ -136,7 +136,14 @@ if git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
         printf -- '- uncommitted changes: %s file(s)\n' "${GS_DIRTY_COUNT}"
         if [[ "${GS_DIRTY_COUNT}" -gt 0 ]]; then
             printf '\nUncommitted working-tree files (these are in NO handoff — inspect FIRST):\n```\n'
-            printf '%s\n' "$GS_DIRTY" | head -40
+            # 2026-07-18 (SLICE-RES-01): the old `head -40` silently hid every
+            # file past 40 INSIDE a block captioned "inspect FIRST" (74 dirty
+            # files → 34 invisible). List up to 200; past that, say so LOUDLY —
+            # a truncated list must never read as a complete one.
+            printf '%s\n' "$GS_DIRTY" | head -200
+            if [[ "${GS_DIRTY_COUNT}" -gt 200 ]]; then
+                printf -- '... (listed 200 of %s — TRUNCATED; run `git status --porcelain` for the rest)\n' "${GS_DIRTY_COUNT}"
+            fi
             printf '```\n'
         fi
         printf '\nRecent commits at fire time:\n```\n'

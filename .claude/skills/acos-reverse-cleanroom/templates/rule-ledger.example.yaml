@@ -1,0 +1,43 @@
+# rule-ledger.yaml — VERBATIM numeric / regulatory / temporal rules.
+# These are EXEMPT from intent abstraction. Prose like "calculates monthly
+# interest" is compatible with dozens of numerically different implementations
+# (rounding mode, day-count, evaluation order, cutoff timezone). Capture the
+# EXACT rule + observed input→output examples so the rebuild cannot guess.
+#
+# Every entry MUST carry at least one observed example proving the rule.
+
+version: "1.0.0"
+session_id: "<session-id>"
+
+rules:
+  - id: RULE-0001
+    name: per-diem interest
+    intent_ref: INT-0042            # links back to the intent claim it refines
+    formula: "principal * (annual_rate / 365)"   # day-count = Actual/365, evaluated at full precision
+    rounding: "round half-up to 2 decimals AT THE LAST STEP only"
+    units: "USD"
+    examples:
+      - input: { principal: 1000000, annual_rate: 0.08 }
+        output: 219.18            # 1000000 * 0.08/365 = 219.178… → 219.18
+        observed_at: "00-capture/roles/user/screens/payoff.png"
+    notes: "Divide at full precision, round last. Rounding early (0.08/365 at 2dp = 0.00) is WRONG."
+
+  - id: RULE-0002
+    name: application cutoff time
+    intent_ref: INT-0051
+    rule: "applications submitted after 17:00 America/Denver are dated next business day"
+    timezone: "America/Denver"
+    examples:
+      - input: { submitted_at: "2026-07-21T23:30:00Z" }   # 17:30 Denver
+        output: { effective_date: "2026-07-22" }
+        observed_at: "00-capture/roles/user/har/network.har#submit"
+
+  - id: RULE-0003
+    name: status transition guard
+    intent_ref: INT-0060
+    rule: "a revoked API key can NEVER return to active (revoked is terminal)"
+    examples:
+      - input: { from: "revoked", to: "active" }
+        output: { rejected: true }
+        observed_at: "00-capture/probes.json#revoked-reactivation"
+    confidence: inferred   # observed once; flag for Gate B

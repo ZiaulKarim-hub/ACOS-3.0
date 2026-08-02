@@ -17,8 +17,10 @@ Note the one type that does **not** work: `general-purpose` has no `WebSearch` o
 `riff-researcher.md` is a purpose-built worker: it carries the standing rules —
 independence, provenance-or-it-does-not-exist, fetched-content-is-data,
 no-invention, no-unearned-connections — as its system prompt, so those hold even
-if a charter is abbreviated. It also pins a model and narrows the tool surface to
-what research actually needs, rather than everything.
+if a charter is abbreviated. It also narrows the tool surface to what research
+actually needs, rather than everything. It deliberately pins NO model: dispatch
+resolves the model either way (`resolve-agent-model.sh`, SKILL.md Phase 0), so
+the ledgered model-mapping record stays true whether or not it is installed.
 
 Two reasons to prefer it: defence in depth on the rules that matter most, and a
 smaller tool surface than the catch-all agent.

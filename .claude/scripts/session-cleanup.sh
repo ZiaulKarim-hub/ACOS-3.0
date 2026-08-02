@@ -13,8 +13,15 @@
 #   - agent-lifecycle.log (persistent agent history)
 #   - oracle-session-threshold (intentional session override)
 #   - continue.log (useful for debugging launch failures)
+#   - eden-level (acos-eden-protocol) — NOTE: as of 2026-07-13 eden is a GLOBAL skill;
+#     its dial lives at ~/.claude/state/eden-level, NOT in project .acos/state/, and this
+#     cleanup never touches it. Pointer kept for maintainers.
 #
 # This hook runs synchronously at session end. It should be fast (<1s).
+#
+# NOTE: this script deletes an explicit ALLOWLIST of named files — it never does a
+# blanket `rm .acos/state/*` — so any file not named above (incl. eden-level) is
+# preserved by construction. Keep it that way.
 
 set -euo pipefail
 

@@ -1,0 +1,123 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol
+# Source task: planning/preeng/005-resurrection-protocol/tasks/SLICE-30-resurrect-view.md
+
+slice_id: "SLICE-RES-30-resurrect-view"
+story_id: "STORY-3.1"
+epic_id: "EPIC-3"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "resurrect-view.py: fresh book, liveness joins, tiers, BROKEN red, no green"
+objective: |
+  Implement resurrect-view.py: an honest book computed FRESH per request (no
+  persisted master markdown), so a stale registry can never be a lying registry.
+  Liveness is computed live via lsof PID->cwd + ps tty joined to
+  `cmux tree --all --json`. Workspaces join to rows via the [key:<uuid>] tag
+  with a process-join fallback for untagged workspaces — never cwd-string,
+  never title. Rows render in tiers (OPEN NOW / RECENT / COLD(>30d) /
+  NO HANDOFF / ARCHIVED) with dirty as a COUNT, amber staleness, and a
+  clickable file:// handoff link. BROKEN rows render red and are never
+  hidden; a green badge is NEVER emitted.
+description: |
+  The way IN for the Resurrection Protocol (Demo 1 + Demo 3 — the book).
+  Fresh render over registry.d; read-only against cmux tree/rpc and
+  registry.d. Out of scope: any stored liveness flag, cwd-string or title
+  matching, and any green badge / health score / verdict.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Renders today's real state — FruitSync + ACOS 3.0 appear as OPEN NOW; rendered output archived against the known live state in .acos/evidence/[DATE]/SLICE-RES-30-resurrect-view/"
+  - "[ ] ACOS 3.0's two live workspaces (4 and 5) render as ONE row — the two-workspaces-one-row case shown in the archived rendered output"
+  - "[ ] A deliberately broken row renders BROKEN in red, not hidden — broken-row injection + resulting render archived as evidence"
+  - "[ ] No green anything is emitted anywhere — grep of the render for green/checkmark/verdict archived with zero hits (a hit is a QA REJECT)"
+  - "[ ] Evidence bundle populated at .acos/evidence/[DATE]/SLICE-RES-30-resurrect-view/ with the 7 parts: implementation summary, requirements traceability (spec FR-* / tech_prd TR-*), structural quality evidence, functional/structural checks, security/compliance notes, operational/runtime considerations, self-assessment"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections of the preeng task file updated — the slice is not Done until they are (per §0.7)"
+
+# Dependencies
+dependencies:
+  slices:
+    # TODO: confirm — task file states no explicit prerequisite slice ids; derived from its "read-only registry.d" allowed-context
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry.d substrate (row schema, atomic writes) the fresh render reads"
+      status: "in_progress"
+    - slice_id: "SLICE-RES-11-enroll"
+      what_it_provides: "enrolled rows in ~/.acos/registry.d/ so the book has real projects to render"
+      status: "in_progress"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/resurrect-view.py"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended (task file names none; nearest fit only)
+skills_recommended:
+  - "backend-coding"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Book computed FRESH per request — no persisted master markdown, no stored liveness flag of any kind"
+  - "Liveness via lsof PID->cwd + ps tty -> cmux tree --all --json; cmux tree/rpc and registry.d are READ-ONLY here"
+  - "Workspace join via [key:<uuid>] tag; process-join fallback for untagged; NEVER cwd-string matching, NEVER title matching"
+  - "Tiers: OPEN NOW / RECENT / COLD(>30d) / NO HANDOFF / ARCHIVED; dirty rendered as a COUNT; amber staleness; clickable file:// handoff link"
+  - "BROKEN rows render red and are never hidden; NEVER emit a green badge / health score / verdict — QA greps for green/checkmark/verdict and REJECTs on any hit"
+
+# Technical requirements
+technical_requirements:
+  - "Fresh render over registry.d on every invocation (no cached/persisted book)"
+  - "Live liveness join: lsof PID->cwd + ps tty reconciled against cmux tree --all --json"
+  - "[key:<uuid>] tag join with process-join fallback; no cwd-string or title matching paths in the code"
+  - "Tier bucketing (OPEN NOW / RECENT / COLD>30d / NO HANDOFF / ARCHIVED), dirty COUNT, amber staleness, clickable file:// handoff link"
+  - "BROKEN-row red rendering; zero green output paths"
+
+# Testing requirements
+testing_requirements:
+  - "Kill a live session and re-render: the row updates with no stored flag (proves liveness is computed live)"
+  - "Inject a deliberately broken row: it renders BROKEN in red, not hidden"
+  - "Grep the rendered output for green/checkmark/verdict: zero hits"
+
+# Verification method (skill-mandated extension; from task QA section)
+verification_method: |
+  Zero-trust QA — assume the Dev did not do the work correctly. Verify scope
+  respect and evidence authenticity (no fabricated logs — spot-check and
+  recompute). Rendered output archived against the known live state; the
+  two-workspaces-one-row case shown; a broken row injected and shown BROKEN.
+  QA checks:
+  - Confirm liveness is computed live: kill a session and re-render; the row
+    updates without any stored flag.
+  - Confirm the two-workspaces-one-row join is by uuid tag / process, never
+    cwd or title.
+  - Grep the render for any green/checkmark/verdict; if present, REJECT.
+  A QA REJECT blocks the slice like an INCONCLUSIVE reviewer until rework
+  passes the gates.
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; task file defines a zero-trust QA gate
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged 1:1 from preeng task SLICE-30-resurrect-view (Epic EPIC-3 /
+  Story STORY-3.1, Demo 1 + Demo 3). Evidence bundle path:
+  .acos/evidence/[DATE]/SLICE-RES-30-resurrect-view/ (preeng source used
+  SLICE-30-resurrect-view). Out-of-scope guardrails are hard: any stored
+  liveness flag, cwd-string or title matching, and any green badge /
+  health score / verdict.

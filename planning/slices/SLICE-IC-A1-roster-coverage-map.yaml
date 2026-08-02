@@ -1,0 +1,112 @@
+slice_id: "SLICE-IC-A1-roster-coverage-map"
+story_id: "STORY-A1"
+epic_id: "EPIC-A"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Seat roster schema + 16-risk coverage map"
+objective: |
+  Define the Seat + ExpertProfile schema for the numbered, stable roster -- 8 core voting
+  seats (#1-8), the non-voting Deal Advocate (#9), the non-voting Gap-Hunter/Chair-agent
+  (#10), and 5 deal-triggered optionals (#11-15) -- and a machine-checkable 16-risk coverage
+  map asserting every risk category has a named default owner (zero uncovered), with the
+  Portfolio seat (#7) marked scope: fund.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] roster.yaml encodes the numbered seats #1-8 (voting) + #9 Deal Advocate (voting: false) + #10 Gap-Hunter/Chair-agent (voting: false) with seat_id, scope, owned_risk_categories, and optional-seat trigger conditions for #11-15"
+  - "[ ] seat #1 (Credit & Valuation) documents merging the former separate Credit and Valuation seats and its TWO sub-passes (collateral-value, repayment-capacity)"
+  - "[ ] seat #2 (Finance) core-owns risk category #9 (Interest-Rate/Refi/Exit) -- no longer a Credit fold-in"
+  - "[ ] seat #3 (Accounting) is explicitly documented as owning the shared normalized-NOI claim consumed by #1 and #2, and is exempted (not silently unowned) from the 'must own >=1 of the 16 categories' check"
+  - "[ ] seat #4 (Legal & Structural) owns risk category #6 (Environmental) ONLY as a legal-materiality sub-lens (CERCLA / Phase I currency), not the full physical/environmental review"
+  - "[ ] seat #8 (Strategy) is explicitly documented as outside the 16-risk-category taxonomy (strategic-fit lens) and exempted (not silently unowned) from the 'must own >=1 category' check"
+  - "[ ] seat #9 (Deal Advocate) is a NEW, structurally separate seat: owned_risk_categories == [], voting == false, documented as the good-faith steelman/mitigant role (not a risk-owning scrutiny seat), and explicitly exempted from the 'must own >=1 category' check"
+  - "[ ] seat #10 (Gap-Hunter/Chair-agent, renumbered from the former #9) remains voting == false and procedural (round-by-round seat-selection / risk-hunting), and is a distinct seat_id from the Deal Advocate (#9) -- the two roles must not be collapsed"
+  - "[ ] coverage-map.yaml maps all 16 risk categories -> owning seat_id exactly per the SLICE-A1 task-file coverage table (Exit/Refi -> seat 2; Tax fold-in -> seat 4, promotable to optional #12; Environmental default -> seat 4 legal sub-lens, full review promotable to optional #15; Construction/Completion default -> seat 1, promotable to optional #11; Market/Macro default -> seat 1, promotable to optional #13; Regulatory/Compliance default -> seat 4, promotable to optional #14)"
+  - "[ ] scripts/check_coverage.py exits 0 with zero unowned risk categories"
+  - "[ ] check_coverage.py asserts Portfolio seat (#7) scope == fund"
+  - "[ ] check_coverage.py asserts Deal Advocate (#9) voting == false and owned_risk_categories == []"
+  - "[ ] check_coverage.py asserts Gap-Hunter seat (#10) voting == false"
+  - "[ ] evidence bundle includes a coverage-check transcript showing all 16 categories mapped and seat numbers unchanged from THIS slice's numbering (1-15 stable; #9 Deal Advocate and #10 Gap-Hunter supersede any prior #9-Gap-Hunter draft)"
+  - "[ ] QA independently recomputes the 16-category count from the map (not from the summary) and confirms no seat claims a category outside the coverage table"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-DIAG-01"
+      what_it_provides: "TODO: confirm -- session scaffold + axiom-synthesis reachability proof (Demo 1/2 ordering implies this precedes A1, but the task file states no explicit prerequisite)"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/roster.yaml"
+  - ".claude/skills/acos-investment-committee/coverage-map.yaml"
+  - ".claude/skills/acos-investment-committee/scripts/check_coverage.py"
+
+files_prohibited:
+  - "context note: the seat *prompt* content is owned by SLICE-A2, not this slice; intake and synthesis logic are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: spec Appendix A, domain-lattice seat-* + metric-risk-coverage nodes"
+  - "stdlib-only Python; YAML fixtures; mirror the numbered roster + coverage table verbatim -- do not invent risk categories, do not renumber seats"
+  - "final roster: 1 Credit & Valuation, 2 Finance, 3 Accounting, 4 Legal & Structural, 5 Insurance & Climate, 6 Sponsor & Fraud-Forensics, 7 Portfolio & Concentration (fund), 8 Strategy, 9 Deal Advocate (NEW, no vote, defense/steelman role, owns no risk category), 10 Gap-Hunter/Chair-agent (renumbered from the former #9, no vote, procedural), 11-15 deal-triggered optionals (Construction/Completion, Tax, Market/Macro, Compliance, Environmental/Physical-Condition)"
+
+# Technical requirements
+technical_requirements:
+  - "check_coverage.py must fail (non-zero exit) if any of the 16 risk categories is unowned"
+  - "roster.yaml optional-seat trigger conditions must be encoded alongside seats #11-15"
+  - "roster.yaml must encode an explicit exemption mechanism (e.g. owned_risk_categories: [] plus a cross_checks / owns_shared_artifact / is_defense_role field) for seats #3, #8, and #9 so check_coverage.py does not misreport any of them as coverage gaps"
+  - "roster.yaml must keep seat #9 (Deal Advocate) and seat #10 (Gap-Hunter/Chair-agent) as two distinct seat_ids -- structurally separate defense vs procedural roles, never merged"
+
+# Testing requirements
+testing_requirements:
+  - "QA recomputes the coverage count from the map itself, not from a summary claim"
+  - "QA runs check_coverage.py independently and confirms exit 0"
+  - "QA confirms Portfolio (#7) fund-scoped, Deal Advocate (#9) non-voting, and Gap-Hunter (#10) non-voting are all present in the schema"
+  - "QA confirms seat #4's default Environmental ownership is the legal-materiality sub-lens only, not a full physical/environmental review"
+  - "QA confirms seats #3, #8, and #9 are explicitly exempted from the 'must own >=1 category' check, not silently unowned"
+  - "QA confirms seat #9 (Deal Advocate) and seat #10 (Gap-Hunter) are distinct seat_ids and were not collapsed into one seat"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+# Effort estimate
+effort_estimate: "S"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): recompute the 16-category count and
+  Portfolio/Advocate/Gap-Hunter flags directly from roster.yaml/coverage-map.yaml rather than
+  trusting the dev summary; reject on any unowned or mislabeled category or any seat
+  renumbering.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-A1-roster-coverage-map.md by
+  acos-preeng-classic Step 5; architect to review before execution.
+  UPDATED 2026-07-08: reconciled to the final numbered 8-seat + Gap-Hunter (#9) + optionals
+  (#10-14) roster (Credit+Valuation merged into #1; Finance #2 and Accounting #3 added;
+  Environmental demoted from a core seat to optional #14 with its legal-materiality sub-lens
+  folded into Legal & Structural #4; Strategy #8 added as an adversarial, non-advocate seat).
+  UPDATED 2026-07-08 (delta 2): added the Deal Advocate as a NEW, structurally separate,
+  non-voting seat #9 (steelmans the deal, answers objections with good-faith mitigants that
+  pass the same falsification gate as objections; owns no risk category) and renumbered the
+  former #9 Gap-Hunter/Chair-agent to #10; the 5 deal-triggered optionals shifted from
+  #10-14 to #11-15 accordingly. This is the authoritative numbering going forward.

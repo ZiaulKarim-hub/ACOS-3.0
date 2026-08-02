@@ -155,13 +155,28 @@ if [[ -z "$RESUME" ]]; then
     fi
 fi
 
-# (3) LAST RESORT — newest pending-resume in this project (NOT pane-scoped).
+# (3) LAST RESORT — newest pending-resume in this project, PANE-SCOPED.
 # Only when neither the current session's file nor the per-PID pointer matched.
+#
+# 2026-07-18 (SLICE-RES-01) pane-scope gate: project scoping alone lets two
+# panes on the SAME project steal each other's resume (the 2026-06-26 incident
+# class; flagged by the 2026-07-14 swarm as the most important pre-existing
+# bug to close before per-project tooling makes two-panes-one-project routine).
+# A candidate is claimable ONLY when its session's recorded surface binding
+# (state/cmux-surface-<sid>) equals THIS pane's live $CMUX_SURFACE_ID.
+# Unverifiable (either side unknown — e.g. a Warp pane, or an age-GC'd
+# binding) => fail CLOSED: skip the candidate. Warp recovery keeps its
+# documented PRIMARY path, the manual /acos-eternity-protocol-resume skill.
 if [[ -z "$RESUME" && -z "$SIBLING" ]]; then
     while IFS= read -r CANDIDATE; do
         [[ -z "$CANDIDATE" ]] && continue
         SID=$(basename "$CANDIDATE" .txt | sed 's/^pending-resume-//')
         if echo "$PROJECT_SESSIONS" | grep -Fxq "$SID"; then
+            CAND_SURFACE=$(cat "$STATE/cmux-surface-$SID" 2>/dev/null | head -1)
+            if [[ -z "$CMUX_SURFACE_ID" || -z "$CAND_SURFACE" \
+                  || "$CAND_SURFACE" != "$CMUX_SURFACE_ID" ]]; then
+                continue
+            fi
             RESUME="$CANDIDATE"
             break
         fi

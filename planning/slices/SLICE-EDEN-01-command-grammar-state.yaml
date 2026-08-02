@@ -1,0 +1,57 @@
+slice_id: "SLICE-EDEN-01"
+story_id: "ST-004-eden-1"
+epic_id: "EP-004-eden-1"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Command grammar & state file"
+objective: |
+  Implement the acos-eden-protocol skill front door: parse the first-token grammar
+  (off | on | 1-5 | level N | status | bare) and read/write .acos/state/eden-level.
+
+acceptance_criteria:
+  - "[ ] Each grammar input produces the correct state transition (data-model E7): on->write 5, off->delete file, N->write N."
+  - "[ ] Invalid input (7, banana) returns an explicit error naming the valid range; never silently clamps."
+  - "[ ] Ambiguous invocation routes to a Confirmation-Gate clarification; never silently defaults a level."
+  - "[ ] bare / status reports the active level (+ grammar table on first use)."
+  - "[ ] File absent == off == zero overhead."
+
+dependencies:
+  slices: []
+
+files_allowed:
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+  - ".acos/state/eden-level"
+
+files_prohibited:
+  - ".claude/scripts/eden-level-injector.py"
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "First-token routing mirrors acos-oracle-protocol Phase 0."
+  - "on == level 5 is an assumption from the user's phrasing 'on and level 5'; still confirm on ambiguity."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-01.md"
+
+technical_requirements:
+  - "State = plain digit file; absence = off (data-model E1)."
+  - "Honor the global Confirmation Gate for ambiguous input (M7)."
+
+testing_requirements:
+  - "Transition matrix test: each grammar input -> expected file state / absence."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-01. Demo 1. P0. Maps M1, M3, M7, M8.

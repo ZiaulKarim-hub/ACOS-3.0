@@ -1,0 +1,99 @@
+# Slice Plan — bridged from acos-preeng-classic (005-resurrection-protocol)
+# Authoritative source: planning/preeng/005-resurrection-protocol/tasks/SLICE-21-safe-close-skill.md
+
+slice_id: "SLICE-RES-21-safe-close-skill"
+story_id: "STORY-2.1"
+epic_id: "EPIC-2"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "acos-safe-close/SKILL.md thin router"
+objective: |
+  Author .claude/skills/acos-safe-close/SKILL.md as a thin router over
+  close-project.sh: the parent writes the intent core, calls the script,
+  and prints the script's receipt verbatim. The skill never composes its
+  own receipt.
+description: |
+  Safety-critical logic stays in the script (ran 8/8), not skill prose
+  (8/18); the receipt is script-printed, never composed. In scope: the
+  thin-router SKILL.md only. Out of scope (guardrails): any safety-critical
+  logic in prose; delegating the intent core to a sub-agent by default.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Full end-to-end run on a THROWAWAY project: receipt says SAFE only after all checks; tab closes as the literal last act — run transcript archived in .acos/evidence/[DATE]/SLICE-21-safe-close-skill/"
+  - "[ ] The skill prints the script's receipt verbatim and composes nothing — printed receipt byte-identical to close-project.sh output; any model-composed receipt line is a QA REJECT"
+  - "[ ] SKILL.md contains no safety-critical logic (SPINE 4) — QA inspection of SKILL.md confirms no load-bearing logic in prose"
+  - "[ ] Evidence bundle at .acos/evidence/[DATE]/SLICE-21-safe-close-skill/ populated with the 7-part bundle (Implementation Summary; Requirements Traceability to spec FR-* / tech_prd TR-*; Structural Quality; Functional/structural checks; Security/Compliance; Operational/Runtime; Self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' updated in the preeng task file — the slice is not Done until they are (§0.7)"
+  # TODO: confirm — the intent-core content/format the parent must write is not specified in this task file (defined by the close-project.sh contract from SLICE-RES-20-close)
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-20-close"
+      what_it_provides: "close-project.sh (steps 0-10, four guards, last-workspace guard, 7-check gate) — the script this skill routes to and whose receipt it prints verbatim"
+      status: "planned"  # template enum is complete|in_progress; SLICE-RES-20 is not yet started
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-safe-close/SKILL.md"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+
+# Skills recommended
+skills_recommended: []  # the task file names no methodology skills
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Safety-critical logic stays in the script (ran 8/8), not skill prose (8/18); the receipt is script-printed, never composed"
+  - "The parent writes the intent core; the script does everything else"
+  - "Do NOT delegate the intent core to a sub-agent by default"
+  - "QA is zero-trust: evidence is spot-checked and recomputed; fabricated logs are a REJECT"
+
+# Technical requirements
+technical_requirements:
+  - "SKILL.md is a thin router: write the intent core, call close-project.sh, print its receipt verbatim"
+  - "The skill never composes any receipt line of its own"
+  - "No safety-critical logic in SKILL.md prose (SPINE 4)"
+
+# Testing requirements
+testing_requirements:
+  - "Full end-to-end run of the skill on a THROWAWAY project: receipt says SAFE only after all checks; tab close is the literal last act"
+
+# Verification method (skill-mandated extension — QA zero-trust steps)
+verification_method:
+  - "End-to-end throwaway run archived to the evidence bundle"
+  - "SKILL.md shown to contain no load-bearing logic (SPINE 4 check)"
+  - "Printed receipt confirmed byte-identical to the script's output (recomputed, not trusted from Dev logs)"
+  - "If the model composed any receipt line: REJECT"
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; task's QA section defines a zero-trust verify pass
+
+# Effort estimate
+effort_estimate: "M"
+# Thin SKILL.md authoring is small, but the mandatory end-to-end throwaway run
+# plus the 7-part evidence bundle puts this at 1-3 hours.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged from acos-preeng-classic 005-resurrection-protocol (Demo 2: safe close).
+  Authoritative source: planning/preeng/005-resurrection-protocol/tasks/SLICE-21-safe-close-skill.md
+  Evidence bundle: .acos/evidence/[DATE]/SLICE-21-safe-close-skill/

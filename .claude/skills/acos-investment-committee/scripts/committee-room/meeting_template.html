@@ -190,7 +190,7 @@
       </div>
       <div class="chair">
         <span class="you">You — Chair</span>
-        <input id="chairInput" placeholder="Address the whole committee… (seen by every seat at the next turn)" autocomplete="off">
+        <input id="chairInput" placeholder="Ask the room — routes to the best seat · click a seat or #Name to open a call" autocomplete="off">
         <button class="btn" id="sendBtn">Send</button>
       </div>
     </div>
@@ -220,7 +220,12 @@ function renderHeaderVote(){
   $('#leaningVal').textContent = MEETING.deal.leaning;
   const vt = (MEETING.vote.for + MEETING.vote.against) || 1;
   $('#segA').style.width = (MEETING.vote.against/vt*100)+'%'; $('#segF').style.width = (MEETING.vote.for/vt*100)+'%';
-  $('#cA').textContent = MEETING.vote.against+' AGAINST'; $('#cF').textContent = MEETING.vote.for+' FOR';
+  // bar labels are data-driven so an adapter can name its own semantics (e.g. BLOCKING/COVERED)
+  $('#cA').textContent = MEETING.vote.against+' '+(MEETING.vote.label_a||'AGAINST');
+  $('#cF').textContent = MEETING.vote.for+' '+(MEETING.vote.label_f||'FOR');
+  // the research-agent header total is live state — recompute on every render, not once at load
+  const rTotal = MEETING.seats.reduce(function(a,s){ return a + (s.research||0); }, 0);
+  $('#metaRight').innerHTML = '🔍 <b style="color:#111">'+rTotal+'</b> research agents running in the background · chair controls the floor';
 }
 function buildArc(){
   arc.innerHTML = '';
@@ -234,14 +239,14 @@ function buildArc(){
     el.style.left = x+'%'; el.style.top = y+'px';
     el.innerHTML =
       '<div class="avwrap">' +
-        '<div class="hand" id="hand-'+s.n+'">✋</div>' +
+        '<div class="hand" id="hand-'+esc(s.n)+'">✋</div>' +
         '<div class="avatar"><div class="eye l"></div><div class="eye r"></div><div class="mouth"></div></div>' +
-        '<div class="react" id="react-'+s.n+'"><span class="rx">🙂</span></div>' +
+        '<div class="react" id="react-'+esc(s.n)+'"><span class="rx">🙂</span></div>' +
       '</div>' +
       '<div class="nm">'+esc(s.short)+'</div>' +
-      '<div class="st '+(s.vote==='against'?'against':'')+'">'+ (s.vote||'').toUpperCase() +'</div>' +
-      (s.research>0 ? '<div class="rbub" data-seat="'+s.n+'" title="'+s.research+' research agents running — click to see what they\'re working on"><span class="mag"></span>'+s.research+'</div>' : '') +
-      '<span class="callbtn" data-seat="'+s.n+'">Call</span>';
+      '<div class="st '+(s.vote==='against'?'against':'')+'">'+ esc((s.vote_label||s.vote||'').toUpperCase()) +'</div>' +
+      (s.research>0 ? '<div class="rbub" data-seat="'+esc(s.n)+'" title="'+esc(s.research)+' research agents running — click to see what they\'re working on"><span class="mag"></span>'+esc(s.research)+'</div>' : '') +
+      '<span class="callbtn" data-seat="'+esc(s.n)+'">Call</span>';
     arc.appendChild(el);
   });
   MEETING.seats.forEach(function(s){ const rx=$('#react-'+s.n+' .rx'); if(rx) rx.textContent='🙂'; });
@@ -250,7 +255,7 @@ function buildBriefing(){
   $('#briefSub').textContent = MEETING.briefing.length + ' seats · questions + suggested mitigants (chair prep, not read aloud)';
   $('#brief').innerHTML = MEETING.briefing.map(function(b){
     return '<div class="b-row">' +
-      '<div class="b-seat"><span class="nm">'+esc(b.short)+'</span><span class="v '+(b.vote==='against'?'against':'')+'">'+(b.vote||'').toUpperCase()+'</span></div>' +
+      '<div class="b-seat"><span class="nm">'+esc(b.short)+'</span><span class="v '+(b.vote==='against'?'against':'')+'">'+esc((b.vote_label||b.vote||'').toUpperCase())+'</span></div>' +
       '<div class="b-q">'+esc(b.question)+'</div>' +
       (b.mitigant ? '<div class="b-m">Mitigant: '+esc(b.mitigant)+'</div>' : '') +
     '</div>';
@@ -260,7 +265,7 @@ renderHeaderVote(); buildArc(); buildBriefing();
 
 /* ---- chaired meeting playback ---- */
 const timeline = MEETING.timeline || [];
-let cursor = 0, typing = null, auto = false;
+let typing = null;
 
 function setReaction(n, glyph){
   const el = $('#react-'+n+' .rx'); if(!el) return;
@@ -284,11 +289,12 @@ function showThinking(n){
   const s = MEETING.seats.filter(function(x){return x.n===n;})[0]; if(!s) return;
   $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
   $('#phasePill').textContent='In session'; $('#phasePill').style.color='var(--grn)'; $('#phasePill').style.borderColor='var(--grn)';
-  $('#floorWho').innerHTML = esc(s.name) + (n ? ' <span class="role">Seat '+n+'</span>' : ' <span class="role">chair</span>');
+  $('#floorWho').innerHTML = esc(s.name) + (n ? ' <span class="role">Seat '+esc(n)+'</span>' : ' <span class="role">chair</span>');
   clearTimeout(typing);
   $('#floorText').innerHTML = '<span class="think">'+esc(s.short)+' is gathering their point<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>';
   MEETING.seats.forEach(function(x){ const el=$('#seat-'+x.n); if(el) el.classList.remove('thinking'); });
   speaking(n); const el=$('#seat-'+n); if(el) el.classList.add('thinking');
+  if(LIVE) startThinkWatch();   // a called seat must answer, or the room says why not
 }
 function typeInto(el, text, done){
   el.innerHTML=''; const cur=document.createElement('span'); cur.className='cursor'; el.appendChild(cur);
@@ -303,19 +309,61 @@ let autoRun = false;
 const scriptBySeat = {}; timeline.forEach(function(ev){ scriptBySeat[ev.seat] = ev; });
 const spoken = {};
 const LIVE = /^https?:$/.test(location.protocol);   // served by ic-server -> drive the real engine
+/* Chair->server POSTs surface failures instead of spinning forever, and every optimistic
+   "gathering their point" gets a watchdog: if no turn lands within 30s, say so — a dead
+   responder must be distinguishable from a slow one. */
+let thinkWatch = null;
+function clearThinkWatch(){ if(thinkWatch){ clearTimeout(thinkWatch); thinkWatch=null; } }
+function startThinkWatch(){
+  clearThinkWatch();
+  thinkWatch = setTimeout(function(){
+    thinkWatch = null;
+    MEETING.seats.forEach(function(x){ const el=$('#seat-'+x.n); if(el) el.classList.remove('thinking'); });
+    $('#floorText').innerHTML = '<span class="think">No live answer arrived — the live responder may be down (check the room server log), or the seat is still working. Call again or try another seat.</span>';
+  }, 30000);
+}
+function postCmd(body){
+  return fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    .then(function(r){   // HTTP 4xx/5xx is a delivery failure, not success (fetch only rejects on network errors)
+      if(r.ok) return r;
+      return r.text().then(function(b){ const e=new Error('HTTP '+r.status+(b?' — '+b.slice(0,200):'')); e.httpReject=true; throw e; });
+    })
+    .catch(function(err){
+      clearThinkWatch();
+      MEETING.seats.forEach(function(x){ const el=$('#seat-'+x.n); if(el) el.classList.remove('thinking'); });
+      $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+      $('#floorWho').innerHTML='Chair'; clearTimeout(typing);
+      // a server REJECTION must read differently from a dead server — it sends debugging the right direction
+      $('#floorText').innerHTML = (err && err.httpReject)
+        ? '<span class="think">Command rejected by the room server ('+esc(err.message)+') — it was not delivered.</span>'
+        : '<span class="think">Room server unreachable — the command was not delivered. Is the room server still running?</span>';
+    });
+}
 
+/* chair lines enter the record once — the sending tab already echoed locally, so an
+   identical trailing Chair line is not re-appended (raw text kept in data-chair) */
+function appendChairLine(text){
+  const tr = $('#transcript');
+  if(tr.lastElementChild && tr.lastElementChild.getAttribute('data-chair') === text) return;
+  const el = document.createElement('div'); el.className='t-turn'; el.setAttribute('data-chair', text);
+  el.innerHTML = '<b style="color:#111">Chair:</b> '+esc(text); tr.appendChild(el);
+}
 function playEvent(ev){
+  clearThinkWatch();   // a real turn arrived — stop the no-answer watchdog
   $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
   $('#transcriptWrap').style.display='block';
   $('#phasePill').textContent='In session'; $('#phasePill').style.color='var(--grn)'; $('#phasePill').style.borderColor='var(--grn)';
-  $('#floorWho').innerHTML = esc(ev.name) + (ev.seat ? ' <span class="role">Seat '+ev.seat+'</span>' : ' <span class="role">chair</span>');
+  $('#floorWho').innerHTML = esc(ev.name) + (ev.seat ? ' <span class="role">Seat '+esc(ev.seat)+'</span>' : ' <span class="role">chair</span>');
   MEETING.seats.forEach(function(s){ const el=$('#seat-'+s.n); if(el) el.classList.remove('thinking'); });
   speaking(ev.seat);
   clearTimeout(typing);
+  // the RECORD is written at PLAY START — typing is purely cosmetic, so an interrupted
+  // typewriter (queued answer's thinking push, next turn, chair click) never erases a turn
+  if(ev.chair) appendChairLine(ev.chair);   // the question that prompted this answer, on every tab
+  const t=document.createElement('div'); t.className='t-turn';
+  t.innerHTML='<b>'+esc(ev.short)+':</b> '+esc(ev.text); $('#transcript').appendChild(t);
+  $('#transcriptWrap').scrollTop = 9e9;
   typeInto($('#floorText'), ev.text, function(){
-    const t=document.createElement('div'); t.className='t-turn';
-    t.innerHTML='<b>'+esc(ev.short)+':</b> '+esc(ev.text); $('#transcript').appendChild(t);
-    $('#transcriptWrap').scrollTop = 9e9;
     if(autoRun){ setTimeout(nextSpeaker, REDUCED?600:2800); }
   });
   // reactions trickle in WHILE the speaker talks (aliveness), not all at once
@@ -350,7 +398,7 @@ function setActiveSeat(n){
     box.placeholder = 'On call with ' + (s ? s.short : 'seat') + ' — type to reply · Esc to end call';
     box.classList.add('oncall');
   } else {
-    box.placeholder = 'Click a seat to open a call, then type to talk with them…';
+    box.placeholder = 'Ask the room — routes to the best seat · click a seat or #Name to open a call';
     box.classList.remove('oncall');
   }
 }
@@ -417,9 +465,10 @@ function respondToChair(s, chairText){
 function giveFloor(n){
   const s = MEETING.seats.filter(function(x){return x.n===n;})[0]; if(!s) return;
   if(LIVE){  // live: opens (or switches) the call to this seat; the moderator generates its turn
+    spoken[n] = true;  // mark the turn taken — live auto-run rotates the seats instead of re-calling the first seat forever
     setActiveSeat(n);  // the call stays open on this seat — your next messages auto-route here
     showThinking(n);   // OPTIMISTIC — show life the instant you click, before the round-trip
-    fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'speak', seat:n, chair: pendingChair ? pendingChair.text : null})});
+    postCmd({type:'speak', seat:n, chair: pendingChair ? pendingChair.text : null});
     pendingChair = null;
     return;
   }
@@ -437,8 +486,15 @@ function callSeat(n){ autoRun=false; $('#autoBtn').textContent='Auto-run'; giveF
 function nextSpeaker(){                                                                        // Gap-Hunter picks
   const raised = MEETING.seats.filter(function(s){ return $('#hand-'+s.n).classList.contains('up') && !spoken[s.n]; });
   const pool = raised.length ? raised : MEETING.seats.filter(function(s){ return !spoken[s.n]; });
-  if(!pool.length){ finish(); return; }
+  if(!pool.length){ if(LIVE){ liveRoundDone(); return; } finish(); return; }
   giveFloor(pool[0].n);
+}
+function liveRoundDone(){  // live: a full round ended — reset for the next round; never fake-close a live session
+  autoRun=false; $('#autoBtn').textContent='Auto-run'; speaking(null); setHands([]); setActiveSeat(null); clearThinkWatch();
+  MEETING.seats.forEach(function(s){ spoken[s.n]=false; });
+  $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+  $('#floorWho').innerHTML='Chair'; clearTimeout(typing);
+  $('#floorText').innerHTML='Round complete — every seat has spoken. Auto-run starts another round, or call a seat directly.';
 }
 function finish(){
   autoRun=false; $('#autoBtn').textContent='Auto-run'; speaking(null); setHands([]);
@@ -449,24 +505,36 @@ function finish(){
 }
 $('#nextBtn').onclick = function(){ autoRun=false; $('#autoBtn').textContent='Auto-run'; nextSpeaker(); };
 $('#autoBtn').onclick = function(){ autoRun=!autoRun; this.textContent = autoRun?'Pause':'Auto-run'; if(autoRun) nextSpeaker(); };
-$('#tallyBtn').onclick = function(){ $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block'; $('#floorWho').innerHTML='Chair — interim tally'; $('#floorText').innerHTML='Interim tally: <b>'+MEETING.vote.against+' against</b> · '+MEETING.vote.for+' for. Deal-breaker objections stand un-mitigated.'; };
-$('#closeBtn').onclick = function(){ MEETING.seats.forEach(function(s){ spoken[s.n]=true; }); finish(); };
+$('#tallyBtn').onclick = function(){  // interim tally is DERIVED from state, never a canned sentence
+  $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block'; $('#floorWho').innerHTML='Chair — interim tally';
+  const la=(MEETING.vote.label_a||'against').toLowerCase(), lf=(MEETING.vote.label_f||'for').toLowerCase();
+  $('#floorText').innerHTML='Interim: <b>'+esc(MEETING.deal.leaning)+'</b> — '+MEETING.vote.against+' '+esc(la)+' · '+MEETING.vote.for+' '+esc(lf)+'.'+(MEETING.vote.note?' '+esc(MEETING.vote.note):'');
+};
+$('#closeBtn').onclick = function(){
+  if(LIVE){  // honest close: the page cannot close a live session — the engine compiles the record, never this UI
+    postCmd({type:'close'});   // on-the-record marker in the chair inbox (the responder ignores unknown types)
+    autoRun=false; $('#autoBtn').textContent='Auto-run'; speaking(null); setHands([]); setActiveSeat(null); clearThinkWatch();
+    $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+    $('#floorWho').innerHTML='Chair'; clearTimeout(typing);
+    $('#floorText').textContent = MEETING.deal.close_note || 'Close requested — a live session is closed by the engine, not this page. Compile the report from the session ledger to close on the record.';
+    return;
+  }
+  MEETING.seats.forEach(function(s){ spoken[s.n]=true; }); finish();   // demo playback keeps the scripted close
+};
 /* click a seat's face OR its "Call" chip to give THAT specific agent the floor */
 document.querySelectorAll('.callbtn').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); callSeat(+b.getAttribute('data-seat')); }; });
 MEETING.seats.forEach(function(s){ const el=$('#seat-'+s.n); if(el){ el.style.cursor='pointer'; el.title='Give '+s.short+' the floor'; el.addEventListener('click', function(){ callSeat(s.n); }); } });
-/* research agents: total in header + per-seat bubble opens a drawer of what they're working on */
-const rTotal = MEETING.seats.reduce(function(a,s){ return a + (s.research||0); }, 0);
-$('#metaRight').innerHTML = '🔍 <b style="color:#111">'+rTotal+'</b> research agents running in the background · chair controls the floor';
+/* research agents: header total lives in renderHeaderVote (live); per-seat bubble opens a drawer */
 const rdrawer=$('#rdrawer'), rbackdrop=$('#rbackdrop');
 function openResearch(s){
-  auto=false;
+  autoRun=false; $('#autoBtn').textContent='Auto-run';   // reading the drawer pauses auto-run (was a dead `auto` flag)
   $('#rname').textContent = 'Research — ' + s.name;
   const threads = s.threads || [];
   const running = threads.filter(function(t){ return (t.status||'running')!=='done'; }).length;
-  $('#rsub').innerHTML = s.research + ' research agents in the background · ' + running + ' running';
+  $('#rsub').innerHTML = esc(s.research) + ' research agents in the background · ' + running + ' running';
   $('#rbody').innerHTML = threads.length ? threads.map(function(t){
     const st = t.status || 'running';
-    return '<div class="rt"><span class="rt-status '+st+'">'+(st==='done'?'done':'running')+'</span>' +
+    return '<div class="rt"><span class="rt-status '+esc(st)+'">'+(st==='done'?'done':'running')+'</span>' +
       '<div class="rt-topic">'+esc(t.topic)+'</div>' +
       (t.finding ? '<div class="rt-find"><b>Finding:</b> '+esc(t.finding)+'</div>' : '') + '</div>';
   }).join('') : '<p style="color:#888;font-size:13px">No research agents running for this seat.</p>';
@@ -487,7 +555,7 @@ var LVL_LABELS = ['0 · Expert','1 · Advanced','2 · Plain','3 · General','4 �
 function renderLevel(){ var el=$('#lvlVal'); if(el) el.textContent = LVL_LABELS[readingLevel]; }
 function setLevel(n, push){
   readingLevel = Math.max(0, Math.min(5, n)); renderLevel();
-  if(push && LIVE){ fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'level', value:readingLevel})}); }
+  if(push && LIVE){ postCmd({type:'level', value:readingLevel}); }
 }
 if($('#lvlUp'))   $('#lvlUp').onclick   = function(){ setLevel(readingLevel+1, true); };
 if($('#lvlDown')) $('#lvlDown').onclick = function(){ setLevel(readingLevel-1, true); };
@@ -497,50 +565,159 @@ function attachSeatHandlers(){
   document.querySelectorAll('.rbub').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); var n=+b.getAttribute('data-seat'); var s=MEETING.seats.filter(function(x){return x.n===n;})[0]; if(s) openResearch(s); }; });
   MEETING.seats.forEach(function(s){ var el=$('#seat-'+s.n); if(el && !el._bound){ el._bound=true; el.style.cursor='pointer'; el.title='Give '+s.short+' the floor'; el.addEventListener('click', function(){ callSeat(s.n); }); } });
 }
-var _lastTurns = (MEETING.timeline||[]).length;
+/* a timeline entry is a LIVE spoken turn only when untagged — ledger-fallback projections
+   and err system notices are context on the record, never seat speech */
+function _isLiveTurn(t){ return !!t && !t.fallback && !t.err && (!t.type || t.type==='turn'); }
+var _lastTurns = (MEETING.timeline||[]).filter(_isLiveTurn).length;
+var _ctxSeen = {};             // context lines already on the record (keyed short|text)
+var _floorEmptyDefault = null; // original floor placeholder, restored once the panel seats
+var _seatFp = JSON.stringify((MEETING.seats||[]).map(function(s){ return [s.n, s.short, s.vote, s.research]; }));
+/* rebuild the arc without losing live state: buildArc() wipes speaking/thinking/hands/
+   reactions, so snapshot the transient bits per seat and re-apply after the rebuild */
+function rebuildArcPreserving(){
+  var snap = {};
+  document.querySelectorAll('.seat').forEach(function(el){
+    var rx = el.querySelector('.react .rx'), hd = el.querySelector('.hand');
+    snap[el.id.slice(5)] = {
+      speaking: el.classList.contains('speaking'), dim: el.classList.contains('dim'),
+      thinking: el.classList.contains('thinking'), canCall: el.classList.contains('can-call'),
+      hand: !!(hd && hd.classList.contains('up')), rx: rx ? rx.textContent : null
+    };
+  });
+  buildArc();
+  Object.keys(snap).forEach(function(n){
+    var el = $('#seat-'+n), s = snap[n]; if(!el) return;
+    if(s.speaking) el.classList.add('speaking'); if(s.dim) el.classList.add('dim');
+    if(s.thinking) el.classList.add('thinking'); if(s.canCall) el.classList.add('can-call');
+    if(s.hand){ var h=$('#hand-'+n); if(h) h.classList.add('up'); }
+    if(s.rx){ var r=$('#react-'+n+' .rx'); if(r) r.textContent = s.rx; }
+  });
+}
 function applyServerState(st){
-  if(!st || !Array.isArray(st.seats) || !st.seats.length) return;
-  var prevSeats = MEETING.seats.length;
-  MEETING.seats = st.seats;
-  MEETING.briefing = st.briefing || MEETING.briefing;
+  if(!st) return;
+  // header state applies even pre-panel — an empty roster must not freeze the whole page
   MEETING.vote = st.vote || MEETING.vote;
   MEETING.deal = st.deal || MEETING.deal;
-  MEETING.timeline = st.timeline || MEETING.timeline || [];
   if(typeof st.reading_level === 'number' && st.reading_level !== readingLevel){ setLevel(st.reading_level, false); }
+  if(!Array.isArray(st.seats) || !st.seats.length){
+    renderHeaderVote();
+    const fe = $('#floorEmpty');
+    if(_floorEmptyDefault === null) _floorEmptyDefault = fe.textContent;
+    fe.textContent = 'Panel not seated yet — the room fills in on its own once the panel is set. No refresh needed.';
+    arc.innerHTML = '<div style="position:absolute;inset:0;display:grid;place-items:center;color:#9a9a9a;font-size:13px">Panel not seated yet</div>';
+    return;
+  }
+  if(_floorEmptyDefault !== null){ $('#floorEmpty').textContent = _floorEmptyDefault; _floorEmptyDefault = null; }
+  MEETING.seats = st.seats;
+  MEETING.briefing = st.briefing || MEETING.briefing;
+  MEETING.timeline = st.timeline || MEETING.timeline || [];
   renderHeaderVote(); buildBriefing();
-  if(st.seats.length !== prevSeats){ buildArc(); }
+  // rebuild the arc whenever anything a seat card renders changes (count, label, stance,
+  // research total) — a count-only check froze the research bubbles at first paint
+  var fp = JSON.stringify(st.seats.map(function(s){ return [s.n, s.short, s.vote, s.research]; }));
+  if(fp !== _seatFp){ _seatFp = fp; rebuildArcPreserving(); }
   attachSeatHandlers();
-  var last = MEETING.timeline[MEETING.timeline.length-1];
-  var grew = (MEETING.timeline.length > _lastTurns) && last;
-  if(grew){
-    _lastTurns = MEETING.timeline.length;
-    playEvent(last);   // playEvent owns this turn's reactions + hands, STAGGERED over the delivery
+  // new turns are detected via the adapter's monotonic turns_total counter, NEVER raw array
+  // length — the ledger-fallback -> live switchover SHRINKS the array, which used to swallow
+  // the first live answer and falsely blame the responder. Fallback/err entries are notes,
+  // not spoken turns: they go on the record once, dimmed, and are never typewriter-played.
+  // Adapters that send no turns_total (IC) fall back to counting live entries.
+  var liveTl = MEETING.timeline.filter(_isLiveTurn);
+  var ctxAdded = false;
+  MEETING.timeline.forEach(function(t){
+    if(!t || _isLiveTurn(t)) return;
+    var key = (t.short||'')+'|'+(t.text||'');
+    if(_ctxSeen[key]) return; _ctxSeen[key] = true;
+    var d = document.createElement('div'); d.className='t-turn'; d.style.color='#9a9a9a';
+    d.innerHTML = '<i>'+(t.short?esc(t.short)+' · ':'')+esc(t.text||'')+'</i>';
+    $('#transcript').appendChild(d); ctxAdded = true;
+  });
+  if(ctxAdded){ $('#transcriptWrap').style.display='block'; $('#transcriptWrap').scrollTop = 9e9; }
+  var tNew = (typeof st.turns_total === 'number' && isFinite(st.turns_total)) ? st.turns_total : liveTl.length;
+  if(tNew > _lastTurns && liveTl.length){
+    // BACKFILL: growth can exceed one turn (page refresh, SSE reconnect, queued answers
+    // landing together) — append every intermediate turn straight to the transcript, no
+    // typing, then typewriter-play only the newest.
+    for(var bi = Math.max(0, liveTl.length - (tNew - _lastTurns)); bi < liveTl.length - 1; bi++){
+      var bev = liveTl[bi];
+      if(bev.chair) appendChairLine(bev.chair);   // the chair line that prompted this turn (additive field; may be absent)
+      var bt = document.createElement('div'); bt.className='t-turn';
+      bt.innerHTML = '<b>'+esc(bev.short)+':</b> '+esc(bev.text);
+      $('#transcript').appendChild(bt);
+      $('#transcriptWrap').style.display='block';
+    }
+    $('#transcriptWrap').scrollTop = 9e9;
+    _lastTurns = tNew;
+    playEvent(liveTl[liveTl.length-1]);   // playEvent owns this turn's reactions + hands, STAGGERED over the delivery
   } else {
-    _lastTurns = MEETING.timeline.length;
+    if(tNew > _lastTurns) _lastTurns = tNew;   // counter outran the visible window — advance, never replay or regress
     // reactions/hands-only update (no new turn) -> apply immediately
     if(st.reactions){ Object.keys(st.reactions).forEach(function(n){ setReaction(+n, st.reactions[n]); }); }
     if(Array.isArray(st.hands)) setHands(st.hands);
-    if(st.thinking && st.thinking.seat){ showThinking(st.thinking.seat); }
+    if(st.thinking && (st.thinking.seat || (Array.isArray(st.thinking.seats) && st.thinking.seats.length))){
+      // the pool answers concurrently — the adapter may send the whole in-flight SET (seats[])
+      // alongside the newest seat; the floor tracks the newest, every in-flight seat pulses
+      var tset = Array.isArray(st.thinking.seats) ? st.thinking.seats : [];
+      showThinking(st.thinking.seat || tset[tset.length-1]);
+      tset.forEach(function(n){ var el=$('#seat-'+n); if(el) el.classList.add('thinking'); });
+    }
   }
 }
 if (LIVE && window.EventSource){
   fetch('/state').then(function(r){ return r.json(); }).then(applyServerState).catch(function(){});
   var _es = new EventSource('/events');
   _es.addEventListener('state', function(e){ try{ applyServerState(JSON.parse(e.data)); }catch(_){} });
+  // a dead server must not look live: grey the pulse + say so, restore and resync on reconnect
+  var _dot = document.querySelector('.live .dot'), _lbl = document.querySelector('.live .left span');
+  var _lblText = _lbl ? _lbl.textContent : '';
+  _es.onerror = function(){
+    if(_dot){ _dot.style.background='#9a9a9a'; _dot.style.animation='none'; }
+    if(_lbl){ _lbl.textContent = _lblText + ' — connection lost, reconnecting…'; }
+  };
+  _es.onopen = function(){
+    if(_dot){ _dot.style.background=''; _dot.style.animation=''; }
+    if(_lbl){ _lbl.textContent = _lblText; }
+    fetch('/state').then(function(r){ return r.json(); }).then(applyServerState).catch(function(){});   // SSE only pushes on change — resync now
+  };
 }
 
 function sendChair(){
   const t=$('#chairInput').value.trim(); if(!t) return; $('#chairInput').value='';
-  // echo the chair line into the transcript
-  const el=document.createElement('div'); el.className='t-turn'; el.innerHTML='<b style="color:#111">Chair:</b> '+esc(t);
-  $('#transcriptWrap').style.display='block'; $('#transcript').appendChild(el); $('#transcriptWrap').scrollTop=9e9;
-  // an explicit #Seat address re-targets the call; otherwise the message goes to the OPEN call
+  // echo the chair line into the transcript (appendChairLine tags it so a later server copy dedupes)
+  $('#transcriptWrap').style.display='block'; appendChairLine(t); $('#transcriptWrap').scrollTop=9e9;
+  // an explicit #Name address re-targets the call: the typed #token matches as a
+  // case-insensitive PREFIX of the seat's full name (short labels truncate with "…",
+  // which a word-boundary regex can never match); otherwise the OPEN call gets it
   let seatN = null;
-  MEETING.seats.forEach(function(s){
-    if(new RegExp('#\\b'+s.short.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(t)) seatN = s.n;
-  });
+  const tag = t.match(/#([^\s#]+)/);
+  if(tag){
+    const tok = tag[1].replace(/[.,!?;:]+$/,'').toLowerCase();   // "#Name," still addresses Name
+    if(tok) MEETING.seats.forEach(function(s){
+      if(seatN != null) return;
+      const full = String(s.name||'').toLowerCase();
+      const short = String(s.short||'').replace(/(…|\.\.\.)$/,'').toLowerCase();
+      if((full && full.indexOf(tok)===0) || (short && short.indexOf(tok)===0)) seatN = s.n;
+    });
+  }
+  if(tag && seatN == null){
+    // an explicit #address that matches no seat fails LOUDLY — silently rerouting to
+    // whoever is on call delivers the message to the wrong seat
+    const hint=document.createElement('div'); hint.className='t-turn'; hint.style.color='#999';
+    hint.innerHTML='<i>No seat matches “#'+esc(tag[1])+'” — not delivered. Check the name, or click a seat to open the call.</i>';
+    $('#transcript').appendChild(hint); $('#transcriptWrap').scrollTop=9e9;
+    return;
+  }
   const target = (seatN != null) ? seatN : activeSeat;
-  if(target == null){   // no open call and nobody addressed — tell the chair how to start one
+  if(target == null){
+    if(LIVE){   // no open call — send to the room; the live responder routes it to the best seat
+      $('#floorEmpty').style.display='none'; $('#floorLive').style.display='block';
+      $('#floorWho').innerHTML='Chair'; clearTimeout(typing);
+      $('#floorText').innerHTML='<span class="think">Message to the room — routing to the best seat<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>';
+      startThinkWatch();
+      postCmd({type:'speak', chair:t});
+      return;
+    }
+    // demo: no routing engine behind the page — tell the chair how to start a call
     const hint=document.createElement('div'); hint.className='t-turn'; hint.style.color='#999';
     hint.innerHTML='<i>Click a seat (or start your message with #Name) to open a call — then everything you type goes straight to them until you press Esc.</i>';
     $('#transcript').appendChild(hint); $('#transcriptWrap').scrollTop=9e9; return;
@@ -548,7 +725,7 @@ function sendChair(){
   if(LIVE){
     setActiveSeat(target);   // keep (or switch) the call open on the target — no re-calling needed
     showThinking(target);
-    fetch('/chair-cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type:'speak', seat:target, chair:t})});
+    postCmd({type:'speak', seat:target, chair:t});
     return;
   }
   pendingChair = { text:t, seatN:target }; spoken[target]=false; giveFloor(target);   // demo fallback

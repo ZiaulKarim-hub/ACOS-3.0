@@ -7,22 +7,27 @@
  * attributability: every entry names the agent and model that produced it).
  */
 
-import { appendJsonl, nowIso, readJsonl } from "./util.ts";
+import { appendJsonl, nowIso, readJsonlStrict } from "./util.ts";
 import { loadManifest, paths, saveManifest, type Manifest } from "./session.ts";
 
-export type EntryType =
-  | "finding"
-  | "decision"
-  | "assumption"
-  | "correction"
-  | "question"
-  | "answer"
-  | "panel-change"
-  | "stop-decision"
-  | "gap"
-  | "note";
+export const ENTRY_TYPES = [
+  "finding",
+  "decision",
+  "assumption",
+  "correction",
+  "question",
+  "answer",
+  "panel-change",
+  "stop-decision",
+  "gap",
+  "note",
+] as const;
 
-export type Confidence = "verified" | "provisional" | "not-in-corpus" | "n/a";
+export type EntryType = (typeof ENTRY_TYPES)[number];
+
+export const CONFIDENCES = ["verified", "provisional", "not-in-corpus", "n/a"] as const;
+
+export type Confidence = (typeof CONFIDENCES)[number];
 
 export interface Provenance {
   source: string;
@@ -50,6 +55,12 @@ export interface LedgerEntry {
 export interface LedgerView extends LedgerEntry {
   status: "active" | "superseded";
   superseded_by?: string;
+  /**
+   * Set when MORE than one entry claims to supersede this one — a recorded
+   * conflict of corrections. Holds the losing superseders oldest first;
+   * `superseded_by` holds the newest.
+   */
+  superseded_by_conflict?: string[];
 }
 
 export function nextId(m: Manifest): string {
@@ -65,6 +76,22 @@ export function addEntry(sessionId: string, partial: Partial<LedgerEntry>): Ledg
     throw new Error("ledger entry requires a non-empty `body`");
   }
   if (!partial.type) throw new Error("ledger entry requires a `type`");
+  // Append-only means a bad entry can never be edited out — validate BEFORE
+  // nextId() burns an id (it saves the manifest), so a reject leaves no gap.
+  if (!ENTRY_TYPES.includes(partial.type)) {
+    throw new Error(`unknown entry type "${partial.type}" — one of: ${ENTRY_TYPES.join(", ")}`);
+  }
+  if (partial.confidence && !CONFIDENCES.includes(partial.confidence)) {
+    throw new Error(
+      `unknown confidence "${partial.confidence}" — one of: ${CONFIDENCES.join(", ")}`,
+    );
+  }
+  if (partial.supersedes && !readLedger(sessionId).some((e) => e.id === partial.supersedes)) {
+    throw new Error(
+      `supersedes target ${partial.supersedes} does not exist in the ledger — ` +
+        `a dangling supersedes would leave the wrong entry active forever`,
+    );
+  }
   const entry: LedgerEntry = {
     id: nextId(m),
     ts: nowIso(),
@@ -84,22 +111,43 @@ export function addEntry(sessionId: string, partial: Partial<LedgerEntry>): Ledg
   return entry;
 }
 
+const warnedDrops = new Set<string>();
+
 export function readLedger(sessionId: string): LedgerEntry[] {
-  return readJsonl<LedgerEntry>(paths(sessionId).ledger);
+  const file = paths(sessionId).ledger;
+  const { rows, dropped } = readJsonlStrict<LedgerEntry>(file);
+  // The ledger is the evidence trail (I3) — a malformed line is silent evidence
+  // loss, so say so on stderr (once per line per process; readLedger runs on
+  // every recompute tick when the room server is up).
+  for (const line of dropped) {
+    const key = `${file}:${line}`;
+    if (!warnedDrops.has(key)) {
+      warnedDrops.add(key);
+      console.error(`riff: ledger line ${line} is malformed and was skipped — evidence may be missing (${file})`);
+    }
+  }
+  return rows;
 }
 
 /** Ledger with derived supersession status — the canonical read model. */
 export function view(sessionId: string): LedgerView[] {
   const raw = readLedger(sessionId);
-  const supersededBy = new Map<string, string>();
+  // ALL superseders per target, in append order — two independent corrections
+  // aiming at the same entry are a recorded conflict, not last-writer-wins.
+  const supersededBy = new Map<string, string[]>();
   for (const e of raw) {
-    if (e.supersedes) supersededBy.set(e.supersedes, e.id);
+    if (e.supersedes) {
+      const list = supersededBy.get(e.supersedes);
+      if (list) list.push(e.id);
+      else supersededBy.set(e.supersedes, [e.id]);
+    }
   }
   return raw.map((e) => {
     const by = supersededBy.get(e.id);
-    return by
-      ? ({ ...e, status: "superseded", superseded_by: by } as LedgerView)
-      : ({ ...e, status: "active" } as LedgerView);
+    if (!by) return { ...e, status: "active" } as LedgerView;
+    const v = { ...e, status: "superseded", superseded_by: by[by.length - 1]! } as LedgerView;
+    if (by.length > 1) v.superseded_by_conflict = by.slice(0, -1);
+    return v;
   });
 }
 
@@ -113,6 +161,13 @@ export function chains(sessionId: string): LedgerView[][] {
     const chain: LedgerView[] = [head];
     let cur = head;
     while (cur.superseded_by) {
+      // Losing superseders of a conflict come first — they are older than the
+      // winner, so the chain stays in true append order and no recorded
+      // reversal disappears from the "decisions and reversals" section.
+      for (const loserId of cur.superseded_by_conflict ?? []) {
+        const loser = byId.get(loserId);
+        if (loser) chain.push(loser);
+      }
       const nxt = byId.get(cur.superseded_by);
       if (!nxt) break;
       chain.push(nxt);

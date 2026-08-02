@@ -1,0 +1,113 @@
+# Slice Plan — bridged from preeng 005-resurrection-protocol
+# Source task: planning/preeng/005-resurrection-protocol/tasks/SLICE-32-menu-skill-loop.md
+
+slice_id: "SLICE-RES-32-menu-skill-loop"
+story_id: "STORY-3.1"
+epic_id: "EPIC-3"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "acos-resurrect/SKILL.md menu + finish verb + loop mechanics"
+objective: |
+  Author the acos-resurrect/SKILL.md menu (terminal-first per DP1) as a router
+  over resurrect-view.py + launch-project.sh; implement the finish verb
+  (status: completed — hidden in ARCHIVED, never deleted) and the loop
+  mechanics: resume flips parked->active and last_verified_at refreshes on
+  render contact. /acos-complete is left untouched.
+description: |
+  Demo 3 (the loop) — the loop with inverted economics: resume flips
+  parked->active; finish sets completed; /acos-complete untouched.
+  In scope: the terminal-first menu over the two scripts, the finish verb ->
+  status: completed (hidden in ARCHIVED, never deleted), and the loop status
+  transitions (via registry_lib). Out of scope: any nagger/notifier, deleting
+  a finished row, auto-close at a token threshold.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Resume flips parked->active and finish sets completed (row hidden in ARCHIVED, never deleted) — row-file + audit-log deltas archived for each transition in the evidence bundle"
+  - "[ ] Status transitions are visible in the row file and the audit log — archived deltas as the artifact"
+  - "[ ] /acos-complete is unchanged — diff showing /acos-complete untouched archived in the evidence bundle"
+  - "[ ] QA confirms a finished row is hidden (ARCHIVED), not deleted, and that no nagger/notifier exists — QA verification record"
+  - "[ ] Evidence bundle at .acos/evidence/[DATE]/SLICE-RES-32-menu-skill-loop/ populated with the 7-part Dev bundle (Implementation Summary; Requirements Traceability to FR-*/TR-*; Structural Quality; Functional checks; Security/Compliance; Operational; Self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections updated in the source task file (slice is not Done until they are — §0.7)"
+
+# Dependencies
+dependencies:
+  slices:
+    # TODO: confirm — statuses of prerequisite slices not stated in the task file
+    - slice_id: "SLICE-RES-30-resurrect-view"
+      what_it_provides: "resurrect-view.py — the view the menu routes over"
+      status: "planned"
+    - slice_id: "SLICE-RES-31-launch"
+      what_it_provides: "launch-project.sh — the launcher the menu routes over"
+      status: "planned"
+    - slice_id: "SLICE-RES-10-registry-lib"
+      what_it_provides: "registry_lib — the only path for status transitions"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-resurrect/SKILL.md"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - ".claude/skills/acos-complete/"
+
+# Skills recommended
+skills_recommended: []
+  # TODO: confirm — the task file names no methodology skills
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Guardrail: no nagger/notifier of any kind"
+  - "Guardrail: never delete a finished row — finish hides it in ARCHIVED"
+  - "Guardrail: no auto-close at a token threshold"
+  - "/acos-complete is left untouched — do not modify it"
+  - "Inverted economics: resume flips parked->active; last_verified_at refreshes on render contact"
+  - "Status transitions go through registry_lib only"
+  - "Surface is terminal-first per DP1"
+
+# Technical requirements
+technical_requirements:
+  - "SKILL.md menu router over resurrect-view.py + launch-project.sh (terminal-first per DP1)"
+  - "Finish verb -> status: completed via registry_lib; row hidden in ARCHIVED, never deleted"
+  - "Loop transitions (parked->active on resume; last_verified_at refresh) verified in the row file and audit log"
+
+# Testing requirements
+testing_requirements:
+  - "# TODO: confirm — task file defines QA verification checks but no automated test suite"
+
+# Verification method (skill-mandated extension of the template)
+verification_method: |
+  Row-file + audit-log deltas archived for each transition; /acos-complete
+  shown untouched (diff). QA (zero-trust) additionally confirms: a finished
+  row is hidden not deleted; no nagger exists; /acos-complete not modified.
+  Evidence authenticity spot-checked and recomputed (no fabricated logs).
+
+# Review triggers (informational only)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; task QA section is zero-trust and may REJECT
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged 1:1 from preeng task SLICE-32-menu-skill-loop (EPIC-3 / STORY-3.1,
+  Demo 3 "the loop"). Evidence bundle path:
+  .acos/evidence/[DATE]/SLICE-RES-32-menu-skill-loop/. A QA REJECT blocks the
+  slice like an INCONCLUSIVE reviewer.

@@ -1,0 +1,134 @@
+timestamp: "2026-06-24T17:00:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  This session continued the acos-hypercore-ask skill on branch
+  acos-deficiency-fixes-2026-06-04, building three substantial new capabilities after
+  the robust-code-review (committed earlier today): (1) natural-language payoff-date
+  parsing with locked API input + substance-preserving retries (commit 5a8b9c5f), (2)
+  investor/funding figures + smart-ask orchestrator + confidence-graded explorer
+  (commit 6f61e5da, the largest commit: +3397 lines across 4 new modules + 4 new test
+  files), and (3) SKILL.md documentation update making hca-ask.py the documented primary
+  entry point (commit 856c9aa4). All work is committed and tests are 566-green. No
+  uncommitted code changes exist — only handoff artifacts are untracked.
+
+current_work:
+  slice_id: "SLICE-HCA-ENTITIES / SLICE-HCA-EXPLORER (evidence written; now committed)"
+  story_id: "acos-hypercore-ask — generalize to arbitrary investor/funding questions"
+  epic_id: "acos-hypercore-ask skill (VISION-HCA-01 / branch acos-deficiency-fixes-2026-06-04)"
+  status: "completed — all committed, no open work items; branch not yet merged to main"
+
+completed_this_session:
+  - "commit 5a8b9c5f — feat: natural-language payoff dates, locked API input, substance-preserving retries. Triggered by a live query ('Utah Shoe loan on 28th June 2026') that refused because the date leaked into the loan-name resolver. Three fixes: (a) _extract_asof_date in hca-deliver.py now accepts natural-language dates ('28th June 2026', 'June 28, 2026', '06/28/2026', '28-06-2026') with _find_date + _strip_date_phrases removing the recognized date from the loan-name query; (b) locked known-good input in hca-figures.py (_assert_known_good_input validates exact key set, locked flag values, non-empty loanId, real date — any drift is a hard error); (c) _call_with_retry now recovers transient empty payloads and hca-resolve.py broadens with substance-preserving search token variants. Tests 492 -> 507 (+15). Live-verified: Beehive Waldorff on 28th June 2026 -> $31,903,676.72, reconciles."
+  - "commit 6f61e5da — feat: investor/funding capability + smart-ask orchestrator + confidence explorer. Triggered by a live question ('XL's outstanding amount for beehive senior loan') the old skill couldn't answer (loan-only resolver, loan-only ontology). Four new modules: hca-entities.py (general entity resolver for loans/clients/equities/fundingEntities by name, reusing loan resolver scoring/thresholds/no-silent-pick), hca-funding.py (investor funding figures: funding_outstanding via loanFunding.repaymentSchedule.summary.totalOutstanding — reconciled to $0.01 + provenance-bound; plus commitment/participation/receivable; reliable 2-step query: assetId list -> loanFundingId summary), hca-explorer.py (confidence-graded fallback: introspects entity type, matches question keywords to fields, fetches live, returns HIGH/MEDIUM/LOW confidence + provenance — never fabricates), hca-ask.py (smart orchestrator: deterministic spine first -> funding interpretation -> explorer fallback). Bug fixes: capitalizedBalance removed from outstanding_balance reconcile (proven to be a non-additive MEMO — Beehive 134 capitalizedBalance == principal == 27,240,937.50); figure-path loan-name extraction now strips tranche words (senior/junior/mezz) matching the payoff path. Tests 507 -> 566 (+59: entities 17, funding 15, explorer 22, ask 5, figures revised). Live-verified: hca-ask.py --ask 'What is the XL outstanding amount for beehive senior loan?' -> DELIVERED (tier funding): XL (fundingEntity 3) on Beehive Waldorff (loan 134) -> 6,922,294.60, reconciles to the cent."
+  - "commit 856c9aa4 — docs: SKILL.md updated to document hca-ask.py as PRIMARY ENTRY (was undocumented). Added module-map rows for hca-entities.py, hca-funding.py, hca-explorer.py. Added smart-ask example invocation to the Ask section. Future sessions should route arbitrary questions through hca-ask.py first."
+  - "All 25 test files, 566 tests — all green (verified by running the full test suite at session end)."
+  - "Skill made global via symlink ~/.claude/skills/acos-hypercore-ask -> ACOS 3.0 source (established prior session; still active — commits are instantly the global version)."
+
+files_modified:
+  - path: ".claude/scripts/hca-ask.py"
+    changes: "NEW — smart orchestrator: deterministic spine -> funding interpretation -> explorer fallback. 258 lines."
+  - path: ".claude/scripts/hca-entities.py"
+    changes: "NEW — general entity resolver for loans/clients/equities/fundingEntities. 409 lines."
+  - path: ".claude/scripts/hca-funding.py"
+    changes: "NEW — investor/funding figures (outstanding/commitment/participation/receivable). 706 lines."
+  - path: ".claude/scripts/hca-explorer.py"
+    changes: "NEW — confidence-graded schema-driven fallback. 780 lines."
+  - path: ".claude/scripts/hca-deliver.py"
+    changes: "Natural-language date parsing (_extract_asof_date, _find_date, _strip_date_phrases); hca-ask.py dispatch hook added. Also has minor diff from prior untracked state — now fully committed."
+  - path: ".claude/scripts/hca-figures.py"
+    changes: "Locked known-good input (_assert_known_good_input); capitalizedBalance removed from outstanding_balance reconcile; tranche word stripping in figure-path loan-name extraction."
+  - path: ".claude/scripts/hca-resolve.py"
+    changes: "Substance-preserving search token broadening (_search_tokens: full -> two most-distinctive -> each token -> unfiltered fallback)."
+  - path: ".claude/scripts/tests/test_hca_ask.py"
+    changes: "NEW — 155 lines, 5 test classes."
+  - path: ".claude/scripts/tests/test_hca_entities.py"
+    changes: "NEW — 312 lines, 17 tests."
+  - path: ".claude/scripts/tests/test_hca_explorer.py"
+    changes: "NEW — 394 lines, 22 tests."
+  - path: ".claude/scripts/tests/test_hca_funding.py"
+    changes: "NEW — 362 lines, 15 tests."
+  - path: ".claude/scripts/tests/test_hca_deliver.py"
+    changes: "Extended — date-parsing tests, +46 lines."
+  - path: ".claude/scripts/tests/test_hca_figures.py"
+    changes: "Extended — known-good-input + retry-on-empty + capitalized-balance MEMO tests, +37 lines."
+  - path: ".claude/scripts/tests/test_hca_resolve.py"
+    changes: "NEW — 27 lines (broadened resolver tests)."
+  - path: ".claude/scripts/tests/test_hca_retry.py"
+    changes: "NEW — 64 lines (retry-on-empty tests)."
+  - path: ".claude/skills/acos-hypercore-ask/SKILL.md"
+    changes: "hca-ask.py documented as PRIMARY ENTRY; module-map rows for hca-entities/hca-funding/hca-explorer added."
+
+decisions_made:
+  - "capitalizedBalance is a non-additive MEMO field in the Hypercore LoanSummary — it equals principal (Beehive 134: both = 27,240,937.50). It MUST NOT be summed in outstanding_balance reconciliation; doing so would falsely refuse any loan with a non-zero capitalizedBalance."
+  - "The reliable Hypercore funding query is a 2-step: (1) fetch loanFundingIds via loanFundingAssets(filter:{loanId}) -> assetId list, (2) fetch repaymentSchedule.summary.totalOutstanding per loanFundingId. The dual-filter variant (loanId + fundingEntityId together) returns HTTP 500."
+  - "hca-ask.py is the new primary entry point for arbitrary questions. hca-deliver.py --ask remains the deterministic spine (called by hca-ask.py first); do not retire it."
+  - "The explorer fallback (hca-explorer.py) is confidence-graded: HIGH/MEDIUM/LOW. Confidence reflects field-match certainty, not value authenticity — values are always fetched-real or omitted, never fabricated."
+
+blockers:
+  - "Branch acos-deficiency-fixes-2026-06-04 is not merged to main. A PR or merge is appropriate before the next phase of work."
+  - "Explorer fallback currently handles scalar fields only. List/object fields are deferred (noted as a possible extension in session context)."
+  - "MEDIUM/LOW confidence explorer hits are not yet promoted to full reconciled figures — they are best-effort. If the same question recurs with MEDIUM/LOW hits, a new dedicated figure can be added to hca-figures.py."
+  - "Evidence-bundle wiring for hca-route.py remains STUB (see SKILL.md table)."
+  - "Live Hypercore endpoints / schema / auth remain partner-gated placeholders (OQ1/OQ2/OQ3 in SKILL.md)."
+
+next_actions:
+  - "PRIORITY 1 — Merge or PR branch acos-deficiency-fixes-2026-06-04 -> main. The branch has 856c9aa4 at tip; 7 feature/fix commits above the pre-HCA baseline. Warning: per MEMORY.md the branch has a 2 GB git bloat issue (_acos_dataroom_v2_output/run_20260513_152429_e79c3aa1 accidentally committed test artifacts) that blocks push to the personal-account mirror. Resolve with git filter-repo before pushing."
+  - "PRIORITY 2 — If user asks another question hca-ask.py can't answer: run `doppler run --project hypercore-ask --config dev_personal -- python3 .claude/scripts/hca-ask.py --ask '<question>'` and inspect the confidence level. If MEDIUM/LOW explorer hit recurs, build a dedicated verified figure in hca-figures.py."
+  - "SEPARATELY QUEUED — OKOA Wolfgramm/Ascent/Beehive-Waldorf diligence can continue independently (see the earlier handoff at memory/handoffs/2026-06-24-emergency-handoff.yaml for full context including the 5-Q DOCX, pro forma xlsx, depositor xlsx, and the missing Second A&R finding)."
+
+context_for_next_session: |
+  The acos-hypercore-ask skill is now a generalized natural-language portfolio Q&A
+  interface. The primary entry is hca-ask.py (not hca-deliver.py --ask directly). The
+  architecture is: deterministic spine (hca-deliver.py) -> funding interpretation
+  (hca-funding.py via hca-entities.py for both the investor and the loan) -> confidence-
+  graded explorer fallback (hca-explorer.py). All committed at 856c9aa4 (tip of
+  acos-deficiency-fixes-2026-06-04).
+
+  Test count: 566 across 25 test files, all green. Run with:
+    for f in .claude/scripts/tests/test_hca_*.py; do python3 "$f"; done
+
+  Live invocation (smart orchestrator):
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-ask.py --ask "<question>"
+
+  Trust invariants still holding (verified by all test passes):
+  - No fabrication — REFUSE or NO_LIVE_DATA on every unresolvable path
+  - Read-only — no mutating method in the adapter
+  - Stdlib-only — no third-party deps in any hca-*.py module
+  - Secrets via Doppler only — nothing committed
+  - Subscription-only Claude via Task() — never ANTHROPIC_API_KEY
+  - 2-of-3 asymmetric consensus for report/aggregation tier — structurally enforced
+
+  Key bug facts for future work:
+  - capitalizedBalance == principal in Hypercore (MEMO, not additive). Do NOT include it
+    in outstanding_balance reconciliation.
+  - Hypercore dual-filter loanFunding query (loanId + fundingEntityId together) returns
+    HTTP 500. Use the 2-step approach.
+  - Tranche words (senior/junior/mezz/tranche) must be stripped from loan-name queries
+    (already done in both figure-path and the payoff path).
+  - Date phrases in ask strings must be stripped before loan-name resolution (already done
+    in hca-deliver.py _strip_date_phrases).
+
+  Branch status: acos-deficiency-fixes-2026-06-04, 7 commits ahead of pre-HCA baseline,
+  NOT merged to main. The prior handoff at memory/handoffs/2026-06-24-emergency-handoff.yaml
+  covers the diligence stream (OKOA/Wolfgramm/Ascent) which is independent and can resume
+  at any time from the cached extraction infra.
+
+reconstruction_sources:
+  - "git status --short (confirmed: no modified tracked files; only handoff artifacts untracked)"
+  - "git log --oneline -25 (confirmed 856c9aa4 / 6f61e5da / 5a8b9c5f as the 3 new commits this session, on top of the 3 robust-code-review commits from earlier today)"
+  - "git diff --stat HEAD~8..HEAD (full file + line count for all 8 HCA commits)"
+  - "git show --stat 856c9aa4 / 6f61e5da / 5a8b9c5f (per-commit details, author, message)"
+  - "git diff HEAD -- .claude/scripts/hca-deliver.py .claude/scripts/tests/test_hca_deliver.py (confirmed 0 lines diff — both files are fully committed)"
+  - "memory/handoffs/2026-06-24-emergency-handoff.yaml (full read — covers the diligence stream + robust-code-review stream from earlier today; used as complementary context, not replaced)"
+  - ".acos/evidence/2026-06-24/SLICE-HCA-ENTITIES/verify.log (full read — 17 entity tests pass, stdlib-only, read-only confirmed)"
+  - ".acos/evidence/2026-06-24/SLICE-HCA-EXPLORER/verify.log (full read — 22 explorer tests pass, 561 full suite pass)"
+  - ".claude/skills/acos-hypercore-ask/SKILL.md (full read — complete current state of the skill including module-map table and PRIMARY ENTRY documentation)"
+  - "for f in .claude/scripts/tests/test_hca_*.py; do python3 $f; done (all 25 files exit OK — 566 tests green)"
+  - "memory/decisions/ listing (2026-06-18-hca-build-ground-rules.md confirmed present; ground rules still apply)"
+  - "Session context narrative provided by user (authoritative primary source for the 3 new commits and live-verification results)"

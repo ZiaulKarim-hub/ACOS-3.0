@@ -1,0 +1,31 @@
+[
+  {
+    "id": "PAR-0001",
+    "description": "Anonymous GET of the public rates endpoint returns JSON containing an apr field",
+    "request": { "method": "GET", "path": "/api/v1/rates" },
+    "assert": { "status": 200, "bodyMatches": "\"apr\"" },
+    "confidence": "high"
+  },
+  {
+    "id": "PAR-0002",
+    "description": "Submitting an empty application is rejected with a validation error",
+    "request": { "method": "POST", "path": "/api/v1/applications", "body": {} },
+    "assert": { "status": 422, "bodyMatches": "required" },
+    "confidence": "medium"
+  },
+  {
+    "id": "PAR-0003",
+    "description": "jsonIncludes example — response object contains a nested status flag",
+    "request": { "method": "GET", "path": "/api/v1/applications/1001" },
+    "assert": { "status": 200, "jsonIncludes": { "application": { "status": "submitted" } } },
+    "confidence": "medium"
+  },
+  {
+    "id": "PAR-0004",
+    "description": "Original returns 200 for a revoked-key reactivation — a BUG we deliberately do NOT reproduce",
+    "request": { "method": "POST", "path": "/api/v1/keys/reactivate", "body": { "state": "revoked" } },
+    "assert": { "status": 200 },
+    "confidence": "low",
+    "knownDeviation": "original permits revoked->active; rebuild must treat revoked as terminal (see rule-ledger RULE-0003)"
+  }
+]

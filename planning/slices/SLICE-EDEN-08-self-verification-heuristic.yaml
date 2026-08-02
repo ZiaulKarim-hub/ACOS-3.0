@@ -1,0 +1,92 @@
+slice_id: "SLICE-EDEN-08"
+story_id: "ST-004-eden-4"
+epic_id: "EP-004-eden-4"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # 2026-07-14 — genuinely built + tested. See correction_log below.
+
+title: "Self-verification heuristic (with non-guarantee caveat)"
+objective: |
+  Add a lightweight internal self-check estimating whether a reply hit its level's band before
+  sending — explicitly NOT a certified numeric Flesch-Kincaid.
+
+correction_log: |
+  2026-07-14 — RECORD CORRECTED. This slice was previously marked
+  `status: "complete"  # built + verified 2026-07-13`, but its deliverable script had never
+  been written: a disk-wide `find / -name "eden-selfcheck.py"` returned zero results. What
+  actually shipped on 2026-07-13 was the prose paragraph in SKILL.md telling the model to
+  "do a quick internal check" — i.e. the honor system, which is what the slice existed to
+  replace. The user reported the predictable symptom: a Level 3 reply rendered at college
+  register. Do not treat a `status: complete` on a slice as evidence its files exist.
+
+  Built for real on 2026-07-14, with two deviations from the spec above:
+
+  1. PATH. Spec said `.claude/scripts/eden-selfcheck.py` (project-local). Shipped at
+     `~/.claude/skills/acos-eden-protocol/hooks/eden-selfcheck.py` (global), because Eden's
+     dial (`~/.claude/state/eden-level`) is global. A project-local checker would never have
+     fired on the FruitSync reply that prompted this. User confirmed global 2026-07-14.
+
+  2. MECHANISM. Spec said "self-check ... and nudges toward the band" — still honor-system.
+     Shipped as a `Stop` hook returning `{"decision": "block", "reason": ...}`, which forces
+     one real rewrite. A nudge was the failure mode, not the fix. User chose enforcement
+     ("Block and redo once") 2026-07-14.
+
+  KEY FINDING — the spec's own metric does not work. The failing reply scores Flesch-Kincaid
+  grade 7.03, INSIDE the Level 3 band (6-8). A readability gate would have PASSED the exact
+  reply the user rejected: FK counts syllables, and "keystore"/"gate"/"config" are short
+  words, so FK is structurally blind to undefined jargon — the actual failure mode. The
+  primary gate shipped is therefore BARE_JARGON (identifier-shaped tokens surviving into
+  governed prose = never backticked = never glossed); FK and sentence length are secondary.
+
+acceptance_criteria:
+  - "[x] The skill self-checks (approx sentence length, syllable-heavy scan, undefined-acronym scan, jargon gate for L2/L5) and nudges toward the band. — SUPERSEDED: implemented as a Stop-hook BLOCK (one forced rewrite), not a nudge. All four scans present in eden-selfcheck.py; the jargon gate applies at L2-L5 and is the primary trigger."
+  - "[x] Docs state the non-guarantee clearly — no claim of a guaranteed grade-N metric. — SKILL.md 'Self-verification' section: PASS documented as 'cleared the crude bar, not certified readable', plus 5 explicit limitations incl. the FK-7.03 blindness finding."
+  - "[x] No non-stdlib NLP dependency introduced (WON'T W1). — stdlib only (json/os/re/sys/time/pathlib/importlib). The jargon gate is a shape test precisely to avoid shipping a familiar-word list."
+
+verification: |
+  10/10 automated tests pass. Harness (session-scratch, not committed):
+  test_eden_selfcheck.py — covers: real failing reply @L3 blocks; redo cap = 1 (second stop
+  on the same turn never blocks, marker cleared); simple reply @L3 passes; sub-60-word reply
+  passes; code+table-only reply passes (exempt spans stripped); @L1 never blocks; eden off ->
+  silent; garbage stdin -> fail open, no crash; L3-grade prose @L5 blocks (stricter band bites).
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-07"
+      what_it_provides: "the level spec the heuristic checks against"
+      status: "in_progress"
+
+files_allowed:
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+  - "~/.claude/skills/acos-eden-protocol/hooks/eden-selfcheck.py"   # shipped here, not .claude/scripts/ — see correction_log deviation 1
+  - "~/.claude/skills/acos-eden-protocol/hooks/eden-level-injector.py"  # BANDS dict added: single source of truth the checker enforces
+  - "~/.claude/settings.json"  # Stop hook registration
+
+files_prohibited:
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Heuristic only — honesty requirement: never over-promise a certified metric."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-08.md"
+
+technical_requirements:
+  - "Stdlib-only heuristic; soft correct-if-off behavior."
+
+testing_requirements:
+  - "Example where the heuristic catches an over-complex L5 draft and simplifies further; caveat text present."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-08. Demo 3. P1. Maps C3, CQ4.

@@ -1,0 +1,128 @@
+# Slice Plan — bridged from preeng task SLICE-50-browser
+# Source: planning/preeng/005-resurrection-protocol/tasks/SLICE-50-browser.md
+
+slice_id: "SLICE-RES-50-browser"
+story_id: "STORY-5.1"
+epic_id: "EPIC-5"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "(DP1-conditional) resurrection-server.py: the 8820 browser window"
+objective: |
+  Build resurrection-server.py — an always-glanceable browser dashboard on a
+  stdlib ThreadingHTTPServer at 127.0.0.1:8820 (FIXED port) that does not
+  occupy a Claude session. Skill-started, never launchd-hosted, with NO idle
+  reaper (documented by comment in code). DP1-conditional: adopted only if
+  the DP1 menu decision selects it.
+description: |
+  In scope:
+  - stdlib ThreadingHTTPServer at 127.0.0.1:8820 FIXED; skill-started, never
+    launchd; NO idle reaper (comment in code)
+  - Singleton via GET /api/whoami on EADDRINUSE, never port-hop;
+    POST /api/launch accepts an opaque ID only
+  - Validate Origin+Host+Content-Type; no ACAO:*; textContent never
+    innerHTML; open -a 'Google Chrome'; 5s visible-only polling
+  Out of scope (guardrails):
+  - launchd hosting
+  - idle reaper / port-hopping
+  - ACAO:* / innerHTML
+  - Accepting a path (not an ID) at /api/launch
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] EADDRINUSE singleton reuse works via GET /api/whoami — server never port-hops; singleton-reuse demonstration archived in .acos/evidence/[DATE]/SLICE-50-browser/"
+  - "[ ] A hostile project name renders inert (textContent, never innerHTML); hostile-name render inspection archived in .acos/evidence/[DATE]/SLICE-50-browser/"
+  - "[ ] Cross-origin POST is rejected AND /api/launch given a path instead of an opaque ID returns 400; both rejection transcripts archived in .acos/evidence/[DATE]/SLICE-50-browser/"
+  - "[ ] Evidence bundle at .acos/evidence/[DATE]/SLICE-50-browser/ populated with the 7-part Dev bundle (implementation summary, requirements traceability to FR-*/TR-*, structural quality, functional checks, security/compliance notes, operational notes, self-assessment)"
+  - "[ ] Dev Learnings and QA Learnings sections updated in the source task file (slice is not Done until both are — preeng §0.7)"
+  # TODO: confirm — DP1 has actually selected the browser-window option (slice is DP1-conditional; do not execute otherwise)
+  # TODO: confirm — pass-condition for the '5s visible-only polling' requirement (in scope but no acceptance test defined in the task file)
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-RES-30-resurrect-view"
+      what_it_provides: "resurrect-view.py — the shared engine the server renders from"
+      status: "planned"
+    - slice_id: "SLICE-RES-31-launch"
+      what_it_provides: "launch-project.sh — the launch engine invoked by /api/launch"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/scripts/resurrection/resurrection-server.py"
+  - ".claude/scripts/resurrection/resurrect-view.py"
+  - ".claude/scripts/resurrection/launch-project.sh"
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - "~/Library/LaunchAgents/"  # launchd hosting is explicitly out of scope
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "security-audit"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "Port 8820 is FIXED — on EADDRINUSE reuse the existing singleton via GET /api/whoami; NEVER port-hop"
+  - "Skill-started only, never launchd; NO idle reaper — leave a comment in code saying so"
+  - "POST /api/launch takes an opaque ID only — a path must be rejected with 400"
+  - "Validate Origin+Host+Content-Type on requests; never emit ACAO:*"
+  - "Render with textContent, never innerHTML — hostile project names must be inert"
+  - "Open the dashboard with: open -a 'Google Chrome'"
+  - "Client polling: 5s, visible-only (pause when tab hidden)"
+
+# Technical requirements
+technical_requirements:
+  - "Python stdlib ThreadingHTTPServer bound to 127.0.0.1:8820 (fixed)"
+  - "GET /api/whoami singleton handshake on EADDRINUSE"
+  - "POST /api/launch — opaque-ID-only contract, path input -> 400"
+  - "Origin + Host + Content-Type validation; no ACAO:* header"
+  - "textContent-only DOM rendering; 5s visible-only polling; open -a 'Google Chrome'"
+
+# Testing requirements
+testing_requirements:
+  - "Run the security tests: cross-origin POST rejection, path-not-ID 400 at /api/launch, hostile-name inert render"
+
+# Verification method (QA — zero-trust; skill-mandated extension of the template)
+verification_method: |
+  Assume the Dev did not do the work correctly. Verify scope respect and
+  evidence authenticity (no fabricated logs — spot-check and recompute), then:
+  - Singleton reuse shown (EADDRINUSE -> /api/whoami, no port-hop)
+  - Hostile-name render inspected and confirmed inert (textContent)
+  - Cross-origin POST rejection + path-not-ID 400 rejections archived
+  - Confirm no idle reaper and no launchd hosting anywhere in the code
+  - Confirm no ACAO:* and no innerHTML anywhere
+  - Confirm /api/launch rejects a path and only accepts an opaque ID
+  QA may REJECT and require rework until all gates pass (a reject blocks the
+  slice like an INCONCLUSIVE reviewer).
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"        # Always
+  - "ACOS-security-reviewer"  # Origin/Host validation, XSS-inert rendering, opaque-ID contract
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Bridged from preeng 005-resurrection-protocol SLICE-50-browser (Epic EPIC-5 /
+  Story STORY-5.1, "Demo: Optional — only if DP1 selects it"). Vertical value:
+  an always-glanceable dashboard that does not occupy a Claude session.
+  Evidence bundle path: .acos/evidence/[DATE]/SLICE-50-browser/

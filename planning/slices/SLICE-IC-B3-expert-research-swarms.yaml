@@ -1,0 +1,113 @@
+slice_id: "SLICE-IC-B3-expert-research-swarms"
+story_id: "STORY-B2"
+epic_id: "EPIC-B"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-08"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Per-expert private research swarms"
+objective: |
+  Build the mechanism that lets each of the 9 expert seats (the 8 voting seats #1-8 plus the
+  Deal Advocate #9 -- NOT the procedural Gap-Hunter #10) spawn its own private swarm of 2-4
+  Task(general-purpose) research bots, sized to what its discipline actually needs, during
+  its isolated blind-opening pass (SLICE-B2). Each swarm does discipline-specific
+  deep/external research on top of the shared deal-brief + evidence-index (SLICE-B1) and
+  reports ONLY to the spawning expert -- never to another seat, never to the chair. Every
+  citation a swarm surfaces is captured into the evidence ledger. ONE mode only -- no
+  quick/deep tiering.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/expert_swarm.py accepts a seat_id + discipline research query + a requested bot count"
+  - "[ ] the requested bot count is clipped or rejected outside the 2-4 bound (sized to need, not a fixed count)"
+  - "[ ] each spawned bot's context contains ONLY the shared deal-brief + evidence-index (SLICE-B1) plus the seat's discipline query -- never another seat's swarm output, objection, or mitigant"
+  - "[ ] each bot's findings are written ONLY into the spawning seat's own scratch space (private-reporting isolation) -- unreadable by any other seat's process during the same run"
+  - "[ ] every citation a swarm bot returns is appended to the session evidence ledger, tagged by seat_id + bot index"
+  - "[ ] a fixture run demonstrates at least 2 different expert seats each spawning between 2 and 4 bots"
+  - "[ ] no quick/deep tiering flag, config key, or code path exists anywhere in the script (single mode only)"
+  - "[ ] the Gap-Hunter (#10) never triggers a swarm spawn -- only the 9 expert seats (#1-9) do"
+  - "[ ] evidence bundle includes a swarm-spawn transcript for >=2 expert seats, the resulting evidence-ledger citations tagged by seat_id, and an isolation attestation"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-A2-expert-agent-defs"
+      what_it_provides: "Task(general-purpose) grant + the standard 'spawn your 2-4 research bots' instruction wired into the 9 expert seat templates (#1-9); the Gap-Hunter (#10) template deliberately omits it"
+      status: "planned"
+    - slice_id: "SLICE-IC-B1-deal-intake"
+      what_it_provides: "deal-brief.yaml + evidence-index.yaml -- the shared baseline every private swarm reads alongside its discipline-specific query, plus the evidence ledger scaffold citations are appended to"
+      status: "planned"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/expert_swarm.py"
+
+files_prohibited:
+  - "context note: the shared upfront extraction pass is owned by SLICE-B1; the top-level per-seat Task() fan-out/dispatch is owned by SLICE-B2 (this slice is what a seat's OWN Task() invokes internally); fact-builder/synthesis consumption of swarm citations is owned by SLICE-C1; any quick/deep tiering is explicitly out of scope (one mode only)"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: seats/*.md (SLICE-A2, for the swarm-spawn instruction contract each template carries), deal-brief.yaml + evidence-index.yaml (SLICE-B1), domain-lattice proc-independence-first + method-model-diversity"
+  - "subscription-only via Task(); whether a Task(general-purpose) sub-agent can itself call Task() (true nesting) vs a script-mediated flat fan-out is a build-time decision to resolve empirically -- either satisfies the requirement as long as reporting isolation and citation capture hold"
+  - "respect the Independence Wall / Oracle hooks; write-to-disk for citations is immediate (durability), matching the B1/B2 pattern"
+  - "ONE mode only -- explicitly no quick/deep tiering; every expert gets the same mechanism, sized 2-4 bots per its own judgment of need"
+
+# Technical requirements
+technical_requirements:
+  - "bot count is enforced within [2,4] for every swarm spawn -- clip or reject out-of-range requests"
+  - "each bot's context is limited to the shared deal-brief/evidence-index + the seat's discipline query -- never another seat's material"
+  - "swarm findings are persisted to a per-seat-only scratch path, never a shared/global location readable by another seat's process in the same run"
+  - "every citation returned by a swarm bot is appended to the evidence ledger tagged by seat_id + bot index, with zero drops"
+  - "the Gap-Hunter (#10) template never invokes this mechanism -- only the 9 expert seats (#1-9) do"
+
+# Testing requirements
+testing_requirements:
+  - "QA runs the mechanism for >=2 different expert seats and recounts that each spawned 2-4 bots (does not trust a summary)"
+  - "QA inspects for isolation and confirms no seat's swarm findings are readable from any other seat's process/output during the same run"
+  - "QA recounts every citation the swarm bots surfaced against what landed in the evidence ledger, confirming correct seat_id tagging and zero drops"
+  - "QA greps the script/config for any quick/deep tiering flag or code path and rejects if found"
+  - "QA confirms the Gap-Hunter (#10) never triggers a swarm spawn"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-security-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): the zero-cross-seat-swarm-visibility check is the
+  load-bearing independence proof (same rigor as SLICE-B2's zero-sibling-output check) and
+  must be verified by inspection, not by trusting a claim; reject if any swarm output leaks,
+  any bot count falls outside 2-4, or any citation is dropped.
+  NEW slice created 2026-07-08 (delta 3) to implement the per-expert private research swarm
+  capability: each of the 9 expert seats (#1-8 voting + #9 Deal Advocate) spawns its own
+  2-4-bot Task(general-purpose) swarm, blind/private-reporting only to that seat, with
+  citation capture feeding the evidence ledger. ONE mode only -- no quick/deep tiering.
+  Sequenced after SLICE-B1 (shared deal-brief + evidence-index the swarms read) and
+  SLICE-A2 (which wires the Task(general-purpose) grant + spawn instruction into the expert
+  templates), and before/parallel to the Epic C synthesis slices that consume the resulting
+  citations via the fact-builder (SLICE-C1). Bridged into STORY-B2 (Epic B) in stories.json
+  because the swarm-spawn happens inside each expert's own isolated blind-opening Task()
+  (SLICE-B2's dispatch), not as a separate top-level phase; architect to review before
+  execution.

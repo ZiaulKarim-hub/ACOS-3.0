@@ -1,0 +1,60 @@
+timestamp: "2026-07-18T02:20:00Z"
+status: "completed"
+session_summary: "Fixed eternity-protocol cmux socket-path failure (cmux 0.64.x moved socket to ~/.local/state/cmux/); built FruitSync narrative segment-picker gallery (10 voices x 9 segments) for mix-and-match recipe selection."
+
+current_work:
+  slice_id: null
+  story_id: null
+  epic_id: null
+  status: "completed"
+
+completed_this_session:
+  - "Diagnosed eternity failure: cmux 0.64.19 moved IPC socket from ~/Library/Application Support/cmux/cmux.sock to ~/.local/state/cmux/cmux.sock; cmux was UP, three hardcoded old-path existence checks falsely reported 'cmux not running'"
+  - "Fixed token-watcher.py (cmux_socket_alive gate), inject-via-cmux.py (pre-flight 2), and acos-eternity-protocol SKILL.md Step 0 with a candidates+last-socket-path-pointer resolver (pointer trusted only when named path exists)"
+  - "Regenerated bin-manifest.sha256; killed and respawned all 5 token-watchers via com.acos.token-watcher-backfill (launchd kickstart); integrity check passed"
+  - "Removed .inpane-fired-7d50c4ce marker to re-arm the stranded 545,843-token FruitSync session (threshold 500,000)"
+  - "Synced in-repo reference copy .claude/scripts/acos-token-monitor-bin-reference/token-watcher.py"
+  - "Wrote memory reference_cmux_socket_moved_xdg_state.md + MEMORY.md index line"
+  - "Built FruitSync segment picker: sliced v01-v10 into 9 shared blocks each (90 files at ~/fruitsync-variants/segments/) + interactive gallery index.html with click-to-pick recipe bar (localStorage key fs-picks)"
+  - "Served gallery via pre-existing detached server port 8901 (this session's own background servers on 8613 were killed twice by the task system; killer not conclusively identified)"
+
+files_modified:
+  - path: "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: "socket-path resolver (_CMUX_SOCKET_CANDIDATES + _cmux_socket_path); cmux_socket_alive checks all candidates"
+  - path: "~/Library/Application Support/acos-token-monitor/bin/inject-via-cmux.py"
+    changes: "CMUX_SOCKET_CANDIDATES + cmux_socket_path(); pre-flight 2 checks all candidates"
+  - path: ".claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: "Step 0 socket probe loops over last-socket-path pointers + both fixed locations (UNCOMMITTED in git)"
+  - path: "~/Library/Application Support/acos-token-monitor/bin-manifest.sha256"
+    changes: "regenerated after bin edits (launcher fail-closes on mismatch)"
+  - path: ".claude/scripts/acos-token-monitor-bin-reference/token-watcher.py"
+    changes: "synced with fixed daemon copy (UNCOMMITTED in git)"
+  - path: "~/fruitsync-variants/segments/"
+    changes: "NEW: 90 per-segment mini-pages (v01-s1 ... v10-s9) + gallery index.html; generator script in session scratchpad"
+  - path: "memory/reference_cmux_socket_moved_xdg_state.md"
+    changes: "NEW memory: cmux socket XDG move, fix pattern, manifest/backfill gotchas"
+
+decisions_made:
+  - "Probe behavior over artifacts: socket check now resolves via last-socket-path pointers (validated) then fixed candidates, instead of one hardcoded path"
+  - "Did not harden token-watcher cmux_ping_ok() bare-'cmux' PATH lookup (known residual weakness under launchd bare PATH) — kept fix scope minimal; flagged for later"
+  - "Segment gallery uses per-segment mini-files in iframes (style isolation) rather than one merged page; served over HTTP because variant pages use root-relative asset paths"
+  - "After two background-server kills, switched to the FruitSync session's detached port-8901 server instead of retrying a third tracked server"
+
+blockers: []
+
+next_actions:
+  - "User: pick one card per segment at http://localhost:8901/segments/ and send the recipe (format 1:vNN ... 9:vNN)"
+  - "Then: fuse picked segments into one final FruitSync site (base ~/fruitsync-site/), then deploy + finish Play Store steps (12 testers x 14 days pending, per FruitSync session notes)"
+  - "Commit uncommitted ACOS 3.0 changes: SKILL.md socket fix + reference-copy sync (branch acos-deficiency-fixes-2026-06-04)"
+  - "Optional hardening: absolute-path cmux CLI fallback in token-watcher.py cmux_ping_ok()"
+  - "Verify eternity end-to-end on the re-armed FruitSync session 7d50c4ce (should auto-fire at next Stop event)"
+
+context_for_next_session: |
+  Eternity protocol is healthy again: root cause was cmux 0.64.x moving its Unix
+  socket to ~/.local/state/cmux/cmux.sock. Full detail in
+  memory/reference_cmux_socket_moved_xdg_state.md. The FruitSync recipe/fusion
+  work happens against ~/fruitsync-variants (10 narrative voices, identical
+  9-block skeleton: site-head, hero, banner-sec, moods-sec, shots, features,
+  trust-sec, closer, site-foot). The picker recipe persists in the browser
+  (localStorage fs-picks, origin localhost:8901). Design-variant blending
+  (d01-d10 / s01-s10) was offered but not requested yet.

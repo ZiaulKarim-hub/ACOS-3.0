@@ -1,0 +1,54 @@
+slice_id: "SLICE-EDEN-06"
+story_id: "ST-004-eden-3"
+epic_id: "EP-004-eden-3"
+vision_id: "n/a (framework-level skill — bridged from preeng 004-acos-eden-protocol)"
+created_date: "2026-07-07"
+created_by: the-architect
+status: "complete"  # built + verified 2026-07-13
+
+title: "Precision appendix (Exact figures & terms)"
+objective: |
+  Append a default-on collapsible "Exact figures & terms" block reproducing every exempt span
+  verbatim, sourced from the ORIGINAL answer (never re-derived from the simplified text).
+
+acceptance_criteria:
+  - "[ ] A simplified answer containing figures/terms shows the collapsible appendix with each value verbatim."
+  - "[ ] Appendix content is derived from the original composition, not the simplified text."
+  - "[ ] Appendix is default-on globally; a session toggle can hide it for casual use."
+
+dependencies:
+  slices:
+    - slice_id: "SLICE-EDEN-05"
+      what_it_provides: "the exempt-content classifier the appendix reuses"
+      status: "in_progress"
+
+files_allowed:
+  - "~/.claude/skills/acos-eden-protocol/SKILL.md"
+
+files_prohibited:
+  - "review-rules/"
+
+skills_recommended:
+  - "backend-coding"
+
+flow: "slice-execution-flow"
+
+context:
+  - "Default-on because omission cost (a rounded figure reaching a real memo) is high; marginal cost low."
+  - "Source: planning/preeng/004-acos-eden-protocol/tasks/SL-004-eden-06.md"
+
+technical_requirements:
+  - "Trigger when reply has >=1 exempt span (data-model E6)."
+
+testing_requirements:
+  - "L5 answer + appendix listing exact $/%/date/legal-term; prove appendix == original values."
+
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+effort_estimate: "M"
+assigned_to: null
+assigned_date: null
+handoff_path: null
+notes: |
+  Bridged from preeng SL-004-eden-06. Demo 2. P1. Maps S2.

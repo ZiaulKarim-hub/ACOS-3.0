@@ -1,0 +1,154 @@
+timestamp: "2026-07-07T14:55:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  The parent session was building the `acos-axiom-synthesis` skill — a multi-model
+  source-of-truth synthesizer that fuses N independent agent outputs into one
+  defeasible, hash-chained, provenance-bound claim ledger (refutation-and-grading
+  engine, never a naive merger). Phases 0–7 of the deterministic pipeline are fully
+  built and fixture-tested (54 assertions offline, all passing). The only remaining
+  non-deterministic piece is the live-agent "wizard" — the thin SKILL.md glue that
+  spawns Task()/external-model agents to elicit atomic claims, run the ACH pass, and
+  invoke the independent different-family refuter, filling the `fact` structure that
+  `orchestrate.run()` consumes. A critical blocker was discovered: the
+  OPENROUTER_API_KEY in both ~/.zshrc and Doppler (project acos-3-0, config dev) is
+  INVALID (49 chars, not the required sk-or-v1- prefix), causing all authenticated
+  OpenRouter calls to 401. The key must be replaced before cross-family model diversity
+  can be exercised.
+
+current_work:
+  slice_id: "unknown (ad-hoc — no planning/ slice artifact; work tracked in planning/acos-axiom-synthesis/PLAN.md)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  description: |
+    Building acos-axiom-synthesis skill on branch acos-deficiency-fixes-2026-06-04.
+    Commit a6eed67 (2026-07-06) pushed Phases 0–1 (substrate) + the PLAN.md blueprint
+    to both remotes. Phases 2–7 modules and the updated SKILL.md build-status section
+    are BUILT but NOT YET COMMITTED (all appear as untracked/modified in git status).
+    The sole remaining unbuild item is the provider-aware live-agent wizard (PLAN.md §7,
+    §10.2), for which two design paths are under consideration (see next_actions).
+
+completed_this_session:
+  - "Built decircularize.py (Phase 2): citogenesis firewall — collapses non-independent sources to one vote before any corroboration counting. Five collapse triggers: shared upstream, verbatim fingerprint, same generative origin, no traceable provenance, self-citation loop."
+  - "Built grade_fuse.py (Phase 3): two-axis grading (Axis-A source reliability + Axis-B claim certainty via GRADE machine) + claim-level fusion (median/majority/linear-pool) + dual-track tally + divergence flag + single-source cap."
+  - "Built falsify.py + oscillation_guard.py (Phase 4): nullification checklist (admissibility → steelman → ACH → independent refuter → disposition) + settled-objections oscillation guard (injects adjudicated rulings into every later refuter prompt so the loop converges rather than iterating infinitely)."
+  - "Built resolve.py (Phase 5): precedence-ladder conflict resolver + consensus polarity, terminating in UNRESOLVED when no rung decides — never fabricates a winner."
+  - "Built lifecycle.py (Phase 6): demotion cascade — when a claim is REFUTED, dependent claims are queued for re-evaluation."
+  - "Built coverage.py + mirror.py (Phase 7): final coverage gate (no sub-question left with zero claims) + ACOS evidence/metrics mirror (runs surface in /acos-status)."
+  - "Built orchestrate.py: end-to-end pipeline driver (stages 2→7). Accepts pre-elicited `fact` structures; deterministic and testable offline. Model-dependent elicitation is UPSTREAM of this module."
+  - "Built tests/test_pipeline.py (35 assertions): covers end-to-end adversarial cases — correlated-source collapse, single-source cap, oscillation convergence, UNRESOLVED emission on genuine conflicts, coverage gate blocking an incomplete run."
+  - "Updated SKILL.md build-status section to reflect all phases built (the diff is the MODIFIED file in git status — not yet committed)."
+  - "Discovered and documented OpenRouter key blocker (see blockers)."
+
+files_modified:
+  - path: ".claude/skills/acos-axiom-synthesis/SKILL.md"
+    changes: "MODIFIED (not committed). Build-status section updated from 'Phases 0-1 only' to 'all Phases 0-7 built, 54 assertions'. This is the only in-repo modified file aside from handoff bookkeeping."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/decircularize.py"
+    changes: "UNTRACKED (not committed). Phase 2 implementation — 4,949 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/grade_fuse.py"
+    changes: "UNTRACKED (not committed). Phase 3 implementation — 6,349 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/falsify.py"
+    changes: "UNTRACKED (not committed). Phase 4 implementation — 4,219 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/oscillation_guard.py"
+    changes: "UNTRACKED (not committed). Phase 4 oscillation guard — 1,977 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/resolve.py"
+    changes: "UNTRACKED (not committed). Phase 5 implementation — 3,818 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/lifecycle.py"
+    changes: "UNTRACKED (not committed). Phase 6 implementation — 1,819 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/coverage.py"
+    changes: "UNTRACKED (not committed). Phase 7 coverage gate — 1,265 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/mirror.py"
+    changes: "UNTRACKED (not committed). Phase 7 ACOS mirror — 1,533 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/orchestrate.py"
+    changes: "UNTRACKED (not committed). End-to-end pipeline driver — 7,622 bytes."
+  - path: ".claude/skills/acos-axiom-synthesis/tests/test_pipeline.py"
+    changes: "UNTRACKED (not committed). 35 offline assertions for Phases 2-7 — 12,704 bytes."
+  - path: "memory/handoffs/2026-06-16-emergency-handoff.yaml"
+    changes: "DELETED from working tree (moved to archive/). Status 'D' in git."
+  - path: "memory/handoffs/2026-06-21-emergency-handoff.yaml"
+    changes: "DELETED from working tree (moved to archive/). Status 'D' in git."
+
+decisions_made:
+  - "Cross-family model diversity (the non-negotiable for breaking correlated errors) requires a valid OpenRouter key. The existing key in ~/.zshrc and Doppler is invalid; every authenticated call 401s."
+  - "The ACOS multi-provider infrastructure (run-external-agent.py + .acos/config/providers.yaml) is verified CORRECT — the key is the only issue, not the routing."
+  - "Recommended cross-family panel once key is fixed: Claude (primary synthesizer) + z-ai/glm-5 + google/gemini-2.5-flash-lite + openai/gpt-4o-mini (all cheap on OpenRouter)."
+  - "Two design paths for the wizard are under active consideration (see next_actions — Option A vs Option B)."
+  - "Security flag: a Doppler CLI token (dp.ct.…) was inadvertently printed in this session's transcript. Flag for possible rotation."
+  - "Oracle session threshold is 10 (autopilot mode, auto-approved in oracle-session-threshold state file)."
+
+blockers:
+  - "OPENROUTER_API_KEY is invalid in both ~/.zshrc and Doppler (project acos-3-0, config dev). Key is 49 chars; must start with sk-or-v1-. All authenticated OpenRouter calls return 401 ('Missing Authentication header'). FIX: get a real key from openrouter.ai → paste into Doppler acos-3-0/dev as OPENROUTER_API_KEY → also update ~/.zshrc."
+  - "Phases 2–7 modules + updated SKILL.md are NOT yet committed. They will not survive a branch switch or git clean. Commit them before any other work."
+  - "A Doppler CLI token (dp.ct.…) may have been printed in this session's transcript. Consider rotating it at doppler.com/tokens."
+  - "Eternity Protocol Priority-2 arm-before-verify bug in eternity-cmux-inpane.sh (lines 92-93) carries over from the previous session (2026-07-06). The lines touch .inpane-fired BEFORE a blind cmux send. FruitSync and Jobsync may still have stuck guards from prior fires."
+
+next_actions:
+  - "FIRST — commit all untracked/modified axiom-synthesis files: git add .claude/skills/acos-axiom-synthesis/SKILL.md .claude/skills/acos-axiom-synthesis/scripts/decircularize.py .claude/skills/acos-axiom-synthesis/scripts/grade_fuse.py .claude/skills/acos-axiom-synthesis/scripts/falsify.py .claude/skills/acos-axiom-synthesis/scripts/oscillation_guard.py .claude/skills/acos-axiom-synthesis/scripts/resolve.py .claude/skills/acos-axiom-synthesis/scripts/lifecycle.py .claude/skills/acos-axiom-synthesis/scripts/coverage.py .claude/skills/acos-axiom-synthesis/scripts/mirror.py .claude/skills/acos-axiom-synthesis/scripts/orchestrate.py .claude/skills/acos-axiom-synthesis/tests/test_pipeline.py && git commit. Push to both remotes (origin + personal)."
+  - "SECOND — fix the OpenRouter key BEFORE building the wizard: go to openrouter.ai → generate a new sk-or-v1-... API key → doppler secrets set OPENROUTER_API_KEY=<new-key> --project acos-3-0 --config dev → also update ~/.zshrc OPENROUTER_API_KEY export. Verify: curl -H 'Authorization: Bearer <key>' https://openrouter.ai/api/v1/models | head."
+  - "THIRD — build the live-agent wizard. Two design paths to choose from:"
+  - "  Option A (wait for key): build the full provider-aware wizard end-to-end with cross-family panel (Claude + GLM-5 + gemini-2.5-flash-lite + gpt-4o-mini). Cleanest independence guarantees. Requires the valid OpenRouter key first."
+  - "  Option B (build now): build the wizard with a Claude-only fallback (Opus for elicitation + Sonnet for refuter, different model classes as partial diversity substitute). Flag reduced independence in the output. Auto-activate cross-family once the key is fixed. Zero blocking dependency on the key."
+  - "The wizard interface contract: it populates a list of `fact` dicts with shape {fact_id, statement, candidates: [{value, source: {id, origin, locator, family}, confidence}], claim_type, refuter_verdict: {disposition, objection, family}} and passes them to orchestrate.run(). See orchestrate.py for the complete expected schema."
+  - "Wizard lives in SKILL.md as the main invocation flow (not a separate script). It reads PLAN.md §7 + §10.2 for the elicitation prompt design and §12.4 for the Claude-only fallback flag wording."
+  - "After wizard is built: run the full test suite (test_substrate.py + test_pipeline.py) to confirm nothing broke, then do a live smoke test on a simple two-source question."
+  - "LOWER PRIORITY (carry-over from Jul-06 session): fix eternity-cmux-inpane.sh Priority-2 arm-before-verify bug (touch after verified send, add ping gate, rm guard on failure). Clear stuck guards for FruitSync and Jobsync if still needed."
+
+context_for_next_session: |
+  The acos-axiom-synthesis skill now has a complete deterministic pipeline — 10 Python
+  modules (axiom_ledger.py, ledger_writer.py, verify_ledger.py, next_claims.py,
+  render.py, decircularize.py, grade_fuse.py, falsify.py, oscillation_guard.py,
+  resolve.py, lifecycle.py, coverage.py, mirror.py, orchestrate.py) and 54 offline
+  test assertions across two test files. All of this is in
+  .claude/skills/acos-axiom-synthesis/. The substrate was committed as a6eed67; the
+  Phase 2–7 modules are BUILT but UNCOMMITTED — commit them immediately.
+
+  The only remaining unbuild piece is the "wizard": the thin live-agent glue that
+  (1) accepts a question or pre-existing artifacts, (2) decomposes them into atomic
+  claims and elicits N independent responses from different model families, and
+  (3) hands the structured `fact` data to orchestrate.run(). In tests the wizard's
+  output is simulated by fixture data, so the pipeline is fully proven; the wizard
+  is purely the model-spawning frontend.
+
+  The interface contract the wizard must satisfy is already defined in orchestrate.py
+  lines 55+ (process_fact signature and the fact dict schema). The elicitation prompts
+  live in .claude/skills/acos-axiom-synthesis/prompts/ (currently only README.md).
+  PLAN.md §7 ("Elicitation protocol") and §10.2 ("model strategy") are the design spec.
+
+  The critical blocker is the OpenRouter key. Without a valid sk-or-v1-... key, the
+  wizard can only use Claude-only diversity (Opus + Sonnet, different classes), which
+  the skill correctly flags as reduced independence. The ACOS multi-provider plumbing
+  (run-external-agent.py + providers.yaml + resolve-agent-model.sh) is correct and
+  ready — it is ONLY the key that is wrong.
+
+  Security note: a Doppler CLI token (dp.ct.…) was inadvertently visible in this
+  session's transcript. Consider rotating it as a precaution at doppler.com/tokens.
+
+  Branch: acos-deficiency-fixes-2026-06-04. Both remotes: origin (okoateam) and
+  personal (ZiaulKarim-hub). Always push to both.
+
+  The 2026-07-06 handoff (memory/handoffs/2026-07-06-emergency-handoff.yaml) has full
+  detail on the Eternity Protocol hardening work that also completed in the preceding
+  session; that context is lower priority but available if needed.
+
+reconstruction_sources:
+  - "git status --short (current working tree: SKILL.md modified + 10 untracked axiom-synthesis scripts/tests + deleted handoff YAMLs)"
+  - "git log --oneline -25 (top commit: a6eed67 feat(axiom-synthesis) 2026-07-06)"
+  - "git diff HEAD -- .claude/skills/acos-axiom-synthesis/SKILL.md (build-status section diff confirming Phases 2-7 were added this session)"
+  - "git diff --stat HEAD~3..HEAD (axiom-synthesis substrate + eternity hook commits)"
+  - "planning/acos-axiom-synthesis/PLAN.md (full 479-line blueprint, all 16 sections, modified 2026-07-06)"
+  - ".claude/skills/acos-axiom-synthesis/SKILL.md (full file — build status + pipeline summary + model strategy + substrate usage + tests)"
+  - ".claude/skills/acos-axiom-synthesis/scripts/orchestrate.py (lines 1-60 — interface contract + fact dict schema)"
+  - "ls -la .claude/skills/acos-axiom-synthesis/scripts/ (all 14 script files with sizes and mtimes)"
+  - "ls -la .claude/skills/acos-axiom-synthesis/tests/ (test_substrate.py 8555b, test_pipeline.py 12704b)"
+  - "memory/handoffs/2026-07-06-emergency-handoff.yaml (prior session: eternity hardening + context for carry-over items)"
+  - "memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md (STATUS block lines 1-23: all Stage 1+2 items applied+verified)"
+  - "memory/decisions/ listing (most recent: 2026-07-05 eternity audit, prior: 2026-06-24 hca ground rules)"
+  - ".acos/state/oracle-session-threshold (value: 10 — autopilot mode active)"
+  - "ls -la .acos/state/ (confirmed oracle-session-threshold present, agent-lifecycle.log current)"
+  - "planning/ directory listing (acos-axiom-synthesis modified 2026-07-06, slices 2026-06-19)"
+  - ".claude/skills/acos-axiom-synthesis/prompts/ listing (README.md only — wizard prompts not yet written)"

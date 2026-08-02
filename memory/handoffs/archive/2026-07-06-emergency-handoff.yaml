@@ -1,0 +1,143 @@
+timestamp: "2026-07-06T19:10:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "4116fc1e-6f59-449c-97aa-5493590deca0"
+estimated_tokens: 0
+
+session_summary: |
+  This session (4116fc1e) performed a complete Stage 1 + Stage 2 hardening of the
+  Eternity Protocol non-firing bug (root cause: cmux binary not on the launchd
+  daemon's bare PATH). All fixes are applied and verified — eternity-doctor.sh
+  reports ALL GREEN. The session then manually invoked /acos-eternity-protocol
+  as an end-to-end live test of the fixed in-pane Stop hook path. The test IS
+  in progress: the .inpane-fired-4116fc1e guard was written at 12:49 UTC (Jul 6),
+  and the .eternity-arming-4116fc1e marker exists (armed at 19:09 UTC), meaning
+  the skill fired and created the arming marker but the /clear has NOT yet completed.
+  The watcher log shows the session at ~628k tokens and suppressing re-fires.
+
+current_work:
+  slice_id: "unknown (ad-hoc, no planning/ artifact)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  description: |
+    Primary completed work: Eternity Protocol Stage 1 + Stage 2 full fix (all changes
+    live in ~/Library/Application Support/acos-token-monitor/). Two in-repo files
+    are modified but NOT YET COMMITTED: .claude/scripts/eternity-resume-prepend.sh
+    (twin-disarm double-injection fix) and .claude/skills/acos-eternity-protocol/SKILL.md
+    (pane-scoped session-id derivation). These must be committed before any other work.
+    Outstanding fix still needed: eternity-cmux-inpane.sh Priority-2 arm-before-verify bug.
+
+completed_this_session:
+  - "Stage 1 restore (P0-A/B/C): inject-via-cmux.py threads absolute cmux path through cmux_ping/cmux_send; token-watcher.py prepends /opt/homebrew/bin to os.environ PATH in main() and spawns injector via sys.executable."
+  - "Stage 1 carrier arbitration: new inpane_carrier_active() function gates all 4 cmux dispatch functions — daemon is DETECTION-ONLY when state/.cmux-inpane-inject is present, preventing double-fire race."
+  - "Stage 1 in-pane resume fix: eternity-cmux-resume-inpane.sh arm-after-verify + cmux ping health gate + widened window 5min → 30min."
+  - "Stage 2 (P1-D): backfill plist EnvironmentVariables PATH entry added (includes /opt/homebrew/bin); plist reloaded via launchctl bootout/bootstrap; watchers respawned."
+  - "Stage 2 (P1-E): token-watcher.py class-independent breaker: rc=2/rc=1 now trip the breaker (unit-verified)."
+  - "Stage 2 (P1-F): pane-gate fail-closed on unknown surface; self_terminate preserves cmux-surface state file."
+  - "Stage 2 (P1-G): threshold clamp [50k, 2M] — unit-verified (9999999/0/-5 all fold back to default 400k)."
+  - "Stage 2 (P2-H): .eternity-ALERT + osascript one-shot notification on first hard dispatch failure (verified fired)."
+  - "Stage 2 (P2-I): eternity-doctor.sh plist-PATH check + log-scan for dispatch failures + liveness-aware coverage."
+  - "bin-manifest.sha256 regenerated; watchers respawned after all P1/P2 changes."
+  - "SKILL.md Step 0 session-id derivation rewritten: pane-scoped ($CMUX_SURFACE_ID) + newest-transcript + fail-safe-on-ambiguity + CMUX_ETERNITY_SESSION_ID pin. Both Step 0 and Step 5 blocks updated."
+  - "eternity-resume-prepend.sh: pointer-path now disarms the twin pending-resume-<sid>.txt by moving it to consumed/ (prevents double-injection on the next prompt)."
+  - "eternity-doctor.sh: ALL GREEN confirmed after full Stage 1 + Stage 2 apply."
+  - "acos-xl-update skill COMMITTED (cd56698 + 3 prior commits): SKILL.md + xl_update.py + xl_provenance.py engine, all pushed to both remotes (okoateam + ZiaulKarim-hub)."
+
+files_modified:
+  - path: ".claude/scripts/eternity-resume-prepend.sh"
+    changes: "UNCOMMITTED. Pointer-path now reads session_id_at_write from the pointer file, then moves pending-resume-<sid>.txt + .resume-pending-<sid> + .compact-fired-<sid> to consumed/ — disarming the twin carrier that previously caused double-injection on the next prompt."
+  - path: ".claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: "UNCOMMITTED. Step 0 and Step 5 session-id derivation replaced: racy ls -t | head -1 removed; now uses CMUX_SURFACE_ID-scoped surface-file lookup with freshness (90s) guard and fail-safe abort on ambiguity. CMUX_ETERNITY_SESSION_ID env pin added as override."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/inject-via-cmux.py"
+    changes: "EXTERNAL (not in repo). Absolute cmux path threaded through cmux_ping() and cmux_send(); inpane_carrier_active() gate blocks all 4 dispatch flows when .cmux-inpane-inject is present."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: "EXTERNAL (not in repo). /opt/homebrew/bin prepended to PATH in main(); injector spawned via sys.executable + env=os.environ.copy(); class-independent breaker (rc=2/rc=1 trip it); threshold clamp [50k, 2M]; pane-gate fail-closed; self_terminate preserves cmux-surface; .eternity-ALERT + osascript alert on first hard fault."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-resume-inpane.sh"
+    changes: "EXTERNAL (not in repo). arm-after-verify pattern: touch .autoresume-fired BEFORE send, cmux ping health gate added, on send failure rm .autoresume-fired; window widened 5min → 30min."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-doctor.sh"
+    changes: "EXTERNAL (not in repo). plist-PATH check, dispatch-failure log-scan (§5b), liveness-aware coverage."
+  - path: "~/Library/Application Support/acos-token-monitor/com.acos.token-monitor.plist"
+    changes: "EXTERNAL (not in repo). EnvironmentVariables/PATH key added with /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin; reloaded via launchctl."
+  - path: "memory/handoffs/2026-06-16-emergency-handoff.yaml"
+    changes: "DELETED (moved to archive). Git working tree shows 'D' status."
+  - path: "memory/handoffs/2026-06-21-emergency-handoff.yaml"
+    changes: "DELETED (moved to archive). Git working tree shows 'D' status."
+
+decisions_made:
+  - "Root cause of non-firing was NOT the threshold change (400k → 500k). Root cause: cmux binary not on launchd daemon's bare PATH (only on /opt/homebrew/bin, not /usr/bin:/bin:/usr/sbin:/sbin). Corpus: rc=2 x1391, rc=1 x718 in watcher logs — all silent drops."
+  - "Two-carrier architecture (daemon + in-pane) requires arbitration: daemon is now detection-only when .cmux-inpane-inject exists, preventing the double-/clear race."
+  - "In-pane Stop hook (Priority 2) still has the OLD arm-before-verify bug — touch before blind send (lines 92-93 of eternity-cmux-inpane.sh). This is the OUTSTANDING fix."
+  - "FruitSync (4e1262ce) and Jobsync (6ce85746) have STUCK .inpane-fired guards from Jul 5 fires that never completed /clear. Must be manually cleared."
+  - "FruitSync token indicator missing because the Claude Code process is pre-v2.1.201 (long-lived, never restarted). Fix: fully quit+relaunch that pane's claude process."
+
+blockers:
+  - "eternity-cmux-inpane.sh Priority-2 arm-before-verify bug NOT yet fixed. Lines 92-93 do: touch .inpane-fired BEFORE a blind unverified cmux send. If send fails, guard stays armed forever and the session gets exactly one fire then permanently stalls."
+  - "FruitSync (.inpane-fired-4e1262ce, Jul 5 01:29) and Jobsync (.inpane-fired-6ce85746, Jun 30 16:37) have stuck guards — in-pane Stop hook fired once, /clear never completed, guard blocks all future retries."
+  - ".claude/scripts/eternity-resume-prepend.sh and .claude/skills/acos-eternity-protocol/SKILL.md have uncommitted changes that should be committed and pushed to both remotes."
+  - "This session (4116fc1e) has an .inpane-fired guard (Jul 6 12:49) and an .eternity-arming marker (Jul 6 19:09). The live end-to-end test fired the skill; if /clear completes, the resumed session should confirm the fire+/clear+resume worked."
+
+next_actions:
+  - "FIRST: Confirm the live end-to-end test (this session 4116fc1e) completed successfully — check whether /clear happened and the resumed session starts clean."
+  - "COMMIT the two uncommitted in-repo files: git add .claude/scripts/eternity-resume-prepend.sh .claude/skills/acos-eternity-protocol/SKILL.md && git commit -m 'fix(eternity): pane-scoped session-id + twin-disarm double-injection fix'. Push to both remotes."
+  - "FIX eternity-cmux-inpane.sh Priority-2 arm-before-verify bug: apply the same arm-after-verify pattern from the resume hook — move touch AFTER verified cmux send, add cmux ping health gate, remove guard on failure. This is the last remaining critical eternity bug."
+  - "CLEAR stuck guards: rm state/.inpane-fired-4e1262ce-08a9-41a7-9a7f-0067a744b44c (FruitSync) and rm state/.inpane-fired-6ce85746-82ca-4d68-8039-68c1886547b5 (Jobsync) from ~/Library/Application Support/acos-token-monitor/state/."
+  - "RESTART FruitSync pane: fully quit+relaunch the claude process (pre-v2.1.201 binary, stuck at 779k) to fix missing token indicator and unblock the next fire."
+  - "After Priority-2 fix: regenerate bin-manifest.sha256 and respawn watchers."
+  - "Deferred items (do later): surface re-discovery on rc=5 (residual #6); P2-J per-session heartbeat; in-pane hook alert-on-failure; eternity-resume-prepend.sh path-(3) pane-scoping (residual #10)."
+
+context_for_next_session: |
+  This session completed a massive Eternity Protocol hardening effort spanning 27 confirmed
+  failure modes. The engineering report is at memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md.
+  ALL Stage 1 + Stage 2 items are applied and doctor is ALL GREEN.
+
+  The session was manually invoking /acos-eternity-protocol as a live end-to-end test.
+  The .inpane-fired-4116fc1e guard (Jul 6 12:49) and .eternity-arming-4116fc1e marker (Jul 6 19:09)
+  show the skill fired correctly. If the resume is working, the FIRST thing to do is confirm
+  that /clear completed and this handoff is being read from inside the resumed session.
+
+  TWO uncommitted in-repo changes need committing immediately:
+  1. .claude/scripts/eternity-resume-prepend.sh — twin-disarm fix (moves pending-resume-<sid>.txt
+     to consumed/ when the pointer path fires, preventing double-injection)
+  2. .claude/skills/acos-eternity-protocol/SKILL.md — pane-scoped session-id derivation
+     (replaces the racy ls -t | head -1 with CMUX_SURFACE_ID-scoped lookup + ambiguity abort)
+
+  The ONE remaining eternity bug is in eternity-cmux-inpane.sh Priority-2 (threshold fire,
+  lines 92-93): it does `touch .inpane-fired` BEFORE a blind, unverified `cmux send`. If
+  the send fails for any reason (cmux app down, stale socket, PATH issue), the guard is
+  permanently armed and the session will never fire again. The fix is the same pattern
+  applied to the resume hook: (a) move the touch AFTER a verified send, (b) add a cmux ping
+  health gate before the send, (c) remove the guard on failure. The FruitSync and Jobsync
+  sessions are stuck RIGHT NOW because of this exact bug — their Jul 5 and Jun 30 fires
+  touched the guard but never got /clear through.
+
+  FruitSync (4e1262ce, ~842k tokens per the live log) and Jobsync (6ce85746, ~852k tokens)
+  are both over threshold and stuck. After fixing Priority-2, manually clear their guards:
+  rm ~/Library/Application Support/acos-token-monitor/state/.inpane-fired-{4e1262ce,...,6ce85746,...}
+  FruitSync also needs a full claude process restart (pre-v2.1.201 binary, no token indicator).
+
+  The EXTERNAL files (in ~/Library/Application Support/acos-token-monitor/) are NOT tracked
+  by git and must be edited in place. They have no backup other than what was modified this
+  session. The in-repo SKILL.md and eternity-resume-prepend.sh ARE tracked and need committing.
+
+  Prior work (acos-xl-update, acos-hypercore-ask) is fully committed through cd56698.
+  The branch is acos-deficiency-fixes-2026-06-04.
+
+reconstruction_sources:
+  - "git status --short (working tree: 2 modified + 2 deleted + many untracked handoffs)"
+  - "git log --oneline -25 (top: cd56698 feat(xl-update) through eda1659 chore)"
+  - "git diff --stat HEAD~5..HEAD (xl_update + xl_provenance + hca-resolve + tests)"
+  - "git diff HEAD -- .claude/scripts/eternity-resume-prepend.sh (twin-disarm patch)"
+  - "git diff HEAD -- .claude/skills/acos-eternity-protocol/SKILL.md (pane-scoped derivation)"
+  - "memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md (full 27-failure audit + STATUS block)"
+  - "memory/handoffs/2026-07-02-emergency-handoff.yaml (prior session context: xl-update + hca)"
+  - ".claude/skills/acos-eternity-protocol/SKILL.md (lines 1-220: full protocol + Step 0 new derivation)"
+  - "~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh (full file: arm-before-verify bug at lines 92-93)"
+  - "~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-resume-inpane.sh (full file: arm-after-verify pattern, lines 134-167)"
+  - "~/Library/Application Support/acos-token-monitor/state/ listing (inpane-fired guards: 4116fc1e Jul6 12:49, 4e1262ce Jul5, 6ce85746 Jun30)"
+  - "~/Library/Application Support/acos-token-monitor/state/.eternity-arming-4116fc1e (armed_at: 2026-07-06T19:09:02Z — skill fired this session)"
+  - "~/Library/Application Support/acos-token-monitor/state/.cmux-inpane-inject (present — in-pane mode active)"
+  - "~/Library/Application Support/acos-token-monitor/logs/4116fc1e-6f59-449c-97aa-5493590deca0.log (evt 91, approx=628,912, fire flag held)"
+  - "~/Library/Application Support/acos-token-monitor/logs/4e1262ce-08a9-41a7-9a7f-0067a744b44c.log (evt 183, approx=854,693, fire flag held — FruitSync stuck)"
+  - "~/Library/Application Support/acos-token-monitor/ directory listing (config.yaml, bin/, state/, logs/)"

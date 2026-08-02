@@ -1,0 +1,129 @@
+slice_id: "SLICE-IC-A2-expert-agent-defs"
+story_id: "STORY-A2"
+epic_id: "EPIC-A"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Expert seat agent definitions"
+objective: |
+  Author the seat expert-agent prompt templates that instantiate each numbered Seat as an
+  isolated Task() agent with an independence-first, falsifiable-objection mandate and
+  per-seat diversity config. Deliver the 3-seat subset for Demo 1 -- #1 Credit & Valuation,
+  #3 Accounting, #4 Legal & Structural -- then the full numbered roster for Demo 2: add #2
+  Finance, #5 Insurance & Climate, #6 Sponsor & Fraud-Forensics, #7 Portfolio &
+  Concentration, #8 Strategy, #9 Deal Advocate (NEW), #10 Gap-Hunter/Chair-agent (10
+  templates total). The 9 expert seats (#1-9) are also granted Task(general-purpose) +
+  a standard instruction to spawn their own private 2-4-bot research swarm (mechanism built
+  in SLICE-B3); the procedural Gap-Hunter (#10) does not spawn a swarm.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] Demo 1: seats/credit-valuation.md (#1), seats/accounting.md (#3), seats/legal.md (#4) templates exist"
+  - "[ ] Demo 2: seats/finance.md (#2), seats/insurance.md (#5), seats/fraud.md (#6), seats/portfolio.md (#7), seats/strategy.md (#8), seats/advocate.md (#9, NEW), seats/gap-hunter.md (#10) templates added (10 total)"
+  - "[ ] every VOTING seat template (#1-8) contains the mandatory >=1 falsifiable-objection clause (\"the deal fails if/because ___; evidence present/absent/untested\")"
+  - "[ ] every VOTING seat template (#1-8) contains the procedural-not-evidentiary chair note (chair opinion carries no evidentiary weight)"
+  - "[ ] every VOTING seat template (#1-8) contains the no-agreement-without-new-evidence clause"
+  - "[ ] every VOTING seat template ends with a required opening-verdict JSON schema stub (verdict + >=1 falsifiable objection + Axis S self-score)"
+  - "[ ] seat #1 (Credit & Valuation) template documents its TWO sub-passes (collateral-value, repayment-capacity) and reconciles its NOI figure against #3's"
+  - "[ ] seat #3 (Accounting) template states it OWNS the single normalized-NOI claim consumed by #1 and #2, and that disagreement is a mandatory escalation"
+  - "[ ] seat #4 (Legal & Structural) template scopes its environmental sub-lens (CERCLA / Phase I currency) to legal/financial materiality ONLY -- no full physical/environmental condition-review language"
+  - "[ ] the Fraud seat (#6) carries the \"assume fabricated until externally corroborated\" mandate"
+  - "[ ] the Portfolio seat (#7) carries the fund/loan-tape scope"
+  - "[ ] the Strategy seat (#8) carries a falsifiable \"the deal fails strategically because ___\" clause AND an explicit \"NOT an advocate\" statement (no cheerleading/packaging mandate)"
+  - "[ ] the Deal Advocate seat (#9, NEW) template is voting: false, owned_risk_categories: [], carries the steelman/good-faith-mitigant mandate, states its mitigants pass the SAME falsification gate as objections, and explicitly forbids fabricating an unsupported mitigant -- it does NOT carry the scrutiny falsifiable-objection requirement"
+  - "[ ] the Gap-Hunter seat (#10, renumbered from the former #9) template is explicitly non-voting and carries the round-by-round seat-selection / risk-hunting mandate instead of a scrutiny-vote clause, and is a distinct seat_id/template from the Deal Advocate (#9)"
+  - "[ ] every expert template (#1-9) grants Task(general-purpose) access and carries the standard 'spawn your own private 2-4-bot research swarm, report only to you, capture citations' instruction"
+  - "[ ] the Gap-Hunter template (#10) deliberately does NOT carry the swarm-spawn instruction (procedural seat, no discipline-specific research need)"
+  - "[ ] scripts/resolve_seat_model.sh (wrapper over resolve-agent-model.sh) assigns a model class + persona/temperature per seat"
+  - "[ ] resolve_seat_model.sh emits reduced_independence: true when all seats resolve to one provider"
+  - "[ ] NO template references another seat's output or findings (independence-first is a template invariant); NOI reconciliation between #1 and #3, and objection/mitigant reconciliation between scrutiny seats and the Advocate (#9), both happen at fact-builder/synthesis time, not via a cross-seat read"
+  - "[ ] evidence bundle includes a dry-run resolver transcript listing each seat (by number) -> model/persona + flag, and a template-lint listing which seats carry the swarm-spawn instruction"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-A1-roster-coverage-map"
+      what_it_provides: "roster.yaml (numbered seat list #1-10 + #11-15 optionals, scope, owned_risk_categories) instantiated here as prompt templates"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/seats/{seat}.md"
+  - ".claude/skills/acos-investment-committee/scripts/resolve_seat_model.sh"
+
+files_prohibited:
+  - "context note: fan-out orchestration is owned by SLICE-B2; the per-expert swarm-spawn mechanism itself is owned by SLICE-B3 (this slice only wires the capability/instruction into templates); the fact-builder by SLICE-C1; Mode B turn logic is out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "document-synthesis"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: roster.yaml (SLICE-A1), spec section UX + 4.1, domain-lattice seat-* + method-model-diversity"
+  - "subscription-only; seats are spawned by later slices via Task() -- this slice only authors the templates"
+  - "diversity resolution via resolve-agent-model.sh (existing ACOS infra)"
+  - "final numbered roster: 1 Credit & Valuation, 2 Finance, 3 Accounting, 4 Legal & Structural, 5 Insurance & Climate, 6 Sponsor & Fraud-Forensics, 7 Portfolio & Concentration (fund), 8 Strategy, 9 Deal Advocate (NEW, no vote, defense/steelman role), 10 Gap-Hunter/Chair-agent (renumbered from the former #9, no vote); 11-15 deal-triggered optionals are a separate slice concern beyond this slice's Demo 1/2 scope unless promoted"
+  - "the 9 expert seats (#1-9) get Task(general-purpose) + the standard swarm-spawn instruction; the procedural Gap-Hunter (#10) does not -- this is the template-side half of the SLICE-B3 per-expert research swarm capability"
+
+# Technical requirements
+technical_requirements:
+  - "resolve_seat_model.sh wraps the existing resolve-agent-model.sh to assign per-seat model class + persona/temperature"
+  - "template lint must confirm every voting seat (#1-8) has the 3 required invariant clauses, #9 Deal Advocate has its steelman/no-fabrication clauses instead, and #10 Gap-Hunter has its non-voting clause instead"
+  - "template lint must confirm the swarm-spawn instruction + Task(general-purpose) grant is present on seats #1-9 and absent on seat #10"
+
+# Testing requirements
+testing_requirements:
+  - "QA greps EVERY voting-seat template for the falsifiable-objection clause, the chair no-evidentiary-weight note, and the no-agreement-without-evidence clause"
+  - "QA confirms Fraud (#6) has the assume-fabricated mandate and Portfolio (#7) has fund/loan-tape scope"
+  - "QA confirms Accounting (#3) states NOI ownership and Credit & Valuation (#1) reconciles against it"
+  - "QA confirms Legal & Structural (#4) scopes its environmental sub-lens to legal/financial materiality only"
+  - "QA confirms Strategy (#8) has both the falsifiable-objection clause and the explicit not-an-advocate statement"
+  - "QA confirms the Deal Advocate (#9) is voting: false, carries the steelman/good-faith-mitigant and same-falsification-gate clauses, and does NOT carry the scrutiny falsifiable-objection requirement"
+  - "QA confirms Gap-Hunter (#10) is explicitly non-voting and is a distinct seat/template from the Deal Advocate (#9)"
+  - "QA confirms the swarm-spawn instruction is present on seats #1-9 and absent on seat #10"
+  - "QA confirms NO template references another seat's findings"
+  - "QA runs the resolver and confirms the reduced-independence flag fires when forced single-provider"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): read each template directly rather than
+  trusting a summary claim; reject if any seat is missing a required clause or leaks a
+  cross-seat reference.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-A2-expert-agent-defs.md by
+  acos-preeng-classic Step 5; architect to review before execution.
+  UPDATED 2026-07-08: reconciled to the final numbered roster -- Demo 1 trio changed from
+  (Credit, Valuation, Legal) to (#1 Credit & Valuation, #3 Accounting, #4 Legal &
+  Structural) because Credit and Valuation merged into seat #1; Demo 2 total moved from 8 to
+  9 templates with the addition of #2 Finance, #8 Strategy, and #9 Gap-Hunter/Chair-agent
+  (renamed from the former combined "Chair/Gap-Hunter" concept, same non-voting role).
+  UPDATED 2026-07-08 (delta 2): added the Deal Advocate as a NEW seat #9 (structurally
+  separate, non-voting, steelmans the deal / answers objections with good-faith mitigants
+  under the same falsification gate as objections) and renumbered the former #9 Gap-Hunter to
+  #10; Demo 2 total moved from 9 to 10 templates. Also added the per-expert private research
+  swarm capability: seats #1-9 (the 8 voting seats + the Deal Advocate) are granted
+  Task(general-purpose) plus a standard "spawn your 2-4 research bots, report only to you"
+  instruction, wired to the swarm-spawn mechanism built in the new SLICE-B3; the procedural
+  Gap-Hunter (#10) deliberately does not get this capability.

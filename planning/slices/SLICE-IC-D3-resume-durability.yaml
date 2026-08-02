@@ -1,0 +1,91 @@
+slice_id: "SLICE-IC-D3-resume-durability"
+story_id: "STORY-D2"
+epic_id: "EPIC-D"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Resume from manifest + round-status (survives /clear + Eternity)"
+objective: |
+  Make a Mode B deliberation resumable -- re-read manifest.yaml + round-status.yaml and
+  re-enter at the last-closed round after /clear, crash, or Eternity Protocol handoff, with the
+  transcript-on-disk as the sole source of truth.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] scripts/resume.py detects an existing session on invocation with an existing --session/deal"
+  - "[ ] resume.py reads manifest.status + current_round + round-status.yaml"
+  - "[ ] on status: paused_for_human or an incomplete round, resume.py rebuilds context from disk (last-K turns verbatim + rolling synthesis) and re-enters at current_round"
+  - "[ ] killing a session mid-round and running resume.py re-enters at the correct last-closed round (recomputed from round-status.yaml)"
+  - "[ ] the full prior transcript is present after resume with zero duplicated and zero lost turns"
+  - "[ ] the resume path reads ONLY disk -- conversation memory is never consulted"
+  - "[ ] a stale-handoff git-state cross-check is performed on resume (per the Eternity stale-handoff lesson)"
+  - "[ ] evidence bundle includes a before/after transcript pair across a simulated /clear + a no-duplicate-turn proof"
+
+# Dependencies
+dependencies:
+  slices:
+    - slice_id: "SLICE-IC-D1-moderator-loop-transcript"
+      what_it_provides: "the on-disk transcript.md + turn JSONs that resume.py reconstructs context from"
+      status: "complete"
+    - slice_id: "SLICE-IC-D2-tally-chair-hitl"
+      what_it_provides: "round-status.yaml / stance-schema turns that resume must reconstruct correctly"
+      status: "complete"
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/scripts/resume.py"
+  - ".claude/skills/acos-investment-committee/SKILL.md"
+
+files_prohibited:
+  - "context note: autopilot detection (SLICE-F1) and new deliberation logic (SLICE-D1/D2) are out of scope"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "READ-ONLY inputs: manifest.yaml, round-status.yaml, transcript.md, turn JSONs, domain-lattice pattern-transcript-on-disk; CLAUDE.md Eternity/handoff notes"
+  - "disk is authoritative; if a resume ever reads state from conversation memory it is a defect; cross-check git/handoff state on resume (per Eternity stale-handoff lesson); subscription-only"
+
+# Technical requirements
+technical_requirements:
+  - "resume must never duplicate or lose a turn across the resume boundary"
+  - "context reconstruction uses last-K verbatim + rolling synthesis, matching the D1 loop's own windowing"
+
+# Testing requirements
+testing_requirements:
+  - "QA kills a fixture session mid-round, runs resume.py, and confirms re-entry at the last-closed round (recomputed from round-status.yaml, not trusted from a log)"
+  - "QA diffs the turn set before/after resume for zero duplicates and zero losses"
+  - "QA greps the resume path to confirm it reads ONLY disk, never prior conversation context"
+  - "QA confirms a stale-handoff git-state cross-check is performed"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "M"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): reject on wrong re-entry round,
+  duplicated/lost turns, or any reliance on conversation memory; re-entry point must be
+  independently recomputed by QA from round-status.yaml.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-D3-resume-durability.md by
+  acos-preeng-classic Step 5; architect to review before execution.

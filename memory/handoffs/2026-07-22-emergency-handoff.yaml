@@ -1,0 +1,146 @@
+timestamp: "2026-07-22T15:05:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Built and shipped a new ACOS skill, `/acos-research-riffs`, at
+  `.claude/skills/acos-research-riffs/` (25 files, confirmed on disk, all
+  untracked/uncommitted). It is conversational deep research with guardrails: a
+  dynamically GENERATED panel of research agents pre-briefs itself into
+  claim-level dossiers on disk before conversation starts; the conversation then
+  answers only from those dossiers with categorical confidence labels; a
+  question the corpus doesn't support abstains and dispatches a probe rather than
+  improvising; a moderator surfaces findings nobody asked about; every turn
+  appends to an append-only ledger; and a formal cited report compiles from that
+  ledger on request. The engine is TypeScript run directly by `bun` (no build
+  step). Also renamed `/deep-research` to `/acos-deep-research` and updated all
+  live cross-references, and — as the last item of the session — added a live
+  browser "research room" (mirroring the Investment Committee skill's committee
+  room) that the user had explicitly asked for after noticing its absence.
+  Nothing from this session is committed to git; branch is
+  acos-deficiency-fixes-2026-06-04.
+
+current_work:
+  slice_id: "unknown (no formal SLICE-* file exists for this build; tracked via planning/acos-research-riffs/ARCHITECTURE.md instead)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+
+completed_this_session:
+  - "Built .claude/skills/acos-research-riffs/ end-to-end: SKILL.md protocol (phases P0 preflight -> P1 scope -> P2 panel research -> P3 coverage gate -> P4 live riff -> P5 report), a TypeScript CLI (scripts/riff.ts, 20 commands) and 8 lib modules (session, ledger, coverage, claims, panel, tree, report, room, util), plus 8 charter/template files and a riff-researcher agent (shipped but deliberately NOT installed into .claude/agents/, since that directory requires human approval)."
+  - "Verified engine correctness: `bun .claude/skills/acos-research-riffs/scripts/test-riff.ts` -> 138 assertions, 0 failed (re-ran and confirmed live, not taken on trust)."
+  - "Verified live-session claim by direct disk inspection: session `.acos/riffs/2026-07-22-which-test-runner-should-a-bun-based-typescript-cli-use/` has manifest.json phase=complete, 172 claims across dossiers (`cat dossiers/*.claims.jsonl | wc -l`), 26 ledger entries, and report/REPORT.md citing 59 unique claim ids via 168 total citation instances (CITATIONS.md's own mechanical-audit line explicitly states '168 claim citations'). Ledger entry L-0025 states in its own words: 'Citation verification PASSED with zero regressions after three rounds. Report delivered' — confirms the session's '3 rounds ending PASS' claim directly from the append-only source of truth."
+  - "Found and flagged (see blockers) that report/CITATIONS.md on disk is a stale ROUND-1 snapshot (verdict: FAIL, 3 unsupported statements, timestamped 03:43) that predates the final REPORT.md (timestamped 03:53, i.e. written 10 min later after rounds 2-3 fixed everything). The ledger (L-0024, L-0025) is the authoritative record of the final PASS state; the CITATIONS.md file itself was never overwritten with a round-3 rerun."
+  - "Verified the browser room feature is wired: `case \"room\":` at .claude/skills/acos-research-riffs/scripts/riff.ts:784; scripts/riff-server.ts exists (Bun.serve + SSE, explicitly modeled on the IC skill's ic-server.py per its own header comment, but recomputes state from disk on every change rather than trusting a maintained state-mirror file); scripts/lib/room.ts and scripts/room/room.html exist. Confirmed against the OTHER live session, the text-to-speech riff at `.acos/riffs/2026-07-22-which-self-hostable-text-to-speech-tts-engine-should-okoa-s-/` (manifest: phase=riff, gate_passed=true, 272 claims counted directly from its dossiers, and a `room.port` file (51732) present on disk — confirming the room server was actually launched against this session, not just built)."
+  - "Renamed `.claude/skills/deep-research/` to `.claude/skills/acos-deep-research/` via git mv (shows as `RM` in git status) and updated its SKILL.md frontmatter `name:` field to `acos-deep-research`. Verified exactly 6 live cross-reference lines were updated to point at the new name, across 3 files: document-processing/SKILL.md (1 line), knowledge-graph/SKILL.md (2 lines), prism-research/SKILL.md (3 lines) — confirmed via `git diff` on each file. Four OTHER modified SKILL.md files that appear in git status (acos-axiom-synthesis, acos-complete, acos-resurrect, acos-xl-update) were checked and contain NO deep-research references — their modifications are unrelated leftover work from other sessions, not part of this rename."
+  - "Wrote the deep-research report on the riffs architecture itself: research/acos-research-riffs-architecture-deep-research-2026-07-21.md (exists, confirmed)."
+  - "Wrote the build spec + as-built record: planning/acos-research-riffs/ARCHITECTURE.md (482 lines; sections 1-9 spec, section 10 build-order checklist all marked DONE, section 11 'As-built notes (2026-07-22)' documents 6 deliberate spec deviations and all 13 defects found+fixed during live-session verification, in detail, with regression-test references for each)."
+
+files_modified:
+  - path: ".claude/skills/acos-research-riffs/ (25 files, new, untracked)"
+    changes: "Entire new skill: SKILL.md, scripts/riff.ts (CLI), scripts/riff-server.ts (room server), scripts/lib/{claims,coverage,ledger,panel,report,room,session,tree,util}.ts, scripts/test-riff.ts, scripts/room/room.html, agents/{README,riff-researcher}.md, templates/ (8 charter/template/example files)."
+  - path: ".claude/skills/deep-research/SKILL.md -> .claude/skills/acos-deep-research/SKILL.md"
+    changes: "git mv (rename detected as RM in git status); frontmatter name: field updated to acos-deep-research."
+  - path: ".claude/skills/document-processing/SKILL.md"
+    changes: "1 line: /deep-research -> /acos-deep-research cross-reference."
+  - path: ".claude/skills/knowledge-graph/SKILL.md"
+    changes: "2 lines: /deep-research -> /acos-deep-research cross-references."
+  - path: ".claude/skills/prism-research/SKILL.md"
+    changes: "3 lines: /deep-research -> /acos-deep-research cross-references."
+  - path: "planning/acos-research-riffs/ARCHITECTURE.md"
+    changes: "New file, 482 lines: full build spec plus As-built notes section documenting 13 defects found during live verification and 6 deliberate spec deviations. NOTE: its 'Files:' manifest (end of section 11) does not list riff-server.ts, lib/room.ts, or scripts/room/room.html — it was written before the browser-room feature (the session's literal last work item) was added, so it is one feature stale. See next_actions."
+  - path: "research/acos-research-riffs-architecture-deep-research-2026-07-21.md"
+    changes: "New deep-research report backing the architecture (also research/ contains a separate, pre-existing acos-domain-finder-deep-research-2026-07-21/ bundle and other older research artifacts unrelated to this session)."
+  - path: ".acos/riffs/2026-07-22-which-test-runner-should-a-bun-based-typescript-cli-use/ (whole session dir)"
+    changes: "Complete, phase=complete. 172 claims / 26 ledger entries / 168 claims cited in final REPORT.md / gate_passed=false (coverage gate did NOT pass — 5 of 8 dimensions left thin by budget; report leads with this per design)."
+  - path: ".acos/riffs/2026-07-22-which-self-hostable-text-to-speech-tts-engine-should-okoa-s-/ (whole session dir)"
+    changes: "In-progress research session (phase=riff, gate_passed=true, 272 claims), used as the live visual-verification target for the new browser room feature. No report/ compiled yet for this session (report dir exists but is empty) — its purpose this session was room verification, not report completion."
+
+decisions_made: []
+# No memory/decisions/ entry was written for this session. Most recent decision
+# file on disk is memory/decisions/2026-07-05-eternity-protocol-nonfiring-audit.md
+# (unrelated, older). The 13 as-built defect fixes and 6 deviation rationales are
+# recorded instead in planning/acos-research-riffs/ARCHITECTURE.md §11, which
+# functions as this session's decision record.
+
+blockers:
+  - "None functional. One documentation-freshness gap: planning/acos-research-riffs/ARCHITECTURE.md §11's file manifest predates the browser-room addition and should be updated to list scripts/riff-server.ts, scripts/lib/room.ts, and scripts/room/room.html, ideally with a 14th as-built note describing the room feature and how it was verified against the TTS session."
+  - "report/CITATIONS.md inside the test-runner riff session is a stale round-1 FAIL snapshot never overwritten with the round-3 PASS result (the PASS is only recorded in ledger.jsonl entries L-0024/L-0025). Not a functional bug — the ledger is the designed source of truth per the skill's own append-only-ledger invariant (I3) — but a reader who opens CITATIONS.md alone without cross-checking the ledger would see a false FAIL and could be misled. Worth a nice-to-have: either regenerate CITATIONS.md after the final round, or add a pointer at its top noting the ledger supersedes it."
+  - "Could not independently reproduce the 'TypeScript type-checks clean under strict' claim: no tsconfig.json exists anywhere in the skill directory or repo root, so there is no committed config to run `tsc --noEmit` against as the session presumably did. An ad-hoc `bunx tsc --noEmit --strict ...` invocation without a tsconfig (and without @types/node / @types/bun) produced only expected environmental errors (missing Node/Bun globals, .ts-extension import errors) — these are artifacts of my invocation lacking proper compilerOptions, not evidence the original claim is false. Flagging as unverified rather than false."
+
+next_actions:
+  - "If desired: update planning/acos-research-riffs/ARCHITECTURE.md §11 to add the browser-room files to the 'Files:' manifest and a 14th as-built note (room feature, IC-mirroring design rationale from riff-server.ts's own header comment, and verification against the TTS session's room.port)."
+  - "No known outstanding functional work on the skill itself — per session context this was explicitly stated as complete and tested."
+  - "Not yet built: the ~20-query regression corpus for scoring future riff sessions (ARCHITECTURE.md §10 build-order item 6 marks this explicitly deferred to v1.1, 'which cannot be built before real sessions exist to draw it from' — two real sessions now exist on disk (test-runner, TTS) that could seed it)."
+  - "A git commit was offered during the session but not made; the user has not asked for one. Do not commit unprompted. Note the working tree also carries substantial unrelated uncommitted work from other sessions (acos-investment-committee, acos-axiom-synthesis, resurrection-protocol scripts, acos-reverse-cleanroom, rc-* agents, etc.) — any future commit here should be scoped carefully, not a blanket `git add -A`."
+  - "The two live .acos/riffs/ sessions are real, useful artifacts (not throwaway test fixtures) — the TTS session in particular is still mid-research (phase=riff, not complete) and may be resumed via `riff resume` if the user wants to continue that research thread."
+
+context_for_next_session: |
+  This was a clean, self-contained skill-build session with no loose ends on the
+  actual deliverable. `/acos-research-riffs` is fully built, its own 138-assertion
+  test suite passes (re-verified live during this handoff, not taken on trust),
+  and it has been exercised twice for real against live web research (the
+  bun-test-runner question, complete end to end including a 3-round citation
+  verification loop that ended PASS; and the OKOA TTS-engine question, still
+  in-progress and used specifically to visually verify the new browser room
+  against a real running session). The architecture doc at
+  planning/acos-research-riffs/ARCHITECTURE.md is unusually rich for a handoff
+  audience: its §11 as-built notes narrate all 13 defects found during live
+  verification with the regression tests each produced, and are worth reading
+  directly rather than re-deriving from code if the next session needs to
+  understand *why* the engine looks the way it does (e.g. why coverage counters
+  distinguish `capped` from `thin` dimensions, why the sufficiency router has a
+  0.25 strength floor, why `riff claims ingest` reads agent-written files in
+  place instead of taking a separate JSON array). The one small piece of
+  bookkeeping debt is that ARCHITECTURE.md's file manifest was written before the
+  session's final task (the browser room) landed, so it's missing three files by
+  name — a five-minute doc fix, not a functional gap. The only other thing worth
+  a next session's attention is purely a hygiene note, not a bug: the
+  CITATIONS.md file for the completed test-runner session still shows a stale
+  round-1 FAIL verdict on disk even though the ledger conclusively records a
+  later round-3 PASS — anyone opening that one file in isolation, without
+  cross-checking ledger.jsonl, would draw the wrong conclusion about that
+  report's citation integrity. Separately and unrelated to this build: the repo's
+  working tree carries a large amount of OTHER uncommitted work from prior
+  sessions (Investment Committee committee-room, axiom-synthesis pipeline,
+  resurrection-protocol registry/enroll/close scripts, reverse-cleanroom agents)
+  that has nothing to do with research-riffs — none of it was touched this
+  session, and no commit should be assumed to cover it.
+
+reconstruction_sources:
+  - "git status --short"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "find .claude/skills/acos-research-riffs -type f (all 25 files enumerated)"
+  - "find planning/acos-research-riffs -type f"
+  - "find .acos/riffs -maxdepth 1 -type d (2 live session directories)"
+  - "find .acos/riffs/2026-07-22-which-test-runner-should-a-bun-based-typescript-cli-use -maxdepth 2"
+  - "find .acos/riffs/2026-07-22-which-self-hostable-text-to-speech-tts-engine-should-okoa-s- -maxdepth 2"
+  - "ls -lt .acos/evidence/ (no entries from this session's date)"
+  - "ls -lt memory/decisions/ (no entries from this session's date)"
+  - "ls -lt memory/handoffs/*.yaml *.md, excluding *.resume.md (no prior handoff from today besides this agent's own stub)"
+  - "ls -la .acos/state/"
+  - "find .claude/skills/deep-research .claude/skills/acos-deep-research -type f"
+  - "find research -type f"
+  - "git status --short -- .claude/skills/deep-research .claude/skills/acos-deep-research research"
+  - "cat .acos/riffs/.../manifest.json (both sessions)"
+  - "cat .acos/riffs/2026-07-22-which-test-runner.../ledger.jsonl (wc -l, and grep for citation/verify/report entries incl. full text of L-0006, L-0008, L-0009, L-0015, L-0018, L-0020, L-0022 through L-0026)"
+  - "cat .acos/riffs/2026-07-22-which-test-runner.../dossiers/*.claims.jsonl | wc -l (172)"
+  - "cat .acos/riffs/2026-07-22-which-self-hostable-tts.../dossiers/*.claims.jsonl | wc -l (272)"
+  - "head + grep on .acos/riffs/2026-07-22-which-test-runner.../report/REPORT.md (citation marker format and count: 59 unique claim ids, 168 total citation instances)"
+  - "head on .acos/riffs/2026-07-22-which-test-runner.../report/CITATIONS.md (verdict: FAIL, 3 unsupported, timestamped round 1)"
+  - "ls -la .../report/ for both sessions (mtimes)"
+  - "cat .acos/riffs/2026-07-22-which-self-hostable-tts.../room.port (51732)"
+  - "bun .claude/skills/acos-research-riffs/scripts/test-riff.ts (re-run live: 138 passed, 0 failed)"
+  - "bunx tsc --noEmit -p . and an ad-hoc strict invocation (no tsconfig.json found; inconclusive, noted as such)"
+  - "grep for 'room' subcommand wiring in .claude/skills/acos-research-riffs/scripts/riff.ts (case \"room\": at line 784)"
+  - "head .claude/skills/acos-research-riffs/scripts/riff-server.ts"
+  - "head .claude/skills/acos-research-riffs/SKILL.md"
+  - "Read planning/acos-research-riffs/ARCHITECTURE.md in full (482 lines), including section header list and lines 224-482 (build order + as-built notes + files manifest)"
+  - "grep -rl 'acos-deep-research' across .md/.yaml repo-wide, and grep for stray old '/deep-research' references"
+  - "git diff on document-processing/SKILL.md, knowledge-graph/SKILL.md, prism-research/SKILL.md, acos-axiom-synthesis/SKILL.md, acos-complete/SKILL.md, acos-resurrect/SKILL.md, acos-xl-update/SKILL.md (isolated exactly which files/lines touch deep-research)"
+  - "head .claude/skills/acos-deep-research/SKILL.md (confirmed frontmatter name: field)"

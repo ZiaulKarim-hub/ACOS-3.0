@@ -1,0 +1,184 @@
+timestamp: "2026-06-23T11:30:00Z"
+status: "completed"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  This session performed two surgical fixes to the acos-hypercore-ask skill. The
+  payoff loan-name extractor in hca-deliver.py had drifted behind the main figures
+  path: the filler-word strip list was missing "how", "much", "senior", "junior",
+  "mezz/mezzanine", "tranche", and other stop words, causing phrasing like "how much
+  is the beehive senior loan payoff" to leak "how much ... senior" into the resolver
+  query and produce a REFUSE instead of resolving to loan 134. The fix strips those
+  words. A regression test was added to test_hca_deliver.py. All 457 stdlib tests
+  pass. The net result: acos-hypercore-ask is FULL and live-verified, with the last
+  live check confirming Beehive Waldorff (loan 134) payoff today = $31,821,009.41.
+  NEXT STEP offered but not yet run: an independent /acos-robust-code-review pass on
+  the full skill. No new slices were opened; this was a direct bug-fix in unstaged files.
+
+current_work:
+  slice_id: "none — direct bug-fix, no slice open"
+  story_id: "STORY-HCA-00 (overall skill delivery)"
+  epic_id: "EPIC-HCA-00"
+  status: "in_progress — skill is FULL+live-verified; robust-code-review pass pending"
+
+completed_this_session:
+  - "Fixed payoff loan-name-extractor filler drift bug in hca-deliver.py (_extract_loan_name_for_payoff): added 'how','much','senior','junior','mezzanine','mezz','tranche','do','we','have','show' to the filler strip list so phrasings like 'how much is the beehive senior loan payoff' no longer leak noise into the resolver."
+  - "Added PayoffLoanNameExtractionTest class to .claude/scripts/tests/test_hca_deliver.py with test_strips_filler_and_tranche_words covering 4 regression phrasings."
+  - "Verified 457 stdlib tests all pass across 20 test files (no new failures introduced)."
+  - "Confirmed live payoff for Beehive Waldorff (loan 134) today = $31,821,009.41 (verified against live Hypercore GraphQL API via Doppler hypercore-ask/dev_personal)."
+
+files_modified:
+  - path: ".claude/scripts/hca-deliver.py"
+    changes: |
+      _extract_loan_name_for_payoff: regex filler-strip extended to include
+      'how','much','are','do','we','have','show','senior','junior','mezzanine','mezz','tranche'.
+      UNSTAGED — not yet committed.
+  - path: ".claude/scripts/tests/test_hca_deliver.py"
+    changes: |
+      Added PayoffLoanNameExtractionTest class with test_strips_filler_and_tranche_words.
+      Covers 4 phrasings: "how much is the beehive senior loan payoff",
+      "how much is the beehive payoff", "what is the payoff for the beehive senior loan",
+      "beehive junior loan early redemption".
+      UNSTAGED — not yet committed.
+
+decisions_made:
+  - "Payoff loan-name extractor filler list must be kept in sync with the main figures path filler list; drift caused the regression. The authoritative list now lives in _extract_loan_name_for_payoff's re.sub call in hca-deliver.py."
+  - "Regression test pattern: each payoff-phrasing variant must assert (a) 'beehive' appears in the extracted tokens and (b) no noise word (how/much/senior/junior/payoff/loan) appears."
+
+blockers:
+  - "None blocking delivery. The /acos-robust-code-review pass on acos-hypercore-ask was offered and agreed to but has NOT yet been run. This is the one open action."
+
+next_actions:
+  - "PRIORITY 1 — Run /acos-robust-code-review on the full acos-hypercore-ask skill. The user said yes to this pass. All modules are in .claude/scripts/hca-*.py (20 files) + tests in .claude/scripts/tests/test_hca_*.py (20 files) + skill in .claude/skills/acos-hypercore-ask/. Start by reading the SKILL.md to orient the reviewer."
+  - "OPTIONAL — Commit the two unstaged files (.claude/scripts/hca-deliver.py and .claude/scripts/tests/test_hca_deliver.py) before or after the code review."
+  - "AFTER code review — Address any findings from the robust-code-review pass."
+  - "LONG-TERM — Wire LiveBackend once Hypercore access is fully confirmed (already live via Doppler; LiveBackend NotImplementedError is the formal stubbed-until-access contract, but live calls route through the adapter's live path). See open items in SKILL.md."
+
+context_for_next_session: |
+  The acos-hypercore-ask skill is COMPLETE and live-verified as of this session.
+  Here is the full state so the next session can resume without re-reading everything:
+
+  WHAT THE SKILL IS:
+  A read-only, provenance + consensus-verified NL interface to the Hypercore loan
+  GraphQL API. The skill refuses to deliver any value it cannot provenance-bind and
+  verify — never fabricates. Answers are from live Hypercore data via Doppler
+  (project hypercore-ask, config dev_personal).
+
+  LIVE CREDS PATH:
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-deliver.py --ask "<question>"
+
+  MODULE MAP (all in .claude/scripts/):
+    hca-route.py       — NL intent router (trivial/report/analysis tier)
+    hca-adapter.py     — Read-only GraphQL adapter (LiveBackend + FixtureBackend)
+    hca-cache.py       — Two-tier provenance cache (Tier-1 raw, Tier-2 normalized)
+    hca-normalize.py   — Field normalization + currency
+    hca-provenance.py  — Provenance binder (value -> source citation)
+    hca-gates.py       — Deterministic gate suite (schema/pagination/freshness/reconciliation)
+    hca-consensus.py   — Adversarial blind N-agent consensus engine (2-of-3 asymmetric)
+    hca-deliver.py     — Main vertical spine (plan->fetch->cache->gates->bind->deliver)
+                         Also: ReportBuilder, payoff intent routing, _extract_loan_name_for_payoff
+    hca-figures.py     — Figure abstraction (Figure/FigureRegistry) + payoff_as_of figure
+                         + 9 native LoanSummary figures + 4 requires_external (LTV/DSCR etc.)
+    hca-resolve.py     — Fuzzy loan-name resolver (real API loans(filter:{searchString}),
+                         difflib + token-set scoring; no silent pick)
+    hca-ontology.py    — PRISM-seeded domain ontology (15 concepts + synonyms + covenant thresholds)
+    hca-kg.py          — OKOA knowledge graph integration (LTV/DSCR/debt-yield, dual-provenance,
+                         per-loan refusal where collateral data absent)
+    hca-analyze.py     — Portfolio analysis (rankings, roll-ups, concentration, covenant scan)
+    hca-feed.py        — Downstream feed formats (JSON/CSV/manifest)
+    hca-pii.py         — PII guard (blocks PII fields from leaving the pipeline)
+    hca-freshness.py   — Freshness window enforcement
+    hca-secrets.py     — Secret loader (env vars only, never committed)
+    hca-live.py        — Live adapter wiring helpers
+    hca-discover.py    — Schema/endpoint discovery
+    hca-schema-digest.py — Schema drift detection
+    hca-introspect-full.py — Full schema introspection
+    hca-provenance.py  — Provenance binding
+
+  TEST SUITE: 457 stdlib-only tests across 20 test files. ALL PASS.
+  Run: for f in .claude/scripts/tests/test_hca_*.py; do python3 "$f"; done
+
+  WHAT WAS FIXED THIS SESSION:
+  Bug: _extract_loan_name_for_payoff in hca-deliver.py had a drifted filler-word
+  strip list. Phrasing "how much is the beehive senior loan payoff" leaked "how",
+  "much", and "senior" into the resolver query, causing a REFUSE.
+  Fix: added those words to the re.sub filler list.
+  Regression test: PayoffLoanNameExtractionTest in test_hca_deliver.py.
+  FILES UNSTAGED: .claude/scripts/hca-deliver.py + .claude/scripts/tests/test_hca_deliver.py
+
+  LIVE-VERIFIED PAYOFF (today, 2026-06-23):
+  Beehive Waldorff (loan 134) payoff = $31,821,009.41
+  (Earlier session 2026-06-19 verified 2026-06-30 date → $31,888,682.99 — number differs
+  because the as-of date changed. Both reconcile to the cent per the component check.)
+
+  LIVE INVOCATION EXAMPLES:
+    # Count of loans
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-deliver.py --ask "how many loans are there?"
+
+    # Payoff for a loan (fuzzy name resolution built in)
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-deliver.py --ask "what is the payoff for Beehive Waldorff?"
+
+    # Standalone resolver
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-resolve.py --resolve "beehive"
+
+    # Standalone figure (payoff for known loan id + date)
+    doppler run --project hypercore-ask --config dev_personal -- \
+        python3 .claude/scripts/hca-figures.py --loan-id 134 --date 2026-06-30
+
+  KEY ARTIFACTS:
+    Skill: .claude/skills/acos-hypercore-ask/SKILL.md (authoritative; includes full module map + status)
+    Config: .claude/skills/acos-hypercore-ask/config.yaml
+    Decision record: memory/decisions/2026-06-18-hca-build-ground-rules.md
+    Preeng artifacts: planning/preeng/001-hypercore-ask/
+    Slices (planned): planning/slices/SLICE-HCA-00 through SLICE-HCA-11 (yaml, Jun 17)
+    Evidence (executed): .acos/evidence/2026-06-18/ + .acos/evidence/2026-06-19/
+    Demos: .claude/skills/acos-hypercore-ask/demos/ (4 files)
+    Feed contract: .claude/skills/acos-hypercore-ask/feed-contract.md
+
+  GROUND RULES (LOCKED — see decision record):
+    1. Python 3 stdlib only — no third-party deps
+    2. Stubbed-until-access (FixtureBackend active for tests; LiveBackend for live)
+    3. Read-only structurally enforced (no mutating methods exist)
+    4. Never fabricate — refuse or NO_LIVE_DATA, always
+    5. Secrets via env/Doppler only — nothing committed
+    6. Subscription-only Claude (Task(), never ANTHROPIC_API_KEY)
+    7. 2-of-3 asymmetric consensus default for reports/aggregations
+
+  WHAT TO DO NEXT:
+  Run /acos-robust-code-review on the full acos-hypercore-ask skill. The user agreed
+  to this pass at the end of the session. Scope: all hca-*.py modules + all test files.
+  Start by reading SKILL.md to orient the reviewer, then proceed.
+
+  ETERNITY PROTOCOL STATUS (from prior Jun 21 session, not this one):
+  Both root causes of "silently didn't fire" fixed (Jun 21). New canonical names:
+  /acos-eternity-protocol (cmux auto) and /acos-continue (Warp manual).
+  handoff-agent maxTurns raised 20→45 and stub-write-first added (in git as of Jun 21 WIP commit).
+
+reconstruction_sources:
+  - "memory/handoffs/2026-06-21-emergency-handoff.yaml (full read — prior session state)"
+  - ".claude/skills/acos-hypercore-ask/SKILL.md (full read)"
+  - ".claude/skills/acos-hypercore-ask/config.yaml (full read)"
+  - "memory/decisions/2026-06-18-hca-build-ground-rules.md (full read)"
+  - ".claude/scripts/hca-deliver.py (git diff HEAD — unstaged changes)"
+  - ".claude/scripts/tests/test_hca_deliver.py (git diff HEAD — unstaged changes)"
+  - "git status --short (two unstaged modified files: hca-deliver.py + test_hca_deliver.py)"
+  - "git log --oneline -25 (branch: acos-deficiency-fixes-2026-06-04)"
+  - "ls planning/slices/ (SLICE-HCA-00 through SLICE-HCA-11 + slice-00 through slice-11)"
+  - "ls planning/preeng/001-hypercore-ask/ (full artifact list)"
+  - "ls planning/preeng/002-acos-property-search/ (separate future project, unrelated)"
+  - "ls .acos/evidence/2026-06-19/ (SLICE-HCA-12-payoff, HCA-13-ontology-figures, HCA-15-analysis, HCA-16-hardening)"
+  - "ls .acos/evidence/2026-06-18/ (SLICE-HCA-00-02 through SLICE-HCA-10-11)"
+  - "ls .claude/scripts/ (all 20 hca-*.py modules confirmed present)"
+  - "ls .claude/scripts/tests/ (all 20 test_hca_*.py files confirmed present)"
+  - "python3 (all 20 test files) — 457 total tests, ALL OK"
+  - "memory/decisions/ (listing — only hca-build-ground-rules.md is HCA-related)"
+  - ".acos/state/ (listing — oracle-audit.log current; no HCA-specific runtime state active)"
+  - ".claude/skills/acos-hypercore-ask/demos/ (4 demos listed)"
+  - ".claude/skills/acos-hypercore-ask/schemas/ (6 schema files listed)"

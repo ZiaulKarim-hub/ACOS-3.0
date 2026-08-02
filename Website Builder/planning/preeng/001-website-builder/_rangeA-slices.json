@@ -1,0 +1,666 @@
+[
+  {
+    "id": "S24-doc-schema-and-canonical-serialisation",
+    "epic": "E7",
+    "story": "ST-08",
+    "title": "Document schema and canonical serialisation",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Define the scene graph as per-page documents plus a project record, serialised canonically so a re-serialise is always a zero diff.",
+    "depends_on": [
+      "S03-o8-substrate-spike",
+      "S21-token-compiler-dtcg-and-forge"
+    ],
+    "fr_ids": [
+      "FR-070",
+      "FR-074"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "section 12.17-A98",
+        "statement": "Re-serialising every doc-owned JSON file produces a zero diff; a file with collapsed arrays or reordered keys fails the pre-commit hook and purity gate 8.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "section 12.17-A92",
+        "statement": "A doc containing an upward override key is rejected by the schema validator with a message naming the desktop-down rule.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S24-1",
+        "statement": "No file named layout.json is created anywhere; the canonical names are used throughout (NA-07).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S24-2",
+        "statement": "Absent optional keys are omitted entirely rather than written null, so the key-presence override test stays valid.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ3"
+    ],
+    "evidence_refs": [
+      "EL-071"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S24-doc-schema-and-canonical-serialisation.md",
+    "_epic": {
+      "id": "E7",
+      "title": "Document model and pure renderer"
+    },
+    "_story": {
+      "id": "ST-08",
+      "title": "One document, one renderer, one deterministic output"
+    }
+  },
+  {
+    "id": "S25-pure-renderer-and-resolution-policy",
+    "epic": "E7",
+    "story": "ST-08",
+    "title": "Pure, total renderer with the normative resolution policy",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Render from documents with one code path for the design surface and for LOCK, and define exactly what happens when a reference does not resolve.",
+    "depends_on": [
+      "S24-doc-schema-and-canonical-serialisation"
+    ],
+    "fr_ids": [
+      "FR-071",
+      "FR-076",
+      "FR-118"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A46",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S25-1",
+        "statement": "An unknown component id opens the editor read-only in a migration-required state and refuses both generate and LOCK, naming every affected node and page.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S25-2",
+        "statement": "An unknown variant falls back to the direction's canonical variant, writes a migration flag, and blocks LOCK until acknowledged.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S25-3",
+        "statement": "A removed slot moves its content to the node's orphan store; no migration path deletes content.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S25-4",
+        "statement": "The DOM is never serialised back into the document; a grep proves no reverse-parse code path exists.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ3"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S25-pure-renderer-and-resolution-policy.md",
+    "_epic": {
+      "id": "E7",
+      "title": "Document model and pure renderer"
+    },
+    "_story": {
+      "id": "ST-08",
+      "title": "One document, one renderer, one deterministic output"
+    }
+  },
+  {
+    "id": "S26-breakpoint-vocabulary-and-cascade",
+    "epic": "E7",
+    "story": "ST-08",
+    "title": "Breakpoint vocabulary and the desktop-down cascade compiler",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make one breakpoint vocabulary normative across switcher, cascade, free-position rules, save format and gates.",
+    "depends_on": [
+      "S24-doc-schema-and-canonical-serialisation"
+    ],
+    "fr_ids": [
+      "FR-072",
+      "FR-073"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A41",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "section 12.17-A91",
+        "statement": "A node with a base entry and no small-key entry compiles to grid-column: 1 / -1 inside the small media query, and the emitted rule order is base, then md, then sm.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S26-1",
+        "statement": "No emitted rule uses !important to win the cascade; ordering alone decides.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ2"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S26-breakpoint-vocabulary-and-cascade.md",
+    "_epic": {
+      "id": "E7",
+      "title": "Document model and pure renderer"
+    },
+    "_story": {
+      "id": "ST-08",
+      "title": "One document, one renderer, one deterministic output"
+    }
+  },
+  {
+    "id": "S27-determinism-contract",
+    "epic": "E7",
+    "story": "ST-08",
+    "title": "Determinism contract: six hazards designed out",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make generation a pure function of documents, system lock and generator version, so verify can be trusted.",
+    "depends_on": [
+      "S25-pure-renderer-and-resolution-policy"
+    ],
+    "fr_ids": [
+      "FR-075"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A53",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S27-1",
+        "statement": "Every generated file carries the generated marker, document hash, system-lock hash and generator version, and contains no timestamp.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S27-2",
+        "statement": "Binary assets are hash-compared using their recorded encoder record and are never re-encoded during verification.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S27-3",
+        "statement": "A grep proves generate-time code reads no clock, no network, no random source, no environment and no path outside the session root.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ9"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S27-determinism-contract.md",
+    "_epic": {
+      "id": "E7",
+      "title": "Document model and pure renderer"
+    },
+    "_story": {
+      "id": "ST-08",
+      "title": "One document, one renderer, one deterministic output"
+    }
+  },
+  {
+    "id": "S28-demo-1-static-direction-render",
+    "epic": "E7",
+    "story": "ST-08",
+    "title": "DEMO 1 - interview to prompt to ingest to one direction rendered static",
+    "type": "demo",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Prove end to end that a conversation becomes a coherent, licence-clean design system and a page a human can look at.",
+    "depends_on": [
+      "S14-concept-document-synthesis",
+      "S20-local-regeneration-mode",
+      "S22-flat-variable-layer-and-extract-override",
+      "S26-breakpoint-vocabulary-and-cascade",
+      "S27-determinism-contract"
+    ],
+    "fr_ids": [],
+    "acceptance_criteria": [
+      {
+        "id": "A4",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A5",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A7",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A12",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S28-1",
+        "statement": "A single recorded run produces answers.json, concept.md, both prompt stages, an ingested system and a rendered static page, with screenshots at 390 and 1280 captured at pinned device heights.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": "Demo 1",
+    "cqs": [
+      "CQ1",
+      "CQ5",
+      "CQ13"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S28-demo-1-static-direction-render.md",
+    "_epic": {
+      "id": "E7",
+      "title": "Document model and pure renderer"
+    },
+    "_story": {
+      "id": "ST-08",
+      "title": "One document, one renderer, one deterministic output"
+    }
+  },
+  {
+    "id": "S29-editor-shell-and-overlay",
+    "epic": "E8",
+    "story": "ST-09",
+    "title": "Three-pane editor shell with the out-of-iframe overlay and same-origin preview",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Stand up the editing surface with zero DOM injection for hit-testing and a preview that can be captured without chrome.",
+    "depends_on": [
+      "S25-pure-renderer-and-resolution-policy",
+      "S08-server-ts-port"
+    ],
+    "fr_ids": [
+      "FR-080",
+      "FR-082",
+      "FR-120"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S29-1",
+        "statement": "Selection overlay and handles are drawn outside the iframe with pointer-events none; a grep proves no injected hit-test node is added to the page tree.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S29-2",
+        "statement": "The preview is a same-origin iframe, and device heights are pinned with the measured iframe height asserted whenever the page contains a viewport-unit rule.",
+        "verification_method": "recompute"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ3",
+      "CQ17"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S29-editor-shell-and-overlay.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-09",
+      "title": "A surface where everything is reachable"
+    }
+  },
+  {
+    "id": "S30-navigator-tree-and-selection-parity",
+    "epic": "E8",
+    "story": "ST-09",
+    "title": "Navigator/layers tree and three-way selection parity",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Guarantee everything is reachable, including what canvas clicking provably cannot reach.",
+    "depends_on": [
+      "S29-editor-shell-and-overlay"
+    ],
+    "fr_ids": [
+      "FR-081"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A25",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S30-1",
+        "statement": "A fixture containing a zero-height wrapper, a fully covered element, a pointer-events-none decoration and an empty slot is fully selectable from the tree, and each case is recorded.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ3"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S30-navigator-tree-and-selection-parity.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-09",
+      "title": "A surface where everything is reachable"
+    }
+  },
+  {
+    "id": "S31-typed-ops-autosave-history-undo",
+    "epic": "E8",
+    "story": "ST-10",
+    "title": "Typed-op engine, autosave, op log and transactional undo",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Make every edit a validated typed op applied atomically by the single writer, with one command stack over the document.",
+    "depends_on": [
+      "S29-editor-shell-and-overlay"
+    ],
+    "fr_ids": [
+      "FR-085",
+      "FR-086",
+      "FR-087"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A31",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A32",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S31-1",
+        "statement": "The browser never sends a raw patch or a file path; a request carrying either is rejected with 400 and the rejection is logged.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S31-2",
+        "statement": "Writes are atomic (write-temp then rename) and every applied op appends op, patch and inverse to the op log.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S31-3",
+        "statement": "A continuous drag coalesces into exactly one undo entry.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ7",
+      "CQ15"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S31-typed-ops-autosave-history-undo.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-10",
+      "title": "Edits that are typed, atomic and undoable as one thought"
+    }
+  },
+  {
+    "id": "S32-inline-plaintext-editing",
+    "epic": "E8",
+    "story": "ST-10",
+    "title": "Inline plaintext-only text editing",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "S",
+    "objective": "Let the human edit copy in place without source-app markup surviving into the type system.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-083"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S32-1",
+        "statement": "Pasting rich text from a word processor into any editable node yields plain text only, proven by inspecting the stored content value.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S32-2",
+        "statement": "Inline editing is available on the named text node classes (headings, eyebrows, buttons, nav items, labels, stat numbers) and each edit commits as a typed op.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S32-inline-plaintext-editing.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-10",
+      "title": "Edits that are typed, atomic and undoable as one thought"
+    }
+  },
+  {
+    "id": "S33-image-replace-focal-point-alt-gate",
+    "epic": "E8",
+    "story": "ST-10",
+    "title": "Image replace, focal point, blocking alt gate and auto-recompression",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make image handling preserve composition and make missing alt text impossible to place, not merely impossible to ship.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-084"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A35",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A36",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S33-1",
+        "statement": "Replacing an image preserves container size, crop and position; cropping uses a single draggable focal point, never a crop rectangle.",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S33-2",
+        "statement": "Every derived image records encoder, encoder version, settings hash and output hash in the asset manifest.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S33-image-replace-focal-point-alt-gate.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-10",
+      "title": "Edits that are typed, atomic and undoable as one thought"
+    }
+  },
+  {
+    "id": "S34-reorder-duplicate-paste-freeze",
+    "epic": "E8",
+    "story": "ST-10",
+    "title": "Section reorder, duplicate, copy/paste with overrides, and element freeze",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Give the structural edits that precede the canvas, without losing breakpoint overrides or overloading the word lock.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-089",
+      "FR-090"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S34-1",
+        "statement": "Copy-paste and duplicate round-trip a fragment including every breakpoint override, proven by a document diff of the pasted subtree.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S34-2",
+        "statement": "A grep over all user-visible strings proves the element-level protection verb is Freeze and the word Lock is never used for it.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S34-3",
+        "statement": "A frozen node rejects move, resize, swap, reorder and delete, and says why.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S34-reorder-duplicate-paste-freeze.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-10",
+      "title": "Edits that are typed, atomic and undoable as one thought"
+    }
+  },
+  {
+    "id": "S35-snapshots-variations-recovery-bin",
+    "epic": "E8",
+    "story": "ST-11",
+    "title": "Named snapshots, save-as-variation and the recovery bin",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make experimenting cheap and deletion non-destructive, with a recovery path independent of undo.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-088"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S35-1",
+        "statement": "A deleted subtree is restorable in place after ten subsequent unrelated edits, without reverting those edits.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S35-2",
+        "statement": "Autosave stores small document diffs through the server; a grep proves no base64 blob is written to browser storage.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S35-3",
+        "statement": "Save-as-variation forks the document set without mutating the source, proven by unchanged source hashes.",
+        "verification_method": "hash-compare"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ15"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S35-snapshots-variations-recovery-bin.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-11",
+      "title": "A safety net that makes experimenting cheap"
+    }
+  },
+  {
+    "id": "S36-page-ops-seo-preview-and-health-hud",
+    "epic": "E8",
+    "story": "ST-11",
+    "title": "Page-scoped ops (Branch A+), per-page SEO, preview mode and the Design Health HUD",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Ship page-scoped operations and per-page metadata now so multi-page is a later feature rather than a later migration, plus one honest health surface.",
+    "depends_on": [
+      "S31-typed-ops-autosave-history-undo"
+    ],
+    "fr_ids": [
+      "FR-091",
+      "FR-092",
+      "FR-093",
+      "FR-094"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A37",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "section 12.17-A97",
+        "statement": "The asset manager, page manager, per-page SEO fields and inline text editing each complete successfully against the write allowlist with no path outside the table written.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S36-1",
+        "statement": "Every op is page-scoped and the project record carries a pages array of length one under Branch A+ (NA-B01); the multi-page manager UI and global regions are explicitly out of scope for v1.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S36-2",
+        "statement": "The health pill shows three dots, a page-weight bar and a projected largest-contentful-paint from a live performance observer entry, and is the only surfacing channel for advisory findings.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S36-page-ops-seo-preview-and-health-hud.md",
+    "_epic": {
+      "id": "E8",
+      "title": "Editor shell and core operations"
+    },
+    "_story": {
+      "id": "ST-11",
+      "title": "A safety net that makes experimenting cheap"
+    }
+  }
+]

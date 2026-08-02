@@ -1,0 +1,121 @@
+# ACOS Slice — bridged from preeng task planning/preeng/005-resurrection-protocol/tasks/SLICE-00-probe.md
+# Bridge: acos-preeng-classic Step-5 (2026-07-17)
+
+slice_id: "SLICE-RES-00-probe"
+story_id: "STORY-0.1"
+epic_id: "EPIC-0"
+vision_id: "PREENG-005-RESURRECTION-PROTOCOL"
+created_date: "2026-07-17"
+created_by: "acos-preeng-classic-bridge"
+status: "planned"
+
+# Slice overview
+title: "cmux 0.64.19 probe battery + DP2 sacrificial tests"
+objective: |
+  Settle the UNVERIFIED cmux 0.64.19 platform behaviors that every downstream
+  Resurrection Protocol guard depends on, via a probe battery on throwaway
+  workspaces plus DP2-gated sacrificial disruptive tests. Diagnostic slice —
+  blocks all builds; without it the close skill cannot ship.
+description: |
+  In scope:
+  - In-pane hook firing on 0.64.19 (#5427 regression class)
+  - rpc workspace.list JSON shape; workspace list --json
+  - new-workspace --name/--description/--cwd/--command round-trip;
+    --description verbatim round-trip
+  - rpc workspace.select focus behavior
+  - DP2: workspace.close against a live sacrificial Claude session;
+    last-workspace-in-window close; customDescription survival across one
+    controlled restart; DP4 hibernation on a throwaway
+  Out of scope (guardrails): any registry/close/menu code; enabling
+  auto-naming (DP3 stays OFF); any write to the daemon state dir.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] In-pane hook firing on 0.64.19 observed and archived — SessionStart/UserPromptSubmit/Stop hook artifacts captured in .acos/evidence/2026-07-16/resurrection-phase0/"
+  - "[ ] rpc workspace.list JSON shape captured as a pasted command output archived to the evidence bundle; text form never parsed"
+  - "[ ] --description verbatim round-trip captured as a pasted command output archived to the evidence bundle"
+  - "[ ] workspace.select focus behavior recorded as a pasted command output archived to the evidence bundle"
+  - "[ ] DP2 results recorded as written answers in the evidence bundle — live-close prompt?, last-workspace behavior, customDescription restart survival — usable to parameterize the Phase-2 guards"
+  - "[ ] Evidence bundle at .acos/evidence/2026-07-16/resurrection-phase0/ populated with the 7-part bundle (Implementation Summary; Requirements Traceability to spec FR-* / tech_prd TR-*; Structural Quality Evidence; Functional/structural checks; Security/Compliance notes; Operational/Runtime considerations; Self-assessment)"
+  - "[ ] '## Dev Learnings' and '## QA Learnings' sections of the preeng task file updated (slice is not Done until they are — §0.7)"
+  # TODO: confirm — exact user-scheduled moment/window for the DP2 disruptive tests (task file says "at a user-scheduled moment" without specifying when)
+
+# Dependencies
+dependencies:
+  slices: []  # First slice of the feature — the task file states no prerequisite slices.
+
+# File permissions
+files_allowed:
+  - ".acos/evidence/2026-07-16/resurrection-phase0/"
+  - "planning/preeng/005-resurrection-protocol/tasks/SLICE-00-probe.md"  # Dev/QA Learnings sections only
+  # Runtime contexts (not repo files): throwaway RESURRECTION-PROBE-* cmux
+  # workspaces; READ-ONLY reads of the daemon state dir. No production scripts.
+
+files_prohibited:
+  - "review-rules/"
+  - ".claude/agents/"
+  - "~/Library/Application Support/acos-token-monitor/state/"  # daemon state dir — read-only; ANY write is out of scope
+  - ".claude/scripts/"  # no production scripts
+  # Also out of scope: any registry/close/menu code; enabling DP3 auto-naming.
+
+# Skills recommended
+skills_recommended: []  # Task file names no skills; the probe battery is manual CLI + evidence work.
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "In-pane hook firing on 0.64.19 is the #5427 regression class — verify, do not assume."
+  - "DP3 auto-naming stays OFF for the entire slice."
+  - "Daemon state dir is READ-ONLY for this slice — any write is a scope violation."
+  - "Never parse the text form of workspace list; only the --json / rpc JSON shape counts."
+  - "DP2 tests are disruptive (live sacrificial Claude session, controlled restart) — run only at a user-scheduled moment."
+  - "Close every probe workspace after use; a probe workspace left open is a QA failure."
+
+# Technical requirements
+technical_requirements:
+  - "Open a throwaway Claude session in a new cmux pane; confirm SessionStart/UserPromptSubmit/Stop hook artifacts appear (read-only daemon-dir check + in-session context injection)."
+  - "Run the CLI battery on throwaway RESURRECTION-PROBE-* workspaces; paste each command output verbatim."
+  - "DP2-gated disruptive tests: record whether workspace.close prompts against a live session; last-workspace-in-window close behavior; customDescription survival across one controlled restart; DP4 hibernation on a throwaway."
+  - "Archive every pasted output; close each probe workspace after."
+
+# Testing requirements
+testing_requirements:
+  - "This slice IS the test battery — no unit tests; every probe result must be a real pasted command output archived to the evidence bundle, never a composed summary."
+
+# Verification method (skill-mandated extension — from the task's QA section)
+verification_method: |
+  Pasted command outputs archived to .acos/evidence/2026-07-16/resurrection-phase0/;
+  each probe workspace closed after; written answers for the DP2 questions.
+  QA (zero-trust) checks — assume the Dev did NOT do the work correctly:
+  - Re-open the archived outputs and confirm they are real pastes, not composed
+    summaries (spot-check and recompute).
+  - Confirm no probe workspace was left open.
+  - Confirm the daemon state dir was only read, never written.
+  - Confirm every UNVERIFIED item in tech_prd §6 is now answered or explicitly
+    still-open.
+    # TODO: confirm — enumerate the tech_prd §6 UNVERIFIED items for the QA checklist (task file references §6 without listing them here)
+  QA may REJECT and require rework until the gates pass (a reject blocks the
+  slice like an INCONCLUSIVE reviewer).
+
+# Review triggers (informational)
+expected_reviewers:
+  - "ACOS-qa-reviewer"  # Always; the task file defines a Zero-Trust QA verifier role.
+
+# Effort estimate
+effort_estimate: "M"  # CLI battery + scheduled DP2 disruptive tests + 7-part evidence bundle: 1-3 hours
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Diagnostic slice (Demo: Diagnostic — blocks all builds). Vertical value:
+  settles the UNVERIFIED platform behaviors every downstream guard depends on;
+  without it the close skill cannot ship. Sibling slice in STORY-0.1:
+  SLICE-RES-01-prereq-fixes (no dependency between the two stated).

@@ -23,7 +23,7 @@ Formal claim-state contract: `STATE-MACHINE.md` (authoritative).
 
 ## Build status (all phases built; deterministic core fixture-tested)
 
-**BUILT & fixture-tested (Phases 0–7, deterministic, no model calls — 54 assertions):**
+**BUILT & fixture-tested (Phases 0–7 + confidence checklist, deterministic, no model calls — 75 assertions):**
 - Substrate (Phases 0–1): `axiom_ledger.py` (single-writer hash-chained ledger,
   §15.1 invariants, §15.2 state machine, §15.3 resumable frontier, renderer),
   `ledger_writer.py` / `verify_ledger.py` / `next_claims.py` / `render.py`.
@@ -31,22 +31,34 @@ Formal claim-state contract: `STATE-MACHINE.md` (authoritative).
   sources to one vote BEFORE any corroboration counting.
 - `grade_fuse.py` (Phase 3) — two-axis grading + claim-level fusion (median/majority/
   linear-pool) + dual-track tally + single-source cap.
+- `checklist.py` (**Point-1 confidence gate**, 2026-07) — the auditable YES/NO
+  checklist that decides the confidence tier: 4 **veto** questions (any single NO
+  nullifies the claim) + 10 **normal** questions scored to a percentage, graded into
+  `verified` / `probable` / `unverified` with the single-source cap preserved. Knobs
+  (threshold, questions, per-topic add-on packs) live in `config/checklist.yaml`;
+  `DEFAULT_CHECKLIST` is an identical embedded fallback so a missing/edited file never
+  breaks the run. Engaged when a fact carries blind-judge semantic answers; the legacy
+  grade tier remains for facts without them (backward-compatible).
 - `falsify.py` + `oscillation_guard.py` (Phase 4) — nullification checklist +
   falsification-gate disposition + the settled-objections oscillation guard.
 - `resolve.py` (Phase 5) — the precedence-ladder conflict resolver + consensus polarity,
   terminating in UNRESOLVED (never a fabricated winner).
 - `lifecycle.py` (Phase 6) — the demotion cascade (truth-maintenance over dependents).
 - `coverage.py` + `mirror.py` (Phase 7) — the final coverage gate + ACOS evidence/metrics mirror.
-- `orchestrate.py` — the end-to-end driver (stages 2→7 over the ledger).
+- `orchestrate.py` — the end-to-end driver (stages 2→7 over the ledger; runs the
+  confidence checklist at stage 4.5 when judge answers are present).
 - Tests: `tests/test_substrate.py` (19) + `tests/test_pipeline.py` (35, incl. the
-  end-to-end adversarial cases).
+  end-to-end adversarial cases) + `tests/test_checklist.py` (21, the confidence gate).
 
 **What still requires live models (the ONLY non-deterministic part):** producing the
-atomic claims (elicitation), the ACH pass, and the independent different-family refuter
-verdict. These are performed by `Task()`-spawned agents that fill the `fact` structure
-`orchestrate.run()` consumes. In tests they are supplied as fixtures / a mock runner, so
-the whole pipeline is provable offline. The agent prompts live in `prompts/` (drafts) and
-the thin wizard that spawns them is the remaining glue (see PLAN.md §7, §10.2).
+atomic claims (elicitation), the ACH pass, the independent different-family refuter
+verdict, and the **semantic checklist answers** (the blind judge's YES/NO on the
+non-deterministic questions — e.g. "does the cited source actually support the claim?").
+These are performed by `Task()`-spawned agents (Claude) and `run-external-agent.py`
+(external families) that fill the `fact` structure `orchestrate.run()` consumes. In tests
+they are supplied as fixtures, so the whole pipeline is provable offline. The agent
+prompts live in `prompts/` and the thin wizard that spawns them is the remaining glue
+(see PLAN.md §7, §10.2).
 
 ## The pipeline (target — PLAN.md §3)
 
@@ -63,13 +75,55 @@ model self-report, never a fake decimal. Every claim carries an ordinal tier
 (`verified` / `probable` / `unverified`), a citation to origin, the rejected
 alternatives, and a supersession history.
 
-## Model strategy (subscription-only Claude)
+## Model strategy — the four-family fan-out (cross-family diversity)
 
-Cross-family diversity is the ideal (breaks correlated errors). When only Claude is
-available, achieve partial diversity via model **classes** (Opus/Sonnet) + prompt /
-temperature variation, and **flag in the output that cross-family independence is
-reduced** (open decision PLAN.md §12.4). External families plug in later via the model-
-profile system / `run-external-agent.py`. Spawn via `Task()` — never `ANTHROPIC_API_KEY`.
+Cross-family diversity breaks correlated errors: models from different makers don't share
+the same blind spots, so their agreement is real corroboration. The configured families:
+
+| Family | Transport | Key / access |
+|--------|-----------|--------------|
+| **Claude** (Opus/Sonnet) | `Task()` blind sub-agents | subscription — never `ANTHROPIC_API_KEY` |
+| **Gemini** | `run-external-agent.py --model google:gemini-flash-latest` | `GOOGLE_API_KEY` — **free key from Google AI Studio** (`ai.google.dev`); the consumer Gemini app subscription does NOT include it. Use the `-latest` aliases; dated models like `gemini-2.5-flash` retire (404). |
+| **z.ai / GLM** | `run-external-agent.py --model zai:glm-4.7` | `ZAI_API_KEY` — your Z.ai Coding Plan key (Doppler `ai-model-api/dev_personal` → `ZAI_CODING_PLAN_API_KEY`) |
+| **ChatGPT** (Plus) | Claude-in-Chrome browser voice (below) | your Plus web login — Plus has **no** API |
+
+Only **≥2 distinct families** are needed for the top `verified` tier, so Claude + Gemini +
+z.ai/GLM already clears the bar; ChatGPT is an additive 4th voice. If only Claude is
+available, fall back to model **classes** (Opus vs Sonnet) + prompt/temperature variation,
+and **flag in the output that cross-family independence is reduced** (PLAN.md §12.4).
+
+### The ChatGPT browser voice (optional 4th family)
+
+ChatGPT Plus is web-only, so it can't be reached by `run-external-agent.py`. When enabled,
+the main Claude session drives it through the Claude-in-Chrome tools:
+
+1. Open a tab to `chatgpt.com` (user must already be logged in — Claude never signs in).
+2. Paste the **same** self-contained prompt (`elicitor.md` / `grader.md` / `refuter.md`)
+   used for the API families — the prompt is family-neutral by design.
+3. Read the reply back and parse its STRICT-JSON block into the `fact` structure, tagging
+   `family: "openai-web"`.
+
+**Honest limits (do not hide these):** automating the ChatGPT web UI generally runs against
+OpenAI's terms of service; it is slow (human-speed), breaks on UI changes/login walls, and
+is *not blind* in the same way (the orchestrator sees it), which slightly weakens
+independence. Keep it a flagged, optional voice — never a load-bearing seat. For scale or
+reliability, prefer a paid OpenAI API key (`openai:gpt-4o`) instead.
+
+## Wake-up checklist (the human-gated last mile)
+
+The engine, checklist, prompts, and API wiring are built. Two steps need YOU (they touch
+your accounts) before a **live** four-family run:
+
+1. **Gemini key (free):** create an API key at `https://ai.google.dev` (Google AI Studio),
+   store it in Doppler as `GOOGLE_API_KEY`. Test:
+   `doppler run --project ai-model-api --config dev_personal --silent -- python3 .claude/scripts/run-external-agent.py --agent qa-reviewer --model google:gemini-flash-latest --task "reply OK"`.
+   ✅ DONE 2026-07-22 — key stored in Doppler, `gemini-flash-latest` confirmed working.
+2. **z.ai/GLM key:** `export ZAI_API_KEY="$(doppler secrets get ZAI_CODING_PLAN_API_KEY --project ai-model-api --config dev_personal --plain)"` (or your `glm` Doppler wrapper). Test with `--model zai:glm-4.7`.
+3. **ChatGPT (optional):** log into `chatgpt.com` in Chrome first, then ask this session to
+   run the browser voice.
+
+Everything deterministic is already proven offline (75 assertions). These three unlock the
+live model calls.
 
 ## Substrate usage (available now)
 
@@ -105,5 +159,8 @@ mechanical invariants that cannot be forgotten under load.
 ## Tests
 
 ```bash
-python3 .claude/skills/acos-axiom-synthesis/tests/test_substrate.py   # 19 assertions, offline
+S=.claude/skills/acos-axiom-synthesis
+python3 $S/tests/test_substrate.py    # 19 assertions, offline (substrate)
+python3 $S/tests/test_pipeline.py     # 35 assertions, offline (Phases 2–7 end-to-end)
+python3 $S/tests/test_checklist.py    # 21 assertions, offline (the confidence checklist)
 ```

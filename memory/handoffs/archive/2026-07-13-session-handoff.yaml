@@ -1,0 +1,85 @@
+timestamp: "2026-07-14T05:49:26Z"
+status: "completed"
+type: "session-completion"
+trigger: "acos-handoff-protocol"
+session_summary: |
+  Resumed the 2026-06-30 eternity-protocol handoff and COMPLETED it: produced an
+  OKOA-branded, ridgeline-styled (print media) PDF of the website AI-voice-agent
+  research memo. Authored print-only CSS from the resolved ridgeline design tokens,
+  built a 14-section report HTML (cover + TOC + all 12 comparison tables + the ASCII
+  architecture diagram), rendered to PDF via the design-venv weasyprint, iterated
+  through screenshot QA + the okoa-design MCP quality gate to a clean PASS, and
+  opened the result in Chrome. Deliverable is on disk, untracked in git.
+
+current_work:
+  slice_id: "n/a (ad-hoc deliverable, not in planning/ hierarchy)"
+  story_id: "n/a"
+  epic_id: "n/a"
+  status: "completed"
+  description: |
+    Render research/okoa-website-agent-research-2026-06-30.md as an OKOA
+    ridgeline-styled print PDF (US Letter 216x279mm @ 20mm margins), QA via
+    okoa_quality_check(media=print), deliver a Chrome-opened clickable file link.
+
+completed_this_session:
+  - "Authored a print-only ridgeline CSS from the resolved design tokens: US Letter 216x279mm @ 20mm uniform margins (176mm live block); Cormorant Garamond headlines (weight <=600); Inter body; Inter mapped for the display role (no Inter Display family installed — falls back by design); JetBrains Mono for ALL tabular/numeric data; coral used sparingly (cover kicker rule, TOC numerals, exhibit labels) and never as a fill; dark-green (#465D53) chrome reserved for cover band + table headers + section rules; totals carry the 1pt total-rule; page-break discipline (thead repeats, rows don't split, headings don't orphan)."
+  - "Built the full 14-section report HTML programmatically (Python markdown lib) so all 12 comparison tables + the ASCII architecture diagram transcribe faithfully — no hand-retyping drift. Cover page (inline OKOA ink wordmark SVG), TOC with live page numbers via CSS target-counter, then every section."
+  - "Landscape 'exhibit' pages: the 4 widest tables (Agent-Framework 11-col, Memory 9-col, Brain-Model 7-col, Voice-Stack 7-col) auto-rotate to landscape (239mm live block) with repeating dark-green headers; narrower tables (form-filling 3-col, per-session 4-col, cost LOW/MED/HIGH 6-col, risk 4-col) stay portrait."
+  - "Rendered to research/okoa-website-agent-research-2026-06-30.pdf via ~/Documents/OKOA/.venv-design/bin/python (weasyprint 68.1). 22 pages, 172,577 bytes. No font/CSS render warnings."
+  - "Screenshot-QA'd every page at 110 DPI. Found + fixed 2 defects the clean render did not surface: (1) column-count regex '<th' also matched '<thead>' (prefix collision), inflating counts by 1 and wrongly rotating the 6-col cost tables to landscape — fixed to '<th[\\s>]'; (2) footer middle-dot spacing (CSS \\00b7 escape ate its trailing space) — fixed with \\00b7\\00a0."
+  - "okoa_design MCP quality gate: first pass returned 1 error (font-weight-ceiling: a 700 Inter-Bold @font-face + Cormorant 300-700 range exceed OKOA's 650 max) + 24 spacing-token warnings. Fixed: dropped the unused Inter-Bold face, capped Cormorant range to 300-600, snapped all interior spacing to the OKOA scale {1,2,3,5,8,13,21}mm, removed the off-token table zebra (#FAF7F2) for a cleaner borders-only look, recolored the logo SVG from brand ink #231F20 to the ridgeline ink token #3C3C3C, and changed the cover-band label from #C7D4CD to var(--border). Re-ran -> passed:true, 0 errors, 0 warnings."
+  - "Opened the final PDF in Google Chrome (open -a 'Google Chrome') and delivered a clickable, URL-encoded file:// link."
+
+files_modified:
+  - path: "research/okoa-website-agent-research-2026-06-30.pdf"
+    changes: "NEW. Final deliverable. 22-page OKOA ridgeline print PDF, 172,577 bytes. UNTRACKED in git (research/ shows as ??)."
+  - path: "research/okoa-website-agent-research-2026-06-30.build.html"
+    changes: "NEW. Intermediate self-contained HTML (embedded ridgeline CSS + inline logo SVG + converted body) that weasyprint renders. Kept for reproducibility; safe to delete."
+  - path: "research/okoa-website-agent-research-2026-06-30.md"
+    changes: "Unchanged this session (source content, authored in the prior 2026-06-30 session)."
+  - path: "scratchpad/build_okoa_pdf.py"
+    changes: "NEW (session scratchpad, EPHEMERAL). The build script: reads the md, converts via python-markdown, assigns section ids, tags total-rows + warn-callouts, wraps >=7-col tables as landscape exhibits, autolinks bare URLs, injects cover+TOC, emits ridgeline CSS, renders PDF. Path: /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/2cb4b946-872d-4f00-bead-8f04f438d273/scratchpad/build_okoa_pdf.py"
+
+decisions_made:
+  - "Landscape exhibit threshold = tables with >=7 columns (wider than the 176mm portrait live block); narrower tables stay portrait. Rationale: 7+ columns with substantial text cells wrap to unreadable heights at portrait width."
+  - "Removed table zebra striping entirely (was off-token #FAF7F2). Rationale: the ridgeline brief emphasizes 'borders not fills'; hairline row rules alone read cleaner AND made the 14-row Brain-Model table fit one landscape page instead of splitting."
+  - "Recolored the OKOA logo SVG from its brand ink (#231F20) to the ridgeline ink token (#3C3C3C) for zero off-token colors. The two are near-identical near-blacks; visually indistinguishable, now token-compliant."
+  - "Mapped the display font role to Inter (not Inter Display) because no Inter Display family is installed in ~/Library/Fonts. weasyprint resolves the installed Inter TTFs by weight; the resolved tokens' Inter Display references fall back cleanly."
+  - "Built the HTML via python-markdown rather than hand-transcribing tables, to eliminate transcription drift across 12 tables + the ASCII diagram."
+
+blockers: []
+
+next_actions:
+  - "Run /acos-complete to mark this handoff completed and archive it to memory/handoffs/archive/ (optional; handoffs stay active until then)."
+  - "OPTIONAL: git add research/ and commit the deliverable — currently the PDF, source md, and build.html are all untracked (git status shows ?? research/). HEAD advanced to cc62ecdf2dc2 since this task started (e9f91bb), all unrelated to this task."
+  - "OPTIONAL: delete research/okoa-website-agent-research-2026-06-30.build.html if the intermediate HTML is not wanted alongside the PDF."
+  - "If the PDF ever needs a rebuild/edit: re-run scratchpad/build_okoa_pdf.py through the design venv, then re-run okoa_quality_check(media=print) until passed:true before redelivering."
+
+context_for_next_session: |
+  This task is DONE. The deliverable (research/okoa-website-agent-research-2026-06-30.pdf)
+  passed the okoa-design MCP quality gate for media=print, variant=ridgeline with 0
+  errors / 0 warnings, against the ATTESTED brief okoa-brief.print.b2.3.0.p1.0.0.
+
+  Clickable link delivered to the user:
+  file:///Users/zee/Documents/Vibe%20Coding/ACOS%203.0/research/okoa-website-agent-research-2026-06-30.pdf
+
+  This SUPERSEDES the prior 2026-06-30 eternity-protocol emergency handoff
+  (memory/handoffs/2026-06-30-emergency-handoff.yaml), whose "next_actions" (author
+  CSS, build HTML, render, QA, open in Chrome) are now all complete. That prior
+  handoff can be archived.
+
+  NOTE: the newer 2026-07-13-emergency-handoff*.yaml files in memory/handoffs/ belong
+  to SEPARATE, unrelated work (IC / other tasks) and are not part of this PDF task.
+
+  The research content itself is unchanged and remains authoritative as authored on
+  2026-06-30: recommendation = a composable Claude voice pipeline (LiveKit Agents ->
+  Deepgram STT -> Claude brain, Haiku 4.5 default / Sonnet 5 escalation -> ElevenLabs
+  or Cartesia TTS -> Cloudflare Durable Objects memory), ~$0.24-0.32 per 4-min
+  session at real metered API rates, explicitly NOT Flue as the orchestration spine.
+
+reconstruction_sources:
+  - "git rev-parse HEAD (cc62ecdf2dc2) + git status --short research/ (?? research/ — untracked, intact)"
+  - "ls -la research/ — confirmed .pdf (172,577 bytes), .md (54,551 bytes), .build.html (86,201 bytes) all present"
+  - "okoa_quality_check(media=print, variant=ridgeline) final result: passed:true, error_count:0, warning_count:0"
+  - "In-session build + screenshot-QA transcript (cover, TOC, all 4 landscape exhibits, cost tables, risk register, sources verified at 110 DPI)"
+  - "Prior handoff memory/handoffs/2026-06-30-emergency-handoff.yaml (the task this session resumed and completed)"

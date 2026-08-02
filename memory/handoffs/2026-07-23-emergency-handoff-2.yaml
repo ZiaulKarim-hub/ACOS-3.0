@@ -1,0 +1,175 @@
+timestamp: "2026-07-23T16:10:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  A long design-and-build pass extended the /acos-reverse-cleanroom skill
+  (app→intent→blind multi-model rebuild pipeline) across many turns today.
+  The work is DESIGN/AUTHORING-COMPLETE at the markdown/agent/config/schema
+  level — six major changes landed (adaptive Phase-0 capture, a 9-extractor
+  POV intent matrix, a Phase-1 QA/synth bundle, a hardened spec wall, 7
+  false-cut guards plus a new blind cut-defender agent, and a new Phase 3.5
+  PRD-synthesis stage), plus Phase 4/5/6 were rewired so the default build
+  backend is acos-genesis-protocol -> acos-synthesis-protocol as a matched
+  pair, with acos-preeng-classic demoted to an optional depth add-on. The
+  roster is now 12 rc-* agents; all configs parse; the Word doc pipeline-
+  steps.docx was rebuilt to 45 rows. The corresponding TypeScript
+  implementation (adaptive-capture driver, mechanical gates, genesis/synthesis
+  wiring, extended selftest) is a documented PENDING follow-up, not yet
+  written. Everything is uncommitted on branch acos-deficiency-fixes-2026-06-04,
+  mixed in a large multi-workstream working tree (Investment Committee,
+  Eternity Protocol, Resurrection Protocol, acos-axiom-synthesis, and others
+  are all also uncommitted but UNRELATED to this thread).
+
+current_work:
+  slice_id: "unknown (acos-reverse-cleanroom is skill-authoring work outside the Vision/Epic/Story/Slice planning hierarchy, same pattern as acos-axiom-synthesis and acos-research-riffs)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress — design/authoring phase COMPLETE, code phase NOT STARTED, open decision pending with user"
+
+completed_this_session:
+  - "Adaptive Phase-0 capture redesign: 27-layer library + a selection protocol driven to `coverage_benchmark: 0.99` (default), layer count varies per app (not fixed); a server-invisible probe now always runs (`always_on_layers`); an inner top-up loop (add layers until benchmark met) plus an outer re-run loop (`max_reruns: 2`, `rerun_compare: normalized-features`, `vary_conditions_between_runs: true`); step 0.2 merged into capture-layer 3 (single contract-inference pass); Phase-0 steps renumbered 0.1-0.5 plus the outer loop. Documented in .claude/skills/acos-reverse-cleanroom/references/capture-layers.md (modified today, 01:30) and .acos/config/cleanroom.yaml `capture:` block."
+  - "A robustness bundle for capture steps 0.1-0.5 was specified (not yet coded): multi-session HAR merge, published-doc/source-map cross-check, oracle multi-sample with stable/volatile tags, baseline repeat-keep-spread, disposable probe sinks + two-signal corroboration, manifest content-hash/version-stamp + auto drift-compare, secret/PII scan + multi-granularity fingerprint. All flags present under `capture.robustness:` in .acos/config/cleanroom.yaml."
+  - "Phase 1 intent extraction redesigned as a 9-blind-extractor POV matrix: 3 lenses (pov-user, pov-operator, pov-risk) x 3 instances each, ALL Claude on-machine — external/cloud models explicitly FORBIDDEN pre-wall (dirty room; they would egress raw capture). Two-level synthesis: L1 within-lens convergence >= within_pov_convergence_floor (0.60 default, >=2/3 instances agree); L2 cross-lens UNION (a lens seeing something another lens missed = coverage, not noise; a cross-lens CONTRADICTION = a defect). Config block `intent:` added to .acos/config/cleanroom.yaml. Schema (.claude/skills/acos-reverse-cleanroom/templates/intent-claims.schema.json, modified today 02:11) gained a `pov` enum field, an `unresolved` status value, and a `provenance` array field (which of the <=9 reads asserted the claim)."
+  - "Phase 1 QA/synthesis bundle (steps 1.2-1.4): rc-intent-synthesizer does deterministic claim-key matching + records provenance; rc-intent-qa runs a falsification pass and marks claims `unresolved` on hitting the redraft cap rather than silently keeping them as confirmed; a re-fingerprint assert-coverage step plus a pre-wall tech-noun lint were added ahead of Phase 2."
+  - "Phase 2 (spec wall) hardening bundle (2.1-2.3): mechanical detectors run underneath the LLM judgment, fail-closed-on-doubt, a consistent pseudonymization map, an independent second-wall re-scan; forbidden-token list sourced from both detectors and the corpus itself; an armed-guard probe; the wall manifest enriched with detector/second-wall/probe results plus a hash-chained egress log. New `wall:` block in .acos/config/cleanroom.yaml."
+  - "Phase 3 (prioritize) got 7 false-cut guards plus a NEW agent rc-cut-defender (.claude/agents/rc-cut-defender.md, created 02:49): non-destructive/quarantine-only cuts (never delete — intent stays in the ledger), a machine protected-set HARD GATE that blocks+halts on rule-ledger/behavior-critical/human-essential items, positive-evidence-required to cut, a BLIND adversarial defender with single-story veto power (asymmetric, keep-biased — the defender never sees the prioritizer's cut rationale), Gate-B human sign-off, mandatory traceability waivers for every cut, and re-includability downstream by a proposer or rc-red-team. New `prioritize:` block in .acos/config/cleanroom.yaml."
+  - "NEW Phase 3.5 — PRD synthesis, with 2 new agents: rc-prd-drafter (.claude/agents/rc-prd-drafter.md) and rc-prd-synthesizer (.claude/agents/rc-prd-synthesizer.md), both modified 15:56 today. N (default 3) blind convergent PRD drafters run POST-WALL (heterogeneous model families now OK — see spec-clean.md + parity IDs only, no raw capture exposure) -> synthesizer merges with a HARD completeness gate: every kept intent/surface/rule/parity item must map to a REQ-#### or an explicit waiver, else FAIL and redraft (cap 3 rounds). PRD is a 9-section document, WHAT-not-HOW (internal architecture stays an OPEN section deferred to Phase 4). The PRD (035-prd/prd.md) was added to the Phase-2 egress allow-list. New `prd:` block in .acos/config/cleanroom.yaml."
+  - "Phase 4/5/6 robustness + a BUILD-BACKEND REWIRE: Phase 4 proposers (rc-rebuild-proposer) now design from the Phase-3.5 PRD with a mandatory requirements-trace + declared key-risks (dropping a REQ is grounds for rejection). Phase 5 (rc-fusion-synthesizer, modified 16:00 today) adds a completeness gate plus a leaves-first buildability dry-run; rc-red-team (modified 16:00 today) blockers are now falsification-backed. Phase 6 REWIRED: default build backend is now acos-genesis-protocol -> acos-synthesis-protocol as a matched pair (component-tree plan -> leaves-first parity-verified build with up-down-up repair), with Phase-0 parity cases bound as each component's verifier; acos-preeng-classic demoted to an OPTIONAL depth add-on, off by default, Gate-B-gated on its assumptions. New `build:` block in .acos/config/cleanroom.yaml. Roster is now 12 rc-* agents total (verified: rc-capture-orchestrator, rc-cut-defender, rc-fusion-synthesizer, rc-intent-extractor, rc-intent-qa, rc-intent-synthesizer, rc-prd-drafter, rc-prd-synthesizer, rc-prioritizer, rc-rebuild-proposer, rc-red-team, rc-spec-wall — confirmed present in .claude/agents/)."
+  - "A design correction was logged in build-status.md: an earlier note wrongly paired acos-preeng-classic output -> acos-synthesis-protocol. Corrected: acos-synthesis-protocol consumes a GENESIS component-tree, not preeng output; preeng only bridges to the slice lifecycle and is depth-only/optional."
+  - "All 6 phases (Phase -1 through Phase 7, with sub-gates A/B/C) verified present and headed correctly in .claude/skills/acos-reverse-cleanroom/SKILL.md (modified today 15:58): Phase -1 Init, Phase 0 Capture+Baseline, Phase 1 Extract Intent, Gate A Scope confirm, Phase 2 Wall+Validate, Gate B Validation gate, Phase 3 Prioritize, Phase 3.5 PRD synthesis, Phase 4 Blind multi-model rebuild, Phase 5 Synthesize, Phase 6 Compile->Build, Gate C Final-spec accept, Phase 7 Close."
+  - "Word doc planning/acos-reverse-cleanroom/pipeline-steps.docx rebuilt to 45 rows (modified today 16:02, most-recently-touched file in the whole workstream)."
+  - ".acos/config/cleanroom.yaml confirmed to parse under strict YAML with all new blocks (capture, intent, wall, prioritize, prd, build) present and read directly from the file this session."
+
+files_modified:
+  - path: ".claude/skills/acos-reverse-cleanroom/SKILL.md"
+    changes: "Orchestrator skill definition updated for the 6-phase-plus-3.5 pipeline (modified 15:58 today); untracked (new file to git — the whole acos-reverse-cleanroom tree is untracked/`??` in git status)."
+  - path: ".claude/skills/acos-reverse-cleanroom/references/build-status.md"
+    changes: "Authoritative running log of what's done/tested/pending; contains the 'Design update 2026-07-23' section this handoff is built from (modified 16:00 today)."
+  - path: ".claude/skills/acos-reverse-cleanroom/references/capture-layers.md"
+    changes: "27-layer library + selection protocol documented (modified 01:30 today)."
+  - path: ".claude/skills/acos-reverse-cleanroom/templates/intent-claims.schema.json"
+    changes: "Gained `pov` enum, `unresolved` status, `provenance` array (modified 02:11 today)."
+  - path: ".acos/config/cleanroom.yaml"
+    changes: "Gained capture:, intent:, wall:, prioritize:, prd:, build: blocks (modified 15:59 today); confirmed parses under strict YAML."
+  - path: ".claude/agents/rc-cut-defender.md"
+    changes: "NEW agent — blind adversarial single-story-veto cut defender for Phase 3 (created 02:49 today)."
+  - path: ".claude/agents/rc-prd-drafter.md"
+    changes: "NEW agent — blind convergent PRD drafter for Phase 3.5 (created/modified 15:56 today)."
+  - path: ".claude/agents/rc-prd-synthesizer.md"
+    changes: "NEW agent — PRD merge + hard completeness gate for Phase 3.5 (created/modified 15:56 today)."
+  - path: ".claude/agents/rc-rebuild-proposer.md"
+    changes: "Updated to design from the Phase 3.5 PRD with mandatory requirements-trace + key-risks (modified 15:59 today)."
+  - path: ".claude/agents/rc-fusion-synthesizer.md"
+    changes: "Updated with completeness gate + leaves-first buildability dry-run (modified 16:00 today)."
+  - path: ".claude/agents/rc-red-team.md"
+    changes: "Blockers now falsification-backed (modified 16:00 today)."
+  - path: "planning/acos-reverse-cleanroom/pipeline-steps.docx"
+    changes: "Rebuilt to 45 rows reflecting all design changes (modified 16:02 today — most recently touched artifact in the workstream)."
+  - path: ".claude/scripts/cleanroom/*.ts (capture.ts, egress-guard.ts, fingerprint-build.ts, har-to-openapi.ts, parity.ts, selftest.ts, lib/)"
+    changes: "NOT modified this session (all last-touched 02:28-02:45 on 2026-07-22, per an earlier session). selftest.ts still passes 12/12 but only covers OLD pre-adaptive behavior — this is the pending code gap."
+
+decisions_made:
+  - "No formal ADR was written in memory/decisions/ for this session's design work (most recent decision file on disk is 2026-07-05-eternity-protocol-nonfiring-audit.md, unrelated). All design decisions this session are captured only in build-status.md's 'Design update 2026-07-23' section and in the modified SKILL.md/agent/config files themselves — there is no memory/decisions/ ADR to point to."
+  - "Design correction (logged in build-status.md): acos-synthesis-protocol pairs with acos-genesis-protocol output (a component tree), NOT with acos-preeng-classic output; preeng is depth-only and optional, gated behind Gate B."
+  - "Phase 1 external-model policy: ALL 9 blind intent extractors must be Claude, on-machine — external/cloud models are forbidden pre-wall because they would egress raw capture data. Heterogeneous model families are only permitted post-wall (Phase 3.5 PRD drafting and Phase 4 rebuild proposers)."
+
+blockers:
+  - "OPEN DECISION requiring the user: whether to write the pending TypeScript CODE now, or hold the code phase for the live run. This was the explicit stopping point the user asked to have raised at the start of the next session — not yet resolved."
+  - "No live end-to-end run has occurred yet. Three user-side prerequisites remain unresolved per build-status.md: (1) Playwright install for Phase-0 browser capture (`cd .claude/scripts/cleanroom && bun add playwright && bunx playwright install chromium`), (2) API keys for any external seats enabled (ZAI_API_KEY, OPENROUTER_API_KEY, GOOGLE_API_KEY with a paid/no-train key required for target.class: own), (3) a chosen target app — candidate discussed: okoa-loan-intake-system, not yet confirmed."
+  - "selftest.ts (.claude/scripts/cleanroom/selftest.ts) is stale relative to the new design: it verifies 12/12 assertions but ONLY against the OLD pre-adaptive capture behavior. It has NOT been extended to cover the layer-selection protocol, the inner/outer capture loops, or the POV two-level intent merge — those code paths are unverified until both coded and tested."
+  - "EDEN PROTOCOL Level 2 (plain-language chat filter) was active for the entire session per the launching agent's note — if the next session inherits any Eden state, be aware output phrasing may have been simplified/filtered during this design work; this does not affect the artifacts themselves (files read directly, not via chat transcript)."
+  - "The ACOS 3.0 git working tree carries a large amount of UNRELATED, uncommitted, multi-workstream changes (Investment Committee committee-room, Eternity Protocol dead-surface guards, Resurrection Protocol sidebar-identity, acos-axiom-synthesis, acos-research-riffs, ~74 planning/slices/SLICE-* files, and more — see `git status --short` for the full list). None of this is connected to the reverse-cleanroom thread. If a commit is ever requested, scope it deliberately to only the reverse-cleanroom files listed above; do not bulk-add."
+
+next_actions:
+  - "FIRST: resurface the open decision to the user — write the pending TypeScript code now vs. hold for the live run — since this was flagged as the explicit next-session starting point."
+  - "If proceeding with code: implement `capture.ts --layers <selected>` flag + the recon/selection pass + the inner top-up loop + the outer re-run loop drivers (.claude/scripts/cleanroom/capture.ts)."
+  - "If proceeding with code: implement the mechanical gates — completeness gate (Phase 3.5), protected-set hard gate (Phase 3), buildability dry-run (Phase 5) — and the genesis/synthesis wiring + parity-case binding (Phase 6)."
+  - "If proceeding with code: implement the robustness bundle in TypeScript — disposable email/webhook sinks, multi-session HAR merge, published-doc/source-map cross-check, oracle multi-sample, fingerprint-build.ts multi-granularity + secret/PII scan, manifest content-hash/version-stamp + drift-compare."
+  - "If proceeding with code: extend .claude/scripts/cleanroom/selftest.ts beyond its current 12/12 (old-behavior-only) coverage to assert the new layer-selection protocol, both capture loops, and the POV two-level merge logic."
+  - "If holding for the live run instead: confirm target app (okoa-loan-intake-system is the discussed candidate) and walk the user through the 5 user-side prerequisites in build-status.md (Playwright install, API keys, proprietary-target posture, egress hook arming, authed-role storage-state) before any Phase -1 init."
+  - "Either way: re-read .claude/skills/acos-reverse-cleanroom/references/build-status.md at the top of the next session — it is the single authoritative source of truth for this workstream and will have been kept current."
+
+context_for_next_session: |
+  This was a pure design/authoring session on /acos-reverse-cleanroom — an ACOS
+  skill that captures a running app (dirty room), extracts WHAT-not-HOW intent
+  via 9 blind Claude extractors across 3 POV lenses, walls off raw capture from
+  external models, prioritizes with false-cut guards, synthesizes a convergent
+  PRD, and rebuilds via blind multi-model proposers fused and compiled through
+  acos-genesis-protocol -> acos-synthesis-protocol (a matched pair — genesis
+  produces a component tree, synthesis builds it leaves-first with Phase-0
+  parity cases as each component's verifier). Six major design changes landed
+  this session on top of an already-complete 2026-07-22 baseline (9 agents, 6
+  TypeScript scripts, config, 12/12 selftest passing on old behavior): adaptive
+  27-layer Phase-0 capture with inner/outer loops, the 9-extractor POV intent
+  matrix with two-level synthesis, a Phase-1 QA/falsification bundle, a
+  hardened spec wall (mechanical detectors + fail-closed + second-wall
+  re-scan), 7 false-cut guards plus a new blind rc-cut-defender agent, and an
+  entirely new Phase 3.5 PRD-synthesis stage with 2 new agents and a hard
+  completeness gate. The roster grew from 9 to 12 rc-* agents (all verified
+  present and cross-referencing correctly); .acos/config/cleanroom.yaml grew
+  6 new top-level blocks (capture, intent, wall, prioritize, prd, build), all
+  confirmed to parse under strict YAML; the schema
+  (templates/intent-claims.schema.json) gained pov/unresolved/provenance
+  fields; and planning/acos-reverse-cleanroom/pipeline-steps.docx was rebuilt
+  to 45 rows as the most recently touched artifact (16:02 today).
+
+  Everything landed at the design/spec level ONLY — no TypeScript was written
+  or changed this session (the .claude/scripts/cleanroom/*.ts files are all
+  untouched since 2026-07-22 02:28-02:45, an earlier session). build-status.md
+  is explicit and honest about this: a "PENDING (TypeScript code...)" section
+  lists exactly what remains — the capture.ts --layers flag and loop drivers,
+  the mechanical gates, the genesis/synthesis wiring, the robustness code, and
+  extending selftest.ts past its current old-behavior-only 12/12. Nothing here
+  has been end-to-end tested against a live target; that also awaits three
+  user-side prerequisites (Playwright install, API keys, and a confirmed
+  target app — okoa-loan-intake-system was discussed as a candidate but not
+  locked in).
+
+  The single most important thing for the next session to do FIRST is resolve
+  the open decision explicitly flagged by the user at session end: write the
+  pending code now, or hold it until the live-run prerequisites are in place.
+  Read .claude/skills/acos-reverse-cleanroom/references/build-status.md first
+  — it is maintained as the authoritative running record and its "Design
+  update 2026-07-23" section is the primary source this handoff was built
+  from. Everything described here is uncommitted on branch
+  acos-deficiency-fixes-2026-06-04, alongside a large amount of unrelated
+  work from other threads (Investment Committee, Eternity Protocol,
+  Resurrection Protocol, acos-axiom-synthesis, acos-research-riffs, and
+  dozens of planning/slices/SLICE-* files) — do not conflate or bulk-commit
+  across these threads. Note a second, unrelated handoff already exists at
+  memory/handoffs/2026-07-23-emergency-handoff.yaml (written earlier today,
+  08:53) about a completely different workstream — the /acos-domain-finder
+  skill and an in-progress AI-terminal product naming exercise; that thread
+  is independent of this one and should not be mixed with reverse-cleanroom
+  work.
+
+reconstruction_sources:
+  - ".claude/skills/acos-reverse-cleanroom/references/build-status.md (full read — primary/authoritative source for this handoff, per explicit launch instructions)"
+  - "git status --short (ACOS 3.0 repo working tree, full listing)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git diff --name-only HEAD~3..HEAD"
+  - "git log --oneline --all -- .claude/skills/acos-reverse-cleanroom/ (no commits — confirms entire tree is untracked)"
+  - "ls -la .claude/skills/acos-reverse-cleanroom/ and references/ (directory listings + mtimes)"
+  - "ls -la .claude/scripts/cleanroom/ (directory listing + mtimes, confirms TS files untouched today)"
+  - "ls -la .acos/config/cleanroom.yaml (mtime)"
+  - "ls -la .claude/agents/rc-*.md (all 12 files + mtimes)"
+  - "ls .claude/agents/rc-*.md | wc -l (confirmed count = 12)"
+  - ".claude/skills/acos-reverse-cleanroom/templates/intent-claims.schema.json (full read)"
+  - "ls -la .claude/skills/acos-reverse-cleanroom/templates/ (directory listing + mtimes)"
+  - ".acos/config/cleanroom.yaml (head -80, capture/intent/prioritize/prd/build blocks read directly)"
+  - "grep -n '^## Phase|^### ' .claude/skills/acos-reverse-cleanroom/SKILL.md (confirmed all phase/gate headers present and correctly ordered)"
+  - "ls -lt planning/ (directory listing, confirms planning/acos-reverse-cleanroom/ most recently modified at Jul 23 16:03)"
+  - "ls -la planning/acos-reverse-cleanroom/ (pipeline-steps.docx mtime 16:02 today, most recent artifact in workstream)"
+  - "ls -la planning/acos-reverse-cleanroom/research/ (COMBINED-riff-brief.md, deep-research-report.md — both from 2026-07-21, not this session)"
+  - "ls -lt .acos/evidence/ and find .acos/evidence -newer ... (no evidence bundle exists for reverse-cleanroom — consistent with it being skill-authoring work outside the slice-tracked planning hierarchy, same pattern as acos-axiom-synthesis/acos-research-riffs)"
+  - "ls -lt memory/decisions/ (most recent 2026-07-05, unrelated — no ADR exists for this session's design work)"
+  - "ls -lt memory/handoffs/*.yaml *.md excluding *.resume.md (found an existing, unrelated 2026-07-23-emergency-handoff.yaml from 08:53 today about /acos-domain-finder + AI-terminal naming — read in full to confirm it is a separate workstream, not overwritten)"
+  - "memory/handoffs/2026-07-23-emergency-handoff.yaml (full read, confirmed unrelated thread)"
+  - "ls -la .acos/state/ (directory listing; no cleanroom-specific runtime state found)"
+  - "cat .acos/state/oracle-session-threshold (value: 10)"
+  - "CRITICAL SESSION CONTEXT block supplied in the launching agent's task instructions (primary narrative source, cross-checked line-by-line against build-status.md and found fully consistent)"

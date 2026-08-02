@@ -1,6 +1,6 @@
 ---
 name: acos-xl-update
-description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, and RECENT — sourced only to meetings from the last two weeks, primary focus the last week; loans with no recent meeting get "No recent updates received"), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
+description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, and RECENT — sourced only to meetings from the last two weeks, primary focus the last week; a loan with fewer than two updates in that window carries forward the prior week's points, with the neutral "No recent updates received" only as a fallback), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -35,11 +35,13 @@ draft into the Dropbox series is a separate, user-driven step.
 2. **Never fabricate a number.** Every payoff comes from acos-hypercore-ask (provenance-bound and
    reconciled) or the cell is left unchanged / flagged for the user. No estimated or remembered
    figures. If Hypercore refuses or is unavailable for a loan, REPORT it — do not guess.
-3. **Never fabricate an update — and keep it RECENT.** Progress / blocker bullets are grounded in
-   acos-fireflies-ask meetings from the **last two weeks** (no source older than 14 days before the
-   report date), primary focus on the **last week**. No invented events, and no stale storyline carried
-   from an old meeting — a loan with no qualifying recent meeting gets `"No recent updates received from
-   the borrower."` (See Phase 3, and the machine-enforced `--min-date` cutoff.)
+3. **Never fabricate an update; keep fresh points RECENT, and keep quiet loans STABLE.** Any *new*
+   progress / blocker bullet is grounded in acos-fireflies-ask meetings from the **last two weeks** (no
+   source older than 14 days before the report date), primary focus on the **last week** — no invented
+   events. But a loan is never blanked for a quiet week: with **fewer than two updates this cycle it
+   carries forward the prior week's points** (adding the one new update if there is exactly one); the
+   neutral `"No recent updates received from the borrower."` is only a fallback when there is nothing to
+   carry. (See Phase 3's CONTINUITY RULE, and the machine-enforced `--min-date` cutoff.)
 4. **Appearance-safe.** The engine writes values/text and sets `fullCalcOnLoad` — it does NOT
    change formulas or formatting. Do not run destructive reformatting. Riverdale's payoff is a
    date-driven FORMULA — never overwrite it; it recalculates from the report date.
@@ -165,21 +167,35 @@ Blockers** bullets. **This is a WEEKLY update — recency is a hard rule, not a 
    secondary context only. This recency is also machine-enforced downstream by
    `xl_provenance.py --min-date <cutoff>` (any older source is flagged `OLDER THAN CUTOFF` and the
    `stale_sources` count must be 0).
-1. **Compose fresh from the eligible window — do NOT carry stale storylines.** The prior week's bullets
-   (`progress_current` from the manifest) tell you which storylines to LOOK FOR, but a storyline that
-   has **no eligible-meeting mention this cycle is DROPPED, not carried.** Portfolio-wide meetings
-   (the weekly *Credit Committee / Portfolio* and *Pipeline Meeting*) are the best place to find updates
-   on quieter loans.
-2. **Pull each loan's recent activity from Fireflies** (eligible meetings only):
+1. **Pull each loan's recent activity from Fireflies** (eligible meetings only):
    ```
    /acos-fireflies-ask "What happened on the <loan/property> loan since <cutoff>?"
    ```
    Use the loan's real-world name/property/borrower for the query (e.g. Motel 6 / Warburton for
    Riverdale, Beehive / Wolfgramm for Ascent Senior, the property city/name for the others).
-3. **If NO eligible meeting substantively discusses a loan, its ONLY bullet is** the honest neutral
-   `"No recent updates received from the borrower."` — do NOT recycle an old point dressed as current.
-   Otherwise keep the **top 5** most material recent points (payoff-relevant, legal/foreclosure,
-   refinance/extension, buyer/sale progress).
+   Portfolio-wide meetings (the weekly *Credit Committee / Portfolio* and *Pipeline Meeting*) are the
+   best place to find updates on quieter loans — check them before concluding a loan has none.
+2. **COUNT this cycle's updates per loan, then decide (CONTINUITY RULE — this governs quiet loans).**
+   An **update** = one distinct, substantive new development about the loan this cycle, drawn either from
+   an **eligible-window** (≤2-week) Fireflies meeting line **or** from a document / user-provided input
+   supplied for this run (e.g. a borrower letter, a buyer count). Count them per loan, then:
+   - **≥ 2 updates → compose fresh** from those updates (strict-recency path). The prior week's bullets
+     (`progress_current`) tell you which storylines to look for, but a storyline with **no update this
+     cycle is DROPPED, not carried**. Keep the **top 5** most material points (payoff-relevant,
+     legal/foreclosure, refinance/extension, buyer/sale progress).
+   - **exactly 1 update → carry forward last week's bullets for that loan, then ADD the one new update**
+     as an extra bullet. Do not otherwise rewrite the carried bullets.
+   - **0 updates → carry forward last week's bullets VERBATIM** (the `progress_current` /
+     `blocker_current` from the manifest). Do NOT blank the loan, and do NOT invent activity.
+   - When you carry forward AND add a new update, **drop any carried `"No recent updates received…"`
+     line** — it must never coexist with a real bullet. Respect the slot caps (**≤5 progress, ≤3
+     blockers**); if carry-forward + new exceeds them, keep the new update plus the most material carried
+     points and note the drop. Carried bullets are marked `[carried]` in the companion (see item 6), so
+     the repeat is explicit and honest — never a stale point *dressed as current*.
+3. **Neutral placeholder is a FALLBACK, not the default for quiet loans.** Use
+   `"No recent updates received from the borrower."` as a loan's only bullet **only when there is nothing
+   to carry forward** — a brand-new loan, or a prior week that itself had no substantive bullet.
+   Otherwise a quiet loan (0–1 updates) keeps last week's points per the continuity rule above.
 4. **Negative items / blockers → the Key Issues / Blockers section** (≤3), not Progress.
 5. **Tone (learned from prior files):** short, factual, active voice; name the actor (OKOA,
    borrower, legal, foreclosure team); forward-looking; **diplomatic and business-formal** — never

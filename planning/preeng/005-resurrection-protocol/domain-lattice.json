@@ -1,0 +1,2431 @@
+{
+  "nodes": [
+    {
+      "id": "M-atomic-write",
+      "label": "Atomic write path",
+      "type": "method",
+      "description": "mkstemp(dir=target's own dir)->write->fsync(tmp)->os.replace->fsync(dir); never a fixed .tmp name; one writer per file.",
+      "source_ids": [
+        "E-CONC",
+        "E-POSIX"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-sharded-store",
+      "label": "Per-project sharded JSON store",
+      "type": "method",
+      "description": "~/.acos/registry.d/<uuid>.json, one file per project; dissolves locking; JSON not YAML/SQLite.",
+      "source_ids": [
+        "E-CONC",
+        "E-SQLITE"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-uuid4-identity",
+      "label": "uuid4 identity minted at enrollment",
+      "type": "method",
+      "description": "project_uuid=uuid4 minted once, stored at <root>/.acos/project-id (git-ignored).",
+      "source_ids": [
+        "E-IDENTITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-casefold-index",
+      "label": "realpath.casefold lookup index",
+      "type": "method",
+      "description": "realpath(root).casefold() (APFS case-insensitive; realpath does not casefold).",
+      "source_ids": [
+        "E-APFS"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-inode-relink",
+      "label": "(st_dev,st_ino) re-link key",
+      "type": "method",
+      "description": "inode survives rename/move; a dead path usually means relocated -> heal, not tombstone.",
+      "source_ids": [
+        "E-IDENTITY"
+      ],
+      "confidence": 0.8,
+      "tier": "T3"
+    },
+    {
+      "id": "M-marker-gate",
+      "label": "Marker-gated enrollment on first sight",
+      "type": "method",
+      "description": ".acos/ | CLAUDE.md | memory/handoffs/ marker gate; O(1) fail-open; never naive scan, never close-time.",
+      "source_ids": [
+        "E-MARKER"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-rebuild-disk",
+      "label": "rebuild-registry.py from disk",
+      "type": "method",
+      "description": "Enumerate handoffs+CLAUDE.md+.acos across both parents + ~/.claude.json hint; reproduces 16/16.",
+      "source_ids": [
+        "E-REBUILD"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-close-steps",
+      "label": "close-project.sh steps 0-10",
+      "type": "method",
+      "description": "Ordered close protocol; close is the literal last statement; four guards + last-workspace guard.",
+      "source_ids": [
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "M-blind-roundtrip",
+      "label": "Blind round-trip verifier",
+      "type": "method",
+      "description": "Fresh general-purpose Task, handoff text ONLY, no repo/cwd; Wigum cap 5 then DEGRADE.",
+      "source_ids": [
+        "E-BLIND"
+      ],
+      "confidence": 0.75,
+      "tier": "T5"
+    },
+    {
+      "id": "M-next-action-gen",
+      "label": "Generated next_action headline",
+      "type": "method",
+      "description": "<=90 char imperative headline GENERATED at close from 400-800 char next-step field; never truncated.",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.7,
+      "tier": "T5"
+    },
+    {
+      "id": "M-verified-receipt",
+      "label": "Verified read-back receipt",
+      "type": "method",
+      "description": "Every receipt line read back from disk; SAFE printed only by the script on full pass.",
+      "source_ids": [
+        "E-RECEIPT"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-focus-not-launch",
+      "label": "Focus-never-launch",
+      "type": "method",
+      "description": "workspace.select focuses the existing workspace; a pick never creates a second (cmux does no dedup).",
+      "source_ids": [
+        "E-DUP",
+        "E-CMUX"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "M-liveness-join",
+      "label": "Live liveness joins",
+      "type": "method",
+      "description": "lsof PID->cwd + ps tty -> cmux tree --all --json; liveness computed live, never a stored flag.",
+      "source_ids": [
+        "E-INV"
+      ],
+      "confidence": 0.8,
+      "tier": "T3"
+    },
+    {
+      "id": "M-argv-delivery",
+      "label": "Argv reentry delivery",
+      "type": "method",
+      "description": "Multi-line reentry via --command argv (one auto-submitted message); read-screen verify + one retry.",
+      "source_ids": [
+        "E-ARGV"
+      ],
+      "confidence": 0.75,
+      "tier": "T3"
+    },
+    {
+      "id": "M-desc-key-tag",
+      "label": "[key:<uuid>] description tag join",
+      "type": "method",
+      "description": "<next_action> [key:<uuid>] at END of --description (~45 char overhead); the workspace<->row join.",
+      "source_ids": [
+        "E-INV",
+        "E-CONFID"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "M-dr1-gate",
+      "label": "DR-1 recorded round-trip gate",
+      "type": "method",
+      "description": "One recorded close->resume round-trip on a real project with user-confirmed continuity, archived.",
+      "source_ids": [
+        "E-ADOPT",
+        "E-DR1"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "M-facts-render",
+      "label": "Facts-not-verdicts rendering",
+      "type": "method",
+      "description": "Dirty COUNT not a dot; amber staleness; BROKEN red; never a green badge; silence means fine.",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-abs-binary",
+      "label": "Absolute binary paths",
+      "type": "method",
+      "description": "Call /Users/zee/.claude/local/claude and the absolute cmux bundle path (two PATH shadows).",
+      "source_ids": [
+        "E-BINPATH"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "M-vcs-where-executes",
+      "label": "Version-control-where-it-executes",
+      "type": "method",
+      "description": "Every dependency version-controlled where it actually runs; repo-only edits to a live twin are no-ops.",
+      "source_ids": [
+        "E-BINPATH"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-validated-close",
+      "label": "Validated workspace.close (fail closed)",
+      "type": "method",
+      "description": "Close only the CMUX_WORKSPACE_ID validated grep -qx against rpc workspace.list; never identify fallback.",
+      "source_ids": [
+        "E-CMUX",
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-phase0-probe",
+      "label": "Phase-0 probe battery",
+      "type": "method",
+      "description": "cmux 0.64.19 behavior probes + DP2 sacrificial tests; in-pane hook firing; results parameterize guards.",
+      "source_ids": [
+        "E-CMUX"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "M-tombstone",
+      "label": "Tombstone-never-delete",
+      "type": "method",
+      "description": "Rows tombstoned, never deleted; deletion is a human act; no age-based reaper.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "M-audit-append",
+      "label": "Append-only audit log",
+      "type": "method",
+      "description": "One os.write per JSONL line to ~/.acos/registry-audit.jsonl; the sole adoption measurement.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "M-colocated-namespace",
+      "label": "Co-located closed/<slug>/ namespace",
+      "type": "method",
+      "description": "Artifacts under memory/handoffs/closed/<slug>/, glob-invisible to Eternity; .reentry.md never .resume.md.",
+      "source_ids": [
+        "E-ETERNITY"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-torn-writes",
+      "label": "Torn/errored write count",
+      "type": "metric",
+      "description": "Contention crash-test 6x60 -> 0 errors, 0 torn (mirror of measured 180/360 -> 0 for mkstemp).",
+      "source_ids": [
+        "E-CONC"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-concurrency-survival",
+      "label": "Unlocked-write silent-survival rate",
+      "type": "metric",
+      "description": "Without a lock 3/25 concurrent writes survive while remaining VALID JSON (silently wrong).",
+      "source_ids": [
+        "E-CONC"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-rebuild-rows",
+      "label": "Reproduced row count",
+      "type": "metric",
+      "description": "rebuild-registry.py reproduces the proven 16/16-row baseline reading no registry file.",
+      "source_ids": [
+        "E-REBUILD"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-listed-n-of-m",
+      "label": "listed N of M",
+      "type": "metric",
+      "description": "Every list prints listed N of M with M == git status --porcelain | wc -l.",
+      "source_ids": [
+        "E-RECEIPT"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-workspace-constant",
+      "label": "Workspace-count-constant",
+      "type": "metric",
+      "description": "Picking an already-open project keeps the workspace count constant (focus, not launch).",
+      "source_ids": [
+        "E-DUP"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-dangling-rate",
+      "label": "Dangling-pointer rate",
+      "type": "metric",
+      "description": "55%-dangling-pointer failure class DELETED by a derived index (a derived index cannot dangle).",
+      "source_ids": [
+        "E-REBUILD",
+        "E-GRAVE"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-adoption-day60",
+      "label": "Adoption at day 60",
+      "type": "metric",
+      "description": "Menu used >=1x/week at day 60; report baseline ~30%; measured from the append-only audit JSONL.",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.6,
+      "tier": "T5"
+    },
+    {
+      "id": "MET-next-action-chars",
+      "label": "next_action char cap",
+      "type": "metric",
+      "description": "next_action headline <=90 chars, imperative verb first, generated not truncated.",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "MET-wigum-cap",
+      "label": "Wigum cap",
+      "type": "metric",
+      "description": "Blind round-trip Wigum cap = 5, then DEGRADE (never halt).",
+      "source_ids": [
+        "E-BLIND"
+      ],
+      "confidence": 0.75,
+      "tier": "T5"
+    },
+    {
+      "id": "MET-dr1-roundtrip",
+      "label": "DR-1 round-trip achieved",
+      "type": "metric",
+      "description": "One recorded close->resume round-trip with user-confirmed continuity (boolean ship gate).",
+      "source_ids": [
+        "E-DR1"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "MET-silent-failure-rate",
+      "label": "Silent-failure base rate",
+      "type": "metric",
+      "description": "ALL-GREEN doctor over 2,000+ failures; head -40 hiding 34 of 74 files, confirmed live.",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-daemon-writes",
+      "label": "Daemon-dir write count",
+      "type": "metric",
+      "description": "Exactly ONE permitted daemon-state write (state/stop-<sid>); pending-resume/RESCUED untouched.",
+      "source_ids": [
+        "E-ETERNITY",
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-cq-coverage",
+      "label": "CQ coverage",
+      "type": "metric",
+      "description": "Lattice CQ coverage >= 95% (CQ nodes with a <=2-hop path to a method + metric + standard/pattern).",
+      "source_ids": [],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "MET-delivery-marker",
+      "label": "Delivery-marker verification",
+      "type": "metric",
+      "description": "read-screen marker verifies argv delivery; unexplained 1-in-6 silent drop; one retry.",
+      "source_ids": [
+        "E-ARGV"
+      ],
+      "confidence": 0.75,
+      "tier": "T3"
+    },
+    {
+      "id": "MET-probe-pass",
+      "label": "Phase-0 probe pass count",
+      "type": "metric",
+      "description": "Each cmux behavior probe pasted and archived to .acos/evidence/2026-07-16/resurrection-phase0/.",
+      "source_ids": [
+        "E-CMUX"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "MET-binary-shadow",
+      "label": "PATH-shadow count",
+      "type": "metric",
+      "description": "claude shadowed twice (_acos_cli ~/.zshrc:215 + a cmux shim) -> absolute paths mandatory.",
+      "source_ids": [
+        "E-BINPATH"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "STD-posix-fsync",
+      "label": "POSIX fsync-before-rename durability",
+      "type": "standard",
+      "description": "fsync(tmp) then os.replace then fsync(dir) for crash durability (POSIX/LWN/SQLite).",
+      "source_ids": [
+        "E-CONC",
+        "E-POSIX"
+      ],
+      "confidence": 0.9,
+      "tier": "T1"
+    },
+    {
+      "id": "STD-apfs-case",
+      "label": "APFS case-insensitivity",
+      "type": "standard",
+      "description": "APFS is case-insensitive; lookup index must casefold; os.path.normcase is a no-op on POSIX.",
+      "source_ids": [
+        "E-APFS",
+        "E-IDENTITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T1"
+    },
+    {
+      "id": "STD-json-fail-loud",
+      "label": "JSON fails loudly",
+      "type": "standard",
+      "description": "JSON fails loudly on truncation; YAML parses truncated input silently (19/30 records).",
+      "source_ids": [
+        "E-YAML"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "STD-spine1",
+      "label": "SPINE 1 focus-not-launch",
+      "type": "standard",
+      "description": "One row per project; a pick may never create a second workspace.",
+      "source_ids": [
+        "E-DUP",
+        "E-SPINE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine2",
+      "label": "SPINE 2 derived/generated only",
+      "type": "standard",
+      "description": "No hand-typed field; enrollment marker-gated, never naive scan, never close-time creation.",
+      "source_ids": [
+        "E-SPINE",
+        "E-MARKER"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine3",
+      "label": "SPINE 3 verified reads",
+      "type": "standard",
+      "description": "Every receipt line read back from disk; listed N of M; SAFE only on full pass.",
+      "source_ids": [
+        "E-SPINE",
+        "E-SILENT",
+        "E-RECEIPT"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine4",
+      "label": "SPINE 4 code not prose",
+      "type": "standard",
+      "description": "Safety-critical logic lives in scripts (8/8), never in skill prose (8/18).",
+      "source_ids": [
+        "E-SPINE",
+        "E-BINPATH"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine5",
+      "label": "SPINE 5 cmux is UI",
+      "type": "standard",
+      "description": "Independent on-disk store; cmux never the database (closing a workspace deletes its record).",
+      "source_ids": [
+        "E-SPINE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine6",
+      "label": "SPINE 6 no recency selector",
+      "type": "standard",
+      "description": "Exact identity match FIRST; ls -t only orders already-matched candidates; re-resolve at open time.",
+      "source_ids": [
+        "E-SPINE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-spine7",
+      "label": "SPINE 7 daemon dir off-limits",
+      "type": "standard",
+      "description": "Exactly one permitted write, state/stop-<sid> at close step 0; pending-resume/RESCUED never touched.",
+      "source_ids": [
+        "E-SPINE",
+        "E-ETERNITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-lce",
+      "label": "Three-agent LCE pattern",
+      "type": "standard",
+      "description": "PM/Dev/QA lean-context-engineering with zero-trust verification; maps to architect/developer/reviewers.",
+      "source_ids": [
+        "E-BLIND"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-evidence-tier",
+      "label": "T1-T5 evidence tier model",
+      "type": "standard",
+      "description": "Every claim tiered T1 authoritative / T2 expert / T3 empirical / T4 vendor-unverified / T5 internal.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "STD-dp2-sacrificial",
+      "label": "DP2 sacrificial-test discipline",
+      "type": "standard",
+      "description": "Safety-critical cmux behaviors settled by throwaway session + one controlled restart before ship.",
+      "source_ids": [
+        "E-CMUX"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "PAT-menu-first",
+      "label": "Menu-first economics",
+      "type": "pattern",
+      "description": "The menu is the way IN (immediate payoff); closing is the safe byproduct; no nagger.",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.75,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-enrich-not-create",
+      "label": "Enrichment-not-creation",
+      "type": "pattern",
+      "description": "Close ENRICHES the existing row; membership is enrollment-on-first-sight (survives force-quit).",
+      "source_ids": [
+        "E-GRAVE",
+        "E-MARKER"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-receipt-not-promise",
+      "label": "Receipt-not-promise",
+      "type": "pattern",
+      "description": "Zero-loss is delivered as a verified receipt, never a promise; the tab staying open is the failure signal.",
+      "source_ids": [
+        "E-RECEIPT"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-one-writer",
+      "label": "One-writer-per-file",
+      "type": "pattern",
+      "description": "Per-project files give one writer per file, dissolving the lost-update/lock/reaper problem.",
+      "source_ids": [
+        "E-CONC"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "PAT-pane-independent",
+      "label": "Pane-independent vs pane-durable",
+      "type": "pattern",
+      "description": "Resurrection is pane-INDEPENDENT (cross-window); Eternity is pane-DURABLE (same-pane). Opposite invariants.",
+      "source_ids": [
+        "E-DUP",
+        "E-ETERNITY"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-disjoint-namespace",
+      "label": "Disjoint namespace",
+      "type": "pattern",
+      "description": "closed/<slug>/ glob-invisible to Eternity; .reentry.md never .resume.md; one contact point.",
+      "source_ids": [
+        "E-ETERNITY"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-red-amber",
+      "label": "Red/amber only",
+      "type": "pattern",
+      "description": "Facts not verdicts; BROKEN red, amber staleness; never a green badge; silence means fine.",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PAT-generated-not-truncated",
+      "label": "Generated-not-truncated",
+      "type": "pattern",
+      "description": "The headline is GENERATED at close (imperative verb first), never truncated ('twelve options is zero options').",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.75,
+      "tier": "T5"
+    },
+    {
+      "id": "ANTI-shared-master",
+      "label": "Shared mutable master file",
+      "type": "anti_pattern",
+      "description": "Without a lock 3/25 concurrent writes survive as valid-but-wrong JSON; the worst index failure.",
+      "source_ids": [
+        "E-CONC"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-yaml-truncation",
+      "label": "YAML silent truncation",
+      "type": "anti_pattern",
+      "description": "System python3 3.9.6 has no yaml; truncated YAML parses silently returning 19/30.",
+      "source_ids": [
+        "E-YAML"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-sqlite-opaque",
+      "label": "SQLite opaque to git",
+      "type": "anti_pattern",
+      "description": "Opaque binary kills git diff + hand-repair; its winning storm has zero writers in a force-quit.",
+      "source_ids": [
+        "E-SQLITE"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "ANTI-close-time-creation",
+      "label": "Rows created by closing",
+      "type": "anti_pattern",
+      "description": "A close-populated registry is empty at the force-quit -- its only moment (DR-8).",
+      "source_ids": [
+        "E-GRAVE",
+        "E-MARKER"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-naive-scan",
+      "label": "Naive filesystem-scan membership",
+      "type": "anti_pattern",
+      "description": "Enrolls memory/, planning/, strays; ~/.claude/projects/ is polluted AND misses real work.",
+      "source_ids": [
+        "E-MARKER"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-green-badge",
+      "label": "Green 'verified resumable' badge",
+      "type": "anti_pattern",
+      "description": "A false green over 74 uncommitted files = permanent trust death -> hoarding forever.",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-recency-selector",
+      "label": "Recency as a selector",
+      "type": "anti_pattern",
+      "description": "ls -t | head -1 is not a selector; re-resolve the newest .reentry.md AT OPEN TIME.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-identify-failopen",
+      "label": "identify --surface fails open",
+      "type": "anti_pattern",
+      "description": "Live, bogus and known-dead surfaces all return exit 0, byte-identical -- a fail-open false positive.",
+      "source_ids": [
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-cmux-send-shred",
+      "label": "cmux send / send_text newline shred",
+      "type": "anti_pattern",
+      "description": "Both submit at every \\n, shredding a 40-line prompt into 40 messages -- disqualified.",
+      "source_ids": [
+        "E-ARGV"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-sanitize-cwd",
+      "label": "sanitize(cwd) as identity",
+      "type": "anti_pattern",
+      "description": "Proven non-injective: 5 paths -> 1 key, 4+ keys for one project; also collides with Eternity's key.",
+      "source_ids": [
+        "E-IDENTITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "ANTI-auto-stash",
+      "label": "Auto-stash at close",
+      "type": "anti_pattern",
+      "description": "Closing a tab does not touch the tree; stashing is a mutation creating new loss modes.",
+      "source_ids": [
+        "E-RECEIPT"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "ANTI-nagger",
+      "label": "Notifier/nagger",
+      "type": "anti_pattern",
+      "description": "No notifier; adoption measured from the audit log, never nagged into existence.",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "RISK-adoption",
+      "label": "Adoption decay",
+      "type": "risk",
+      "description": "~30% odds of routine use at day 60; decay mode is 'stopped closing', not 'it broke'.",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.6,
+      "tier": "T5"
+    },
+    {
+      "id": "RISK-next-action",
+      "label": "next_action generation quality",
+      "type": "risk",
+      "description": "Highest-risk dependency: truncation yields noise; the headline must be generated.",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.7,
+      "tier": "T5"
+    },
+    {
+      "id": "RISK-cmux-unverified",
+      "label": "cmux 0.64.x behavior unverified",
+      "type": "risk",
+      "description": "Hibernation, auto-resume, customDescription restart, workspace.select/close -- all UNVERIFIED.",
+      "source_ids": [
+        "E-CMUX"
+      ],
+      "confidence": 0.6,
+      "tier": "T4"
+    },
+    {
+      "id": "RISK-eternity-contam",
+      "label": "Eternity cross-contamination",
+      "type": "risk",
+      "description": "2026-06-26 incident class; registry-root vs cwd mismatch could un-do the f639310 project-scoping fix.",
+      "source_ids": [
+        "E-ETERNITY"
+      ],
+      "confidence": 0.7,
+      "tier": "T5"
+    },
+    {
+      "id": "RISK-inpane-regression",
+      "label": "In-pane hook regression",
+      "type": "risk",
+      "description": "#5427-class regression; the in-pane hook is the live resume carrier; verify firing on 0.64.19.",
+      "source_ids": [
+        "E-BINPATH"
+      ],
+      "confidence": 0.65,
+      "tier": "T4"
+    },
+    {
+      "id": "RISK-silent-failure",
+      "label": "Silent failure base rate",
+      "type": "risk",
+      "description": "This machine's base rate (10+ documented); a single false green costs permanent trust.",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.85,
+      "tier": "T3"
+    },
+    {
+      "id": "RISK-trust-death",
+      "label": "Trust death",
+      "type": "risk",
+      "description": "One silent loss event ends the tool permanently; the DR-1 demonstration is the only antidote.",
+      "source_ids": [
+        "E-DR1"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "RISK-duplicate-launch",
+      "label": "Duplicate launch contamination",
+      "type": "risk",
+      "description": "Two panes one project -> cross-pane resume contamination; residual #10 pane-blind and still open.",
+      "source_ids": [
+        "E-DUP",
+        "E-ETERNITY"
+      ],
+      "confidence": 0.8,
+      "tier": "T3"
+    },
+    {
+      "id": "RISK-confidentiality",
+      "label": "Auto-naming confidentiality",
+      "type": "risk",
+      "description": "automation.autoNamingAgent 'auto' endpoint/model undocumented; cmux tabs carry OKOA content; keep OFF.",
+      "source_ids": [
+        "E-CONFID"
+      ],
+      "confidence": 0.6,
+      "tier": "T4"
+    },
+    {
+      "id": "ENT-registry-row",
+      "label": "Project registry row",
+      "type": "entity",
+      "description": "~/.acos/registry.d/<uuid>.json; every field derived/generated.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-audit-event",
+      "label": "Audit event",
+      "type": "entity",
+      "description": "Append-only ~/.acos/registry-audit.jsonl; ts,event,project_uuid,details.",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-project-id-file",
+      "label": "project-id file",
+      "type": "entity",
+      "description": "<root>/.acos/project-id (git-ignored); the uuid4 minted once at enrollment.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-close-handoff",
+      "label": "Close handoff",
+      "type": "entity",
+      "description": "memory/handoffs/closed/<slug>/handoff.yaml; type: close-project, status: parked; intent core.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-reentry-doc",
+      "label": "Reentry doc",
+      "type": "entity",
+      "description": "memory/handoffs/closed/<slug>/<slug>.reentry.md; never .resume.md.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-desc-tag",
+      "label": "cmux description tag",
+      "type": "entity",
+      "description": "'<next_action> [key:<uuid>]' (~45-char overhead, tag at END).",
+      "source_ids": [
+        "E-CONFID"
+      ],
+      "confidence": 0.7,
+      "tier": "T4"
+    },
+    {
+      "id": "ENT-stop-marker",
+      "label": "Daemon stop marker",
+      "type": "entity",
+      "description": "state/stop-<SESSION_ID>: the ONLY permitted daemon-state write, at close step 0.",
+      "source_ids": [
+        "E-ETERNITY"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-the-book",
+      "label": "The book (fresh view)",
+      "type": "entity",
+      "description": "One unified view rendered FRESH per invocation over the sharded store; no persisted master.",
+      "source_ids": [
+        "E-INV"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "ENT-evidence-bundle",
+      "label": "Evidence bundle",
+      "type": "entity",
+      "description": ".acos/evidence/[DATE]/[SLICE-ID]/: probe outputs, tamper-test transcripts, DR-1 recording.",
+      "source_ids": [
+        "E-DR1"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-enrollment",
+      "label": "Enrollment process",
+      "type": "process",
+      "description": "SessionStart marker-gated enrollment -> derived row; O(1) fail-open; cwd==root assertion.",
+      "source_ids": [
+        "E-REBUILD"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-safe-close",
+      "label": "Safe-close process",
+      "type": "process",
+      "description": "/acos-safe-close thin router over close-project.sh; enrich, verify, close as the literal last act.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-resurrect-menu",
+      "label": "Resurrect menu process",
+      "type": "process",
+      "description": "/acos-resurrect renders the fresh book; pick focuses or launches; finish verb sets completed.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-launch-focus",
+      "label": "Launch-or-focus process",
+      "type": "process",
+      "description": "same-root inline / open-elsewhere focus / not-open launch with verified argv delivery.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-dr1",
+      "label": "DR-1 gate process",
+      "type": "process",
+      "description": "Full cycle on a real project; recording/receipts archived; the skill ships only after it exists.",
+      "source_ids": [
+        "E-DR1"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "PROC-phase0",
+      "label": "Phase-0 verification process",
+      "type": "process",
+      "description": "Probe battery + DP2 + prerequisite fixes; the mandatory diagnostic slice (problem-before-solution).",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "TERM-project-uuid",
+      "label": "project_uuid",
+      "type": "term",
+      "description": "uuid4 minted once at enrollment; the canonical project identity.",
+      "source_ids": [
+        "E-IDENTITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "TERM-next-action",
+      "label": "next_action",
+      "type": "term",
+      "description": "The generated <=90-char imperative resume headline; the one artifact no vendor ships.",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "TERM-force-quit",
+      "label": "force-quit",
+      "type": "term",
+      "description": "Killing cmux/Warp without a clean close; files survive, uncaptured reasoning dies.",
+      "source_ids": [
+        "E-MARKER"
+      ],
+      "confidence": 0.9,
+      "tier": "T3"
+    },
+    {
+      "id": "TERM-wigum",
+      "label": "Wigum loop",
+      "type": "term",
+      "description": "Bounded adversarial retry loop (cap 5) then DEGRADE; used by the blind round-trip verifier.",
+      "source_ids": [
+        "E-BLIND"
+      ],
+      "confidence": 0.8,
+      "tier": "T5"
+    },
+    {
+      "id": "TERM-spine",
+      "label": "SPINE",
+      "type": "term",
+      "description": "The seven binding design rules (focus-not-launch ... daemon-dir off-limits).",
+      "source_ids": [
+        "E-SPINE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "TERM-lce",
+      "label": "LCE",
+      "type": "term",
+      "description": "Lean Context Engineering: single narrow objective, explicit scope/guardrails, allowed files, DoD.",
+      "source_ids": [],
+      "confidence": 0.85,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ1",
+      "label": "CQ1 registry atomicity",
+      "type": "cq",
+      "description": "How must a per-project write guarantee a crash/second-writer never leaves a valid-but-wrong record?",
+      "source_ids": [
+        "E-CONC",
+        "E-POSIX"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ2",
+      "label": "CQ2 identity",
+      "type": "cq",
+      "description": "What is the canonical identity, lookup index, re-link key, and which candidate keys are BANNED and why?",
+      "source_ids": [
+        "E-APFS",
+        "E-IDENTITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ3",
+      "label": "CQ3 close lifecycle",
+      "type": "cq",
+      "description": "What is the exact ordered close protocol (0-10), the literal-last statement, and the four+1 guards?",
+      "source_ids": [
+        "E-SPINE",
+        "E-ETERNITY",
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ4",
+      "label": "CQ4 focus-vs-launch",
+      "type": "cq",
+      "description": "How does a pick distinguish same-root/open-elsewhere/not-open and focus without duplicating (SPINE 1)?",
+      "source_ids": [
+        "E-DUP"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ5",
+      "label": "CQ5 Eternity coexistence",
+      "type": "cq",
+      "description": "What namespace/extension/daemon-state discipline keeps Resurrection disjoint from Eternity?",
+      "source_ids": [
+        "E-ETERNITY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ6",
+      "label": "CQ6 enrollment membership",
+      "type": "cq",
+      "description": "What marker gate establishes membership on first sight, and why reject naive scan and close-time creation?",
+      "source_ids": [
+        "E-REBUILD",
+        "E-MARKER"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ7",
+      "label": "CQ7 next_action generation",
+      "type": "cq",
+      "description": "How is the <=90-char headline GENERATED (not truncated) and why is it the single highest-risk dependency?",
+      "source_ids": [
+        "E-NEXTACT"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ8",
+      "label": "CQ8 receipt honesty",
+      "type": "cq",
+      "description": "What makes a safe-close receipt trustworthy; what does 'listed N of M' assert; who may print SAFE?",
+      "source_ids": [
+        "E-RECEIPT"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ9",
+      "label": "CQ9 cmux RPC verification",
+      "type": "cq",
+      "description": "Which cmux 0.64.19 methods are present-but-unverified, and what Phase-0 battery must confirm first?",
+      "source_ids": [
+        "E-CMUX"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ10",
+      "label": "CQ10 liveness computation",
+      "type": "cq",
+      "description": "How is 'is P open? where is its pane? which row is this workspace?' computed LIVE via un-lie-able joins?",
+      "source_ids": [
+        "E-INV",
+        "E-IDENTIFY"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ11",
+      "label": "CQ11 rebuild-from-disk",
+      "type": "cq",
+      "description": "What sources let rebuild reconstruct the 16/16 baseline reading no registry file, and why delete dangling?",
+      "source_ids": [
+        "E-REBUILD",
+        "E-GRAVE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ12",
+      "label": "CQ12 adoption economics",
+      "type": "cq",
+      "description": "Why does deferred-payoff fail while 147 hand-run rituals succeeded, and how do menu-first economics invert it?",
+      "source_ids": [
+        "E-ADOPT"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ13",
+      "label": "CQ13 storage-substrate exclusions",
+      "type": "cq",
+      "description": "Why are YAML, SQLite, a shared file, and cmux state each disqualified as the substrate on THIS machine?",
+      "source_ids": [
+        "E-CONC",
+        "E-YAML",
+        "E-SQLITE"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ14",
+      "label": "CQ14 argv delivery",
+      "type": "cq",
+      "description": "Why is argv the only route for a multi-line reentry, why do send/send_text shred, and how is delivery verified?",
+      "source_ids": [
+        "E-ARGV"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ15",
+      "label": "CQ15 blind round-trip verification",
+      "type": "cq",
+      "description": "What must the verifier be DENIED, what is the Wigum cap, and how do you test the tester?",
+      "source_ids": [
+        "E-BLIND"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ16",
+      "label": "CQ16 DR-1 ship gate",
+      "type": "cq",
+      "description": "What exactly constitutes the one recorded round-trip that gates shipping, and why not a promise?",
+      "source_ids": [
+        "E-DR1"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ17",
+      "label": "CQ17 silent-failure defense",
+      "type": "cq",
+      "description": "Given silent failure is the base rate, what rule enforces facts-not-verdicts and red/amber-only rendering?",
+      "source_ids": [
+        "E-SILENT"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    },
+    {
+      "id": "CQ18",
+      "label": "CQ18 absolute paths + VCS-where-it-executes",
+      "type": "cq",
+      "description": "Why must scripts call absolute binaries and why version-control every dependency where it executes?",
+      "source_ids": [
+        "E-SPINE",
+        "E-BINPATH"
+      ],
+      "confidence": 0.9,
+      "tier": "T5"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "CQ1",
+      "to": "M-atomic-write",
+      "relation": "uses"
+    },
+    {
+      "id": "e2",
+      "from": "CQ1",
+      "to": "M-sharded-store",
+      "relation": "uses"
+    },
+    {
+      "id": "e3",
+      "from": "CQ1",
+      "to": "MET-torn-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e4",
+      "from": "CQ1",
+      "to": "MET-concurrency-survival",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e5",
+      "from": "CQ1",
+      "to": "STD-posix-fsync",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e6",
+      "from": "CQ1",
+      "to": "PAT-one-writer",
+      "relation": "uses"
+    },
+    {
+      "id": "e7",
+      "from": "CQ1",
+      "to": "ANTI-shared-master",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e8",
+      "from": "CQ2",
+      "to": "M-uuid4-identity",
+      "relation": "uses"
+    },
+    {
+      "id": "e9",
+      "from": "CQ2",
+      "to": "M-casefold-index",
+      "relation": "uses"
+    },
+    {
+      "id": "e10",
+      "from": "CQ2",
+      "to": "M-inode-relink",
+      "relation": "uses"
+    },
+    {
+      "id": "e11",
+      "from": "CQ2",
+      "to": "MET-dangling-rate",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e12",
+      "from": "CQ2",
+      "to": "STD-apfs-case",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e13",
+      "from": "CQ2",
+      "to": "ANTI-sanitize-cwd",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e14",
+      "from": "CQ3",
+      "to": "M-close-steps",
+      "relation": "uses"
+    },
+    {
+      "id": "e15",
+      "from": "CQ3",
+      "to": "M-validated-close",
+      "relation": "uses"
+    },
+    {
+      "id": "e16",
+      "from": "CQ3",
+      "to": "MET-daemon-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e17",
+      "from": "CQ3",
+      "to": "STD-spine7",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e18",
+      "from": "CQ3",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e19",
+      "from": "CQ3",
+      "to": "ANTI-identify-failopen",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e20",
+      "from": "CQ4",
+      "to": "M-focus-not-launch",
+      "relation": "uses"
+    },
+    {
+      "id": "e21",
+      "from": "CQ4",
+      "to": "MET-workspace-constant",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e22",
+      "from": "CQ4",
+      "to": "STD-spine1",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e23",
+      "from": "CQ4",
+      "to": "PAT-pane-independent",
+      "relation": "uses"
+    },
+    {
+      "id": "e24",
+      "from": "CQ5",
+      "to": "M-colocated-namespace",
+      "relation": "uses"
+    },
+    {
+      "id": "e25",
+      "from": "CQ5",
+      "to": "MET-daemon-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e26",
+      "from": "CQ5",
+      "to": "STD-spine7",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e27",
+      "from": "CQ5",
+      "to": "PAT-disjoint-namespace",
+      "relation": "uses"
+    },
+    {
+      "id": "e28",
+      "from": "CQ5",
+      "to": "PAT-pane-independent",
+      "relation": "uses"
+    },
+    {
+      "id": "e29",
+      "from": "CQ6",
+      "to": "M-marker-gate",
+      "relation": "uses"
+    },
+    {
+      "id": "e30",
+      "from": "CQ6",
+      "to": "MET-rebuild-rows",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e31",
+      "from": "CQ6",
+      "to": "STD-spine2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e32",
+      "from": "CQ6",
+      "to": "PAT-enrich-not-create",
+      "relation": "uses"
+    },
+    {
+      "id": "e33",
+      "from": "CQ6",
+      "to": "ANTI-close-time-creation",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e34",
+      "from": "CQ6",
+      "to": "ANTI-naive-scan",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e35",
+      "from": "CQ7",
+      "to": "M-next-action-gen",
+      "relation": "uses"
+    },
+    {
+      "id": "e36",
+      "from": "CQ7",
+      "to": "MET-next-action-chars",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e37",
+      "from": "CQ7",
+      "to": "STD-spine2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e38",
+      "from": "CQ7",
+      "to": "PAT-generated-not-truncated",
+      "relation": "uses"
+    },
+    {
+      "id": "e39",
+      "from": "CQ7",
+      "to": "RISK-next-action",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e40",
+      "from": "CQ8",
+      "to": "M-verified-receipt",
+      "relation": "uses"
+    },
+    {
+      "id": "e41",
+      "from": "CQ8",
+      "to": "MET-listed-n-of-m",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e42",
+      "from": "CQ8",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e43",
+      "from": "CQ8",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e44",
+      "from": "CQ9",
+      "to": "M-phase0-probe",
+      "relation": "uses"
+    },
+    {
+      "id": "e45",
+      "from": "CQ9",
+      "to": "MET-probe-pass",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e46",
+      "from": "CQ9",
+      "to": "STD-dp2-sacrificial",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e47",
+      "from": "CQ9",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e48",
+      "from": "CQ9",
+      "to": "RISK-cmux-unverified",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e49",
+      "from": "CQ10",
+      "to": "M-liveness-join",
+      "relation": "uses"
+    },
+    {
+      "id": "e50",
+      "from": "CQ10",
+      "to": "M-desc-key-tag",
+      "relation": "uses"
+    },
+    {
+      "id": "e51",
+      "from": "CQ10",
+      "to": "MET-workspace-constant",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e52",
+      "from": "CQ10",
+      "to": "STD-spine5",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e53",
+      "from": "CQ10",
+      "to": "PAT-red-amber",
+      "relation": "uses"
+    },
+    {
+      "id": "e54",
+      "from": "CQ10",
+      "to": "ANTI-identify-failopen",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e55",
+      "from": "CQ11",
+      "to": "M-rebuild-disk",
+      "relation": "uses"
+    },
+    {
+      "id": "e56",
+      "from": "CQ11",
+      "to": "MET-rebuild-rows",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e57",
+      "from": "CQ11",
+      "to": "MET-dangling-rate",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e58",
+      "from": "CQ11",
+      "to": "STD-spine2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e59",
+      "from": "CQ11",
+      "to": "PAT-enrich-not-create",
+      "relation": "uses"
+    },
+    {
+      "id": "e60",
+      "from": "CQ11",
+      "to": "ANTI-naive-scan",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e61",
+      "from": "CQ12",
+      "to": "M-dr1-gate",
+      "relation": "uses"
+    },
+    {
+      "id": "e62",
+      "from": "CQ12",
+      "to": "MET-adoption-day60",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e63",
+      "from": "CQ12",
+      "to": "PAT-menu-first",
+      "relation": "uses"
+    },
+    {
+      "id": "e64",
+      "from": "CQ12",
+      "to": "STD-lce",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e65",
+      "from": "CQ12",
+      "to": "ANTI-nagger",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e66",
+      "from": "CQ12",
+      "to": "RISK-adoption",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e67",
+      "from": "CQ13",
+      "to": "M-sharded-store",
+      "relation": "uses"
+    },
+    {
+      "id": "e68",
+      "from": "CQ13",
+      "to": "MET-torn-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e69",
+      "from": "CQ13",
+      "to": "STD-json-fail-loud",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e70",
+      "from": "CQ13",
+      "to": "PAT-one-writer",
+      "relation": "uses"
+    },
+    {
+      "id": "e71",
+      "from": "CQ13",
+      "to": "ANTI-shared-master",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e72",
+      "from": "CQ13",
+      "to": "ANTI-yaml-truncation",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e73",
+      "from": "CQ13",
+      "to": "ANTI-sqlite-opaque",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e74",
+      "from": "CQ14",
+      "to": "M-argv-delivery",
+      "relation": "uses"
+    },
+    {
+      "id": "e75",
+      "from": "CQ14",
+      "to": "MET-delivery-marker",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e76",
+      "from": "CQ14",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e77",
+      "from": "CQ14",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e78",
+      "from": "CQ14",
+      "to": "ANTI-cmux-send-shred",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e79",
+      "from": "CQ15",
+      "to": "M-blind-roundtrip",
+      "relation": "uses"
+    },
+    {
+      "id": "e80",
+      "from": "CQ15",
+      "to": "MET-wigum-cap",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e81",
+      "from": "CQ15",
+      "to": "STD-lce",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e82",
+      "from": "CQ15",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e83",
+      "from": "CQ15",
+      "to": "RISK-silent-failure",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e84",
+      "from": "CQ16",
+      "to": "M-dr1-gate",
+      "relation": "uses"
+    },
+    {
+      "id": "e85",
+      "from": "CQ16",
+      "to": "MET-dr1-roundtrip",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e86",
+      "from": "CQ16",
+      "to": "PAT-receipt-not-promise",
+      "relation": "uses"
+    },
+    {
+      "id": "e87",
+      "from": "CQ16",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e88",
+      "from": "CQ16",
+      "to": "RISK-trust-death",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e89",
+      "from": "CQ17",
+      "to": "M-facts-render",
+      "relation": "uses"
+    },
+    {
+      "id": "e90",
+      "from": "CQ17",
+      "to": "MET-silent-failure-rate",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e91",
+      "from": "CQ17",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e92",
+      "from": "CQ17",
+      "to": "PAT-red-amber",
+      "relation": "uses"
+    },
+    {
+      "id": "e93",
+      "from": "CQ17",
+      "to": "ANTI-green-badge",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e94",
+      "from": "CQ17",
+      "to": "RISK-silent-failure",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e95",
+      "from": "CQ18",
+      "to": "M-abs-binary",
+      "relation": "uses"
+    },
+    {
+      "id": "e96",
+      "from": "CQ18",
+      "to": "M-vcs-where-executes",
+      "relation": "uses"
+    },
+    {
+      "id": "e97",
+      "from": "CQ18",
+      "to": "MET-binary-shadow",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e98",
+      "from": "CQ18",
+      "to": "STD-spine4",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e99",
+      "from": "CQ18",
+      "to": "PAT-disjoint-namespace",
+      "relation": "uses"
+    },
+    {
+      "id": "e100",
+      "from": "M-atomic-write",
+      "to": "MET-torn-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e101",
+      "from": "M-sharded-store",
+      "to": "MET-concurrency-survival",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e102",
+      "from": "M-rebuild-disk",
+      "to": "MET-rebuild-rows",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e103",
+      "from": "M-verified-receipt",
+      "to": "MET-listed-n-of-m",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e104",
+      "from": "M-focus-not-launch",
+      "to": "MET-workspace-constant",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e105",
+      "from": "M-next-action-gen",
+      "to": "MET-next-action-chars",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e106",
+      "from": "M-dr1-gate",
+      "to": "MET-dr1-roundtrip",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e107",
+      "from": "M-dr1-gate",
+      "to": "MET-adoption-day60",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e108",
+      "from": "M-blind-roundtrip",
+      "to": "MET-wigum-cap",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e109",
+      "from": "M-argv-delivery",
+      "to": "MET-delivery-marker",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e110",
+      "from": "M-facts-render",
+      "to": "MET-silent-failure-rate",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e111",
+      "from": "M-phase0-probe",
+      "to": "MET-probe-pass",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e112",
+      "from": "M-abs-binary",
+      "to": "MET-binary-shadow",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e113",
+      "from": "M-inode-relink",
+      "to": "MET-dangling-rate",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e114",
+      "from": "M-validated-close",
+      "to": "MET-daemon-writes",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e115",
+      "from": "M-atomic-write",
+      "to": "STD-posix-fsync",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e116",
+      "from": "M-casefold-index",
+      "to": "STD-apfs-case",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e117",
+      "from": "M-sharded-store",
+      "to": "STD-json-fail-loud",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e118",
+      "from": "M-close-steps",
+      "to": "STD-spine7",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e119",
+      "from": "M-focus-not-launch",
+      "to": "STD-spine1",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e120",
+      "from": "M-verified-receipt",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e121",
+      "from": "M-marker-gate",
+      "to": "STD-spine2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e122",
+      "from": "M-facts-render",
+      "to": "STD-spine3",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e123",
+      "from": "M-liveness-join",
+      "to": "STD-spine5",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e124",
+      "from": "M-rebuild-disk",
+      "to": "STD-spine6",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e125",
+      "from": "M-abs-binary",
+      "to": "STD-spine4",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e126",
+      "from": "M-tombstone",
+      "to": "STD-spine2",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e127",
+      "from": "M-phase0-probe",
+      "to": "STD-dp2-sacrificial",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e128",
+      "from": "M-dr1-gate",
+      "to": "STD-evidence-tier",
+      "relation": "constrained_by"
+    },
+    {
+      "id": "e129",
+      "from": "STD-evidence-tier",
+      "to": "MET-cq-coverage",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e130",
+      "from": "M-sharded-store",
+      "to": "ANTI-shared-master",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e131",
+      "from": "M-sharded-store",
+      "to": "ANTI-yaml-truncation",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e132",
+      "from": "M-sharded-store",
+      "to": "ANTI-sqlite-opaque",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e133",
+      "from": "M-uuid4-identity",
+      "to": "ANTI-sanitize-cwd",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e134",
+      "from": "M-marker-gate",
+      "to": "ANTI-naive-scan",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e135",
+      "from": "M-marker-gate",
+      "to": "ANTI-close-time-creation",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e136",
+      "from": "M-validated-close",
+      "to": "ANTI-identify-failopen",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e137",
+      "from": "M-argv-delivery",
+      "to": "ANTI-cmux-send-shred",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e138",
+      "from": "M-facts-render",
+      "to": "ANTI-green-badge",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e139",
+      "from": "M-rebuild-disk",
+      "to": "ANTI-recency-selector",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e140",
+      "from": "M-verified-receipt",
+      "to": "ANTI-auto-stash",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e141",
+      "from": "M-dr1-gate",
+      "to": "ANTI-nagger",
+      "relation": "contradicts"
+    },
+    {
+      "id": "e142",
+      "from": "M-dr1-gate",
+      "to": "RISK-adoption",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e143",
+      "from": "M-dr1-gate",
+      "to": "RISK-trust-death",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e144",
+      "from": "M-next-action-gen",
+      "to": "RISK-next-action",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e145",
+      "from": "M-phase0-probe",
+      "to": "RISK-cmux-unverified",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e146",
+      "from": "M-phase0-probe",
+      "to": "RISK-inpane-regression",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e147",
+      "from": "M-facts-render",
+      "to": "RISK-silent-failure",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e148",
+      "from": "M-blind-roundtrip",
+      "to": "RISK-silent-failure",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e149",
+      "from": "M-focus-not-launch",
+      "to": "RISK-duplicate-launch",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e150",
+      "from": "M-colocated-namespace",
+      "to": "RISK-eternity-contam",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e151",
+      "from": "M-close-steps",
+      "to": "RISK-eternity-contam",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e152",
+      "from": "M-vcs-where-executes",
+      "to": "RISK-inpane-regression",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e153",
+      "from": "M-desc-key-tag",
+      "to": "RISK-confidentiality",
+      "relation": "mitigates"
+    },
+    {
+      "id": "e154",
+      "from": "ENT-registry-row",
+      "to": "PROC-enrollment",
+      "relation": "part_of"
+    },
+    {
+      "id": "e155",
+      "from": "ENT-audit-event",
+      "to": "PROC-enrollment",
+      "relation": "part_of"
+    },
+    {
+      "id": "e156",
+      "from": "ENT-project-id-file",
+      "to": "PROC-enrollment",
+      "relation": "part_of"
+    },
+    {
+      "id": "e157",
+      "from": "ENT-close-handoff",
+      "to": "PROC-safe-close",
+      "relation": "part_of"
+    },
+    {
+      "id": "e158",
+      "from": "ENT-reentry-doc",
+      "to": "PROC-safe-close",
+      "relation": "part_of"
+    },
+    {
+      "id": "e159",
+      "from": "ENT-stop-marker",
+      "to": "PROC-safe-close",
+      "relation": "part_of"
+    },
+    {
+      "id": "e160",
+      "from": "ENT-desc-tag",
+      "to": "PROC-launch-focus",
+      "relation": "part_of"
+    },
+    {
+      "id": "e161",
+      "from": "ENT-the-book",
+      "to": "PROC-resurrect-menu",
+      "relation": "part_of"
+    },
+    {
+      "id": "e162",
+      "from": "ENT-evidence-bundle",
+      "to": "PROC-dr1",
+      "relation": "part_of"
+    },
+    {
+      "id": "e163",
+      "from": "PROC-enrollment",
+      "to": "M-marker-gate",
+      "relation": "uses"
+    },
+    {
+      "id": "e164",
+      "from": "PROC-enrollment",
+      "to": "M-uuid4-identity",
+      "relation": "uses"
+    },
+    {
+      "id": "e165",
+      "from": "PROC-safe-close",
+      "to": "M-close-steps",
+      "relation": "uses"
+    },
+    {
+      "id": "e166",
+      "from": "PROC-resurrect-menu",
+      "to": "M-liveness-join",
+      "relation": "uses"
+    },
+    {
+      "id": "e167",
+      "from": "PROC-launch-focus",
+      "to": "M-focus-not-launch",
+      "relation": "uses"
+    },
+    {
+      "id": "e168",
+      "from": "PROC-launch-focus",
+      "to": "M-argv-delivery",
+      "relation": "uses"
+    },
+    {
+      "id": "e169",
+      "from": "PROC-dr1",
+      "to": "M-dr1-gate",
+      "relation": "uses"
+    },
+    {
+      "id": "e170",
+      "from": "PROC-phase0",
+      "to": "M-phase0-probe",
+      "relation": "uses"
+    },
+    {
+      "id": "e171",
+      "from": "PROC-resurrect-menu",
+      "to": "PAT-menu-first",
+      "relation": "implements"
+    },
+    {
+      "id": "e172",
+      "from": "M-next-action-gen",
+      "to": "PAT-generated-not-truncated",
+      "relation": "implements"
+    },
+    {
+      "id": "e173",
+      "from": "ENT-registry-row",
+      "to": "M-tombstone",
+      "relation": "uses"
+    },
+    {
+      "id": "e174",
+      "from": "ENT-audit-event",
+      "to": "M-audit-append",
+      "relation": "uses"
+    },
+    {
+      "id": "e175",
+      "from": "ENT-audit-event",
+      "to": "MET-adoption-day60",
+      "relation": "measured_by"
+    },
+    {
+      "id": "e176",
+      "from": "ENT-desc-tag",
+      "to": "M-desc-key-tag",
+      "relation": "uses"
+    },
+    {
+      "id": "e177",
+      "from": "TERM-project-uuid",
+      "to": "M-uuid4-identity",
+      "relation": "part_of"
+    },
+    {
+      "id": "e178",
+      "from": "TERM-next-action",
+      "to": "M-next-action-gen",
+      "relation": "part_of"
+    },
+    {
+      "id": "e179",
+      "from": "TERM-force-quit",
+      "to": "M-rebuild-disk",
+      "relation": "depends_on"
+    },
+    {
+      "id": "e180",
+      "from": "TERM-wigum",
+      "to": "M-blind-roundtrip",
+      "relation": "part_of"
+    },
+    {
+      "id": "e181",
+      "from": "TERM-spine",
+      "to": "STD-spine1",
+      "relation": "part_of"
+    },
+    {
+      "id": "e182",
+      "from": "TERM-lce",
+      "to": "STD-lce",
+      "relation": "part_of"
+    }
+  ]
+}

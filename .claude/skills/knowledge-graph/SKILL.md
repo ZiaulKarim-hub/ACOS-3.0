@@ -22,7 +22,7 @@ Apply this skill when:
 - Providing compressed, structured context for LLM reasoning
 
 **Use `/document-synthesis` first if:** Source documents haven't been structured yet.
-**Use `/deep-research` instead if:** You need to find new information, not structure existing information.
+**Use `/acos-deep-research` instead if:** You need to find new information, not structure existing information.
 
 ## Skill Protocol
 
@@ -174,7 +174,7 @@ Once built, the graph supports:
 
 | Downstream | Consumes |
 |------------|----------|
-| `/deep-research` | Graph provides structured context for research |
+| `/acos-deep-research` | Graph provides structured context for research |
 | `/codebase-analysis` | Software graphs inform architecture understanding |
 
 ---

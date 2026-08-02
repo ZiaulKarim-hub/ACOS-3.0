@@ -11,7 +11,7 @@ Status legend: ☐ open · ☑ decided (record the answer and the date inline)
 
 ---
 
-## 1. ☐ v1 scope sign-off — gridlines and dragging  ⚠ BLOCKS EVERYTHING
+## 1. ☑ v1 scope sign-off — gridlines and dragging  ⚠ BLOCKS EVERYTHING
 
 **Where:** §18 "Vision deviations requiring sign-off" (first table in the section).
 
@@ -33,6 +33,15 @@ dragging) is inert in v1**, the only version that ships first. §18 also notes t
 "v2" is where features go to wait. B front-loads the highest-risk unproven mechanic before the
 pipeline around it works. C keeps the honest sequencing of A while making the canvas a
 committed deliverable rather than a deferral.
+
+**☑ Decided 2026-07-26: B — pull the canvas into v1.** Zee rejected the editor-lite scope
+(against the recommendation above): v1 must ship gridlines (step 4a) and full constraint
+dragging (step 4b), making D2 active in the first shipping version and giving LOCK's
+"gridlines disappear" moment real content. Accepted consequence: editor scope roughly
+doubles — §18's estimate of ~16–24 days (~25–35 days against the revised baseline), tagged
+as inference, not measured. Follow-on: §18's timeline, its v1 scope-in list, and the §13
+gate budgets need re-baselining against this choice; decision 2's "pairs with option C"
+note is now moot.
 
 ---
 

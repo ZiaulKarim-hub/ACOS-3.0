@@ -1,0 +1,102 @@
+slice_id: "SLICE-IC-DIAG-01"
+story_id: "STORY-B0"
+epic_id: "EPIC-B"
+vision_id: "VISION-ACOS-INVESTMENT-COMMITTEE"
+created_date: "2026-07-07"
+created_by: acos-preeng-classic
+status: "planned"
+
+# Slice overview
+title: "Diagnostic + walking-skeleton harness (vendored engine + autopilot stub)"
+objective: |
+  Validate the diagnosed problem (symptoms D1-D6 -> derived requirements); stand up a
+  deterministic session-directory scaffold with the full canonical subtree; VENDOR the
+  synthesis engine into the skill's own tree and prove the vendored copy is reachable on a
+  fixture; and stub the autopilot pre-flight assertion -- all before any expert logic exists.
+
+# Acceptance criteria (specific and testable)
+acceptance_criteria:
+  - "[ ] diagnostics.md traces all six symptoms (D1-D6) to a named owning requirement (FR-*), mirroring spec Diagnostics section"
+  - "[ ] scripts/session_scaffold.py creates .acos/investment-committee/<session-id>/ with the FULL canonical subtree: manifest.yaml (status: open, mode: deliberation, current_round: 0), transcript.md (empty), rounds/, sidebars/, ledger/, evidence/ -- deterministically from a --deal arg"
+  - "[ ] re-running session_scaffold.py on the same session-id produces a byte-identical diff (idempotency proof, not a fake claim)"
+  - "[ ] the acos-axiom-synthesis substrate + pipeline scripts + tests are vendored (one-time copy) into .claude/skills/acos-investment-committee/scripts/synthesis/, with a VENDORED_FROM.md recording the source path + git commit hash at copy time"
+  - "[ ] the VENDORED copy's test_pipeline.py is run in-tree and passes"
+  - "[ ] the VENDORED copy's orchestrate.run() is run on its shipped fixture (NOT the original acos-axiom-synthesis skill directory) and exits 0 with a non-empty ledger head, recorded in smoke-report.txt"
+  - "[ ] zero acos-axiom-synthesis engine scripts are modified (git diff --stat on acos-axiom-synthesis/ is empty), and the vendored copy is byte-identical to the commit recorded in VENDORED_FROM.md"
+  - "[ ] a minimal autopilot pre-flight assertion stub exists: test -f .acos/state/autopilot-active -> ABORT with a clear message, with NO fallback branch"
+  - "[ ] evidence bundle contains all 7 required sections including the smoke-report transcript, a tree of the scaffolded directory, VENDORED_FROM.md contents, and the autopilot-abort fixture transcript"
+
+# Dependencies
+dependencies:
+  slices: []
+
+# File permissions
+files_allowed:
+  - ".claude/skills/acos-investment-committee/SKILL.md"
+  - ".claude/skills/acos-investment-committee/scripts/session_scaffold.py"
+  - ".claude/skills/acos-investment-committee/scripts/synthesis/"
+  - ".claude/skills/acos-investment-committee/diagnostics.md"
+
+files_prohibited:
+  - ".claude/skills/acos-axiom-synthesis/scripts/"
+  - "context note: no seat agent, no real deal parsing, no Axis S, no Mode B, no verdict logic, and no full guardrail suite (F1) in this slice (deferred to A2/B1/C1/D1/C3/F1)"
+
+# Skills recommended
+skills_recommended:
+  - "backend-coding"
+  - "testing"
+
+# Flow to use
+flow: "slice-execution-flow"
+
+# Context for the developer
+context:
+  - "acos-axiom-synthesis substrate already exists at .claude/skills/acos-axiom-synthesis/scripts/ (orchestrate.py, decircularize.py, grade_fuse.py, falsify.py, resolve.py, lifecycle.py, coverage.py) -- this slice performs the ONE-TIME vendoring copy of that substrate into the IC skill's own scripts/synthesis/ tree; treat the vendored copy as reachability-only black box thereafter"
+  - "subscription-only; no ANTHROPIC_API_KEY; Python 3 stdlib only for session_scaffold.py"
+  - "READ-ONLY inputs: acos-axiom-synthesis/ scripts + tests (one-time vendoring source only), this feature's spec.md/plan.md"
+
+# Technical requirements
+technical_requirements:
+  - "session_scaffold.py must be deterministic given the same --deal arg (idempotent re-run) and must create the full canonical subtree (rounds/, sidebars/, ledger/, evidence/, transcript.md, manifest.yaml)"
+  - "the vendoring copy must be a byte-for-byte copy of the source at the recorded commit, plus a VENDORED_FROM.md provenance file -- no logic edits"
+  - "the smoke test must run the VENDORED copy's test_pipeline.py and a vendored-copy orchestrate.run() invocation, capturing exit status + ledger head; it must NOT invoke the original acos-axiom-synthesis/ skill directory"
+  - "diagnostics.md must map D1-D6 -> affected role -> current -> desired -> owning FR-*"
+  - "the autopilot pre-flight stub has exactly one behavior on match (abort) -- no fallback branch"
+
+# Testing requirements
+testing_requirements:
+  - "QA re-runs session_scaffold.py and diffs output -- must be byte-identical, and must include the full canonical subtree"
+  - "QA re-runs the vendored test_pipeline.py in-tree and confirms it passes"
+  - "QA re-runs the vendored fixture orchestrate.run() independently and confirms exit 0 + matching ledger head (recompute, do not trust the log)"
+  - "QA confirms git diff --stat on acos-axiom-synthesis/ is empty AND that the vendored copy matches the commit recorded in VENDORED_FROM.md"
+  - "QA confirms diagnostics.md covers all six symptoms with a named requirement each"
+  - "QA creates .acos/state/autopilot-active and confirms the pre-flight stub aborts with a clear message and takes no fallback action"
+
+# Review triggers (which reviewers will be assigned)
+expected_reviewers:
+  - "ACOS-qa-reviewer"
+  - "ACOS-integration-reviewer"
+
+# Effort estimate
+effort_estimate: "S"
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Handoff reference (populated when assigned)
+handoff_path: null
+
+# Notes
+notes: |
+  Verification method (from QA section): assume Dev did NOT do it correctly; recompute
+  idempotency diff, vendored-copy fixture exit/ledger-head, and vendored-copy provenance
+  independently; reject if any evidence gate fails (idempotency diff empty; full canonical
+  subtree present; vendored test_pipeline.py passes in-tree; fixture exit 0; original engine
+  untouched; vendored copy matches recorded provenance; autopilot pre-flight abort with zero
+  fallback; all 6 symptoms traced).
+  Scope-growth note: this slice's effort was originally sized (S) before the vendoring step and
+  autopilot stub were added to its canonical design; architect should confirm sizing still
+  holds.
+  Bridged from planning/preeng/003-investment-committee/tasks/SLICE-DIAG-01.md by
+  acos-preeng-classic Step 5; architect to review before execution.

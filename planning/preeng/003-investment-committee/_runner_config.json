@@ -1,0 +1,186 @@
+{
+  "_meta": {
+    "generated_by": "acos-preeng-classic runner (main-thread normalization)",
+    "feature_id": "003-investment-committee",
+    "grounding": [
+      ".acos/swarm/swarm-20260707-141351/synthesis/report.md",
+      ".acos/swarm/swarm-20260707-141351/agent-01..10/findings.md"
+    ],
+    "note": "Worker executes /preeng.specify..instructions in order, writing artifacts under repo_root. Determinism spec = /Users/zee/.claude/skills/acos-preeng-classic/prompts/worker.md"
+  },
+  "feature_config": {
+    "feature_id": "003-investment-committee",
+    "product_name": "ACOS Investment Committee (IC)",
+    "project_name": "ACOS 3.0",
+    "business_objectives": [
+      "Convene a panel of discipline-expert AI agents that read a deal and find holes from their own POV",
+      "Produce the best-possible deal recommendation: limitations per discipline, mitigants, and explicit deal-breakers",
+      "Offer two user-selectable outputs: (A) a synthesized IC memo via acos-axiom-synthesis, (B) a live, interruptible, human-in-the-loop deliberation",
+      "Maximize genuine dissent and disciplinary coverage; never rubber-stamp; never fabricate consensus",
+      "Reuse existing ACOS engines (axiom-synthesis, legal-analyst) rather than rebuild"
+    ],
+    "primary_users": [
+      "OKOA associate/analyst acting as IC chair (Zee)",
+      "OKOA deal/underwriting team preparing a credit decision",
+      "OKOA investment decision-makers who consume the IC memo"
+    ],
+    "top_user_problems_ranked": [
+      "Single-analyst review structurally misses discipline-specific holes (legal, valuation, environmental, concentration, fraud)",
+      "LLM/analyst reviews are sycophantic and drift toward rubber-stamping the deal framing",
+      "No structured way to separate deal-breakers from mitigable risks, each with a mitigant + residual-risk statement",
+      "No way to run an adversarial, human-participated deliberation like a real IC",
+      "Two risks are nobody's job by default: fund-level concentration and financial-statement fraud"
+    ],
+    "strategy_context": "OKOA Capital is a PE real-estate / private-credit secured lender (deal-by-deal lien positioning, Utah-organized, lends UT/HI/ID/PR+). The IC skill is a thin orchestrator + domain adapter over existing ACOS epistemics engines. Mode A synthesis = acos-axiom-synthesis (refutation-and-grading, preserves conflict, terminates in UNRESOLVED never fabricated consensus). Legal seat = existing legal-analyst via /acos-legal-analysis. Orchestration = Wigum loop + deterministic consensus tally + blind independent dispatch. Independence-first is the primary anti-groupthink lever. The overall verdict is computed deterministically (asymmetric-veto on deal-breakers), not narrated by an LLM.",
+    "constraints": [
+      "Subscription-only Claude: never ANTHROPIC_API_KEY; spawn via Task()",
+      "Subagents cannot call AskUserQuestion/ExitPlanMode -> the Mode B moderator MUST be the top-level SKILL.md (main conversation)",
+      "Model diversity limited to Opus/Sonnet class + persona/temperature by default; multi-provider (Hybrid-Review) optional -> emit reduced-independence flag when single-provider",
+      "Must run under ACOS hooks (Oracle PreToolUse, check-scope) and the autopilot/eternity continuation system",
+      "Deliberation must be honest about turn-based execution (moderated relay, not simulated real-time)",
+      "Verdict must never be a fabricated PROCEED or DECLINE; UNRESOLVED is a first-class output"
+    ],
+    "known_dependencies": [
+      "acos-axiom-synthesis (Mode A synthesis engine; scripts decircularize/grade_fuse/falsify/resolve/lifecycle/coverage/orchestrate)",
+      "legal-analyst agent + /acos-legal-analysis skill (legal seat; findings-manifest.yaml, red-flags.yaml)",
+      "Model Profile system (resolve-agent-model.sh) for per-seat model-class diversity",
+      "Task() + SubagentStart/Stop hooks; deterministic consensus tally pattern (dr2 consensus_check.py)",
+      "fin-stmt-accountant 'bounce request up + persist + re-dispatch' idiom for human input",
+      "autopilot-active state detection; Eternity Protocol resume (transcript-on-disk survives /clear)"
+    ],
+    "known_risks": [
+      "Consensus is not evidence of correctness; debate can amplify confident-wrong agents",
+      "Sycophancy (~58% baseline) and correlated same-model error (0.396 vs 0.679) undermine independence",
+      "autopilot-active silently auto-answers the human-pause AskUserQuestion, defeating HITL",
+      "Fund concentration and financial-statement fraud get silent PASS unless explicitly mandated",
+      "Cost/latency of 7-9 opus seats x N rounds x two modes",
+      "Greenfield UX with no validated precedent for terminal, human-chaired multi-agent financial debate"
+    ],
+    "runtime_guardrails": [
+      "Independence-first: every seat's opening verdict from an isolated Task() with zero cross-visibility",
+      "Never terminate on consensus; hide numeric confidence between agents mid-debate; preserve dissent in the memo",
+      "Mandatory falsifiable objection per seat; mandatory pre-mortem round; assigned rotating devil's advocate; consensus-triggered 10th-man escalation",
+      "Every non-fatal finding requires a named mitigant + explicit residual-risk; deal-breaker = derived deterministic rule",
+      "Asymmetric-veto verdict polarity on deal-breaker-flagged claims; quorum/precedence-ladder otherwise; UNRESOLVED terminal",
+      "Detect .acos/state/autopilot-active and refuse deep-pause mode or fall back to documented autonomous batch mode",
+      "Per-run conflicts-disclosure.yaml governance artifact (SEC 2026 fiduciary focus)"
+    ],
+    "repo_root": "planning/preeng/003-investment-committee"
+  },
+  "command_inputs": {
+    "specify": {
+      "product_name": "ACOS Investment Committee (IC)",
+      "feature_goals": [
+        "A discipline-expert agent panel that reads a deal and finds holes per discipline",
+        "Mode A: synthesized IC memo (axiom-synthesis) focused on limitations, mitigants, deal-breakers, ending in a deterministic verdict",
+        "Mode B: live, interruptible, human-chaired deliberation with stance-tagged turns",
+        "Reuse legal-analyst + axiom-synthesis; independence-first; deterministic verdict"
+      ],
+      "user_problems": [
+        "Discipline-specific holes missed by single-analyst review",
+        "Sycophantic rubber-stamping",
+        "No deal-breaker vs mitigable-risk separation with residual risk",
+        "No adversarial human-participated deliberation",
+        "Concentration and fraud unowned by default"
+      ],
+      "success_metrics": [
+        "CQ coverage of the domain lattice >= 95%",
+        "Zero uncovered risk category across the seat roster (16-risk coverage map)",
+        "Every finding carries severity + mitigant + residual-risk; deal-breakers explicitly flagged",
+        "Verdict is deterministic and reproducible from the ledger (never narrated)",
+        "Human chair can observe and inject; agents update-with-new-fact or hold-with-reason (no capitulation)",
+        "Boss-criticism-proof on first cold look (OKOA final-artifact standard)"
+      ]
+    },
+    "research": {
+      "domain_focus": [
+        "Institutional IC / credit-committee governance for PE real-estate & private credit",
+        "Multi-agent LLM debate/deliberation (mechanisms, when it helps vs hurts)",
+        "Anti-sycophancy, correlated-error, independence-first guardrails",
+        "Structured hole-finding: pre-mortem, MAP, dialectical inquiry, ACH, reference-class, kill criteria",
+        "Synthesis/fusion via acos-axiom-synthesis (objection->claim, severity axis, deterministic verdict)",
+        "Human-in-the-loop deliberation UX in a terminal (moderated relay, chair vocabulary)",
+        "RE-PE legal/regulatory/fiduciary diligence and reuse of legal-analyst"
+      ],
+      "required_cqs": [
+        "What disciplines constitute a complete IC panel with zero uncovered risk category?",
+        "How is the deal advocate kept structurally independent of the adversarial credit seat?",
+        "How do we elicit genuine dissent and avoid sycophancy / correlated same-model error?",
+        "How is a live, interruptible, human-chaired deliberation realized on Claude Code primitives?",
+        "How does an expert objection map onto an axiom-synthesis atomic claim + a severity axis?",
+        "How is the overall PROCEED/DECLINE verdict computed deterministically without fabricating consensus?",
+        "What is the canonical IC-memo structure and the Risk->Mitigant->Residual->CP pattern?",
+        "Which legal/compliance checks are deal-breakers vs curable-by-condition, and what does legal-analyst already cover?",
+        "How does the human chair observe and inject, and how do agents value human input without capitulating?",
+        "How is concentration risk (fund-scoped) and financial-statement fraud explicitly owned?",
+        "What guardrail handles autopilot-active silently auto-answering the human pause?",
+        "How is the deliberation state persisted so it survives /clear and Eternity resume?"
+      ],
+      "evidence_requirements": [
+        "Cite the swarm synthesis report and the 10 agent findings as the primary evidence ledger",
+        "Tier external sources (T1 authoritative regulator/standard, T2 expert, T3 empirical/academic, T4 community, T5 internal ACOS)",
+        "Ground every architecture claim in an existing ACOS asset where one exists (axiom-synthesis, legal-analyst, dr2, grader, fin-stmt)"
+      ]
+    },
+    "plan": {
+      "architecture_constraints": [
+        "Top-level SKILL.md is the Mode B moderator (main conversation); no nested agent owns the human-pausing loop",
+        "Append-only transcript files on disk are the source of truth; deterministic tally script for mechanical checks",
+        "Reuse acos-axiom-synthesis for Mode A; reuse legal-analyst for the legal seat",
+        "Per-seat model-class diversity via the Model Profile system; reduced-independence flag when single-provider",
+        "Independence-first blind opening pass in both modes; bounded rounds with a hard cap",
+        "Detect autopilot-active; safe (Recommended) pause option under auto-pick"
+      ],
+      "technical_requirements": [
+        "Seat roster: 7 core + Chair/Gap-Hunter + deal-triggered optionals; advocate separate from adversarial credit; Portfolio seat fund-scoped with loan-tape access",
+        "Objection schema with Axis S (severity/materiality) orthogonal to truth-grading",
+        "Deterministic verdict via resolve.py polarity (asymmetric-veto on deal-breakers)",
+        "Mode B turn schema {round, seat, stance SUPPORT/REBUT/ABSTAIN, argument, addresses_prior_turn_ids, would_change_mind_if}",
+        "Human injection as a first-class HUMAN transcript turn; next speaker must address it",
+        "conflicts-disclosure.yaml governance artifact per run; compliance companion for usury/AML/foreclosure/Phase I"
+      ],
+      "data_model_entities": [
+        "Deal", "Seat", "ExpertProfile", "Objection", "Mitigant", "SeverityGrade",
+        "Round", "Turn", "HumanInjection", "Transcript", "Verdict", "ConditionPrecedent",
+        "ConflictsDisclosure", "ICMemo", "EvidenceCitation", "SessionManifest"
+      ]
+    },
+    "tasks": {
+      "epic_breakdown": [
+        "EPIC-A Seat roster + expert-agent definitions + coverage map",
+        "EPIC-B Deal intake + independence-first blind opening pass",
+        "EPIC-C Mode A synthesis (axiom-synthesis adapter + severity axis + deterministic verdict + IC memo render)",
+        "EPIC-D Mode B live deliberation (main-conversation moderator, transcript, chair vocabulary, tally, HITL)",
+        "EPIC-E Legal/compliance seat (legal-analyst reuse + compliance companion + conflicts-disclosure)",
+        "EPIC-F Guardrails + governance (anti-sycophancy, kill criteria, autopilot detection, evidence bundles)"
+      ],
+      "slice_strategy": "Vertical slices delivering demo-able increments: start with a minimal Mode A on a small seat set (walking skeleton), then add seats, then the deterministic verdict, then Mode B moderator loop, then legal reuse, then guardrails/governance. Each slice produces an observable artifact (a memo, a transcript, a verdict file).",
+      "priority_order": [
+        "Walking skeleton: 3-seat Mode A producing a memo (Demo 1)",
+        "Full 7-seat roster + severity axis + deterministic verdict (Demo 2)",
+        "Mode B moderator loop + transcript + chair vocabulary + HITL (Demo 3)",
+        "legal-analyst reuse + compliance companion + conflicts-disclosure",
+        "Guardrails: independence enforcement, kill criteria, autopilot detection, anti-sycophancy"
+      ]
+    },
+    "analyze": { "feature_id": "003-investment-committee" },
+    "instructions": { "feature_id": "003-investment-committee" }
+  },
+  "execution_steps": [
+    "/preeng.specify",
+    "/preeng.research",
+    "/preeng.plan",
+    "/preeng.tasks",
+    "/preeng.analyze",
+    "/preeng.instructions"
+  ],
+  "open_questions": [
+    "Assumption: OKOA's SEC adviser-registration status is unknown -> defaulted to best-practice fiduciary discipline + conflicts-disclosure artifact; flag for user confirmation before hardcoding Advisers Act requirements.",
+    "Assumption: no codified OKOA SPE/bankruptcy-remoteness size threshold exists -> surface as a governance gap rather than assume a number.",
+    "Assumption: OKOA's full active-state lending footprint beyond UT/HI/ID/PR is unknown -> defaulted to a per-deal jurisdiction check for usury/licensing.",
+    "Assumption: default model diversity is Opus/Sonnet class + persona/temperature (subscription-only); multi-provider Hybrid-Review is optional -> emit reduced-independence flag when single-provider.",
+    "Assumption: Mode A (synthesized memo) is the cheaper default; Mode B (live deliberation) is opt-in -> user selects mode at invocation.",
+    "Assumption: deal input is a folder/dataroom of deal documents (consistent with acos-dataroom / acos-data-extractor inputs) -> intake reads a deal directory.",
+    "Needs clarification: default seat roster size (lean 7 vs full 9-12 with all optionals) per typical OKOA deal type -> defaulted to core-7 + chair + deal-triggered optionals."
+  ]
+}

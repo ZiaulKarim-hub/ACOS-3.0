@@ -23,6 +23,18 @@ import falsify as fz
 import resolve as rs
 import coverage as cov
 import mirror as mir
+import checklist as chk
+
+
+_CHECKLIST_CACHE = None
+
+
+def _checklist():
+    """Load the boolean confidence checklist once per process (cached)."""
+    global _CHECKLIST_CACHE
+    if _CHECKLIST_CACHE is None:
+        _CHECKLIST_CACHE = chk.load_checklist()
+    return _CHECKLIST_CACHE
 
 
 def _provenance(candidates, representatives):
@@ -86,6 +98,26 @@ def process_fact(ledger, fact, settled_path, now):
         settled_path=settled_path,
     )
 
+    # Stage 4.5 — the boolean confidence checklist (Point-1 improvement, 2026-07).
+    # Engaged ONLY when the fact carries semantic judge answers; otherwise the
+    # legacy grade tier is used (keeps the pre-checklist fixtures/tests unchanged).
+    # The gate still owns the falsification field + disconfirmers; the checklist
+    # owns the confidence TIER and its own veto-nullify.
+    verdict = None
+    if fact.get("checklist_answers") is not None:
+        cl = fact.get("_checklist") or _checklist()
+        ctx = chk.build_context(
+            independent_sources=indep,
+            distinct_families=len(families),
+            has_primary_citation=g.get("has_primary_citation", False),
+            divergence=fused["divergence"],
+            semantic_answers=fact.get("checklist_answers"),
+            superseded=fact.get("superseded", False),
+            freshness_ok=g.get("freshness_ok", True),
+        )
+        ctx["domain"] = fact.get("domain")
+        verdict = chk.evaluate(cl, ctx)
+
     prov = _provenance(candidates, decirc["representatives"])
     basis = {"independent_sources": indep, "distinct_families": len(families)}
     covers = fact.get("covers") or ([fact["sub_question"]] if fact.get("sub_question") else [])
@@ -97,17 +129,22 @@ def process_fact(ledger, fact, settled_path, now):
 
     # --- decide outcome ------------------------------------------------------
     result = {"fact_id": fid, "decirc": decirc, "grade": grade, "fused": fused,
-              "gate": gate, "conflict": conflict}
+              "gate": gate, "conflict": conflict, "checklist": verdict}
 
     # always create the CONJECTURE first (legal create).
     _write(ledger, {**base, "state": "CONJECTURE", "confidence": "unverified",
                     "gates": {"falsification": "pending"}}, now)
 
-    if gate["disposition"] == "nullify":
+    checklist_nullified = bool(verdict and verdict["nullified"])
+    if gate["disposition"] == "nullify" or checklist_nullified:
+        nullified_by = list(gate["hard"])
+        if checklist_nullified:
+            nullified_by += ["veto:" + r["id"] for r in verdict["veto_results"]
+                             if r["answer"] is not True]
         _write(ledger, {**base, "state": "CONJECTURE", "confidence": "unverified",
                         "gates": {"falsification": "failed"},
                         "disconfirmers": gate["new_disconfirmers"],
-                        "nullified_by": gate["hard"]}, now)
+                        "nullified_by": nullified_by}, now)
         result["final_state"] = "CONJECTURE(quarantined)"
         return result
 
@@ -120,9 +157,15 @@ def process_fact(ledger, fact, settled_path, now):
         return result
 
     # keep / downgrade -> promote through the legal ladder.
-    conf = grade["confidence"]
-    if gate["disposition"] == "downgrade":
-        conf = fz.downgrade_tier(conf)
+    # In checklist mode the checklist tier is authoritative (it already encodes
+    # the refuter/conflict-of-interest/etc. as questions); don't double-apply the
+    # gate downgrade. In legacy mode, the gate downgrade still lowers the tier.
+    if verdict is not None:
+        conf = verdict["tier"]
+    else:
+        conf = grade["confidence"]
+        if gate["disposition"] == "downgrade":
+            conf = fz.downgrade_tier(conf)
 
     if conf == "unverified":
         result["final_state"] = "CONJECTURE"

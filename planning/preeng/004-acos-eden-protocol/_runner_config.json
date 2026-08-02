@@ -1,0 +1,182 @@
+{
+  "feature_config": {
+    "feature_id": "004-acos-eden-protocol",
+    "product_name": "acos-eden-protocol",
+    "project_name": null,
+    "business_objectives": [
+      "Give the user a single calibrated dial over how simply Claude explains things in chat (off = normal; 1 = university student through 5 = first grader).",
+      "Make dense technical/financial explanations comprehensible on demand — for the user's own quick grasp and for pasting to non-expert stakeholders — WITHOUT corrupting the underlying facts.",
+      "Reuse across all ACOS work (planning, review, diligence, teaching) as an orthogonal, always-available layer that composes with every other skill."
+    ],
+    "primary_users": [
+      "The direct ACOS operator (e.g. a PE real-estate-lending associate) who toggles the dial mid-session to quickly grasp dense technical/financial output.",
+      "Non-expert stakeholders who receive the simplified chat output pasted or forwarded to them (secondary/indirect consumer, never a direct system user)."
+    ],
+    "top_user_problems_ranked": [
+      "AI chat output is frequently too dense / jargon-heavy for fast comprehension or for sharing with non-experts, and there is no per-session control over its reading level.",
+      "Naive 'simplify this' corrupts exactly the things a PE real-estate lending professional cannot lose: precise figures (principal, XIRR, dates, LTV/DSCR), caveats, legal terms of art, and executable code/commands.",
+      "A one-shot 'explain simply' doesn't persist — the user must re-ask every turn."
+    ],
+    "strategy_context": "acos-eden-protocol is a framework-level, cross-cutting ACOS capability (not tied to a single client deal) that sits orthogonal to every other skill: a session-persistent output-simplicity filter implemented purely with Claude Code primitives (skill + hooks + .acos/state/ files), never as a native output style (that slot is exclusive and already holds 'Explanatory', and output styles are deprecated per T1 research). It re-applies the active reading level every turn via a UserPromptSubmit hook injector (registered LAST after autopilot-context-injector.py and eternity-resume-prepend.sh) rather than relying on model memory, and re-arms on /clear via a SessionStart hook. Its central design tension — resolved by the pre-seeded swarm research (R1-R7) — is reconciling maximal comprehension gain with a zero-tolerance Fidelity Floor for PE-lending-grade precision (exact numbers, caveats, legal terms, code/commands must survive byte-for-byte or verbatim).",
+    "constraints": [
+      "Claude Code primitives only: skill (SKILL.md) + hooks + .acos/state/ files. Python 3 stdlib + bash, matching existing ACOS hook conventions (fail-open `|| printf ...` fallback).",
+      "MUST NOT be a native output style — output styles are a single exclusive slot, the project already sets \"outputStyle\": \"Explanatory\", and that mechanism is deprecated; an eden output-style would silently evict Explanatory. [T1]",
+      "Subagent Write is policy-blocked in this environment (\"return findings as text\"); artifact authoring uses the main thread or Bash writes. [T3]",
+      "Scope = top-level human-facing chat only — never Task() sub-agent I/O, evidence bundles, QA JSON, code, tool output, or generated artifact files. [T2]",
+      "Must coexist with the existing UserPromptSubmit hook chain (autopilot-context-injector.py -> eternity-resume-prepend.sh) and not disturb autopilot/eternity/Oracle. [T1]",
+      "Must never silently default an ambiguous invocation to a level — must confirm, honoring the global Confirmation Gate (P0)."
+    ],
+    "known_dependencies": [
+      "acos-knowledge-builder — donor of the plain-language ruleset (adopt language rules, reject the chunked tutor loop). [T1]",
+      "autopilot-context-injector.py — the proven UserPromptSubmit state-file + additionalContext re-injection pattern eden copies. [T1]",
+      ".acos/state/ conventions (oracle-session-threshold, model-session.yaml), session-cleanup.sh (SessionEnd), Oracle path modifiers. [T1]",
+      "Reading-level science: Flesch-Kincaid, Flesch Reading Ease, Dale-Chall familiar-word list. [T1/T2]"
+    ],
+    "known_risks": [
+      "Fidelity loss (rounded numbers, dropped caveats, paraphrased legal/technical terms) — CRITICAL for finance/diligence work. Mitigated by the Fidelity Floor + exempt-content passthrough. [T2]",
+      "Mis-scoping to sub-agent / machine-readable output would break orchestration. [T2]",
+      "Context salience decay of the injected directive over 50+ turns — mitigated by per-turn re-injection (hook), not model memory. [T2]",
+      "Unverified: whether Claude Code concatenates additionalContext from multiple same-event UserPromptSubmit hooks — must verify before wiring eden's hook. [T3, must-verify]",
+      "Over-simplification producing false confidence (a hedged answer sounding certain at L5). [T2]"
+    ],
+    "runtime_guardrails": [
+      "Injector hook (eden-level-injector.py) registered LAST in the UserPromptSubmit chain, after autopilot-context-injector.py and eternity-resume-prepend.sh; fail-open (`|| printf ...`).",
+      "Re-arm hook (eden-rearm) fires on SessionStart with matcher 'clear' so the directive survives /clear.",
+      "State stored at .acos/state/eden-level as a plain digit (file absent = off); this file must be EXCLUDED from session-cleanup.sh's SessionEnd purge so the level can persist across sessions.",
+      "Every per-turn injected directive states the active level in plain text (discoverability guardrail) plus the scope boundary (top-level chat only).",
+      "Grammar parser never silently clamps or defaults invalid input — returns an error stating the valid range (off, 1-5, on, status).",
+      "'on' with no further qualifier maps to level 5 (assumption, documented in open_questions) but must still pass through the Confirmation Gate when the invocation is otherwise ambiguous.",
+      "Oracle (PreToolUse temperature scoring) treats eden's .acos/state/ writes as negligible risk (score ~2, well under the default threshold of 9) — must not require elevated approval for normal toggling.",
+      "Exempt-content passthrough is byte-for-byte for: code/inline-code, shell commands, file paths, API/function names, config keys/values, URLs, citations, exact quotes, math/financial formulas, all numbers-with-units, defined entities (e.g. 'Borrower'), warning/regulatory language.",
+      "Self-verification of reading level is a lightweight internal heuristic only — NOT a guaranteed numeric Flesch-Kincaid computation; this caveat must be stated wherever self-verification is described."
+    ],
+    "repo_root": "planning/preeng/004-acos-eden-protocol"
+  },
+  "command_inputs": {
+    "specify": {
+      "product_name": "acos-eden-protocol",
+      "feature_goals": [
+        "Provide a single per-session dial (off, 1-5) that governs the reading level of top-level assistant chat responses only.",
+        "Guarantee zero fidelity-floor violations — every exact number, caveat, and exempt span survives verbatim regardless of level.",
+        "Persist the active level across turns (via hook re-injection, not model memory) and across /clear (via SessionStart re-arm), while remaining fully discoverable every turn.",
+        "Compose orthogonally with every other ACOS skill/agent without leaking into sub-agent I/O, evidence bundles, QA JSON, code, tool output, or generated artifact files.",
+        "Never silently guess an ambiguous level — surface a Confirmation-Gate-style clarification instead."
+      ],
+      "user_problems": [
+        "AI chat output is frequently too dense / jargon-heavy for fast comprehension or for sharing with non-experts, and there is no per-session control over its reading level.",
+        "Naive 'simplify this' corrupts exactly the things a PE real-estate lending professional cannot lose: precise figures (principal, XIRR, dates, LTV/DSCR), caveats, legal terms of art, and executable code/commands.",
+        "A one-shot 'explain simply' doesn't persist — the user must re-ask every turn."
+      ],
+      "success_metrics": [
+        "Selected level's reading target is hit (Flesch-Kincaid grade within the level's band; jargon-definition gate satisfied for L2-5).",
+        "Zero fidelity-floor violations: every exact number, caveat, and exempt span (code, paths, citations, legal terms) survives verbatim.",
+        "Filter persists across turns and across /clear; toggling off returns to normal with zero overhead.",
+        "Level is always discoverable (per-turn directive states the active level; status subcommand available)."
+      ]
+    },
+    "research": {
+      "domain_focus": [
+        "Claude Code hook architecture: UserPromptSubmit additionalContext behavior (single vs. multi-hook concatenation), SessionStart matchers, fail-open bash/python hook conventions.",
+        "Readability science: Flesch-Kincaid grade level, Flesch Reading Ease, Dale-Chall familiar-word list, and the semantic (jargon-definition) gate needed to split L1 from L2.",
+        "Fidelity-preserving text simplification in high-stakes domains (finance/legal): exempt-content classification, numeric/caveat preservation techniques.",
+        "ACOS state/session lifecycle conventions: .acos/state/ file patterns, session-cleanup.sh SessionEnd exclusions, Oracle temperature scoring of state writes.",
+        "acos-knowledge-builder plain-language ruleset: which rules to adopt vs. reject."
+      ],
+      "required_cqs": [
+        "CQ1: Which Claude Code primitive persistently governs assistant output register across turns, given output styles are a single exclusive slot already occupied by 'Explanatory' and deprecated?",
+        "CQ2: How is the active eden level re-applied every turn without relying on model memory, given context-salience decay over 50+ turns?",
+        "CQ3: What content types must be exempt from simplification, and how are they detected and passed through byte-for-byte with stdlib-only tooling?",
+        "CQ4: How does the skill self-verify that a response hit its target reading level, given no guaranteed numeric FK computation is available at inference time?",
+        "CQ5: What is the exact two-axis per-level spec for levels 1-5, and how are L1 and L2 distinguished when FK surface metrics alone cannot separate them?",
+        "CQ6: How does eden-level-injector.py coexist with the existing UserPromptSubmit chain without breaking autopilot, eternity, or the Oracle?",
+        "CQ7: Does Claude Code concatenate additionalContext from multiple same-event UserPromptSubmit hooks, and if unverified, what is the verification plan?",
+        "CQ8: What is the exact state storage format/location, and how must session-cleanup.sh be adjusted so the level survives across sessions?",
+        "CQ9: How does the skill re-arm persistence across /clear via a SessionStart hook matcher?",
+        "CQ10: What is the first-token command grammar, and how are invalid inputs handled so the system never silently clamps or defaults?",
+        "CQ11: What is the exact scope boundary, and how is it declared/enforced so eden never touches Task() sub-agent I/O, evidence, QA JSON, code, tool output, or generated files?",
+        "CQ12: Which fidelity-floor invariants must every simplification pass satisfy, and how are they mechanically checked or self-attested?",
+        "CQ13: How does the default-on collapsible 'Exact figures & terms' appendix work, and what triggers inclusion vs omission?",
+        "CQ14: Which language rules should eden adopt from acos-knowledge-builder vs reject (tutor-loop mechanics)?",
+        "CQ15: What is the per-message override syntax, and how does it apply a one-off level without mutating persistent session state?"
+      ],
+      "evidence_requirements": [
+        "Tier every claim per the Evidence Ledger schema (T1-T5) — the pre-seeded swarm research already carries T1-T5 tags to fold in.",
+        "All P0 decisions (scope, hook-based persistence, never-silently-default) require at least T1/T2 support before /preeng.plan proceeds.",
+        "The single T3 must-verify item (multi-hook additionalContext concatenation) must be explicitly logged as unresolved with a validation slice attached.",
+        "Reading-level band claims must cite established public formulas (T1) since no live external fetch is available.",
+        "CQ coverage must reach >=95% per the Lattice Expansion Loop before research_qa_report.json is APPROVED."
+      ]
+    },
+    "plan": {
+      "architecture_constraints": [
+        "Implementation limited to: one SKILL.md, hook scripts (Python 3 stdlib + bash), and .acos/state/ files — no native output style, no external services, no non-stdlib deps.",
+        "eden-level-injector.py (UserPromptSubmit) registered LAST, after autopilot-context-injector.py and eternity-resume-prepend.sh; fail-open fallback.",
+        "eden-rearm (SessionStart, matcher='clear') re-injects the directive after /clear without model memory.",
+        "Subagent Write is policy-blocked; all writes via main thread or Bash.",
+        "Scope enforcement is structural: apply ONLY to top-level human-facing chat, exclude Task() sub-agent I/O, evidence, QA JSON, code/diffs, tool output, generated files.",
+        "Oracle: eden's .acos/state/eden-level operations score ~2 (< threshold 9), no elevated approval for toggling."
+      ],
+      "technical_requirements": [
+        "State file .acos/state/eden-level storing a single digit (1-5); absence == 'off'.",
+        "First-token grammar: bare->status; on->level 5; off->delete file; 1..5 and 'level N'->same path; status->alias. Invalid->explicit error, never silent clamp/default.",
+        "Ambiguous invocations route through Confirmation-Gate clarification (P0).",
+        "Two-axis level spec: FK grade + FRE (surface) AND vocabulary/jargon-definition gate (semantic).",
+        "Fidelity Floor (8 invariants) encoded as a checklist referenced by the injected directive every turn.",
+        "Exempt-content classifier: stdlib regex/pattern detection (code fences, inline code, path-like strings, URL regex, number-with-unit regex, capitalized defined-entity terms, citation markers).",
+        "Per-message override: raw:/L1: prefix parsed at message time, single-response only, never mutates the state file.",
+        "Precision appendix: default-on collapsible 'Exact figures & terms' block, sourced from the original (never re-derived from simplified text).",
+        "Self-verification: lightweight internal heuristic (NOT guaranteed numeric FK); caveat stated in tech PRD.",
+        "session-cleanup.sh (SessionEnd) must exclude .acos/state/eden-level from purge — a required modification to a shared script; flag as cross-cutting dependency.",
+        "Coexistence test: verify (or flag as spike) whether Claude Code concatenates additionalContext across multiple same-event UserPromptSubmit hooks before finalizing the injector contract."
+      ],
+      "data_model_entities": [
+        "EdenLevel state — persisted value in .acos/state/eden-level (digit 1-5 or absent=off); single source of truth.",
+        "Level-spec table — level -> {reader profile, FK grade band, FRE band, max sentence length, vocabulary rule} for 1-5 plus 'off'.",
+        "Exempt-content classifier — ruleset/regex identifying exempt spans for verbatim passthrough.",
+        "Injector hook (eden-level-injector.py) — UserPromptSubmit hook; reads EdenLevel, emits per-turn directive; last in chain.",
+        "Re-arm hook (eden-rearm) — SessionStart hook (matcher='clear') re-establishing the directive after /clear.",
+        "Fidelity-floor ruleset — 8 hard invariants encoded as a checklist.",
+        "Per-message override — ephemeral parser for raw:/L1: prefixes; no persistent-state mutation.",
+        "Precision appendix — default-on collapsible 'Exact figures & terms' block; generation rule + trigger conditions.",
+        "Command grammar / parser — first-token router with explicit invalid-input error handling.",
+        "Confirmation-gate routing — routes ambiguous invocations to explicit clarification, not a guessed default.",
+        "Session-cleanup exclusion rule — modification preserving .acos/state/eden-level across sessions.",
+        "Self-verification heuristic — lightweight internal check with explicit non-guarantee caveat."
+      ]
+    },
+    "tasks": {
+      "epic_breakdown": [
+        "Epic 1 — Core level state & command grammar.",
+        "Epic 2 — Persistence & hook wiring (injector + re-arm + cleanup exclusion + must-verify spike).",
+        "Epic 3 — Fidelity Floor & exempt-content classifier + precision appendix.",
+        "Epic 4 — Two-axis reading-level engine + knowledge-builder language rules + self-verification heuristic.",
+        "Epic 5 — Discoverability, overrides & rollout (per-turn directive, status, per-message override, agent docs, demos)."
+      ],
+      "slice_strategy": "Vertical slices only — each produces a demo-able increment. Start with a spike slice resolving the P0 must-verify item (multi-hook additionalContext concatenation) before finalizing injector code. Then MVP toggle+injector (off/on/1-5/status, directive re-injection only) as Demo 1. Then Fidelity-Floor + exempt-content classifier + precision appendix as Demo 2. Then the two-axis reading-level engine wired to response shaping as Demo 3. Later slices (per-message override, self-verification, cleanup exclusion, agent docs) harden.",
+      "priority_order": [
+        "P0(a): top-level-chat-only scope enforced structurally.",
+        "P0(b): hook-based persistence (injector + re-arm) incl. must-verify spike.",
+        "P0(c): never silently default an ambiguous invocation.",
+        "P1: per-message override; optional L4-5 chunking (opt-in); silent-by-default badge; self-verification heuristic with caveat.",
+        "P2: 'off' retains non-auto 'last used' suggestion; simplified Confirmation-Gate wording; defensive integer-gate parsing."
+      ]
+    },
+    "analyze": { "feature_id": "004-acos-eden-protocol" },
+    "instructions": { "feature_id": "004-acos-eden-protocol" }
+  },
+  "execution_steps": [
+    "/preeng.specify","/preeng.research","/preeng.plan","/preeng.tasks","/preeng.analyze","/preeng.instructions"
+  ],
+  "deterministic_prompt_pointer": "Worker spec at .claude/skills/acos-preeng-classic/prompts/worker.md, executed against feature_config above under planning/preeng/004-acos-eden-protocol/",
+  "open_questions": [
+    "Assumption: 'on' with no further qualifier defaults to level 5 (first grader), per the user's own phrasing 'on and level 5 would mean...' [T5] — but any otherwise-ambiguous invocation must still route through the Confirmation Gate.",
+    "Needs clarification / must-verify: whether Claude Code concatenates additionalContext from multiple same-event UserPromptSubmit hooks [T3] — verify with a spike slice before eden-level-injector.py is finalized.",
+    "Assumption: the active eden level persists across brand-new sessions (passive preference) [T5] — mitigated by always surfacing the active-level line each turn.",
+    "Assumption: project_name = null — framework-level capability, not scoped to a client/deal.",
+    "Assumption: primary_users is two-tier (direct operator + indirect non-expert stakeholder).",
+    "Assumption: self-verification is a lightweight heuristic, not a certified numeric FK/FRE calculator.",
+    "Assumption: exempt-content classifier is stdlib-only regex/pattern heuristics — flagged for extra QA scrutiny given its role in the zero-fidelity-violation metric.",
+    "Assumption: session-cleanup.sh requires a direct modification to exclude .acos/state/eden-level — a change to a shared script outside eden's own files.",
+    "Needs clarification / must-verify: exact wording/format of the per-turn injected directive (how much of the Fidelity Floor + scope is restated every turn vs referenced) — deferred to /preeng.specify with a validation story."
+  ]
+}

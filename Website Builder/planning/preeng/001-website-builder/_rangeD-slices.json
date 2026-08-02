@@ -1,0 +1,838 @@
+[
+  {
+    "id": "S65-capture-wrapper-and-device-pinning",
+    "epic": "E17",
+    "story": "ST-21",
+    "title": "Capture wrapper with the inherited wait recipe and device-height pinning",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Produce captures that are valid evidence, especially for viewport-height layouts, with zero npm dependencies.",
+    "depends_on": [
+      "S63-gates-ts-verdicts-and-tiers"
+    ],
+    "fr_ids": [
+      "FR-235",
+      "FR-236"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S65-1",
+        "statement": "Capture uses the browser command line with no package dependency and asserts a non-empty output file.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S65-2",
+        "statement": "The wait recipe is implemented in TypeScript: navigate rather than set content, network idle with a load fallback, strip lazy-loading attributes, fonts-ready plus per-image decode, and a deferred-style settle.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S65-3",
+        "statement": "Any capture judging a viewport-height layout pins both the window and the preview frame to a real device size and asserts the measured frame height; full-page tall captures are labelled content-review-only.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "SL-S65-4",
+        "statement": "Fonts-ready is awaited before any bounding-rect measurement in both the editor and the capture path.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ17"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S65-capture-wrapper-and-device-pinning.md",
+    "_epic": {
+      "id": "E17",
+      "title": "Quality gates and capture"
+    },
+    "_story": {
+      "id": "ST-21",
+      "title": "Gates that measure, and captures that are valid evidence"
+    }
+  },
+  {
+    "id": "S66-lock-render-scrub-and-absence-mechanisms",
+    "epic": "E14",
+    "story": "ST-22",
+    "title": "LOCK as a re-render, with five layered editor-absence mechanisms",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Build the published tree by re-rendering with the editor flag false, never by copying and stripping.",
+    "depends_on": [
+      "S27-determinism-contract",
+      "S63-gates-ts-verdicts-and-tiers"
+    ],
+    "fr_ids": [
+      "FR-200",
+      "FR-201",
+      "FR-206"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A49",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A50",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S66-1",
+        "statement": "All five absence mechanisms exist: separate configs, commands and output directories; dev-only injection gated on the build command; toolbar-class chrome that cannot leak; the design flag explicitly defined false in the publish config; and a post-build scrub that then asserts.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S66-2",
+        "statement": "LOCK strips the recovery bin, freeze flags, section notes and asset-pane state from published output while the asset manifest stays in the project and in the evidence bundle.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ9"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S66-lock-render-scrub-and-absence-mechanisms.md",
+    "_epic": {
+      "id": "E14",
+      "title": "Step 7 LOCK"
+    },
+    "_story": {
+      "id": "ST-22",
+      "title": "An export that proves it is clean"
+    }
+  },
+  {
+    "id": "S67-eight-purity-gates",
+    "epic": "E14",
+    "story": "ST-22",
+    "title": "The eight purity gates, with isolated two-build comparison",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Prove the published tree is clean rather than claim it, and run the two-build comparison without touching the live dependency tree.",
+    "depends_on": [
+      "S66-lock-render-scrub-and-absence-mechanisms",
+      "S05-byte-reproducibility-spike",
+      "S65-capture-wrapper-and-device-pinning"
+    ],
+    "fr_ids": [
+      "FR-202",
+      "FR-203"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A51",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "A52",
+        "verification_method": "screenshot-diff"
+      },
+      {
+        "id": "A53",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "A57",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "section 12.17-A93",
+        "statement": "A grep for design-time origins across the published tree returns zero matches, including inside srcset, inline style, stylesheet url() and structured data.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "section 12.17-A94",
+        "statement": "Gate two runs from a clean worktree with its own dependency tree; the live manifest, lockfile and dependencies are unmodified afterwards and a concurrently running design server is unaffected.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S67-1",
+        "statement": "There are eight gates, not five (NA-03); gate six fails with the node list rather than a count; gate eight re-serialises every document and requires a zero diff.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S67-2",
+        "statement": "Gate two above the escalation budget demotes to CI-only with a recorded waiver in the gate report, never a silent skip.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ9"
+    ],
+    "evidence_refs": [
+      "EL-022",
+      "EL-088",
+      "EL-085"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S67-eight-purity-gates.md",
+    "_epic": {
+      "id": "E14",
+      "title": "Step 7 LOCK"
+    },
+    "_story": {
+      "id": "ST-22",
+      "title": "An export that proves it is clean"
+    }
+  },
+  {
+    "id": "S68-lock-time-checklist-32-checks",
+    "epic": "E14",
+    "story": "ST-23",
+    "title": "The 32-check ordered lock-time checklist",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "L",
+    "objective": "Run all 32 checks cheapest-and-most-foundational first, including the four lettered insertions and their build prerequisites.",
+    "depends_on": [
+      "S67-eight-purity-gates",
+      "S64-live-checks-scoped"
+    ],
+    "fr_ids": [
+      "FR-204"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A60",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A61",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A62",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A63",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A64",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A65",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A66",
+        "statement": "Recorded as inconsistent with the canonical performance threshold (NA-16): it omits the interaction metric. The gate implements the canonical statement and the criterion text is flagged for amendment.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A67",
+        "statement": "Recorded as inconsistent with the canonical pre-load transfer range (NA-16). The gate implements the canonical range.",
+        "verification_method": "recompute"
+      },
+      {
+        "id": "A68",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A69",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A70",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A71",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "SL-S68-1",
+        "statement": "The checklist contains 32 checks including motion-concurrency caps, skip-link presence and first tab order, the pause affordance, and asset-reference resolution (NA-04).",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S68-2",
+        "statement": "Licence completeness and reference resolution are two separate gates; a hallucinated asset path fails the second even though it passes the first.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ11",
+      "CQ10"
+    ],
+    "evidence_refs": [
+      "EL-061",
+      "EL-005"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S68-lock-time-checklist-32-checks.md",
+    "_epic": {
+      "id": "E14",
+      "title": "Step 7 LOCK"
+    },
+    "_story": {
+      "id": "ST-23",
+      "title": "A lock that is reversible and a checklist that is complete"
+    }
+  },
+  {
+    "id": "S69-lock-snapshots-manifest-and-unlock",
+    "epic": "E14",
+    "story": "ST-23",
+    "title": "Snapshots, lock manifest, git tag, non-mutating LOCK and the unlock path",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make LOCK reversible and hand-edits inside the exported tree detectable rather than silently overwritten.",
+    "depends_on": [
+      "S67-eight-purity-gates"
+    ],
+    "fr_ids": [
+      "FR-205",
+      "FR-207",
+      "FR-208",
+      "FR-209"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A54",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "A55",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A56",
+        "statement": "Amended to restore the system lock and content alongside the documents.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A58",
+        "verification_method": "manual-observation"
+      },
+      {
+        "id": "A59",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S69-1",
+        "statement": "The snapshot contains every document, the project record, content, the system lock, the asset manifest, the distribution hash manifest, the scrub output, the lock manifest and the gate report; the built tree is excluded because it is reproducible.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S69-2",
+        "statement": "Restoring an older lock stops and prints the migrate command when library files no longer hash-match the restored system lock, rather than opening a half-resolved project.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ9"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S69-lock-snapshots-manifest-and-unlock.md",
+    "_epic": {
+      "id": "E14",
+      "title": "Step 7 LOCK"
+    },
+    "_story": {
+      "id": "ST-23",
+      "title": "A lock that is reversible and a checklist that is complete"
+    }
+  },
+  {
+    "id": "S70-publish-automated-with-runbook-fallback",
+    "epic": "E15",
+    "story": "ST-24",
+    "title": "Automated publish with an honest runbook fallback",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Commit automated deploy as the v1 behaviour and record plainly when the fallback means the site is locked but not published.",
+    "depends_on": [
+      "S69-lock-snapshots-manifest-and-unlock"
+    ],
+    "fr_ids": [
+      "FR-210",
+      "FR-211"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S70-1",
+        "statement": "After a one-time credential setup, lock-and-publish runs the static deploy non-interactively and records the publish path used.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S70-2",
+        "statement": "With no valid credential, the run emits a runbook and records that the site is locked but NOT published; the fallback does not satisfy the locked-and-published exit criterion (NA-09).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S70-3",
+        "statement": "This commitment carries an unsigned sign-off row and the slice records that fact rather than assuming approval.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [],
+    "evidence_refs": [
+      "EL-059"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S70-publish-automated-with-runbook-fallback.md",
+    "_epic": {
+      "id": "E15",
+      "title": "Step 8 publish and evidence"
+    },
+    "_story": {
+      "id": "ST-24",
+      "title": "Published, with the licence question answered"
+    }
+  },
+  {
+    "id": "S71-licence-and-evidence-bundle",
+    "epic": "E15",
+    "story": "ST-24",
+    "title": "The licence-and-evidence bundle with fixed disclosure wording",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make the bundle the deliverable: every licence, every measured gate value, the direction tour, and a claim ceiling that is never exceeded.",
+    "depends_on": [
+      "S69-lock-snapshots-manifest-and-unlock",
+      "S56-lane-b-asset-library-and-chips"
+    ],
+    "fr_ids": [
+      "FR-212",
+      "FR-213",
+      "FR-214",
+      "FR-215",
+      "FR-216"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A72",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A73",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A74",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S71-1",
+        "statement": "A grep over the bundle and all product copy returns zero conformance claims (compliant, conformant, certified).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S71-2",
+        "statement": "The direction tour is rendered from the tour log including every heat's pick and stated reason, and the reference triangulation records at least three abstracted references per direction with a regeneration trigger above the overlap threshold.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S71-3",
+        "statement": "A one-line verdict is mirrored into the framework evidence directory.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ10",
+      "CQ11"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S71-licence-and-evidence-bundle.md",
+    "_epic": {
+      "id": "E15",
+      "title": "Step 8 publish and evidence"
+    },
+    "_story": {
+      "id": "ST-24",
+      "title": "Published, with the licence question answered"
+    }
+  },
+  {
+    "id": "S72-demo-4-locked-published-evidence",
+    "epic": "E15",
+    "story": "ST-24",
+    "title": "DEMO 4 - locked, published, evidence-complete",
+    "type": "demo",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Demonstrate the full exit condition: a locked site with proof of purity, published, with a complete bundle.",
+    "depends_on": [
+      "S70-publish-automated-with-runbook-fallback",
+      "S71-licence-and-evidence-bundle"
+    ],
+    "fr_ids": [],
+    "acceptance_criteria": [
+      {
+        "id": "A51",
+        "statement": "Or the signed-off normalised-comparison fallback, recorded as weakening the export proof.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "A72",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A73",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S72-1",
+        "statement": "One recorded run produces a locked tree passing all eight purity gates and all tier-one lock checks, a publish record, and a bundle with zero missing licence classes.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": "Demo 4",
+    "cqs": [
+      "CQ9",
+      "CQ10"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S72-demo-4-locked-published-evidence.md",
+    "_epic": {
+      "id": "E15",
+      "title": "Step 8 publish and evidence"
+    },
+    "_story": {
+      "id": "ST-24",
+      "title": "Published, with the licence question answered"
+    }
+  },
+  {
+    "id": "S73-resume-from-disk-and-reattach",
+    "epic": "E18",
+    "story": "ST-25",
+    "title": "Resume from disk and re-attach rather than relaunch",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "S",
+    "objective": "Reconstruct the pipeline phase from on-disk state alone and survive a context reset without restarting a live server.",
+    "depends_on": [
+      "S09-install-config-session-selftest",
+      "S37-eight-control-security-posture"
+    ],
+    "fr_ids": [
+      "FR-240",
+      "FR-241"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A13",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S73-1",
+        "statement": "The resume path reads the frontier from populated directories and passed gates; a test proves no branch depends on conversation memory.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S73-2",
+        "statement": "After a context clear, the resume text instructs re-attaching to the fixed port through the server state file and never instructs a relaunch.",
+        "verification_method": "grep-assert"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ6"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S73-resume-from-disk-and-reattach.md",
+    "_epic": {
+      "id": "E18",
+      "title": "Durability and diagnostics"
+    },
+    "_story": {
+      "id": "ST-25",
+      "title": "A project that survives month six and a context reset"
+    }
+  },
+  {
+    "id": "S74-verify-and-doctor",
+    "epic": "E18",
+    "story": "ST-25",
+    "title": "verify and doctor",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Ship the two diagnostics that keep the drift guarantee real and name month-six rot before it is fatal.",
+    "depends_on": [
+      "S27-determinism-contract",
+      "S69-lock-snapshots-manifest-and-unlock"
+    ],
+    "fr_ids": [
+      "FR-242"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A53",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S74-1",
+        "statement": "verify regenerates to a temporary directory, diffs text files, hash-compares binaries separately and re-serialises every document to canonical form.",
+        "verification_method": "hash-compare"
+      },
+      {
+        "id": "SL-S74-2",
+        "statement": "doctor reports hash mismatches, orphaned overrides and stale locks, and escalates override accumulation at the thresholds read from the project record.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S74-3",
+        "statement": "A false-positive verify is treated as a defect of the highest severity, because a verify users learn to ignore removes the guarantee while appearing to keep it.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ9"
+    ],
+    "evidence_refs": [
+      "EL-063"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S74-verify-and-doctor.md",
+    "_epic": {
+      "id": "E18",
+      "title": "Durability and diagnostics"
+    },
+    "_story": {
+      "id": "ST-25",
+      "title": "A project that survives month six and a context reset"
+    }
+  },
+  {
+    "id": "S75-gotchas-provenance-and-banners",
+    "epic": "E18",
+    "story": "ST-25",
+    "title": "Gotchas reference, provenance and do-not-hand-edit banners",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "S",
+    "objective": "Write down the harness facts that cost time, and make generated files say what to edit instead.",
+    "depends_on": [
+      "S09-install-config-session-selftest"
+    ],
+    "fr_ids": [
+      "FR-243",
+      "FR-244",
+      "FR-245"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S75-1",
+        "statement": "The gotchas reference carries every harness fact: cwd resets between shell calls, the missing timeout binary yielding empty output rather than an error, explicit browser invocation for previews, case-insensitive sibling directory names, and destructive-command scoring.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S75-2",
+        "statement": "The generation RESULT is persisted as the artifact of record and the prompt is stored for provenance only; a grep proves no code path re-derives a system from a stored prompt.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S75-3",
+        "statement": "Durable artifacts live outside the framework state directory that session cleanup touches.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ6"
+    ],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S75-gotchas-provenance-and-banners.md",
+    "_epic": {
+      "id": "E18",
+      "title": "Durability and diagnostics"
+    },
+    "_story": {
+      "id": "ST-25",
+      "title": "A project that survives month six and a context reset"
+    }
+  },
+  {
+    "id": "S76-acceptance-criteria-sweep",
+    "epic": "E19",
+    "story": "ST-26",
+    "title": "Acceptance-criteria sweep with the collision handled",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Map all 90 criteria to a gate, a script or an observable behaviour, and cite the unstable ones section-qualified.",
+    "depends_on": [
+      "S68-lock-time-checklist-32-checks",
+      "S72-demo-4-locked-published-evidence"
+    ],
+    "fr_ids": [
+      "FR-250"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S76-1",
+        "statement": "All 90 criteria are mapped with a named verification method, and the mapping is machine-checkable against this stories file.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S76-2",
+        "statement": "Criteria above ninety are cited section-qualified because two disjoint sets share the same numbers; the renumbering recommendation is recorded (NA-B05, NA-19).",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S76-3",
+        "statement": "The three criteria recorded as inconsistent with their own canonical statements (the answered-question cap and the two performance rows) are reported as amendments owed, not silently satisfied.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [
+      "CQ1"
+    ],
+    "evidence_refs": [
+      "EL-069",
+      "EL-070"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S76-acceptance-criteria-sweep.md",
+    "_epic": {
+      "id": "E19",
+      "title": "Acceptance, demos and learning capture"
+    },
+    "_story": {
+      "id": "ST-26",
+      "title": "The ship bar, proven and instrumented"
+    }
+  },
+  {
+    "id": "S77-selftest-and-evidence-bundles",
+    "epic": "E19",
+    "story": "ST-26",
+    "title": "Selftest at full assertion pass and per-slice evidence bundles",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "M",
+    "objective": "Make the release claim testable and make every slice's evidence reproducible from disk.",
+    "depends_on": [
+      "S09-install-config-session-selftest",
+      "S76-acceptance-criteria-sweep"
+    ],
+    "fr_ids": [
+      "FR-251"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "A85",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "A84",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A86",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A87",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A88",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "A89",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S77-1",
+        "statement": "Every slice's evidence bundle exists under the framework evidence path with all seven sections present.",
+        "verification_method": "exit-code"
+      }
+    ],
+    "demo": null,
+    "cqs": [],
+    "evidence_refs": [],
+    "blocking": false,
+    "task_file": "tasks/S77-selftest-and-evidence-bundles.md",
+    "_epic": {
+      "id": "E19",
+      "title": "Acceptance, demos and learning capture"
+    },
+    "_story": {
+      "id": "ST-26",
+      "title": "The ship bar, proven and instrumented"
+    }
+  },
+  {
+    "id": "S78-agent-metrics-and-learning-capture",
+    "epic": "E19",
+    "story": "ST-26",
+    "title": "Agent-metrics scaffolding and the learning-capture loop",
+    "type": "build",
+    "moscow": "MUST",
+    "size_class": "S",
+    "objective": "Define the performance formulas and their logging locations, and lift the run's learnings into the estate.",
+    "depends_on": [
+      "S77-selftest-and-evidence-bundles"
+    ],
+    "fr_ids": [
+      "FR-252",
+      "FR-253"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "SL-S78-1",
+        "statement": "The metrics document defines story points delivered, quality-adjusted productivity, token efficiency ratio and the universal score, names each input's source, and computes nothing.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S78-2",
+        "statement": "Instrumentation points at the existing agent-completions log plus per-slice evidence bundles.",
+        "verification_method": "grep-assert"
+      },
+      {
+        "id": "SL-S78-3",
+        "statement": "Every slice in this feature has non-empty Dev Learnings and QA Learnings; a slice with empty learnings is reported as not Done.",
+        "verification_method": "exit-code"
+      },
+      {
+        "id": "SL-S78-4",
+        "statement": "The three named learning obligations are captured: the passing launcher rung, the measured canvas sub-slice effort, and every source contradiction found by reading two sections against each other.",
+        "verification_method": "manual-observation"
+      }
+    ],
+    "demo": null,
+    "cqs": [],
+    "evidence_refs": [
+      "EL-065"
+    ],
+    "blocking": false,
+    "task_file": "tasks/S78-agent-metrics-and-learning-capture.md",
+    "_epic": {
+      "id": "E19",
+      "title": "Acceptance, demos and learning capture"
+    },
+    "_story": {
+      "id": "ST-26",
+      "title": "The ship bar, proven and instrumented"
+    }
+  }
+]

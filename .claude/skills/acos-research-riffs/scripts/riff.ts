@@ -11,7 +11,7 @@
  * Usage:  bun .claude/skills/acos-research-riffs/scripts/riff.ts <command> [...]
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -41,6 +41,7 @@ import { addEntry, chains, summarize, view, type LedgerEntry } from "./lib/ledge
 import {
   addDimension,
   attest,
+  computeGate,
   evaluateGate,
   initCoverage,
   loadCoverage,
@@ -57,6 +58,7 @@ import {
   moderatorPick,
   recordQuestion,
   search,
+  type AddResult,
   type Claim,
 } from "./lib/claims.ts";
 import {
@@ -100,6 +102,174 @@ function brief(sessionId: string): string {
   return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
 
+/** Is this pid a live process? (signal 0 probes without touching it) */
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parse a room-live.status beacon (CONTRACT-1): one line whose first token is
+ * the state — `starting` | `ready` | `failed:<reason>` — followed by
+ * ` pid=<pid>`. A line without the pid suffix (or an unreadable file) reads
+ * as absent: an unowned beacon proves nothing about any daemon.
+ */
+function parseBeacon(statusFile: string): { state: string; pid: number } | null {
+  let line: string;
+  try {
+    line = readFileSync(statusFile, "utf8").trim();
+  } catch {
+    return null;
+  }
+  const m = line.match(/^(.*?)\s+pid=(\d+)$/);
+  if (!m || !m[1]) return null;
+  return { state: m[1].trim(), pid: Number(m[2]) };
+}
+
+/**
+ * Ensure the live responder — a warm `claude -p` pool that answers a clicked
+ * seat in ~5-7s, grounded in that seat's findings, with no moderator in the
+ * loop. Liveness comes from the room-live.status beacon (CONTRACT-1): a
+ * beacon whose pid is alive belongs to the daemon that owns the session lock,
+ * so its state is current and no spawn is needed. Anything else is a dead
+ * run's leftover — it is unlinked BEFORE the spawn, so whatever the poll
+ * reads afterwards provably came from the daemon just spawned (M5). A
+ * successful spawn alone proves nothing (the responder may still refuse over
+ * an API key, a held lock, or a warmup timeout).
+ */
+async function ensureLiveResponder(sessionId: string): Promise<string> {
+  const root = paths(sessionId).root;
+  const statusFile = join(root, "room-live.status");
+  const prior = parseBeacon(statusFile);
+  if (prior && pidAlive(prior.pid)) {
+    // A live daemon already owns this session — spawning again would only
+    // bounce off its lock (and restart the log). Report its own state.
+    if (prior.state === "ready" || prior.state.startsWith("failed")) return prior.state;
+    return "starting (warming up — see room-live.status)";
+  }
+  try {
+    unlinkSync(statusFile);
+  } catch {
+    /* no stale beacon to clear */
+  }
+  try {
+    const liveLog = join(root, "room-live.out");
+    // CONTRACT-2: ONE append-mode descriptor shared by stdout and stderr.
+    // Two Bun.file handles each write from offset 0 and overwrite each other
+    // in place — garbling the very diagnostics failure messages point at (M6).
+    const fd = openSync(liveLog, "a");
+    try {
+      writeSync(fd, `--- run ${new Date().toISOString()} ---\n`);
+      const lp = Bun.spawn(
+        ["bun", join(HERE_SCRIPTS, "riff-live.ts"), "--session", sessionId, "--root", projectRoot()],
+        { stdout: fd, stderr: fd, stdin: "ignore" },
+      );
+      lp.unref();
+    } finally {
+      // The child holds its own copy of the descriptor.
+      closeSync(fd);
+    }
+  } catch {
+    return "failed: could not spawn riff-live";
+  }
+  // Poll the handshake briefly; warmup can outlast this window, so "starting"
+  // is an honest answer — never report ready on a timeout. No pid-liveness
+  // check here: a daemon that wrote `failed:` and exited must still be
+  // reported, and the pre-spawn unlink already guarantees provenance.
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    const b = parseBeacon(statusFile);
+    if (b && (b.state === "ready" || b.state.startsWith("failed"))) return b.state;
+    await Bun.sleep(150);
+  }
+  return "starting (warming up — see room-live.status)";
+}
+
+/** One user-facing line describing what clicking a seat will actually do. */
+function liveNote(live: string | false): string {
+  if (live === false) return "view-only room; run without --no-live to let seats answer";
+  if (live === "ready") {
+    return "live room: click a seat (or type to it) and it answers in ~5-7s from its own findings";
+  }
+  if (live.startsWith("failed")) {
+    return `live responder ${live} — see room-live.out; clicks land in the inbox unanswered`;
+  }
+  return "live responder still warming up — check room-live.status before clicking a seat";
+}
+
+/**
+ * Parse an optional numeric flag, failing loudly on garbage. Number("o.3") is
+ * NaN, and NaN slides through comparisons and slices in the fail-UNSAFE
+ * direction (`top < NaN` is false; `.slice(0, NaN)` is empty) — so every
+ * numeric flag must be Number.isFinite-validated before use (M23).
+ */
+function numericFlag(
+  args: Args,
+  name: string,
+  opts: { min?: number; max?: number; integer?: boolean } = {},
+): number | undefined {
+  const raw = args.flags[name];
+  if (raw === undefined) return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) fail(`--${name} must be a number, got: ${raw}`);
+  if (opts.integer && !Number.isInteger(n)) fail(`--${name} must be an integer, got: ${raw}`);
+  if (opts.min !== undefined && n < opts.min) fail(`--${name} must be >= ${opts.min}, got: ${raw}`);
+  if (opts.max !== undefined && n > opts.max) fail(`--${name} must be <= ${opts.max}, got: ${raw}`);
+  return n;
+}
+
+/**
+ * Shape-check one model-authored coverage dimension BEFORE it can persist. A
+ * wrong key (`dimension_id` for `id`) would pass the cast, land in
+ * coverage.json as an id-less dimension that permanently blocks the gate, and
+ * crash `riff coverage show` and `riff resume` (M24).
+ */
+function checkDimension(d: unknown, label: string, allowCap = false): void {
+  const expected = allowCap ? "{id, name, why, cap?}" : "{id, name, why}";
+  if (!d || typeof d !== "object" || Array.isArray(d)) {
+    fail(`${label}: expected an object ${expected}`);
+  }
+  const rec = d as Record<string, unknown>;
+  for (const k of Object.keys(rec)) {
+    if (k === "id" || k === "name" || k === "why" || (allowCap && k === "cap")) continue;
+    fail(`${label}: unknown key "${k}" — expected ${expected}`);
+  }
+  for (const f of ["id", "name", "why"] as const) {
+    const v = rec[f];
+    if (typeof v !== "string" || !v.trim()) fail(`${label}: "${f}" must be a non-empty string`);
+  }
+  if (allowCap && rec["cap"] !== undefined) {
+    const cap = rec["cap"];
+    if (typeof cap !== "number" || !Number.isInteger(cap) || cap <= 0) {
+      fail(`${label}: "cap" must be a positive integer`);
+    }
+  }
+}
+
+/**
+ * Kept figure-conflicts must reach the LEDGER from both corpus-entry commands
+ * (claims add and claims ingest): stdout is ephemeral in a conversation that
+ * holds references, and the report bundle compiles from the ledger (I34).
+ */
+function ledgerConflicts(
+  id: string,
+  slug: string,
+  verb: string,
+  conflicts: AddResult["conflicts"],
+): void {
+  if (conflicts.length === 0) return;
+  addEntry(id, {
+    type: "note",
+    body: `${conflicts.length} figure conflict(s) kept (not deduped) while ${verb} ${slug}'s claims — near-identical statements carrying different numbers.`,
+    context: conflicts.map((c) => `${c.id} vs ${c.conflicts_with}`).join("; "),
+    author: { agent: "riff-cli" },
+  });
+}
+
 const USAGE = `riff — state engine for /acos-research-riffs
 
 SESSION
@@ -111,8 +281,8 @@ SESSION
   resume
 
 SCOPE
-  brief --file <path>                        install the frozen research brief
-  coverage init --json <file>                [{id,name,why}, ...]
+  brief --file <path> [--force]              install the frozen research brief (--force replaces a differing one)
+  coverage init --json <file> [--force]      [{id,name,why}, ...]; --force discards existing dimensions + probe records (ledgered)
   coverage add --json <file>                 add one dimension mid-session
   coverage show
   coverage probe <dim-id> --novel <n> [--note "..."] [--agent-saturated]
@@ -122,7 +292,7 @@ SCOPE
 PANEL
   panel set --json <file>                    [{slug,role,title,objective,lane,not_lane,dimensions}]
   panel show
-  panel approve
+  panel approve [--force]
   panel add --json <file>                    add one seat mid-session
   panel retire <slug> --note "why"
   charter <slug>                             render this seat's delegation contract
@@ -133,7 +303,7 @@ CORPUS
   claims ingest --slug <slug>                read the agent-written dossier claims file, dedup in place
   claims add --slug <slug> --json <file>     append claims from an external array file
   claims search "<query>" [--limit N]
-  ask "<question>"                           sufficiency check -> verified|provisional|not-in-corpus
+  ask "<question>" [--min N] [--strong N]    sufficiency check -> verified|provisional|not-in-corpus
   surfaced <claim-id...>                     mark claims as shown to the user
   moderator                                  pick the best unsurfaced finding
 
@@ -151,12 +321,14 @@ TREE
   tree apply --concept <id> --json <file>    [{name, claim_ids}]
 
 ROOM
-  room [--port N] [--no-open] [--state]     launch the live browser dashboard
+  room [--port N] [--no-open] [--no-live] [--state]     launch the live browser dashboard
 
 REPORT
   report bundle                              assemble the single compile input
   report audit --file <path>                 cross-check citations vs the corpus
   eval [--json]                              mechanical self-check of the session
+
+Commands shown with --json <file> also accept --data '<json>' or --stdin.
 `;
 
 async function main(): Promise<void> {
@@ -206,7 +378,9 @@ async function main(): Promise<void> {
     case "status": {
       const id = sid(args);
       const m = loadManifest(id);
-      const gate = evaluateGate(id);
+      // Pure read (I9): status must never rewrite coverage.json — persisting
+      // statuses is `riff gate`'s job (evaluateGate = computeGate + persist).
+      const gate = computeGate(loadCoverage(id));
       out({
         session_id: id,
         topic: m.topic,
@@ -248,8 +422,16 @@ async function main(): Promise<void> {
       const mode = args.positional[0];
       if (mode !== "standard" && mode !== "direct") fail("mode must be standard or direct");
       const m = loadManifest(id);
+      const prev = m.mode;
       m.mode = mode;
       saveManifest(m);
+      // Mirror the phase command: direct mode silences the moderator guardrail,
+      // so the switch must be visible in the audit record.
+      addEntry(id, {
+        type: "decision",
+        body: `Mode ${prev} -> ${mode}${mode === "direct" ? " (moderator off)" : ""}`,
+        author: { agent: "riff-cli" },
+      });
       out({ session_id: id, mode });
       return;
     }
@@ -257,7 +439,8 @@ async function main(): Promise<void> {
     case "resume": {
       const m = resolveSession(args.flags["session"]);
       const id = m.session_id;
-      const gate = evaluateGate(id);
+      // Pure read, like status (I9): resume inspects, it never persists.
+      const gate = computeGate(loadCoverage(id));
       const entries = view(id);
       out(
         [
@@ -291,14 +474,27 @@ async function main(): Promise<void> {
       const id = sid(args);
       const src = requireFlag(args, "file");
       const text = readFileSync(src, "utf8");
-      writeFileEnsured(paths(id).brief, text);
+      const dest = paths(id).brief;
+      const prior = existsSync(dest) ? readFileSync(dest, "utf8") : null;
+      const replacing = prior !== null && prior !== text;
+      // The brief is the document every guardrail is measured against —
+      // replacing it silently would leave every already-rendered charter
+      // embedding the old text, with no audit trace (I31).
+      if (replacing && !args.bools.has("force")) {
+        fail(
+          "a different brief is already frozen — replacing it invalidates every charter rendered against it; use --force to replace",
+        );
+      }
+      writeFileEnsured(dest, text);
       addEntry(id, {
-        type: "decision",
-        body: "Froze the research brief; all later work is measured against it.",
+        type: replacing ? "correction" : "decision",
+        body: replacing
+          ? "Brief REPLACED — charters rendered before this point embed the prior brief."
+          : "Froze the research brief; all later work is measured against it.",
         context: text.split("\n").slice(0, 3).join(" ").slice(0, 300),
         author: { agent: "riff-cli" },
       });
-      out({ session_id: id, brief: paths(id).brief, bytes: text.length });
+      out({ session_id: id, brief: dest, bytes: text.length, replaced: replacing });
       return;
     }
 
@@ -308,8 +504,23 @@ async function main(): Promise<void> {
       if (sub === "init") {
         const dims = readPayload(args) as Array<{ id: string; name: string; why: string }>;
         if (!Array.isArray(dims) || dims.length === 0) fail("coverage init needs a non-empty array");
+        dims.forEach((d, i) => checkDimension(d, `coverage init dimension #${i}`));
         const m = loadManifest(id);
-        const c = initCoverage(id, dims, m.tier);
+        const force = args.bools.has("force");
+        // On a forced re-init the discarded saturation record must survive in
+        // the audit trail — the report compiles from the ledger (M25).
+        const prior = force ? loadCoverage(id).dimensions : [];
+        const c = initCoverage(id, dims, m.tier, force);
+        if (prior.length > 0) {
+          addEntry(id, {
+            type: "decision",
+            body: `Coverage re-initialized with --force — discarded ${prior.length} dimension(s) and their probe records.`,
+            consequences: prior.map(
+              (d) => `${d.id}: ${d.probes} probe(s), ${d.novel_claims} novel, ${d.status}`,
+            ),
+            author: { agent: "riff-cli" },
+          });
+        }
         addEntry(id, {
           type: "decision",
           body: `Declared ${c.dimensions.length} coverage dimensions. A dimension with zero probes can never count as saturated.`,
@@ -321,7 +532,15 @@ async function main(): Promise<void> {
       }
       if (sub === "add") {
         const d = readPayload(args) as { id: string; name: string; why: string };
+        checkDimension(d, "coverage add dimension", true);
         const added = addDimension(id, d);
+        const m = loadManifest(id);
+        if (m.gate_passed) {
+          // The new dimension re-opens the gate; clearing the sticky flag lets
+          // the next passing `riff gate` log a fresh stop-decision entry.
+          m.gate_passed = false;
+          saveManifest(m);
+        }
         addEntry(id, {
           type: "gap",
           body: `Added coverage dimension mid-session: ${added.id} — ${added.name}`,
@@ -354,7 +573,13 @@ async function main(): Promise<void> {
       if (sub === "probe") {
         const dimId = args.positional[1];
         if (!dimId) fail("coverage probe needs a dimension id");
-        const novel = Number(args.flags["novel"] ?? "0");
+        // An omitted or mistyped count would otherwise record a dry probe —
+        // input errors must never push a dimension toward saturation (I8).
+        const rawNovel = requireFlag(args, "novel");
+        const novel = Number(rawNovel);
+        if (!Number.isInteger(novel) || novel < 0) {
+          fail(`--novel must be a non-negative integer, got: ${rawNovel}`);
+        }
         const d = recordProbe(
           id,
           dimId,
@@ -447,14 +672,32 @@ async function main(): Promise<void> {
       }
       if (sub === "add") {
         const seat = readPayload(args) as Seat;
-        addSeat(id, seat);
+        // Unlike panel set (gated downstream by approve), a mid-session add is
+        // immediately live — addSeat persists before validatePanel can warn,
+        // so a malformed seat would crash renderPanel on the next `riff panel`
+        // or `riff resume`. Shape-check first; lane-duplication stays a
+        // validate-after-save warning (I32).
+        if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
+          fail("panel add expects a seat object");
+        }
+        const raw = seat as Partial<Seat>;
+        const missing: string[] = [];
+        for (const f of ["slug", "role", "title", "objective", "lane", "not_lane"] as const) {
+          const v = raw[f];
+          if (typeof v !== "string" || !v.trim()) missing.push(f);
+        }
+        if (!Array.isArray(raw.dimensions)) missing.push("dimensions");
+        if (missing.length) {
+          fail(`panel add: missing or malformed field(s): ${missing.join(", ")}`);
+        }
+        const p = addSeat(id, seat);
         addEntry(id, {
           type: "panel-change",
           body: `Added seat mid-session: ${seat.slug} (${seat.role}) — ${seat.title}`,
           context: seat.rationale ?? "steered by the user",
           author: { agent: "riff-cli" },
         });
-        out({ added: seat.slug });
+        out({ added: seat.slug, warnings: p.problems });
         return;
       }
       if (sub === "retire") {
@@ -532,7 +775,7 @@ async function main(): Promise<void> {
         charter: r.path,
         slug: r.slug,
         claims_path: join(paths(id).dossiers, `${r.slug}.claims.jsonl`),
-        note: "pass this file's contents to one Task as the prompt",
+        note: "pass this file's PATH to one Task via SKILL.md Phase 2's read-and-execute wrapper — by path, not by value",
       });
       return;
     }
@@ -546,11 +789,13 @@ async function main(): Promise<void> {
         const payload = readPayload(args) as Array<Partial<Claim>>;
         if (!Array.isArray(payload)) fail("claims add expects an array");
         const res = addClaims(id, slug, payload);
+        ledgerConflicts(id, slug, "adding", res.conflicts);
         out({
           slug,
           added: res.added.length,
           duplicates: res.duplicates.length,
           duplicate_of: res.duplicates.map((d) => d.duplicate_of),
+          conflicts: res.conflicts,
           ids: res.added.map((c) => c.id),
         });
         return;
@@ -566,11 +811,14 @@ async function main(): Promise<void> {
             author: { agent: "riff-cli" },
           });
         }
+        ledgerConflicts(id, slug, "ingesting", res.conflicts);
         out({
           slug,
           total_read: res.total_read,
           added: res.added.length,
           duplicates: res.duplicates.length,
+          conflicts: res.conflicts,
+          sources_merged: res.duplicates.reduce((n, d) => n + (d.sources_merged ?? 0), 0),
           malformed: res.malformed,
           novel_by_dimension: res.added.reduce<Record<string, number>>((acc, c) => {
             const k = c.dimension ?? "(unassigned)";
@@ -585,8 +833,9 @@ async function main(): Promise<void> {
       if (sub === "search") {
         const q = args.positional.slice(1).join(" ");
         if (!q) fail("claims search needs a query");
+        // A NaN limit makes .slice(0, NaN) silently empty (M23).
         out(
-          search(id, q, Number(args.flags["limit"] ?? "8")).map((c) => ({
+          search(id, q, numericFlag(args, "limit", { min: 1, integer: true }) ?? 8).map((c) => ({
             id: c.id,
             score: Number(c.score.toFixed(3)),
             claim: c.claim,
@@ -605,9 +854,12 @@ async function main(): Promise<void> {
       const q = args.positional.join(" ");
       if (!q) fail("ask needs a question");
       recordQuestion(id, q);
+      // A NaN threshold is fail-UNSAFE: `top < NaN` is false, silently
+      // bypassing the weak-overlap abstain and disarming the stale/volatile
+      // flags and per-hit figure caveats — a typo'd flag must die here (M23).
       const a = assess(id, q, {
-        minScore: args.flags["min"] ? Number(args.flags["min"]) : undefined,
-        strongScore: args.flags["strong"] ? Number(args.flags["strong"]) : undefined,
+        minScore: numericFlag(args, "min", { min: 0, max: 1 }),
+        strongScore: numericFlag(args, "strong", { min: 0, max: 1 }),
       });
       const m = loadManifest(id);
       m.moderator_streak = a.label === "not-in-corpus" ? 0 : m.moderator_streak + 1;
@@ -627,6 +879,17 @@ async function main(): Promise<void> {
         numeric: a.numeric,
         primary_sourced: a.primary_sourced,
         independent_sources: a.independent_sources,
+        corroborating_sources: a.corroborating_sources,
+        // Ids listed here are quotable only as provisional even under a
+        // verified label — the delivery guardrail keys on this list being
+        // non-empty, not just on the top hit (CONTRACT-6 / M31).
+        numeric_unprimaried_ids: a.numeric_unprimaried_ids,
+        // Recency block { as_of_newest, primary_new } from assess()
+        // (CONTRACT-6); read tolerantly so ask keeps compiling while
+        // claims.ts lands the field.
+        recency:
+          (a as { recency?: { as_of_newest: string | null; primary_new: boolean } }).recency ??
+          null,
         moderator_due: m.mode === "standard" && m.moderator_streak >= MODERATOR_L,
         hits: a.hits.map((h) => ({
           id: h.id,
@@ -642,8 +905,15 @@ async function main(): Promise<void> {
     case "surfaced": {
       const id = sid(args);
       if (args.positional.length === 0) fail("surfaced needs at least one claim id");
-      markSurfaced(id, args.positional);
-      out({ marked: args.positional.length });
+      // A typo'd id would report success while recording nothing meaningful,
+      // leaving the actually-delivered claim unsurfaced and re-eligible for
+      // the moderator — partition against the corpus instead (I33).
+      const known = new Set(allClaims(id).map((c) => c.id));
+      const marked = args.positional.filter((x) => known.has(x));
+      const unknown = args.positional.filter((x) => !known.has(x));
+      if (marked.length === 0) fail(`surfaced: no such claim id(s): ${unknown.join(", ")}`);
+      markSurfaced(id, marked);
+      out({ marked: marked.length, unknown });
       return;
     }
 
@@ -706,7 +976,8 @@ async function main(): Promise<void> {
       let entries = view(id);
       if (args.flags["type"]) entries = entries.filter((e) => e.type === args.flags["type"]);
       if (args.bools.has("active")) entries = entries.filter((e) => e.status === "active");
-      const tail = Number(args.flags["tail"] ?? "0");
+      // A NaN tail would silently show nothing (M23).
+      const tail = numericFlag(args, "tail", { min: 0, integer: true }) ?? 0;
       if (tail > 0) entries = entries.slice(-tail);
       out(entries);
       return;
@@ -746,8 +1017,13 @@ async function main(): Promise<void> {
       if (sub === "apply") {
         const concept = requireFlag(args, "concept");
         const groups = readPayload(args) as Array<{ name: string; claim_ids: string[] }>;
-        const node = reorganize(id, concept, groups);
-        out({ concept: node.id, children: node.children.map((c) => c.id), left: node.claim_ids });
+        const { node, ignored } = reorganize(id, concept, groups);
+        out({
+          concept: node.id,
+          children: node.children.map((c) => c.id),
+          left: node.claim_ids,
+          ignored,
+        });
         return;
       }
       out(outline(id));
@@ -772,10 +1048,14 @@ async function main(): Promise<void> {
           unknown_ids: a.unknownIds,
           sourceless_cited: a.sourcelessCited,
           uncited_claims: a.uncitedClaims.length,
+          // The zero-id-citation hard fail is review item M27 — an id-free
+          // report cannot be grounded in the corpus at all.
           verdict:
-            a.unknownIds.length === 0 && a.sourcelessCited.length === 0
-              ? "PASS"
-              : "FAIL — fix unknown or sourceless citations before delivery",
+            a.unknownIds.length || a.sourcelessCited.length
+              ? "FAIL — fix unknown or sourceless citations before delivery"
+              : a.claimIdsCited.length === 0 && a.uncitedClaims.length > 0
+                ? "FAIL — the report cites none of the corpus claims; it cannot be grounded"
+                : "PASS",
         });
         return;
       }
@@ -790,23 +1070,45 @@ async function main(): Promise<void> {
         out(buildRoomState(id));
         return;
       }
+      // A NaN port would be handed straight to the server argv (M23).
+      const port = numericFlag(args, "port", { min: 0, max: 65535, integer: true }) ?? 0;
       const portFile = join(paths(id).root, "room.port");
+      const pidFile = join(paths(id).root, "room.pid");
       // Reuse a live room rather than starting a second server on a new port —
       // otherwise every invocation leaves an orphan listening in the background.
       if (existsSync(portFile)) {
         const prev = readFileSync(portFile, "utf8").trim();
         try {
           const res = await fetch(`http://localhost:${prev}/state`, {
-            signal: AbortSignal.timeout(700),
+            signal: AbortSignal.timeout(2000),
           });
-          if (res.ok) {
+          // A recycled port can host another session's room — reuse only on an
+          // identity match, otherwise treat the port file as stale.
+          const st = res.ok ? ((await res.json()) as { session_id?: string }) : null;
+          if (st?.session_id === id) {
             const url = `http://localhost:${prev}`;
+            // The server may have outlived its responder (or was first opened
+            // with --no-live) — re-ensure it so reuse restores live answers.
+            const live = args.bools.has("no-live") ? false : await ensureLiveResponder(id);
             if (!args.bools.has("no-open")) openInChrome(url);
-            out({ url, port: Number(prev), reused: true });
+            out({ url, port: Number(prev), session_id: id, reused: true, live, note: liveNote(live) });
             return;
           }
         } catch {
-          /* stale port file; fall through and start a fresh server */
+          /* no response — dead server, or a stale port file */
+        }
+        // An ALIVE server that answered wrongly (e.g. /state 500s over a
+        // corrupt session file) is not a stale file: replacing it would orphan
+        // it and leak one more polling listener per invocation (I10). Kill
+        // the pid recorded at spawn — and only that pid; a dead or unrecorded
+        // pid means the port now belongs to someone else, so never kill then.
+        try {
+          const prevPid = Number(readFileSync(pidFile, "utf8").trim());
+          if (Number.isInteger(prevPid) && prevPid > 0 && pidAlive(prevPid)) {
+            process.kill(prevPid);
+          }
+        } catch {
+          /* no recorded pid, or it raced its own exit */
         }
       }
 
@@ -817,7 +1119,7 @@ async function main(): Promise<void> {
           "--session",
           id,
           "--port",
-          args.flags["port"] ?? "0",
+          String(port),
           "--root",
           projectRoot(),
         ],
@@ -825,51 +1127,56 @@ async function main(): Promise<void> {
       );
 
       // The server prints one JSON line with its chosen port, then serves.
+      // Non-handshake lines (a bun warning, stray log) are consumed and skipped,
+      // and each read races the deadline — a server that binds but never prints
+      // must not hang the CLI forever.
       const reader = proc.stdout.getReader();
       const deadline = Date.now() + 8000;
       let buf = "";
       let info: { url?: string; port?: number } | null = null;
-      while (Date.now() < deadline) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += new TextDecoder().decode(value);
-        const nl = buf.indexOf("\n");
-        if (nl >= 0) {
+      while (Date.now() < deadline && !info) {
+        const r = await Promise.race([
+          reader.read().catch(() => null),
+          Bun.sleep(deadline - Date.now()).then(() => null),
+        ]);
+        if (r === null || r.done) break;
+        buf += new TextDecoder().decode(r.value);
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
           try {
-            info = JSON.parse(buf.slice(0, nl));
+            const parsed = JSON.parse(line) as { url?: unknown; port?: unknown };
+            if (parsed && typeof parsed.url === "string") {
+              info = parsed as { url: string; port?: number };
+              break;
+            }
           } catch {
-            /* keep reading */
+            /* not the handshake line — keep reading */
           }
-          break;
         }
       }
-      reader.releaseLock();
+      try {
+        reader.releaseLock();
+      } catch {
+        /* a raced-out read may still hold the lock; the CLI exits soon anyway */
+      }
       if (!info?.url) {
+        // Kill the just-spawned server: no port file was written, so a survivor
+        // would be an orphan listener invisible to the reuse check above.
+        proc.kill();
         const err = await new Response(proc.stderr).text();
         fail(`room server did not start${err ? `: ${err.slice(0, 400)}` : ""}`);
       }
       writeFileEnsured(portFile, String(info!.port));
+      // Recorded so the reuse probe above can tell OUR alive-but-erroring
+      // server from a stranger on a recycled port (I10).
+      writeFileEnsured(pidFile, String(proc.pid));
       proc.unref();
 
-      // Start the live responder — a warm `claude -p` pool that answers a clicked
-      // seat in ~5-7s, grounded in that seat's findings, with no moderator in the
-      // loop. It self-locks (one per session), so a reused room won't double it.
-      // `--no-live` opens a view-only room (clicks land in the inbox unanswered).
-      let live = false;
-      if (!args.bools.has("no-live")) {
-        try {
-          const liveLog = join(paths(id).root, "room-live.out");
-          const lp = Bun.spawn(["bun", join(HERE_SCRIPTS, "riff-live.ts"), "--session", id, "--root", projectRoot()], {
-            stdout: Bun.file(liveLog),
-            stderr: Bun.file(liveLog),
-            stdin: "ignore",
-          });
-          lp.unref();
-          live = true;
-        } catch {
-          /* view-only fallback; the room still serves */
-        }
-      }
+      // `--no-live` opens a view-only room (clicks land in the inbox unanswered);
+      // otherwise ensure the responder and report its handshake status honestly.
+      const live = args.bools.has("no-live") ? false : await ensureLiveResponder(id);
 
       if (!args.bools.has("no-open")) openInChrome(info!.url!);
       out({
@@ -877,9 +1184,7 @@ async function main(): Promise<void> {
         port: info!.port,
         session_id: id,
         live,
-        note: live
-          ? "live room: click a seat (or type to it) and it answers in ~5-7s from its own findings"
-          : "view-only room; run without --no-live to let seats answer",
+        note: liveNote(live),
       });
       return;
     }

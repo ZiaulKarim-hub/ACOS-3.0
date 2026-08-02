@@ -399,7 +399,31 @@ def is_session_opted_out(sid):
 # The autopilot subordination layer (_autopilot_eternity.py) treats the
 # cmux-unhealthy marker as an in-flight eternity marker, so autopilot also
 # stands down — preventing further token burn while we can't /clear.
-CMUX_SOCKET_PATH = Path.home() / "Library" / "Application Support" / "cmux" / "cmux.sock"
+# 2026-07-17: cmux 0.64.x moved its IPC socket from ~/Library/Application Support/cmux/
+# to the XDG state dir ~/.local/state/cmux/ — probe both, newest scheme first. Each
+# location may hold a `last-socket-path` pointer naming the live socket; a pointer is
+# trusted only when the path it names actually exists (the App Support one goes stale
+# after the move and kept naming the old location).
+_CMUX_SOCKET_CANDIDATES = (
+    Path.home() / ".local" / "state" / "cmux" / "cmux.sock",
+    Path.home() / "Library" / "Application Support" / "cmux" / "cmux.sock",
+)
+
+def _cmux_socket_path():
+    """Best-known cmux socket path: a valid last-socket-path pointer wins, then
+    the first fixed candidate that exists, else the newest-scheme default (which
+    then fails the .exists() checks downstream, as it should)."""
+    for cand in _CMUX_SOCKET_CANDIDATES:
+        try:
+            pointed = Path((cand.parent / "last-socket-path").read_text(encoding="utf-8").strip())
+            if pointed.exists():
+                return pointed
+        except OSError:
+            pass
+    for cand in _CMUX_SOCKET_CANDIDATES:
+        if cand.exists():
+            return cand
+    return _CMUX_SOCKET_CANDIDATES[0]
 CMUX_FAILURES = STATE_DIR / f".cmux-failures-{SESSION_ID}"
 CMUX_UNHEALTHY = STATE_DIR / f"cmux-unhealthy-{SESSION_ID}"
 CMUX_MAX_CONSECUTIVE_FAILURES = 2
@@ -422,10 +446,10 @@ def _write_cmux_failures(n):
         pass
 
 def cmux_socket_alive():
-    """Cheap presence check: does the cmux socket file exist?
-    Does NOT prove the listener is alive — that requires `cmux ping`. But
-    when the socket file is missing we know nothing else needs probing."""
-    return CMUX_SOCKET_PATH.exists()
+    """Cheap presence check: does the cmux socket file exist (at any known
+    location)? Does NOT prove the listener is alive — that requires `cmux ping`.
+    But when no socket file exists we know nothing else needs probing."""
+    return _cmux_socket_path().exists()
 
 def cmux_ping_ok(timeout=1.5):
     """Authoritative probe: does the cmux app respond to ping?
@@ -534,7 +558,8 @@ def cmux_pre_dispatch_check(log_label):
     if not is_cmux_session(SESSION_ID):
         return (True, None)  # not cmux, no gate
     if not cmux_socket_alive():
-        return (False, f"cmux socket missing at {CMUX_SOCKET_PATH}")
+        return (False, "cmux socket missing (checked "
+                + " and ".join(str(c) for c in _CMUX_SOCKET_CANDIDATES) + ")")
     if is_cmux_unhealthy():
         if cmux_ping_ok():
             for p in (CMUX_UNHEALTHY, CMUX_FAILURES):

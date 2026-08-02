@@ -1,0 +1,178 @@
+timestamp: "2026-06-26T07:31:03Z"
+status: "completed"
+type: emergency-manual
+trigger: acos-handoff-agent
+branch: acos-deficiency-fixes-2026-06-04
+head_sha: "6eda512d8594"
+session_summary: |
+  Session 2026-06-25/26 on acos-hypercore-ask. Three major deliverables were built,
+  committed, and pushed to BOTH remotes (origin + personal) this session:
+
+  1. per_diem_interest funding figure — now sources the native Hypercore value
+     (repaymentSchedule.scheduleTable[row].due.interest on the current accrual row).
+     Cross-check derives the day-count convention from Hypercore's own number; Actual/360
+     is PROVEN (not assumed) from XL on Lux II (loanFunding 338, asset 171):
+     $1,029.236923/day confirmed. Fallback: principal × rate% / 360, labelled
+     source=computed_fallback. User preference locked: prefer Hypercore's OWN fetched
+     value; compute only as a double-check/fallback.
+
+  2. Hypercore Data Catalog Phase 1 — harvest + probe tooling built and live-validated.
+     hca-catalog-harvest.py: deterministic schema walker with root-boundary stopping and
+     active/extended tiering (depth 4 → ~5,200 active value-leaves). hca-catalog-probe.py:
+     compiles flat dot-paths back to nested GraphQL selection; maps each path to a real
+     fetched value; faithfully marks ok/absent/empty_list/fetch_error. README.md documents
+     the 6-phase pipeline and regeneration commands. Probe validated live on loan 134
+     (Beehive): totalDisbursed $27,240,937.50, unutilizedPrincipal $2,759,062.50.
+
+  3. Hypercore Data Catalog COMPLETE — 5,204 fields mapped, 559 named and annotated.
+     Built via a 10-agent annotation+adversarial-verify workflow (5 domain annotators +
+     adversarial money/rate scale verifiers). Covers 5 domains: loan, investor (LoanFunding),
+     funding_entity (FundingEntity), borrower (Client), equity (Equity). Probed real examples:
+     loan 774, investor 470, funding_entity 167.
+
+git_state:
+  branch: acos-deficiency-fixes-2026-06-04
+  head: "6eda512d8594"
+  status: clean
+  commits_ahead_of_main: 51
+  remotes_in_sync: true
+  notes: |
+    Git history was rewritten earlier this session (filter-repo bloat cleanup).
+    All pre-2026-06-25 SHAs in older handoffs are STALE — verify only against
+    current git log. Both origin and personal remotes are at HEAD 6eda512.
+
+current_work:
+  project: acos-hypercore-ask
+  skill_path: .claude/skills/acos-hypercore-ask/
+  scripts_path: .claude/scripts/hca-*.py
+  catalog_path: .claude/skills/acos-hypercore-ask/catalog/
+  status: GOAL COMPLETE — Hypercore Data Catalog milestone reached.
+  primary_goal_was: Build a complete, navigable map of every value-bearing Hypercore field
+    so future portfolio questions resolve to a path + working query without reverse-engineering
+    the schema each time.
+  goal_achieved: true
+  test_suite: 634 green (30 test files across all hca_* modules + autopilot_eternity)
+
+catalog_deliverables:
+  committed_files:
+    - .claude/skills/acos-hypercore-ask/catalog/catalog-index.json
+    - .claude/skills/acos-hypercore-ask/catalog/catalog-paths.json
+    - .claude/skills/acos-hypercore-ask/catalog/enrichment.json
+    - .claude/skills/acos-hypercore-ask/catalog/hca-catalog-harvest.py
+    - .claude/skills/acos-hypercore-ask/catalog/hca-catalog-probe.py
+    - .claude/skills/acos-hypercore-ask/catalog/hca-catalog-build.py
+    - .claude/skills/acos-hypercore-ask/catalog/hca-catalog-lookup.py
+    - .claude/skills/acos-hypercore-ask/catalog/hca-catalog-refresh.py
+    - .claude/skills/acos-hypercore-ask/catalog/hypercore-catalog.yaml
+    - .claude/skills/acos-hypercore-ask/catalog/HYPERCORE-FIELD-MAP.md
+    - .claude/skills/acos-hypercore-ask/catalog/README.md
+  gitignored_regenerable:
+    - .claude/skills/acos-hypercore-ask/catalog/_introspection_current.json
+    - .claude/skills/acos-hypercore-ask/catalog/catalog-candidates.json
+    - .claude/skills/acos-hypercore-ask/catalog/probe-*.json
+    - .claude/skills/acos-hypercore-ask/catalog/hypercore-catalog.yaml
+  scale: "5,204 active value-leaves across 5 domains; 559 named with synonyms + gotchas + figure linkage"
+
+hypercore_access_boundaries:
+  source: "probed live 2026-06-26"
+  loans: RELIABLE — loans(filter:{searchString}){ pageItems{…} }
+  loanFundings: RELIABLE — 2-step (assetId → loanFundingId)
+  fundingEntities: RELIABLE — fundingEntities(filter){ pageItems{…} }
+  equities: HTTP 403 FORBIDDEN — out of read-scope; probe deferred
+  clients_borrower: HTTP 500 — schema-mapped, probe deferred (may be transient)
+  flaky_avoid:
+    - "loan(id) — intermittent HTTP 500; always use list+filter path"
+    - "loanFundings dual-filter (loanId+fundingEntityId together) — HTTP 500; use 2-step"
+  reference: "memory/reference_hypercore_api_access_boundaries (MEMORY.md)"
+
+scale_traps_catalog_encodes:
+  - "Interest rates are PERCENTS not fractions (annualInterestRate 15 = 15%, not 0.15)"
+  - "currentInterestRate 14 = 14% (same trap)"
+  - "totalOutstanding.total is NET of fee/credit components — use .principal for interest basis"
+  - "capitalizedBalance is a non-additive memo field — do not sum it into outstanding"
+  - "schedule row due.interest is the per-diem ONLY on accrual rows (isInterestAccrualDate=true, type=PreRepaymentDue); on payment rows it is the period-due amount"
+
+key_decisions:
+  - id: feedback_hypercore_native_over_computed
+    summary: "Prefer Hypercore's OWN fetched value; compute only as double-check/fallback. User stated preference — saved to memory."
+  - id: 2026-06-18-hca-build-ground-rules
+    summary: "All locked ground rules (Python 3 stdlib only; read-only; subscription Claude; secrets via Doppler; 2-of-3 consensus; etc.) documented in memory/decisions/2026-06-18-hca-build-ground-rules.md"
+
+sessions_commits_this_session:
+  - sha: "99a3b98"
+    message: "feat(hca): per_diem_interest funding figure (computed, provenance-bound, day-count stated)"
+  - sha: "2abd2d1"
+    message: "feat(hca): per_diem_interest now sourced DIRECTLY from Hypercore (native + cross-check)"
+  - sha: "f3c556c"
+    message: "feat(hca): Hypercore Data Catalog — Phase 1 harvest + probe tooling (proven)"
+  - sha: "6eda512"
+    message: "feat(hca): Hypercore Data Catalog complete — 5,204 fields mapped, 559 named, probed + verified"
+
+next_actions:
+  - id: OPTIONAL-1
+    priority: medium
+    title: "Wire hca-catalog-lookup into hca-ask.py smart_ask explorer fallback"
+    description: |
+      hca-ask.py smart_ask does NOT yet call hca-catalog-lookup for unmapped questions.
+      Wiring the lookup into the explorer fallback path would let the skill fetch ANY
+      cataloged field by natural-language phrase, not just the handful of built figures.
+      The lookup tool already exists (catalog/hca-catalog-lookup.py); it just isn't
+      called from hca-ask.py yet. This is a quality-of-life enhancement, not a blocker.
+    effort: small
+    file_to_edit: .claude/scripts/hca-ask.py
+
+  - id: OPTIONAL-2
+    priority: low
+    title: "Retry borrower (clients) live probe — may be transient 500"
+    description: |
+      clients/borrower HTTP 500 was recorded at probe time. This may be transient.
+      Retry: doppler run --project hypercore-ask --config dev_personal --
+        python3 .claude/skills/acos-hypercore-ask/catalog/hca-catalog-probe.py
+        --domain borrower --prefix <first-block> --name <loan-name> --limit 20
+      If it resolves, add probe-borrower.json to the catalog and re-run hca-catalog-build.py.
+    effort: small
+
+  - id: OPTIONAL-3
+    priority: low
+    title: "Equity domain — needs broader Hypercore API read-scope (HTTP 403)"
+    description: |
+      equities returns HTTP 403 Forbidden — this is a permission gap, not a transient error.
+      Requires requesting expanded read-scope from Hypercore. Until then equity fields in
+      catalog are schema-mapped only (no probed real values).
+    effort: requires external action (API access request)
+
+  - id: OPTIONAL-4
+    priority: low
+    title: "Merge branch acos-deficiency-fixes-2026-06-04 to main"
+    description: |
+      Branch has been open since early June 2026 with 51 commits ahead of main.
+      No known conflicts; the branch is fully committed and clean. Merging would consolidate
+      the full hca build + eternity fixes + robust-review fixes into main.
+    effort: small (git merge --no-ff or PR)
+
+blockers: none
+
+environment:
+  doppler_project: hypercore-ask
+  doppler_config: dev_personal
+  doppler_secrets: CLIENT_ID + HYPERCORE_CLIENT_SECRET (+ optional HYPERCORE_BASE_URL)
+  python: "Python 3 stdlib only — no third-party dependencies"
+  test_command: "for f in .claude/scripts/tests/test_hca_*.py .claude/scripts/tests/test_autopilot_eternity.py; do python3 \"$f\"; done"
+  autopilot_state: "ACTIVE — goal completed this session; autopilot may continue or idle"
+
+working_tree_notes: |
+  The only untracked/modified files in the working tree are handoff-related
+  (memory/handoffs/*.resume.md, archive/*.yaml) and planning/acos-axiom-synthesis/.
+  These are all non-code artifacts. The skill codebase and catalog are fully committed
+  and clean. The gitignored catalog regenerables (_introspection_current.json,
+  catalog-candidates.json, probe-*.json, hypercore-catalog.yaml) are present on disk
+  but intentionally not committed.
+
+reconstruction_sources:
+  - "git log --oneline (verified HEAD 6eda512d8594)"
+  - "git show 6eda512 --stat (catalog completion commit)"
+  - "git show 2abd2d1 --stat (per_diem native sourcing commit)"
+  - ".claude/skills/acos-hypercore-ask/catalog/README.md"
+  - "memory/decisions/2026-06-18-hca-build-ground-rules.md"
+  - "memory/handoffs/2026-06-25-emergency-handoff.resume.md (prior session context)"
+  - "test run: 634 green, verified live"

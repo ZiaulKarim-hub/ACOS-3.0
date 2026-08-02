@@ -1,0 +1,485 @@
+{
+  "entries": [
+    {
+      "id": "E-CONC",
+      "claim": "Without a lock only 3/25 concurrent writes survive while remaining VALID JSON; a unique mkstemp path yields 0/360 torn; the contention crash-test target is 6x60 -> 0 errors, 0 torn.",
+      "source_refs": [
+        "_preseed/digest-inventory-live-machine.md",
+        "_preseed/design.md sec.1 Vision 1",
+        "swarm-20260714-084532 agent-08"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-atomic-write",
+        "M-sharded-store",
+        "MET-torn-writes",
+        "MET-concurrency-survival",
+        "ANTI-shared-master",
+        "PAT-one-writer",
+        "STD-posix-fsync",
+        "CQ1",
+        "CQ13"
+      ]
+    },
+    {
+      "id": "E-REBUILD",
+      "claim": "A ~40-line rebuild script reconstructed 16/16 project rows from handoff artifacts alone, reading no registry file; a dry-run lists >=18 candidates across both parents.",
+      "source_refs": [
+        "_preseed/product-context.md sec.4",
+        "_preseed/build-plan.md Phase1.3"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-rebuild-disk",
+        "MET-rebuild-rows",
+        "MET-dangling-rate",
+        "PROC-enrollment",
+        "CQ11",
+        "CQ6"
+      ]
+    },
+    {
+      "id": "E-GRAVE",
+      "claim": "All 17 top-level .resume.md files lost their sibling handoff; ~10/17 show atime==mtime (never read); unnoticed five weeks; a derived index deletes the 55%-dangling-pointer class.",
+      "source_refs": [
+        "_preseed/product-context.md sec.3",
+        "_preseed/vision-deltas.md D7"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "MET-dangling-rate",
+        "ANTI-close-time-creation",
+        "PAT-enrich-not-create",
+        "CQ11"
+      ]
+    },
+    {
+      "id": "E-DUP",
+      "claim": "21 live sessions ~ 7 real projects, 13/21 the same project; cmux workspaces 4 and 5 both sit on ACOS 3.0; cmux does NO dedup (bare open created a 5th ACOS 3.0 workspace).",
+      "source_refs": [
+        "_preseed/product-context.md sec.3",
+        "_preseed/vision-deltas.md D8",
+        "_preseed/design.md sec.0"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-focus-not-launch",
+        "MET-workspace-constant",
+        "RISK-duplicate-launch",
+        "STD-spine1",
+        "PAT-pane-independent",
+        "CQ4"
+      ]
+    },
+    {
+      "id": "E-INV",
+      "claim": "Live inventory 2026-07-16: cmux 0.64.19, Claude Code 2.1.212, 643 non-subagent transcripts / 1.2 GB, 963 daemon-state entries, 18 handoff dirs across two parents, ~230 RPC methods.",
+      "source_refs": [
+        "_preseed/digest-inventory-live-machine.md",
+        "_preseed/design.md sec.0"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-liveness-join",
+        "M-desc-key-tag",
+        "ENT-the-book",
+        "CQ10"
+      ]
+    },
+    {
+      "id": "E-POSIX",
+      "claim": "fsync(tmp) -> os.replace -> fsync(dir) is the crash-durable rename discipline (POSIX rename atomicity + fsync ordering; LWN; SQLite durability docs).",
+      "source_refs": [
+        "POSIX rename(2)",
+        "LWN ext4 delalloc article",
+        "SQLite atomic-commit docs"
+      ],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 400,
+      "notes": "",
+      "lattice_node_ids": [
+        "STD-posix-fsync",
+        "M-atomic-write",
+        "CQ1"
+      ]
+    },
+    {
+      "id": "E-APFS",
+      "claim": "APFS is case-insensitive; realpath does not casefold and os.path.normcase is a no-op on POSIX, so the lookup index must apply .casefold().",
+      "source_refs": [
+        "Apple APFS docs",
+        "_preseed/design.md sec.1 identity"
+      ],
+      "tier": "T1",
+      "confidence": 0.9,
+      "freshness_days": 120,
+      "notes": "",
+      "lattice_node_ids": [
+        "STD-apfs-case",
+        "M-casefold-index",
+        "CQ2"
+      ]
+    },
+    {
+      "id": "E-CMUX",
+      "claim": "cmux 0.64.19 RPC methods (workspace.select/list/close, surface.resume.*, session.restore_previous) are PRESENT but behavior UNVERIFIED; hibernation/auto-resume/customDescription-restart are doc-claims only.",
+      "source_refs": [
+        "_preseed/design.md sec.0/sec.5",
+        "_preseed/decision-points.json DP2/DP4",
+        "cmux 0.64.x docs"
+      ],
+      "tier": "T4",
+      "confidence": 0.6,
+      "freshness_days": 1,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-phase0-probe",
+        "M-focus-not-launch",
+        "M-validated-close",
+        "RISK-cmux-unverified",
+        "STD-dp2-sacrificial",
+        "MET-probe-pass",
+        "CQ9"
+      ]
+    },
+    {
+      "id": "E-SPINE",
+      "claim": "SPINE 1-7 are binding; measured: script-implemented logic ran 8/8 (100%) while prose-specified logic ran 8/18 (44%).",
+      "source_refs": [
+        "_preseed/product-context.md sec.5",
+        "_preseed/digest-read-spine-conflicts.md"
+      ],
+      "tier": "T5",
+      "confidence": 0.85,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "STD-spine1",
+        "STD-spine2",
+        "STD-spine3",
+        "STD-spine4",
+        "STD-spine5",
+        "STD-spine6",
+        "STD-spine7",
+        "TERM-spine",
+        "CQ3",
+        "CQ18"
+      ]
+    },
+    {
+      "id": "E-ADOPT",
+      "claim": "~30% odds of routine use at day 60 (decay mode = 'stopped closing'); 147 hand-run /acos-complete prove deliberate-with-immediate-payoff rituals survive; menu-first inverts the curve without a nagger.",
+      "source_refs": [
+        "_preseed/vision-deltas.md D7",
+        "_preseed/design.md sec.1 Vision 5",
+        "swarm agent-12"
+      ],
+      "tier": "T5",
+      "confidence": 0.6,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "RISK-adoption",
+        "PAT-menu-first",
+        "M-dr1-gate",
+        "MET-adoption-day60",
+        "ANTI-nagger",
+        "ENT-audit-event",
+        "CQ12"
+      ]
+    },
+    {
+      "id": "E-SILENT",
+      "claim": "Silent failure is this machine's base rate: an ALL-GREEN doctor over 2,000+ failures; head -40 hiding 34 of 74 files inside an 'inspect FIRST' block, confirmed live at eternity-protocol-core.sh:139.",
+      "source_refs": [
+        "_preseed/product-context.md sec.7",
+        "_preseed/vision-deltas.md D6"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "RISK-silent-failure",
+        "M-facts-render",
+        "ANTI-green-badge",
+        "PAT-red-amber",
+        "MET-silent-failure-rate",
+        "STD-spine3",
+        "CQ17"
+      ]
+    },
+    {
+      "id": "E-NEXTACT",
+      "claim": "Real Next-step fields run 400-800 chars; the <=90-char headline must be GENERATED at close (imperative verb first), never truncated ('twelve options is zero options'); the single highest-risk dependency.",
+      "source_refs": [
+        "_preseed/vision-deltas.md D3",
+        "_preseed/product-context.md sec.7"
+      ],
+      "tier": "T3",
+      "confidence": 0.8,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-next-action-gen",
+        "MET-next-action-chars",
+        "RISK-next-action",
+        "PAT-generated-not-truncated",
+        "TERM-next-action",
+        "CQ7"
+      ]
+    },
+    {
+      "id": "E-IDENTITY",
+      "claim": "sanitize(cwd) is non-injective (5 paths -> 1 key; 4+ keys for one project); git identity refuted live (1 upstream, 3 toplevels, 3 HEADs); reopening a workspace mints a new UUID; titles are rewritten live.",
+      "source_refs": [
+        "_preseed/design.md sec.1 identity",
+        "_preseed/product-context.md sec.5"
+      ],
+      "tier": "T3",
+      "confidence": 0.85,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-uuid4-identity",
+        "M-inode-relink",
+        "ANTI-sanitize-cwd",
+        "TERM-project-uuid",
+        "STD-apfs-case",
+        "CQ2"
+      ]
+    },
+    {
+      "id": "E-YAML",
+      "claim": "System /usr/bin/python3 3.9.6 has no yaml module and yq is not installed; truncated YAML parses SILENTLY (19/30 records) while truncated JSON fails loudly.",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 1",
+        "_preseed/product-context.md sec.5"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "ANTI-yaml-truncation",
+        "STD-json-fail-loud",
+        "CQ13"
+      ]
+    },
+    {
+      "id": "E-SQLITE",
+      "claim": "SQLite is opaque to git diff and hand-repair; its winning scenario (a mass-close write storm) has zero writers in a force-quit, so it loses exactly when it must serve.",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 1 / sec.4",
+        "SQLite docs"
+      ],
+      "tier": "T5",
+      "confidence": 0.8,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "ANTI-sqlite-opaque",
+        "M-sharded-store",
+        "CQ13"
+      ]
+    },
+    {
+      "id": "E-ARGV",
+      "claim": "A multi-line reentry via --command argv lands as ONE auto-submitted message (5/6); cmux send and surface.send_text submit at every newline, shredding the prompt; an unexplained 1-in-6 silent drop needs read-screen verification + one retry.",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 3",
+        "_preseed/product-context.md sec.6"
+      ],
+      "tier": "T3",
+      "confidence": 0.75,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-argv-delivery",
+        "ANTI-cmux-send-shred",
+        "MET-delivery-marker",
+        "CQ14"
+      ]
+    },
+    {
+      "id": "E-BLIND",
+      "claim": "The blind round-trip verifier is given the handoff text ONLY (no repo/cwd) so it cannot pass a bad handoff by reading the repo; Wigum cap 5 then DEGRADE; the tester is tested (a gutted handoff must FAIL).",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 2 step5",
+        "_preseed/build-plan.md Phase2.3"
+      ],
+      "tier": "T5",
+      "confidence": 0.75,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-blind-roundtrip",
+        "MET-wigum-cap",
+        "TERM-wigum",
+        "STD-lce",
+        "CQ15"
+      ]
+    },
+    {
+      "id": "E-DR1",
+      "claim": "DR-1 is one recorded close->resume round-trip on a real project with user-confirmed continuity, archived to .acos/evidence/; the skill cannot ship on a promise (placebo -> trust death; one silent loss ends the tool).",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 5",
+        "_preseed/build-plan.md Phase4",
+        "_preseed/product-context.md sec.4"
+      ],
+      "tier": "T5",
+      "confidence": 0.85,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-dr1-gate",
+        "MET-dr1-roundtrip",
+        "RISK-trust-death",
+        "PROC-dr1",
+        "ENT-evidence-bundle",
+        "CQ16"
+      ]
+    },
+    {
+      "id": "E-ETERNITY",
+      "claim": "Eternity's 2026-06-26 cross-pane contamination class; the f639310 project-scoping fix; disjoint namespaces (closed/<slug>/ glob-invisible, .reentry.md never .resume.md); the ONE contact point is state/stop-<sid>; residual #10 (eternity-resume-prepend.sh:158-169) is pane-blind and still open.",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 4",
+        "_preseed/build-plan.md Phase0.3",
+        "project memory: eternity incidents"
+      ],
+      "tier": "T5",
+      "confidence": 0.75,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-colocated-namespace",
+        "PAT-disjoint-namespace",
+        "PAT-pane-independent",
+        "RISK-eternity-contam",
+        "RISK-duplicate-launch",
+        "MET-daemon-writes",
+        "STD-spine7",
+        "ENT-stop-marker",
+        "CQ5",
+        "CQ3"
+      ]
+    },
+    {
+      "id": "E-BINPATH",
+      "claim": "claude is shadowed twice on PATH (broken _acos_cli at ~/.zshrc:215 + a cmux CLI shim) so scripts must call absolute binaries; the highest-severity doc-drift lesson: the live in-pane hook lives outside the repo and is a silent no-op if edited repo-only.",
+      "source_refs": [
+        "_preseed/design.md sec.0 item8",
+        "_preseed/product-context.md sec.5"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-abs-binary",
+        "M-vcs-where-executes",
+        "MET-binary-shadow",
+        "RISK-inpane-regression",
+        "STD-spine4",
+        "CQ18"
+      ]
+    },
+    {
+      "id": "E-CONFID",
+      "claim": "automation.autoNamingAgent:'auto' endpoint/model is undocumented and cmux tabs carry OKOA deal content, so auto-naming stays OFF (DP3); the registry writes its own titles, making it redundant.",
+      "source_refs": [
+        "_preseed/decision-points.json DP3",
+        "_preseed/product-context.md sec.7"
+      ],
+      "tier": "T4",
+      "confidence": 0.6,
+      "freshness_days": 1,
+      "notes": "",
+      "lattice_node_ids": [
+        "RISK-confidentiality",
+        "M-desc-key-tag",
+        "ENT-desc-tag"
+      ]
+    },
+    {
+      "id": "E-RECEIPT",
+      "claim": "Every safe-close receipt line is a verified read-back from disk; 'listed N of M' asserts M == git status --porcelain | wc -l; only the script prints SAFE TO CLOSE THIS TAB, and only on full pass; no auto-stash (record state, never mutate).",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 2 step9",
+        "_preseed/product-context.md sec.4"
+      ],
+      "tier": "T3",
+      "confidence": 0.9,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-verified-receipt",
+        "MET-listed-n-of-m",
+        "PAT-receipt-not-promise",
+        "ANTI-auto-stash",
+        "STD-spine3",
+        "CQ8"
+      ]
+    },
+    {
+      "id": "E-IDENTIFY",
+      "claim": "cmux identify --surface fails OPEN: live, bogus, and known-dead surfaces all return exit 0 with byte-identical output, so close must target the validated CMUX_WORKSPACE_ID (grep -qx against rpc workspace.list) and never fall back to identify.",
+      "source_refs": [
+        "_preseed/design.md sec.1 Vision 2 guards",
+        "swarm agent-03"
+      ],
+      "tier": "T3",
+      "confidence": 0.85,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "ANTI-identify-failopen",
+        "M-validated-close",
+        "M-close-steps",
+        "MET-daemon-writes",
+        "CQ3",
+        "CQ10"
+      ]
+    },
+    {
+      "id": "E-MARKER",
+      "claim": "Membership is enrollment-on-first-sight, marker-gated (.acos/ | CLAUDE.md | memory/handoffs/); naive scan enrolls memory/, planning/, strays, and ~/.claude/projects/ is polluted AND misses real work; a close-populated registry is empty at the force-quit (DR-8).",
+      "source_refs": [
+        "_preseed/vision-deltas.md D2",
+        "_preseed/design.md sec.4",
+        "_preseed/product-context.md sec.5"
+      ],
+      "tier": "T3",
+      "confidence": 0.85,
+      "freshness_days": 3,
+      "notes": "",
+      "lattice_node_ids": [
+        "M-marker-gate",
+        "ANTI-naive-scan",
+        "ANTI-close-time-creation",
+        "PAT-enrich-not-create",
+        "STD-spine2",
+        "TERM-force-quit",
+        "CQ6"
+      ]
+    }
+  ]
+}

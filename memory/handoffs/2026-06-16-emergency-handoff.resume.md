@@ -1,6 +1,6 @@
 Resuming session via acos-eternity-protocol auto-resume.
 
-CONTEXT HANDOFF: Read `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-06-16-emergency-handoff.yaml` for full session state.
+CONTEXT HANDOFF: Read `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/archive/2026-06-16-emergency-handoff.yaml` for full session state.
 
 Quick summary:
 - Working on: acos-guided-reader global skill (~/.claude/skills/acos-guided-reader/). 11 major features shipped this session including Tier C+ language expansion, mnemonic-first keymap, pure-document default view, AI chunk titles, hover synonyms with context-aware AI definitions, prose-flow rendering, paste-to-read pipeline, no-args auto-paste UX, AF_UNIX socket path fix, SSE-reload on view-mode change.

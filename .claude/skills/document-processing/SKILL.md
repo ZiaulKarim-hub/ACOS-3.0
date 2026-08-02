@@ -121,7 +121,7 @@ When processing multiple documents:
 2. Prepare manifest for downstream skills:
    - **For `/document-synthesis`:** List of clean, structured text files ready for synthdoc creation
    - **For `/knowledge-graph`:** Flag entities and relationships found during extraction
-   - **For `/deep-research`:** Note key claims and data points for verification
+   - **For `/acos-deep-research`:** Note key claims and data points for verification
 
 ## Quality Checklist
 
