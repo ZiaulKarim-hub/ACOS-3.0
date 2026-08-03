@@ -175,6 +175,36 @@ then by raw volume. Content weight orders rows INSIDE a band and can never lift 
 row out of it, so "holds a lot" never outranks "exists nowhere else". A
 `neverPush` breach adds 100000 and floats to the top.
 
+## Row numbers are permanent
+
+Sorting decides ORDER. It does not decide IDENTITY. The `#` beside a row is a
+permanent number belonging to that absolute path, held in `ids.json` and handed
+out by `stable-ids.ts`. So the table can re-sort freely — the risky rows still
+rise to the top — while "row 6" keeps meaning FruitSync.
+
+It was not always so. `#` used to be the position after sorting, which meant a
+row's number changed whenever its state improved, or whenever any riskier row
+above it did. On 2026-08-02 three repos were committed, dropped out of
+UNCOMMITTED, and silently renumbered the table while the human was mid-way
+through acting on the old numbers. A number that moves cannot be pointed at,
+which defeats this tool's own design rule — *the reader must be able to point at
+a row number and act*.
+
+Rules the registry keeps:
+
+- **Exact path, like decisions.** Rename or move a folder and it is a new
+  project with a new number, rather than quietly inheriting one.
+- **Numbers are never reused.** A retired path keeps its entry forever; new
+  projects take max+1. Recycling would let one number mean two things on two
+  days. Gaps are expected and harmless.
+- **A corrupt registry throws.** Starting fresh would renumber everything at
+  once — the exact failure the file exists to prevent.
+- **Writes only when something is new**, so a plain re-scan does not thrash the
+  file or its mtime.
+
+`stable-ids.test.ts` guards this, including the original failure: a row leaving
+the view must not shift the rows that remain.
+
 ## It never pushes
 
 `plan-push` stops at printing the literal command:
@@ -209,6 +239,9 @@ forbids that repo/account pair.
 | `render-html.ts` | self-contained browser page, light and dark |
 | `config.default.json` | roots, skip list, account matchers, `neverPush` rules |
 | `decisions.json` | written by `decide`; the rulings themselves (created on first use) |
+| `stable-ids.ts` | permanent row numbers keyed on absolute path; never reused |
+| `ids.json` | the number registry (created on first scan) — editing it changes what a number points at |
+| `stable-ids.test.ts` | 13 assertions guarding that a number never moves |
 
 Copy `config.default.json` to `config.json` to override without touching the default.
 `ignorePaths` is empty on purpose: prune a row only after you have seen it and judged
