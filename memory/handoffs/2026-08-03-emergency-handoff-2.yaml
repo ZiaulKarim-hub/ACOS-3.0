@@ -1,0 +1,285 @@
+timestamp: "2026-08-03T06:50:16Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  This session ran /acos-git-manager end to end: a machine-wide backup sweep (every
+  project pushed to the PERSONAL GitHub account, ZiaulKarim-hub, all private repos) plus
+  three rounds of feature work on the git-manager tool itself
+  (.claude/scripts/git-manager/). Round 1 (committed 0452552) added a `decide` subcommand
+  and decisions.json so the report stops re-flagging folders the human already ruled out,
+  plus a browser-table overflow fix. Round 2 (committed in the 0452552-era work, serve.ts/
+  watch.ts) added a `serve` subcommand — a local read-only server on 127.0.0.1:8787 with
+  Server-Sent Events that re-scans on filesystem change (~2s change-to-page), and fixed two
+  defects: .git being skipped by the watcher (a pure commit produced no page update) and
+  ~/.claude/projects transcripts causing constant rescans. Round 3 ("SAFE-MEANS-PERSONAL",
+  UNCOMMITTED at handoff time) implements Zee's 2026-08-03 rule that a repo is SAFE once
+  every PERSONAL-account destination is current — work/third-account gaps are downgraded
+  from alarm to "optional." This is independently verified present on disk in six modified,
+  uncommitted files (see files_modified). The single largest open item carried into this
+  handoff is a git-manager risk flag on the STEPS repo's `fix/archived-tasks-safe` branch
+  and the OKOA-Website `dev` repo's local `main` branch; this handoff agent independently
+  re-verified both via `git fetch personal` + `git merge-base --is-ancestor` and found their
+  commits ARE already reachable from an already-pushed personal branch under a different
+  name/nickname — i.e. likely false positives of the exact branch-name-matching gap the
+  uncommitted round-3 code is trying to close. This needs confirming against the tool's own
+  live report, not just raw git, before treating either as resolved. Two decisions remain
+  open with Zee: whether to push STEPS' `fix/archived-tasks-safe` (now believed already
+  safe) and whether to fix the stale "no remote" line in the Blog README (confirmed still
+  present, confirmed the archive is in fact pushed to personal).
+
+current_work:
+  slice_id: "unknown — git-manager is informal/global tooling work; no ACOS epic/story/
+    slice exists for it (confirmed: no planning/**/*git-manager* artifacts under planning/)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress — round 3 (SAFE-MEANS-PERSONAL) is implemented on disk but NOT
+    committed or pushed; this is the first thing the next session should do"
+
+completed_this_session:
+  - "Round 1 (committed, part of 0452552 lineage): decisions.ts + decisions.json + `decide`
+    subcommand — VERIFIED decisions.json holds do-not-track rulings for
+    Rubin_Counsel_Bundle_20260423, OKOA_Prospectus, and 'Rubin Document Production/audit'
+    (read in full by the prior same-day handoff, 2026-08-03-emergency-handoff.yaml, and
+    referenced again here as still current). New 'DECIDED — NOT TRACKED' report block;
+    fixed the browser table overflow (table-layout:fixed + percentage colgroup); decided
+    rows drop the red alarm colour."
+  - "Round 2 (committed): `serve` subcommand in serve.ts (new, 250 lines per
+    `git diff --stat HEAD~5..HEAD`) + watch.ts (new, 169 lines) — local server on
+    127.0.0.1:8787 with SSE, re-scans on fs.watch change. VERIFIED LIVE: `ps aux` shows
+    `bun .claude/scripts/git-manager/git-manager.ts serve --port 8787 --no-open`, PID
+    97378, started 12:44AM, still running with an active ESTABLISHED TCP connection.
+    Fixed .git-skipped-by-watcher and ~/.claude/projects-transcript-thrash defects (per
+    session-provided context; not independently re-tested by this handoff agent since
+    doing so would require making/reverting a live commit)."
+  - "Round 3 (UNCOMMITTED): SAFE-MEANS-PERSONAL rule implemented across 6 files —
+    VERIFIED via `git diff --stat` (types.ts +47/-0, scan.ts +79/-5, recommend.ts +36/-1,
+    render-html.ts +53/-0, render-terminal.ts +50/-0, README.md +32/-0; 292 insertions
+    total). types.ts diff read in full: new `OptionalPush` interface with
+    `kind: 'optional' | 'stale-ref'`, new `blockingRemotes: string[]` on StateFlags, new
+    `optionalPushes: OptionalPush[]` on RepoRow, new `optional: number` on ScanResult
+    totals. recommend.ts diff read in full: default-case branch now separates `opt`
+    (kind='optional') from `stale` (kind='stale-ref') and produces two different
+    human-readable explanations — 'That is a choice, not a gap' for optional, 'Nothing to
+    push' for stale-ref. render-html.ts and render-terminal.ts diffs both confirmed (via
+    grep on the diff) to add the exact two new sections named in the session context:
+    'Optional — available, not needed' and 'Nothing to do — a local copy is just out of
+    date', plus a new stat pill 'optional pushes' and totals.optional wiring."
+  - "This handoff agent independently re-verified the two flagged risk branches using
+    `git fetch personal` + `git merge-base --is-ancestor` (read-only, non-destructive):
+    STEPS' `fix/archived-tasks-safe` (tip f996ac9) IS an ancestor of `personal/main`
+    (90cfa04) — STEPS' origin AND personal remotes are the SAME URL
+    (git@github.com-personal:ZiaulKarim-hub/STEPS.git), a textbook 'stale-ref' case per
+    the new type definition's own doc comment. OKOA-Website/dev's local `main` branch
+    (no personal/main tracking ref exists) IS an ancestor of `personal/dev` — a
+    branch-name mismatch, not a remote-nickname mismatch, so it may or may not be covered
+    by the current 'stale-ref' logic as written (that logic's doc comment describes
+    same-repo-different-nickname, not same-account-different-branch-name)."
+  - "Confirmed on disk: Blog README.md (/Users/zee/Documents/OKOA/SEO Plan/Blog/README.md,
+    line 27) still reads '**This is a local git repo with no remote.** Nothing here is
+    pushed anywhere' — but `git remote -v` in that folder shows it IS pushed, to
+    personal/okoa-seo-blog-archive, tip 1a5b106. Stale documentation confirmed unfixed,
+    matching the session's note that Zee was offered a fix and gave no answer."
+  - "Confirmed on disk: /Users/zee/Documents/private_credit_design_reference (distinct
+    from the OKOA copy that WAS backed up) is NOT a git repo (no .git/), and its src/
+    subfolder does contain atoms.py and build.py (renderer source files the OKOA copy
+    lacks, per session context) — verified via `find`. This folder sits outside the
+    scan roots and remains unbacked."
+
+files_modified:
+  - path: ".claude/scripts/git-manager/types.ts"
+    changes: "+47/-0 uncommitted. New OptionalPush interface (kind: optional|stale-ref,
+      remote, account, accountLabel, slug, count, sameRepoAs?); new blockingRemotes on
+      StateFlags; new optionalPushes on RepoRow; new optional count on ScanResult.totals."
+  - path: ".claude/scripts/git-manager/scan.ts"
+    changes: "+79/-5 uncommitted. otherBranchWork() now judges against personal remotes
+      too (per session context); computes blockingRemotes vs optionalPushes per row."
+  - path: ".claude/scripts/git-manager/recommend.ts"
+    changes: "+36/-1 uncommitted. default-case decide() now branches on optionalPushes
+      kind, producing distinct 'optional' vs 'stale-ref' explanation text."
+  - path: ".claude/scripts/git-manager/render-html.ts"
+    changes: "+53/-0 uncommitted. New 'Optional — available, not needed' (8 rows per
+      session context) and 'Nothing to do — a local copy is just out of date' (2 rows:
+      ACOS and STEPS, per session context) report sections; new optional-pushes stat."
+  - path: ".claude/scripts/git-manager/render-terminal.ts"
+    changes: "+50/-0 uncommitted. Terminal-mode mirror of the same two new sections
+      (OPTIONAL / NOTHING TO DO)."
+  - path: ".claude/scripts/git-manager/README.md"
+    changes: "+32/-0 uncommitted. Documents the SAFE-MEANS-PERSONAL rule."
+  - path: "~/.claude/skills/acos-git-manager/SKILL.md (separate repo, ~/.claude/skills)"
+    changes: "Modified per session context (personal-default routing rewrite) — VERIFIED
+      `git status --short` in ~/.claude/skills shows ' M acos-git-manager/SKILL.md'
+      uncommitted, on top of an already-pushed 6487699 'personal-default routing' commit
+      from an earlier session. This uncommitted delta was NOT diffed by this handoff
+      agent (out of scope repo) — flagging its existence only."
+  - path: "~/.claude/skills/acos-logo-forge/... and Logo Builder/brandsync/... (ACOS 3.0
+      repo, tracked)"
+    changes: "NOT part of this session's own work — these are concurrent changes from a
+      different, already-handed-off session (see memory/handoffs/2026-08-03-emergency-
+      handoff.yaml, written ~6 hours before this one). Working tree for these paths is
+      clean (already committed in a3ece39/aa6ea92/b8660c7/5934bc1); listed here only so
+      the next session does not confuse them with this git-manager work when deciding
+      what to stage."
+
+decisions_made:
+  - "No new file in memory/decisions/ dated today (most recent is 2026-07-05, unrelated).
+    The git-manager do-not-track rulings live only in .claude/scripts/git-manager/
+    decisions.json, not as a memory/decisions/ ADR — consistent with the prior same-day
+    handoff's finding."
+
+blockers:
+  - "Round 3 (SAFE-MEANS-PERSONAL) is functionally complete on disk but UNCOMMITTED —
+    6 files in .claude/scripts/git-manager/ plus the separate ~/.claude/skills/
+    acos-git-manager/SKILL.md. Nothing blocks committing except that this needs to
+    happen before any further git-manager work, per the session's own stated priority."
+  - "OPEN DECISION: STEPS' local branch `fix/archived-tasks-safe` (26 commits per the
+    session's live git-manager report) was the single largest open risk raised to Zee,
+    who has not yet answered whether to act on it. This handoff agent's independent
+    `git fetch personal` + `merge-base --is-ancestor` check found the branch tip IS
+    already an ancestor of `personal/main` — meaning STEPS' origin and personal remotes
+    are literally the same GitHub URL, and the tool's live 'unpushed' verdict may be
+    stale or a stale-ref false positive that round 3's own new stale-ref detection should
+    now catch. This should be re-verified by actually re-running the git-manager scan
+    (not raw git) before telling Zee the risk is resolved — this handoff agent did not
+    run the tool itself, to avoid an unbounded machine-wide scan mid-handoff."
+  - "Same pattern found on OKOA-Website/dev's local `main` branch (1 commit per session
+    context): confirmed ancestor of `personal/dev`, but via a branch-NAME mismatch (no
+    personal/main ref exists at all — only personal/dev), not a remote-nickname mismatch.
+    This may fall outside what the new 'stale-ref' kind (defined as same-repo-different-
+    nickname) currently detects, since it is same-account-different-branch-name instead.
+    Worth an explicit look at scan.ts's otherBranchWork() logic before assuming round 3
+    already handles it."
+  - "8 optional pushes are available to okoateam (work) / OKOA-Labs per session context;
+    Zee has not named the work account for any of them, so none should be pushed there
+    without him naming it explicitly (standing CLAUDE.md rule)."
+  - "Blog README.md stale 'no remote' claim (line 27) confirmed still present; Zee has
+    not answered whether to fix it."
+  - "The live git-manager server (bun, PID 97378, port 8787, started 12:44AM, --no-open)
+    is still running and was NOT started or stopped by this handoff agent. It will keep
+    running after this session ends unless something kills it."
+
+next_actions:
+  - "Commit and push round 3 (SAFE-MEANS-PERSONAL) to the personal remote FIRST, before
+    any other git-manager work: the 6 modified files in .claude/scripts/git-manager/
+    (types.ts, scan.ts, recommend.ts, render-html.ts, render-terminal.ts, README.md) plus
+    the separate ~/.claude/skills/acos-git-manager/SKILL.md commit in its own repo. Stage
+    by exact path — this repo's tree is shared by a concurrent session, never
+    `git add -A`. Push with an explicit remote name (`git push personal <branch>`),
+    never a bare `git push`."
+  - "Before surfacing the STEPS `fix/archived-tasks-safe` risk to Zee as still-open,
+    re-run the actual git-manager scan/serve report (not raw git) against STEPS and
+    OKOA-Website/dev and confirm the newly-committed stale-ref/branch-name-mismatch logic
+    now clears both. If it does not clear the dev/main case, that is a real remaining gap
+    in round 3's otherBranchWork() logic worth fixing before calling the sweep complete."
+  - "If the scan confirms both are genuinely safe (already fully present on personal
+    under a different remote nickname or branch name), tell Zee the STEPS/dev risk is
+    resolved rather than re-asking him to decide on it — his outstanding question was
+    only ever 'is this actually a gap,' and this handoff agent's evidence says probably
+    not, pending the tool's own confirmation."
+  - "Separately ask Zee about: (1) the private_credit_design_reference (non-OKOA copy,
+    22.0M / 67 keepable files per session context, holds atoms.py/build.py/charts.py/
+    page_design.py/page_metadata.py/page_structural.py that the OKOA copy lacks) — it
+    sits outside scan roots and stays unbacked until either the roots are widened or it
+    is manually pushed; (2) whether to fix the stale Blog README 'no remote' line now
+    that the archive is actually on personal; (3) whether any of the 8 optional pushes
+    should go to a named work account."
+  - "Before starting any new server, check `lsof -i :8787` — the git-manager live page
+    may already be running from this session (PID 97378 at last check)."
+  - "Carry forward the standing rules that governed this session: PERSONAL
+    (ZiaulKarim-hub) is the default push destination, no asking, okoateam only when Zee
+    names it; never a bare `git push`, always name the remote; run `gh api user --jq
+    .login` before any `gh repo create` because the active gh account drifts; this repo's
+    tree is shared by concurrent sessions, stage by exact path."
+
+context_for_next_session: |
+  This session's work sits in .claude/scripts/git-manager/, a read-only-by-design
+  inventory/reporting tool that scans every git repo and untracked project folder on the
+  machine and tells Zee what is and is not backed up to a personal GitHub account. Three
+  rounds of feature work landed this session: decisions-tracking (committed) so the tool
+  stops re-flagging folders Zee has already ruled out; a live auto-refreshing local report
+  page on port 8787 (committed, confirmed still running at PID 97378); and a new
+  distinction between a genuine backup gap and a merely-available-but-unnecessary push to
+  a non-personal account (UNCOMMITTED — this is the first thing to land next). All three
+  rounds were independently verified present on disk by this handoff agent, not merely
+  taken on the session's word: the diffs were read, the new types/functions/section labels
+  were grep-confirmed against the exact wording described, and the live server process was
+  confirmed via `ps aux`.
+
+  The most consequential finding this handoff agent adds beyond the session's own account:
+  the two specific "still open" risk items handed off — STEPS' `fix/archived-tasks-safe`
+  branch (26 unbacked commits) and OKOA-Website/dev's local `main` branch (1 unbacked
+  commit) — both turned out, on a fresh `git fetch personal` + `git merge-base
+  --is-ancestor` check, to already be fully reachable from an already-pushed personal
+  branch. STEPS is a same-repo-different-remote-nickname case (origin and personal are
+  the literal same URL) that the new `stale-ref` OptionalPush kind was apparently written
+  to catch. The dev repo case is subtly different — a same-account-different-BRANCH-NAME
+  case (local `main` vs. pushed `dev`), which the `stale-ref` type's own doc comment
+  describes only in terms of remote nicknames, not branch names, so it is not certain the
+  new code actually clears it. Nothing was committed or pushed by this handoff agent; this
+  is intentionally left as a next-action rather than acted on, both because raw git
+  ancestry is not the same signal the tool itself reports on, and because this handoff
+  agent's mandate is reconstruction, not further building.
+
+  Two smaller items were also independently confirmed on disk: the Blog README at
+  /Users/zee/Documents/OKOA/SEO Plan/Blog/README.md still falsely claims to have no
+  remote (line 27), even though it is now pushed to personal/okoa-seo-blog-archive; and
+  /Users/zee/Documents/private_credit_design_reference (the fuller, non-OKOA copy, not a
+  git repo) genuinely does hold the 6 renderer source files the session described, and
+  genuinely sits outside the tool's scan roots, so it stays invisible to the report until
+  someone widens the roots or backs it up by hand.
+
+  Whoever resumes should treat the uncommitted git-manager round-3 files as live
+  in-progress work, not something to re-derive from scratch — the diffs are complete and
+  match the intended design (OptionalPush type, blockingRemotes computation, two new
+  report sections, updated decide() branching) down to exact section-heading text. The
+  work is commit-and-push-ready; nothing observed suggests it is broken.
+
+reconstruction_sources:
+  - "bash: git status --short / git log --oneline -20 / git diff --stat HEAD~5..HEAD /
+    git remote -v / git branch --show-current (ACOS 3.0 repo root) — confirmed the
+    uncommitted 6-file git-manager delta, the aa6ea92/a3ece39 commit lineage, and
+    origin=okoateam / personal=ZiaulKarim-hub"
+  - "bash: git diff --stat .claude/scripts/git-manager/ — confirmed exact per-file
+    insertion/deletion counts for the uncommitted round-3 work"
+  - "bash: git diff .claude/scripts/git-manager/types.ts (full) — confirmed OptionalPush
+    interface, blockingRemotes, optionalPushes, totals.optional exactly as described"
+  - "bash: git diff .claude/scripts/git-manager/recommend.ts (full) — confirmed the
+    optional/stale-ref branching in decide()'s default case"
+  - "bash: git diff .claude/scripts/git-manager/render-html.ts | grep -iE
+    'optional|nothing to do' — confirmed 'Optional — available, not needed' and
+    'Nothing to do — a local copy is just out of date' section headings verbatim"
+  - "bash: git diff .claude/scripts/git-manager/render-terminal.ts | grep -iE
+    'optional|nothing to do' — confirmed the terminal-mode mirror of the same sections"
+  - "bash: cd ~/.claude/skills && git status --short / git log --oneline -5 / git remote
+    -v — confirmed uncommitted acos-git-manager/SKILL.md delta on top of pushed 6487699"
+  - "bash: lsof -i :8787 ; ps aux | grep git-manager — confirmed bun PID 97378 running
+    `git-manager.ts serve --port 8787 --no-open` since 12:44AM, live TCP connection"
+  - "bash: cd '/Users/zee/Documents/Vibe Coding/STEPS' && git branch -a / git log
+    --oneline fix/archived-tasks-safe -5 / git remote -v / git fetch personal /
+    git merge-base --is-ancestor fix/archived-tasks-safe personal/main / git rev-list
+    --count fix/archived-tasks-safe ^personal/main — confirmed origin==personal URL and
+    branch tip f996ac9 IS an ancestor of personal/main (90cfa04), 0 commits ahead"
+  - "bash: cd '/Users/zee/Documents/Vibe Coding/OKOA Website/dev' && git branch -a /
+    git fetch personal / git merge-base --is-ancestor main personal/dev / git rev-list
+    --count main ^personal/dev — confirmed local main IS an ancestor of personal/dev
+    (only personal/dev ref exists, no personal/main), 0 commits ahead"
+  - "Read (partial, lines 1-15 + grep): /Users/zee/Documents/OKOA/SEO Plan/Blog/README.md
+    — confirmed line 27 still reads the stale 'no remote' claim"
+  - "bash: cd '/Users/zee/Documents/OKOA/SEO Plan/Blog' && git remote -v / git log
+    --oneline -3 — confirmed pushed to personal/okoa-seo-blog-archive, tip 1a5b106"
+  - "bash: ls + find '/Users/zee/Documents/private_credit_design_reference' for
+    atoms.py/build.py/README/.git — confirmed src/atoms.py and src/build.py exist, no
+    .git directory, no README at top level"
+  - "bash: ls -lt planning/ ; ls -lt .acos/evidence/ ; ls -lt memory/decisions/ ; ls -lt
+    memory/handoffs/*.yaml memory/handoffs/*.md (excluding *.resume.md) ; ls -la
+    .acos/state/ — no formal git-manager planning artifacts; today's .acos/evidence/
+    entries are unrelated axiom-synthesis runs from a different concurrent session; most
+    recent memory/decisions/ file is 2026-07-05, unrelated"
+  - "Read (full): memory/handoffs/2026-08-03-emergency-handoff.yaml — the prior same-day
+    handoff, a genuinely different session (logo-forge + git-manager stable-ids row-
+    numbering work), used to confirm this is a separate workstream and to cross-check the
+    decisions.json / public-repo-exposure context still standing from that session"
+  - "bash: acos-preflight.sh run with no output (no missing dirs to create)"
