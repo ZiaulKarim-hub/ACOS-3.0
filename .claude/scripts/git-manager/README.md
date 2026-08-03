@@ -167,6 +167,70 @@ script and nothing else — served markup is byte-identical to `--html` output.
 A scan that throws does not kill the server: the page keeps the last good table
 and is told the refresh failed. Ports in use are stepped over, not fought over.
 
+## Safe means "personal has it" (Zee's rule, 2026-08-03)
+
+A repo is SAFE once every destination on the PERSONAL account has what this
+machine has. That is what backup means here. A work account, or a third account,
+being behind is a CHOICE — and putting a choice in the same list as unprotected
+work is how one real gap gets lost among eight harmless ones.
+
+So `scan.ts` splits every behind remote into three, and only the first blocks:
+
+| | Meaning | Where it shows |
+|---|---|---|
+| **blocking** | a personal-account destination is behind — or there is NO personal remote at all, so nothing is backed up | `NEEDS ATTENTION` |
+| **optional** | another account is behind, and personal is current | `OPTIONAL — available, not needed` |
+| **stale-ref** | the remote points at the SAME repo (same `owner/repo` slug) as a remote that IS current — the commits are already there and only the local cache is old | `NOTHING TO DO — a local copy is just out of date` |
+
+`StateFlags.blockingRemotes` drives `classify()`; `unpushedTo` still holds all of
+them so nothing is lost from the data. `flags.ahead` is zeroed when the upstream
+is not a blocking remote, or an upstream pointing at the work account would drag
+the row back into the attention list and undo the whole split.
+
+`otherBranchWork()` follows the SAME rule: side branches are judged against the
+personal remotes when any exist. Otherwise a branch safely on personal but absent
+from work would re-create the false alarm one level down.
+
+**This change surfaced rows that had been hidden.** With nine repos sitting in
+`PARTIAL` (rank 2), six `BRANCH_WORK` rows (rank 1) never reached the top of the
+list. Reading those six is what exposed the reachability bug below — so the split
+paid for itself immediately, though not in the way expected.
+
+**A repo with no personal remote is never "optional".** `hasPersonalRemote` gates
+the whole thing — with nothing on personal, every behind remote stays blocking.
+
+## Reachability, not ref-existence (the false-alarm fix, 2026-08-03)
+
+`otherBranchWork()` used to ask, for each side branch, whether the ref
+`<remote>/<branch>` EXISTS. When it did not, it counted the branch's ENTIRE
+history as waiting. That is the wrong question, and it produced two false alarms
+the same afternoon:
+
+| Repo | Branch | Reported | Actually stranded |
+|---|---|---|---|
+| `STEPS` | `fix/archived-tasks-safe` | 26 commits unprotected | **0** |
+| `OKOA Website/dev` | `main` | 1 commit unprotected | **0** |
+
+Both were fully reachable from a pushed personal branch under a DIFFERENT name.
+**A branch nobody pushed under its own name is not lost work if its commits
+already left the machine inside another branch.** Ref-existence measures naming;
+backup is a question about reachability.
+
+The honest question is `G.commitsOnNoRemoteRef(dir, branch, remoteNames)`, which
+runs `git rev-list --count <branch> --not --remotes=<r1> --remotes=<r2> …` — the
+commits on that branch that sit on NO ref of the judged remotes.
+
+`null` means the count could not be computed, and **callers must not read that as
+zero**. `scan.ts` falls back to the old per-remote check in that case, so an
+unreadable repo errs toward flagging rather than toward silence.
+
+Effect on the 2026-08-03 scan: need-attention fell 8 → 2, safe rose 27 → 33. The
+two rows left were this session's own uncommitted files.
+
+This is the failure mode the whole report exists to prevent — not a missed gap,
+but a *phantom* one. A report that cries wolf gets ignored, and then it misses
+the real thing too.
+
 ## Ordering
 
 Rows sort worst state first. Within a state they sort by how much work sits there

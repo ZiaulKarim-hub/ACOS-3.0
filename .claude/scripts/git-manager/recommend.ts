@@ -199,8 +199,42 @@ function decide(r: RepoRow, dupOf: number | null): { action: string; why: string
       };
     }
 
-    default:
+    default: {
+      // A safe row can still have a push AVAILABLE on another account. Saying
+      // only "—" would hide that; saying "push" would imply it is needed. So
+      // the word "optional" carries the whole distinction, and the separate
+      // section below the tables holds the detail.
+      const opt = r.optionalPushes.filter((o) => o.kind === "optional");
+      const stale = r.optionalPushes.filter((o) => o.kind === "stale-ref");
+      if (opt.length) {
+        const n = opt.reduce((s, o) => s + o.count, 0);
+        const who = opt.map((o) => shortAccount(o.accountLabel)).join(", ");
+        return {
+          action: `— · ${who} +${n} optional`,
+          why:
+            `Every personal-account destination has what this machine has, so this repo is backed up. ` +
+            `${opt
+              .map((o) => `"${o.remote}" (${o.accountLabel}) is ${o.count} commit${o.count === 1 ? "" : "s"} behind`)
+              .join("; ")}. That is a choice, not a gap — push it only if you want that account to have it.`,
+        };
+      }
+      if (stale.length) {
+        return {
+          action: "—",
+          why:
+            `Every destination already has what this machine has. ` +
+            stale
+              .map(
+                (o) =>
+                  `"${o.remote}" looks ${o.count} behind, but it points at the same repository as "${
+                    o.sameRepoAs ?? "another remote"
+                  }" (${o.slug}), which is current — so this machine's local copy of that remote is simply out of date. Nothing to push.`,
+              )
+              .join(" "),
+        };
+      }
       return { action: "—", why: "Every destination already has what this machine has." };
+    }
   }
 }
 

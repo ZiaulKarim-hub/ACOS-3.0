@@ -95,6 +95,33 @@ export function countCommits(dir: string, range: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Commits on `branch` that are on NO ref of the named remotes. The honest
+ * question for "is this branch backed up?".
+ *
+ * Asking instead whether `<remote>/<branch>` EXISTS is what produced two false
+ * alarms on 2026-08-03: STEPS `fix/archived-tasks-safe` was reported as 26
+ * unprotected commits, and OKOA Website/dev `main` as 1 — when every commit on
+ * both was already reachable from a pushed personal branch under a DIFFERENT
+ * name. A branch nobody pushed under its own name is not lost work if its
+ * commits already left the machine inside another branch.
+ *
+ * null when the count cannot be computed; callers must not read that as zero.
+ */
+export function commitsOnNoRemoteRef(
+  dir: string,
+  branch: string,
+  remoteNames: string[],
+): number | null {
+  if (!remoteNames.length) return null;
+  const args = ["rev-list", "--count", branch, "--not"];
+  for (const name of remoteNames) args.push(`--remotes=${name}`);
+  const r = git(dir, args);
+  if (!r.ok) return null;
+  const n = Number.parseInt(r.stdout, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Total commits reachable from HEAD — used when a remote has never seen the branch. */
 export function totalCommits(dir: string): number | null {
   const r = git(dir, ["rev-list", "--count", "HEAD"]);

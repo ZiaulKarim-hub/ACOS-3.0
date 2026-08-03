@@ -338,6 +338,12 @@ function BODY_TEMPLATE(
   },
 ): string {
   const { attention, decided, clean, violations, head, colgroup } = parts;
+  // Listed BELOW the tables, never inside them. These rows are already safe;
+  // an available-but-unnecessary push must not compete with unprotected work.
+  const optionalRows = scan.rows.filter((r) =>
+    r.optionalPushes.some((o) => o.kind === "optional"),
+  );
+  const staleRows = scan.rows.filter((r) => r.optionalPushes.some((o) => o.kind === "stale-ref"));
   return `
 <div class="meta">generated ${esc(scan.generatedAtISO)}</div>
 <div class="meta">roots: ${scan.roots.map(esc).join(" · ")}</div>
@@ -355,6 +361,11 @@ function BODY_TEMPLATE(
       : ""
   }
   <div class="stat good"><b>${scan.totals.clean}</b><span>safe</span></div>
+  ${
+    scan.totals.optional
+      ? `<div class="stat"><b>${scan.totals.optional}</b><span>optional pushes</span></div>`
+      : ""
+  }
   <div class="stat"><b>${scan.totals.uncommittedFiles}</b><span>unsaved files</span></div>
 </div>
 <div class="meta">${
@@ -429,6 +440,48 @@ ${
       }</span></h2><div class="wrap"><table>${colgroup}<thead>${head}</thead><tbody>${clean
         .map(rowHtml)
         .join("")}</tbody></table></div>`
+    : ""
+}
+${
+  optionalRows.length
+    ? `<h2>Optional — available, not needed<span class="count">${
+        optionalRows.length
+      }</span></h2><div class="meta">These are already safe: the personal account has everything this machine has. Another account is behind. Push only if you want that account to have it.</div><div class="wrap"><table><thead><tr><th style="width:6%">#</th><th style="width:34%">Project</th><th style="width:34%">Account that is behind</th><th style="width:16%">Via remote</th><th style="width:10%">Commits</th></tr></thead><tbody>${optionalRows
+        .flatMap((r) =>
+          r.optionalPushes
+            .filter((o) => o.kind === "optional")
+            .map(
+              (o) =>
+                `<tr><td class="num">${r.index}</td><td class="name"><strong>${esc(
+                  r.name,
+                )}</strong></td><td><span class="${accountClass(o.account)}">${esc(
+                  o.accountLabel,
+                )}</span></td><td><code>${esc(o.remote)}</code></td><td class="num"><span class="wait">+${
+                  o.count
+                }</span></td></tr>`,
+            ),
+        )
+        .join("")}</tbody></table></div>`
+    : ""
+}
+${
+  staleRows.length
+    ? `<h2>Nothing to do — a local copy is just out of date<span class="count">${
+        staleRows.length
+      }</span></h2><div class="meta">The commits are already at that destination. Only this machine's cached picture of the remote is stale, because two nicknames point at the same repository.</div><div class="legend">${staleRows
+        .flatMap((r) =>
+          r.optionalPushes
+            .filter((o) => o.kind === "stale-ref")
+            .map(
+              (o) =>
+                `<div><b>${r.index} ${esc(r.name)}</b> — <code>${esc(
+                  o.remote,
+                )}</code> reads +${o.count}, but it is the same repository as <code>${esc(
+                  o.sameRepoAs ?? "?",
+                )}</code> (<code>${esc(o.slug)}</code>), which is current.</div>`,
+            ),
+        )
+        .join("")}</div>`
     : ""
 }
 

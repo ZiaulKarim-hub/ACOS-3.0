@@ -126,6 +126,45 @@ export interface StateFlags {
   unpushedTo: string[];
   /** Remote names this branch has never been pushed to at all (no local ref). */
   neverPushedTo: string[];
+  /**
+   * The subset of `unpushedTo` that actually threatens the backup — see
+   * OptionalPush below for the full reasoning. Empty means every personal-account
+   * destination already has this machine's work, so the repo is SAFE even if
+   * some other account is behind.
+   */
+  blockingRemotes: string[];
+}
+
+/**
+ * A destination that is behind, but whose being behind is NOT a backup problem.
+ *
+ * The rule (Zee's, 2026-08-03): a repo is SAFE once every destination on the
+ * PERSONAL account has everything this machine has. That is what backup means.
+ * A work account, or a third account, lagging behind is a CHOICE, not a risk —
+ * so it must not sit in the same list as work that is genuinely unprotected.
+ * Colouring both the same way is how a real gap gets lost among nine harmless ones.
+ *
+ * `kind` separates two very different reasons a remote can read as behind:
+ *
+ *   "optional"  — a real gap, on an account that is not personal. Pushing is
+ *                 available and never required.
+ *   "stale-ref" — NOT a gap at all. The remote points at the SAME GitHub repo
+ *                 as a remote that is current, just under a different nickname
+ *                 whose local cache is out of date. Nothing to push; the commits
+ *                 are already there. Detected by comparing owner/repo slugs.
+ */
+export interface OptionalPush {
+  kind: "optional" | "stale-ref";
+  /** The remote nickname, e.g. "origin". */
+  remote: string;
+  account: AccountKind;
+  accountLabel: string;
+  /** owner/repo, when the URL looked like GitHub. */
+  slug: string;
+  /** Commits this remote is missing, as of the last fetch. */
+  count: number;
+  /** For "stale-ref": the up-to-date remote that points at the same repo. */
+  sameRepoAs?: string;
 }
 
 export interface RiskFlags {
@@ -193,6 +232,12 @@ export interface RepoRow {
    * The row stays VISIBLE — a decision you cannot see is one you cannot reverse.
    */
   decided: Decision | null;
+  /**
+   * Destinations that are behind but do not make this repo unsafe. Listed in
+   * their own section so an available-but-unnecessary push is never mistaken
+   * for unprotected work. Empty on most rows.
+   */
+  optionalPushes: OptionalPush[];
   inventory: Inventory;
   /** Repo path this row sits inside, when it is a nested repo or a plain folder. */
   parentRepo: string | null;
@@ -239,6 +284,8 @@ export interface ScanResult {
     clean: number;
     /** Rows the human has ruled on. */
     decided: number;
+    /** Rows that are safe but have a push available on another account. */
+    optional: number;
     uncommittedFiles: number;
     unpushedCommits: number;
   };

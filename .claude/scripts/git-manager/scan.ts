@@ -20,6 +20,7 @@ import type {
   BranchWork,
   Config,
   Decision,
+  OptionalPush,
   RemoteInfo,
   RepoRow,
   RiskFlags,
@@ -151,33 +152,71 @@ function classify(flags: StateFlags, otherBranchWork: boolean): { state: StateKe
   if (flags.notARepo) return { state: "NOT_A_REPO", rank: 7 };
   if (flags.noRemote) return { state: "NO_REMOTE", rank: 6 };
   if (flags.uncommitted > 0) return { state: "UNCOMMITTED", rank: 5 };
-  if (flags.noUpstream && flags.unpushedTo.length) return { state: "NO_UPSTREAM", rank: 4 };
+  // From here down the question is only about BLOCKING remotes — the ones whose
+  // being behind means work is unprotected. A work account or a third account
+  // lagging is a choice, and a stale local ref for a repo that already has the
+  // commits is nothing at all. Ranking those as problems buries the real ones.
+  if (flags.noUpstream && flags.blockingRemotes.length) return { state: "NO_UPSTREAM", rank: 4 };
   if (flags.ahead > 0) return { state: "AHEAD", rank: 3 };
-  if (flags.unpushedTo.length) return { state: "PARTIAL", rank: 2 };
+  if (flags.blockingRemotes.length) return { state: "PARTIAL", rank: 2 };
   // The checked-out branch is clean, but another local branch is not. Calling
   // this repo "safe" would be false.
   if (otherBranchWork) return { state: "BRANCH_WORK", rank: 1 };
   return { state: "SYNCED", rank: 0 };
 }
 
-/** Branches other than `current` that still have commits no remote has taken. */
+/**
+ * Branches other than `current` that still have commits no remote has taken.
+ *
+ * Measured against the PERSONAL account only, when one exists — the same rule
+ * the headline state uses. A side branch that is safely on personal but absent
+ * from the work account is a choice, not lost work, and flagging it would
+ * re-create the false alarm one level down. With no personal remote at all,
+ * every remote counts, because then nothing is backed up.
+ */
 function otherBranchWork(dir: string, current: string | null, remotes: RemoteInfo[]): BranchWork[] {
   if (!remotes.length) return [];
+  const personal = remotes.filter((r) => r.account === "personal");
+  const judgeAgainst = personal.length ? personal : remotes;
   const out: BranchWork[] = [];
+  const names = judgeAgainst.map((r) => r.name);
   for (const branch of G.localBranches(dir)) {
     if (branch === current) continue;
-    const waiting: BranchWork["waiting"] = [];
-    for (const rm of remotes) {
-      const ref = `${rm.name}/${branch}`;
-      if (G.refExists(dir, ref)) {
-        const n = G.countCommits(dir, `${ref}..${branch}`);
-        if ((n ?? 0) > 0) waiting.push({ remote: rm.name, count: n as number, neverPushed: false });
-      } else {
-        const n = G.countCommits(dir, branch);
-        if ((n ?? 0) > 0) waiting.push({ remote: rm.name, count: n as number, neverPushed: true });
+
+    // REACHABILITY, not ref-existence. A branch nobody pushed under its own name
+    // is not lost work if its commits already left the machine inside another
+    // branch. Asking whether `<remote>/<branch>` exists reported STEPS
+    // `fix/archived-tasks-safe` as 26 unprotected commits and OKOA Website/dev
+    // `main` as 1 — every one of which was already on a pushed personal branch.
+    // Two false alarms of exactly the kind this report exists to avoid.
+    const stranded = G.commitsOnNoRemoteRef(dir, branch, names);
+    if (stranded === null) {
+      // Uncomputable is NOT zero. Fall back to the old per-remote question so an
+      // unreadable repo errs toward flagging rather than toward silence.
+      const waiting: BranchWork["waiting"] = [];
+      for (const rm of judgeAgainst) {
+        const ref = `${rm.name}/${branch}`;
+        if (G.refExists(dir, ref)) {
+          const n = G.countCommits(dir, `${ref}..${branch}`);
+          if ((n ?? 0) > 0) waiting.push({ remote: rm.name, count: n as number, neverPushed: false });
+        } else {
+          const n = G.countCommits(dir, branch);
+          if ((n ?? 0) > 0) waiting.push({ remote: rm.name, count: n as number, neverPushed: true });
+        }
       }
+      if (waiting.length) out.push({ branch, waiting });
+      continue;
     }
-    if (waiting.length) out.push({ branch, waiting });
+    if (stranded === 0) continue; // every commit is already off this machine
+
+    // Genuinely stranded. Attribute the count to each judged remote that lacks
+    // this branch by name, so the detail card can still say where to send it.
+    const waiting: BranchWork["waiting"] = judgeAgainst.map((rm) => ({
+      remote: rm.name,
+      count: stranded,
+      neverPushed: !G.refExists(dir, `${rm.name}/${branch}`),
+    }));
+    out.push({ branch, waiting });
   }
   return out;
 }
@@ -256,6 +295,7 @@ export function scan(
         parentRepo: null,
         notes: ["git has never tracked this folder — no backup exists anywhere"],
         decided: null,
+        optionalPushes: [],
       });
       continue;
     }
@@ -279,6 +319,53 @@ export function scan(
     const unpushedTo = remotes.filter((r) => (r.unpushed ?? 0) > 0).map((r) => r.name);
     const neverPushedTo = remotes.filter((r) => !r.hasBranchRef).map((r) => r.name);
 
+    // ---- which "behind" remotes actually matter -------------------------
+    // Zee's rule, 2026-08-03: the repo is SAFE once every PERSONAL-account
+    // destination has this machine's work. Anything else being behind is a
+    // choice. Splitting them here is what stops one real gap being lost among
+    // eight harmless ones.
+    const behind = remotes.filter((r) => (r.unpushed ?? 0) > 0);
+    // Repos that some CURRENT remote already points at. Two remotes can name the
+    // same GitHub repo under different nicknames (an https `origin` and an ssh
+    // `personal`); if one is current the commits are already there, and the
+    // other is only reporting an out-of-date local cache. Not a gap.
+    const currentSlugs = new Set(
+      remotes.filter((r) => (r.unpushed ?? 0) === 0 && r.slug).map((r) => r.slug),
+    );
+    const hasPersonalRemote = remotes.some((r) => r.account === "personal");
+
+    const optionalPushes: OptionalPush[] = [];
+    const blockingRemotes: string[] = [];
+    for (const r of behind) {
+      if (r.slug && currentSlugs.has(r.slug)) {
+        const twin = remotes.find(
+          (o) => o.name !== r.name && o.slug === r.slug && (o.unpushed ?? 0) === 0,
+        );
+        optionalPushes.push({
+          kind: "stale-ref",
+          remote: r.name,
+          account: r.account,
+          accountLabel: r.accountLabel,
+          slug: r.slug,
+          count: r.unpushed ?? 0,
+          sameRepoAs: twin?.name,
+        });
+      } else if (r.account !== "personal" && hasPersonalRemote) {
+        // Only optional BECAUSE a personal destination exists and is current.
+        // With no personal remote at all, nothing is backed up and this is real.
+        optionalPushes.push({
+          kind: "optional",
+          remote: r.name,
+          account: r.account,
+          accountLabel: r.accountLabel,
+          slug: r.slug,
+          count: r.unpushed ?? 0,
+        });
+      } else {
+        blockingRemotes.push(r.name);
+      }
+    }
+
     const flags: StateFlags = {
       notARepo: false,
       noRemote: remotes.length === 0,
@@ -287,7 +374,13 @@ export function scan(
       ahead: ahead ?? 0,
       unpushedTo,
       neverPushedTo,
+      blockingRemotes,
     };
+    // The default destination being behind only counts as UNPUSHED if it is one
+    // of the blocking ones. An upstream pointing at the work account, or at a
+    // stale twin of a current remote, must not drag the row back into the
+    // attention list — that is the whole point of the split above.
+    if (!blockingRemotes.includes(upstreamRemote?.name ?? "")) flags.ahead = 0;
 
     const accountsPresent = new Set(remotes.map((r) => r.account));
     const ruleViolations = rulesFor(f.path, cfg).flatMap((rule) =>
@@ -347,6 +440,7 @@ export function scan(
       parentRepo: f.parentRepo,
       notes,
       decided: null,
+      optionalPushes,
     });
   }
 
@@ -389,6 +483,7 @@ export function scan(
     // separately rather than folded in and made to look safe.
     clean: rows.filter((r) => !r.attention && !r.decided).length,
     decided: rows.filter((r) => r.decided).length,
+    optional: rows.filter((r) => r.optionalPushes.some((o) => o.kind === "optional")).length,
     uncommittedFiles: rows.reduce((n, r) => n + r.flags.uncommitted, 0),
     unpushedCommits: rows.reduce(
       (n, r) => n + Math.max(0, ...r.remotes.map((x) => x.unpushed ?? 0)),

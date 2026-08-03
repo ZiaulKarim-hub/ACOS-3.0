@@ -463,6 +463,7 @@ export function renderTerminal(
         stat(scan.totals.needAttention, "need attention", attention.length ? C.yellow : C.dim),
         ...(scan.totals.decided ? [stat(scan.totals.decided, "you ruled out", C.dim)] : []),
         stat(scan.totals.clean, "safe", C.green),
+        ...(scan.totals.optional ? [stat(scan.totals.optional, "optional pushes", C.dim)] : []),
         stat(scan.totals.uncommittedFiles, "unsaved files", C.dim),
       ].join(c(C.dim, "   ·   ")),
   );
@@ -532,6 +533,55 @@ export function renderTerminal(
   if (clean.length) {
     L.push("  " + c(C.bold, "SAFELY STORED") + c(C.dim, `  ${clean.length}`));
     L.push(...buildTable(clean, cols).map((l) => "  " + l));
+    L.push("");
+  }
+
+  /* ---- optional pushes ---- */
+  // Deliberately BELOW the tables and deliberately not a state. These repos are
+  // safe; this section only answers "what else COULD I do?". Putting an
+  // available-but-unnecessary push in the attention list is how a real gap gets
+  // lost among harmless ones.
+  const optionalRows = scan.rows.filter((r) => r.optionalPushes.some((o) => o.kind === "optional"));
+  if (optionalRows.length) {
+    L.push(
+      "  " +
+        c(C.bold, "OPTIONAL — available, not needed") +
+        c(C.dim, `  ${optionalRows.length}`),
+    );
+    L.push(
+      c(C.dim, "  These are already SAFE: the personal account has everything this machine has."),
+    );
+    L.push(c(C.dim, "  Another account is behind. Push only if you want that account to have it."));
+    L.push("");
+    const nameW = Math.min(34, Math.max(12, ...optionalRows.map((r) => r.name.length)));
+    for (const r of optionalRows) {
+      for (const o of r.optionalPushes.filter((x) => x.kind === "optional")) {
+        L.push(
+          `    ${c(C.dim, padLeft(String(r.index), 3))}  ${padRight(trunc(r.name, nameW), nameW)}  ` +
+            `${c(C.dim, "→")} ${c(accountColour(o.account), o.accountLabel)} ` +
+            `${c(C.dim, `via "${o.remote}"`)}  ${c(C.yellow, `+${o.count}`)}`,
+        );
+      }
+    }
+    L.push("");
+  }
+
+  /* ---- stale remote refs ---- */
+  // Not even optional: the commits ARE at that destination. Only this machine's
+  // cached copy of the remote is out of date. Saying so kills a false alarm.
+  const staleRows = scan.rows.filter((r) => r.optionalPushes.some((o) => o.kind === "stale-ref"));
+  if (staleRows.length) {
+    L.push("  " + c(C.bold, "NOTHING TO DO — a local copy is just out of date") + c(C.dim, `  ${staleRows.length}`));
+    for (const r of staleRows) {
+      for (const o of r.optionalPushes.filter((x) => x.kind === "stale-ref")) {
+        L.push(
+          c(
+            C.dim,
+            `    ${padLeft(String(r.index), 3)}  ${padRight(trunc(r.name, 34), 34)}  "${o.remote}" reads +${o.count}, but it is the same repo as "${o.sameRepoAs ?? "?"}" (${o.slug}), which is current`,
+          ),
+        );
+      }
+    }
     L.push("");
   }
 
