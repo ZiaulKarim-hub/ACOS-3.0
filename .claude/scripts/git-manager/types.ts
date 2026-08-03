@@ -33,6 +33,20 @@ export interface Config {
    * because it matches the final path segment exactly, not any substring.
    */
   ignoreNames?: string[];
+  /**
+   * Path fragments the LIVE WATCHER ignores. Nothing to do with what the report
+   * contains — these folders are still scanned and still counted. They are
+   * simply not worth WAKING UP for.
+   *
+   * The case that forced this: `~/.claude/projects` holds session transcripts,
+   * which Claude Code rewrites every few seconds. Each write triggered a full
+   * 1.7-second rescan that changed nothing on the page. Left alone, the server
+   * would have rescanned almost continuously while the machine was in use.
+   *
+   * The trade is explicit: a change under one of these appears on the periodic
+   * re-check (default 60s) instead of instantly.
+   */
+  watchIgnore?: string[];
   accounts: Record<string, AccountConfig>;
   neverPush: NeverPushRule[];
 }

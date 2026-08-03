@@ -1,0 +1,156 @@
+timestamp: "2026-08-02T02:15:00-06:00"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-eternity-protocol (handoff-agent FAILED on session limit; authored by the main thread from live session context)"
+session_id: "edbc362f-5814-44f8-b3d3-23759548b3df"
+estimated_tokens: 544908
+
+session_summary: |
+  Built /acos-git-manager end to end, then used it. One long session, three phases.
+
+  PHASE 1 — BUILD. Created a new global skill that answers two questions and stops:
+  (a) which git repo hosts which skill / sub-project / piece of software, and
+  (b) what is not saved or pushed anywhere yet, split into states that have different
+  fixes rather than one vague "unsynced" flag. Then it pushes ONE row at a time to a
+  destination the user names. It never pushes on its own initiative.
+
+  PHASE 2 — HARDEN. Five requested improvements plus a rewritten renderer:
+  content-weighted ordering, linked-skill host resolution, build-output pruning,
+  all-branch checking, and a pre-push credential scan. Then a full visual rewrite into
+  box-ruled tables after Zee said the output was not polished enough. Then --open so the
+  browser view opens in Chrome on every run. Then KIND + DO THIS recommendation columns.
+
+  PHASE 3 — USE IT. Committed and pushed everything to the PERSONAL GitHub account, and
+  recorded a new standing rule that makes personal the default destination.
+
+  Several real defects were found and fixed by testing rather than by reading:
+  - the secret scan silently scanned NOTHING on a never-pushed branch (git diff HEAD is
+    empty once everything is committed) -> switched to git log -p
+  - symlinked skill folders were followed and reported as phantom untracked projects
+  - ANSI colour codes were counted as visible width, so coloured cells overflowed borders
+  - a hard minimum on the last column pushed the table past its own border at narrow widths
+  - inventory counted skills that live in a NESTED repo as the parent's at-risk work
+    (this produced a wrong statement to Zee about ~/.claude, corrected in-session)
+
+current_work:
+  status: "eternity protocol fire ABORTED mid-flight — see blockers"
+  detail: |
+    /acos-eternity-protocol was invoked at 544908 context tokens (threshold 400k).
+    Preflight PASSED (surface 6DFB55AC-BFE9-4C58-AE27-521EA6080118, socket
+    /Users/zee/.local/state/cmux/cmux.sock, daemon heartbeat 11s). Step 1 spawned
+    handoff-agent, which DIED on "You've hit your session limit · resets 2:10am
+    (America/Denver)" after writing only a 467-byte stub. The protocol's own freshness
+    guard (<10 min) correctly rejects that stub, so NO /clear was armed. This file is the
+    replacement handoff, authored by the main thread which holds the live context.
+
+completed_this_session:
+  - "BUILT /acos-git-manager: SKILL.md (global) + 12 files under .claude/scripts/git-manager/"
+  - "Scanner: depth-limited walk, five-state classification, per-remote GitHub account attribution"
+  - "Safety: neverPush rule enforcement (exit 3), pre-push credential scan (exit 4, values masked)"
+  - "Recommendations: KIND (config/skills/agents/code/docs) + DO THIS (one next step, names the account)"
+  - "Duplicate detection: name-key collapse finds 7 pairs incl. #16<->#17, #19<->#38, #28<->#29"
+  - "Renderer: box-ruled tables, shared column grid, detail cards, exact-width at 96-160 cols"
+  - "Browser view: self-contained HTML, opens in Chrome via --open on every skill run"
+  - "COMMITTED + PUSHED ACOS 3.0 757a414 -> personal (773 files, 98127 insertions, 797 deletions)"
+  - "COMMITTED + PUSHED ~/.claude/skills bab2b29 -> personal (101 files, 23189 insertions, 84 deletions)"
+  - "Saved standing rule memory: feedback_git_commit_push_defaults_personal.md"
+  - "Reconciled two conflicting routing memories with superseded/narrowed banners"
+
+files_modified:
+  created:
+    - "~/.claude/skills/acos-git-manager/SKILL.md"
+    - ".claude/scripts/git-manager/git-manager.ts     (CLI: scan, plan-push)"
+    - ".claude/scripts/git-manager/scan.ts            (walk, state classifier, severity)"
+    - ".claude/scripts/git-manager/git.ts             (read-only git wrappers)"
+    - ".claude/scripts/git-manager/accounts.ts        (remote URL -> GitHub account, neverPush)"
+    - ".claude/scripts/git-manager/inventory.ts       (what lives here; nested-repo aware)"
+    - ".claude/scripts/git-manager/recommend.ts       (KIND + DO THIS + duplicate detection)"
+    - ".claude/scripts/git-manager/secrets.ts         (masked credential scan)"
+    - ".claude/scripts/git-manager/render-terminal.ts (box tables + detail cards)"
+    - ".claude/scripts/git-manager/render-html.ts     (self-contained browser page)"
+    - ".claude/scripts/git-manager/types.ts"
+    - ".claude/scripts/git-manager/config.default.json"
+    - ".claude/scripts/git-manager/README.md"
+    - "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_git_commit_push_defaults_personal.md"
+  edited:
+    - "memory/feedback_github_routing_personal_priority.md  (SUPERSEDED banner)"
+    - "memory/feedback_okoa_works_context_okoateam_repo.md  (NARROWED banner)"
+    - "memory/MEMORY.md                                     (index lines)"
+
+decisions_made:
+  - "plan-push NEVER runs the push. It prints the literal `git -C <path> push <remote> <branch>` command, which the session must run DIRECTLY so ~/.claude/hooks/github-repo-guard.ts sees a real push and can prompt. Wrapping it would disarm the guard."
+  - "Personal is the DEFAULT push destination as of 2026-08-01 (Zee's standing rule). okoateam only when Zee names it. A trailing `?` in DO THIS marks a work-account suggestion."
+  - "A duplicate is always `check vs #N`, never `delete`. Same name is evidence, not proof."
+  - "A duplicate becomes the headline action only for NOT_A_REPO / NO_REMOTE rows; on a live repo with commits waiting, the push stays the action and the duplicate is appended."
+  - "Filters always print their own counts (weak set, ignoreNames) so the table never reads as exhaustive when it is not."
+
+blockers:
+  - id: "session-limit"
+    detail: |
+      handoff-agent terminated: "You've hit your session limit · resets 2:10am
+      (America/Denver)". Subagent spawning may fail again. Prefer main-thread work.
+  - id: "claude-md-conflict"
+    detail: |
+      ~/CLAUDE.md STILL contains "Which GitHub Repo? ALWAYS ASK FIRST (MANDATORY,
+      enforced)". That contradicts the 2026-08-01 standing rule (personal by default,
+      no asking). Zee was OFFERED an update to that file and has NOT answered. Do not
+      edit it without his say-so — it is his governance file.
+  - id: "skill-md-conflict"
+    detail: |
+      ~/.claude/skills/acos-git-manager/SKILL.md Step 4 still says "ASK which account,
+      every single time". Same contradiction. Zee was offered a fix; no answer yet.
+
+next_actions:
+  - "ASK Zee whether to update ~/CLAUDE.md and acos-git-manager SKILL.md Step 4 to match the personal-default standing rule. Both are still ask-first. Do NOT edit either unprompted."
+  - "Row 19 'Fastest Decision tree' (/Users/zee/Documents/Vibe Coding/Fastest Decision tree) is a repo with ZERO commits and 3 unsaved files, flagged as a possible duplicate of row 38 'fastest-decision-tree' which is already SAFE. Zee was offered a comparison; no answer yet. Cheapest win."
+  - "9 untracked real projects are marked 'git init -> personal': Font-Forge, HearMeTalk, lux2-slide-extension, Auto-Blogger, Jobsync, private-equity-hedge-fund-strategy, preeng, private_credit_design_reference, font-foundry. Setup offered, not started."
+  - "ACOS 3.0 has 3 commits waiting for origin (okoateam). DELIBERATELY not pushed — Zee chose personal only. Do not push them without him naming okoa."
+  - "DO NOT commit the acos-research-riffs files in ACOS 3.0 — ANOTHER LIVE SESSION is editing them. Committing another session's in-flight work could freeze a broken intermediate state."
+  - "If re-firing /acos-eternity-protocol: the handoff-agent may fail again on the session limit. This file satisfies the freshness guard only for ~10 minutes after its mtime; re-author it from live context if it has aged out."
+
+context_for_next_session: |
+  HOW TO USE THE THING THAT WAS BUILT
+
+    bun .claude/scripts/git-manager/git-manager.ts scan \
+        --color never --width 118 --html <path> --open
+    bun .claude/scripts/git-manager/git-manager.ts plan-push --repo <path> --to personal
+
+  Or just run /acos-git-manager, which does the first line for you and opens Chrome.
+
+  EXIT CODES for plan-push: 0 ok · 2 bad input or unknown remote · 3 destination
+  forbidden by a neverPush rule · 4 suspected credential in the outgoing diff
+  (--acknowledge-secrets overrides, but that flag is Zee's call, never yours).
+
+  LAST SCAN RESULT (2026-08-02 04:59 UTC): 20 repos · 18 untracked folders ·
+  34 need attention · 5 safe · 21 unsaved files · 8 folders left out of the loose set ·
+  4 hidden by ignore rules. No wrong-account rule breach.
+
+  THE THREE GATES — this framing worked well when explaining it to Zee, reuse it:
+    gate 1  is git watching this folder at all?   no -> NOT A REPO
+    gate 2  does git know where online to send it? no -> NO REMOTE
+    gate 3  are the latest edits snapshotted?      no -> UNCOMMITTED
+  The gates only run forwards. You cannot push what was never committed, and you cannot
+  commit in a folder that is not a repo. That is why one push could not fix rows 1-21.
+
+  KNOWN LIMITS, state them when they matter:
+    - remote counts are as of each repo's last fetch unless --fetch is passed
+    - .gitignore'd files are invisible to the unsaved count
+    - only the 60 most recently committed branches per repo are examined
+    - the secret scan is a net, not a proof; it stops after 1000 commits or 5 MB of diff
+      and says so — a clean result on a truncated scan is not a clean result
+    - symlinked folders are not followed; a linked-in skill is reported as
+      "linked in — hosted by <repo>"
+
+  COMMUNICATION NOTES THAT MATTERED THIS SESSION:
+    - Eden Protocol level 2 is active. Short sentences, gloss every term on first use,
+      numbers verbatim, keep every caveat.
+    - Zee asked twice for polish. He notices ragged borders and unexplained jargon.
+    - When corrected on a wrong claim (the ~/.claude skills count), state it plainly and
+      move on. Do not over-apologise.
+
+reconstruction_sources:
+  - "git log -1 in /Users/zee/Documents/Vibe Coding/ACOS 3.0 -> 757a414"
+  - "git log -1 in /Users/zee/.claude/skills -> bab2b29"
+  - ".claude/scripts/git-manager/README.md — full design notes, limits, exit codes"
+  - "~/.claude/skills/acos-git-manager/SKILL.md — the operating procedure and hard rules"
+  - "memory/feedback_git_commit_push_defaults_personal.md — the standing routing rule"

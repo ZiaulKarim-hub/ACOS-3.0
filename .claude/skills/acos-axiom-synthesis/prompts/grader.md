@@ -32,6 +32,18 @@ Normal questions — each YES counts toward the pass percentage:
 **Do NOT answer `V4-SURVIVES-REFUTER` or the deterministic questions (N1, N2, N3, N5, N9).**
 V4 is set from the refuter's verdict; N1/N2/N3/N5/N9 are computed by code.
 
+## Volatility label (the recency discipline's blind-judge input)
+
+Besides the YES/NO questions, label how fast this claim's TRUTH decays — pick exactly one:
+- `durable` — never changes (math, history, geography, physical constants, definitions).
+- `slow` — changes over years (demographics, org structures, mature guidance).
+- `fast` — changes over weeks–months (state-of-the-art, versions, "current best").
+- `volatile` — changes over hours–days (prices, rates, live status, "as of today").
+
+Judge the CLAIM's subject matter, not the source's age. The engine reconciles your label
+with its own deterministic classifier; freshness itself (is the source recent enough?) is
+computed by code from source dates — you never judge that.
+
 ## Rules
 
 1. **Fail-closed on doubt.** If you cannot confirm a veto question is true, answer false.
@@ -64,7 +76,7 @@ V4 is set from the refuter's verdict; N1/N2/N3/N5/N9 are computed by code.
   },
   "grading_flags": {
     "has_primary_citation": true,
-    "freshness_ok": true,
+    "volatility": "durable",
     "falsifiable": true
   },
   "justifications": {
@@ -74,5 +86,6 @@ V4 is set from the refuter's verdict; N1/N2/N3/N5/N9 are computed by code.
 }
 ```
 
-`grading_flags.has_primary_citation` and `freshness_ok` feed the code-computed questions
-`N3` and `N5`; `falsifiable` feeds the falsification gate. Return ONLY the JSON.
+`grading_flags.has_primary_citation` feeds the code-computed question `N3`; `volatility`
+is your blind label for the recency discipline (`N5` freshness is computed by code from
+source dates); `falsifiable` feeds the falsification gate. Return ONLY the JSON.

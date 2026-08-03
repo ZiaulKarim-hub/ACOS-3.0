@@ -117,6 +117,56 @@ A `decisions.json` that exists but will not parse is a REFUSAL (exit 2), never a
 silent fall back to "nothing was decided". Losing every ruling without saying so
 would send the report straight back to asking settled questions.
 
+## The live page (`serve`)
+
+```bash
+bun git-manager.ts serve [--port 8787] [--no-open] [--loose]
+```
+
+A saved file cannot update itself. Reloading one just re-reads the same frozen
+text, so an auto-reloading `--html` file would look live while being wrong —
+worse than a file, which at least admits it is a snapshot. `serve` is the honest
+version: a local server on `127.0.0.1` (this machine only, never the network)
+that re-scans when something actually changes and pushes the new table to any
+open page over Server-Sent Events.
+
+**Strictly read-only.** It scans, renders and serves. It never commits, never
+pushes, never writes to a repo. The one network action is the page's *refresh
+from GitHub* button, which runs `git fetch` — read-only, and only on a click.
+Fetching 31 repos every few seconds would be slow and rude; stale-but-labelled
+beats fast-and-rude.
+
+**How it knows.** Not polling. `watch.ts` asks macOS to report changes under the
+roots (`fs.watch` recursive), debounces a burst into one re-scan, and re-scans
+only then. Measured: 1 scan in a 40-second idle window while Claude Code was
+actively writing session transcripts; a real change reaches the page in ~2s.
+
+Two filters make that work, and BOTH were found by testing, not by reading:
+
+1. **`.git` must NOT be skipped by the watcher**, even though the scanner skips
+   it. A commit, a branch move and a push change nothing outside `.git` — reusing
+   the scanner's `skipDirs` made a pure `git commit` produce no update at all.
+   Inside `.git`, only `objects/` and `lfs/` are dropped (hundreds of writes per
+   operation, each accompanied by a ref or index write we do see).
+2. **`config.watchIgnore`** — high-churn folders not worth WAKING UP for.
+   `~/.claude/projects` holds session transcripts rewritten every few seconds;
+   each one triggered a full 1.7s rescan that changed nothing. These folders are
+   still scanned and still counted; they just appear on the periodic re-check
+   (60s) rather than instantly. That trade is explicit, not silent.
+
+**The page tells the truth about its own age.** A bar shows `live`, what caused
+the last update, and how long ago it scanned. If the server dies the bar turns
+red and says *"connection lost — everything below is a FROZEN SNAPSHOT, not the
+current state"*, then reconnects by itself when the server returns. A live page
+that quietly keeps showing old numbers is the failure mode this must never have.
+
+Updates swap `<main id="gm-root">` in place, so scroll position and open
+`details` panels survive. `renderHtml(scan, {live:true})` adds the connection
+script and nothing else — served markup is byte-identical to `--html` output.
+
+A scan that throws does not kill the server: the page keeps the last good table
+and is told the refresh failed. Ports in use are stepped over, not fought over.
+
 ## Ordering
 
 Rows sort worst state first. Within a state they sort by how much work sits there
@@ -145,9 +195,11 @@ forbids that repo/account pair.
 
 | File | Role |
 |---|---|
-| `git-manager.ts` | CLI entry: `scan`, `plan-push`, `decide` |
+| `git-manager.ts` | CLI entry: `scan`, `plan-push`, `decide`, `serve` |
 | `scan.ts` | depth-limited walk, per-repo state, the five-state classifier |
 | `decisions.ts` | the human's rulings — the only stateful part; read/record/withdraw |
+| `serve.ts` | the live page: local server, live connection, read-only |
+| `watch.ts` | change detection — event-driven, debounced, noise-filtered |
 | `git.ts` | read-only git wrappers (only `fetchAll` touches the network) |
 | `accounts.ts` | remote URL → GitHub account, plus the `neverPush` rule check |
 | `inventory.ts` | what lives in a repo; resolves symlinked-in skills to their host repo |

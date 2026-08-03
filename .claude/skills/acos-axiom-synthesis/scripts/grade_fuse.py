@@ -42,16 +42,36 @@ def _step(level, delta):
 
 
 def grade_claim(independent_sources, families, has_primary_citation=False,
-                downgrades=None, upgrades=None, source_reliability=None):
+                downgrades=None, upgrades=None, source_reliability=None,
+                volatility=None, freshness=None):
     """Return {confidence, axis_a, axis_b, confidence_basis, reasons}.
 
     downgrades / upgrades are lists of (label, severity) where severity in {1,2}.
     source_reliability optionally overrides Axis A (an Admiralty A-F letter).
+
+    RECENCY (opt-in; RESEARCH-recency-bias-2026-08-02.md §6.2 mechanisms e+f):
+      volatility  the claim's class ('durable'|'slow'|'fast'|'volatile'), from
+                  volatility.classify. None or 'durable' => recency is inert.
+      freshness   the dict from volatility.compute_freshness (stale, severity,
+                  recent_independent, gate_applies). None => recency is inert.
+    When the classifier is confident (freshness['gate_applies']) and the claim is
+    non-durable and STALE, a ('stale', severity) downgrade steps Axis B down AND
+    the top tier requires >=1 RECENT independent source — otherwise 'verified'
+    caps at 'probable'. Recency only ever CAPS; it never nullifies and never
+    lowers the independence floor. Absent volatility+freshness, behavior is
+    byte-for-byte the legacy path (every pre-recency test stays green).
     """
-    downgrades = downgrades or []
+    downgrades = list(downgrades or [])
     upgrades = upgrades or []
     distinct_families = len(set(f for f in (families or []) if f))
     reasons = []
+
+    # Recency (opt-in): a confident, non-durable, stale claim earns a stale downgrade.
+    apply_recency = (freshness is not None and volatility not in (None, "durable")
+                     and bool(freshness.get("gate_applies")))
+    if apply_recency and freshness.get("stale"):
+        sev = int(freshness.get("severity", 1)) or 1
+        downgrades = downgrades + [("stale", sev)]
 
     # Axis B — baseline then modifiers.
     axis_b = _baseline_certainty(independent_sources, distinct_families, has_primary_citation)
@@ -77,6 +97,11 @@ def grade_claim(independent_sources, families, has_primary_citation=False,
     if confidence == "verified" and (independent_sources < 2 or distinct_families < 2):
         confidence = "probable"
         reasons.append("single-source/single-family cap applied -> probable")
+    # Recent-corroboration requirement (mechanism f): a non-durable claim needs a
+    # RECENT independent source to be 'verified'. Caps at 'probable', never lower.
+    if confidence == "verified" and apply_recency and not freshness.get("recent_independent"):
+        confidence = "probable"
+        reasons.append("volatile-claim: no recent independent corroboration -> capped at probable")
 
     return {
         "confidence": confidence,
@@ -86,6 +111,8 @@ def grade_claim(independent_sources, families, has_primary_citation=False,
             "independent_sources": independent_sources,
             "distinct_families": distinct_families,
         },
+        "volatility": volatility,
+        "freshness": freshness,
         "reasons": reasons,
     }
 

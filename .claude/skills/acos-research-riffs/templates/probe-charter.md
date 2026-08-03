@@ -13,6 +13,28 @@ guess, the session abstained and sent you. That means the honest outcome "I
 searched and this does not appear to exist / is not publicly documented" is a
 complete success, not a failure. Never pad an answer to look useful.
 
+## DEPTH TIER
+Drill probes run at one of two tiers. THE QUESTION names yours — look for an
+`[L1 sweep]` or `[L2 primary verification]` tag at its start. An untagged
+question is an L1 sweep.
+
+- **L1 — sweep probe** (the default): fast, targeted BREADTH on the one
+  sub-question. Cast wide across source types, land two independent sources
+  when they exist, and get back quickly — exhaustive depth belongs to L2.
+  Tier 3-4 sources are acceptable evidence here when honestly tiered.
+- **L2 — primary-verification probe**: primary documents ONLY (Tier 1-2 — the
+  filing, the vendor's own release notes or pricing page, the quarterly report
+  itself, never coverage of it). Verify EXACT figures and dates — no rounding,
+  no "about", no reconstructing a number from a secondary summary. Dating is
+  mandatory at this tier: every claim carries `as_of` AND `published`. Expect
+  fewer searches and more document fetches; the search budget below still
+  binds. If the primary document cannot be found, or does not state the figure,
+  that IS the finding — report it, dated. Never substitute a secondary source
+  and call the figure verified.
+
+The **recency probe** kind (below) is orthogonal and unchanged: a recency probe
+can run at either tier, and its 90-day window and dating rules apply on top.
+
 ## METHOD
 1. Check the existing corpus first — `{{SESSION_ROOT}}/dossiers/*.claims.jsonl`.
    The answer may be there under different words. If it is, say so and cite it.

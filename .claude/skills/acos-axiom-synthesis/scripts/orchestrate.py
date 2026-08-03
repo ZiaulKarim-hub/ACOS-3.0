@@ -24,9 +24,11 @@ import resolve as rs
 import coverage as cov
 import mirror as mir
 import checklist as chk
+import volatility as vol
 
 
 _CHECKLIST_CACHE = None
+_VCFG_CACHE = None
 
 
 def _checklist():
@@ -35,6 +37,14 @@ def _checklist():
     if _CHECKLIST_CACHE is None:
         _CHECKLIST_CACHE = chk.load_checklist()
     return _CHECKLIST_CACHE
+
+
+def _vcfg():
+    """Load the volatility/recency config once per process (cached)."""
+    global _VCFG_CACHE
+    if _VCFG_CACHE is None:
+        _VCFG_CACHE = vol.load_volatility()
+    return _VCFG_CACHE
 
 
 def _provenance(candidates, representatives):
@@ -46,12 +56,15 @@ def _provenance(candidates, representatives):
     prov = []
     for sid in representatives:
         s = by_src.get(sid, {"id": sid})
-        prov.append({
+        entry = {
             "source": s.get("origin") or s.get("id"),
             "locator": s.get("locator", ""),
             "surfaced_by": s.get("id"),
             "family": s.get("family", ""),
-        })
+        }
+        if s.get("as_of"):                 # valid-time date, recorded for recency work
+            entry["as_of"] = s.get("as_of")
+        prov.append(entry)
     return prov
 
 
@@ -64,8 +77,11 @@ def _write(ledger, record, now):
         return False, exc
 
 
-def process_fact(ledger, fact, settled_path, now):
-    """Run one fact through stages 2-6 and write its claim version(s). Returns a result."""
+def process_fact(ledger, fact, settled_path, now, today="1970-01-01", vcfg=None):
+    """Run one fact through stages 2-6 and write its claim version(s). Returns a result.
+
+    `today` is the run's reference date (ISO 'YYYY-MM-DD') for the recency/freshness
+    computation; `vcfg` is the volatility config (defaults to the cached load)."""
     fid = fact["fact_id"]
     candidates = fact.get("candidates", [])
     sources = [c["source"] for c in candidates]
@@ -76,18 +92,36 @@ def process_fact(ledger, fact, settled_path, now):
     indep = decirc["independent_sources"]
     families = decirc["families"]
 
+    # Stage 2.5 — recency: classify volatility + compute freshness of the INDEPENDENT
+    # sources. Inert by construction for durable claims and for low-confidence
+    # (unclassifiable) claims — so pre-recency fixtures are unaffected.
+    vcfg = vcfg or _vcfg()
+    vclass = fact.get("volatility")
+    if vclass in (None, ""):
+        vinfo = vol.classify(fact["statement"], domain=fact.get("domain"),
+                             judge_label=fact.get("volatility_judge"), cfg=vcfg)
+        vclass, vconf = vinfo["volatility"], vinfo["confidence"]
+    else:
+        vconf = fact.get("volatility_confidence", "high")   # a fact-declared class is trusted
+    by_src = {c["source"]["id"]: c["source"] for c in candidates}
+    rep_dates = [by_src.get(sid, {}).get("as_of") for sid in decirc["representatives"]]
+    fresh = vol.compute_freshness(vclass, rep_dates, today, cfg=vcfg, confidence=vconf)
+
     # Stage 3 — grade + fuse.
     g = fact.get("grading", {})
     grade = gf.grade_claim(indep, families,
                            has_primary_citation=g.get("has_primary_citation", False),
-                           downgrades=g.get("downgrades"), upgrades=g.get("upgrades"))
+                           downgrades=g.get("downgrades"), upgrades=g.get("upgrades"),
+                           volatility=vclass, freshness=fresh)
     fused = gf.fuse([{"value": c["value"], "source_id": c["source"]["id"]} for c in candidates],
                     claim_type=claim_type, weights=fact.get("weights"))
 
-    # Stage 5 (peek) — is there a genuine conflict to resolve?
+    # Stage 5 (peek) — is there a genuine conflict to resolve? For a NON-DURABLE
+    # conflict, guarded supersession is consulted before the accumulation rungs.
     conflict = None
     if fact.get("conflict"):
-        conflict = rs.resolve_conflict(fact["conflict"], polarity=fact.get("ladder_polarity", "quorum"))
+        conflict = rs.resolve_conflict(fact["conflict"], polarity=fact.get("ladder_polarity", "quorum"),
+                                       volatility=vclass)
 
     # Stage 4 — falsification gate.
     gate = fz.run_gate(
@@ -113,7 +147,7 @@ def process_fact(ledger, fact, settled_path, now):
             divergence=fused["divergence"],
             semantic_answers=fact.get("checklist_answers"),
             superseded=fact.get("superseded", False),
-            freshness_ok=g.get("freshness_ok", True),
+            freshness_ok=fresh["freshness_ok"],   # now COMPUTED from volatility, not hand-set
         )
         ctx["domain"] = fact.get("domain")
         verdict = chk.evaluate(cl, ctx)
@@ -125,11 +159,17 @@ def process_fact(ledger, fact, settled_path, now):
         "id": fid, "statement": fact["statement"], "claim_type": claim_type,
         "value": fused["fused_value"], "provenance": prov, "confidence_basis": basis,
         "covers": covers, "depends_on": fact.get("depends_on", []),
+        # Recency (bitemporal + volatility) — carried on every claim version so the
+        # renderer can surface staleness and audits can see WHY a tier was capped.
+        "volatility": vclass, "observed_at": today,
+        "recency": {"stale": fresh["stale"], "newest_as_of": fresh["newest_as_of"],
+                    "window_days": fresh["window_days"], "gate_applies": fresh["gate_applies"]},
     }
 
     # --- decide outcome ------------------------------------------------------
     result = {"fact_id": fid, "decirc": decirc, "grade": grade, "fused": fused,
-              "gate": gate, "conflict": conflict, "checklist": verdict}
+              "gate": gate, "conflict": conflict, "checklist": verdict,
+              "volatility": vclass, "freshness": fresh}
 
     # always create the CONJECTURE first (legal create).
     _write(ledger, {**base, "state": "CONJECTURE", "confidence": "unverified",
@@ -162,6 +202,15 @@ def process_fact(ledger, fact, settled_path, now):
     # gate downgrade. In legacy mode, the gate downgrade still lowers the tier.
     if verdict is not None:
         conf = verdict["tier"]
+        # Recency cap in CHECKLIST mode (F4 gap fix): losing only N5-NOT-STALE
+        # leaves 9/10 = 90%, which still meets verified_min — so the checklist
+        # percentage alone can NEVER block 'verified' for a stale claim. Mechanism
+        # (f) therefore applies here too: a confidently non-durable claim with no
+        # RECENT independent source caps at 'probable' (cap, never nullify).
+        if conf == "verified" and vclass not in (None, "durable") \
+                and fresh["gate_applies"] and not fresh["recent_independent"]:
+            conf = "probable"
+            result["recency_capped"] = True
     else:
         conf = grade["confidence"]
         if gate["disposition"] == "downgrade":
@@ -203,7 +252,9 @@ def run(session_dir, question, sub_questions, facts, now, repo_root=".", date_st
     ledger = os.path.join(session_dir, "claims.jsonl")
     settled_path = os.path.join(session_dir, "settled-objections.jsonl")
 
-    per_fact = [process_fact(ledger, f, settled_path, now) for f in facts]
+    # `date_str` (the run date) is the reference "today" for the freshness computation.
+    vcfg = _vcfg()
+    per_fact = [process_fact(ledger, f, settled_path, now, today=date_str, vcfg=vcfg) for f in facts]
 
     records = al.read_ledger(ledger)
     coverage = cov.coverage_gate(sub_questions, records)

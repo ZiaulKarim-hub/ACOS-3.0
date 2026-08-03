@@ -50,6 +50,14 @@ export interface LedgerEntry {
   provenance?: Provenance[];
   author?: { agent?: string; model?: string };
   claim_ids?: string[];
+  /** Drill-thread id (deep-drill chat mode, e.g. "T3") — optional and
+   *  additive: entries without it are legal forever. The orchestrator assigns
+   *  thread ids per SKILL.md; the engine only records them. */
+  thread?: string;
+  /** Depth-ladder level (0-2) this entry was produced at — optional and
+   *  additive, same discipline as `thread`. The ladder semantics live in
+   *  SKILL.md; the engine only validates the range. */
+  depth?: number;
 }
 
 export interface LedgerView extends LedgerEntry {
@@ -86,6 +94,21 @@ export function addEntry(sessionId: string, partial: Partial<LedgerEntry>): Ledg
       `unknown confidence "${partial.confidence}" — one of: ${CONFIDENCES.join(", ")}`,
     );
   }
+  // Deep-drill fields are optional, but when present they must be usable: an
+  // empty thread id stamps nothing traceable, and an out-of-range depth would
+  // mislabel where on the ladder (L0-L2) an answer came from.
+  if (
+    partial.thread !== undefined &&
+    (typeof partial.thread !== "string" || !partial.thread.trim())
+  ) {
+    throw new Error("`thread` must be a non-empty string when present (e.g. \"T3\")");
+  }
+  if (
+    partial.depth !== undefined &&
+    (!Number.isInteger(partial.depth) || partial.depth < 0 || partial.depth > 2)
+  ) {
+    throw new Error(`\`depth\` must be an integer 0-2 when present, got: ${partial.depth}`);
+  }
   if (partial.supersedes && !readLedger(sessionId).some((e) => e.id === partial.supersedes)) {
     throw new Error(
       `supersedes target ${partial.supersedes} does not exist in the ledger — ` +
@@ -106,6 +129,9 @@ export function addEntry(sessionId: string, partial: Partial<LedgerEntry>): Ledg
     ...(partial.provenance ? { provenance: partial.provenance } : {}),
     ...(partial.author ? { author: partial.author } : {}),
     ...(partial.claim_ids ? { claim_ids: partial.claim_ids } : {}),
+    ...(partial.thread ? { thread: partial.thread } : {}),
+    // depth 0 (L0) is falsy — spread on !== undefined, never on truthiness.
+    ...(partial.depth !== undefined ? { depth: partial.depth } : {}),
   };
   appendJsonl(paths(sessionId).ledger, entry);
   return entry;

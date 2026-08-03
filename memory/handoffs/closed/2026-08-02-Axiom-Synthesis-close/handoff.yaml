@@ -1,0 +1,87 @@
+timestamp: 2026-08-02T22:51:01+00:00
+status: parked
+type: close-project
+session_id: 2180ff62-210f-4d36-b17f-92f46b7849c3
+slug: 2026-08-02-Axiom-Synthesis-close
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0
+session_summary: Safe close of Axiom Synthesis — branch=acos-deficiency-fixes-2026-06-04 head=0452552b50d5ec44cd9a42736ba72d2540b9c4c6 dirty_count=44; next: Arm the freshness gate on adjacent-class disagreement (fast vs volatile -> medium conf)
+git_state: branch=acos-deficiency-fixes-2026-06-04 head=0452552b50d5ec44cd9a42736ba72d2540b9c4c6 dirty_count=44
+git:
+  branch: acos-deficiency-fixes-2026-06-04
+  head: 0452552b50d5ec44cd9a42736ba72d2540b9c4c6
+  dirty_count: 44
+  dirty_listed: listed 44 of 44
+dirty_files:
+  -  M .claude/scripts/git-manager/README.md
+  -  M .claude/scripts/git-manager/config.default.json
+  -  M .claude/scripts/git-manager/git-manager.ts
+  -  M .claude/scripts/git-manager/render-html.ts
+  -  M .claude/scripts/git-manager/types.ts
+  -  M .claude/skills/acos-axiom-synthesis/SKILL.md
+  -  M .claude/skills/acos-axiom-synthesis/prompts/README.md
+  -  M .claude/skills/acos-axiom-synthesis/prompts/elicitor.md
+  -  M .claude/skills/acos-axiom-synthesis/prompts/grader.md
+  -  M .claude/skills/acos-axiom-synthesis/scripts/axiom_ledger.py
+  -  M .claude/skills/acos-axiom-synthesis/scripts/grade_fuse.py
+  -  M .claude/skills/acos-axiom-synthesis/scripts/orchestrate.py
+  -  M .claude/skills/acos-axiom-synthesis/scripts/resolve.py
+  -  M .claude/skills/acos-research-riffs/SKILL.md
+  -  M .claude/skills/acos-research-riffs/scripts/lib/claims.ts
+  -  M .claude/skills/acos-research-riffs/scripts/lib/ledger.ts
+  -  M .claude/skills/acos-research-riffs/scripts/lib/report.ts
+  -  M .claude/skills/acos-research-riffs/scripts/riff.ts
+  -  M .claude/skills/acos-research-riffs/scripts/test-riff.ts
+  -  M .claude/skills/acos-research-riffs/templates/probe-charter.md
+  -  M "Logo Builder/brandsync/commands.jsonl"
+  -  M planning/acos-axiom-synthesis/WAKE-UP-2026-07-22.md
+  -  M planning/acos-research-riffs/ARCHITECTURE.md
+  - ?? .claude/scripts/git-manager/serve.ts
+  - ?? .claude/scripts/git-manager/watch.ts
+  - ?? .claude/skills/acos-axiom-synthesis/RUNBOOK.md
+  - ?? .claude/skills/acos-axiom-synthesis/config/volatility.yaml
+  - ?? .claude/skills/acos-axiom-synthesis/scripts/conductor.py
+  - ?? .claude/skills/acos-axiom-synthesis/scripts/volatility.py
+  - ?? .claude/skills/acos-axiom-synthesis/tests/test_conductor.py
+  - ?? .claude/skills/acos-axiom-synthesis/tests/test_recency.py
+  - ?? "Logo Builder/brandsync/avoid.json"
+  - ?? "Logo Builder/brandsync/smooth/"
+  - ?? "Logo Builder/brandsync/symbol/"
+  - ?? "Logo Builder/brandsync/wordmark/"
+  - ?? memory/handoffs/2026-08-01-emergency-handoff.yaml
+  - ?? memory/handoffs/2026-08-02-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-02-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-02-emergency-handoff-3.resume.md
+  - ?? memory/handoffs/2026-08-02-emergency-handoff-3.yaml
+  - ?? memory/handoffs/2026-08-02-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-02-emergency-handoff.yaml
+  - ?? memory/handoffs/closed/2026-08-02-Axiom-Synthesis-close/
+  - ?? planning/acos-axiom-synthesis/RESEARCH-recency-bias-2026-08-02.md
+next_actions:
+  - Arm the freshness gate on adjacent-class disagreement (fast vs volatile -> medium conf)
+next_action: Arm the freshness gate on adjacent-class disagreement (fast vs volatile -> medium conf)
+intent_core: |
+  next_action: Arm the freshness gate on adjacent-class disagreement (fast vs volatile -> medium conf)
+  project: acos-axiom-synthesis — recency discipline (build + review-fix + F4 live wiring + live proof)
+  decisions: |
+    - Built the recency discipline per RESEARCH-recency-bias-2026-08-02.md §6.1, mechanisms h+a+g+e+f+c (as_of/observed_at/volatility schema, advisory classifier, staleness banner, computed freshness_ok, recent-corroboration requirement for verified, guarded supersession) — deferred (b) time-decay and (d) --recency overlay because e+f capture most benefit with fewer magic numbers.
+    - Two verified deviations from the design doc: N5-NOT-STALE stays a NORMAL checklist question, not a veto (cap-never-nullify guardrail); freshness keys on each source's as_of (content date), not observed_at (ingest ≈ run date carries no staleness signal). observed_at still recorded per claim.
+    - config/volatility.yaml written FULLY FLAT because the skill's minimal YAML parser silently dies on nested blocks — flat edits actually take effect (checklist.yaml's own edits never load; pre-existing bug, deliberately left out of scope).
+    - Line-by-line review with live demos found 3 real bugs, all fixed: (F1) two disagreeing signals produced HIGH confidence; (F2) substring lexical matching ('sota' in 'Minnesota', 'rates' in 'operates'); (F3) supersession compared top-2 overall instead of newest-vs-incumbent in 3+-claim conflicts. Plus F6 bool-window nit.
+    - F4 live wiring: grader prompt emits a blind volatility label (unique-max vote -> volatility_judge; tie -> None); run_from_collected accepts run-level domain; judge-label-with-no-signals counts as ONE real clue at medium (gate armed); checklist-mode recency cap added because losing only N5 = 9/10 = 90% still meets verified_min (the cap closes that gap).
+    - Live run 3 (.acos/axiom/live-recency-2026-08-02/) proved the discipline on a real stale-vs-fresh fight: Gemini+GLM answered the stale 4.25-4.50% / 2024-12-18 from memory; Claude+ChatGPT found 3.50-3.75% / 2025-12-10 with dated Fed citations; guarded supersession fired LIVE on both conflicts (winner fresh, rung supersession); C3-C5 correctly capped probable by the family/source floors. 159 offline assertions all passing.
+  rejected_alternatives: |
+    - N5-NOT-STALE as a veto question — would fully nullify stale claims, violating the cap-only asymmetric-error guardrail.
+    - Nested volatility.yaml — the minimal parser cannot read nesting; user edits would be silently dead (Decision A would have no teeth).
+    - Time-decay on corroboration counts now — parameter-hungry (per-domain half-lives unverified); freshness gate + recent-corroboration requirement capture most of the benefit.
+    - Ungated supersession — a lone fresh wrong source could retire a correct old claim; the 3-part guard (newer AND equal-or-higher tier AND corroborated/authority) is load-bearing.
+  traps: |
+    - Re-running the conductor over an EXISTING ledger hits illegal-transition refusals (ESTABLISHED->CONJECTURE) — always point a new live run at a FRESH .acos/axiom/<session>/ dir.
+    - date_str defaults to 1970-01-01 which makes every source look fresh (recency silently no-ops); always pass the REAL run date, plus domain when known.
+    - Edits to config/checklist.yaml DO NOT take effect (parser falls back to embedded DEFAULT_CHECKLIST). Edits to config/volatility.yaml DO (flat file). Do not assume symmetry.
+    - Multiple live sessions share this repo's dirty working tree (research-riffs, git-manager, website-builder, Logo Builder). Scope any commit STRICTLY to .claude/skills/acos-axiom-synthesis/ + planning/acos-axiom-synthesis/ paths; never bare `git push` (guard denies it); personal account is the default destination.
+    - v1 clustering is exact-normalized-text: cross-family paraphrases need the orchestrator semantic-merge (RUNBOOK step 2) with raws kept in collected/elicitor-raw/ and every judgment logged in MERGE-NOTES.md.
+  open_questions: |
+    - Live finding 1: adjacent-class disagreement (judges said fast/durable vs domain prior volatile) dropped ALL five live claims to low confidence -> gate_applies=false run-wide, so the freshness cap never armed (C2 sat stale:true yet uncapped). Proposed refinement = next_action; needs tests.
+    - Live finding 2 (= review F5): a RESOLVED supersession writes no SUPERSEDED ledger entry (SUPERSESSION LOG renders empty) and the winner's rendered provenance still lists the stale-side sources. Post-supersession provenance filtering + a conflict-level supersession note in render are open.
+    - Should post-supersession corroboration counts exclude the retired side's sources?
+    - All session work is UNCOMMITTED by design (user never asked to commit); the axiom-synthesis file set is listed in WAKE-UP-2026-07-22.md UPDATE (3)-(6).

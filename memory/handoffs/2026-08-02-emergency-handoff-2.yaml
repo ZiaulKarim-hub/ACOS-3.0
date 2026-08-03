@@ -1,0 +1,168 @@
+timestamp: "2026-08-02T05:10:00-06:00"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active work is the acos-axiom-synthesis skill (multi-model claim-synthesis engine with
+  a de-circularization firewall, per-claim ledger, and confidence tiers). This session
+  built and wired a boolean confidence checklist and a four-model-family fan-out, then
+  built a live-run "conductor," then proved the whole pipeline end-to-end twice — once
+  memory-only (correctly landed everything at `probable`) and once with real web sources
+  (correctly reached `verified` on one claim backed by two independent cited sources). A
+  recency-bias research report was also delivered but its recommendations are NOT yet
+  implemented. Working tree is dirty with axiom-synthesis changes plus unrelated
+  in-flight work from other sessions (git-manager, research-riffs, website-builder,
+  reverse-cleanroom) — see files_modified for the axiom-specific subset only.
+
+current_work:
+  slice_id: "unknown (no formal SLICE-ID found; tracked via planning/acos-axiom-synthesis/PLAN.md + WAKE-UP note)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress — deterministic core + live 4-family fan-out PROVEN; recency-bias fix designed but NOT built; user's next-step choice left open"
+
+completed_this_session:
+  - "Boolean confidence checklist (boss point 1): scripts/checklist.py (gate engine: veto + percentage -> tier) + config/checklist.yaml (4 veto questions, 10 scored questions, tiers >=90%=verified/>=70%=probable/below=unverified, single-source cap preserved, universal core + optional domain_packs). Wired into orchestrate.py stage 4.5 (engages only when judge answers present; legacy path untouched)."
+  - "Four-family fan-out (boss point 5): four blind family-neutral prompts built at prompts/{elicitor,grader,refuter,synthesizer}.md; new 'zai' provider added to .acos/config/providers.yaml (api.z.ai coding endpoint https://api.z.ai/api/coding/paas/v4, model glm-4.7); Google provider confirmed working (gemini-flash-latest — note gemini-2.5-flash is retired, 404s)."
+  - "Live-run CONDUCTOR built: scripts/conductor.py — tolerant JSON extraction, per-family parsers, grader consensus, refuter-to-V4 flow, claim clustering, run_from_collected(); plus RUNBOOK.md (operating procedure) and tests/test_conductor.py."
+  - "Elicitor prompt upgraded (prompts/elicitor.md) to require every claim carry a real cited source with source_url + source_date; origin now keys de-circularization on the source URL (distinct URLs = independent votes); source_date threads into ledger provenance as `as_of` (laying groundwork for the not-yet-built recency work)."
+  - "Offline test suite grew to 99 assertions across 4 files, all passing (re-verified live during this handoff): test_substrate.py=19, test_pipeline.py=35, test_checklist.py=21, test_conductor.py=24."
+  - "First live end-to-end 4-family run: .acos/axiom/live-2026-08-02/ — question 'What is the capital of Australia, and is it Australia's largest city?'. All four families (Claude via Task, Gemini + GLM via run-external-agent, ChatGPT via browser) elicited live; result correctly all landed CORROBORATED/probable because every source was origin:model-internal (no external citations) — de-circularization correctly refused 'verified' for uncited AI-memory consensus."
+  - "Real bugs found and fixed during the first live run: (1) Gemini/GLM both self-report family as 'anthropic' -> conductor now tags family by TRANSPORT/filename, not self-report; (2) source text=full statement made independent families look like verbatim copies -> fixed to text=\"\" (independence signaled via origin/family/context, not text); (3) zsh arrays are 1-indexed, a `for i in 0 1 2` loop skipped C3 and produced junk files, re-ran with `1 2 3`; (4) v1 clustering is exact-normalized-text only — paraphrases don't auto-merge, so the orchestrator does semantic-merge by hand per RUNBOOK step 2 (raw replies preserved in collected/elicitor-raw/)."
+  - "Second live run, web-enabled: .acos/axiom/live-sourced-2026-08-02/ — Claude (Task+WebSearch) and ChatGPT (browser web search) each fetched real dated sources. C1 'The capital of Australia is Canberra' reached ESTABLISHED/verified, cited by two distinct sources from two families (nca.gov.au [anthropic] + britannica.com [openai-web]); the other 4 claims (single source each) correctly stayed probable/CORROBORATED. Verified directly: .acos/axiom/live-sourced-2026-08-02/source-of-truth.md shows the verified claim with both URLs and confidence-tier legend matching config."
+  - "Honest firewall demo captured in WAKE-UP note: a first attempt had both models cite the SAME government page (nca.gov.au) -> de-circularization correctly collapsed to 1 source -> stayed probable. Only when ChatGPT cited a DIFFERENT source (Britannica) did the claim reach verified."
+  - "More bugs caught + fixed in the second live run: (5) numeric claim values arrive as strings (e.g. '5,638,830') and crashed median/mean fusion -> conductor now coerces to float, falls back to categorical if not a clean number (test added); (6) re-running over an existing ledger causes illegal-transition refusals (ESTABLISHED->CONJECTURE) — engine correctly refuses; a clean re-run needs a fresh ledger or resume logic (documented as a KNOWN LIMIT, not fixed)."
+  - "Delivered planning/acos-axiom-synthesis/RESEARCH-recency-bias-2026-08-02.md — WebSearch/WebFetch literature review (library science, evidence-based medicine, IR, ML, temporal DBs, LLM-temporal-alignment) recommending: volatility as a separate claim attribute (durable/slow/fast/volatile), a volatility classifier (deterministic lexical/domain prior + blind-judge label, advisory only — cap/flag, never nullify), an as_of/staleness banner in render.py, a freshness gate conditional on volatility, and a guarded supersession rule (newer equal-or-higher-tier, independently corroborated source can supersede an older one in volatile domains only, modeled on standards-supersession, with oscillation-guard reuse to prevent thrash). Every claim cited to a primary source; unverifiable items flagged UNVERIFIED in the doc."
+
+files_modified:
+  - path: ".claude/skills/acos-axiom-synthesis/SKILL.md"
+    changes: "+87/-XX net (per HEAD~5 diff-stat: 87 changed lines this multi-commit window); updated to document checklist + 4-family fan-out + conductor + live-run status."
+  - path: ".claude/skills/acos-axiom-synthesis/config/checklist.yaml"
+    changes: "New file (119 lines) — veto/scored questions, tier thresholds, domain_packs."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/checklist.py"
+    changes: "New file (417 lines) — the checklist gate engine."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/orchestrate.py"
+    changes: "Modified (working tree, not yet committed on top of the 55-line committed diff) — stage 4.5 checklist wiring."
+  - path: ".claude/skills/acos-axiom-synthesis/scripts/conductor.py"
+    changes: "New, untracked — tolerant JSON extraction, per-family parsers, grader consensus, refuter-to-V4, claim clustering, run_from_collected()."
+  - path: ".claude/skills/acos-axiom-synthesis/tests/test_conductor.py"
+    changes: "New, untracked — 24 assertions covering conductor behavior including the family-mis-self-report fix and numeric-string coercion fix."
+  - path: ".claude/skills/acos-axiom-synthesis/RUNBOOK.md"
+    changes: "New, untracked — operating procedure for a live conductor run, incl. manual semantic-merge step."
+  - path: ".claude/skills/acos-axiom-synthesis/prompts/elicitor.md"
+    changes: "Modified (working tree, 48 lines changed on top of committed 53-line diff) — now requires cited source_url + source_date per claim."
+  - path: ".claude/skills/acos-axiom-synthesis/prompts/{grader,refuter,synthesizer}.md"
+    changes: "Committed earlier this arc — the other three blind family-neutral prompts (grader 78 lines, refuter 65 lines, synthesizer 39 lines)."
+  - path: ".acos/config/providers.yaml"
+    changes: "'zai' provider entry added (api.z.ai coding endpoint, glm-4.7); Google/Gemini entry confirmed working (gemini-flash-latest)."
+  - path: "planning/acos-axiom-synthesis/WAKE-UP-2026-07-22.md"
+    changes: "Modified in working tree (48 new lines this session) — running log; now has two 2026-08-02 UPDATE sections documenting the conductor build and both live runs. This is the single richest source-of-truth file for this arc of work."
+  - path: "planning/acos-axiom-synthesis/RESEARCH-recency-bias-2026-08-02.md"
+    changes: "New, untracked (39,924 bytes) — full recency-bias literature review + recommendation, not yet implemented."
+  - path: ".acos/axiom/live-2026-08-02/ and .acos/axiom/live-sourced-2026-08-02/"
+    changes: "Live-run artifact directories (claims.jsonl, source-of-truth.md, collected/{elicitor,elicitor-raw,grader,refuter}/*.json) — evidence of both proven end-to-end runs."
+  - path: ".acos/evidence/2026-08-02/axiom-live-2026-08-02/run.log and axiom-live-sourced-2026-08-02/run.log"
+    changes: "Evidence bundle run logs for both live runs (per ACOS evidence convention)."
+
+decisions_made:
+  - "None found in memory/decisions/ dated today (2026-08-02) or matching axiom-synthesis. Design decisions for this arc live inline in planning/acos-axiom-synthesis/WAKE-UP-2026-07-22.md and RESEARCH-recency-bias-2026-08-02.md rather than as separate ADR files — worth noting for the next session in case a decision record is expected."
+
+blockers:
+  - "None blocking further axiom-synthesis work directly. NOTE (from an unrelated but overlapping prior handoff, memory/handoffs/2026-08-02-emergency-handoff.yaml, written 02:20 this same date by a different session working on /acos-git-manager): that session flagged 'DO NOT commit the acos-research-riffs files in ACOS 3.0 — ANOTHER LIVE SESSION is editing them.' That warning is about acos-research-riffs, not acos-axiom-synthesis, but confirms multiple concurrent sessions are touching this repo's working tree right now — be careful with broad `git add`/`git commit` that could sweep up axiom-synthesis changes together with unrelated in-flight edits from other sessions (git-manager, research-riffs, website-builder, reverse-cleanroom, Logo Builder/brandsync, Zermatt Credit Memo all show as modified/untracked in git status)."
+  - "Known engine limit (not a bug, documented): re-running the conductor over an EXISTING ledger causes illegal-transition refusals (ESTABLISHED->CONJECTURE). A clean re-run currently needs a fresh ledger directory; no resume/reset logic exists yet."
+  - "Known coverage gap: only Claude (via Task+WebSearch) and ChatGPT (via browser) can perform live web search. The external-model runner (run-external-agent.py, used for Gemini + GLM) has no web tool — those two families can only cite from model-internal memory today, capping their contribution to 'probable' tier."
+
+next_actions:
+  - "USER DECISION POINT (explicitly left open, per this session's own note): choose (a) build the recency-bias fix designed in RESEARCH-recency-bias-2026-08-02.md section 6.1 (as_of/observed_at/volatility on the claim schema -> volatility classifier -> as-of/staleness banner in render.py -> conditional freshness gate -> guarded supersession, in that adoption order), or (b) add web-search/grounding capability to run-external-agent.py so Gemini and GLM can also cite live sources (this is what's needed for those two families to ever reach 'verified'), or (c) pause axiom-synthesis work here. Ask the user which before proceeding."
+  - "If resuming: first re-read planning/acos-axiom-synthesis/WAKE-UP-2026-07-22.md in full — it is the authoritative running log for this arc and is more detailed and current than this handoff's summary."
+  - "Before any further live run: either point at a fresh .acos/axiom/<new-session>/ directory or add resume/reset logic — re-using live-2026-08-02 or live-sourced-2026-08-02 will hit the illegal-transition refusal."
+  - "The committed vs. working-tree state is split: some axiom-synthesis work (checklist.py, checklist.yaml, prompts, SKILL.md base) is already committed (see git diff --stat HEAD~5..HEAD); the conductor, RUNBOOK, test_conductor.py, and the elicitor cited-source upgrade are still uncommitted in the working tree. Confirm with the user before committing, given other sessions are concurrently touching this same working tree."
+
+context_for_next_session: |
+  This session's whole arc is the acos-axiom-synthesis skill: a multi-model
+  (Claude/Gemini/GLM/ChatGPT) claim-synthesis pipeline that elicits candidate claims from
+  each "family" blind to the others, grades and cross-examines them, de-circularizes
+  shared-origin evidence so consensus among models parroting the same source doesn't
+  fake independence, and writes an append-only ledger culminating in a source-of-truth.md
+  with confidence tiers (unverified -> probable -> verified/ESTABLISHED).
+
+  Two boss-requested improvements were built and wired first: a boolean confidence
+  checklist (scripts/checklist.py + config/checklist.yaml, 4 veto + 10 scored questions,
+  wired into orchestrate.py stage 4.5) and the four-model-family fan-out (all four blind
+  prompts in prompts/, zai provider added to .acos/config/providers.yaml). Then a
+  live-run harness ("conductor," scripts/conductor.py) was built to actually drive a real
+  fan-out end-to-end, plus RUNBOOK.md documenting the manual steps (notably: v1 claim
+  clustering is exact-normalized-text only, so semantic paraphrase-merging across
+  families is still a manual orchestrator step — raw per-family replies are preserved
+  under collected/elicitor-raw/ for that purpose). The elicitor prompt was then upgraded
+  to demand a real cited source_url + source_date per claim, and origin/de-circularization
+  now keys on that URL rather than treating "the model said so" as evidence.
+
+  Two live end-to-end runs PROVE the pipeline is correct, not just unit-tested: a
+  memory-only run (.acos/axiom/live-2026-08-02/) correctly landed every claim at
+  probable/CORROBORATED because sources were all model-internal (no external citation);
+  a web-enabled run (.acos/axiom/live-sourced-2026-08-02/) correctly promoted C1 ("the
+  capital of Australia is Canberra") to ESTABLISHED/verified because Claude and ChatGPT
+  independently cited two DIFFERENT real sources (nca.gov.au and britannica.com) — and a
+  prior attempt where both models cited the SAME source was correctly held at probable,
+  demonstrating the de-circularization firewall actually works under a live adversarial
+  test, not just in mocked unit tests. Along the way six real bugs were found and fixed
+  purely by running the thing for real (family self-report unreliable, source text
+  falsely implying verbatim-copy non-independence, zsh 1-indexed array gotcha, numeric
+  string coercion crash, plus the documented-not-fixed illegal-transition-on-rerun limit
+  and the paraphrase-clustering manual-step limit).
+
+  The offline regression suite is 99 assertions across four files (test_substrate 19,
+  test_pipeline 35, test_checklist 21, test_conductor 24) — all four suites were
+  re-executed live during this handoff and all still pass, confirming the working tree
+  is in a good, non-broken state despite being uncommitted.
+
+  A separate research deliverable, planning/acos-axiom-synthesis/RESEARCH-recency-bias-
+  2026-08-02.md, answers "why can an old claim outscore a fresher, better one?" with a
+  cited literature review and a concrete recommendation (volatility as a claim attribute,
+  advisory-only volatility classifier, as-of staleness banner, conditional freshness
+  gate, and a triple-gated supersession rule reusing the existing oscillation guard) — but
+  this is DESIGN ONLY, nothing from it has been implemented yet.
+
+  Provider credentials live in Doppler under project ai-model-api, config dev_personal:
+  GOOGLE_API_KEY (Gemini, model gemini-flash-latest — note gemini-2.5-flash is retired
+  and 404s) and ZAI_CODING_PLAN_API_KEY (must be mapped to the env var ZAI_API_KEY the
+  code expects; the Coding Plan key only works against the coding endpoint
+  https://api.z.ai/api/coding/paas/v4, not the general z.ai API). ChatGPT participation
+  is via browser voice (Chrome, logged-in Plus account), not an API key.
+
+  The very next thing to do is a human decision, not more building: the user's own
+  wake-up note explicitly leaves the choice open between (a) building the recency-bias
+  fix, (b) adding web-search grounding to run-external-agent.py so Gemini/GLM can also
+  reach 'verified', or (c) pausing here. Do not pick for them — ask.
+
+  CAUTION for the next session: git status shows this repo's working tree is currently
+  touched by MULTIPLE overlapping sessions (git-manager, research-riffs, website-builder,
+  reverse-cleanroom, Logo Builder/brandsync assets, Zermatt Credit Memo, plus this
+  axiom-synthesis work). A separate handoff from earlier today (memory/handoffs/2026-08-02
+  -emergency-handoff.yaml, 02:20, a /acos-git-manager session) explicitly warns not to
+  sweep acos-research-riffs into a commit because another live session owns it. Scope any
+  commit strictly to the axiom-synthesis paths listed under files_modified above.
+
+reconstruction_sources:
+  - "git status --short (working tree state, full repo)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD (full repo)"
+  - "git diff --stat -- .claude/skills/acos-axiom-synthesis/ planning/acos-axiom-synthesis/ (scoped diff vs HEAD)"
+  - "planning/acos-axiom-synthesis/WAKE-UP-2026-07-22.md (primary running log for this arc, read in full)"
+  - "planning/acos-axiom-synthesis/RESEARCH-recency-bias-2026-08-02.md (grepped for executive summary + recommendation section)"
+  - "planning/ directory listing (ls -lt planning/)"
+  - "planning/acos-axiom-synthesis/ directory listing"
+  - ".claude/skills/acos-axiom-synthesis/ full file tree (find -maxdepth 2 -type f)"
+  - ".acos/axiom/ directory listing (live-2026-08-02, live-sourced-2026-08-02, older swarm-20260714-084532)"
+  - ".acos/axiom/live-sourced-2026-08-02/source-of-truth.md (read in full — confirms C1 verified with two distinct sources)"
+  - ".acos/evidence/2026-08-02/ directory listing (axiom-live-2026-08-02/run.log, axiom-live-sourced-2026-08-02/run.log present)"
+  - ".acos/config/providers.yaml (grepped for zai/google provider lines)"
+  - "memory/decisions/ directory listing (no entries dated today or matching axiom-synthesis)"
+  - "memory/handoffs/ directory listing, most recent first"
+  - "memory/handoffs/2026-08-02-emergency-handoff.yaml (read in full — a DIFFERENT, unrelated session's handoff for /acos-git-manager work, written 02:20 same date; used only for the cross-session caution note above, not for axiom-synthesis content)"
+  - "live execution: python3 .claude/skills/acos-axiom-synthesis/tests/{test_substrate,test_pipeline,test_checklist,test_conductor}.py — all 99 assertions re-verified passing"
+  - "find -newer memory/handoffs/2026-08-01-emergency-handoff.yaml scoped to axiom-synthesis paths (confirms which files were touched most recently)"
+  - ".acos/state/ directory listing (runtime state; no axiom-specific runtime markers found)"

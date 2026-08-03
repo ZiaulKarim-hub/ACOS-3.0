@@ -23,7 +23,9 @@ that `orchestrate.run()` consumes:
 1. **elicit** (3–4 blind, cross-family) → `candidates[]` + provenance (`origin`, `family`,
    `context_id`, `locator`).
 2. **grade** (blind, not the author) → `checklist_answers` (semantic subset) +
-   `grading.has_primary_citation` / `grading.freshness_ok` / `falsifiable`.
+   `grading.has_primary_citation` / `falsifiable` / a blind `volatility` label
+   (durable/slow/fast/volatile — the recency discipline's judge input; freshness
+   itself is computed by code from source dates, never asked of a model).
 3. **refute** (different family, settled-objections injected) → `refuter{objection,
    credible, rebutted}` and `fatal`. The wizard sets
    `checklist_answers["V4-SURVIVES-REFUTER"] = not (fatal and credible and not rebutted)`.

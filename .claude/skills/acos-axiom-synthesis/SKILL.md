@@ -23,7 +23,7 @@ Formal claim-state contract: `STATE-MACHINE.md` (authoritative).
 
 ## Build status (all phases built; deterministic core fixture-tested)
 
-**BUILT & fixture-tested (Phases 0–7 + confidence checklist, deterministic, no model calls — 75 assertions):**
+**BUILT & fixture-tested (Phases 0–7 + confidence checklist + live-run conductor + recency discipline, deterministic, no model calls — 159 assertions):**
 - Substrate (Phases 0–1): `axiom_ledger.py` (single-writer hash-chained ledger,
   §15.1 invariants, §15.2 state machine, §15.3 resumable frontier, renderer),
   `ledger_writer.py` / `verify_ledger.py` / `next_claims.py` / `render.py`.
@@ -42,13 +42,46 @@ Formal claim-state contract: `STATE-MACHINE.md` (authoritative).
 - `falsify.py` + `oscillation_guard.py` (Phase 4) — nullification checklist +
   falsification-gate disposition + the settled-objections oscillation guard.
 - `resolve.py` (Phase 5) — the precedence-ladder conflict resolver + consensus polarity,
-  terminating in UNRESOLVED (never a fabricated winner).
+  terminating in UNRESOLVED (never a fabricated winner). For a **non-durable** conflict it
+  consults a **guarded supersession** rung (below directness/originality/reliability,
+  above independent_sources): a newer claim retires an older one only if it is
+  equal-or-higher tier AND independently corroborated — otherwise the guard fails and the
+  classic ladder decides (a lone fresh source can never win).
+- `volatility.py` + `config/volatility.yaml` (**recency discipline**, 2026-08 —
+  RESEARCH-recency-bias-2026-08-02.md) — corrects the structural bias by which an OLD
+  well-corroborated claim out-scores a fresher, better one, WITHOUT "newest wins."
+  Each claim is classified `durable` / `slow` / `fast` / `volatile` (deterministic
+  lexical + domain prior, optional blind-judge label reconciled; **advisory** — it may
+  cap or flag, never nullify). `compute_freshness` decides staleness from the dates of
+  the **independent** sources vs. per-class windows (durable = ∞, slow = 1095d, fast =
+  183d, volatile = 14d; editable). A confidently-volatile **stale** claim earns a
+  `("stale", severity)` downgrade and its top tier requires ≥1 **recent** independent
+  source (else caps at `probable`); durable claims are **exempt** (age is not a defect);
+  an unclassifiable claim is flagged but NOT capped (low classifier confidence). The
+  renderer surfaces a "⚠ possibly stale as of <date>" banner. Wired opt-in through
+  `grade_fuse.grade_claim`, `resolve.resolve_conflict`, `checklist` (`N5-NOT-STALE`'s
+  `freshness_ok` is now **computed**, not hand-set), and `orchestrate.process_fact`;
+  inert on pre-recency fixtures. **Two deliberate deviations from the design doc,
+  verified against the code:** (1) `N5-NOT-STALE` stays a **normal** question (a stale
+  claim loses a point → tier capped), NOT a veto — consistent with "cap, never nullify";
+  (2) freshness keys on each source's `as_of` (content date), not `observed_at` (ingest),
+  because ingest ≈ run-date carries no staleness signal within a single run (`observed_at`
+  is still recorded on every claim for bitemporal audit).
 - `lifecycle.py` (Phase 6) — the demotion cascade (truth-maintenance over dependents).
 - `coverage.py` + `mirror.py` (Phase 7) — the final coverage gate + ACOS evidence/metrics mirror.
 - `orchestrate.py` — the end-to-end driver (stages 2→7 over the ledger; runs the
   confidence checklist at stage 4.5 when judge answers are present).
+- `conductor.py` (**the live-run driver**, 2026-08) — turns collected raw model
+  replies into engine `fact` records and runs the pipeline: tolerant JSON extraction
+  (fences/prose), per-family reply parsers, N-grader majority consensus (fail-closed),
+  refuter→`V4` derivation, cross-family claim clustering, and `run_from_collected`
+  (parse→cluster→assemble→`orchestrate.run`). The live model calls it depends on
+  (Task/external/browser) are driven by the orchestrator per `RUNBOOK.md`.
 - Tests: `tests/test_substrate.py` (19) + `tests/test_pipeline.py` (35, incl. the
-  end-to-end adversarial cases) + `tests/test_checklist.py` (21, the confidence gate).
+  end-to-end adversarial cases) + `tests/test_checklist.py` (21, the confidence gate)
+  + `tests/test_conductor.py` (36, the live-run driver incl. the F4 volatility-vote
+  wiring) + `tests/test_recency.py` (48, the volatility/freshness/supersession
+  discipline incl. the 2026-08-02 review-fix cases) = **159 offline assertions**.
 
 **What still requires live models (the ONLY non-deterministic part):** producing the
 atomic claims (elicitation), the ACH pass, the independent different-family refuter
@@ -74,6 +107,13 @@ Confidence is **derived from independent cross-family agreement + provenance** �
 model self-report, never a fake decimal. Every claim carries an ordinal tier
 (`verified` / `probable` / `unverified`), a citation to origin, the rejected
 alternatives, and a supersession history.
+
+A **recency discipline** runs alongside [3]–[6]: each claim's volatility is classified,
+staleness of the independent sources caps the tier of a confidently-volatile stale claim
+(never a durable one), and a guarded supersession rung lets a newer, corroborated,
+equal-or-higher-tier claim retire an older one — all **behind** the de-circularization
+firewall and the ≥2-independent-cross-family floor, so recency reweights *which*
+well-evidenced claim wins without ever letting a single fresh source win.
 
 ## Model strategy — the four-family fan-out (cross-family diversity)
 
@@ -163,4 +203,7 @@ S=.claude/skills/acos-axiom-synthesis
 python3 $S/tests/test_substrate.py    # 19 assertions, offline (substrate)
 python3 $S/tests/test_pipeline.py     # 35 assertions, offline (Phases 2–7 end-to-end)
 python3 $S/tests/test_checklist.py    # 21 assertions, offline (the confidence checklist)
+python3 $S/tests/test_conductor.py    # 36 assertions, offline (the live-run driver)
+python3 $S/tests/test_recency.py      # 48 assertions, offline (recency discipline)
+# 159 offline assertions total, all passing.
 ```

@@ -316,6 +316,26 @@ def compute_frontier(records):
 _TIER_LABEL = {"verified": "Verified", "probable": "Probable", "unverified": "Unverified"}
 
 
+def _staleness_note(claim):
+    """A '⚠ possibly stale' banner for a NON-DURABLE claim whose newest source is
+    past its freshness window (recency transparency; §6.2 mechanism g). Returns a
+    string, or None when the claim is durable / fresh / carries no recency info."""
+    vol = claim.get("volatility")
+    if vol in (None, "durable"):
+        return None
+    rec = claim.get("recency") or {}
+    # Only surface for a CONFIDENTLY-volatile, stale claim — a low-confidence /
+    # unclassifiable claim (which defaults to 'slow') must not spam a banner.
+    if not (rec.get("stale") and rec.get("gate_applies")):
+        return None
+    asof = rec.get("newest_as_of") or "unknown date"
+    win = rec.get("window_days")
+    note = f"⚠ possibly stale — volatility: {vol}; newest independent source as of {asof}"
+    if win:
+        note += f"; {vol} freshness window is {win}d"
+    return note
+
+
 def render_markdown(records, path_for_head=None, question=None):
     """Render source-of-truth.md from the ledger (always generated, never hand-edited)."""
     cur = current_states(records)
@@ -350,11 +370,16 @@ def render_markdown(records, path_for_head=None, question=None):
     for c in sorted(working, key=lambda x: x["id"]):
         tier = _TIER_LABEL.get(c.get("confidence"), c.get("confidence"))
         lines.append(f"- **[{c['state']} · {tier}]** {c['statement']}  `({c['id']})`")
+        note = _staleness_note(c)
+        if note:
+            lines.append(f"    - {note}")
         for p in (c.get("provenance") or []):
             loc = p.get("locator", "")
             src = p.get("source", "?")
             fam = p.get("family", "")
-            lines.append(f"    - source: {src} {('('+loc+')') if loc else ''} {('['+fam+']') if fam else ''}")
+            asof = p.get("as_of", "")
+            asof_str = (" as-of " + asof) if asof else ""
+            lines.append(f"    - source: {src} {('('+loc+')') if loc else ''} {('['+fam+']') if fam else ''}{asof_str}")
     lines.append("")
 
     lines.append("## UNRESOLVED CONFLICTS")

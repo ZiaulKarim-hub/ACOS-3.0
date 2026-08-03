@@ -958,8 +958,31 @@ export function recentQuestions(sessionId: string, n = 3): string[] {
     .map((q) => q.text);
 }
 
-export function recordQuestion(sessionId: string, text: string): void {
-  appendJsonl(paths(sessionId).questions, { text, ts: new Date().toISOString() });
+/** One questions.jsonl record. `thread`/`depth` are the deep-drill stamps —
+ *  optional and additive; records without them are legal forever. `label` is
+ *  the assess label captured at ask time, so `riff thread` can replay a
+ *  drill history without re-assessing a corpus that has since changed. */
+export interface QuestionRecord {
+  text: string;
+  ts: string;
+  thread?: string;
+  depth?: number;
+  label?: string;
+}
+
+export function recordQuestion(
+  sessionId: string,
+  text: string,
+  extra: { thread?: string; depth?: number; label?: string } = {},
+): void {
+  appendJsonl(paths(sessionId).questions, {
+    text,
+    ts: new Date().toISOString(),
+    ...(extra.thread ? { thread: extra.thread } : {}),
+    // depth 0 (L0) is falsy — spread on !== undefined, never on truthiness.
+    ...(extra.depth !== undefined ? { depth: extra.depth } : {}),
+    ...(extra.label ? { label: extra.label } : {}),
+  });
 }
 
 /**

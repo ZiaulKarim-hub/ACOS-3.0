@@ -172,7 +172,15 @@ function rowHtml(r: RepoRow): string {
 </tr>`;
 }
 
-export function renderHtml(scan: ScanResult): string {
+/**
+ * Everything inside <main id="gm-root">, and nothing else.
+ *
+ * Split out from the full page so `serve` can send JUST this over a live
+ * connection and swap it in place. Re-sending the whole document would reload
+ * the stylesheet and reset scroll position on every change, which is exactly
+ * the flicker a live page exists to avoid.
+ */
+export function renderBody(scan: ScanResult): string {
   const attention = scan.rows.filter((r) => r.attention);
   // Same three buckets as the terminal view — see render-terminal.ts for why a
   // decided row belongs in neither "needs attention" nor "safely stored".
@@ -202,11 +210,13 @@ export function renderHtml(scan: ScanResult): string {
       .join("") +
     `</colgroup>`;
 
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Git Manager — ${esc(scan.generatedAtISO)}</title>
-<style>
+  return `<main id="gm-root">
+<h1>Git Manager</h1>` + BODY_TEMPLATE(scan, { attention, decided, clean, violations, head, colgroup }) + `
+</main>`;
+}
+
+/** The stylesheet. A constant, because it never varies with the data. */
+const PAGE_CSS = `
 :root{--bg:#fbfaf8;--fg:#1c1b19;--muted:#6b6862;--line:#e2ded7;--card:#fff;
 --red:#b3261e;--amber:#8a6100;--green:#1d6b3f;--personal:#6d2f8f;--work:#1b4f8a;--chip:#f0ece5}
 @media (prefers-color-scheme:dark){:root{--bg:#14130f;--fg:#eae7e0;--muted:#9a958c;--line:#2e2b25;
@@ -301,8 +311,34 @@ ul.remotes li{margin-bottom:6px}
 .legend{margin-top:24px;font-size:12px;color:var(--muted)}
 .legend div{margin-bottom:4px}
 .banner{margin:16px 0;padding:12px 14px;border:1px solid var(--red);border-radius:10px;color:var(--red)}
-</style></head><body>
-<h1>Git Manager</h1>
+.livebar{position:sticky;top:0;z-index:5;margin:0 0 14px;padding:8px 12px;border:1px solid var(--line);
+border-radius:8px;background:var(--card);font-size:12px;color:var(--muted);
+display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:99px;background:var(--green);flex:none}
+.livebar.stale{border-color:var(--amber);color:var(--amber)} .livebar.stale .dot{background:var(--amber)}
+.livebar.dead{border-color:var(--red);color:var(--red)} .livebar.dead .dot{background:var(--red)}
+.livebar button{font:inherit;color:inherit;background:var(--chip);border:1px solid var(--line);
+border-radius:6px;padding:3px 10px;cursor:pointer}
+.livebar button[disabled]{opacity:.5;cursor:default}
+`;
+
+/**
+ * The body content below the <h1>. A function, not part of the page template,
+ * so `serve` can re-render exactly this and nothing else.
+ */
+function BODY_TEMPLATE(
+  scan: ScanResult,
+  parts: {
+    attention: RepoRow[];
+    decided: RepoRow[];
+    clean: RepoRow[];
+    violations: RepoRow[];
+    head: string;
+    colgroup: string;
+  },
+): string {
+  const { attention, decided, clean, violations, head, colgroup } = parts;
+  return `
 <div class="meta">generated ${esc(scan.generatedAtISO)}</div>
 <div class="meta">roots: ${scan.roots.map(esc).join(" · ")}</div>
 <div class="stats">
@@ -412,6 +448,100 @@ ${[
   .join("")}
 <div style="margin-top:12px">Do this names the account for any push. A trailing <b>?</b> means the work account — your call. <b>·dup#N</b> means another row has the same name once backup/copy wrappers are stripped.</div>
 <div style="margin-top:12px">Nothing here pushes anything. Name a row number and a destination in the session to plan a push.</div>
-</div>
+</div>`;
+}
+
+/**
+ * The live-connection script. Only ever included by `serve`.
+ *
+ * Three jobs, in order of how much they matter:
+ *  1. swap in new content WITHOUT reloading — so scroll position and any open
+ *     "details" panels survive an update;
+ *  2. say plainly how old the picture is, ticking every second;
+ *  3. when the connection drops, say so LOUDLY. A live page that quietly keeps
+ *     showing the last good numbers is worse than a file, because a file at
+ *     least admits it is a snapshot.
+ */
+const LIVE_SCRIPT = `<script>
+(function(){
+  var root=document.getElementById("gm-root"), bar=null, lastAt=null, dead=false;
+  function ensureBar(){
+    bar=document.getElementById("gm-livebar");
+    if(bar) return bar;
+    bar=document.createElement("div"); bar.id="gm-livebar"; bar.className="livebar";
+    bar.innerHTML='<span class="dot"></span><span id="gm-status">connecting…</span>'+
+      '<span id="gm-age"></span>'+
+      '<button id="gm-fetch" title="Ask GitHub for live counts. Slower, and it touches the network.">refresh from GitHub</button>';
+    root.parentNode.insertBefore(bar, root);
+    document.getElementById("gm-fetch").addEventListener("click", function(){
+      var b=this; b.disabled=true; b.textContent="asking GitHub…";
+      fetch("/fetch",{method:"POST"}).catch(function(){}).then(function(){
+        b.disabled=false; b.textContent="refresh from GitHub";
+      });
+    });
+    return bar;
+  }
+  function openDetails(){
+    var out=[]; var d=root.querySelectorAll("details");
+    for(var i=0;i<d.length;i++) if(d[i].open) out.push(i);
+    return out;
+  }
+  function restoreDetails(idx){
+    var d=root.querySelectorAll("details");
+    for(var i=0;i<idx.length;i++) if(d[idx[i]]) d[idx[i]].open=true;
+  }
+  function tick(){
+    if(!bar||!lastAt) return;
+    var s=Math.round((Date.now()-lastAt)/1000);
+    var age=document.getElementById("gm-age");
+    if(age) age.textContent = dead ? "" : ("scanned "+(s<2?"just now":s+"s ago"));
+    if(!dead) bar.className = s>90 ? "livebar stale" : "livebar";
+  }
+  setInterval(tick,1000);
+  function connect(){
+    var es=new EventSource("/events");
+    es.onopen=function(){
+      dead=false; ensureBar();
+      document.getElementById("gm-status").textContent="live";
+    };
+    es.onmessage=function(e){
+      var p=JSON.parse(e.data); ensureBar();
+      var y=window.scrollY, keep=openDetails();
+      var tmp=document.createElement("div"); tmp.innerHTML=p.html;
+      var next=tmp.firstElementChild;
+      root.parentNode.replaceChild(next, root); root=next;
+      restoreDetails(keep); window.scrollTo(0,y);
+      lastAt=Date.now(); dead=false;
+      document.getElementById("gm-status").textContent = p.reason ? ("live · "+p.reason) : "live";
+      tick();
+    };
+    es.onerror=function(){
+      es.close(); dead=true; ensureBar();
+      bar.className="livebar dead";
+      document.getElementById("gm-status").textContent=
+        "connection lost — everything below is a FROZEN SNAPSHOT, not the current state";
+      var age=document.getElementById("gm-age"); if(age) age.textContent="";
+      setTimeout(connect,3000);
+    };
+  }
+  connect();
+})();
+</script>`;
+
+/**
+ * The whole page.
+ *
+ * `live` adds the connection script and nothing else — the markup a served page
+ * shows is byte-identical to the file version, so what you see live is what you
+ * would have got from `--html`.
+ */
+export function renderHtml(scan: ScanResult, opts: { live?: boolean } = {}): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Git Manager — ${esc(scan.generatedAtISO)}</title>
+<style>${PAGE_CSS}</style></head><body>
+${renderBody(scan)}
+${opts.live ? LIVE_SCRIPT : ""}
 </body></html>`;
 }

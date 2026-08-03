@@ -668,6 +668,40 @@ agent actually produces and what the code was written to consume.
     (RECENCY-DESIGN-PROPOSAL.md, two-axis labels + primary-new + recency probes)
     and awaits sign-off. None of review 2's fixes are applied yet.
 
+    Relabel allowlist (I65, for parity checks): `scripts/room/room.html` differs
+    from IC's `meeting_template.html` at exactly SIX label-only lines — 6 (title),
+    150 (header label), 156 (Coverage Gate), 210 (blanked `MEETING` literal),
+    255 (briefSub), 260 (Latest:/Mitigant:). Any other divergence between the
+    three copies is a defect, not a relabel.
+
+22. *Fix pass 2 + recency policy + deep-drill chat mode (2026-08-01..02).* Fix
+    workflow `wf_f04c1b91-8ff` (10 file owners + test agent, 8 pre-defined
+    cross-file contracts) applied REVIEW-2026-07-27.md's 36 must-fix + 69
+    improvements plus the recency policy (RECENCY-DESIGN-PROPOSAL.md as
+    CONTRACT-7: `as_of`/`published`, `primary-new` label with 60-day decay,
+    `fast_moving` dimensions gated on 90-day recency probes, `recency-swept`
+    eval, invariant I11, newer-primary-outranks-count on versioned conflicts).
+    Suite 320 -> 442 green; live re-verified: beacon `ready pid=<pid>`
+    (CONTRACT-1), single append-fd log with run delimiters (CONTRACT-2),
+    research labels "9 BLOCKING · 0 COVERED" (CONTRACT-4), the recency gate
+    honestly un-saturating the pre-policy session (0/9 covered), and a real
+    grounded seat-5 turn with `err:false` (CONTRACT-8).
+
+    Deep-drill chat mode (workflow `wf_29bf9e6c-6fc`, per DEEP-DRILL-DESIGN.md):
+    chat-native is now the default register (room = optional viewer). Ledger and
+    questions.jsonl gained optional `thread`/`depth` (+`label` on questions);
+    `riff ask --thread/--depth` echoes both and emits the preformatted `stamp`
+    (`[thread T3 · depth L1 · 4 sources · verified]`); new `riff thread <id>`
+    prints a thread's drill history with `deepest`. SKILL.md Phase 4 rewritten
+    around the drill protocol: L0 dossier answer / L1 fresh sweep / L2
+    primary-source verification, auto-escalation one level per in-thread
+    follow-up, deliver-then-deepen, L2 ceiling (widen not deepen). The ladder is
+    orchestrator protocol — the engine only records. Suite 442 -> 480 green with
+    zero engine corrections; live-demoed against the OKOA session: an L0
+    threaded ask returned `[thread T1 · depth L0 · 1 sources · provisional]`
+    with `numeric_unprimaried_ids` naming the unprimaried latency figures — the
+    exact L1 escalation trigger firing as designed.
+
 **Files:**
 
 ```

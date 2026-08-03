@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# volatility.yaml — the recency knobs for acos-axiom-synthesis
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# The engine grades confidence by independent corroboration. Left alone, that
+# structurally FAVORS OLD claims — they have had more time to accumulate sources.
+# In fast-moving subjects the well-corroborated old claim is often obsolete. This
+# file tunes the volatility-conditional recency discipline that corrects for that
+# WITHOUT letting "newest always wins" (see RESEARCH-recency-bias-2026-08-02.md).
+#
+# HOW VOLATILITY WORKS. Every claim is classified into one of four classes by how
+# fast its truth decays:
+#   durable   — never changes (math, history, geography, definitions). Age is NOT
+#               a defect: durable claims are EXEMPT from the freshness gate.
+#   slow      — changes over years (demographics, mature guidance).
+#   fast      — changes over weeks/months (SOTA, versions, "current best").
+#   volatile  — changes over hours/days (prices, rates, CVE status, "as of today").
+#
+# A source counts as "recent" for a claim only if it is dated within that class's
+# freshness window (below). A non-durable claim with NO recent independent source
+# is "stale": its tier is capped and a staleness banner is surfaced. The classifier
+# is ADVISORY (it may cap/flag, never delete a claim), and the freshness cap only
+# BITES when the classifier is confident — an unclassifiable claim is flagged, not
+# penalized.
+#
+# ── PARSER NOTE (important) ──────────────────────────────────────────────────
+# The skill's stdlib YAML reader is a MINIMAL one that only parses a FLAT file —
+# top-level `key: value` lines, no nested maps or lists. This file is therefore
+# deliberately flat so your edits ACTUALLY TAKE EFFECT. `scripts/volatility.py`
+# overlays whatever it reads here on top of its embedded DEFAULT_VOLATILITY dict
+# (the safety net if this file is missing or unreadable). Keep it flat.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ── Freshness windows, in DAYS ───────────────────────────────────────────────
+# A source older than its class window no longer counts as "recent". Edit freely.
+# `null` = infinite (never stale). durable is always infinite.
+window_durable: null
+window_slow: 1095        # 3 years
+window_fast: 183         # ~6 months
+window_volatile: 14      # 14 days
+
+# Stale threshold multiplier: a claim is stale when the newest independent source
+# is older than stale_k * window. 1.0 = "older than the window is stale".
+stale_k: 1.0
+
+# ── Unknown-subject policy (Decision A) ──────────────────────────────────────
+# When a claim can't be classified from its text or domain, treat it as this
+# class and FLAG it. Conservative default: `slow` (a long 3-year window), flagged
+# but — because an unclassified claim has LOW classifier confidence — NOT capped.
+unknown_default: slow
+flag_unknown: true
+
+# ── Lexical signal phrases (comma-separated; phrases may contain spaces) ──────
+# If a claim's text contains one of these (case-insensitive substring), it is
+# pushed toward that class. The MOST volatile matching class wins (high recall).
+lexical_volatile: "as of today, as of now, currently, right now, today, price, prices, interest rate, exchange rate, rates, yield, spot price, intraday, live, breaking, current standings, as of this"
+lexical_fast: "latest, newest, current, current best, state-of-the-art, state of the art, sota, leading, record-breaking, cutting-edge, frontier, this version, deprecated, preprint, in beta, just released, emerging, new release"
+lexical_slow: "population, demographics, gdp, market share, membership, headcount, median income, workforce"
+
+# ── Domain priors (comma-separated key=class; `domain` field on a fact) ──────
+domain_priors: "math=durable, history=durable, geography=durable, definition=durable, physics=durable, constant=durable, biography=durable, law=slow, legal=slow, demographics=slow, medicine=slow, clinical=slow, government=slow, education=slow, technology=fast, software=fast, ai=fast, ml=fast, benchmark=fast, research=fast, security=volatile, cve=volatile, market=volatile, markets=volatile, price=volatile, prices=volatile, rate=volatile, rates=volatile, crypto=volatile, weather=volatile"

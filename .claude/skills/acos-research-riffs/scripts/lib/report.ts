@@ -103,11 +103,12 @@ function chairMessageCount(sessionRoot: string): number {
 
 /**
  * CONTRACT-7 (recency design §3): additive per-dimension fields owned by
- * coverage.ts. A fast-moving dimension only counts as swept once a DATED
- * recency probe ran. Optional here so the check degrades to a no-op on
- * sessions predating the fields.
+ * coverage.ts — `fast_moving` (ABSENT means true: pre-CONTRACT-7 coverage
+ * files never exempted anything) and `recency_probes` (count of probes flagged
+ * `--recency`). `recency_probed_at` is also honored as sweep evidence for any
+ * writer that stamps a date instead of a count.
  */
-type RecencyDim = Dimension & { fast_moving?: boolean; recency_probed_at?: string };
+type RecencyDim = Dimension & { fast_moving?: boolean; recency_probes?: number; recency_probed_at?: string };
 
 function renderEntry(e: LedgerView): string {
   // id/type/status are engine-controlled; every free-text field is web-derived
@@ -536,8 +537,12 @@ export function evaluate(sessionId: string): {
   // established literature while a weeks-old release goes unlooked-for —
   // absence of literature is information about time, not truth. Only a DATED
   // recency probe proves the newest window was actually searched.
-  const fastMoving = (cov.dimensions as RecencyDim[]).filter((d) => d.fast_moving);
-  const unswept = fastMoving.filter((d) => !d.recency_probed_at);
+  // Fast-moving iff not EXPLICITLY exempted (absent means true, matching
+  // coverage.ts's recomputeStatus); swept iff a recency probe was recorded —
+  // coverage.ts counts them in `recency_probes` (this check previously read a
+  // field nothing writes, so it failed forever on swept dimensions).
+  const fastMoving = (cov.dimensions as RecencyDim[]).filter((d) => d.fast_moving !== false);
+  const unswept = fastMoving.filter((d) => (d.recency_probes ?? 0) === 0 && !d.recency_probed_at);
   checks.push({
     id: "recency-swept",
     verdict: unswept.length > 0 ? "fail" : "pass",

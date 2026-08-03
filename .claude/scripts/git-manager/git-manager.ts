@@ -23,6 +23,7 @@ import * as G from "./git.ts";
 import { renderHtml } from "./render-html.ts";
 import { renderTerminal } from "./render-terminal.ts";
 import { scan } from "./scan.ts";
+import { serve } from "./serve.ts";
 import { scanForSecrets } from "./secrets.ts";
 import type { AccountKind, Config } from "./types.ts";
 
@@ -88,6 +89,15 @@ const HELP = `git-manager — see where every project lives, and what is not sav
       Scans the lines the push would add for credentials and BLOCKS (exit 4) if any
       are found; values are always masked. --acknowledge-secrets overrides that
       block and is a deliberate human decision, never a default.
+
+  bun git-manager.ts serve [--port 8787] [--no-open] [--loose]
+      Run a LIVE page that updates itself. A saved file cannot: reloading one just
+      re-reads the same frozen text, so it would look live while being wrong. This
+      serves the same table from 127.0.0.1 (this machine only) and re-scans when a
+      watched folder actually changes — no polling, near-zero cost while idle.
+      Read-only: it never commits, never pushes, never writes to a repo. The one
+      network action is the page's "refresh from GitHub" button, on your click.
+      Ctrl-C stops it, and open pages say so instead of showing stale numbers.
 
   bun git-manager.ts decide --repo <path> --not-tracked --why "<reason>" [--date YYYY-MM-DD]
   bun git-manager.ts decide --repo <path> --undo
@@ -350,6 +360,28 @@ function cmdPlanPush(args: Args): number {
   return 0;
 }
 
+function cmdServe(args: Args): number {
+  const cfg = loadConfig(args.flags.config as string | undefined);
+  if (args.repeated.root?.length) cfg.roots = args.repeated.root.map((r) => resolve(r));
+
+  const portArg = args.flags.port;
+  const port = typeof portArg === "string" ? Number.parseInt(portArg, 10) : 8787;
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    console.error(`REFUSED — --port must be a whole number between 1024 and 65535, got "${portArg}"`);
+    return 2;
+  }
+
+  serve({
+    cfg,
+    port,
+    loose: !!args.flags.loose,
+    decisionsFile: args.flags["decisions-file"] as string | undefined,
+    // Opening is the default, matching every other entry point into this tool.
+    open: !args.flags["no-open"],
+  });
+  return 0; // serve() never returns; it exits via its own SIGINT handler
+}
+
 /**
  * Record, withdraw, or list the human's rulings.
  *
@@ -461,6 +493,8 @@ function main(): number {
       return cmdPlanPush(args);
     case "decide":
       return cmdDecide(args);
+    case "serve":
+      return cmdServe(args);
     default:
       console.error(`unknown command: ${args.cmd}\n\n${HELP}`);
       return 2;
@@ -479,7 +513,13 @@ function isDeliberateRefusal(e: unknown): e is Error {
 }
 
 try {
-  process.exit(main());
+  const code = main();
+  // `serve` is the one command that must NOT exit when it returns. Bun.serve
+  // hands control back immediately and keeps the process alive through the
+  // event loop; calling process.exit here would kill the server the instant it
+  // started. It ends through its own Ctrl-C handler instead. A non-zero code
+  // still exits, because that means serve refused to start at all.
+  if (process.argv[2] !== "serve" || code !== 0) process.exit(code);
 } catch (e) {
   if (isDeliberateRefusal(e)) {
     console.error(`REFUSED — ${e.message}`);

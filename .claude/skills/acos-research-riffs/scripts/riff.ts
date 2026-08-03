@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import {
   fail,
   parseArgs,
+  readJsonl,
   readPayload,
   requireFlag,
   slugify,
@@ -60,6 +61,7 @@ import {
   search,
   type AddResult,
   type Claim,
+  type QuestionRecord,
 } from "./lib/claims.ts";
 import {
   addSeat,
@@ -229,18 +231,26 @@ function numericFlag(
  * crash `riff coverage show` and `riff resume` (M24).
  */
 function checkDimension(d: unknown, label: string, allowCap = false): void {
-  const expected = allowCap ? "{id, name, why, cap?}" : "{id, name, why}";
+  const expected = allowCap
+    ? "{id, name, why, cap?, fast_moving?}"
+    : "{id, name, why, fast_moving?}";
   if (!d || typeof d !== "object" || Array.isArray(d)) {
     fail(`${label}: expected an object ${expected}`);
   }
   const rec = d as Record<string, unknown>;
   for (const k of Object.keys(rec)) {
-    if (k === "id" || k === "name" || k === "why" || (allowCap && k === "cap")) continue;
+    // fast_moving is the CONTRACT-7 recency-floor exemption knob — documented
+    // in SKILL.md and carried by templates/dimensions-example.json, so the
+    // shape check must admit it or scopers can never exempt a dimension.
+    if (k === "id" || k === "name" || k === "why" || k === "fast_moving" || (allowCap && k === "cap")) continue;
     fail(`${label}: unknown key "${k}" — expected ${expected}`);
   }
   for (const f of ["id", "name", "why"] as const) {
     const v = rec[f];
     if (typeof v !== "string" || !v.trim()) fail(`${label}: "${f}" must be a non-empty string`);
+  }
+  if (rec["fast_moving"] !== undefined && typeof rec["fast_moving"] !== "boolean") {
+    fail(`${label}: "fast_moving" must be a boolean`);
   }
   if (allowCap && rec["cap"] !== undefined) {
     const cap = rec["cap"];
@@ -285,7 +295,7 @@ SCOPE
   coverage init --json <file> [--force]      [{id,name,why}, ...]; --force discards existing dimensions + probe records (ledgered)
   coverage add --json <file>                 add one dimension mid-session
   coverage show
-  coverage probe <dim-id> --novel <n> [--note "..."] [--agent-saturated]
+  coverage probe <dim-id> --novel <n> [--note "..."] [--agent-saturated] [--recency]
   coverage attest <dim-id> --by <who> --note "..."   auditor judgment on a thin dimension
   gate                                       evaluate the coverage gate
 
@@ -303,7 +313,10 @@ CORPUS
   claims ingest --slug <slug>                read the agent-written dossier claims file, dedup in place
   claims add --slug <slug> --json <file>     append claims from an external array file
   claims search "<query>" [--limit N]
-  ask "<question>" [--min N] [--strong N]    sufficiency check -> verified|provisional|not-in-corpus
+  ask "<question>" [--min N] [--strong N] [--thread <id>] [--depth <0-2>]
+                                             sufficiency check -> verified|provisional|not-in-corpus;
+                                             --thread/--depth stamp the drill thread (deep-drill mode)
+  thread <id>                                one drill thread's history oldest-first, plus its deepest level
   surfaced <claim-id...>                     mark claims as shown to the user
   moderator                                  pick the best unsurfaced finding
 
@@ -586,6 +599,10 @@ async function main(): Promise<void> {
           novel,
           args.flags["note"],
           args.bools.has("agent-saturated"),
+          // CONTRACT-7: a probe restricted to the recent window. Documented in
+          // SKILL.md ("riff coverage probe ... --recency") — this is what lets
+          // a fast-moving dimension saturate.
+          args.bools.has("recency"),
         );
         if (d.status === "saturated") {
           addEntry(id, {
@@ -853,7 +870,18 @@ async function main(): Promise<void> {
       const id = sid(args);
       const q = args.positional.join(" ");
       if (!q) fail("ask needs a question");
-      recordQuestion(id, q);
+      // Deep-drill stamps (additive): --thread tags which drill thread this
+      // question belongs to, --depth the ladder level it was asked at. The
+      // ladder itself (when to escalate, what L0/L1/L2 mean) is PROTOCOL,
+      // executed by the orchestrator per SKILL.md — the engine only records
+      // and echoes. A value-less --thread parses as a boolean and an empty id
+      // stamps nothing traceable, so both die loudly (same spirit as
+      // numericFlag's M23 guard).
+      const thread = args.flags["thread"];
+      if (args.bools.has("thread") || (thread !== undefined && !thread.trim())) {
+        fail("--thread needs a non-empty thread id (e.g. T3)");
+      }
+      const depth = numericFlag(args, "depth", { min: 0, max: 2, integer: true });
       // A NaN threshold is fail-UNSAFE: `top < NaN` is false, silently
       // bypassing the weak-overlap abstain and disarming the stale/volatile
       // flags and per-hit figure caveats — a typo'd flag must die here (M23).
@@ -861,12 +889,28 @@ async function main(): Promise<void> {
         minScore: numericFlag(args, "min", { min: 0, max: 1 }),
         strongScore: numericFlag(args, "strong", { min: 0, max: 1 }),
       });
+      // Recorded AFTER assess so the question record carries the label the
+      // corpus produced at ask time — `riff thread` replays drill history
+      // from these records without re-assessing a corpus that has since
+      // changed under it.
+      recordQuestion(id, q, { thread, depth, label: a.label });
       const m = loadManifest(id);
       m.moderator_streak = a.label === "not-in-corpus" ? 0 : m.moderator_streak + 1;
       saveManifest(m);
+      // Preformatted one-line depth stamp for delivery: thread/depth segments
+      // appear only when passed; the source count and label always do.
+      const stamp = `[${[
+        ...(thread ? [`thread ${thread}`] : []),
+        ...(depth !== undefined ? [`depth L${depth}`] : []),
+        `${a.corroborating_sources} sources`,
+        a.label,
+      ].join(" · ")}]`;
       out({
         question: q,
+        ...(thread ? { thread } : {}),
+        ...(depth !== undefined ? { depth } : {}),
         label: a.label,
+        stamp,
         reason: a.reason,
         action:
           a.label === "not-in-corpus"
@@ -898,6 +942,35 @@ async function main(): Promise<void> {
           as_of: h.as_of,
           sources: h.sources,
         })),
+      });
+      return;
+    }
+
+    case "thread": {
+      const id = sid(args);
+      const threadId = args.positional[0];
+      if (!threadId) fail("thread needs a thread id (e.g. T3)");
+      // Oldest-first is free: questions.jsonl is append-only, so file order IS
+      // chronological order. An unknown thread id is an empty history, not an
+      // error — the orchestrator may probe a thread before its first ask lands.
+      const records = readJsonl<QuestionRecord>(paths(id).questions).filter(
+        (r) => r.thread === threadId,
+      );
+      // Records predating the deep-drill fields (or asked without --depth)
+      // carry no depth — they are legal forever and read as null here.
+      const depths = records
+        .map((r) => r.depth)
+        .filter((d): d is number => Number.isInteger(d));
+      out({
+        session_id: id,
+        thread: threadId,
+        questions: records.map((r) => ({
+          ts: r.ts,
+          depth: r.depth ?? null,
+          question: r.text,
+          label: r.label ?? null,
+        })),
+        deepest: depths.length > 0 ? Math.max(...depths) : null,
       });
       return;
     }
