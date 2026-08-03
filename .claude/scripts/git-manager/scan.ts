@@ -15,6 +15,7 @@ import { decisionIndex, loadDecisions } from "./decisions.ts";
 import * as G from "./git.ts";
 import { inventory, isDir, projectKind } from "./inventory.ts";
 import { recommendAll } from "./recommend.ts";
+import { assignStableIds } from "./stable-ids.ts";
 import type {
   BranchWork,
   Config,
@@ -366,8 +367,13 @@ export function scan(
   // silently stops being watched.
   const orphanDecisions: Decision[] = decisions.filter((d) => !decisionsUsed.has(d.path));
 
+  // Sort decides ORDER — risky rows first, so they are seen. It must not decide
+  // IDENTITY. Numbering by position meant a row's number changed whenever its
+  // state improved, or whenever any riskier row above it did: committing three
+  // repos renumbered the table under the human mid-instruction on 2026-08-02.
+  // The number now comes from stable-ids.ts and belongs to the path for good.
   rows.sort((a, b) => b.severity - a.severity || a.name.localeCompare(b.name));
-  rows.forEach((r, i) => (r.index = i + 1));
+  assignStableIds(rows);
 
   // Recommendations come LAST: a duplicate recommendation cites another row by
   // its printed number, which only exists once sorting and indexing are done.

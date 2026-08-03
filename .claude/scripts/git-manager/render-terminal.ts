@@ -233,7 +233,12 @@ function destinationSummary(r: RepoRow): string {
  * so the "needs attention" and "safely stored" tables line up as one grid.
  */
 function layout(all: RepoRow[], termWidth: number): Col[] {
-  const numW = Math.max(2, String(all.length).length);
+  // Width comes from the LARGEST id printed, not from how many rows there are.
+  // Ids are permanent and never reused, so once a folder retires its number
+  // stays spent and the highest id runs ahead of the row count — sizing on the
+  // count would clip the very number the reader has to type back.
+  const widest = all.reduce((m, r) => Math.max(m, r.index), all.length);
+  const numW = Math.max(2, String(widest).length);
   const kindW = 6;
   const stateW = 11;
   const unsavedW = 7;
