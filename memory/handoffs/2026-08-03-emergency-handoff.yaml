@@ -1,0 +1,316 @@
+timestamp: "2026-08-03T00:25:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Two parallel workstreams. (1) Global skill ~/.claude/skills/acos-logo-forge/ (outside
+  this git repo) drove the untracked in-repo workspace "Logo Builder/brandsync/" via
+  app/server.py on 127.0.0.1:8815 (PID 43272, confirmed running). Zee rejected all ten
+  symbol round-2 candidates (05:11-05:12), objecting that round-2 traced his rough sketch
+  too literally; the session answered with symbol round-3 (10 candidates, every S built
+  from computed geometry, verified in round-3/meta.json) plus a new SHARED-OUTLINE rule in
+  SKILL.md, then built three more features (PowerPoint-style shape explode/group/split in
+  editor.html, gallery Merge/bulk-reject/star UI in index.html, and a publish-edit fix that
+  collapses repeated "e1" suffixes in server.py). (2) .claude/scripts/git-manager/ got
+  permanent row numbers (stable-ids.ts + ids.json, keyed on absolute path, never reused) so
+  the "#" column stops moving when repo state changes — verified live: committing this repo
+  moved 0 of 38 row numbers. All work in both streams was committed and pushed to the
+  `personal` GitHub account (ACOS 3.0 at aa6ea92, ~/.claude/skills at 0f14b3a, and an
+  unrelated FruitSync fix at af7d31e). Two governance items surfaced this session are
+  unresolved and need Zee's explicit decision (see blockers/next_actions).
+
+current_work:
+  slice_id: "unknown — logo-forge and git-manager are informal/global work, no ACOS
+    epic/story/slice exists for either (confirmed: no planning/**/*logo* or
+    planning/**/*git-manager* artifacts found)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress — both workstreams are functionally complete and pushed, but two
+    governance decisions are open and block further git-manager pushes for one folder,
+    plus an unaddressed public-repo exposure question"
+
+completed_this_session:
+  - "Logo Forge: symbol round-2 (10 candidates) all rejected by Zee 05:11:27-05:12:26 —
+    VERIFIED in Logo Builder/brandsync/commands.jsonl tail and symbol/rejected/round-2/
+    (10 files r2-01..r2-10.svg). Final reject reason on r2-10: \"Why are you using exact
+    shape I drew? My drawing was super rough, i expected you to take that as a guide not
+    exactly.\""
+  - "Logo Forge: symbol round-3 built in response — VERIFIED symbol/candidates/round-3/
+    exists (10 svg + meta.json, mtime 05:22) with meta.json basis field literally quoting
+    Zee's rejection reason and stating \"Every S here is constructed from computed
+    geometry; no traced path is reused.\""
+  - "Logo Forge: SHARED-OUTLINE rule added to SKILL.md — VERIFIED lines 271, 302-303, 333
+    of ~/.claude/skills/acos-logo-forge/SKILL.md (\"one path d in more than 2 of the 10 =
+    the batch failed\"; \"same approximate silhouette\" language explicitly cut)."
+  - "Logo Forge: PowerPoint shape model in editor.html — VERIFIED explodeShapes function
+    (line 2436), Group/Split-apart buttons (splitB/groupB, lines 320-321), Cmd-click
+    multi-select and Cmd-A select-all logic (lines 2346-2356), Esc-clears comment (line
+    2054 area)."
+  - "Logo Forge: gallery Merge feature in index.html — VERIFIED openMerge() function
+    (line 274), star-then-merge flow (\"star another ... first, then press Merge\", line
+    276), the merge cmd posted to the server (line 290)."
+  - "Logo Forge: server.py accepts a merge command and collapses e1 suffixes — VERIFIED
+    server.py line 271 (merge in bridge-command whitelist), line 364
+    (`re.sub(r\"(e1)+$\", \"\", src) + \"e1\"` inside /api/publish-edit, line 339)."
+  - "Logo Forge: r4-04e1e1 was rejected by Zee with reason \"Duplicate\" at 2026-08-02
+    13:54:35 — VERIFIED in commands.jsonl tail; symbol/rejected/round-4/r4-04e1e1.svg
+    exists on disk, matching the stated motivation for the suffix-collapse fix."
+  - "git-manager: stable-ids.ts + ids.json built — VERIFIED file present, 38 total path
+    entries in ids.json's `ids` map, keyed on absolute path (python3 json parse
+    confirmed), including 9 entries under /Users/zee/Documents/OKOA/."
+  - "git-manager: scan.ts calls assignStableIds(rows); render-terminal.ts sizes the #
+    column on the largest id, not row count — per README.md \"Row numbers are permanent\"
+    section (line 178) and code comments in stable-ids.ts describing the exact bug this
+    fixes (three-repo commit on 2026-08-02 silently renumbered the table under Zee)."
+  - "Commits made and pushed this session, all verified via `git rev-parse HEAD` == remote
+    tip: ACOS 3.0 branch acos-deficiency-fixes-2026-06-04 at aa6ea92 (personal remote,
+    was 0452552 at session start — 3 new commits: 5934bc1, b8660c7, aa6ea92);
+    ~/.claude/skills main at 0f14b3a (personal remote, 1 new commit over 6487699);
+    FruitSync main at af7d31e (origin remote, 1 new commit over 7dd7544, unrelated 2-file
+    Unity + .gitignore fix)."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/SKILL.md"
+    changes: "Added SHARED-OUTLINE CHECK rule; cut \"same approximate silhouette\"
+      language. Outside this git repo — tracked in ~/.claude/skills (personal repo),
+      pushed at 0f14b3a."
+  - path: "~/.claude/skills/acos-logo-forge/app/editor.html"
+    changes: "explodeShapes() gives every visible shape its own layer on open; Group/
+      Split-apart; Cmd-click + Cmd-A multi-select with dashed amber selection boxes;
+      Esc clears; double-click layer name to rename."
+  - path: "~/.claude/skills/acos-logo-forge/app/index.html"
+    changes: "Fan-out now asks for a direction first; new Merge button (fuses two
+      same-forge starred/current candidates via new `merge` server cmd); star (Use)
+      toggle; Combine never `disabled`; Cmd-click bulk reject with one shared reason +
+      Undo all; star readout in toolbar; dismissable busy-overlay warning after 90s."
+  - path: "~/.claude/skills/acos-logo-forge/app/server.py"
+    changes: "New `merge` command in the bridge whitelist; /api/publish-edit now
+      collapses repeated e1 suffixes via `re.sub(r\"(e1)+$\", \"\", src) + \"e1\"`
+      (line 364), responding to Zee's \"Duplicate\" rejection of r4-04e1e1."
+  - path: "\"Logo Builder/brandsync/symbol/candidates/round-3/\" and \"round-4/\""
+    changes: "Round-3: 10 new candidates + meta.json responding directly to the
+      round-2 mass-rejection. Round-4: 10 more candidates (fanout of r3-03, run
+      interactively by Zee at 12:52-13:54, after this session's own summary was
+      drafted) plus an e1/e1e1 edit chain that triggered the duplicate-suffix bug fix.
+      Untracked workspace, outside git version control except commands.jsonl."
+  - path: "\"Logo Builder/brandsync/commands.jsonl\" (tracked, modified)"
+    changes: "Grew to 46 total commands (add=1, fanout=8, pick=23, regenerate=1,
+      reject=12, smooth=1) spanning 2026-07-26 through 2026-08-02T13:54:35."
+  - path: ".claude/scripts/git-manager/stable-ids.ts (new)"
+    changes: "assignStableIds(rows): keys on absolute path, never reuses a retired
+      number, seeds in display order on first run, writes only when new paths appear."
+  - path: ".claude/scripts/git-manager/ids.json (new, tracked)"
+    changes: "The permanent id registry, 38 entries. Committed in b8660c7, which is
+      pushed to the personal remote — meaning this absolute-path registry (including 9
+      /Users/zee/Documents/OKOA/... paths) is now on the PUBLIC ZiaulKarim-hub/ACOS-3.0
+      repo. See blockers item B."
+  - path: ".claude/scripts/git-manager/scan.ts, render-terminal.ts"
+    changes: "scan.ts now calls assignStableIds(rows); render-terminal.ts sizes the #
+      column on the largest assigned id rather than the row count."
+  - path: ".claude/scripts/git-manager/stable-ids.test.ts (new)"
+    changes: "13 assertions guarding the permanence property (file has 1 top-level
+      test()/it() block containing the 13 assertions, per grep -c count of 1 — the
+      \"13/13\" count is the session's own claim, not independently re-run by this
+      handoff agent)."
+  - path: ".claude/scripts/git-manager/README.md"
+    changes: "New \"Row numbers are permanent\" section (line 178) documenting the
+      fix and the design rules (exact-path keying, never-reused numbers, no-clock,
+      write-only-when-new)."
+  - path: ".claude/scripts/git-manager/decisions.json (pre-existing, tracked)"
+    changes: "Not modified this session but directly relevant: holds the do-not-track
+      ruling for Rubin_Counsel_Bundle_20260423, OKOA_Prospectus, and Rubin Document
+      Production/audit, all dated 2026-08-02."
+
+decisions_made:
+  - "No new file in memory/decisions/ dated today or matching logo/git-manager (most
+    recent decisions/ file is 2026-07-05, unrelated). The three do-not-track rulings live
+    only in .claude/scripts/git-manager/decisions.json, not as a memory/decisions/ ADR."
+
+blockers:
+  - "OPEN DECISION A (highest priority): Zee said push rows 4, 5, 6, and 7 to personal.
+    Rows 4-6 are done. Row 7 = /Users/zee/Documents/OKOA/Rubin_Counsel_Bundle_20260423
+    (108M, 96 files, not yet a git repo) is legal-counsel material for an OKOA deal, and
+    decisions.json already records a 2026-08-02 ruling: do-not-track, stay off GitHub
+    entirely, personal or work. It was correctly NOT pushed. But Zee's follow-up \"push
+    now\" answered an unrelated permission dialog, not this specific conflict — he has
+    not yet been shown the conflict between his row-7 instruction and the standing
+    do-not-track ruling. He needs to explicitly confirm one way or the other before row 7
+    is touched again; if he overrides the ruling, decisions.json should be updated to
+    match."
+  - "OPEN DECISION B: ZiaulKarim-hub/ACOS-3.0 is a PUBLIC repository (verified via `gh api
+    repos/ZiaulKarim-hub/ACOS-3.0 --jq .visibility` = PUBLIC; claude-skills-personal and
+    FruitSync are both PRIVATE by the same check). This session's b8660c7 commit pushed
+    .claude/scripts/git-manager/ids.json into that public repo. It stores 38 absolute
+    folder paths, 9 of them under /Users/zee/Documents/OKOA/ — including
+    Rubin_Counsel_Bundle_20260423, OKOA_Prospectus, and \"Rubin Document Production/
+    audit\" (folder NAMES only, no document contents). decisions.json, which already names
+    the same three paths, was tracked and public before this session, so this is an
+    incremental, not a first, exposure — but it was not raised to Zee as a decision before
+    this session pushed more of the same kind of data. Two remedies were offered but NOT
+    executed: make the repo private (`gh repo edit ZiaulKarim-hub/ACOS-3.0 --visibility
+    private --accept-visibility-change-consequences`), or stop tracking ids.json. Zee has
+    not chosen either."
+  - "forge-test.ts/reject-test.ts scratchpad-only gap noted in the prior (now-superseded)
+    2026-08-02-emergency-handoff-3.yaml may still apply — this session's given context
+    states all six test suites (button/forge/explode/shapes/gallery/reject, 151 tests
+    total) plus audit.ts (0 findings) were passing at last run, implying the two test
+    files ARE now present somewhere runnable, but this handoff agent did not re-locate
+    forge-test.ts/reject-test.ts inside ~/.claude/skills/acos-logo-forge/app/ this pass —
+    only explode-test.ts, forge-test.ts, gallery-test.ts, reject-test.ts, shapes-test.ts,
+    and button-test.ts were all found together in app/ this time (see reconstruction
+    sources), which suggests the prior handoff's promotion concern was resolved, but this
+    was not independently re-run to confirm current pass counts."
+  - "Several of the logo-forge test suites (forge-test, shapes-test, gallery-test,
+    reject-test) are explicitly NOT idempotent per their own file-header documentation —
+    each needs a fresh copy of the workspace to re-run cleanly. Do not re-run them against
+    the live 'Logo Builder/brandsync/' workspace without following those headers exactly."
+
+next_actions:
+  - "Surface OPEN DECISION A to Zee directly: row 7 (Rubin_Counsel_Bundle_20260423) has a
+    do-not-track ruling that conflicts with his \"push 4,5,6,&7\" instruction. Get an
+    explicit yes/no before acting; update decisions.json if he overrides it."
+  - "Surface OPEN DECISION B to Zee directly: ZiaulKarim-hub/ACOS-3.0 is public and now
+    carries ids.json with 9 OKOA folder-path strings. Offer the same two remedies (make
+    private, or stop tracking ids.json) and act on whichever he picks."
+  - "If/when Zee resumes logo-forge work: server is already running (PID 43272, port
+    8815) — check `lsof -i :8815` before starting a second instance. Current gallery
+    state per commands.jsonl: symbol rounds 1-4 exist, round-2 fully rejected, r1-27 and
+    r4-04e1e1 also rejected individually; no wordmark or lockup activity this session
+    (wordmark/candidates still at round-1 per the prior handoff's count of 46, not
+    re-verified this pass)."
+  - "If/when git-manager work resumes: re-run stable-ids.test.ts (13 assertions) and the
+    live-commit verification (scan before/after a real commit) if any further changes are
+    made to scan.ts/stable-ids.ts, since this handoff agent did not re-execute the test
+    suite, only counted its assertion blocks."
+  - "Carry forward Eden Protocol Level 2 for chat replies (plain language, sentences <=22
+    words, define every term, keep every number and caveat verbatim) and the standing
+    git-push rules (never bare `git push`; name the remote; personal is default,
+    okoateam only when Zee names it; this repo's tree is shared by concurrent sessions —
+    scope commits, never sweep)."
+
+context_for_next_session: |
+  This was a working session across two unrelated but concurrently-active pieces of
+  infrastructure, both verified largely intact on disk. The logo-forge workstream is a
+  global (outside-this-repo) Claude Code skill at ~/.claude/skills/acos-logo-forge/,
+  built over several prior sessions, that drives a local web app (Python stdlib server +
+  vanilla JS editor/gallery/preview) for iterative SVG logo generation with a human in
+  the loop. This session's distinguishing event was Zee rejecting all ten symbol
+  round-2 candidates because the AI had traced his rough sketch too literally
+  ("My drawing was super rough, i expected you to take that as a guide not exactly") —
+  directly verified in commands.jsonl and symbol/rejected/round-2/. The response was
+  symbol round-3, verified on disk to be built from "computed geometry, no traced path,"
+  plus a durable rule change in SKILL.md (SHARED-OUTLINE CHECK) so future batches cannot
+  quietly repeat the same mistake. Three further features were then added at Zee's
+  direction and are verified present in code: a PowerPoint-style shape model in the
+  editor (explode/group/split/multi-select), a gallery Merge feature plus bulk-reject UI,
+  and a server-side fix that stops repeated-edit filenames from growing suffixes forever
+  (re4-04e1e1 -> re4-04e1), a fix directly traceable to Zee rejecting that exact filename
+  with reason "Duplicate." Activity in commands.jsonl continues past the point this
+  session's own narrative was drafted (a round-4 fanout and two more rejects at
+  12:52-13:54), so whoever resumes should treat round-4 as live in-progress state, not
+  historical.
+
+  The git-manager workstream fixed a real, previously-reported bug: the "#" column in
+  the git-manager table used to be a screen position, not a stable identity, so
+  committing several repos in sequence silently renumbered rows the user had just been
+  told to act on by number. The fix (stable-ids.ts keyed on absolute path, ids.json as
+  the permanent registry, never-reuse-a-number) was verified live: a real commit in this
+  repo moved zero of 38 existing row numbers. This is solid, shippable work.
+
+  What is NOT resolved, and matters more than either build: this session's own actions
+  surfaced two governance conflicts that were flagged to Zee but not yet decided. First,
+  a specific folder (Rubin_Counsel_Bundle_20260423, an OKOA legal-counsel bundle) has a
+  standing "never push, personal or work" ruling in decisions.json, but Zee separately
+  instructed "push 4, 5, 6, & 7" — a direct instruction/ruling conflict that this session
+  correctly declined to resolve unilaterally (row 7 was NOT pushed) but has also not yet
+  put back in front of Zee as an explicit yes/no. Second, and more structural: the
+  ZiaulKarim-hub/ACOS-3.0 repository itself is PUBLIC on GitHub (independently confirmed
+  via the GitHub API this pass, contrasted with the two other repos touched this session,
+  both private), and this session's own commit added a file (ids.json) that publishes 9
+  more absolute OKOA-client folder paths to that public repo, on top of 3 already exposed
+  via decisions.json before today. Two remedies (flip the repo private, or stop tracking
+  ids.json) were offered to Zee but not acted on. Both of these should be the first thing
+  raised in the next session, ahead of any further git-manager or logo-forge work, since
+  they involve client-confidentiality exposure that compounds every time git-manager
+  pushes again.
+
+  A minor, lower-priority note carried from the prior handoff (2026-08-02-emergency-
+  handoff-3.yaml, now superseded by this document): that handoff worried forge-test.ts
+  and reject-test.ts existed only in a session scratchpad, not the permanent skill
+  directory. This pass found button-test.ts, explode-test.ts, forge-test.ts,
+  gallery-test.ts, reject-test.ts, and shapes-test.ts all sitting together in
+  ~/.claude/skills/acos-logo-forge/app/, which suggests that gap was closed at some point
+  between the two handoffs, but this was not independently re-executed to reconfirm pass
+  counts (37/37, 19/19, 12/12, 28/28, 38/38, 17/17 are carried-forward claims, not
+  freshly verified by this handoff agent).
+
+reconstruction_sources:
+  - "bash: git status --short / git log --oneline -20 / git diff --stat HEAD~5..HEAD /
+    git diff --name-only HEAD~5..HEAD (ACOS 3.0 repo root) — confirmed working tree
+    clean except this handoff's own stub, and the three-commit sequence
+    0452552->5934bc1->b8660c7->aa6ea92 on acos-deficiency-fixes-2026-06-04"
+  - "bash: git remote -v (ACOS 3.0) — origin=okoateam, personal=ZiaulKarim-hub"
+  - "bash: git rev-parse HEAD vs git rev-parse personal/acos-deficiency-fixes-2026-06-04
+    (ACOS 3.0) — confirmed both equal aa6ea92, i.e. genuinely pushed"
+  - "bash: cd ~/.claude/skills && git status --short / git log --oneline -5 / git remote
+    -v / git rev-parse HEAD vs personal/main — confirmed clean tree, 0f14b3a pushed"
+  - "bash: cd .../FruitSync && git status --short / git log --oneline -5 / git remote -v
+    / git rev-parse HEAD vs origin/main — confirmed clean tree, af7d31e pushed, origin is
+    the personal ZiaulKarim-hub/FruitSync repo"
+  - "bash: gh api repos/ZiaulKarim-hub/ACOS-3.0 --jq .visibility -> PUBLIC"
+  - "bash: gh api repos/ZiaulKarim-hub/claude-skills-personal --jq .visibility -> PRIVATE"
+  - "bash: gh api repos/ZiaulKarim-hub/FruitSync --jq .visibility -> PRIVATE"
+  - "bash: gh api repos/okoateam/ACOS-3.0 --jq .visibility -> 404 Not Found (no such repo
+    under okoateam by that exact name/casing)"
+  - "bash: gh auth status -> confirmed both ZiaulKarim-hub (active) and okoateam accounts
+    authenticated via keyring"
+  - "Read: .claude/scripts/git-manager/decisions.json (full) — the three do-not-track
+    rulings, including the Rubin_Counsel_Bundle_20260423 one central to blocker A"
+  - "bash: python3 json-load of .claude/scripts/git-manager/ids.json — 38 total path
+    entries, 9 under /Users/zee/Documents/OKOA/, confirmed structure {version, note, ids}"
+  - "bash: git log --oneline -- .claude/scripts/git-manager/ids.json (and same against
+    personal/acos-deficiency-fixes-2026-06-04) — confirmed ids.json was introduced in
+    b8660c7 and that commit is on the pushed personal branch, i.e. on the public repo"
+  - "ls -lt planning/ ; ls -lt .acos/evidence/ ; ls -lt memory/decisions/ ; ls -lt
+    memory/handoffs/*.yaml memory/handoffs/*.md (excluding *.resume.md) ; ls -la
+    .acos/state/ — no logo-forge/git-manager formal planning artifacts; most recent
+    formal decision file is 2026-07-05, unrelated"
+  - "Read: memory/handoffs/2026-08-02-emergency-handoff-3.yaml (full) — the prior,
+    now-superseded logo-forge handoff, used to cross-check the forge-test/reject-test
+    scratchpad concern and the round-2 fanout timeline"
+  - "bash: ls -la 'Logo Builder/brandsync/' and 'symbol/candidates/' and
+    'symbol/rejected/' — confirmed round-1..4 exist, rejected/round-1,2,4 exist with the
+    specific files named in blockers/completed_this_session"
+  - "bash: tail -15 and full grep -o cmd-count of 'Logo Builder/brandsync/commands.jsonl'
+    — confirmed the exact reject timestamps/reasons and the 46-command breakdown
+    (add=1, fanout=8, pick=23, regenerate=1, reject=12, smooth=1)"
+  - "bash: cat 'Logo Builder/brandsync/symbol/candidates/round-3/meta.json' (partial) —
+    confirmed the basis field quotes Zee's rejection reason and describes computed
+    (non-traced) geometry"
+  - "bash: cat 'Logo Builder/brandsync/status.json' -> {\"generating\": false}; ls of
+    'Logo Builder/brandsync/avoid.json' via python3 json-load -> 12 rejections, 12
+    patterns"
+  - "bash: ps aux | grep server.py — confirmed PID 43272 running the exact invocation
+    against 'Logo Builder/brandsync' on port 8815"
+  - "grep -n of ~/.claude/skills/acos-logo-forge/app/editor.html for explodeShapes,
+    Group, Split apart — confirmed the PowerPoint-model claims"
+  - "grep -n of ~/.claude/skills/acos-logo-forge/app/index.html for merge/Merge —
+    confirmed openMerge(), the star-then-merge flow, and the merge cmd post"
+  - "grep -n of ~/.claude/skills/acos-logo-forge/app/server.py for the merge whitelist
+    entry and the e1-suffix-collapse regex at line 364"
+  - "grep -n of ~/.claude/skills/acos-logo-forge/SKILL.md for SHARED-OUTLINE, trigonometry,
+    and 'same approximate silhouette' — confirmed lines 271, 302-303, 333"
+  - "find ~/.claude/skills/acos-logo-forge -iname '*test*' — confirmed
+    button/explode/forge/gallery/reject/shapes-test.ts all present together in app/"
+  - "Read: .claude/scripts/git-manager/stable-ids.ts (head) — confirmed the design-rule
+    comments (exact-path keying, never-reuse, seed-in-display-order, no-clock,
+    write-only-when-new) match the session's own account of the bug and fix"
+  - "grep -n of .claude/scripts/git-manager/README.md for 'permanent'/'stable' — confirmed
+    the new 'Row numbers are permanent' section and its table-row description of
+    stable-ids.ts/stable-ids.test.ts"
+  - "grep -c of .claude/scripts/git-manager/stable-ids.test.ts for test(/it( blocks — 1
+    top-level block found (13/13 assertion count is the session's own claim, not
+    independently re-run)"
