@@ -279,6 +279,31 @@ def record_touch(project_uuid, workspace_id, paths, home=None):
     return entry
 
 
+def project_for_workspace(workspace_id, home=None):
+    """Which project has THIS workspace claimed? None if it has claimed none.
+
+    Lets a feeder record touches without knowing the project — it reads the
+    claim adopt already wrote, instead of re-deriving identity from cmux. One
+    identity resolver is enough; a second would be a second thing to drift.
+    """
+    if not workspace_id:
+        return None
+    base = os.path.join(_home(home), ".acos", "windows")
+    try:
+        projects = sorted(os.listdir(base))
+    except OSError:
+        return None
+    want = str(workspace_id).casefold()
+    for p in projects:
+        d = os.path.join(base, p)
+        if not os.path.isdir(d):
+            continue
+        for c in all_claims(p, home):
+            if str(c.get("workspace_id", "")).casefold() == want:
+                return p
+    return None
+
+
 def collisions(project_uuid, my_workspace_id, live_workspace_ids, home=None):
     """Files THIS window touched that another LIVE window also touched.
 
@@ -479,6 +504,13 @@ def main(argv=None):
 
     ws = args.workspace or os.environ.get("CMUX_WORKSPACE_ID")
     live = [x.strip() for x in (args.live or "").split(",") if x.strip()] or None
+    # `--project auto` resolves from this workspace's own claim, so a feeder
+    # never has to know or re-derive the project uuid.
+    if args.project == "auto":
+        args.project = project_for_workspace(ws, args.home)
+        if not args.project:
+            print("no claim for workspace %s — nothing to record" % ws)
+            return 0
 
     if args.project and args.list:
         print(json.dumps(all_claims(args.project, args.home), indent=2))

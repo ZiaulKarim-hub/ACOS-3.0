@@ -246,6 +246,13 @@ class CollisionWarningTest(unittest.TestCase):
         self.assertEqual(windows_lib.collisions(self.uuid, "WS-1", ["WS-1", "WS-2"],
                                                 home=self.home), [])
 
+    def test_a_window_can_find_its_own_project_without_being_told(self):
+        """The feeder hook resolves the project from the claim adopt already
+        wrote. One identity resolver is enough; a second would drift."""
+        self.assertEqual(windows_lib.project_for_workspace("WS-1", self.home), self.uuid)
+        self.assertIsNone(windows_lib.project_for_workspace("WS-NEVER-CLAIMED", self.home))
+        self.assertIsNone(windows_lib.project_for_workspace(None, self.home))
+
     def test_the_ledger_is_capped_so_it_cannot_grow_without_bound(self):
         paths = ["/tmp/f%d.py" % i for i in range(windows_lib.TOUCH_CAP + 25)]
         windows_lib.record_touch(self.uuid, "WS-1", paths, home=self.home)
