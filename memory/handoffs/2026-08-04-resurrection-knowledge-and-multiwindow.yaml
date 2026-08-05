@@ -1,0 +1,281 @@
+timestamp: "2026-08-04T21:40:00Z"
+status: "active"
+type: "design-brief"
+trigger: "user-directed — Zee asked that implementation happen in the Resurrection Protocol window, not the OKOA Works window where the design was agreed"
+session_id: "ae549284-6501-48bc-bc74-de5afb73b5ed"
+target_project: "Resurrection Protocol"
+target_project_uuid: "333ef731-c21c-4944-b8e9-7d3f3a6556c1"
+target_project_root: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+authored_from_project: "OKOA Works (08d647fd-3430-497b-a5f5-405836ca0d2f)"
+estimated_tokens: 0
+
+session_summary: |
+  A design conversation, not an implementation session. NOTHING has been built yet —
+  no script changed, no directory created. This file is the complete brief.
+
+  Zee described the intent behind his long-lived project windows, an audit measured how
+  far the system is from delivering it, and two workstreams were agreed in full. Every
+  open decision was settled by Zee across four /restate rounds. The build was then moved
+  to the Resurrection Protocol window on his instruction.
+
+  Two workstreams, deliberately separated because they have different owners and different
+  risk profiles:
+    KB-A..KB-E   per-project knowledge bases that accumulate across resurrections
+    MW-A..MW-E   several context windows working one project coherently
+
+  MW-A is a LIVE DATA-LOSS BUG, not a feature. It should be fixed first.
+
+zees_vision: |
+  Stated by Zee in his own framing, 2026-08-04:
+
+  "OKOA is the company that I work in and OKOA-works context in the window where I do all
+  my OKOA related works. The purpose of doing all the works in one context that is
+  constantly resurrected is to capture all necessary context over however long possible so
+  that whenever I do a work in the context window, the task context is already present
+  somewhere in the handoff or at least give AI some overview of the kind of the tasks I do
+  and where old templates are and so on."
+
+  He then asked that the same capability exist for every other project in the book, so any
+  resurrection returns knowledge and not merely a next-action line.
+
+audit_findings: |
+  Measured live on 2026-08-04. All figures verbatim.
+
+  FINDING 1 — Resurrection handoffs do not accumulate, BY DESIGN.
+    Six OKOA Works closes exist since 2026-07-21. intent_core sizes, in date order:
+      2026-07-21  3050 chars
+      2026-07-22  2167 chars
+      2026-07-26  2585 chars
+      2026-07-28  5612 chars
+      2026-08-02  3828 chars
+      2026-08-04  5943 chars
+    Session-sized each time, never cumulative.
+
+    Carry-forward test (does a handoff still mention earlier sessions' subjects?):
+      handoff      Alaska  AscentSF  XL-Ant  Thurston  poster  flyer
+      2026-07-21   yes     -         -       -         -       -
+      2026-07-22   -       yes       -       -         -       -
+      2026-07-26   yes     -         yes     yes       -       -
+      2026-07-28   -       -         -       yes       -       -
+      2026-08-02   -       -         yes     yes       yes     -
+      2026-08-04   -       -         -       -         -       yes
+    A near-perfect diagonal. Two handoffs did carry some forward, so it is not zero —
+    but the newest (2026-08-04) retained nothing from any earlier session.
+
+    This is correct behaviour for a baton. It is simply not a knowledge base.
+
+  FINDING 2 — The right store exists and has stalled.
+    /Users/zee/.claude/skills/acos-okoa-works/ holds 156,622 characters across 28 .md files:
+    deal fact-sheets, a folder map, 20 task playbooks, formatting rules, a traps list.
+    23 of those 28 files are unmodified since before 2026-07-18.
+    Updated since the initial mine: references/deal-index.md (2026-08-04, 20821 bytes),
+    references/formatting-rules.md (2026-08-03, 13503), references/playbooks/loan-lifecycle-docs.md
+    (2026-08-04, 6565), references/playbooks/underwriting-ic.md (2026-08-03, 5618),
+    SKILL.md (2026-08-04, 12246). Those five came from Claude writing files by hand
+    mid-session, NOT from any loop.
+
+  FINDING 3 — The capture loop is not firing.
+    references/.last-mined reads "2026-07-17T14:09:09-0600 initial-mine wf_f8fbbfae-2d7".
+    It has not moved in 18 days.
+    references/.rejected-learnings.md is 0 lines / 0 bytes. Zee has never declined a
+    proposed learning, which means he has almost never been offered one.
+
+    Live example from this same session. Six durable facts were produced; coverage check:
+      COREA                 known (2 files)
+      cert 1.pdf            NOT KNOWN
+      outparcel             NOT KNOWN
+      PBA                   NOT KNOWN
+      Berkeley Capital      NOT KNOWN
+      Occupied Renovations  NOT KNOWN
+    Five of six would be lost.
+
+  FINDING 4 — What is stored has quietly drifted stale.
+    references/deal-index.md states the Kohan_Golden East folder holds "1,305 files — largest".
+    Live count on 2026-08-04: 1,594 files.
+    It names one sale data room. Three exist: "Golden East Crossing Sale - Reed",
+    "Golden East Crossing Sale - Accurate Financial Services", "Golden East Uploads - On-Site Management".
+    Nothing checks these. A stale fact is worse than a missing one — it reads as confident.
+
+live_bug_fix_first: |
+  MW-A is a real bug, observed live this session, NOT a feature request.
+
+  adopt-project.sh printed, when adopting OKOA Works:
+    reentry source: scan of closed/ at adopt time (newest of 24 candidates by mtime)
+
+  It takes the NEWEST closing note by file modification time and ignores every other one.
+  With one window per project that is harmless. With several windows on one project, the
+  last window to close SILENTLY HIDES the others. No warning, no error, no signal in the
+  book. The other threads simply never surface again.
+
+  Multi-window support is UNSAFE until this is fixed. Do MW-A before anything else.
+
+decisions_made: |
+  All settled by Zee. Do not reopen without asking him.
+
+  --- STORAGE ---
+  D1. Knowledge lives at ~/.acos/knowledge/<project_uuid>/ — keyed by the registry's project
+      uuid, NOT by folder root. REASON: several projects share one root. OKOA Works,
+      ACOS 3.0 and Resurrection Protocol all root at /Users/zee/Documents/Vibe Coding/ACOS 3.0.
+      Folder-keyed storage would merge them into one another.
+  D2. It sits BESIDE ~/.claude/skills/acos-okoa-works/references/ and does not replace it.
+      The skill keeps its own base; the generic store covers the projects that have no skill.
+
+  --- WHO WRITES, AND WHEN (Zee REJECTED the original default) ---
+  D3. REJECTED: "close proposes candidates, you approve each one, nothing written silently."
+      Zee's reason, verbatim: "approving each can be tedius and i don't read any of those,
+      it may contain technical stuff that I may not udnerstand."
+      The design principle this establishes: an approval gate the approver cannot evaluate
+      is WORSE than no gate. It creates false assurance and trains click-through.
+  D4. ADOPTED: sort every learning by whether a MACHINE can check it.
+      Kind 1 — machine-verifiable. File paths, file counts, commands that worked, render
+        traps, library quirks. AUTO-WRITTEN, SILENTLY, ALWAYS. Zee is never asked.
+      Kind 2 — Zee's own rulings. Business policy, naming, what may leave the building,
+        deal facts only he holds. ASKED — but at most TWO questions per session, and phrased
+        in plain language about the DECISION, not the mechanism.
+        Good:  "You said we never print LendSure on broker material. Make that a standing rule?"
+        Bad:   "Record that break-before:page yields blank pages in WeasyPrint?"
+      If a session yields no Kind 2 item, Zee gets no question at all.
+      Ratio observed this session: 5 of 6 learnings were Kind 1.
+  D5. FOUR SAFETY RULES that make silent auto-writing acceptable:
+      (a) Evidence or no write. Every auto-written fact carries its source — a path, a
+          quoted line, or a command that reproduces it. No working shown, no write.
+      (b) Append-only. Nothing is ever overwritten. Facts carry dates; an old fact is
+          superseded, never erased. Every bad write stays reversible.
+      (c) Staleness re-check. Any fact naming a count, a path or a date is re-verified on
+          resurrect. This is what would have caught the 1,305-vs-1,594 drift.
+      (d) Review AFTER, not before. On resurrect Zee sees a short plain-language digest,
+          "learned since you were last here", and can strike any line with one word.
+          Control moves from gatekeeper to editor. That fits how he actually works.
+  D6. HONEST RISK, kept on the record: auto-writing means a wrong fact can enter without
+      Zee seeing it. The four rules shrink that risk; they do not remove it. It was
+      accepted because the status quo fails worse — today nothing is written at all, and
+      what did get written has already drifted stale with nobody checking.
+
+  --- SCOPE AND LOADING ---
+  D7. Opt-in, not all 42 pickable rows. Start with the ~20 Zee actually reopens
+      (tiers OPEN NOW + RECENT).
+  D8. On resurrect, load an INDEX plus the digest — not the whole base. Context cost is
+      real: the OKOA base alone is 156,622 characters. Deeper files open on request.
+
+  --- MULTI-WINDOW ---
+  D9. Several context windows on ONE project is a first-class supported mode.
+  D10. The book still shows ONE row per project, with a live-window count.
+       Example: "7. OKOA Works (2 open)". Splitting into several rows was explicitly
+       rejected by Zee — it defeats the purpose of one accumulating project.
+  D11. The one-project-one-tab guard STAYS as the default. It is not removed. But when Zee
+       picks a project that is already open, he is ASKED: focus the existing window, or
+       open another one. He wants the choice, not the removal of the guard.
+       (Current behaviour, for contrast: SPINE 1 forces the jump with no choice —
+       adopt-project.sh exits 4 and Step 3 focuses the existing tab.)
+  D12. WINDOW NAMING — Zee's instruction, his wording: names derive from the project name,
+       "OKOA works *label*". So: "OKOA Works Golden East", "OKOA Works Flyer".
+       The project name stays the stem so the row identity is never in doubt.
+  D13. ON SAFE CLOSE — Zee's instruction: "when safe closed, the context resolves to the
+       original knowledge base." A labelled window's learnings fold back into the single
+       per-project store at ~/.acos/knowledge/<project_uuid>/. The label survives only as
+       provenance on each fact, not as a separate store.
+  D14. Closing ONE window does not park the project. The row stays active while any window
+       is open. It parks only when the LAST window closes.
+  D15. No hard cap on window count. The book shows the count so it cannot creep up unseen.
+
+  --- PROCESS ---
+  D16. Scope of the design turns was "design and plan, stop before changing any file."
+       That was honoured. Nothing has been built.
+
+workstream_kb: |
+  Per-project knowledge bases. Build order matters — C was deliberately moved up.
+
+  KB-A  THE CAPTURE LOOP.  Kind-1/Kind-2 sorting, the evidence rule, append-only writes,
+        the two-question-per-session cap, plain-language phrasing for Kind 2.
+        WHY FIRST: nothing else matters if facts are never written.
+  KB-C  STALENESS RE-CHECK.  Any stored fact naming a count, path or date carries a
+        re-verify command; it runs on resurrect and flags drift.
+        WHY IT MOVED UP: it was a nice-to-have while approval was manual. Once writes are
+        silent it becomes the SAFETY NET THAT PERMITS SILENT WRITING. Ship it with KB-A,
+        not after.
+  KB-B  LOAD ON ADOPT.  adopt-project.sh prints the knowledge index plus the
+        "learned since you were last here" digest. This is where Zee finally feels it.
+  KB-D  BACKFILL.  Mine the 24 existing bundles in memory/handoffs/closed/ into a starting
+        base per project, so day one is not an empty folder.
+  KB-E  CROSS-PROJECT TAGGING.  A trap learned in one project surfaces in another.
+        Needs KB-A..KB-D in place to have anything to link.
+
+workstream_mw: |
+  Several windows, one project. Zee approved all five.
+
+  MW-A  MERGE EVERY WINDOW'S REENTRY AT PICK.  Replaces newest-by-mtime with a merge of all
+        unconsumed notes for that project uuid.
+        MANDATORY AND FIRST — this is the live bug in `live_bug_fix_first`, not an
+        enhancement. Multi-window is unsafe until it lands.
+  MW-B  WINDOW LABELS IN THE BOOK.  "7. OKOA Works (2 open: Golden East · Flyer)".
+  MW-C  SHARED PROJECT BRIEF.  A new window reads what the other windows are doing before
+        it starts. This is what stops two windows duplicating work.
+  MW-D  MERGE VERB.  Fold one window's thread into another when the work converges.
+  MW-E  COLLISION WARNING.  Flag when two windows touch the same file.
+        Costed as high and watch-heavy; Claude advised deferring it. Zee said do all five.
+        Suggest building it last and behind a switch.
+
+files_likely_to_change: |
+  Under /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection/ :
+    registry_lib.py       row schema — window children, labels, per-window reentry pointers
+    adopt-project.sh      reentry MERGE (MW-A), knowledge index + digest on adopt (KB-B),
+                          the focus-or-open-another choice (D11)
+    launch-project.sh     opening an additional window on an already-open project
+    close-project.sh      Kind-1/Kind-2 capture (KB-A), fold-back to the base (D13),
+                          park only on last window close (D14)
+    resurrect-view.py     one row with a live-window count and labels (D10, MW-B)
+  Skills:
+    /Users/zee/.claude/skills/acos-resurrect/SKILL.md      routing + the new pick choice
+    /Users/zee/.claude/skills/acos-safe-close/SKILL.md     capture at close
+  New:
+    ~/.acos/knowledge/<project_uuid>/                      the store itself
+
+  RESTRICTED — do not touch without Zee present:
+    review-rules/            human-editable only, no agent may read or modify
+    .claude/agents/          modification requires human approval
+
+blockers: |
+  - MW-A must land before multi-window is exercised, or closing a second window will
+    silently destroy the first window's reentry.
+  - The Kind-1/Kind-2 sorter is the one genuinely hard judgement in KB-A. Getting it wrong
+    in the permissive direction means wrong facts enter silently. Suggest erring toward
+    Kind 2 (ask) when the sorter is unsure, and letting the two-question cap drop the
+    overflow rather than auto-writing a doubtful fact.
+  - Nothing in either workstream has been prototyped. All effort estimates in the design
+    conversation were judgement, not measurement.
+
+next_actions:
+  - "Fix MW-A first: replace adopt-project.sh's newest-by-mtime reentry scan with a merge of every unconsumed note for the project uuid. It is a live data-loss bug and it blocks the rest."
+  - "Then build KB-A and KB-C together — the capture loop and the staleness re-check must ship as one unit."
+  - "Then KB-B (load index + digest on adopt), MW-B (labels in the book), MW-C (shared project brief)."
+  - "Then KB-D (backfill from the 24 closed bundles), KB-E (cross-project tagging), MW-D (merge verb), MW-E (collision warning, last and behind a switch)."
+
+next_action: "Fix MW-A first: replace adopt-project.sh's newest-by-mtime reentry scan with a merge of every unconsumed note for the project uuid. It is a live data-loss bug and it blocks the rest."
+
+context_for_next_session: |
+  Read this whole file before writing any code. The decisions block (D1-D16) is the
+  contract — Zee settled every one of them across four /restate rounds, and several
+  represent him overruling Claude's proposed default. In particular D3/D4 reversed the
+  approval model entirely; do not quietly reinstate per-item approval.
+
+  Two design ideas are load-bearing and easy to lose:
+    1. Handoff and knowledge base are DIFFERENT JOBS. A handoff answers "where was I".
+       A knowledge base answers "what do I know". Zee had been expecting the first to do
+       the second. Do not merge them.
+    2. An approval gate only works if the approver can judge the item. That is why
+       machine-verifiable facts are written silently and only Zee's own rulings are asked
+       about. The safety comes from evidence, append-only writes, staleness re-checks and
+       an after-the-fact digest — not from a prompt he cannot evaluate.
+
+  Zee reads at plain-language level and has said the technical detail is not something he
+  can meaningfully approve. Write every prompt and digest line accordingly.
+
+reconstruction_sources: |
+  - This file is authoritative for the design. It was written from the live conversation.
+  - Audit commands are reproducible: file counts under
+    /Users/zee/.claude/skills/acos-okoa-works/, intent_core sizes from
+    /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/*-OKOA-Works-close/handoff.yaml
+  - Current resurrection behaviour: /Users/zee/.claude/skills/acos-resurrect/SKILL.md
+    (SPINE 1 one-project-one-tab, SPINE 2 adopt-in-place, exit codes 3 and 4)
+  - The registry itself: ~/.acos/registry.d/
+  - Nothing in this brief has been committed to git, because nothing has been built.

@@ -1,0 +1,168 @@
+timestamp: "2026-08-05T17:48:11Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "dcda8fe9-db87-4b6f-b35b-5fab1f2f55f1"
+estimated_tokens: 0
+
+session_summary: |
+  Two largely independent threads need preserving. (1) THE LIVE, UNCOMMITTED THREAD IN
+  THIS REPO: a substantial implementation of the "Resurrection Protocol" redesign agreed
+  in the 2026-08-04 design brief (memory/handoffs/2026-08-04-resurrection-knowledge-and-
+  multiwindow.yaml) — the KB (per-project knowledge base) and MW (multi-window) workstreams.
+  Four new library modules, two heavily-rewritten orchestration scripts, two updated
+  SKILL.md files, and four new stdlib-unittest suites (77 tests) were written this
+  session; all 77 unit tests and both directly-checked library self-tests PASS; the KB-D
+  backfill script was additionally run for REAL (--write) against the live registry,
+  seeding ~/.acos/knowledge/<project_uuid>/ for 17 of 42 registry projects with 361 real
+  facts. NONE of this is committed to git yet — `git status` shows it all as modified/
+  untracked working-tree changes. (2) A SEPARATE, EARLIER-TODAY THREAD THAT NEVER GOT ITS
+  OWN HANDOFF: per the invoking user's explicit account (independently verified against
+  disk below), a payoff-letter generation skill, two AVM/ARV valuation reports, a
+  `/conclude` word-cap skill, and OKOA knowledge-base reference updates were built and
+  shipped on 2026-08-04 in directories this git repo does not track (~/.claude/skills/ and
+  ~/Documents/OKOA/). That work is essentially done but carries two explicit open
+  verification items.
+
+current_work:
+  slice_id: "unknown — no planning/ hierarchy artifact (vision/epic/story/slice file) was touched by this thread; it is driven entirely by the design-brief handoff at memory/handoffs/2026-08-04-resurrection-knowledge-and-multiwindow.yaml, not by a slice file"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress — functionally complete and fully test-covered by the session's own measure, but UNCOMMITTED and not yet dogfooded end-to-end outside the unittest harness; treat as ready-for-review, not as finished"
+
+completed_this_session:
+  - "KB-A (capture loop) + KB-C (staleness re-check) implemented in new .claude/scripts/resurrection/knowledge_lib.py (33,198 bytes): kind-1/kind-2 fact sorting (machine-verifiable facts auto-written silently; Zee's own rulings asked, capped at 2 questions/session), evidence-or-no-write (D5a), append-only + supersede (D5b), staleness re-check via declarative (never-shell) verify checks (D5c), and a digest+strike watermark mechanism for the 'learned since you were last here' view. `python3 knowledge_lib.py --selftest` — ALL PASSED (14 checks)."
+  - "MW-A (the live data-loss bug — adopt-project.sh took the newest-by-mtime closing note and silently discarded every other window's note) fixed via new .claude/scripts/resurrection/bundles_lib.py (13,336 bytes): an evidence ladder (owner marker file > registry last_close pointer > slug match) decides which closed bundle belongs to which project. The module's own docstring records the bug was OBSERVED LIVE on 2026-08-05: 'adopting \"Resurrection Protocol\" returned the \"OKOA Works\" note.' A regression test (test_the_old_newest_by_mtime_scan_would_have_served_the_wrong_project) explicitly guards against reintroducing it."
+  - "MW-B..E (window labels in the book, shared-project brief so a new window sees what others are doing, a merge verb, and a collision warning kept OFF by default behind a switch file) implemented in new .claude/scripts/resurrection/windows_lib.py (21,577 bytes). `python3 windows_lib.py --selftest` — ALL PASSED (15 checks)."
+  - "KB-D (backfill) implemented in new .claude/scripts/resurrection/backfill-knowledge.py (10,920 bytes) — preview-by-default, requires --write to actually seed. RUN FOR REAL against the live registry this session (not just a test fixture): 17 of 42 registry projects had closed bundles; 30 bundles read; 421 candidate facts; 361 written; 60 dropped by a 40-facts-per-project cap (oldest kept, cap is overridable with --cap N). VERIFIED on disk: ~/.acos/knowledge/333ef731-c21c-4944-b8e9-7d3f3a6556c1/ (the Resurrection Protocol project's own store) now holds 25 real facts (facts.jsonl, 23,813 bytes) pulled verbatim from memory/handoffs/closed/2026-07-20-Resurrection-Protocol-close/handoff.yaml, each carrying a path_contains evidence check back to that source file."
+  - "adopt-project.sh rewritten (+347/-lines net, now 30,477 bytes): calls bundles_lib for reentry ownership, gained an --additional-window / --label flag pair implementing D11/D12 (Zee is asked focus-vs-open-another instead of being auto-focused when he picks an already-open project)."
+  - "close-project.sh rewritten (+147 lines, now 43,046 bytes): wired to knowledge_lib.py for KB-A/KB-C capture at close (via a --learnings-file integration point), while registry enrichment continues to go exclusively through registry_lib.py (unchanged) per the existing 'ONLY registry access path' constraint."
+  - "resurrect-view.py updated (+61 lines, now 27,651 bytes): renders per-row live-window counts (D10) alongside existing broken/name-drift/unmatched-workspace reporting — a hard rule enforced by test_a_project_with_no_live_window_shows_no_count / test_broken_and_name_drift_notes_still_show_alongside_windows is that adding window info never hides an existing fact."
+  - ".claude/skills/acos-resurrect/SKILL.md updated: Step 3 rewritten from 'jump to that tab automatically' to 'ASK, then jump or open a second window' — an AskUserQuestion with both options spelled out in full, per D11. .claude/skills/acos-safe-close/SKILL.md updated to match (capture-at-close wiring)."
+  - "Four new stdlib-unittest suites written under .claude/scripts/tests/: test_resurrection_knowledge.py (29 tests), test_resurrection_reentry.py (13 tests), test_resurrection_windows.py (26 tests), test_resurrection_book.py (9 tests) — 77 tests total. Ran directly with the system /usr/bin/python3 (3.9.6, the interpreter these scripts are pinned to): ALL 77 PASS, 0 failures, 0 errors."
+  - "EARLIER TODAY (2026-08-04), separate thread, verified present on disk but NOT tracked by this git repo — reported here per the invoking user's account and independently confirmed: (a) /acos-payoff-letter skill built at ~/.claude/skills/acos-payoff-letter/ (SKILL.md 7,002 bytes + scripts/build-payoff-letter.ts 17,514 bytes, TypeScript/bun), wired to acos-hypercore-ask so payoff figures come only from hca-figures.py or the build aborts; delivered a live payoff letter for 1203 Pearson Place — confirmed present at '/Users/zee/Documents/OKOA/True American 1203 Pearson Payoff/True American 1203 Pearson Place Payoff 20260812.{docx,html,pdf,provenance.json}' (all four files, mtimes 2026-08-04 15:05). (b) Two standalone AVM/ARV PDF reports plus a shared _report-generator.ts confirmed present at '/Users/zee/Documents/OKOA/AVM - Fontana and Huntington Beach/' (mtimes 2026-08-04 16:06-16:38): Fontana 16770 San Bernardino Ave #2A and Huntington Beach 19847 Kingswood Ln. (c) /conclude skill confirmed present at ~/.claude/skills/conclude/ (SKILL.md 5,697 bytes + scripts/, mtime 2026-08-04 17:40). (d) Memory pointers confirmed present and indexed: ~/.claude/skills/acos-okoa-works/references/deal-index.md (20,821 bytes, 2026-08-04 15:45) and references/playbooks/loan-lifecycle-docs.md (6,565 bytes, 2026-08-04 15:45); MEMORY.md (~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md) confirmed to already carry both `[project_acos_payoff_letter]` and `[reference_okoa_payoff_letter_facts]` entries (lines 53-54) — this was independently grepped, not just taken on the user's word."
+
+files_modified:
+  - path: ".claude/scripts/resurrection/adopt-project.sh"
+    changes: "Modified, +347/-lines net (30,477 bytes total). Reentry ownership routed through bundles_lib.py (MW-A fix); new --additional-window/--label flags (D11/D12)."
+  - path: ".claude/scripts/resurrection/close-project.sh"
+    changes: "Modified, +147 lines (43,046 bytes total). Wired to knowledge_lib.py for KB-A/KB-C capture at close; registry access still exclusively through registry_lib.py."
+  - path: ".claude/scripts/resurrection/resurrect-view.py"
+    changes: "Modified, +61 lines (27,651 bytes total). Per-row live-window counts (D10/MW-B) added alongside existing broken/drift/unmatched reporting."
+  - path: ".claude/skills/acos-resurrect/SKILL.md"
+    changes: "Modified. Step 3 rewritten: ask focus-vs-open-another (D11) instead of auto-focusing; loop verbs list now includes strike/merge."
+  - path: ".claude/skills/acos-safe-close/SKILL.md"
+    changes: "Modified. Capture-at-close wiring for KB-A/KB-C updated to match close-project.sh."
+  - path: ".claude/scripts/resurrection/knowledge_lib.py"
+    changes: "NEW, 33,198 bytes. KB-A/KB-C: kind-1/kind-2 sorting, evidence-or-no-write, append-only+supersede, staleness re-check, digest+strike. Self-test passes."
+  - path: ".claude/scripts/resurrection/bundles_lib.py"
+    changes: "NEW, 13,336 bytes. MW-A fix: owner-marker > registry last_close > slug-match ownership ladder for closed handoff bundles."
+  - path: ".claude/scripts/resurrection/windows_lib.py"
+    changes: "NEW, 21,577 bytes. MW-B..E: window labels, shared-project brief, merge verb, collision warning (off by default). Self-test passes."
+  - path: ".claude/scripts/resurrection/backfill-knowledge.py"
+    changes: "NEW, 10,920 bytes. KB-D: seeds ~/.acos/knowledge/<uuid>/ from memory/handoffs/closed/ bundles. Already run for real with --write this session (361 facts written across 17 projects)."
+  - path: ".claude/scripts/tests/test_resurrection_knowledge.py"
+    changes: "NEW, 22,266 bytes, 29 tests, all passing."
+  - path: ".claude/scripts/tests/test_resurrection_reentry.py"
+    changes: "NEW, 13,875 bytes, 13 tests, all passing."
+  - path: ".claude/scripts/tests/test_resurrection_windows.py"
+    changes: "NEW, 12,380 bytes, 26 tests, all passing."
+  - path: ".claude/scripts/tests/test_resurrection_book.py"
+    changes: "NEW, 5,721 bytes, 9 tests, all passing."
+  - path: "Logo Builder/brandsync/commands.jsonl"
+    changes: "Modified (M in git status) but not obviously connected to either thread above — flagged unexplained by the previous 2026-08-04 handoff too; still not investigated, falls outside both threads' described scope."
+  - path: "~/.claude/skills/acos-payoff-letter/, ~/.claude/skills/conclude/ (outside this git repo)"
+    changes: "New skills built 2026-08-04, confirmed present on disk. Not tracked by this repo's git, so they will not show in `git status` here."
+  - path: "/Users/zee/Documents/OKOA/True American 1203 Pearson Payoff/, /Users/zee/Documents/OKOA/AVM - Fontana and Huntington Beach/ (outside this git repo)"
+    changes: "New deliverables shipped 2026-08-04, confirmed present on disk (see completed_this_session for exact figures)."
+
+decisions_made:
+  - "No new entries in memory/decisions/ today (newest file there remains 2026-07-05-eternity-protocol-nonfiring-audit.md). The governing decisions for the resurrection-protocol thread (D1-D16) already live in memory/handoffs/2026-08-04-resurrection-knowledge-and-multiwindow.yaml and were not restated as separate decision files — this session appears to have implemented against that brief directly rather than filing new ADRs."
+
+blockers:
+  - "Resurrection-protocol thread: NOTHING IS COMMITTED. All 13 changed/new files sit as working-tree modifications; if this window is closed or the tree is reset without a commit, the entire KB+MW implementation and the 77 passing tests are at risk."
+  - "Resurrection-protocol thread: the design brief's files_likely_to_change list named registry_lib.py and launch-project.sh, but neither was touched (mtimes unchanged since Jul 18/20). Window state instead lives in windows_lib.py's own ~/.acos/windows/<project_uuid>/<workspace_id>.json store, separate from the registry row schema. This is plausibly a deliberate, cleaner architecture choice (consistent with windows_lib.py's own docstring distinguishing durable knowledge from ephemeral runtime state) but has NOT been confirmed with Zee as an intentional deviation from the brief."
+  - "Resurrection-protocol thread: end-to-end dogfooding has not happened outside the unittest harness — no evidence was found of a live /acos-safe-close or /acos-resurrect invocation exercising the new code path in situ today (only backfill-knowledge.py --write was run for real; adopt/close were only exercised via unittest's subprocess calls). Per the standing 'end-to-end before done' practice, this should happen before calling the thread finished."
+  - "Payoff-letter/AVM thread (carried forward, per the invoking user, unresolved): the Fontana 16770 San Bernardino Ave #2A purchase price of $130,000 (38.8% of the $335,000 ARV) does not reconcile and needs verification."
+  - "Payoff-letter/AVM thread: the Huntington Beach 19847 Kingswood Ln as-is value of $595,000 is INFERRED (no un-renovated comparable sale exists in the Huntington Continental tract) rather than evidenced; would be resolved by finding any un-renovated sale in that tract at any date."
+  - "Payoff-letter/AVM thread: Huntington Beach HOA dues are unknown (the properties are townhomes in a community with a substantial HOA, corrected from an earlier single-family-residence assumption)."
+
+next_actions:
+  - "Commit the resurrection-protocol implementation once reviewed: the 5 modified files (adopt-project.sh, close-project.sh, resurrect-view.py, acos-resurrect/SKILL.md, acos-safe-close/SKILL.md) plus the 8 new files (4 libraries + 4 test suites) under .claude/scripts/resurrection/ and .claude/scripts/tests/. It is currently 100% uncommitted."
+  - "Run an actual end-to-end /acos-safe-close on a real project window (not just the unittest subprocess harness) to dogfood KB-A/KB-C capture live, and confirm the 'learned since you were last here' digest actually surfaces correctly on the following /acos-resurrect adopt."
+  - "Confirm with Zee whether leaving registry_lib.py and launch-project.sh untouched was the intended final shape (window state kept out of the registry schema, in windows_lib.py's own store instead) or whether that's a remaining gap against the design brief's files_likely_to_change list."
+  - "If more than the oldest 40 facts per project are wanted, re-run backfill-knowledge.py --write with a higher --cap for the two projects that hit the cap: OKOA Works (53 facts dropped of 93 candidates) and Processor Responsibilities (7 dropped of 47)."
+  - "Note for whoever runs the test suites next: pytest is NOT installed in this environment (`python3 -m pytest ...` fails with 'No module named pytest'). These are plain stdlib unittest files — run them directly, e.g. `/usr/bin/python3 .claude/scripts/tests/test_resurrection_knowledge.py`, using the system /usr/bin/python3 (3.9.6) that the resurrection scripts are pinned to, not whichever python3 resolves first on PATH (a Homebrew 3.14 install is first on this machine's PATH and untested against these scripts)."
+  - "Carried forward from the Aug 4 payoff-letter/AVM thread: verify the Fontana $130,000 purchase price reconciliation; search for any un-renovated comparable sale in the Huntington Continental tract to replace the inferred $595,000 Huntington Beach as-is figure; confirm Huntington Beach HOA dues."
+
+context_for_next_session: |
+  Two threads, handled in order of what actually needs attention first.
+
+  THREAD 1 — Resurrection Protocol KB+MW implementation (live, this repo, THIS session).
+  This is the thread that needs immediate attention because it is uncommitted working-
+  tree state. It realizes, in full, the design brief agreed 2026-08-04 (memory/handoffs/
+  2026-08-04-resurrection-knowledge-and-multiwindow.yaml — read that file first for the
+  D1-D16 contract before touching any of this code, per that file's own instruction).
+  Four new library modules were written (knowledge_lib.py for KB-A/KB-C, bundles_lib.py
+  for the MW-A live-bug fix, windows_lib.py for MW-B..E, backfill-knowledge.py for KB-D),
+  two orchestration scripts were substantially rewritten (adopt-project.sh, close-
+  project.sh), one was extended (resurrect-view.py), and two skill files were updated to
+  match (acos-resurrect, acos-safe-close SKILL.md). Every self-test and every one of 77
+  new unittest cases pass when run with the system /usr/bin/python3 3.9.6 (NOT pytest,
+  which is not installed here, and NOT the Homebrew python3 3.14 that resolves first on
+  PATH — both would give a false read on this codebase). The KB-D backfill script was
+  additionally run for real (--write, not just previewed) against the live ~/.acos
+  registry, and I independently verified real facts landed on disk — e.g. the
+  Resurrection Protocol project's own knowledge store at
+  ~/.acos/knowledge/333ef731-c21c-4944-b8e9-7d3f3a6556c1/facts.jsonl now holds 25 facts
+  pulled verbatim from a 2026-07-20 closed handoff bundle, each carrying its source path
+  as evidence. The MW-A fix (the bug that motivated all of this: a second window closing
+  on a shared-root project would silently serve the WRONG project's reentry note) has an
+  explicit regression test and is corroborated by a docstring noting the bug was observed
+  live on 2026-08-05 misrouting an "OKOA Works" note into the "Resurrection Protocol"
+  adopt. Despite this maturity, treat the thread as ready-for-review rather than done:
+  nothing is committed, registry_lib.py/launch-project.sh were left untouched against the
+  brief's own file list (plausibly fine — window state moved to its own store — but not
+  confirmed with Zee), and no live /acos-safe-close or /acos-resurrect has exercised this
+  code outside the unittest harness yet.
+
+  THREAD 2 — payoff-letter / AVM / conclude-skill work (2026-08-04, outside this git
+  repo, no handoff previously written for it). This was reported to me directly by the
+  user invoking this handoff and I independently verified every file-existence and byte-
+  size claim on disk before including it here. A payoff-letter generation skill
+  (~/.claude/skills/acos-payoff-letter/) produced a real, delivered letter for the True
+  American 1203 Pearson Place loan (Hypercore loan id 145, borrower client id 95); its
+  design principle worth remembering is that it ABORTS rather than guesses if
+  hca-figures.py doesn't return a real payoff/EarlyRedemption figure, and per diem is
+  derived as a backward difference of interest(d+1) minus interest(d) with a stability
+  check, not a flat daily rate. Two AVM/ARV valuation reports (Fontana, Huntington Beach)
+  corrected a v1 assumption — CoreLogic comp sets there are dominated by renovated sales,
+  so a naive "as-is" pull is actually a renovated price; a paired-sale comparison (9100
+  Acacia Ave #6 vs #24, same 1,116 sq ft) measured a +29.7% renovation premium, which is
+  the load-bearing number behind both reports' corrected as-is figures. A /conclude skill
+  was built for word-capped plain-language answers, with two acknowledged gaps: nothing
+  enforces actually running its word counter, and an L0-L5 reading-level passthrough was
+  never wired. None of this thread's two remaining open items (Fontana price
+  reconciliation, Huntington Beach as-is/HOA) were worked further this session — they are
+  exactly as open as the user described them.
+
+  General note for whoever resumes: the two threads do not overlap in files or subject
+  matter and can be picked up independently. If forced to prioritize, Thread 1's
+  uncommitted state is the more time-sensitive risk.
+
+reconstruction_sources:
+  - "git status --short, git log --oneline -20, git diff --stat HEAD~5..HEAD, git diff --name-only (both HEAD~3..HEAD and unstaged) — established the current uncommitted working-tree changes and that git-manager/README/decisions.json etc. are already-committed history, not part of the live uncommitted thread."
+  - "git diff --stat -- .claude/scripts/resurrection/ .claude/skills/acos-resurrect/ .claude/skills/acos-safe-close/ — exact line-change counts for adopt-project.sh (+347/-), close-project.sh (+147), resurrect-view.py (+61), and the two SKILL.md files."
+  - "ls -la .claude/scripts/resurrection/ and .claude/scripts/tests/ — confirmed exact byte sizes and mtimes (all 2026-08-05, ~11:09-11:38 local) of the 4 new library modules and 4 new test files."
+  - "Read (full) .claude/scripts/resurrection/knowledge_lib.py, windows_lib.py, bundles_lib.py, backfill-knowledge.py module docstrings — established purpose, D1-D16 mapping, and the specific 2026-08-05 live-bug observation quoted in bundles_lib.py."
+  - "/usr/bin/python3 .claude/scripts/tests/test_resurrection_knowledge.py, test_resurrection_reentry.py, test_resurrection_windows.py, test_resurrection_book.py — ran directly (pytest is not installed on this machine; `python3 -m pytest` fails with 'No module named pytest'). Result: 29+13+26+9 = 77 tests, all OK."
+  - "/usr/bin/python3 knowledge_lib.py --selftest and windows_lib.py --selftest (isolated --home tmp dirs) — both ALL PASSED. bundles_lib.py --selftest errored on my own invocation (mkdtemp into a non-existent parent dir I hadn't created) — a harness mistake on my part, not a code defect; bundles_lib.py is otherwise fully exercised and passing via test_resurrection_reentry.py's 13 tests, including the explicit MW-A regression guard."
+  - "grep -n 'focus\\|open another\\|D11\\|already open' .claude/scripts/resurrection/adopt-project.sh and git diff -- .claude/skills/acos-resurrect/SKILL.md — confirmed the D11 focus-vs-open-another choice is implemented via a new --additional-window flag on adopt-project.sh plus a rewritten Step 3 in the SKILL.md, explaining why launch-project.sh was left unchanged."
+  - "ls -la ~/.acos/knowledge/ and ~/.acos/knowledge/333ef731-c21c-4944-b8e9-7d3f3a6556c1/ + head -3 on its facts.jsonl — confirmed KB-D backfill --write already ran for real (18 project-uuid directories, mtimes 2026-08-05 11:31-11:38; the Resurrection Protocol project's own store holds 25 real facts sourced from a named 2026-07-20 handoff)."
+  - "cd .../resurrection && /usr/bin/python3 backfill-knowledge.py (no --write, preview mode, non-destructive) — reproduced the exact 17-projects/30-bundles/421-candidates/361-would-write/60-dropped-by-cap figures cited above."
+  - "grep -rn 'TODO|FIXME|XXX' across the 4 new library files — only one incidental match (a string literal list of shouted-English exception words in knowledge_lib.py, not an actual pending-work marker)."
+  - "Read memory/handoffs/2026-08-04-emergency-handoff.yaml (full, 135 lines) and memory/handoffs/2026-08-04-resurrection-knowledge-and-multiwindow.yaml (full, 282 lines) — established the design brief this session implements against, the D1-D16 decision contract, and confirmed the prior (OKOA Works) session's own account of what was and wasn't built as of 2026-08-04."
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, memory/handoffs/*.yaml + *.md (excluding *.resume.md), .acos/state/, memory/handoffs/closed/2026-08-03-Git-Management-close/, memory/handoffs/closed/2026-08-04-OKOA-Works-close/ — confirmed no planning-hierarchy artifact, evidence bundle, or decision file dated today; the closed/ bundles are the ones being read by the KB-D backfill."
+  - "tail on .acos/state/agent-lifecycle.log — found the exact SPAWN line for this handoff-agent invocation (session=dcda8fe9-db87-4b6f-b35b-5fab1f2f55f1, 2026-08-05T17:43:05Z), used as this handoff's session_id; also confirmed the prior handoff-agent spawn (session=ae549284-..., 2026-08-05T01:37:37Z) belongs to the earlier, separate OKOA Works session, not this one."
+  - "ls -la ~/.claude/skills/acos-payoff-letter/(+scripts/), ~/.claude/skills/conclude/(+scripts/), '/Users/zee/Documents/OKOA/True American 1203 Pearson Payoff/', '/Users/zee/Documents/OKOA/AVM - Fontana and Huntington Beach/' — independently verified every file the invoking user described for the 2026-08-04 payoff-letter/AVM/conclude thread, confirming existence, byte sizes, and mtimes."
+  - "grep -n 'payoff|conclude' ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md — confirmed the live MEMORY.md file (as opposed to the possibly-stale snapshot injected into this session's context) already carries the project_acos_payoff_letter and reference_okoa_payoff_letter_facts pointer lines."
