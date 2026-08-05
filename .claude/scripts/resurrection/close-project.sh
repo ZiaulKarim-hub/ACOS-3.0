@@ -3,7 +3,16 @@
 #
 # Interface:
 #   close-project.sh --intent-file <path> --session-id <sid>
-#                    [--roundtrip-result <path>] [--auto-close] [--dry-run]
+#                    [--roundtrip-result <path>] [--learnings-file <path>]
+#                    [--auto-close] [--dry-run]
+#
+# --learnings-file is the KB-A capture loop (user brief 2026-08-04). It takes a
+# JSON array of candidate learnings the SESSION composed — the Kind-1/Kind-2
+# sort is a judgement, exactly like the intent core, so the session makes it and
+# this script gates it. Kind 1 (machine-verifiable) is written silently and
+# always; Kind 2 (Zee's own rulings) is never written here, only reported back
+# so the session can ask him, capped at 2 questions. Omitting the flag closes
+# exactly as before — capture is additive and never blocks a close.
 # Env overrides (tests only):
 #   RESURRECTION_STATE_DIR    daemon state dir (default ~/Library/Application Support/acos-token-monitor/state)
 #   ACOS_REGISTRY_HOME        registry home override (never the real ~ in tests)
@@ -20,6 +29,7 @@ set -u
 CLOSE_INTENT_FILE=""
 CLOSE_SESSION_ID=""
 CLOSE_ROUNDTRIP=""
+CLOSE_LEARNINGS=""
 CLOSE_AUTO=0
 CLOSE_DRY=0
 while [ $# -gt 0 ]; do
@@ -27,12 +37,13 @@ while [ $# -gt 0 ]; do
     --intent-file)      CLOSE_INTENT_FILE="${2:-}"; shift 2 ;;
     --session-id)       CLOSE_SESSION_ID="${2:-}";  shift 2 ;;
     --roundtrip-result) CLOSE_ROUNDTRIP="${2:-}";   shift 2 ;;
+    --learnings-file)   CLOSE_LEARNINGS="${2:-}";   shift 2 ;;
     --auto-close)       CLOSE_AUTO=1; shift ;;
     --dry-run)          CLOSE_DRY=1;  shift ;;
     *) echo "NOT SAFE — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-export CLOSE_INTENT_FILE CLOSE_SESSION_ID CLOSE_ROUNDTRIP CLOSE_AUTO CLOSE_DRY
+export CLOSE_INTENT_FILE CLOSE_SESSION_ID CLOSE_ROUNDTRIP CLOSE_LEARNINGS CLOSE_AUTO CLOSE_DRY
 CLOSE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export CLOSE_LIB_DIR
 
@@ -73,6 +84,7 @@ DIRTY_LIST_CAP = 200
 INTENT = os.environ.get("CLOSE_INTENT_FILE", "")
 SID = os.environ.get("CLOSE_SESSION_ID", "")
 ROUNDTRIP = os.environ.get("CLOSE_ROUNDTRIP", "")
+LEARNINGS = os.environ.get("CLOSE_LEARNINGS", "")
 AUTO = os.environ.get("CLOSE_AUTO", "0") == "1"
 DRY = os.environ.get("CLOSE_DRY", "0") == "1"
 ROOT = os.path.abspath(os.environ.get("RESURRECTION_PROJECT_ROOT") or os.getcwd())
@@ -424,8 +436,27 @@ def main():
             ROOT = _tagged["root"]
 
     name = ws_name or os.path.basename(ROOT.rstrip(os.sep))
-    slug = "%s-%s-close" % (date, re.sub(r"[^A-Za-z0-9._-]+", "-", name))
-    closed_dir = os.path.join(ROOT, "memory", "handoffs", "closed", slug)
+    # MW-A2 (found while testing MW-A, 2026-08-05): the slug was date+name only,
+    # so TWO WINDOWS of one project closing on the SAME DAY produced the SAME
+    # bundle directory — the second close overwrote the first window's
+    # handoff.yaml and .reentry.md and DESTROYED it. Silent: exit 0, no warning.
+    # MW-A cannot rescue that; the note is gone before adopt ever scans. So a
+    # bundle directory is NEVER reused: suffix until free. The probe is
+    # read-only, so --dry-run reports the slug the real run would use.
+    base_slug = "%s-%s-close" % (date, re.sub(r"[^A-Za-z0-9._-]+", "-", name))
+    closed_parent = os.path.join(ROOT, "memory", "handoffs", "closed")
+    slug = base_slug
+    _seq = 1
+    while os.path.exists(os.path.join(closed_parent, slug)):
+        _seq += 1
+        slug = "%s-%d" % (base_slug, _seq)
+    bundle_collision_note = None
+    if slug != base_slug:
+        bundle_collision_note = (
+            "BUNDLE COLLISION — %s already exists (an earlier close of this project, same day). "
+            "Writing %s instead so the earlier window's reentry note is NOT overwritten."
+            % (base_slug, slug))
+    closed_dir = os.path.join(closed_parent, slug)
     handoff_path = os.path.join(closed_dir, "handoff.yaml")
     reentry_path = os.path.join(closed_dir, "%s.reentry.md" % slug)
     stop_marker = os.path.join(STATE_DIR, "stop-%s" % SID)
@@ -435,6 +466,10 @@ def main():
     # a silent surprise.
     if adopted_root_note:
         print(adopted_root_note)
+    # Same rule for a bundle collision: a close that lands in a different folder
+    # than its name implies must never be a silent surprise, dry or real.
+    if bundle_collision_note:
+        print(bundle_collision_note)
 
     # Step 10 semantics: --dry-run stops BEFORE any write, including step 0.
     if DRY:
@@ -549,8 +584,21 @@ def main():
     ws_id = None
     ws_count = None
     last_ws = False
+    # D14: the LIVE workspace ids, kept for step 7. Closing ONE window must not
+    # park a project other windows are still working in.
+    live_ws_ids = None
     if SKIP_CMUX:
         emit("step 5  workspace validation SKIPPED (RESURRECTION_SKIP_CMUX=1) — sandbox mode")
+        # Tests-only seam, same family as RESURRECTION_SKIP_CMUX / _PROJECT_ROOT:
+        # sandbox mode has no cmux, so D14's "is this the LAST window" path is
+        # otherwise unreachable and would ship untested. Ignored entirely
+        # outside sandbox mode — the real run always uses the live list above.
+        fake = os.environ.get("RESURRECTION_FAKE_WORKSPACE_IDS", "")
+        if fake:
+            live_ws_ids = [x.strip() for x in fake.split(",") if x.strip()]
+            ws_id = os.environ.get("CMUX_WORKSPACE_ID") or (live_ws_ids[0] if live_ws_ids else None)
+            emit("        sandbox liveness: %d fake workspace id%s, this one=%s"
+                 % (len(live_ws_ids), "" if len(live_ws_ids) == 1 else "s", ws_id))
     else:
         ws_id = os.environ.get("CMUX_WORKSPACE_ID", "")
         if not ws_id:
@@ -563,6 +611,7 @@ def main():
         except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError) as exc:
             refuse("workspace unvalidatable: workspace.list failed (%s: %s) — fail closed" % (type(exc).__name__, exc))
         ids = [w.get("id") for w in workspaces]
+        live_ws_ids = [i for i in ids if i]
         if ws_id not in ids:
             refuse("workspace unvalidatable: CMUX_WORKSPACE_ID %s not in workspace.list "
                    "(listed %d of %d workspaces) — set-but-dead env; fail closed" % (ws_id, len(ids), len(ids)))
@@ -648,9 +697,30 @@ def main():
             elif not os.path.exists(pid_path):
                 os.makedirs(os.path.dirname(pid_path), exist_ok=True)
                 write_file(pid_path, project_uuid + "\n")
+    # D14 — closing ONE window does not park the project. The row stays active
+    # while any other window is open, and parks only when the LAST one closes.
+    # Parking early would put a project Zee is still working in back on the
+    # shelf, and the other window's book row would go quiet under him.
+    close_status = "parked"
+    other_windows_open = []
+    try:
+        import windows_lib
+        windows_lib.release_window(project_uuid, ws_id, home=REG_HOME)
+        # is_last_window, NOT a bare other_windows count: it is the one place
+        # that answers UNKNOWN liveness conservatively (park, the pre-multi-
+        # window behaviour) instead of leaving rows active forever whenever
+        # cmux cannot be read.
+        if not windows_lib.is_last_window(project_uuid, ws_id, live_ws_ids, home=REG_HOME):
+            close_status = "active"
+            other_windows_open = windows_lib.other_windows(project_uuid, ws_id,
+                                                           live_ws_ids, home=REG_HOME)
+    except (ImportError, OSError, ValueError) as exc:
+        emit("        WARN window manifest unreadable (%s) — parking as usual (D14 "
+             "falls back to the pre-multi-window behaviour)" % exc)
+
     last_close = {"at": now_iso, "handoff_path": handoff_path, "reentry_path": reentry_path,
                   "sha256": got_h, "next_action": next_action}
-    fields = {"project_uuid": project_uuid, "root": ROOT, "status": "parked",
+    fields = {"project_uuid": project_uuid, "root": ROOT, "status": close_status,
               "last_close": last_close, "last_session_id_hint": SID}
     if ws_name:
         fields["workspace_name"] = ws_name
@@ -658,10 +728,31 @@ def main():
         fields["git"] = {"branch": git["branch"], "head": git["head"], "dirty_count": git["dirty_count"]}
     registry_lib.upsert_row(fields, home=REG_HOME)
     back = registry_lib.load_row(project_uuid, home=REG_HOME)
-    if (back is None or back["status"] != "parked" or back["last_close"] is None
+    if (back is None or back["status"] != close_status or back["last_close"] is None
             or back["last_close"]["sha256"] != sha256_file(handoff_path)):
-        refuse("registry read-back failed: row missing, not parked, or last_close.sha256 does not match the on-disk handoff")
+        refuse("registry read-back failed: row missing, status is not %r, or last_close.sha256 "
+               "does not match the on-disk handoff" % close_status)
     emit("step 7  registry row %s status=%s last_close.sha256 MATCH (read back)" % (project_uuid, back["status"]))
+    if other_windows_open:
+        emit("        D14: %d other window%s still open on this project — row stays ACTIVE; "
+             "it parks when the LAST window closes"
+             % (len(other_windows_open), "" if len(other_windows_open) == 1 else "s"))
+        for o in other_windows_open:
+            emit("          still open: %s" % windows_lib.describe(o))
+    # Owner marker (MW-A, user brief 2026-08-04). adopt-project.sh must be able
+    # to tell WHOSE note this bundle holds: several projects share one root (19
+    # share this repo's), so a folder-wide scan cannot. Written here, after the
+    # uuid is definitively known and AFTER the sha256-gated files — it is a
+    # sibling of handoff.yaml, never part of it, so no gate hash changes.
+    # Failure is non-fatal: adopt falls back to slug matching, which is what
+    # every pre-marker bundle already relies on.
+    owner_marker = os.path.join(closed_dir, ".project-uuid")
+    try:
+        write_file(owner_marker, project_uuid + "\n")
+        emit("        owner marker: .project-uuid = %s (read back: %s)"
+             % (project_uuid, open(owner_marker).read().strip()))
+    except (OSError, IOError) as exc:
+        emit("        WARN owner marker NOT written (%s) — adopt will fall back to slug matching" % exc)
     emit("        identity: %s" % (("(root, sidebar %r)" % ws_name) if ws_name else "folder-level (no sidebar name)"))
     if enrolled_at_close:
         emit("        NOTE: row was ABSENT at close — enrolled now (SessionStart enrollment should have created it)")
@@ -671,6 +762,48 @@ def main():
                                "slug": slug, "handoff_sha256": got_h,
                                "roundtrip_verdict": verdict}, home=REG_HOME)
     emit("step 8  audit: close event appended to registry-audit.jsonl")
+
+    # Step 8b — KB-A capture loop (user brief 2026-08-04). Additive and LAST:
+    # the close is already safe by this point, so nothing here can turn a good
+    # close into a failed one. Every failure path below reports and continues.
+    if LEARNINGS:
+        try:
+            import knowledge_lib
+            with open(LEARNINGS, "r", encoding="utf-8") as fh:
+                candidates = json.load(fh)
+            if not isinstance(candidates, list):
+                raise ValueError("learnings file must be a JSON array, got %s"
+                                 % type(candidates).__name__)
+            prov = {"window": ws_name or "(folder-level)", "session": SID, "close_slug": slug}
+            rep = knowledge_lib.write_learnings(project_uuid, candidates,
+                                                provenance=prov, home=REG_HOME)
+            emit("step 8b knowledge: %d written, %d already known, %d refused, "
+                 "%d to ask, %d dropped"
+                 % (len(rep["written"]), len(rep["duplicate"]), len(rep["refused"]),
+                    len(rep["ask"]), len(rep["dropped"])))
+            for w in rep["written"]:
+                emit("        wrote: %s" % w["claim"][:96])
+            for r in rep["refused"]:
+                emit("        REFUSED (no write): %s — %s" % (r["claim"][:60], r["reason"][:90]))
+            for d in rep["dropped"]:
+                emit("        DROPPED: %s — %s" % (d["claim"][:60], d["reason"]))
+            if rep["ask"]:
+                # Kind 2 is NEVER written by this path (D4). The session asks Zee
+                # in plain language and calls knowledge_lib.confirm_ruling on yes.
+                emit("        ASK ZEE (%d, cap %d) — not written until he answers:"
+                     % (len(rep["ask"]), knowledge_lib.KIND2_QUESTION_CAP))
+                for a in rep["ask"]:
+                    emit("          - %s" % a["claim"][:96])
+            # NOTE: the close deliberately does NOT advance the "last seen"
+            # watermark. Only a reopen does, because that is when Zee actually
+            # READS the digest. Stamping it here would mark facts seen before he
+            # ever saw them and D5d's after-the-fact review would show an empty
+            # list forever — which is exactly how the old mining loop went quiet.
+        except (OSError, ValueError, ImportError) as exc:
+            emit("step 8b knowledge: SKIPPED — %s: %s (the close itself is unaffected)"
+                 % (type(exc).__name__, exc))
+    else:
+        emit("step 8b knowledge: no --learnings-file given — nothing captured this close")
 
     # Step 9 — the receipt. Every line above was produced from disk read-backs.
     flush_receipt()

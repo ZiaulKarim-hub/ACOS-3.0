@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""test_resurrection_book.py — stdlib unittest for the multi-window book view
+(MW-B, user brief 2026-08-04).
+
+D10 one row per project, carrying a live-window COUNT. Splitting a project
+    into several rows was explicitly rejected — it defeats the point of one
+    accumulating project.
+D12 window names derive from the project name, Zee's wording "OKOA works
+    *label*", so the project name is always the stem and the row identity is
+    never in doubt.
+"""
+
+import importlib.util
+import os
+import sys
+import unittest
+
+_THIS = os.path.dirname(os.path.abspath(__file__))
+_RESDIR = os.path.abspath(os.path.join(_THIS, os.pardir, "resurrection"))
+
+
+def _load_view():
+    """resurrect-view.py has a hyphen in its name, so it is not importable by
+    the normal statement — load it by path."""
+    spec = importlib.util.spec_from_file_location(
+        "resurrect_view", os.path.join(_RESDIR, "resurrect-view.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class WindowLabelTest(unittest.TestCase):
+    """D12: the label is what is left after the project-name stem."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.view = _load_view()
+
+    def label(self, title, project):
+        return self.view.window_label(title, project)
+
+    def test_the_stem_is_stripped_to_leave_the_label(self):
+        self.assertEqual(self.label("OKOA Works Golden East", "OKOA Works"), "Golden East")
+        self.assertEqual(self.label("OKOA Works Flyer", "OKOA Works"), "Flyer")
+
+    def test_the_plain_window_has_no_label(self):
+        self.assertIsNone(self.label("OKOA Works", "OKOA Works"))
+        self.assertIsNone(self.label("okoa works", "OKOA Works"), "match is case-insensitive")
+
+    def test_separators_between_stem_and_label_are_trimmed(self):
+        for sep in (" - ", " — ", ": ", " · "):
+            self.assertEqual(self.label("OKOA Works%sFlyer" % sep, "OKOA Works"), "Flyer")
+
+    def test_an_unrelated_name_is_shown_whole_never_guessed_at(self):
+        """Inventing a label out of a name that does not carry the stem would
+        be inventing a fact about which project a window belongs to."""
+        self.assertEqual(self.label("Something Else", "OKOA Works"), "Something Else")
+
+    def test_a_window_with_no_human_set_name_has_no_label(self):
+        self.assertIsNone(self.label(None, "OKOA Works"))
+        self.assertIsNone(self.label("", "OKOA Works"))
+
+
+class RowDisplayTest(unittest.TestCase):
+    """D10: the count rides on the project's single row."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.view = _load_view()
+
+    def _render(self, project, tier="OPEN NOW"):
+        """render_human on a minimal one-row book. Returns the rendered text."""
+        counts = {t: 0 for t in self.view.TIER_ORDER}
+        counts[tier] = 1
+        book = {
+            "generated_at": "2026-08-05T00:00:00+00:00",
+            "registry_dir": "/tmp/reg", "fresh": "fresh",
+            "liveness": {"procs_skipped": False, "cmux_skipped": False,
+                         "live_session_total": 0, "cmux_workspace_total": 0,
+                         "proc_error": None, "cmux_error": None},
+            "projects": [dict(project, tier=tier)],
+            "unreadable_rows": [], "unmatched_workspaces": [],
+            "tier_counts": counts, "broken_count": 0,
+            "listed": 1, "total": 1,
+        }
+        return self.view.render_human(book, use_color=False)
+
+    def test_render_shows_the_open_count_on_one_row(self):
+        out = self._render({
+            "name": "OKOA Works", "pick_number": 1,
+            "next_action": "do the thing", "age_days": 0.0,
+            "broken": None, "name_drift": None,
+            "live": {"workspace_count": 2, "window_labels": ["Golden East", "Flyer"]},
+        })
+        self.assertIn("OKOA Works (2 open)", out)
+        self.assertIn("windows: Golden East · Flyer", out)
+        self.assertEqual(out.count("OKOA Works"), 1,
+                         "D10: one row per project, never one row per window")
+
+    def test_a_single_labelled_window_reads_in_the_singular(self):
+        out = self._render({
+            "name": "OKOA Works", "pick_number": 1,
+            "next_action": None, "age_days": 0.0,
+            "broken": None, "name_drift": None,
+            "live": {"workspace_count": 1, "window_labels": ["Flyer"]},
+        })
+        self.assertIn("OKOA Works (1 open)", out)
+        self.assertIn("window: Flyer", out)
+        self.assertNotIn("windows:", out)
+
+    def test_a_project_with_no_live_window_shows_no_count(self):
+        out = self._render({
+            "name": "Quiet Project", "pick_number": 1,
+            "next_action": None, "age_days": 3.0,
+            "broken": None, "name_drift": None,
+            "live": {"workspace_count": 0, "window_labels": []},
+        }, tier="RECENT")
+        self.assertIn("Quiet Project", out)
+        self.assertNotIn("open)", out)
+        self.assertNotIn("window", out)
+
+    def test_broken_and_name_drift_notes_still_show_alongside_windows(self):
+        """Hard rule: facts are never hidden. Adding the window sub-line must
+        not have displaced the existing warning sub-lines."""
+        out = self._render({
+            "name": "Trouble", "pick_number": 1,
+            "next_action": None, "age_days": 1.0,
+            "broken": "root directory missing: /gone",
+            "name_drift": ["saved name no longer matches"],
+            "live": {"workspace_count": 2, "window_labels": ["A", "B"]},
+        })
+        self.assertIn("windows: A · B", out)
+        self.assertIn("NAME DRIFT:", out)
+        self.assertIn("BROKEN:", out)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

@@ -332,6 +332,30 @@ def claim_workspaces(rows, workspaces):
     return claims, drift
 
 
+def window_label(custom_title, project_name):
+    """The LABEL part of a window name (MW-B, D12).
+
+    D12 fixes window naming as the project name plus a label — Zee's wording,
+    "OKOA works *label*" — so "OKOA Works Golden East" labels as "Golden East".
+    Keeping the project name as the stem is what makes the row identity
+    unambiguous while several windows are open at once.
+
+    A window named exactly the project name has no label (it is the plain one).
+    A window whose name does not start with the stem is shown whole, unaltered —
+    guessing a label out of an unrelated name would invent a fact.
+    """
+    if not custom_title:
+        return None
+    ct = custom_title.strip()
+    stem = (project_name or "").strip()
+    if stem and ct.casefold() == stem.casefold():
+        return None
+    if stem and ct.casefold().startswith(stem.casefold()):
+        tail = ct[len(stem):].strip(" -–—:·")
+        return tail or None
+    return ct
+
+
 def derive(row, my_sessions, my_ws, folder_sessions, drift_notes, now):
     """All facts for one registry row -> plain dict (json-ready)."""
     handoff, reasons = handoff_facts(row)
@@ -379,7 +403,20 @@ def derive(row, my_sessions, my_ws, folder_sessions, drift_notes, now):
             "folder_session_count": folder_sessions,
             "workspace_count": len(my_ws),
             "workspaces": [
-                {"id": w["id"], "title": w["title"], "ref_hint": w["ref"]} for w in my_ws
+                {"id": w["id"], "title": w["title"], "ref_hint": w["ref"],
+                 "custom_title": w.get("custom_title"),
+                 # MW-B: the label this window carries within the project. None
+                 # for the plain window (named exactly the project).
+                 "label": window_label(w.get("custom_title"), row["name"])}
+                for w in my_ws
+            ],
+            # D10: ONE row per project carrying a window COUNT — splitting a
+            # project into several rows was explicitly rejected, because that
+            # defeats the point of one accumulating project.
+            "window_labels": [
+                lbl for lbl in
+                (window_label(w.get("custom_title"), row["name"]) for w in my_ws)
+                if lbl
             ],
         },
         "handoff": handoff,
@@ -530,9 +567,18 @@ def render_human(book, use_color):
     # count, liveness detail and handoff links all remain in --json — this is a
     # DISPLAY trim, never a data trim. BROKEN + NAME DRIFT stay (hard rules:
     # facts are never hidden), rendered as indented sub-notes under their row.
+    # MW-B / D10: a project with live windows shows its COUNT on its ONE row,
+    # e.g. "OKOA Works (2 open)". The count is part of the display name so it
+    # sits where Zee reads the project, not in a separate column he has to scan
+    # for. Labels go on a sub-line — they are variable-length and must never be
+    # truncated into ambiguity.
+    def _disp(p):
+        n = p["live"]["workspace_count"] if p.get("live") else 0
+        return "%s (%d open)" % (p["name"], n) if n else p["name"]
+
     pickable = [p for p in book["projects"] if p.get("pick_number")]
     num_w = max((len(str(p["pick_number"])) for p in pickable), default=1)
-    name_w = min(max([len(p["name"]) for p in book["projects"]] + [12]), 34)
+    name_w = min(max([len(_disp(p)) for p in book["projects"]] + [12]), 40)
     next_w = 52
 
     def _fit(text, width):
@@ -549,13 +595,22 @@ def render_human(book, use_color):
         for p in rows:
             num = p.get("pick_number")
             gutter = ("%*d." % (num_w, num)) if num else (" " * num_w + " ")
-            name = _fit(p["name"], name_w).ljust(name_w)
+            name = _fit(_disp(p), name_w).ljust(name_w)
             nxt = ("next: %s" % p["next_action"]) if p["next_action"] else "next: —"
             nxt = _fit(nxt, next_w).ljust(next_w)
             age = _age_str(p["age_days"])
             age_s = c(AMBER, "age %s" % age) if p["age_days"] >= AMBER_DAYS else "age %s" % age
             lines.append("  %s %s  %s  %s" % (gutter, name, nxt, age_s))
             sub_indent = " " * (num_w + 4)
+            # MW-B: name the windows so two open threads are distinguishable at
+            # a glance. Only when there is something to distinguish — a single
+            # plain window adds no information and would just be noise.
+            labels = (p.get("live") or {}).get("window_labels") or []
+            wcount = (p.get("live") or {}).get("workspace_count") or 0
+            if labels and wcount > 1:
+                lines.append(sub_indent + "windows: %s" % " · ".join(labels))
+            elif labels and wcount == 1:
+                lines.append(sub_indent + "window: %s" % labels[0])
             if p.get("name_drift"):
                 lines.append(sub_indent + c(AMBER, "NAME DRIFT: %s" % "; ".join(p["name_drift"])))
             if p["broken"]:

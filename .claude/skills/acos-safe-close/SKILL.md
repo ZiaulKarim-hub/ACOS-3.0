@@ -132,6 +132,57 @@ INTENT
 
 Keep `next_action:` as the first line — the script takes the first matching line.
 
+## Step 2b — Compose this session's LEARNINGS (KB-A, optional but expected)
+
+The intent core answers "where was I". This answers "what do I now know" — a
+different job, kept in a different place (`~/.acos/knowledge/<project_uuid>/`),
+and never merged into the handoff. Skip the file entirely and the close behaves
+exactly as it always did.
+
+**You do the sorting; the script gates it.** For each durable thing this session
+learned, decide which kind it is:
+
+- **Kind 1 `"machine"`** — a MACHINE could check it. File paths, file counts,
+  a command that worked, a render trap, a library quirk. These are written
+  **silently, always**. Zee is never asked.
+- **Kind 2 `"ruling"`** — Zee's own call. Business policy, naming, what may
+  leave the building, a deal fact only he holds. These are **never written
+  here**; the script hands them back and you ask him in plain language about
+  the DECISION, not the mechanism — at most **two** questions, ever.
+  - Good: "You said we never print LendSure on broker material. Standing rule?"
+  - Bad: "Record that break-before:page yields blank pages in WeasyPrint?"
+
+**When the sorter is unsure, choose `ruling`.** An unasked Kind 2 is dropped;
+a wrongly auto-written Kind 1 enters the store without Zee seeing it.
+
+Every fact needs `evidence` or it is refused — no working shown, no write. Add
+`checks` when the claim names a count, a path or a date, so it is re-verified on
+every resurrect instead of quietly going stale. Set `"single_valued": true` only
+when the subject holds exactly ONE true claim at a time (a count, a branch); a
+subject like `traps` accumulates and must not be single-valued.
+
+```bash
+cat > "$SCRATCH/safe-close-learnings.json" <<'LEARN'
+[
+  {"kind": "machine", "subject": "<what it is about>",
+   "claim": "<the durable fact, one sentence>",
+   "evidence": {"type": "path|command|quote|observation", "value": "<the proof>"},
+   "checks": [{"type": "file_count", "path": "<dir>", "expect": 0}],
+   "entities": ["<tool or file the fact touches>"],
+   "single_valued": true},
+  {"kind": "ruling", "subject": "<area>", "claim": "<Zee's call>",
+   "evidence": {"type": "quote", "value": "Zee, <date>"}}
+]
+LEARN
+```
+
+Check types are a fixed whitelist — `file_exists`, `file_count`,
+`path_contains`, `value_matches`. A shell command is refused: the store must
+never become a thing that runs code at every resurrect.
+
+If the session learned nothing durable, skip the file. An empty capture is an
+honest outcome; an invented one poisons the store.
+
 ## Step 3 — Dry-run gate (writes nothing, including step 0)
 
 ```bash
@@ -193,8 +244,11 @@ at 5 → DEGRADED). Never edit the answer to make it pass; never write
 ## Step 6 — Final pass + verbatim receipt
 
 ```bash
+LEARN_ARG=""
+[ -f "$SCRATCH/safe-close-learnings.json" ] && \
+  LEARN_ARG="--learnings-file $SCRATCH/safe-close-learnings.json"
 bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
-  --roundtrip-result "$SCRATCH/roundtrip-result.txt" \
+  --roundtrip-result "$SCRATCH/roundtrip-result.txt" $LEARN_ARG \
   > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
 cat "$SCRATCH/close-receipt-final.txt"; echo "exit=$RC"
 ```
@@ -202,10 +256,36 @@ cat "$SCRATCH/close-receipt-final.txt"; echo "exit=$RC"
 (Omit `--roundtrip-result` only when the harness is absent — Step 4 already covered
 that case. The final pass re-runs every script step; its receipt records the
 round-trip verdict. The semantic payload — intent core, `next_action` — is unchanged
-from what the verifier saw.)
+from what the verifier saw. `--learnings-file` is added only if Step 2b wrote one;
+capture runs after the close is already safe and can never turn a good close into a
+failed one, and re-running is harmless because facts are content-addressed.)
 
 Present the receipt to the user as the `cat` output, whole and unmodified, inside one
 fenced block. The SAFE line exists only if the script printed it.
+
+### Step 6b — Put the Kind 2 questions to Zee (at most two)
+
+If the receipt shows an `ASK ZEE (n, cap 2)` block, those rulings were NOT
+written. Ask him about each one in plain language — about the decision, never
+the mechanism — and for every "yes", record it:
+
+```bash
+RES_DIR="$RESDIR" RES_UUID="<project_uuid from the receipt's step 7 line>" \
+RES_CLAIM="<his ruling, one sentence>" RES_SUBJ="<area>" python3 - <<'PY'
+import os, sys
+sys.path.insert(0, os.environ["RES_DIR"])
+import knowledge_lib
+fid, written = knowledge_lib.confirm_ruling(
+    os.environ["RES_UUID"],
+    {"subject": os.environ["RES_SUBJ"], "claim": os.environ["RES_CLAIM"],
+     "evidence": {"type": "quote", "value": "Zee confirmed at close"}},
+    home=os.environ.get("ACOS_REGISTRY_HOME") or None)
+print("ruling recorded:" if written else "already known:", fid)
+PY
+```
+
+A "no" writes nothing — and that is the whole point of asking. Never record a
+ruling he did not give, and never re-ask past the cap.
 
 ## Step 7 — Relay the outcome
 

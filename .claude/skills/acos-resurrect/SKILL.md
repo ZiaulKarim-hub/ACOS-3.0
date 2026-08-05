@@ -162,13 +162,13 @@ relay its refusal).
   Option label = the project name. Option description must be SELF-CONTAINED:
   tier, age, dirty count, and the row's `next_action` verbatim — the user
   decides from the description alone. Mention in the question text that the
-  loop verbs `finish <project>`, `tombstone <project>`, and `curate` are also
+  loop verbs `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, and `curate` are also
   accepted as a typed reply.
 - **> 4 pickable projects:** ask for a free-text pick — by name, or by the
   printed NUMBER next to the row. The renderer prints an explicit pick number
   (the left gutter) on every pickable row and carries the same integer as
   `pick_number` in `book.json`; ARCHIVED rows have no number. The verbs
-  `finish <project>`, `tombstone <project>`, and `curate` are accepted here too.
+  `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, and `curate` are accepted here too.
 
 When the book's `UNMATCHED WORKSPACES` section is non-empty, say so in the
 question text and offer `add <workspace name>` as an accepted reply — that is
@@ -181,13 +181,28 @@ renderer already assigned the number the user sees). A NAME reply → casefolded
 name match. Ambiguous → list the exact candidates and ask again. NEVER guess
 between two plausible rows.
 
-## Step 3 — Already open elsewhere? Jump to that tab (relay verbatim)
+## Step 3 — Already open elsewhere? ASK, then jump or open a second window
 
 The ONLY thing that routes a pick away from this tab is the pick already being
 live somewhere else. Read the picked row's `live.workspaces` from `book.json`
 (the fresh render from Step 1). If it is non-empty AND none of those workspace
-ids equals `$CMUX_WORKSPACE_ID`, the project is open in another tab — focus it
-and stop:
+ids equals `$CMUX_WORKSPACE_ID`, the project is open in another tab.
+
+**ASK ZEE WHICH — do not choose for him (user decision D11, 2026-08-04).** The
+one-project-one-tab guard STAYS the default; what changed is that he gets the
+choice instead of being forced. Put it as an AskUserQuestion with both options
+described in full:
+
+- **Focus that window** — continue the work where it already is. This is the
+  default and the safe answer. Run the launcher block below.
+- **Open a second window on the same project** — several windows on ONE project
+  is a supported mode (D9). Both share one registry row, one book entry with a
+  live-window count (D10), and one knowledge store (D13). Go to Step 4 and add
+  `--additional-window`, plus `--label <name>` so the new tab is
+  "<project> <label>" and the two are tellable apart in the sidebar (D12).
+  Without a label the script numbers it and says so.
+
+Only after he answers "focus" do you run this:
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/launch-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
@@ -214,6 +229,8 @@ strand the user, which is the defect this routing exists to prevent.
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/adopt-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+# Add --additional-window --label "<name>" ONLY when Zee chose a second window
+# in Step 3. Never on your own initiative — the guard is the default (D11).
 bash "$RESDIR/adopt-project.sh" --project "<project_uuid>" > "$SCRATCH/adopt-out.txt" 2>&1; RC=$?
 cat "$SCRATCH/adopt-out.txt"; echo "exit=$RC"
 ```
@@ -224,6 +241,22 @@ check, the outgoing `active -> parked` release, the sidebar rename, the
 `[key:<uuid>]` tag round-trip, the picked row's `parked/completed -> active`
 flip, the reentry resolution, and the audit event. Repeat none of it, and
 NEVER perform any of those steps yourself if the script declined to.
+
+The receipt now also carries four blocks that are part of the pick — read them,
+do not summarise them away:
+
+- **`owned reentry notes`** — every UNREAD note belonging to THIS project, not
+  just the newest in the folder (MW-A). When more than one is unread, several
+  windows left work behind: **read every UNREAD path**, not only the first.
+  Each note states how it was matched; a line saying `HEURISTIC` was matched by
+  name, not proof, so treat it as the weaker claim it says it is.
+- **`knowledge:`** — the index plus "learned since you were last here" (KB-B).
+  Offer Zee the strike: any line he disagrees with can be struck by name, and
+  striking hides it without deleting it.
+- **`STALE`** — stored facts that no longer match the disk (KB-C). Nothing is
+  auto-corrected. Say which ones drifted and ask before rewriting any of them.
+- **`OTHER WINDOWS ON THIS PROJECT`** — what the other live windows are doing
+  (MW-C). Read it before starting, so two windows do not do the same work.
 
 Read the exit code, then act:
 
@@ -237,8 +270,11 @@ Read the exit code, then act:
   has no close record and adopting would release it with unsaved reentry state.
   Relay the line, then offer exactly two options: run `/acos-safe-close` on that
   project first, or pick that project instead. Never override the gate.
-- **exit 4 / already open** → the picked project is live in another workspace.
-  Relay the refusal, then run Step 3's launcher block to focus that tab.
+- **exit 4 / `ALREADY OPEN`** → the picked project is live in another workspace.
+  Relay the refusal, then ASK Zee which he wants (D11, Step 3): focus that
+  window, or open a second one here with `--additional-window --label <name>`.
+  Never pick for him, and never re-run with `--additional-window` unless he
+  said so in this conversation.
 - **`REFUSED — ...` (exit 1/2)** → that line is the outcome; STOP, no workaround.
   A `SET-BUT-DEAD` refusal means cmux restarted under this session: the tab this
   process thinks it is in no longer exists, and nothing can be adopted into it.
@@ -329,6 +365,46 @@ PY
 ```
 
 After the add, re-render the book (Step 1) so the user sees the new row fresh.
+
+### strike <the line he objects to>
+
+D5d, the review-AFTER rule: Zee is an EDITOR of the knowledge store, not a
+gatekeeper of it. When he objects to a line in the `learned since you were last
+here` digest, strike it. A strike is an edge, never a delete — the row stays on
+disk and the strike is auditable, so a wrong strike is undoable.
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/knowledge_lib.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+RES_DIR="$RES_DIR" RES_UUID="<project_uuid>" RES_FACT="<fact id from the digest>" python3 - <<'PY'
+import os, sys
+sys.path.insert(0, os.environ["RES_DIR"])
+import knowledge_lib
+u, f = os.environ["RES_UUID"], os.environ["RES_FACT"]
+home = os.environ.get("ACOS_REGISTRY_HOME") or None
+knowledge_lib.strike_fact(u, f, reason="struck by Zee on resurrect", home=home)
+print("struck:", f, "— still on disk:",
+      any(x["id"] == f for x in knowledge_lib.load_facts(u, home)),
+      "— now hidden:", f not in {x["id"] for x in knowledge_lib.live_facts(u, home)})
+PY
+```
+
+Strike ONLY the line he named. Never strike on your own initiative, and never
+batch-strike — the store's value is that it accumulates.
+
+### merge <window> into <window>
+
+MW-D. Two windows of one project that converged onto the same work. Folds the
+source window's thread into the target and releases the source's claim. Knowledge
+is NOT touched: both windows already write into the same per-project store with
+their label as provenance (D13), so there is nothing to move.
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/windows_lib.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+python3 "$RES_DIR/windows_lib.py" --project "<project_uuid>" \
+  --workspace "<target workspace id>" --merge-from "<source workspace id>"
+```
+
+`REFUSED` means one of them never claimed the project — relay it and stop.
 
 ### curate
 
