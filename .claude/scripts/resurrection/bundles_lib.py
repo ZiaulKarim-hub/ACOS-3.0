@@ -27,6 +27,13 @@ so a HEURISTIC match is visible AS a heuristic and never passes for certainty:
      correct for each project's most recent close.
   3. slug match: <date>-<Name>-close against the row's name, punctuation
      flattened. Bundles written before the marker existed have nothing else.
+     THIS RUNG REFUSES when the name points at more than one live row. Several
+     projects can share one folder, and two rows can carry the same display
+     name, so a name is not identity — it is only a last-resort hint, and a
+     hint that points two ways is no hint at all. Measured harm before this
+     refusal existed: both "FruitSync" rows claimed the same two bundles and
+     were seeded the same 22 facts. Closing such a project once writes its
+     .project-uuid marker and retires the guessing for good.
 
 Constraints: stdlib only, python 3.9.6. Python (not TypeScript/Rust) because
 it is imported by the embedded python body of adopt-project.sh, which is fixed
@@ -82,8 +89,45 @@ def slug_name(bundle_dir):
     return m.group("name") if m else None
 
 
-def bundle_owner(bundle_dir, row):
-    """(owns: bool, evidence: str) — does `row` own this bundle?"""
+def ambiguous_names(home=None):
+    """Display names shared by MORE THAN ONE live row, casefolded.
+
+    Several projects can live in one folder, and two rows can carry the same
+    display name — measured on the real registry: two 'FruitSync' rows and two
+    'Website-builder' rows. A name that points at two rows cannot identify
+    either of them, so the name rung below must REFUSE on these rather than
+    pick one. Guessing here mis-files a whole project's history.
+    """
+    try:
+        import registry_lib
+    except ImportError:
+        return frozenset()
+    counts = {}
+    d = registry_lib.registry_dir(home)
+    try:
+        files = os.listdir(d)
+    except OSError:
+        return frozenset()
+    for fn in sorted(files):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            row = registry_lib.load_row(fn[:-5], home)
+        except (ValueError, OSError):
+            continue
+        if row is None or row["status"] == "tombstoned":
+            continue
+        k = slug_key(row.get("name"))
+        counts[k] = counts.get(k, 0) + 1
+    return frozenset(k for k, n in counts.items() if n > 1)
+
+
+def bundle_owner(bundle_dir, row, shared_names=frozenset()):
+    """(owns: bool, evidence: str) — does `row` own this bundle?
+
+    `shared_names` is the set from ambiguous_names(): display names that point
+    to more than one live row. The name rung refuses on those.
+    """
     marker = read_text(os.path.join(bundle_dir, OWNER_MARKER))
     if marker:
         return (marker.casefold() == row["project_uuid"].casefold(),
@@ -93,17 +137,30 @@ def bundle_owner(bundle_dir, row):
         return True, "registry last_close.reentry_path"
     name = slug_name(bundle_dir)
     if name and slug_key(name) == slug_key(row.get("name")):
+        # A name shared by two live rows identifies neither. Refuse rather than
+        # hand one project another's history — measured harm: both 'FruitSync'
+        # rows claimed the same two bundles and were seeded the same 22 facts.
+        if slug_key(row.get("name")) in shared_names:
+            return False, ("name %r is shared by more than one live row — refusing to "
+                           "guess; close this project once to write its %s marker"
+                           % (row.get("name"), OWNER_MARKER))
         return True, "slug name match (HEURISTIC — bundle predates %s)" % OWNER_MARKER
     return False, "no owner evidence"
 
 
-def collect_reentries(root, row):
+def collect_reentries(root, row, home=None, shared_names=None):
     """Every .reentry.md under closed/ that belongs to THIS project, newest first.
 
     Returns (notes, closed_dir_path). Each note: path, bundle, evidence,
     consumed, mtime. Notes owned by OTHER projects are excluded — that
     exclusion is the whole point.
+
+    `shared_names` defaults to the live registry's ambiguous display names, so
+    the weakest rung of the ownership ladder never resolves a name that points
+    at two rows. Pass an explicit set to control it (tests do).
     """
+    if shared_names is None:
+        shared_names = ambiguous_names(home)
     cdir = closed_dir(root)
     notes = []
     for dirpath, _dirnames, filenames in os.walk(cdir):
@@ -112,7 +169,7 @@ def collect_reentries(root, row):
             if not fn.endswith(REENTRY_SUFFIX):
                 continue
             if owns is None:
-                owns, evidence = bundle_owner(dirpath, row)
+                owns, evidence = bundle_owner(dirpath, row, shared_names)
             if not owns:
                 continue
             p = os.path.join(dirpath, fn)
@@ -127,14 +184,14 @@ def collect_reentries(root, row):
     return notes, cdir
 
 
-def resolve_reentry(root, row):
+def resolve_reentry(root, row, home=None, shared_names=None):
     """(primary_path_or_None, source_note, notes) — project-filtered and merged.
 
     `primary` keeps the single-path contract callers already rely on: the
     NEWEST UNREAD note owned by this project. `notes` carries the rest, so
     nothing is hidden by recency.
     """
-    notes, cdir = collect_reentries(root, row)
+    notes, cdir = collect_reentries(root, row, home, shared_names)
     unread = [n for n in notes if not n["consumed"]]
     if unread:
         return unread[0]["path"], (

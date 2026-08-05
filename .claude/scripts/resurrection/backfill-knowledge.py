@@ -148,8 +148,14 @@ def facts_from_bundle(bundle_dir, root):
     return out
 
 
-def backfill_project(row, write, home=None, cap=PER_PROJECT_CAP):
-    """Seed ONE project. Returns a report dict — printed by the caller."""
+def backfill_project(row, write, home=None, cap=PER_PROJECT_CAP, shared_names=None):
+    """Seed ONE project. Returns a report dict — printed by the caller.
+
+    `shared_names` carries the registry's ambiguous display names so the
+    name rung of ownership refuses where a name points at two rows.
+    """
+    if shared_names is None:
+        shared_names = bundles_lib.ambiguous_names(home)
     root = row["root"]
     rep = {"name": row["name"], "uuid": row["project_uuid"], "bundles": 0,
            "candidates": 0, "written": 0, "duplicate": 0, "refused": 0,
@@ -159,7 +165,7 @@ def backfill_project(row, write, home=None, cap=PER_PROJECT_CAP):
 
     candidates = []
     for bundle in bundles_lib.iter_bundles(root):
-        owns, _evidence = bundles_lib.bundle_owner(bundle, row)
+        owns, _evidence = bundles_lib.bundle_owner(bundle, row, shared_names)
         if not owns:
             continue
         rep["bundles"] += 1

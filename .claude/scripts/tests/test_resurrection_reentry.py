@@ -144,6 +144,40 @@ class ReentryOwnershipTest(unittest.TestCase):
         primary, _src, _notes = self.ns["resolve_reentry"](self.root, self.alpha)
         self.assertNotEqual(primary, old_pick)
 
+    def test_a_name_shared_by_two_rows_resolves_nothing(self):
+        """A display name is NOT identity. Several projects can share one
+        folder, and two rows can carry the same name — measured on the real
+        registry: two 'FruitSync' rows and two 'Website-builder' rows. When the
+        name rung fires on such a name it mis-files a whole project's history:
+        before this refusal, both FruitSync rows claimed the same two bundles
+        and were seeded the same 22 facts.
+        """
+        twin_a = _row("11110000-1111-4111-8111-111111111111", "Alpha Project")
+        twin_b = _row("22220000-2222-4222-8222-222222222222", "Alpha Project")
+        import bundles_lib
+        shared = frozenset({bundles_lib.slug_key("Alpha Project")})
+        for twin in (twin_a, twin_b):
+            notes, _ = bundles_lib.collect_reentries(self.root, twin, shared_names=shared)
+            self.assertEqual(notes, [], "an ambiguous name must resolve to nothing")
+
+    def test_the_refusal_says_how_to_fix_it(self):
+        import bundles_lib
+        twin = _row("11110000-1111-4111-8111-111111111111", "Alpha Project")
+        shared = frozenset({bundles_lib.slug_key("Alpha Project")})
+        _owns, evidence = bundles_lib.bundle_owner(
+            os.path.dirname(self.p_alpha_slug), twin, shared)
+        self.assertIn("shared by more than one live row", evidence)
+        self.assertIn(".project-uuid", evidence)
+
+    def test_a_hard_marker_still_wins_over_an_ambiguous_name(self):
+        """The refusal must not disarm the strong rungs — a bundle carrying an
+        owner marker is still resolved, ambiguous name or not."""
+        import bundles_lib
+        marked = _row(A_UUID, "Alpha Project")
+        shared = frozenset({bundles_lib.slug_key("Alpha Project")})
+        notes, _ = bundles_lib.collect_reentries(self.root, marked, shared_names=shared)
+        self.assertEqual([n["path"] for n in notes], [self.p_alpha_mark])
+
     def test_a_project_with_no_notes_says_so_instead_of_borrowing_one(self):
         gamma = _row("cccccccc-3333-4333-8333-cccccccccccc", "Gamma Project")
         primary, src, notes = self.ns["resolve_reentry"](self.root, gamma)
