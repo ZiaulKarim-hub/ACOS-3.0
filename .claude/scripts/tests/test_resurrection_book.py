@@ -119,6 +119,41 @@ class RowDisplayTest(unittest.TestCase):
         self.assertNotIn("open)", out)
         self.assertNotIn("window", out)
 
+    def test_a_folder_level_row_is_marked_as_a_placeholder(self):
+        """A row with no sidebar name displays its folder basename — a
+        PLACEHOLDER, not a project name (several projects can live in one
+        folder; user rule, restated 2026-08-05). The book must say so on the
+        row, so a folder name can never masquerade as a real project."""
+        out = self._render({
+            "name": "chart-maker", "pick_number": 1,
+            "next_action": None, "age_days": 18.0,
+            "broken": None, "name_drift": None, "folder_level": True,
+            "live": {"workspace_count": 0, "window_labels": []},
+        }, tier="NO HANDOFF")
+        self.assertIn("chart-maker  [folder]", out)
+        self.assertIn("[folder] = 1 row enrolled from a folder", out)
+
+    def test_a_named_project_row_carries_no_folder_tag(self):
+        out = self._render({
+            "name": "OKOA Works", "pick_number": 1,
+            "next_action": None, "age_days": 1.0,
+            "broken": None, "name_drift": None, "folder_level": False,
+            "live": {"workspace_count": 0, "window_labels": []},
+        })
+        self.assertNotIn("[folder]", out)
+
+    def test_the_folder_tag_survives_a_truncated_long_name(self):
+        """The name column truncates with an ellipsis. The tag is appended
+        AFTER truncation — a marker that sometimes vanishes is a marker that
+        lies."""
+        out = self._render({
+            "name": "SLOPE-Structured_Life_Organization_and_Planning_Engine",
+            "pick_number": 1, "next_action": None, "age_days": 18.0,
+            "broken": None, "name_drift": None, "folder_level": True,
+            "live": {"workspace_count": 0, "window_labels": []},
+        }, tier="NO HANDOFF")
+        self.assertIn("[folder]", out)
+
     def test_broken_and_name_drift_notes_still_show_alongside_windows(self):
         """Hard rule: facts are never hidden. Adding the window sub-line must
         not have displaced the existing warning sub-lines."""

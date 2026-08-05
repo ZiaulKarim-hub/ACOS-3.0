@@ -382,6 +382,12 @@ def derive(row, my_sessions, my_ws, folder_sessions, drift_notes, now):
     return {
         "name": row["name"],
         "workspace_name": row["workspace_name"],
+        # A row with NO sidebar name was enrolled from a folder, and its display
+        # name is only the folder basename (registry_lib's fallback). That name
+        # is a PLACEHOLDER, not an identity — several projects can live in one
+        # folder (user rule, restated 2026-08-05). The renderer marks these so
+        # a folder name can never masquerade as a real project name.
+        "folder_level": row["workspace_name"] is None,
         "project_uuid": row["project_uuid"],
         "root": row["root"],
         "status": row["status"],
@@ -572,9 +578,20 @@ def render_human(book, use_color):
     # sits where Zee reads the project, not in a separate column he has to scan
     # for. Labels go on a sub-line — they are variable-length and must never be
     # truncated into ambiguity.
-    def _disp(p):
+    def _disp_parts(p):
+        """(base, tag) — the tag is appended AFTER truncation so a long folder
+        name can never push its own [folder] marker off the row. A marker that
+        sometimes vanishes behind the ellipsis is a marker that lies."""
         n = p["live"]["workspace_count"] if p.get("live") else 0
-        return "%s (%d open)" % (p["name"], n) if n else p["name"]
+        base = "%s (%d open)" % (p["name"], n) if n else p["name"]
+        # Folder-level rows display their folder basename — a placeholder, not
+        # a project name. Say so on the row itself, every time.
+        tag = "  [folder]" if p.get("folder_level") else ""
+        return base, tag
+
+    def _disp(p):
+        base, tag = _disp_parts(p)
+        return base + tag
 
     pickable = [p for p in book["projects"] if p.get("pick_number")]
     num_w = max((len(str(p["pick_number"])) for p in pickable), default=1)
@@ -587,6 +604,12 @@ def render_human(book, use_color):
     if pickable:
         lines.append(c(DIM, "pick a project by its number (1–%d) · ARCHIVED rows are not numbered"
                              % len(pickable)))
+        fl_count = sum(1 for p in book["projects"] if p.get("folder_level"))
+        if fl_count:
+            lines.append(c(DIM, "[folder] = %d row%s enrolled from a folder with NO project name — "
+                                "the folder name is a placeholder, not an identity (several "
+                                "projects can live in one folder); retire or rename via curation"
+                          % (fl_count, "" if fl_count == 1 else "s")))
         lines.append("")
 
     for tier in TIER_ORDER:
@@ -595,7 +618,8 @@ def render_human(book, use_color):
         for p in rows:
             num = p.get("pick_number")
             gutter = ("%*d." % (num_w, num)) if num else (" " * num_w + " ")
-            name = _fit(_disp(p), name_w).ljust(name_w)
+            base, tag = _disp_parts(p)
+            name = (_fit(base, name_w - len(tag)) + tag).ljust(name_w)
             nxt = ("next: %s" % p["next_action"]) if p["next_action"] else "next: —"
             nxt = _fit(nxt, next_w).ljust(next_w)
             age = _age_str(p["age_days"])
