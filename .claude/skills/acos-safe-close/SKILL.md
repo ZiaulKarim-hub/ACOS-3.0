@@ -244,12 +244,20 @@ at 5 → DEGRADED). Never edit the answer to make it pass; never write
 ## Step 6 — Final pass + verbatim receipt
 
 ```bash
-LEARN_ARG=""
-[ -f "$SCRATCH/safe-close-learnings.json" ] && \
-  LEARN_ARG="--learnings-file $SCRATCH/safe-close-learnings.json"
-bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
-  --roundtrip-result "$SCRATCH/roundtrip-result.txt" $LEARN_ARG \
-  > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
+# Two explicit invocations, NOT a $LEARN_ARG variable: the interactive shell is
+# zsh, and zsh does not word-split an unquoted variable — the flag and its path
+# arrive glued as ONE argument and the close refuses with "unknown argument"
+# (hit live 2026-08-05). An if/else cannot be mis-expanded by any shell.
+if [ -f "$SCRATCH/safe-close-learnings.json" ]; then
+  bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
+    --roundtrip-result "$SCRATCH/roundtrip-result.txt" \
+    --learnings-file "$SCRATCH/safe-close-learnings.json" \
+    > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
+else
+  bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
+    --roundtrip-result "$SCRATCH/roundtrip-result.txt" \
+    > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
+fi
 cat "$SCRATCH/close-receipt-final.txt"; echo "exit=$RC"
 ```
 
