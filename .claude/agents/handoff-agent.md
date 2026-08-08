@@ -71,7 +71,28 @@ its mtime is current; Step 4's overwrite upgrades it to the full handoff.
 
 ### Step 2: Gather State from Disk
 
-You do NOT have access to the parent session's conversation. You must reconstruct context entirely from files on disk. Gather the following, in order:
+The parent session's live conversation isn't handed to you directly — but when it supplied its own `SESSION_ID` and `TRANSCRIPT_PATH` in your prompt (see Step 2.0), that transcript is a file on disk like any other, and it is your single most reliable source. Read it first. Use Steps 2a-2g to corroborate and fill gaps, not to override what the transcript says.
+
+#### 2.0 Parent Session Transcript (read this FIRST, if supplied)
+
+**Why this matters (2026-08-08 fix):** this repo is often worked on by several Claude Code sessions/windows AT THE SAME TIME — different projects, different panes, same shared folder. Every heuristic in 2a-2g below (git status, recent file mtimes, recent evidence) is REPO-WIDE — none of them can tell your invoking session's own work apart from a sibling session's. This has already produced one real mis-scoped handoff: a run with no transcript info confidently wrote up a completely different session's work (a Logo Forge shape-library task) as if it were the invoking session's own, and even left `session_id: "unknown"`. The transcript file is the one signal that is unambiguously scoped to the correct session, so it outranks everything else here.
+
+If your prompt includes a `SESSION_ID` and a `TRANSCRIPT_PATH` (not `none`), read it now:
+
+```bash
+# TRANSCRIPT_PATH and SESSION_ID come from your prompt text, if the invoking
+# session supplied them. Read only the tail — this file can be huge (hundreds
+# of thousands of tokens) and you don't need the full history, just recent turns.
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+    tail -c 200000 "$TRANSCRIPT_PATH"
+else
+    echo "No transcript supplied or file not found — falling back to disk heuristics only."
+fi
+```
+
+Read that output for what the invoking session was actually doing: the real task, the files it touched, decisions it made. That is your primary source for `session_summary`, `completed_this_session`, and `context_for_next_session`.
+
+**If no transcript was supplied, or it can't be read:** proceed with 2a-2g below, but this is now a materially weaker reconstruction. Say so explicitly in `context_for_next_session` (e.g. "no session transcript was available; the following is inferred from repo-wide git/file activity and may reflect a DIFFERENT concurrent session's work") and reflect it in your Step 5 confidence level. Do not narrate repo-wide recency findings as if they were confirmed to be this session's own work — that confident-but-wrong framing is exactly what caused the prior mis-scoped handoff.
 
 #### 2a. Git State (most reliable signal)
 
@@ -195,7 +216,7 @@ reconstruction_sources:
   - "[List every file you read to build this handoff, so the next session can verify]"
 ```
 
-**On `session_id` and `estimated_tokens`:** `context-monitor.sh` greps the top-level `session_id:` and `estimated_tokens:` fields to correlate a handoff to its originating session and assess staleness. Always emit BOTH fields so your handoff is schema-compatible with that tooling. You run in your own context and usually do NOT know the parent's session_id — in that case write `session_id: "unknown"` (the date/recent-mtime fallback path still finds the handoff) rather than omitting the field. Set `estimated_tokens: 0` (an emergency handoff is created out-of-band, not at a measured token threshold).
+**On `session_id` and `estimated_tokens`:** `context-monitor.sh` greps the top-level `session_id:` and `estimated_tokens:` fields to correlate a handoff to its originating session and assess staleness. Always emit BOTH fields so your handoff is schema-compatible with that tooling. If your prompt supplied a `SESSION_ID` (see Step 2.0), use it verbatim here — you now usually DO know it. Only write `session_id: "unknown"` if none was supplied (the date/recent-mtime fallback path still finds the handoff either way). Set `estimated_tokens: 0` (an emergency handoff is created out-of-band, not at a measured token threshold).
 
 ### Step 4: Save (overwrite the Step 1.5 stub)
 
@@ -225,7 +246,7 @@ Return a brief summary to the parent:
 ## Critical Constraints
 
 ### You CANNOT:
-- Access the parent session's conversation transcript
+- Access the parent session's LIVE conversation state — but if it supplied a `TRANSCRIPT_PATH` (Step 2.0), that session's own transcript file is readable from disk like any other file, and you MUST read it first
 - Spawn sub-agents (disallowedTools: Task)
 - Modify any existing files (disallowedTools: Edit) — you only Write new handoff files
 - Access the web (disallowedTools: WebSearch, WebFetch)
