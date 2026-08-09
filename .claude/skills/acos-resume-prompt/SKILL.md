@@ -23,10 +23,18 @@ the referenced handoff, and continues the prior work without losing context.
 ### Step 1: Locate the latest handoff
 
 ```bash
-# Extension set intentionally matches core.sh exactly (.md + .yaml; no .yml
-# is ever emitted) so the two readers can never select different handoffs.
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
-test -n "$HANDOFF" || { echo "ERROR: no handoff exists — run /acos-handoff first"; exit 1; }
+# 2026-08-09: selection now goes through the shared
+# resolve-session-handoff.sh, matched against THIS session's own id —
+# not just "whichever handoff is newest" (the old rule, which could select
+# a DIFFERENT concurrent session's handoff; see
+# .claude/scripts/resolve-session-handoff.sh for the full history). This
+# also fixes Step 2.5 below, which used to independently re-derive
+# SESSION_ID with an older, unscoped heuristic — it now reuses the
+# session_id resolved here instead of guessing again.
+SESSION_ID=$(bash .claude/scripts/resolve-session-id.sh)
+test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
+HANDOFF=$(bash .claude/scripts/resolve-session-handoff.sh "$SESSION_ID")
+test -n "$HANDOFF" || { echo "ERROR: no handoff exists matching session_id '$SESSION_ID' — run /acos-handoff first"; exit 1; }
 ```
 
 ### Step 2: Extract key fields from handoff
@@ -43,11 +51,17 @@ Walk the active session JSONL to find any `Task()` invocations that were
 spawned but have not yet returned a result.
 
 ```bash
+# 2026-08-09 fix: this step used to re-derive SESSION_ID with
+# `basename "$(ls -t "$SESSION_DIR"/*.jsonl | head -1)"` — the OLD, already
+#-known-broken pattern (racy in a project worked on by several concurrent
+# Claude sessions), never upgraded when the rest of this file got the
+# session-scoped fix. It now calls the same shared resolver as Step 1
+# (a separate call, not a reused variable — each fenced bash block in this
+# skill runs in its own shell, so state doesn't carry over between steps).
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl)
-# Same fail-loud guard as eternity-protocol-core.sh — a malformed derivation
-# must not silently produce a bogus pending-resume-<id>.txt path.
+SESSION_ID=$(bash .claude/scripts/resolve-session-id.sh)
+[[ -n "$SESSION_ID" ]] || { echo "ERROR: could not determine session_id"; exit 1; }
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 [[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: bad SESSION_ID '$SESSION_ID'"; exit 1; }
 ```
 

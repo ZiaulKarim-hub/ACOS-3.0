@@ -85,9 +85,12 @@ Threshold and other config live at
 ### Step 0: Pre-flight + opt-out check
 
 ```bash
-SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-JSONL=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)
-SESSION_ID=$(basename "$JSONL" .jsonl 2>/dev/null)
+# 2026-08-09: derivation now goes through the shared
+# .claude/scripts/resolve-session-id.sh instead of the old
+# `ls -t *.jsonl | head -1` guess (racy in a project worked on by several
+# concurrent Claude sessions — the newest transcript is often NOT this one).
+# See that script's header comment for the full history.
+SESSION_ID=$(bash .claude/scripts/resolve-session-id.sh)
 test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
 
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
@@ -117,13 +120,15 @@ Invoke the `acos-handoff` skill via the `Skill` tool. After it returns,
 mechanically verify a fresh handoff was written:
 
 ```bash
-# 2026-06-11 fix: accept BOTH .md and .yaml handoffs (mirrors the Jun-10
-# core.sh fix — acos-handoff emits .md now; a .yaml-only glob aborts the
-# skill before core.sh ever runs).
-# The .resume.md exclusion is REQUIRED: the resume sibling is written right
-# after the handoff, so without it ls -t binds $HANDOFF to the .resume.md.
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
-test -s "$HANDOFF" || { echo "ERROR: no handoff produced"; exit 1; }
+# 2026-08-09: selection now goes through the shared
+# resolve-session-handoff.sh, matched against THIS session's own id —
+# not just "whichever handoff is newest" (the old rule, which grabbed a
+# DIFFERENT concurrent session's handoff on 2026-08-08/09; see
+# .claude/scripts/resolve-session-handoff.sh for the full history).
+SESSION_ID=$(bash .claude/scripts/resolve-session-id.sh)
+test -n "$SESSION_ID" || { echo "ERROR: could not determine session_id"; exit 1; }
+HANDOFF=$(bash .claude/scripts/resolve-session-handoff.sh "$SESSION_ID")
+test -s "$HANDOFF" || { echo "ERROR: no handoff produced matching session_id '$SESSION_ID'"; exit 1; }
 # 2026-06-21 FRESHNESS GUARD. `test -s` only proves a handoff EXISTS, not that
 # THIS run wrote it. If the handoff-agent fails silently, the line above binds
 # $HANDOFF to a STALE prior handoff → you'd hand off / resume the WRONG work.

@@ -30,42 +30,24 @@ fi
 export ETERNITY_PROTOCOL_CORE_RAN=1
 
 # ── Resolve session_id ─────────────────────────────────────────────────────
-# Same sanitization pattern Claude Code uses for project-dir names:
-# slashes/spaces/dots → dashes. The newest *.jsonl in that dir is this session.
+# 2026-08-09: derivation now lives in ONE shared script,
+# resolve-session-id.sh, instead of being copy-pasted here. It prefers the
+# authoritative $CLAUDE_CODE_SESSION_ID (exported into every Bash tool call
+# — see reference_claude_code_session_id_authoritative), falling back to the
+# older pane-scoped transcript-mtime heuristic only when that's unset. See
+# that script's header comment for the full history of why this consolidation
+# happened (the old copy-pasted-per-file approach was the actual root cause
+# of a recurring mis-scoped-session bug — fixing one copy never fixed the
+# others).
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
-# 2026-07-06 ROBUST, PANE-SCOPED session-id derivation (mirrors the skill fix).
-# The old `ls -t *.jsonl | head -1` was RACY in a multi-session project and could
-# resolve a DIFFERENT (superseded) same-pane session, arming /clear + resume for
-# the WRONG session. Honor an explicit CMUX_ETERNITY_SESSION_ID pin; else scope to
-# THIS pane ($CMUX_SURFACE_ID) + newest surface-matching transcript; fail SAFE if
-# 2+ same-pane transcripts are freshly active (<90s).
-_ETS="$HOME/Library/Application Support/acos-token-monitor/state"
-SESSION_ID="${CMUX_ETERNITY_SESSION_ID:-}"; _fresh=0; _now=$(date +%s)
-if [[ -z "$SESSION_ID" && -n "${CMUX_SURFACE_ID:-}" ]]; then
-    while IFS= read -r _j; do
-        [[ -n "$_j" ]] || continue
-        _s=$(basename "$_j" .jsonl)
-        [[ "$(head -1 "$_ETS/cmux-surface-$_s" 2>/dev/null)" == "$CMUX_SURFACE_ID" ]] || continue
-        [[ -z "$SESSION_ID" ]] && SESSION_ID="$_s"
-        _m=$(stat -f %m "$_j" 2>/dev/null || stat -c %Y "$_j" 2>/dev/null)
-        [[ -n "$_m" ]] && (( _now - _m < 90 )) && _fresh=$(( _fresh + 1 ))
-    done < <(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null)
-    if (( _fresh > 1 )); then
-        echo "ERROR: $_fresh sessions in this cmux surface are freshly active — cannot safely pick the current one; aborting (set CMUX_ETERNITY_SESSION_ID to override)" >&2
-        return 1 2>/dev/null || exit 1
-    fi
-fi
-[[ -z "$SESSION_ID" ]] && SESSION_ID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1)" .jsonl 2>/dev/null)
-JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
-if [[ -z "$SESSION_ID" ]]; then
-    echo "ERROR: could not determine session_id (no JSONL in $SESSION_DIR)" >&2
+RESOLVE_SID_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/resolve-session-id.sh"
+[[ -f "$RESOLVE_SID_SCRIPT" ]] || RESOLVE_SID_SCRIPT="$(pwd)/.claude/scripts/resolve-session-id.sh"
+SESSION_ID=$(bash "$RESOLVE_SID_SCRIPT")
+if [[ $? -ne 0 || -z "$SESSION_ID" ]]; then
+    echo "ERROR: resolve-session-id.sh failed to determine session_id (script: $RESOLVE_SID_SCRIPT)" >&2
     return 1 2>/dev/null || exit 1
 fi
-# Mirror token-watcher.py's validation EXACTLY: ^[a-zA-Z0-9_-]{1,128}$. A real
-# Claude session id is a UUID, which always passes — this can never reject an
-# id Python already accepted. A failure here means the derivation is broken
-# (and SESSION_ID is about to be used in paths/heredocs), so refuse loudly.
-[[ "$SESSION_ID" =~ ^[a-zA-Z0-9_-]{1,128}$ ]] || { echo "ERROR: invalid session_id: $SESSION_ID" >&2; return 1 2>/dev/null || exit 1; }
+JSONL="$SESSION_DIR/$SESSION_ID.jsonl"
 export SESSION_ID
 
 STATE="$HOME/Library/Application Support/acos-token-monitor/state"
@@ -78,15 +60,24 @@ LOGS="$HOME/Library/Application Support/acos-token-monitor/logs"
 # in parallel; stderr suppressed to avoid "no matches" noise from either one
 # when its extension isn't present.
 #
-# 2026-06-11 fix: exclude eternity `.resume.md` siblings. They are resume-PROMPT
-# copies (written below at RESUME_SIBLING), NOT session handoffs. Without this,
-# `ls -t` can return a `*.resume.md` as the newest, so HANDOFF points at a
-# resume-prompt copy and the downstream basename strip (~line 200) produces a
-# doubled `...resume.resume.md` pointer to a nonexistent file. Mirrors
-# context-monitor.sh's `case "$f" in *.resume.md) continue;; esac` exclusion.
-HANDOFF=$(ls -t memory/handoffs/*.md memory/handoffs/*.yaml 2>/dev/null | grep -v '\.resume\.md$' | head -1)
-if [[ ! -s "$HANDOFF" ]]; then
-    echo "ERROR: no handoff produced — expected newest .md or .yaml in memory/handoffs/" >&2
+# 2026-08-09: selection now goes through the shared resolve-session-handoff.sh
+# instead of a bare `ls -t | head -1`. The old newest-wins rule matched
+# ANY session's handoff, not necessarily this one's — in a project worked on
+# by several concurrent sessions, that silently handed a fire the WRONG
+# handoff (reproduced live 2026-08-08/09: session 26c28ec4-...-33e9 needed
+# emergency-handoff-5.yaml but got session 71335b10-...-a5e4's
+# emergency-handoff-6.yaml instead). The shared script matches each
+# candidate's own `session_id:` field against $SESSION_ID (resolved above)
+# and refuses to guess if nothing matches. It still excludes `.resume.md`
+# siblings (resume-PROMPT copies, not session handoffs — same reason as
+# before: without that exclusion the downstream basename strip ~line 180
+# would produce a doubled `...resume.resume.md` pointer to a nonexistent
+# file).
+RESOLVE_HANDOFF_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/resolve-session-handoff.sh"
+[[ -f "$RESOLVE_HANDOFF_SCRIPT" ]] || RESOLVE_HANDOFF_SCRIPT="$(pwd)/.claude/scripts/resolve-session-handoff.sh"
+HANDOFF=$(bash "$RESOLVE_HANDOFF_SCRIPT" "$SESSION_ID")
+if [[ $? -ne 0 || ! -s "$HANDOFF" ]]; then
+    echo "ERROR: no handoff matching session_id '$SESSION_ID' found in memory/handoffs/ (script: $RESOLVE_HANDOFF_SCRIPT)" >&2
     return 1 2>/dev/null || exit 1
 fi
 # Freshness check: handoff should have been written in the last 5 minutes.
