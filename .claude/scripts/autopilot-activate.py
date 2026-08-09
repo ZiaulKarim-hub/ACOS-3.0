@@ -160,8 +160,93 @@ def print_findings(findings):
 
 # ── Subcommands ───────────────────────────────────────────────────────────────
 
-SENTINEL_NAME = "autopilot-active"
-LOOP_STATE_NAME = "autopilot-loop-state.json"
+SENTINEL_PREFIX = "autopilot-active-"
+LOOP_STATE_PREFIX = "autopilot-loop-state-"
+LOOP_STATE_SUFFIX = ".json"
+
+
+def get_session_id(cli_override=None):
+    """Resolve the ONE session this autopilot command scopes to.
+
+    2026-08-07 incident: autopilot was keyed per PROJECT FOLDER, so any window
+    opened on the same folder inherited another window's goal. Autopilot must
+    be keyed per SESSION instead. Source order: --session (explicit, for
+    deliberate cross-session admin like `off` on a window you're not in) ->
+    CLAUDE_CODE_SESSION_ID (the session this command is actually running in).
+    """
+    if cli_override:
+        return cli_override
+    sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
+    if not sid:
+        print(
+            "ERROR: CLAUDE_CODE_SESSION_ID is not set in this shell.\n"
+            "Autopilot is scoped per-session and needs to know which one this is.\n"
+            "Run this from inside a Claude Code session (its Bash calls inherit "
+            "the variable), or pass --session <id> explicitly.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    return sid
+
+
+def sentinel_path(project_root, sid):
+    return project_root / ".acos" / "state" / f"{SENTINEL_PREFIX}{sid}"
+
+
+def loop_state_path(project_root, sid):
+    return project_root / ".acos" / "state" / f"{LOOP_STATE_PREFIX}{sid}{LOOP_STATE_SUFFIX}"
+
+
+def find_cross_project_paths(texts, project_root, max_extra_words=12):
+    """Scan free text for absolute paths that exist but sit OUTSIDE project_root.
+
+    Catches the exact 2026-08-07 mistake: a goal describing another project's
+    work, activated while cwd resolved to this project. Advisory only -- never
+    blocks activation, since a session can legitimately work on files outside
+    its own project root.
+
+    Folder names can contain spaces (e.g. "Vibe Coding"), so a plain
+    whitespace-delimited token regex misses them -- this walks the RAW text
+    and extends each candidate word-by-word, keeping the longest span that
+    still resolves to a real path, instead of splitting on spaces first.
+    """
+    found = []
+    for text in texts:
+        if not text:
+            continue
+        n = len(text)
+        i = 0
+        while i < n:
+            if text[i] == "/" and (i == 0 or text[i - 1] in " \t\n(\"'"):
+                end = i
+                words_seen = 0
+                best_end = None
+                while True:
+                    nxt = text.find(" ", end)
+                    if nxt == -1:
+                        nxt = n
+                    candidate = text[i:nxt].rstrip(".,;:()\"'")
+                    try:
+                        p = Path(candidate)
+                        if p.is_absolute() and p.exists():
+                            best_end = nxt
+                    except (OSError, ValueError):
+                        pass
+                    if nxt >= n or words_seen >= max_extra_words:
+                        break
+                    end = nxt + 1
+                    words_seen += 1
+                if best_end is not None:
+                    candidate = text[i:best_end].rstrip(".,;:()\"'")
+                    p = Path(candidate).resolve()
+                    if p != project_root and project_root not in p.parents:
+                        s = str(p)
+                        if s not in found:
+                            found.append(s)
+                    i = best_end
+                    continue
+            i += 1
+    return found
 
 
 def auto_summarize(text, max_chars=500):
@@ -200,7 +285,8 @@ def auto_summarize(text, max_chars=500):
 def cmd_on(args):
     cwd = os.getcwd()
     project_root = find_project_root(cwd)
-    sentinel = project_root / ".acos" / "state" / SENTINEL_NAME
+    sid = get_session_id(args.session)
+    sentinel = sentinel_path(project_root, sid)
 
     goal = " ".join(args.goal).strip()
     goal_file_abs = None
@@ -232,7 +318,7 @@ def cmd_on(args):
             existing_goal = existing.get("goal", "<unknown>")
             existing_iter = existing.get("iteration_count", "?")
             print(
-                f"ERROR: autopilot is already active.\n"
+                f"ERROR: autopilot is already active for this session ({sid}).\n"
                 f"  goal: {existing_goal}\n"
                 f"  iteration: {existing_iter}/{existing.get('max_iterations', '?')}\n"
                 f"Use --force to replace, or run `autopilot-activate.py off` first.",
@@ -254,9 +340,12 @@ def cmd_on(args):
         )
         sys.exit(1)
 
+    cross_project = find_cross_project_paths([goal, goal_file_abs], project_root)
+
     max_iter = max(1, min(1000, int(args.max_iter)))
     sentinel_data = {
         "activated_at": utcnow(),
+        "session_id": sid,
         "goal": goal,
         "max_iterations": max_iter,
         "iteration_count": 0,
@@ -265,22 +354,34 @@ def cmd_on(args):
     }
     if goal_file_abs:
         sentinel_data["goal_file"] = goal_file_abs
+    if cross_project:
+        sentinel_data["cross_project_paths"] = cross_project
     sentinel.parent.mkdir(parents=True, exist_ok=True)
     sentinel.write_text(json.dumps(sentinel_data, indent=2), encoding="utf-8")
-    loop_state = project_root / ".acos" / "state" / LOOP_STATE_NAME
+    loop_state = loop_state_path(project_root, sid)
     loop_state.write_text(json.dumps(sentinel_data, indent=2), encoding="utf-8")
 
     audit_extra = f" | goal_file={goal_file_abs}" if goal_file_abs else ""
     audit(project_root,
-          f"[{utcnow()}] AUTOPILOT_ON | max_iter={max_iter} | goal={goal[:120]}{audit_extra}")
+          f"[{utcnow()}] AUTOPILOT_ON | sid={sid} | max_iter={max_iter} | "
+          f"goal={goal[:120]}{audit_extra}")
 
     print()
     print("✓ Autopilot ACTIVATED")
+    print(f"  session:        {sid}  (scoped to THIS window only)")
     print(f"  goal:           {goal}")
     if goal_file_abs:
         print(f"  goal_file:      {goal_file_abs}")
     print(f"  max_iterations: {max_iter}")
     print(f"  sentinel:       {sentinel}")
+    if cross_project:
+        print()
+        print("⚠ WARNING: this goal references a path OUTSIDE the current project folder:")
+        for p in cross_project:
+            print(f"    {p}")
+        print(f"  Current project folder: {project_root}")
+        print("  If that's not intended, you likely ran this from the wrong folder.")
+        print("  This is exactly the 2026-08-07 mistake — double-check before continuing.")
     print()
     print("Termination conditions:")
     print("  • Claude emits the marker phrase  AUTOPILOT_GOAL_COMPLETE  (graceful)")
@@ -298,14 +399,15 @@ def cmd_on(args):
 def cmd_off(args):
     cwd = os.getcwd()
     project_root = find_project_root(cwd)
-    sentinel = project_root / ".acos" / "state" / SENTINEL_NAME
-    loop_state = project_root / ".acos" / "state" / LOOP_STATE_NAME
+    sid = get_session_id(args.session)
+    sentinel = sentinel_path(project_root, sid)
+    loop_state = loop_state_path(project_root, sid)
 
     if not sentinel.is_file():
         # Already off: deactivation is idempotent, so the desired post-state is
         # satisfied. Exit 0 so a defensive `off` under `set -e` does not abort.
         # Reserve non-zero exits for genuine failures.
-        print("Autopilot is already OFF (no sentinel).")
+        print(f"Autopilot is already OFF for session {sid} (no sentinel).")
         sys.exit(0)
 
     try:
@@ -328,9 +430,11 @@ def cmd_off(args):
         pass
 
     audit(project_root,
-          f"[{utcnow()}] AUTOPILOT_OFF_MANUAL | iter={iters}/{max_iter} | goal={goal[:120]}")
+          f"[{utcnow()}] AUTOPILOT_OFF_MANUAL | sid={sid} | iter={iters}/{max_iter} | "
+          f"goal={goal[:120]}")
 
     print("✓ Autopilot DEACTIVATED")
+    print(f"  session:    {sid}")
     print(f"  goal:       {goal}")
     print(f"  iterations: {iters}/{max_iter}")
     print(f"  activated:  {activated}")
@@ -340,10 +444,11 @@ def cmd_off(args):
 def cmd_status(args):
     cwd = os.getcwd()
     project_root = find_project_root(cwd)
-    sentinel = project_root / ".acos" / "state" / SENTINEL_NAME
+    sid = get_session_id(args.session)
+    sentinel = sentinel_path(project_root, sid)
 
     if not sentinel.is_file():
-        print("Autopilot: OFF")
+        print(f"Autopilot: OFF for session {sid}")
         # Show most recent autopilot session from audit log if any
         log = project_root / ".acos" / "state" / "oracle-audit.log"
         if log.is_file():
@@ -354,6 +459,12 @@ def cmd_status(args):
                     print(f"  most recent: {lines[-1]}")
             except OSError:
                 pass
+        other = sorted(p.name[len(SENTINEL_PREFIX):]
+                        for p in (project_root / ".acos" / "state").glob(f"{SENTINEL_PREFIX}*")
+                        ) if (project_root / ".acos" / "state").is_dir() else []
+        if other:
+            print(f"  note: {len(other)} OTHER session(s) have autopilot ON in this "
+                  f"project folder. Run `autopilot-activate.py list` to see them.")
         sys.exit(1)
 
     try:
@@ -362,7 +473,7 @@ def cmd_status(args):
         print(f"Autopilot: sentinel present but unreadable: {e}")
         sys.exit(1)
 
-    print("Autopilot: ON")
+    print(f"Autopilot: ON for session {sid}")
     print(f"  goal:                  {state.get('goal', '?')}")
     if state.get("goal_file"):
         print(f"  goal_file:             {state['goal_file']}")
@@ -377,6 +488,55 @@ def cmd_status(args):
     if not ok:
         print()
         print("WARNING: autopilot is ON but pre-flight has FAILs — hooks may not fire correctly.")
+    sys.exit(0)
+
+
+def cmd_list(args):
+    """List every autopilot-active session sentinel found in THIS project folder.
+
+    Scoped to project_root only -- there is no machine-wide registry of every
+    ACOS-enabled project, so this cannot show sessions on OTHER project folders.
+    """
+    cwd = os.getcwd()
+    project_root = find_project_root(cwd)
+    state_dir = project_root / ".acos" / "state"
+    current_sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
+
+    rows = []
+    if state_dir.is_dir():
+        for f in sorted(state_dir.glob(f"{SENTINEL_PREFIX}*")):
+            sid = f.name[len(SENTINEL_PREFIX):]
+            try:
+                s = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:
+                rows.append({"sid": sid, "goal": "<unreadable sentinel>",
+                             "iters": "?", "activated": "?", "warn": False})
+                continue
+            goal = s.get("goal", "?")
+            rows.append({
+                "sid": sid,
+                "goal": goal if len(goal) <= 70 else goal[:70] + "...",
+                "iters": f"{s.get('iteration_count', '?')}/{s.get('max_iterations', '?')}",
+                "activated": s.get("activated_at", "?"),
+                "warn": bool(s.get("cross_project_paths")),
+            })
+
+    print(f"Project root: {project_root}")
+    print("(This lists sessions scoped to THIS project folder only -- there is no "
+          "machine-wide registry across other project folders.)")
+    print()
+    if not rows:
+        print("No active autopilot sessions in this project.")
+        sys.exit(1)
+
+    for r in rows:
+        marker = "  <- THIS session" if r["sid"] == current_sid else ""
+        warn = "  ⚠ goal references a path outside this project" if r["warn"] else ""
+        print(f"  session {r['sid']}{marker}{warn}")
+        print(f"    iter:      {r['iters']}")
+        print(f"    activated: {r['activated']}")
+        print(f"    goal:      {r['goal']}")
+        print()
     sys.exit(0)
 
 
@@ -410,13 +570,27 @@ def main():
                       help=f"Max continuation iterations (default {DEFAULT_MAX_ITER})")
     p_on.add_argument("--force", action="store_true",
                       help="Overwrite existing autopilot sentinel")
+    p_on.add_argument("--session", type=str, default=None,
+                      help="Explicit session id to scope to (default: "
+                           "CLAUDE_CODE_SESSION_ID of the running shell)")
     p_on.set_defaults(func=cmd_on)
 
-    p_off = sub.add_parser("off", help="Deactivate autopilot")
+    p_off = sub.add_parser("off", help="Deactivate autopilot for one session")
+    p_off.add_argument("--session", type=str, default=None,
+                       help="Explicit session id to deactivate (default: "
+                            "CLAUDE_CODE_SESSION_ID of the running shell). Use "
+                            "this to turn off a DIFFERENT window's autopilot on "
+                            "purpose -- it never happens by default.")
     p_off.set_defaults(func=cmd_off)
 
-    p_st = sub.add_parser("status", help="Show current autopilot state")
+    p_st = sub.add_parser("status", help="Show current autopilot state for one session")
+    p_st.add_argument("--session", type=str, default=None,
+                      help="Explicit session id to check (default: "
+                           "CLAUDE_CODE_SESSION_ID of the running shell)")
     p_st.set_defaults(func=cmd_status)
+
+    p_ls = sub.add_parser("list", help="List every autopilot session active in this project folder")
+    p_ls.set_defaults(func=cmd_list)
 
     p_pf = sub.add_parser("preflight", help="Run pre-flight checks (no state changes)")
     p_pf.set_defaults(func=cmd_preflight)

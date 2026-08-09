@@ -171,7 +171,7 @@ def emit_continue(reason):
     json.dump({"decision": "block", "reason": reason}, sys.stdout)
 
 
-def build_directive(goal, iter_num, max_iter, prior_tool_counts, goal_file=None):
+def build_directive(goal, iter_num, max_iter, prior_tool_counts, sid, goal_file=None):
     goal_file_line = (
         f"GOAL_FILE: {goal_file}  (re-read this anytime for the full vision)\n"
         if goal_file else ""
@@ -179,6 +179,7 @@ def build_directive(goal, iter_num, max_iter, prior_tool_counts, goal_file=None)
     return (
         f"─────────────────────────────────────────────────\n"
         f"AUTOPILOT MODE ACTIVE — iteration {iter_num}/{max_iter}\n"
+        f"SESSION: {sid}  (this goal belongs ONLY to this session)\n"
         f"GOAL: {goal}\n"
         f"{goal_file_line}"
         f"─────────────────────────────────────────────────\n"
@@ -221,12 +222,20 @@ def main():
         cwd = data.get("cwd", os.getcwd())
         transcript_path = data.get("transcript_path", "")
         stop_hook_active = bool(data.get("stop_hook_active", False))
+        sid = (data.get("session_id") or os.environ.get("CLAUDE_CODE_SESSION_ID", "")).strip()
 
         project_root = find_project_root(cwd)
-        sentinel = project_root / ".acos" / "state" / "autopilot-active"
-        loop_state_path = project_root / ".acos" / "state" / "autopilot-loop-state.json"
+
+        if not sid:
+            # Can't safely scope without knowing which session this is — fail open.
+            sys.exit(0)
+
+        sentinel = project_root / ".acos" / "state" / f"autopilot-active-{sid}"
+        loop_state_path = project_root / ".acos" / "state" / f"autopilot-loop-state-{sid}.json"
 
         if not sentinel.is_file():
+            # Autopilot is OFF for THIS session, even if another session in the
+            # same project folder has its own sentinel active.
             sys.exit(0)
 
         if stop_hook_active:
@@ -242,11 +251,11 @@ def main():
             sys.path.insert(0, str(Path(__file__).resolve().parent))
             from _autopilot_eternity import is_eternity_protocol_active, detect_eternity_marker
             if is_eternity_protocol_active(cwd):
-                sid, marker = detect_eternity_marker(cwd)
+                eternity_sid, marker = detect_eternity_marker(cwd)
                 audit(project_root,
                       f"[{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}] "
-                      f"AUTOPILOT_ETERNITY_SUBORDINATE | hook=Stop | "
-                      f"marker={marker} | sid={sid[:12] if sid else '?'}")
+                      f"AUTOPILOT_ETERNITY_SUBORDINATE | hook=Stop | sid={sid} | "
+                      f"marker={marker} | eternity_sid={eternity_sid or '?'}")
                 sys.exit(0)
         except Exception:
             # Fail-open: if subordination check itself errors, proceed with
@@ -317,7 +326,8 @@ def main():
         marker_lines = last_text.strip().splitlines()
         if marker_lines and marker_lines[-1].strip().startswith(GOAL_COMPLETE_MARKER):
             audit(project_root,
-                  f"[{ts}] AUTOPILOT_GOAL_COMPLETE | iter={iter_count} | goal={goal[:80]}")
+                  f"[{ts}] AUTOPILOT_GOAL_COMPLETE | sid={sid} | iter={iter_count} | "
+                  f"goal={goal[:80]}")
             try:
                 sentinel.unlink()
             except OSError:
@@ -336,7 +346,8 @@ def main():
         # ── Exit condition: iteration cap ──────────────────────────────────────
         if iter_count > max_iter:
             audit(project_root,
-                  f"[{ts}] AUTOPILOT_CAP_HIT | iter={iter_count}>{max_iter} | goal={goal[:80]}")
+                  f"[{ts}] AUTOPILOT_CAP_HIT | sid={sid} | iter={iter_count}>{max_iter} | "
+                  f"goal={goal[:80]}")
             try:
                 sentinel.unlink()
             except OSError:
@@ -351,7 +362,7 @@ def main():
         # ── Exit condition: idle (IDLE_WINDOW consecutive zero-tool-call iters) ───
         if len(new_prior) >= IDLE_WINDOW and all(c == 0 for c in new_prior):
             audit(project_root,
-                  f"[{ts}] AUTOPILOT_IDLE_EXIT | iter={iter_count} | "
+                  f"[{ts}] AUTOPILOT_IDLE_EXIT | sid={sid} | iter={iter_count} | "
                   f"consecutive_zero_tool_iters | goal={goal[:80]}")
             try:
                 sentinel.unlink()
@@ -376,10 +387,10 @@ def main():
             pass
 
         audit(project_root,
-              f"[{ts}] AUTOPILOT_CONTINUE | iter={iter_count}/{max_iter} | "
+              f"[{ts}] AUTOPILOT_CONTINUE | sid={sid} | iter={iter_count}/{max_iter} | "
               f"tools_last_turn={this_iter_tool_count} | recent={new_prior}")
 
-        emit_continue(build_directive(goal, iter_count, max_iter, new_prior, goal_file))
+        emit_continue(build_directive(goal, iter_count, max_iter, new_prior, sid, goal_file))
 
     except Exception:
         sys.exit(0)

@@ -87,6 +87,57 @@ with open("$JSONL") as f:
 active = {tid: meta for tid, meta in spawned.items() if tid not in completed}
 ```
 
+### Step 2.6: Check for goals to carry forward (2026-08-08)
+
+`/clear` silently drops BOTH kinds of "keep working toward X" state below —
+neither survives on its own. Check for each, and carry forward whatever is
+active. This step is best-effort: if a check errors or a tool isn't available,
+skip that one goal type and continue — never abort the resume prompt over this.
+
+**Autopilot goal** — check whether a session-scoped sentinel exists for THIS
+session (path is relative to the project root, same `cwd` assumption as Step
+2.5):
+
+```bash
+AP_SENTINEL=".acos/state/autopilot-active-${SESSION_ID}"
+test -f "$AP_SENTINEL" && cat "$AP_SENTINEL"
+```
+
+If it exists, read the JSON and capture `goal`, `goal_file` (if present), and
+`max_iterations` (so a goal that was set with a raised cap, like 1000, doesn't
+silently fall back to the 150 default on restart).
+
+**Real `/goal` command** — run `/goal` with no arguments to check status. If it
+reports an active goal (not "No goal set"), capture the condition text exactly
+as shown — verbatim, do not paraphrase it.
+
+If EITHER was found, carry it into Step 3's new "GOALS TO CARRY FORWARD"
+section below. If NEITHER was found, omit that section entirely.
+
+**Persist a machine-typeable re-arm command for native `/goal` (2026-08-08):**
+the prose section below is delivered as hook `additionalContext` — background
+information, not typed input. A `/goal <condition>` line inside it is read as
+words, never runs as a command (slash commands only parse from real typed
+input). The cmux in-pane Stop hook (`eternity-cmux-inpane.sh`) fixes this by
+actually TYPING the command after `/clear`, but it needs the exact line to
+type, on its own, with no surrounding prose. So — ONLY when a native `/goal`
+condition was found above (never for an autopilot-only goal; autopilot's own
+re-arm is a shell command Claude runs from reading the prose, which already
+works) — also write it to a dedicated single-line file:
+
+```bash
+if [ -n "$GOAL_CONDITION" ]; then
+    GOAL_REARM_FILE="$HOME/Library/Application Support/acos-token-monitor/state/.goal-rearm-${SESSION_ID}"
+    # One line only — this file gets typed verbatim as a single command. Strip
+    # any embedded newlines from the captured condition. Setting /goal starts
+    # a turn immediately using the condition as the prompt, and that turn gets
+    # NO other context (slash commands bypass additionalContext/UserPromptSubmit)
+    # — so the condition must be self-sufficient. Point it at the handoff.
+    CLEAN_CONDITION=$(printf '%s' "$GOAL_CONDITION" | tr '\n\r' '  ')
+    printf '/goal read `%s` first, then: %s' "$HANDOFF" "$CLEAN_CONDITION" > "$GOAL_REARM_FILE"
+fi
+```
+
 ### Step 3: Write the resume prompt to disk
 
 Save to `~/Library/Application Support/acos-token-monitor/state/pending-resume-<session_id>.txt`
@@ -102,6 +153,27 @@ Quick summary:
 - Last action: <last action>
 - Next step: <first next_action>
 - Blockers: <list, or "none">
+
+<IF a goal was found in Step 2.6, append this section:>
+GOALS TO CARRY FORWARD — /clear does not keep these; you must restart them
+yourself, as your very first action, before anything else:
+
+  <IF an autopilot goal was found:>
+  - AUTOPILOT GOAL was active. Run this first:
+      bash .claude/scripts/autopilot-activate.py on "<goal text, exact>" --goal-file <goal_file> --max-iter <max_iterations>
+    (drop --goal-file entirely if none was set; always keep --max-iter, using
+    the exact number captured in Step 2.6, so a raised cap like 1000 is not
+    silently lost back to the 150 default)
+
+  <IF a /goal condition was found:>
+  - A /goal CONDITION was active: "<condition text, exact>"
+    Run this first: /goal <condition text, exact>
+
+IMPORTANT: do not assume progress matches what any summary above says. Go
+verify the REAL current state yourself first (recount files, re-check the
+repo, re-run whatever the goal's condition depends on) before continuing the
+work. A freshly cleared chat has no memory of exactly how much was already
+done — trust the real state on disk, not a remembered number.
 
 <IF active subagents found in Step 2.5, append this section:>
 IN-FLIGHT SUBAGENTS AT CLEAR TIME:
@@ -143,6 +215,10 @@ Print:
 - Path to the resume prompt (per-session)
 - Token-count estimate of the resume prompt (chars / 3)
 - First 5 lines as preview
+- Whether a goal was found and carried forward, and which kind (autopilot,
+  `/goal`, both, or neither)
+- If a native `/goal` condition was found, the path of the `.goal-rearm-<sid>`
+  file written for the in-pane Stop hook to type after `/clear`
 
 ---
 

@@ -83,10 +83,11 @@ def emit(additional_context=None):
     json.dump(out, sys.stdout)
 
 
-def build_guidance_directive(goal, iter_count, max_iter):
+def build_guidance_directive(goal, iter_count, max_iter, sid):
     return (
         "─────────────────────────────────────────────────\n"
         f"AUTOPILOT MODE IS STILL ACTIVE — iteration {iter_count}/{max_iter}\n"
+        f"SESSION: {sid}  (this goal belongs ONLY to this session)\n"
         f"GOAL: {goal}\n"
         "─────────────────────────────────────────────────\n"
         "The user has sent the message above. Treat it as MID-COURSE GUIDANCE, "
@@ -114,11 +115,19 @@ def main():
         raw = sys.stdin.read()
         data = json.loads(raw) if raw.strip() else {}
         cwd = data.get("cwd", os.getcwd())
+        sid = (data.get("session_id") or os.environ.get("CLAUDE_CODE_SESSION_ID", "")).strip()
         project_root = find_project_root(cwd)
-        sentinel = project_root / ".acos" / "state" / "autopilot-active"
+
+        if not sid:
+            # Can't safely scope without knowing which session this is — fail open.
+            emit()
+            return
+
+        sentinel = project_root / ".acos" / "state" / f"autopilot-active-{sid}"
 
         if not sentinel.is_file():
-            # Autopilot is OFF — pass through with no extra context
+            # Autopilot is OFF for THIS session — pass through with no extra
+            # context, even if another session has its own sentinel active.
             emit()
             return
 
@@ -136,7 +145,7 @@ def main():
                 iters = "?"
             audit(project_root,
                   f"[{ts}] AUTOPILOT_ETERNITY_SUBORDINATE | hook=UserPromptSubmit | "
-                  f"iter={iters} | sentinel preserved")
+                  f"sid={sid} | iter={iters} | sentinel preserved")
             emit()
             return
 
@@ -151,10 +160,10 @@ def main():
 
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         audit(project_root,
-              f"[{ts}] AUTOPILOT_USER_GUIDANCE | iter={iters}/{max_iter} | "
+              f"[{ts}] AUTOPILOT_USER_GUIDANCE | sid={sid} | iter={iters}/{max_iter} | "
               f"goal={goal[:80]}")
 
-        emit(additional_context=build_guidance_directive(goal, iters, max_iter))
+        emit(additional_context=build_guidance_directive(goal, iters, max_iter, sid))
 
     except Exception:
         emit()

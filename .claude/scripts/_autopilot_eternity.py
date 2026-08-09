@@ -63,6 +63,29 @@ DAEMON_STATE = (
 ARMING_MARKER_PREFIX = ".eternity-arming-"
 ARMING_MARKER_TTL_SECONDS = 600  # 10 min — mirrors the skill's handoff-freshness window.
 
+# 2026-08-06 ROOT-CAUSE FIX — the forever-freeze.
+#
+# The autonomy guarantee above (self-expiry) was written for the arming marker ONLY. Every
+# other marker was treated as "daemon-managed: always counts while present", on the
+# assumption the daemon always clears it. It does not always clear it. Observed live:
+# TEN stale .compact-fired-* markers had accumulated in DAEMON_STATE, the oldest from
+# 2026-06-15. Because they belong to sessions of THIS project, they matched, counted as
+# live forever, and autopilot subordinated on EVERY Stop hook — iteration_count never left
+# 0/150 across a three-hour run. The user's requirement is explicit: the work must never be
+# stuck; after a /clear it must auto-continue.
+#
+# So the self-expiry principle now covers EVERY marker type. A genuine eternity fire runs
+# its whole sequence (handoff -> resume -> /clear -> inject) in minutes, so a marker older
+# than this TTL cannot belong to a live fire — the fire either finished or died. Ageing them
+# out preserves the intended behaviour (subordinate DURING a real fire) while making a
+# permanent freeze impossible, with no daemon action required.
+#
+# Deliberately generous (10x a normal fire) so a slow-but-real fire is never cut short.
+# NOTE: this is a pure READ-side age check. No marker file is ever deleted here — in
+# particular pending-resume-*.txt is left untouched on disk, so an aged-out resume can still
+# be injected or recovered by hand.
+DEFAULT_MARKER_TTL_SECONDS = 1800  # 30 min
+
 # (filename_prefix, filename_suffix) — sid is the substring between them.
 IN_FLIGHT_MARKERS = [
     ("pending-resume-", ".txt"),
@@ -82,19 +105,20 @@ IN_FLIGHT_MARKERS = [
 def _marker_is_live(entry, prefix):
     """Whether a matched marker file should still count as in-flight.
 
-    Daemon-managed markers always count while present (the daemon clears them). The
-    freeze-early arming marker additionally SELF-EXPIRES by mtime, so a crashed/aborted
-    fire can never freeze autopilot beyond ARMING_MARKER_TTL_SECONDS. This is a pure read
-    (no unlink) — the autonomy guarantee lives entirely in this age check.
+    EVERY marker type self-expires by mtime (2026-08-06). The arming marker keeps its
+    tighter ARMING_MARKER_TTL_SECONDS; all others use DEFAULT_MARKER_TTL_SECONDS. This is
+    a pure read (no unlink) — the autonomy guarantee lives entirely in this age check, so a
+    crashed fire, a daemon that never cleaned up, or a marker left by a long-dead session
+    can never freeze autopilot permanently.
 
-    Errs toward NOT-live (don't freeze) for the arming marker on any stat failure: an
-    unreadable/vanished marker is not a live freeze signal, and biasing here toward
-    autopilot-continues protects autonomy.
+    Errs toward NOT-live (don't freeze) on any stat failure: an unreadable or vanished
+    marker is not a live freeze signal, and biasing toward autopilot-continues protects
+    autonomy, which is the whole point of the guarantee.
     """
-    if prefix != ARMING_MARKER_PREFIX:
-        return True
+    ttl = (ARMING_MARKER_TTL_SECONDS if prefix == ARMING_MARKER_PREFIX
+           else DEFAULT_MARKER_TTL_SECONDS)
     try:
-        return (time.time() - entry.stat().st_mtime) <= ARMING_MARKER_TTL_SECONDS
+        return (time.time() - entry.stat().st_mtime) <= ttl
     except OSError:
         return False
 
