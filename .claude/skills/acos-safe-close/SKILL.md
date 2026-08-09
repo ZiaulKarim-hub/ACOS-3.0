@@ -132,12 +132,44 @@ INTENT
 
 Keep `next_action:` as the first line — the script takes the first matching line.
 
+## Step 2a — Gather candidate learnings left by EARLIER `/clear` cycles
+
+A long Eternity Protocol saga can leave MANY emergency handoffs in
+`memory/handoffs/` before anyone ever closes — one per `/clear`. Each one may
+carry its own `candidate_learnings:` list (things THAT cycle noticed — see
+`handoff-agent.md`), and this session's own memory only reaches back to the
+handoff it personally resumed from, not the ones before that. Run the
+mechanical gatherer before you sort anything, so nothing older gets missed:
+
+```bash
+GATHER="$RESDIR/gather-candidate-learnings.py"
+python3 "$GATHER" --root "$ROOT" \
+  --out "$SCRATCH/gathered-candidates.json" \
+  --sources-out "$SCRATCH/gathered-sources.json"
+cat "$SCRATCH/gathered-candidates.json"
+```
+
+This only READS `memory/handoffs/*.yaml|*.md` and a harvested-marker directory
+(`memory/handoffs/.harvested/`) — it writes nothing to the handoffs themselves,
+mutates nothing, and cannot fail the close. If it finds nothing (first close,
+or every handoff already harvested), `gathered-candidates.json` is `[]` — treat
+that as the honest outcome it is, same as an empty Step 2b today.
+
 ## Step 2b — Compose this session's LEARNINGS (KB-A, optional but expected)
 
 The intent core answers "where was I". This answers "what do I now know" — a
 different job, kept in a different place (`~/.acos/knowledge/<project_uuid>/`),
 and never merged into the handoff. Skip the file entirely and the close behaves
 exactly as it always did.
+
+**Fold in Step 2a's output.** Every item in `gathered-candidates.json` is a raw
+`{claim, evidence}` pair — an earlier cycle's noticing, not yet sorted. Give
+each one the SAME kind/evidence/checks treatment below as anything you
+personally observed this session, and include it in the SAME
+`safe-close-learnings.json` array. A raw candidate whose claim is Zee's own
+call (naming, policy, a fact only he holds) is `"ruling"`, same as always —
+gathering it from an old handoff does not make it any more machine-checkable
+than if you'd noticed it yourself just now.
 
 **You do the sorting; the script gates it.** For each durable thing this session
 learned, decide which kind it is:
@@ -294,6 +326,26 @@ PY
 
 A "no" writes nothing — and that is the whole point of asking. Never record a
 ruling he did not give, and never re-ask past the cap.
+
+### Step 6c — Mark the gathered handoffs harvested (ONLY on a safe close)
+
+Skip this step entirely if Step 2a's `gathered-sources.json` is `[]` or absent,
+or if the close was NOT safe (below). Marking is a receipt-not-a-promise:
+do it only once the close this session just ran has actually succeeded, so a
+refused/`NOT SAFE` close never marks handoffs as consumed when their learnings
+were never actually written anywhere.
+
+```bash
+if grep -qc '^SAFE TO CLOSE THIS TAB$' "$SCRATCH/close-receipt-final.txt" 2>/dev/null \
+   && [ -s "$SCRATCH/gathered-sources.json" ]; then
+  python3 "$RESDIR/gather-candidate-learnings.py" --mark-harvested --root "$ROOT" \
+    --sources "$SCRATCH/gathered-sources.json"
+fi
+```
+
+This is why Step 2a's gather runs BEFORE this session's own Step 2b sorting,
+but marking runs AFTER the final receipt: the candidates must survive to be
+sorted and written, and marking must never race ahead of that.
 
 ## Step 7 — Relay the outcome
 

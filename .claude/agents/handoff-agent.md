@@ -198,6 +198,15 @@ files_modified:
 decisions_made:
   - "[From memory/decisions/ if any today]"
 
+candidate_learnings:
+  - "[A durable, reusable fact this session noticed — a working command, a file
+     path that matters, a library quirk, a gotcha, a standing preference Zee
+     stated. Format each line exactly as: <claim> (evidence: <how you know>).
+     OMIT this whole key if nothing durable came up this session — an empty
+     capture is honest; an invented one poisons the store. Do NOT restate
+     ordinary task narrative that already belongs in completed_this_session —
+     only facts worth remembering in a FUTURE, unrelated session.]"
+
 blockers:
   - "[Any apparent blockers from state files or incomplete work]"
 
@@ -217,6 +226,16 @@ reconstruction_sources:
 ```
 
 **On `session_id` and `estimated_tokens`:** `context-monitor.sh` greps the top-level `session_id:` and `estimated_tokens:` fields to correlate a handoff to its originating session and assess staleness. Always emit BOTH fields so your handoff is schema-compatible with that tooling. If your prompt supplied a `SESSION_ID` (see Step 2.0), use it verbatim here — you now usually DO know it. Only write `session_id: "unknown"` if none was supplied (the date/recent-mtime fallback path still finds the handoff either way). Set `estimated_tokens: 0` (an emergency handoff is created out-of-band, not at a measured token threshold).
+
+**On `candidate_learnings` (2026-08-09, KB-A cross-cycle capture):** you are usually
+firing inside a long Eternity Protocol saga — the SAME project can accumulate many
+of these emergency handoffs across many `/clear` cycles before anyone ever runs
+`/acos-safe-close`. This field is the only place that later close can learn what
+THIS cycle noticed; it is never read back into the handoff itself. `.claude/scripts/
+resurrection/gather-candidate-learnings.py` mechanically collects this field from
+every still-open handoff in `memory/handoffs/` at close time, so write it as if a
+future session with zero memory of this one will read it standalone — no "as
+discussed above," no pronouns without an antecedent.
 
 ### Step 4: Save (overwrite the Step 1.5 stub)
 
