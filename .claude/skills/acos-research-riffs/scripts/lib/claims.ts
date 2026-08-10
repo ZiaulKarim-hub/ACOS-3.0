@@ -37,6 +37,14 @@ export interface Claim {
    *  fallback when a source carries no tier of its own. */
   tier?: 1 | 2 | 3 | 4;
   as_of: string;
+  /** True only when the researcher EXPLICITLY supplied as_of at ingest; false
+   *  when as_of was defaulted to the ingest date. Staleness still reads as_of
+   *  (defaulted), but the primary-new YOUTH window must not treat a
+   *  defaulted-to-today date as a real publication date — an undated claim and a
+   *  years-old published claim are never delivered primary-new (FIX-CONTRACT-C).
+   *  Stamped on every claim and carried across re-ingest, so a probe-append +
+   *  re-ingest cannot silently promote a once-undated claim to "young". */
+  as_of_explicit?: boolean;
   /** Source publication date (ISO), when the researcher captured one. as_of is
    *  the date OF the information; published is when the source said it. The
    *  newer of the two drives the recency label (CONTRACT-7). */
@@ -45,9 +53,11 @@ export interface Claim {
   model?: string;
   volatile?: boolean;
   /** Ids this claim is in recorded disagreement with — stamped when a
-   *  near-duplicate was KEPT because its figures or negation parity differ. A
-   *  recorded disputant never corroborates this claim (M1), and the pair is
-   *  preserved until reconciled, never silently harmonized. */
+   *  near-duplicate was KEPT because its figures differ, or because one negates
+   *  a predicate the other affirms (negation COUNT differs). A recorded
+   *  disputant never corroborates this claim (M1); the edges are carried across
+   *  re-ingest rather than recomputed (M4), and the pair is preserved until
+   *  reconciled, never silently harmonized. */
   conflicts_with?: string[];
 }
 
@@ -80,8 +90,14 @@ export function dossierFiles(sessionId: string): Array<{ slug: string; path: str
 export function allClaims(sessionId: string): Array<Claim & { slug: string }> {
   const out: Array<Claim & { slug: string }> = [];
   for (const { slug, path } of dossierFiles(sessionId)) {
+    // Full id shape `<slug>-NNN` (M5) — the SAME rule the write paths
+    // (addClaims/ingestFile) enforce. A bare startsWith let an agent-invented
+    // in-namespace id like `alpha-pricing` enter the corpus without passing
+    // ingest: never deduped, never conflict-stamped, invisible to pendingIngest.
+    // Read and write paths must agree on what a corpus id is.
+    const idShape = new RegExp(`^${escapeRegExp(slug)}-\\d{3,}$`);
     for (const c of readJsonl<Claim>(path)) {
-      if (typeof c.id === "string" && c.id.startsWith(`${slug}-`)) out.push({ ...c, slug });
+      if (typeof c.id === "string" && idShape.test(c.id)) out.push({ ...c, slug });
     }
   }
   return out;
@@ -99,9 +115,12 @@ export function pendingIngest(
     const { rows: raw, dropped } = readJsonlStrict<Claim>(path);
     // A claim outside the slug's id namespace is still un-ingested — ingest
     // will reassign its id — so it counts as pending rather than vanishing
-    // from both the corpus and this safety net.
+    // from both the corpus and this safety net. Full id shape `<slug>-NNN`
+    // (M5), matching allClaims: a non-numeric in-namespace id (`alpha-pricing`)
+    // fails ingest here too, so read and write paths never disagree.
+    const idShape = new RegExp(`^${escapeRegExp(slug)}-\\d{3,}$`);
     const unided = raw.filter(
-      (c) => !(typeof c.id === "string" && c.id.startsWith(`${slug}-`)),
+      (c) => !(typeof c.id === "string" && idShape.test(c.id)),
     ).length;
     if (unided > 0 || dropped.length > 0)
       out.push({
@@ -128,54 +147,79 @@ export function canonicalKey(text: string): string {
 export interface AddResult {
   added: Claim[];
   duplicates: Array<{ claim: string; duplicate_of: string; sources_merged?: number }>;
-  /** Kept despite near-duplicate wording: the figures or the negation parity
-   *  differ, so this is the corpus disagreeing with itself — a conflict to
-   *  reconcile (usually via a ledger correction), never something to drop
-   *  silently. */
+  /** Kept despite near-duplicate wording: the figures differ, or one text
+   *  negates a predicate the other affirms (negation COUNT differs), so this is
+   *  the corpus disagreeing with itself — a conflict to reconcile (usually via a
+   *  ledger correction), never something to drop silently. */
   conflicts: Array<{ id: string; conflicts_with: string; claim: string }>;
 }
 
 /**
- * Numeric tokens of a claim text ("$99" -> "99", "1.2s" -> "1.2", "1,200" ->
- * "1200"), in the ORDER they appear. Extracted directly rather than via
- * tokenize(), which drops single-character digit runs — a blindness that let
- * "$9" vs "$5" (and, with longer claims, any one differing figure) score as
- * cosine near-duplicates.
+ * Numeric tokens of a claim text ("$99" -> "99", "$99.00" -> "99.00", ".5" ->
+ * ".5", "1.2s" -> "1.2", "1,200" -> "1200"), in the ORDER they appear.
+ * Extracted directly rather than via tokenize(), which drops single-character
+ * digit runs — a blindness that let "$9" vs "$5" (and, with longer claims, any
+ * one differing figure) score as cosine near-duplicates. A leading decimal
+ * point is kept (".5") so it can compare equal to "0.5" once parsed (M6).
  */
 export function numericTokens(text: string): string[] {
   const out: string[] = [];
-  for (const m of text.matchAll(/\d[\d.,]*/g)) {
+  for (const m of text.matchAll(/\.?\d[\d.,]*/g)) {
     out.push(m[0].replace(/[.,]+$/, "").replace(/,/g, ""));
   }
   return out;
+}
+
+/** Per-position figure equality by NUMERIC VALUE, not raw string (M6): "$99" ==
+ *  "$99.00", "1.0" == "1", ".5" == "0.5". The dollar sign and commas are
+ *  already stripped by numericTokens, so parsing with Number() is all that is
+ *  left. Falls back to exact string equality for a token Number() cannot parse
+ *  (e.g. "1.2.3"), so a genuinely different malformed figure never reads equal. */
+function numericEq(a: string, b: string): boolean {
+  if (a === b) return true;
+  const na = Number(a);
+  const nb = Number(b);
+  return Number.isFinite(na) && Number.isFinite(nb) && na === nb;
 }
 
 /**
  * Ordered figure comparison (M16): "improved from 264ms to 75ms" and its
  * reversal carry the same number SET but state opposite facts, so the
  * sequences are compared element-wise — order and multiplicity both count,
- * never membership alone.
+ * never membership alone. Each position is compared by numeric VALUE (M6), so
+ * numerically identical figures in different formats ("$99" vs "$99.00") read
+ * as a duplicate to merge, never a fabricated conflict that permanently splits
+ * corroboration between two agreeing sources.
  */
 function sameNumbers(a: string, b: string): boolean {
   const na = numericTokens(a);
   const nb = numericTokens(b);
-  return na.length === nb.length && na.every((t, i) => t === nb[i]);
+  return na.length === nb.length && na.every((t, i) => numericEq(t, nb[i]!));
 }
 
 /**
- * Negation parity, taken on the RAW text (M2): tokenize() treats not/no as
+ * Negation COUNT, taken on the RAW text (M1): tokenize() treats not/no as
  * stopwords, so "does not offer X" and "does offer X" are cosine-identical.
- * Differing parity between near-duplicates means one claim REFUTES the other —
- * that is a conflict to keep, never a duplicate to merge, because a merge
- * would hand the refuting source to the very claim it refutes.
+ *
+ * The old version took this count % 2 — a PARITY that cancels double negatives,
+ * so "X is not available and Y is not supported" (count 2) read as identical to
+ * "X is available and Y is supported" (count 0). The refutation was then dropped
+ * as a duplicate and its tier-1 refuting source merged INTO the claim it
+ * refutes: the founding wrong-claim-as-verified failure class, reintroduced on
+ * common two-clause phrasing. Compare raw counts instead — ANY count difference
+ * between near-duplicates is one text negating a predicate the other does not, a
+ * conflict to keep, never a duplicate to merge.
  */
 const NEGATION_RE = /\b(?:not|no|never|cannot|without)\b|n't\b/g;
-function negationParity(text: string): number {
-  return (text.toLowerCase().match(NEGATION_RE) ?? []).length % 2;
+function negationCount(text: string): number {
+  return (text.toLowerCase().match(NEGATION_RE) ?? []).length;
 }
 
+/** Same negation only when the counts are EQUAL. Fail-safe by construction: the
+ *  set of pairs this keeps as a conflict is a strict superset of what parity
+ *  flagged, so a double negative can never launder into a duplicate. */
 function sameNegation(a: string, b: string): boolean {
-  return negationParity(a) === negationParity(b);
+  return negationCount(a) === negationCount(b);
 }
 
 /**
@@ -297,7 +341,7 @@ function escapeRegExp(s: string): string {
  * Append claims for one dossier, dropping near-duplicates of anything already in
  * the corpus. Returns what was novel — the caller feeds that count straight into
  * the coverage saturation counter. A near-duplicate whose FIGURES differ (in
- * ordered sequence) or whose NEGATION PARITY differs is not a duplicate: it is
+ * ordered sequence) or whose NEGATION COUNT differs is not a duplicate: it is
  * kept, stamped with `conflicts_with`, and reported in `conflicts`; a dropped
  * duplicate's sources are merged into the surviving claim.
  */
@@ -319,6 +363,14 @@ export function addClaims(
   // pass for slug `cost`, and non-numeric suffixes escaped the audit's
   // slug-\d+ token shape while still entering the corpus.
   const idShape = new RegExp(`^${escapeRegExp(slug)}-\\d{3,}$`);
+  // Ids that will exist in the corpus after this batch — the existing corpus
+  // plus any incoming id we will preserve (idShape). Carried-over conflicts_with
+  // edges (M4) are filtered to this set so re-adding a claim keeps its recorded
+  // disputes without accumulating references to ids that no longer resolve.
+  const corpusIds = new Set<string>(usedIds);
+  for (const r of incoming) {
+    if (typeof r.id === "string" && idShape.test(r.id)) corpusIds.add(r.id);
+  }
 
   const added: Claim[] = [];
   const duplicates: AddResult["duplicates"] = [];
@@ -331,8 +383,8 @@ export function addClaims(
     // The exact-dup key keeps digit tokens, so DIFFERING figures never collide
     // here — but the key sorts its tokens, so a figure-SWAPPED rewording (and
     // sometimes a negation) lands on the same key. A key hit is only a
-    // duplicate when the ordered figures and negation parity also agree;
-    // anything else falls through to the conflict logic below (M16/M2).
+    // duplicate when the ordered figures and negation counts also agree;
+    // anything else falls through to the conflict logic below (M16/M1).
     const key = canonicalKey(text);
     const exactDup = existingKeys.get(key);
     if (exactDup && sameNumbers(text, exactDup.text) && sameNegation(text, exactDup.text)) {
@@ -356,7 +408,7 @@ export function addClaims(
       .sort((x, y) => y.score - x.score);
     const dup = cands.find((c) => sameNumbers(text, c.e.text) && sameNegation(text, c.e.text))?.e;
     // A cosine near-match stating the SAME thing is a duplicate. With
-    // different figures — or opposite negation parity — it is the corpus
+    // different figures — or a differing negation count — it is the corpus
     // disagreeing with itself, and dropping it would let the first-stated
     // claim win forever: a wrong "$99" surviving its "$49" correction, or a
     // refuted claim absorbing its refutation's source. Keep and flag instead.
@@ -378,28 +430,46 @@ export function addClaims(
       id = `${slug}-${String(seq).padStart(3, "0")}`;
     }
     usedIds.add(id);
+    // Carry over the claim's already-recorded conflicts_with edges (M4) instead
+    // of recomputing a single closest edge — a re-add otherwise erases a
+    // recorded cross-dossier dispute. Keep only edges that still resolve and
+    // never a self-edge, union the freshly-computed edge, and report only NEW
+    // edges so re-adding a claim does not duplicate ledger notes.
+    const carried = (Array.isArray(raw.conflicts_with) ? raw.conflicts_with : []).filter(
+      (cid): cid is string => typeof cid === "string" && cid !== id && corpusIds.has(cid),
+    );
+    const conflictEdges = [...new Set([...carried, ...(conflictWith ? [conflictWith.id] : [])])];
+    const newEdges = conflictWith && !carried.includes(conflictWith.id) ? [conflictWith.id] : [];
     // Claim-level tier is stamped from the best source tier so the two tier
     // fields never disagree: display consumers read claim.tier, the trust
     // gates read source tiers. Both run through normalizeTier (M17).
     const srcs = normalizeSources(raw.sources);
     const tier = bestSourceTier(srcs) ?? normalizeTier(raw.tier);
+    // Track whether as_of was explicitly supplied vs defaulted to today() here,
+    // carrying a prior verdict across re-add so a defaulted date never later
+    // reads as "young" for the primary-new window (FIX-CONTRACT-C).
+    const asOfExplicit =
+      typeof raw.as_of_explicit === "boolean"
+        ? raw.as_of_explicit
+        : typeof raw.as_of === "string" && raw.as_of.trim() !== "";
     const claim: Claim = {
       id,
       claim: text,
-      ...(raw.dimension ? { dimension: raw.dimension } : {}),
+      ...(typeof raw.dimension === "string" && raw.dimension ? { dimension: raw.dimension } : {}),
       ...(raw.question ? { question: raw.question } : {}),
       sources: srcs,
       ...(tier ? { tier } : {}),
       as_of: raw.as_of ?? today(),
+      as_of_explicit: asOfExplicit,
       ...(typeof raw.published === "string" && raw.published ? { published: raw.published } : {}),
       agent: raw.agent ?? slug,
       ...(raw.model ? { model: raw.model } : {}),
       ...(raw.volatile ? { volatile: true } : {}),
-      ...(conflictWith ? { conflicts_with: [conflictWith.id] } : {}),
+      ...(conflictEdges.length > 0 ? { conflicts_with: conflictEdges } : {}),
     };
     appendJsonl(path, claim);
     added.push(claim);
-    if (conflictWith) conflicts.push({ id: claim.id, conflicts_with: conflictWith.id, claim: text });
+    for (const cid of newEdges) conflicts.push({ id: claim.id, conflicts_with: cid, claim: text });
     existingKeys.set(key, { id: claim.id, text });
     existingVecs.push({ id: claim.id, text, vec });
   }
@@ -413,7 +483,7 @@ export function addClaims(
  * contract and it keeps their output out of the orchestrator's context. So
  * ingest reads that file where it lies, drops claims that duplicate other
  * dossiers or repeat within the file, assigns ids, and rewrites it canonically.
- * A near-duplicate whose figures or negation parity differ is kept and
+ * A near-duplicate whose figures or negation count differ is kept and
  * reported in `conflicts` (see addClaims), a dropped duplicate's sources are
  * merged into the surviving claim, and malformed lines are preserved in a
  * `<slug>.claims.rejected.jsonl` sidecar before the rewrite discards them.
@@ -460,6 +530,14 @@ export function ingestFile(
   const usedIds = new Set(others.map((c) => c.id));
   // Full id shape `<slug>-NNN`, same rule as addClaims (I21).
   const idShape = new RegExp(`^${escapeRegExp(slug)}-\\d{3,}$`);
+  // Ids that will exist after re-ingest — other dossiers plus this slug's own
+  // ids being re-ingested (idShape). Carried-over conflicts_with edges (M4) are
+  // filtered to this set so a probe-append + re-ingest keeps a recorded dispute
+  // (gamma-001 vs beta-001) instead of silently retargeting or erasing it.
+  const corpusIds = new Set<string>(usedIds);
+  for (const r of incoming) {
+    if (typeof r.id === "string" && idShape.test(r.id)) corpusIds.add(r.id);
+  }
 
   const added: Claim[] = [];
   const duplicates: AddResult["duplicates"] = [];
@@ -483,9 +561,9 @@ export function ingestFile(
       }
       return gained;
     };
-    // Key hits are only duplicates when ordered figures and negation parity
+    // Key hits are only duplicates when ordered figures and negation counts
     // agree — the sorted key collides on figure swaps and some negations
-    // (M16/M2; same rule as addClaims).
+    // (M16/M1; same rule as addClaims).
     if (exact && sameNumbers(text, exact.text) && sameNegation(text, exact.text)) {
       const merged = mergeInto(exact.id);
       duplicates.push({
@@ -521,26 +599,45 @@ export function ingestFile(
       id = `${slug}-${String(seq).padStart(3, "0")}`;
     }
     usedIds.add(id);
+    // Carry over the claim's recorded conflicts_with edges across re-ingest (M4)
+    // rather than recomputing a single closest edge: a probe-append + re-ingest
+    // otherwise silently retargets or erases a recorded dispute. Keep only edges
+    // that still resolve and never a self-edge, union the freshly-computed edge,
+    // and report only NEW edges so re-ingest does not re-emit ledger notes for
+    // disputes already recorded.
+    const carried = (Array.isArray(raw.conflicts_with) ? raw.conflicts_with : []).filter(
+      (cid): cid is string => typeof cid === "string" && cid !== id && corpusIds.has(cid),
+    );
+    const conflictEdges = [...new Set([...carried, ...(conflictWith ? [conflictWith.id] : [])])];
+    const newEdges = conflictWith && !carried.includes(conflictWith.id) ? [conflictWith.id] : [];
     // Claim-level tier is stamped from the best source tier so the two tier
     // fields never disagree (same normalizeTier rule as addClaims; M17).
     const srcs = normalizeSources(raw.sources);
     const tier = bestSourceTier(srcs) ?? normalizeTier(raw.tier);
+    // Track whether as_of was explicitly supplied vs defaulted, carrying a prior
+    // verdict across re-ingest so a defaulted-to-today date never reads as
+    // "young" for the primary-new window (FIX-CONTRACT-C).
+    const asOfExplicit =
+      typeof raw.as_of_explicit === "boolean"
+        ? raw.as_of_explicit
+        : typeof raw.as_of === "string" && raw.as_of.trim() !== "";
     const claim: Claim = {
       id,
       claim: text,
-      ...(raw.dimension ? { dimension: raw.dimension } : {}),
+      ...(typeof raw.dimension === "string" && raw.dimension ? { dimension: raw.dimension } : {}),
       ...(raw.question ? { question: raw.question } : {}),
       sources: srcs,
       ...(tier ? { tier } : {}),
       as_of: raw.as_of ?? today(),
+      as_of_explicit: asOfExplicit,
       ...(typeof raw.published === "string" && raw.published ? { published: raw.published } : {}),
       agent: raw.agent ?? slug,
       ...(raw.model ? { model: raw.model } : {}),
       ...(raw.volatile ? { volatile: true } : {}),
-      ...(conflictWith ? { conflicts_with: [conflictWith.id] } : {}),
+      ...(conflictEdges.length > 0 ? { conflicts_with: conflictEdges } : {}),
     };
     added.push(claim);
-    if (conflictWith) conflicts.push({ id: claim.id, conflicts_with: conflictWith.id, claim: text });
+    for (const cid of newEdges) conflicts.push({ id: claim.id, conflicts_with: cid, claim: text });
     keys.set(key, { id: claim.id, text });
     vecs.push({ id: claim.id, text, vec });
   }
@@ -591,8 +688,11 @@ export interface Sufficiency {
    *  never corroborates (M1). This is what "verified" is judged on;
    *  independent_sources remains the set-wide breadth count for reporting. */
   corroborating_sources: number;
-  /** Hits in recorded conflict with the answering claim. Non-empty means an
-   *  active dispute — surfaced and preserved, never silently harmonized. */
+  /** Strong hits (other than the answer) party to a recorded conflict anywhere
+   *  in the strong set — with the answer OR with each other, since the answer is
+   *  composed from all of them (M2). Non-empty means an active dispute the
+   *  delivered answer straddles — surfaced and preserved, never silently
+   *  harmonized. */
   conflicting_ids: string[];
   stale: boolean;
   volatile: boolean;
@@ -641,10 +741,29 @@ export function looksNumeric(text: string): boolean {
 }
 
 /** Newest parseable date on a claim — as_of (date OF the information) vs
- *  published (when the source said it). Null when neither parses. */
+ *  published (when the source said it). Null when neither parses. Honors the
+ *  defaulted as_of, so this drives staleness and display, NOT the youth test. */
 function newestDate(c: Claim): { ms: number; iso: string } | null {
   let best: { ms: number; iso: string } | null = null;
   for (const d of [c.as_of, c.published]) {
+    if (!d) continue;
+    const t = Date.parse(d);
+    if (!Number.isNaN(t) && (best === null || t > best.ms)) best = { ms: t, iso: d };
+  }
+  return best;
+}
+
+/** The explicitly-dated newest date for the primary-new YOUTH test
+ *  (FIX-CONTRACT-C): the source's published date (always source-stated) or a
+ *  researcher-SUPPLIED as_of — never the ingest today() default. An undated
+ *  claim returns null and so can never be delivered primary-new; it decays to
+ *  the provisional default, keeping the aged-decay branch reachable. Distinct
+ *  from newestDate(), which honors the defaulted as_of for staleness/display. */
+function explicitNewestDate(c: Claim): { ms: number; iso: string } | null {
+  let best: { ms: number; iso: string } | null = null;
+  const dates: Array<string | undefined> = [c.published];
+  if (c.as_of_explicit) dates.push(c.as_of);
+  for (const d of dates) {
     if (!d) continue;
     const t = Date.parse(d);
     if (!Number.isNaN(t) && (best === null || t > best.ms)) best = { ms: t, iso: d };
@@ -682,7 +801,14 @@ export function assess(
   const minScore = opts.minScore ?? 0.12;
   const strongScore = opts.strongScore ?? 0.25;
   const staleDays = opts.staleDays ?? 45;
-  let hits = search(sessionId, query, 8).filter((h) => h.score >= minScore);
+  // A claim with no source cannot be delivered — there is nothing to cite, and
+  // I1 forbids handing an unprovenanced statement to the orchestrator. Drop
+  // sourceless claims from the answering set entirely (mirrors moderatorPick's
+  // I1 filter); if that empties hits the honest state is not-in-corpus with a
+  // probe dispatch, never "provisional / single source" over zero sources (M7).
+  let hits = search(sessionId, query, 8).filter(
+    (h) => h.score >= minScore && (h.sources?.length ?? 0) > 0,
+  );
   if (hits.length === 0) {
     return {
       label: "not-in-corpus",
@@ -780,10 +906,10 @@ export function assess(
   // pooling URLs across the whole hit set measures breadth, so a single-source
   // answer would read "2+ independent sources" whenever any other hit carried
   // a different URL. Count the answering claim's own sources plus sources on
-  // hits that state THE SAME thing — same ordered figures, same negation
-  // parity, and no recorded conflict. A kept figure-conflict is >=0.82-similar
-  // by construction, so without these guards a disputant's source would count
-  // as corroboration for the very claim it disputes (M1).
+  // hits that state THE SAME thing — same ordered figures, same negation, and
+  // no recorded conflict. A kept figure-conflict is >=0.82-similar by
+  // construction, so without these guards a disputant's source would count as
+  // corroboration for the very claim it disputes (M1).
   const answerUrls = new Set<string>();
   for (const s of answer.sources) answerUrls.add(s.url ?? s.source);
   for (const h of hits.slice(1)) {
@@ -793,10 +919,50 @@ export function assess(
     for (const s of h.sources) answerUrls.add(s.url ?? s.source);
   }
   const corroborating = answerUrls.size;
-  const conflictingIds = hits.slice(1).filter((h) => inConflict(answer, h)).map((h) => h.id);
+  // Conflict surfacing spans the strong hits COMPOSING THIS answer. A dispute
+  // caps only when it is about the answer's subject: a pair counts when EITHER
+  // disputant is answer-relevant (>=0.6 similar to the answer), so a dispute the
+  // answer straddles — including one whose members sit at hits[1]/hits[2] while a
+  // different facet leads (M2) — is surfaced, while an unrelated version-pair that
+  // merely shares vocabulary (a pricing/meter $X-per-node dispute landing in a
+  // verse answer's strong set) is not. Requiring only ONE relevant member (not
+  // both) closes the M2 leak where hits[0] is a <0.6 facet of a multi-facet query;
+  // inConflict still requires the pair be >=0.82-similar to EACH OTHER to count.
+  const answerRelevant = (h: ScoredClaim) =>
+    h === answer || similarity(answer.claim, h.claim) >= 0.6;
+  const conflictPairs: Array<[ScoredClaim, ScoredClaim]> = [];
+  for (let i = 0; i < strong.length; i++) {
+    for (let j = i + 1; j < strong.length; j++) {
+      const x = strong[i]!;
+      const y = strong[j]!;
+      if (inConflict(x, y) && (answerRelevant(x) || answerRelevant(y))) conflictPairs.push([x, y]);
+    }
+  }
+  const disputedIds = new Set<string>();
+  for (const [x, y] of conflictPairs) {
+    disputedIds.add(x.id);
+    disputedIds.add(y.id);
+  }
+  // Every disputed strong hit other than the answer itself, in hit order — the
+  // surfaced conflict set for the Sufficiency result.
+  const conflictingIds = strong
+    .filter((h) => h !== answer && disputedIds.has(h.id))
+    .map((h) => h.id);
   const answerDate = newestDate(answer);
+  // Youth for primary-new requires a REAL, explicitly-supplied date, never the
+  // ingest today() default (FIX-CONTRACT-C): an undated claim and a years-old
+  // published claim must both fall through to the aged/provisional path.
+  const youthDate = explicitNewestDate(answer);
   const recencyOf = (primaryNew: boolean) => ({
-    as_of_newest: answerDate ? answerDate.iso : null,
+    // A primary-new answer IS delivered dated ("as of <date>"), so it reports
+    // the real explicit date; other labels report the best-known date.
+    as_of_newest: primaryNew
+      ? youthDate
+        ? youthDate.iso
+        : null
+      : answerDate
+        ? answerDate.iso
+        : null,
     primary_new: primaryNew,
   });
   if (numeric && !primary_sourced) {
@@ -830,15 +996,22 @@ export function assess(
       (d === null || answerDate.ms > d.ms)
     );
   };
-  const unresolved = hits
-    .slice(1)
-    .filter((h) => inConflict(answer, h) && !beats(h))
-    .map((h) => h.id);
-  if (unresolved.length > 0) {
+  // Cap the label while ANY strong-set conflict is unresolved (M2). A pair is
+  // settled only when the ANSWER is the newer primary over its disputant (the
+  // versioned-figure recency rule); a dispute between two SUPPORTING hits, or
+  // any the recency rule does not settle, stays unresolved — the corpus
+  // disagrees with itself and neither side may read verified.
+  const unresolvedPairs = conflictPairs.filter(([x, y]) => {
+    if (x === answer) return !beats(y);
+    if (y === answer) return !beats(x);
+    return true;
+  });
+  if (unresolvedPairs.length > 0) {
+    const disputes = unresolvedPairs.map(([x, y]) => `${x.id} vs ${y.id}`).join("; ");
     return {
       label: "provisional",
       reason:
-        `corpus disagrees: ${answer.id} vs ${unresolved.join(", ")} state conflicting versions — ` +
+        `corpus disagrees: ${disputes} state conflicting versions — ` +
         `reconcile (probe the primary source) before delivering either as settled`,
       hits,
       independent_sources: independent,
@@ -887,20 +1060,22 @@ export function assess(
     };
   }
   // CONTRACT-7: a young claim from a primary source is not the same epistemic
-  // state as a lone aged blog post. Best source Tier 1-2 + newest date within
-  // the window => deliverable DATED as primary-new instead of hedged as
-  // provisional. Youth explains low corroboration; it does not disqualify.
+  // state as a lone aged blog post. Best source Tier 1-2 + an EXPLICITLY-dated
+  // date within the window => deliverable DATED as primary-new instead of hedged
+  // as provisional. Youth explains low corroboration; it does not disqualify.
   // Computed fresh on every ask, so the label decays to provisional by itself
   // once the window passes without corroboration arriving. The I9 floor is
-  // untouched: an unprimaried figure never reaches this branch.
+  // untouched: an unprimaried figure never reaches this branch, and an UNDATED
+  // claim is never young (youthDate is null), so it decays here too
+  // (FIX-CONTRACT-C).
   const young =
-    answerDate !== null && Date.now() - answerDate.ms <= PRIMARY_NEW_WINDOW_DAYS * 86400_000;
+    youthDate !== null && Date.now() - youthDate.ms <= PRIMARY_NEW_WINDOW_DAYS * 86400_000;
   if (primary_sourced && young) {
     return {
       label: "primary-new",
       reason:
-        `single primary source dated ${answerDate!.iso} — too new for independent corroboration yet; ` +
-        `deliver it dated ("per the source, as of ${answerDate!.iso}"), never as settled fact` +
+        `single primary source dated ${youthDate!.iso} — too new for independent corroboration yet; ` +
+        `deliver it dated ("per the source, as of ${youthDate!.iso}"), never as settled fact` +
         conflictNote +
         figureCaveat,
       hits,
@@ -918,9 +1093,14 @@ export function assess(
   return {
     label: "provisional",
     reason:
-      (corroborating <= 1
-        ? "single source — corroboration missing"
-        : "matched, but sources are not clearly independent") +
+      (corroborating === 0
+        ? // Sourceless hits are filtered out of the answering set upstream (M7),
+          // so the answer always carries >=1 source and this arm is unreachable;
+          // kept as a defensive guard that never miscounts 0 sources as "single".
+          "no citable source — treat as unverified"
+        : corroborating === 1
+          ? "single source — corroboration missing"
+          : "matched, but sources are not clearly independent") +
       conflictNote +
       figureCaveat,
     hits,

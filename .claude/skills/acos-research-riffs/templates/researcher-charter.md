@@ -51,7 +51,18 @@ say what you searched to conclude that — an evidenced negative is a real resul
    you name, check that it is the newest release before treating it as the answer.
    Note the version and its date. A recommendation of an older release when a newer
    one exists is a stale-memory answer, not a researched one.
-8. Stop when you hit the search cap OR when two consecutive probes on a dimension
+8. **Sweep the last 90 days, per dimension.** For every coverage dimension you own,
+   run at least one search explicitly restricted to the last 90 days (date-filter the
+   query — `after:<YYYY-MM-DD>`, "past 3 months", or the engine's recency filter).
+   This is what catches a release, price change, or deprecation too fresh to have
+   surfaced in the general results; "nothing new in the window" is a real result and a
+   dated dry sweep still counts. The brief marks the rare settled-ground dimension
+   `fast_moving: false` — sweep it too, a confirming pass is cheap. Record the window
+   and queries per dimension in your dossier's **Negative space** section, and list
+   every dimension you swept in `recency_swept` in your RETURN VALUE. This field is
+   load-bearing: a fast-moving dimension the panel never swept cannot be treated as
+   current and holds the coverage gate, so report only sweeps you actually ran.
+9. Stop when you hit the search cap OR when two consecutive probes on a dimension
    produce nothing new. State which of the two stopped you, per dimension.
 
 ## BOUNDARIES
@@ -82,6 +93,8 @@ can use it. Structure:
    Where sources disagree, present BOTH. Do not harmonize them away.
 ## Negative space
    What I searched for and did NOT find, per dimension, with the queries used.
+   Include the last-90-days recency sweep here: the window and the queries you ran,
+   and "nothing new in the window" where that was the result.
 ## Where I stopped and why
    Per dimension: cap reached, or K dry probes. Be specific.
 ## Open questions for other seats
@@ -131,5 +144,5 @@ CLAIMS_EOF
 Reply with ONLY a short JSON object:
 
 ```json
-{"slug":"{{SLUG}}","claims":<count>,"dimensions_probed":["…"],"dimensions_empty":["…"],"stopped_by":{"<dim-id>":"cap|saturation"},"headline":"one sentence on the most important thing found"}
+{"slug":"{{SLUG}}","claims":<count>,"dimensions_probed":["…"],"dimensions_empty":["…"],"recency_swept":["<dim-id>"],"stopped_by":{"<dim-id>":"cap|saturation"},"headline":"one sentence on the most important thing found"}
 ```

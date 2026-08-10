@@ -40,7 +40,9 @@ import {
   normalizeTier,
   numericTokens,
 } from "./lib/claims.ts";
-import { recordProbe } from "./lib/coverage.ts";
+import { initCoverage, loadCoverage, recordProbe } from "./lib/coverage.ts";
+import { summarize } from "./lib/ledger.ts";
+import { autofile } from "./lib/tree.ts";
 import { addSeat } from "./lib/panel.ts";
 import { TIERS } from "./lib/session.ts";
 import { parseArgs, similarity, tokenize, writeJson } from "./lib/util.ts";
@@ -2398,9 +2400,13 @@ try {
     "a newer primary-sourced figure outranks the older multi-source claim",
     verseAsk.hits[0]!.id === verseNew.added[0]!.id &&
       verseAsk.conflicting_ids.includes("verse-a-001") &&
+      // Negative control (M2 answer-relevance scope): the recency-outranked
+      // disputant is the ONLY surfaced conflict — the answer-relevance gate does
+      // not sweep the rest of the strong set into conflicting_ids.
+      verseAsk.conflicting_ids.length === 1 &&
       verseAsk.label === "primary-new" &&
       /outranks conflicting/.test(verseAsk.reason),
-    { top: verseAsk.hits[0]!.id, label: verseAsk.label, reason: verseAsk.reason },
+    { top: verseAsk.hits[0]!.id, label: verseAsk.label, conflicting: verseAsk.conflicting_ids, reason: verseAsk.reason },
   );
   // ...but a newer NON-primary figure settles nothing: the conflict caps delivery
   addClaims(S3, "meter-a", [
@@ -2523,6 +2529,502 @@ try {
     audMissing.code !== 0 && /no report at .*compile it first or check --file/.test(audMissing.err),
     audMissing.err,
   );
+
+  // ========================================================================
+  // Regression pass 2026-08-09 — the must-fix items from REVIEW-2026-08-09-FINAL.
+  // Every block asserts the FIXED contract and is worded so the PRE-fix code
+  // would have failed it (e.g. M1 uses a DOUBLE negative the old parity guard
+  // laundered, M2 puts the dispute between two SUPPORTING hits the old
+  // answer-scoped check never saw). All additive — no prior assertion weakened.
+  // ========================================================================
+  console.log("\nregression 2026-08-09: claim engine (M1/M2/M3/M4/M5/M6/M7/M8)");
+
+  // -- M1: a passive DOUBLE-negative refutation is a conflict, never a dup ---
+  // "X is not available and Y is not supported" (2 negations) vs its positive
+  // (0). The old guard compared negation PARITY (count % 2), so 2 and 0 both
+  // read 0 and the refutation was dropped as a duplicate — merging its tier-1
+  // refuting source INTO the claim it refutes. cos(pos,neg)=1.0 (identical
+  // stopword-stripped tokens), so this is unambiguously the near-duplicate the
+  // parity bug merged; count-based sameNegation keeps it as a conflict.
+  const RN = json("init", "--topic", "Double-negative refutation lab", "--tier", "lite").session_id as string;
+  const dnPos = addClaims(RN, "affirm", [
+    {
+      claim: "The Helios export API is available and the legacy webhook is supported",
+      sources: [{ source: "Reseller blog", url: "https://example.test/helios-blog", tier: 4, as_of: daysAgo(9) }],
+      as_of: daysAgo(9),
+    },
+  ]);
+  const dnNeg = addClaims(RN, "refute", [
+    {
+      claim: "The Helios export API is not available and the legacy webhook is not supported",
+      sources: [{ source: "Vendor docs", url: "https://example.test/helios-docs", tier: 1, as_of: daysAgo(8) }],
+      as_of: daysAgo(8),
+    },
+  ]);
+  check(
+    "a passive double-negative refutation is KEPT as a conflict, not merged (M1)",
+    dnNeg.added.length === 1 &&
+      dnNeg.duplicates.length === 0 &&
+      dnNeg.conflicts.length === 1 &&
+      dnNeg.conflicts[0]!.conflicts_with === dnPos.added[0]!.id,
+    dnNeg,
+  );
+  const dnRefuted = allClaims(RN).find((c) => c.id === dnPos.added[0]!.id)!;
+  check(
+    "the tier-1 refuting source is NOT merged into the double-negated claim (M1)",
+    dnRefuted.sources.length === 1 && !dnRefuted.sources.some((s) => s.url === "https://example.test/helios-docs"),
+    dnRefuted.sources,
+  );
+  // same guard on the ingest path — a fresh subject so it is a refutation, not
+  // a cross-dossier copy of the refutation already added above
+  addClaims(RN, "affirm2", [
+    {
+      claim: "The GridSync mirror is enabled and the archive replica is retained",
+      sources: [{ source: "Blog", url: "https://example.test/grid-blog", tier: 4, as_of: daysAgo(9) }],
+      as_of: daysAgo(9),
+    },
+  ]);
+  writeFileSync(
+    join(ROOT, ".acos", "riffs", RN, "dossiers", "refute2.claims.jsonl"),
+    JSON.stringify({
+      claim: "The GridSync mirror is not enabled and the archive replica is not retained",
+      sources: [{ source: "Vendor docs", url: "https://example.test/grid-docs", tier: 1, as_of: daysAgo(7) }],
+      as_of: daysAgo(7),
+    }) + "\n",
+    "utf8",
+  );
+  const dnIngest = ingestFile(RN, "refute2");
+  check(
+    "ingest also keeps a double-negative as a conflict, never a merge (M1)",
+    dnIngest.added.length === 1 &&
+      dnIngest.duplicates.length === 0 &&
+      dnIngest.conflicts.length === 1 &&
+      dnIngest.conflicts[0]!.conflicts_with === "affirm2-001",
+    dnIngest,
+  );
+
+  // -- M6: numerically identical figures in different formats CORROBORATE ----
+  const RM = json("init", "--topic", "Numeric-format equality lab", "--tier", "lite").session_id as string;
+  const m6base = addClaims(RM, "snap", [
+    {
+      claim: "SnapCache pro tier costs $99 per month on the annual plan",
+      sources: [{ source: "Vendor pricing", url: "https://example.test/snap-99", tier: 1, as_of: daysAgo(6) }],
+      as_of: daysAgo(6),
+    },
+  ]);
+  const m6fmt = addClaims(RM, "snap2", [
+    {
+      claim: "SnapCache pro tier costs $99.00 per month on the annual plan",
+      sources: [{ source: "Vendor mirror", url: "https://example.test/snap-99-00", tier: 1, as_of: daysAgo(5) }],
+      as_of: daysAgo(5),
+    },
+  ]);
+  check(
+    "$99 and $99.00 are the same figure — merged as a duplicate, not fabricated as a conflict (M6)",
+    m6fmt.added.length === 0 &&
+      m6fmt.conflicts.length === 0 &&
+      m6fmt.duplicates.length === 1 &&
+      m6fmt.duplicates[0]!.duplicate_of === m6base.added[0]!.id &&
+      m6fmt.duplicates[0]!.sources_merged === 1,
+    m6fmt,
+  );
+  const m6dot = addClaims(RM, "glyph", [
+    { claim: "GlyphStore recall improved .5 points on the shared benchmark", sources: [{ source: "a", url: "https://example.test/g5", tier: 1, as_of: daysAgo(6) }], as_of: daysAgo(6) },
+  ]);
+  const m6dot2 = addClaims(RM, "glyph2", [
+    { claim: "GlyphStore recall improved 0.5 points on the shared benchmark", sources: [{ source: "b", url: "https://example.test/g05", tier: 1, as_of: daysAgo(5) }], as_of: daysAgo(5) },
+  ]);
+  check(".5 and 0.5 merge as one figure (M6)", m6dot2.added.length === 0 && m6dot2.duplicates.length === 1 && m6dot2.conflicts.length === 0, { m6dot: m6dot.added[0]?.id, m6dot2 });
+  const m6one = addClaims(RM, "orbit", [
+    { claim: "OrbitMesh replication factor is 1.0 across the managed cluster", sources: [{ source: "a", url: "https://example.test/o10", tier: 1, as_of: daysAgo(6) }], as_of: daysAgo(6) },
+  ]);
+  const m6one2 = addClaims(RM, "orbit2", [
+    { claim: "OrbitMesh replication factor is 1 across the managed cluster", sources: [{ source: "b", url: "https://example.test/o1", tier: 1, as_of: daysAgo(5) }], as_of: daysAgo(5) },
+  ]);
+  check("1.0 and 1 merge as one figure (M6)", m6one2.added.length === 0 && m6one2.duplicates.length === 1 && m6one2.conflicts.length === 0, { m6one: m6one.added[0]?.id, m6one2 });
+  const m6diff = addClaims(RM, "snap3", [
+    { claim: "SnapCache pro tier costs $49 per month on the annual plan", sources: [{ source: "Deals blog", url: "https://example.test/snap-49", tier: 4, as_of: daysAgo(4) }], as_of: daysAgo(4) },
+  ]);
+  check(
+    "$99 vs $49 is still a real conflict — the numeric-value fix does not over-merge (M6)",
+    m6diff.added.length === 1 && m6diff.duplicates.length === 0 && m6diff.conflicts.length === 1,
+    m6diff,
+  );
+
+  // -- M2: a dispute between two SUPPORTING strong hits caps the answer ------
+  // The answer is a THIRD, figure-less claim that OUTSCORES both disputants and
+  // is NOT in conflict with either (cosine 0.667 to each — answer-relevant >=0.6
+  // but below the 0.82 conflict-stamp bar). The old code judged conflicts only
+  // against hits[0], so it delivered this "verified"/"primary-new" with
+  // conflicting_ids empty and no cap; the fix surfaces the A-vs-B dispute the
+  // composed answer straddles. (The topic-adjacent negative control — an
+  // unrelated dispute NOT capping an answer — is covered by the verse/meter
+  // tests above via the >=0.6 answer-relevance gate.)
+  const RC = json("init", "--topic", "Cross-strong-hit conflict lab", "--tier", "lite").session_id as string;
+  const csA = addClaims(RC, "priceA", [
+    { claim: "QuartzLedger analytics workspace team plan costs $99 per user per month on the annual contract", sources: [{ source: "Vendor pricing", url: "https://example.test/q99", tier: 1, as_of: daysAgo(20) }], as_of: daysAgo(20) },
+  ]);
+  const csB = addClaims(RC, "priceB", [
+    { claim: "QuartzLedger analytics workspace team plan costs $49 per user per month on the annual contract", sources: [{ source: "Support article", url: "https://example.test/q49", tier: 1, as_of: daysAgo(18) }], as_of: daysAgo(18) },
+  ]);
+  check(
+    "the $99/$49 pair is a recorded conflict between two supporting hits (M2 setup)",
+    csB.conflicts.length === 1 && csB.conflicts[0]!.conflicts_with === csA.added[0]!.id,
+    csB,
+  );
+  const csAns = addClaims(RC, "usage", [
+    { claim: "QuartzLedger analytics workspace team plan is the annual contract option finance departments pick for shared reporting per user", sources: [{ source: "Analyst note", url: "https://example.test/q-use", tier: 1, as_of: daysAgo(5) }], as_of: daysAgo(5) },
+  ]);
+  check(
+    "the figure-less answer claim enters clean — it disputes neither price (M2)",
+    csAns.added.length === 1 &&
+      csAns.conflicts.length === 0 &&
+      (allClaims(RC).find((c) => c.id === csAns.added[0]!.id)?.conflicts_with ?? []).length === 0,
+    csAns,
+  );
+  const csAsk = assess(RC, "which annual contract option do finance departments pick for shared reporting on the QuartzLedger analytics workspace team plan per user");
+  check("the figure-less third claim outscores both disputants and answers (M2)", csAsk.hits[0]!.id === csAns.added[0]!.id, { top: csAsk.hits[0]!.id, want: csAns.added[0]!.id });
+  check(
+    "a dispute between two SUPPORTING strong hits caps at provisional and surfaces BOTH ids (M2)",
+    csAsk.label === "provisional" &&
+      /corpus disagrees/.test(csAsk.reason) &&
+      csAsk.conflicting_ids.length === 2 &&
+      csAsk.conflicting_ids.includes(csA.added[0]!.id) &&
+      csAsk.conflicting_ids.includes(csB.added[0]!.id),
+    { label: csAsk.label, conflicting: csAsk.conflicting_ids, reason: csAsk.reason },
+  );
+
+  // -- M2 ASYMMETRIC: EITHER answer-relevant disputant caps (M2 residual) -----
+  // The auditor's residual case: hits[0] leads ONE facet of a multi-facet query
+  // and the dispute sits between a hit RELEVANT to the answer (>=0.6) and one
+  // that is NOT (<0.6). A BOTH-relevant gate drops this pair (one member <0.6)
+  // and mis-delivers the answer settled; the EITHER-relevant rule surfaces it.
+  // The two disputants are ~0.37 similar to EACH OTHER, so the conflict is an
+  // EXPLICIT carried edge (never wording-stamped) — the only geometry where a
+  // single dispute straddles the 0.6 answer-relevance line on both sides at once.
+  const RASYM = json("init", "--topic", "Asymmetric relevance lab", "--tier", "lite").session_id as string;
+  const asymQuery =
+    "which distributed planner benchmark component do platform teams tune for shared reporting on NimbusStore";
+  // Q: a STRONG hit on the query but a DIFFERENT facet (export throughput) — <0.6 to the answer.
+  const asymQ = addClaims(RASYM, "qfacet", [
+    { claim: "NimbusStore distributed planner benchmark reported archive export throughput of 900 megabytes per second", sources: [{ source: "Docs", url: "https://example.test/asym-q", tier: 1, as_of: daysAgo(20) }], as_of: daysAgo(20) },
+  ]);
+  const asymQid = asymQ.added[0]!.id;
+  // P: the answer's tuning facet, >=0.6 to the answer; conflicts_with Q via an
+  // explicit edge carried through ingest (P and Q are not mutually similar, so
+  // wording alone would never stamp them — the M4 carry-over path preserves it).
+  writeFileSync(
+    join(ROOT, ".acos", "riffs", RASYM, "dossiers", "pfacet.claims.jsonl"),
+    JSON.stringify({ claim: "NimbusStore distributed planner benchmark component that platform teams tune for shared reporting delivered a 900 percent cache gain", sources: [{ source: "Bench", url: "https://example.test/asym-p", tier: 1, as_of: daysAgo(18) }], as_of: daysAgo(18), conflicts_with: [asymQid] }) + "\n",
+    "utf8",
+  );
+  const asymPid = ingestFile(RASYM, "pfacet").added[0]!.id;
+  check(
+    "the explicit P→Q conflict edge is carried through ingest (M2 asymmetric setup)",
+    (allClaims(RASYM).find((c) => c.id === asymPid)?.conflicts_with ?? []).includes(asymQid),
+    allClaims(RASYM).find((c) => c.id === asymPid)?.conflicts_with,
+  );
+  // Answer: figure-less, primary-sourced, outscores both disputants — hits[0].
+  const asymAns = addClaims(RASYM, "ans", [
+    { claim: "NimbusStore distributed planner benchmark component platform teams tune for shared reporting is the recommended shared reporting tuning target", sources: [{ source: "Analyst", url: "https://example.test/asym-a", tier: 1, as_of: daysAgo(3) }], as_of: daysAgo(3) },
+  ]);
+  const asymAid = asymAns.added[0]!.id;
+  const asymText = (id: string) => allClaims(RASYM).find((c) => c.id === id)!.claim;
+  check(
+    "exactly ONE disputant is answer-relevant (>=0.6) and the OTHER is not (<0.6) — the asymmetric geometry",
+    similarity(asymText(asymAid), asymText(asymPid)) >= 0.6 && similarity(asymText(asymAid), asymText(asymQid)) < 0.6,
+    { simP: similarity(asymText(asymAid), asymText(asymPid)), simQ: similarity(asymText(asymAid), asymText(asymQid)) },
+  );
+  const asymAsk = assess(RASYM, asymQuery);
+  check(
+    "an asymmetric dispute (one member <0.6 to the answer) still caps at provisional and surfaces BOTH ids (M2)",
+    asymAsk.hits[0]!.id === asymAid &&
+      asymAsk.label === "provisional" &&
+      /corpus disagrees/.test(asymAsk.reason) &&
+      asymAsk.conflicting_ids.length === 2 &&
+      asymAsk.conflicting_ids.includes(asymPid) &&
+      asymAsk.conflicting_ids.includes(asymQid),
+    { top: asymAsk.hits[0]!.id, label: asymAsk.label, conflicting: asymAsk.conflicting_ids, reason: asymAsk.reason },
+  );
+
+  // -- M7: a zero-source best hit is not-in-corpus, never "provisional" ------
+  const RZ = json("init", "--topic", "Zero-source guard lab", "--tier", "lite").session_id as string;
+  addClaims(RZ, "zcache", [
+    { claim: "ZephyrCache offers a write-through mode for hot keys in the managed tier", sources: [], as_of: daysAgo(5) },
+  ]);
+  const zAsk = assess(RZ, "does ZephyrCache offer a write-through mode for hot keys in the managed tier");
+  check(
+    "a strongly-matching but sourceless claim abstains, never delivered provisional (M7/I1)",
+    zAsk.label === "not-in-corpus" && !/single source/.test(zAsk.reason),
+    { label: zAsk.label, reason: zAsk.reason },
+  );
+  const zAskCli = json("ask", "does ZephyrCache offer a write-through mode for hot keys in the managed tier", "--session", RZ);
+  check("ask dispatches a probe for the sourceless-only match (M7)", zAskCli.label === "not-in-corpus" && /ABSTAIN/.test(zAskCli.action), zAskCli.action);
+
+  // -- M4: conflicts_with survives a probe-append + re-ingest ----------------
+  // gamma is stamped conflicts_with beta. hotel then joins CLOSER to gamma than
+  // beta (cos 0.923 vs 0.846), so a naive single-edge recompute retargets
+  // gamma->hotel and ERASES the $99-vs-$49 dispute corpus-wide. The fix carries
+  // the recorded beta edge over and reports only the NEW hotel edge.
+  const RG = json("init", "--topic", "Conflict carry-over lab", "--tier", "lite").session_id as string;
+  const betaAdd = addClaims(RG, "beta", [
+    { claim: "AtlasBooking premium booking API rate is $49 per thousand calls on the standard yearly enterprise tier", sources: [{ source: "Old sheet", url: "https://example.test/atlas-49", tier: 3, as_of: daysAgo(30) }], as_of: daysAgo(30) },
+  ]);
+  const gammaAdd = addClaims(RG, "gamma", [
+    { claim: "AtlasBooking premium booking API rate is $99 per thousand calls on the standard annual enterprise tier", sources: [{ source: "Vendor page", url: "https://example.test/atlas-99", tier: 1, as_of: daysAgo(20) }], as_of: daysAgo(20) },
+  ]);
+  check(
+    "gamma is stamped conflicts_with beta on first add (M4 setup)",
+    gammaAdd.conflicts.length === 1 && gammaAdd.conflicts[0]!.conflicts_with === betaAdd.added[0]!.id,
+    gammaAdd,
+  );
+  addClaims(RG, "hotel", [
+    { claim: "AtlasBooking premium booking API rate is $79 per thousand calls on the standard annual enterprise tier", sources: [{ source: "Reseller", url: "https://example.test/atlas-79", tier: 3, as_of: daysAgo(10) }], as_of: daysAgo(10) },
+  ]);
+  appendFileSync(
+    join(ROOT, ".acos", "riffs", RG, "dossiers", "gamma.claims.jsonl"),
+    JSON.stringify({ claim: "AtlasBooking publishes a public status page for API uptime", sources: [{ source: "Status", url: "https://example.test/atlas-status", tier: 2, as_of: daysAgo(3) }], as_of: daysAgo(3) }) + "\n",
+  );
+  const gammaReing = ingestFile(RG, "gamma");
+  const gammaAfter = allClaims(RG).find((c) => c.id === gammaAdd.added[0]!.id)!;
+  check(
+    "re-ingest carries gamma's recorded conflicts_with beta instead of erasing it (M4)",
+    (gammaAfter.conflicts_with ?? []).includes(betaAdd.added[0]!.id),
+    gammaAfter.conflicts_with,
+  );
+  check(
+    "re-ingest reports only NEW conflict edges, never re-noting the carried one (M4)",
+    gammaReing.conflicts.length > 0 && gammaReing.conflicts.every((c) => c.conflicts_with !== betaAdd.added[0]!.id),
+    gammaReing.conflicts,
+  );
+
+  // -- M5: the full id shape `<slug>-NNN` applies on the READ path too -------
+  // A bare startsWith let an agent-invented in-namespace id like `alpha-pricing`
+  // (never ingested, so never deduped/conflict-stamped/id-assigned) enter the
+  // corpus AND be invisible to the un-ingested safety net. The claim carries a
+  // real tier-1 source, so the ONLY reason assess cannot answer it is the id shape.
+  const RI = json("init", "--topic", "Id-shape read-path lab", "--tier", "lite").session_id as string;
+  writeFileSync(
+    join(ROOT, ".acos", "riffs", RI, "dossiers", "alpha.claims.jsonl"),
+    JSON.stringify({ id: "alpha-pricing", claim: "PixelForge annual bundle includes unlimited seat licenses", sources: [{ source: "Docs", url: "https://example.test/pf", tier: 1, as_of: daysAgo(5) }], as_of: daysAgo(5) }) + "\n",
+    "utf8",
+  );
+  check("an in-namespace non-numeric id (alpha-pricing) is absent from the corpus (M5)", !allClaims(RI).some((c) => c.id === "alpha-pricing"), allClaims(RI).map((c) => c.id));
+  check("the un-ingested non-numeric id is counted by pendingIngest, not lost (M5)", json("status", "--session", RI).corpus.pending_ingest === 1, json("status", "--session", RI).corpus);
+  check("assess cannot answer from a non-ingested non-numeric id (M5)", assess(RI, "does the PixelForge annual bundle include unlimited seat licenses").label === "not-in-corpus", null);
+
+  // -- M3 / FIX-CONTRACT-C: primary-new requires a REAL, explicit date -------
+  // An undated claim (as_of defaulted to today()) and a years-old published
+  // claim must both decay to provisional; only an explicitly dated, in-window
+  // claim earns primary-new. The old code let the ingest today() default read
+  // "young", so virtually every single-primary claim was delivered primary-new.
+  const RD = json("init", "--topic", "Explicit-date youth lab", "--tier", "lite").session_id as string;
+  addClaims(RD, "undated", [
+    { claim: "NovaIndex shipped a hybrid vector recall mode for enterprise search", sources: [{ source: "Changelog", url: "https://example.test/nova", tier: 1, as_of: daysAgo(5) }] },
+  ]);
+  const undatedC = allClaims(RD).find((c) => c.slug === "undated")!;
+  check("an undated claim stores as_of_explicit=false (FIX-CONTRACT-C)", undatedC.as_of_explicit === false, { as_of: undatedC.as_of, explicit: undatedC.as_of_explicit });
+  const undatedAsk = assess(RD, "did NovaIndex ship a hybrid vector recall mode for enterprise search");
+  check(
+    "an undated single-primary claim decays to provisional, never primary-new (M3)",
+    undatedAsk.label === "provisional" && undatedAsk.recency.primary_new === false,
+    { label: undatedAsk.label, recency: undatedAsk.recency },
+  );
+  addClaims(RD, "oldpub", [
+    { claim: "PrismStore published its archival retention policy for cold storage tiers", sources: [{ source: "Docs", url: "https://example.test/prism", tier: 1, as_of: daysAgo(5) }], published: "2019-03-14" },
+  ]);
+  const oldpubAsk = assess(RD, "what is the PrismStore archival retention policy for cold storage tiers");
+  check(
+    "a years-old published single-primary claim is provisional, never primary-new (M3)",
+    oldpubAsk.label === "provisional" && oldpubAsk.recency.primary_new === false,
+    { label: oldpubAsk.label, recency: oldpubAsk.recency },
+  );
+  const datedAdd = addClaims(RD, "dated", [
+    { claim: "LumenGraph released a managed graph traversal accelerator for analysts", sources: [{ source: "Release notes", url: "https://example.test/lumen", tier: 1, as_of: daysAgo(5) }], as_of: daysAgo(5) },
+  ]);
+  const datedC = allClaims(RD).find((c) => c.id === datedAdd.added[0]!.id)!;
+  check("an explicitly dated claim stores as_of_explicit=true (FIX-CONTRACT-C)", datedC.as_of_explicit === true, { as_of: datedC.as_of, explicit: datedC.as_of_explicit });
+  const datedAsk = assess(RD, "did LumenGraph release a managed graph traversal accelerator for analysts");
+  check(
+    "an explicitly dated in-window primary claim earns primary-new (M3 positive control)",
+    datedAsk.label === "primary-new" && datedAsk.recency.primary_new === true && datedAsk.recency.as_of_newest === daysAgo(5),
+    { label: datedAsk.label, recency: datedAsk.recency },
+  );
+  // M8: the ask ACTION field for primary-new carries the dated-delivery mandate
+  const datedCli = json("ask", "did LumenGraph release a managed graph traversal accelerator for analysts", "--session", RD);
+  check(
+    "the primary-new ask action instructs delivery WITH the date, never as settled fact (M8)",
+    datedCli.label === "primary-new" && /WITH the date/.test(datedCli.action) && /never as settled fact/.test(datedCli.action),
+    { label: datedCli.label, action: datedCli.action },
+  );
+  // re-ingest of a once-undated claim must NOT promote it: the defaulted as_of
+  // (now a real today() string on disk) stays non-explicit across re-ingest.
+  writeFileSync(
+    join(ROOT, ".acos", "riffs", RD, "dossiers", "undated2.claims.jsonl"),
+    JSON.stringify({ claim: "AtlasVault added a cold-tier lifecycle policy for archived buckets", sources: [{ source: "Docs", url: "https://example.test/av", tier: 1, as_of: daysAgo(5) }] }) + "\n",
+    "utf8",
+  );
+  ingestFile(RD, "undated2");
+  const undated2First = allClaims(RD).find((c) => c.slug === "undated2")!;
+  check("first ingest of an undated claim is non-explicit with a defaulted as_of (FIX-CONTRACT-C)", undated2First.as_of_explicit === false && typeof undated2First.as_of === "string", undated2First);
+  ingestFile(RD, "undated2"); // re-ingest: as_of is now a real string on disk
+  const undated2Re = allClaims(RD).find((c) => c.slug === "undated2")!;
+  check("re-ingest does not promote a once-undated claim to young (FIX-CONTRACT-C)", undated2Re.as_of_explicit === false, undated2Re);
+  const undated2Ask = assess(RD, "did AtlasVault add a cold-tier lifecycle policy for archived buckets");
+  check(
+    "the re-ingested once-undated claim still reads provisional, not primary-new (M3)",
+    undated2Ask.label === "provisional" && undated2Ask.recency.primary_new === false,
+    { label: undated2Ask.label, recency: undated2Ask.recency },
+  );
+
+  // ========================================================================
+  console.log("\nregression 2026-08-09: ledger / tree / coverage (M13/M15/M16/M18)");
+
+  // -- M18 / FIX-CONTRACT-B: the ledger accepts the primary-new confidence ---
+  const RL = json("init", "--topic", "Ledger primary-new lab", "--tier", "lite").session_id as string;
+  const pnEntry = json("ledger", "add", "--session", RL, "--data", '{"type":"finding","body":"NovaIndex hybrid recall shipped per release notes","confidence":"primary-new","author":{"agent":"riff"}}');
+  check("the ledger accepts a primary-new confidence (M18/FIX-CONTRACT-B)", /^L-\d{4}$/.test(pnEntry.id), pnEntry);
+  const pnShow = json("ledger", "show", "--session", RL).find((e: any) => e.id === pnEntry.id);
+  check("a primary-new entry round-trips through ledger show (M18)", !!pnShow && pnShow.confidence === "primary-new", pnShow);
+  check("summarize reports the primary-new confidence (M18)", summarize(RL)["conf:primary-new"] === 1, summarize(RL));
+  const pnBadConf = run("ledger", "add", "--session", RL, "--data", '{"type":"finding","body":"x","confidence":"brand-new"}');
+  check("an unknown confidence is still rejected after appending the fifth (M18)", pnBadConf.code !== 0 && /unknown confidence/.test(pnBadConf.err), pnBadConf.err);
+  const pnBundle = run("report", "bundle", "--session", RL);
+  check("report bundle compiles with a primary-new ledger entry present (M18)", pnBundle.code === 0, pnBundle.err.slice(0, 160));
+
+  // -- M13: a duplicate dimension id is rejected on both layers --------------
+  const RV = json("init", "--topic", "Duplicate dimension lab", "--tier", "lite").session_id as string;
+  const dupDims = tmpJson("dup-dims.json", [
+    { id: "pricing", name: "Pricing A", why: "x" },
+    { id: "pricing", name: "Pricing B", why: "y" },
+  ]);
+  const dupInit = run("coverage", "init", "--session", RV, "--json", dupDims);
+  check(
+    "coverage init rejects a duplicate dimension id, naming it (M13)",
+    dupInit.code !== 0 && /duplicate dimension id/.test(dupInit.err) && /pricing/.test(dupInit.err),
+    dupInit.err,
+  );
+  check("the rejected dup-init persisted zero dimensions (M13)", loadCoverage(RV).dimensions.length === 0, loadCoverage(RV).dimensions);
+  const uniqDims = tmpJson("uniq-dims.json", [
+    { id: "pricing", name: "Pricing", why: "x" },
+    { id: "latency", name: "Latency", why: "y" },
+  ]);
+  const uniqInit = json("coverage", "init", "--session", RV, "--json", uniqDims);
+  check("a unique-id payload initializes both dimensions (M13)", uniqInit.dimensions === 2, uniqInit);
+  const RV2 = json("init", "--topic", "Duplicate dimension lib lab", "--tier", "lite").session_id as string;
+  let dupThrew = "";
+  try {
+    initCoverage(RV2, [{ id: "dup", name: "A", why: "x" }, { id: "dup", name: "B", why: "y" }], "lite");
+  } catch (e) {
+    dupThrew = String(e);
+  }
+  check("initCoverage throws lib-side on a duplicate dimension id, naming it (M13)", /duplicate dimension id/.test(dupThrew) && /dup/.test(dupThrew), dupThrew);
+  check("the thrown initCoverage persisted no dimensions (M13)", loadCoverage(RV2).dimensions.length === 0, loadCoverage(RV2).dimensions);
+
+  // -- M15: autofile coerces a non-string dimension away, never throws -------
+  // ingest can preserve a non-string dimension/slug (an array is a plausible LLM
+  // shape for a claim spanning two dimensions); the old sanitizer only handled
+  // strings, so raw.split threw and aborted the run half-filed. Present-but-
+  // unusable counts in `defaulted`; an ABSENT dimension does not.
+  const RT = json("init", "--topic", "Autofile non-string lab", "--tier", "lite").session_id as string;
+  let autoResult: { filed: number; skipped: number; defaulted: number; concepts: string[] } | null = null;
+  let autoThrew = false;
+  try {
+    autoResult = autofile(
+      RT,
+      [
+        { id: "c1", dimension: "pricing" },
+        { id: "c2", dimension: ["pricing", "latency"] as any },
+        { id: "c3", dimension: 42 as any },
+        { id: "c4" },
+      ],
+      "dimension",
+    );
+  } catch {
+    autoThrew = true;
+  }
+  check(
+    "autofile files every claim without throwing on a non-string dimension (M15)",
+    !autoThrew && autoResult !== null && autoResult.filed === 4 && autoResult.defaulted === 2,
+    autoResult,
+  );
+  let autoAgent: { filed: number; skipped: number; defaulted: number; concepts: string[] } | null = null;
+  let autoAgentThrew = false;
+  try {
+    autoAgent = autofile(RT, [{ id: "a1", slug: "scout" }, { id: "a2", slug: 99 as any }], "agent");
+  } catch {
+    autoAgentThrew = true;
+  }
+  check(
+    "autofile by agent also survives a non-string slug (M15)",
+    !autoAgentThrew && autoAgent !== null && autoAgent.filed === 2 && autoAgent.defaulted === 1,
+    autoAgent,
+  );
+
+  // -- M15 companion: report/buildBundle survives a non-string dimension -----
+  // The ingest sites now drop a non-string dimension, but a claim can still
+  // reach the corpus carrying one: an agent writes its OWN dossier file, which
+  // allClaims reads verbatim without re-ingesting. report.ts flat() ran
+  // `.replace` straight on that value and threw "s.replace is not a function",
+  // crashing buildBundle() — the WHOLE report — on an array like
+  // ["pricing","latency"]. The M15 test above only exercises autofile/tree; this
+  // covers the buildBundle/report path that actually crashed. String()-coercion
+  // in flat() must let the bundle compile with the dimension flattened, not dropped.
+  const RDIM = json("init", "--topic", "Report non-string dimension lab", "--tier", "lite").session_id as string;
+  writeFileSync(
+    join(ROOT, ".acos", "riffs", RDIM, "dossiers", "dim.claims.jsonl"),
+    JSON.stringify({ id: "dim-001", claim: "CedarQueue managed tier supports a write-through mode for hot keys", sources: [{ source: "Docs", url: "https://example.test/cedar", tier: 2, as_of: daysAgo(5) }], as_of: daysAgo(5), dimension: ["pricing", "latency"] }) + "\n",
+    "utf8",
+  );
+  check(
+    "the corpus surfaces the claim with its raw array dimension (report crash setup)",
+    Array.isArray(allClaims(RDIM).find((c) => c.id === "dim-001")?.dimension as unknown),
+    allClaims(RDIM).find((c) => c.id === "dim-001")?.dimension,
+  );
+  const dimBundle = run("report", "bundle", "--session", RDIM);
+  check(
+    "report bundle compiles instead of crashing on a non-string (array) dimension (report.ts flat)",
+    dimBundle.code === 0,
+    dimBundle.err.slice(0, 200),
+  );
+  const dimReport = readOr(dimBundle.code === 0 ? (JSON.parse(dimBundle.out).bundle as string) : "");
+  check(
+    "the array dimension is String-coerced into the bundle, never dropped or crashed",
+    dimReport.includes("dim-001") && /dim-001.*pricing,latency/.test(dimReport),
+    dimReport.match(/dim-001[^\n]*/)?.[0] ?? "(dim-001 line not found)",
+  );
+
+  // -- M16: chains() follows a conflict LOSER's own supersession branch -------
+  // L-0001 superseded by both L-0002 (loser) and L-0003 (winner); then L-0004
+  // supersedes the LOSING superseder L-0002. The old walk followed only the
+  // winning spine, so the active L-0004 reversal vanished from every chain.
+  const RH = json("init", "--topic", "Chains loser-branch lab", "--tier", "lite").session_id as string;
+  const l1 = json("ledger", "add", "--session", RH, "--data", '{"type":"finding","body":"Original finding to be superseded twice"}');
+  const l2 = json("ledger", "supersede", l1.id, "--session", RH, "--data", '{"body":"First correction (the loser of the conflict)"}');
+  const l3 = json("ledger", "supersede", l1.id, "--session", RH, "--data", '{"body":"Second, independent correction (the winner)"}');
+  const l4 = json("ledger", "supersede", l2.id, "--session", RH, "--data", '{"body":"A later correction targeting the LOSING superseder"}');
+  const loserChain = json("ledger", "chains", "--session", RH).find((c: any) => c[0].id === l1.id);
+  check(
+    "a correction targeting a conflict's LOSING superseder still appears in the chain (M16)",
+    !!loserChain &&
+      loserChain.length === 4 &&
+      [l1.id, l2.id, l3.id, l4.id].every((idv: string) => loserChain.some((e: any) => e.id === idv)),
+    loserChain ? loserChain.map((e: any) => e.id) : null,
+  );
+  const l2View = json("ledger", "show", "--session", RH).find((e: any) => e.id === l2.id);
+  check("the losing superseder is itself marked superseded_by the later correction (M16)", !!l2View && l2View.superseded_by === l4.id, l2View);
+
+  // -- M11 / M12 / M14 (pid-identity + post-ready give-up): MANUAL ------------
+  // These are deliberately NOT auto-asserted here. Reproducing the fix requires
+  // a LIVE same-user process that is NOT ours whose pid the beacon/room.pid
+  // names — pid 1 (launchd) does not work because signal-0 to it raises EPERM,
+  // which BOTH the old bare pidAlive (EPERM->dead) and the new pidIsLive treat
+  // as not-ready, so it can't distinguish the fix. A faithful test needs a real
+  // second process (e.g. a spawned `sleep`) plus real riff-server/riff-live
+  // background spawns with port/pid lifecycle (M11/M12), or an always-fast-exit
+  // stub + a dedicated fresh daemon driven through the windowed give-up breaker
+  // (M14) — all of which the deterministic e2e suite avoids. Manual repro steps
+  // are in the agent's returned notes.
 
   // -- live responder (stubbed claude) --------------------------------------
   console.log("\nlive responder (stubbed claude)");

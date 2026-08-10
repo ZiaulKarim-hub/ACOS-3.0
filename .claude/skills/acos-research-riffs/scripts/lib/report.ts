@@ -33,7 +33,12 @@ function fence(lang: string, body: string): string {
  * "updated instructions" (M22).
  */
 function flat(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+  // Coerce before .replace: agent-authored fields (a claim's dimension, a seat's
+  // title/lane) are cast straight from model JSON and can arrive as a non-string
+  // (an array like ["pricing","latency"], a number). A bare s.replace() then
+  // throws "s.replace is not a function" and aborts the WHOLE report. Coercing
+  // keeps the fence intact; the ingest sites also drop non-string dimensions.
+  return String(s ?? "").replace(/\s+/g, " ").trim();
 }
 
 /** Markdown-table cell: flattened AND pipe-escaped, so one `|` in a dimension
@@ -164,6 +169,37 @@ export function buildBundle(sessionId: string): string {
     )
     .join("\n");
 
+  // Section 2 seat charters and the panel-change history are agent-authored
+  // free text: panel.setPanel casts model JSON straight to Seat[], validatePanel
+  // gates only the slug SHAPE (advisory, not a hard reject), and the model fills
+  // title/lane/not_lane/rationale from briefs that may quote hostile web pages.
+  // Flatten EVERY interpolated field (the renderEntry idiom) so no newline can
+  // open a line to forge a heading, fence, or "compiler note", and fence the
+  // block like sections 5/7 — Section 2 was the one panel surface M22 skipped.
+  const panelSeats = panel.seats.length
+    ? fence(
+        "data",
+        panel.seats
+          .map(
+            (s) =>
+              `- **${flat(s.slug)}** (${flat(s.role)}, ${flat(s.status)}) — ${flat(s.title)}\n` +
+              `  - lane: ${flat(s.lane)}\n  - excluded: ${flat(s.not_lane)}` +
+              (s.added_at
+                ? `\n  - added mid-session: ${flat(s.added_at)}${s.rationale ? ` — ${flat(s.rationale)}` : ""}`
+                : ""),
+          )
+          .join("\n"),
+      )
+    : "(no panel recorded)";
+  const panelHistory = panel.history.length
+    ? fence(
+        "data",
+        panel.history
+          .map((h) => `- ${flat(h.ts)} · ${flat(h.action)} · ${flat(h.slug)}${h.rationale ? ` — ${flat(h.rationale)}` : ""}`)
+          .join("\n"),
+      )
+    : "(none)";
+
   // Dedup by url-or-source keeping the BEST (lowest) recorded tier — a plain
   // Map constructor keeps the last-seen entry, which let one claim's tier-3
   // record silently demote a source another claim recorded as tier 1.
@@ -244,18 +280,11 @@ ${brief}
 
 ## 2. Panel and charters
 
-${panel.seats
-  .map(
-    (s) =>
-      `- **${s.slug}** (${s.role}, ${s.status}) — ${s.title}\n  - lane: ${s.lane}\n  - excluded: ${s.not_lane}${
-        s.added_at ? `\n  - added mid-session: ${s.added_at}${s.rationale ? ` — ${s.rationale}` : ""}` : ""
-      }`,
-  )
-  .join("\n") || "(no panel recorded)"}
+${panelSeats}
 
 Panel changes during the session:
 
-${panel.history.map((h) => `- ${h.ts} · ${h.action} · ${h.slug}${h.rationale ? ` — ${h.rationale}` : ""}`).join("\n") || "(none)"}
+${panelHistory}
 
 ---
 
@@ -307,7 +336,7 @@ ${
         claims
           .map(
             (c) =>
-              `- \`${c.id}\` [${c.slug}${c.dimension ? ` · ${flat(c.dimension)}` : ""}] ${flat(c.claim)}\n` +
+              `- \`${c.id}\` [${flat(c.slug)}${c.dimension ? ` · ${flat(c.dimension)}` : ""}] ${flat(c.claim)}\n` +
               `  - as of ${flat(String(c.as_of ?? "?"))}${c.volatile ? " · VOLATILE, re-verify before relying on it" : ""}\n` +
               (c.sources.length
                 ? c.sources

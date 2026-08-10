@@ -94,6 +94,26 @@ export function initCoverage(
     throw new Error("coverage init payload must be a JSON array of dimensions");
   }
   dims.forEach((d, i) => assertDimShape(d, `#${i}`));
+  // A duplicated dimension id (a plausible LLM authoring slip) would initialize
+  // two entries the gate can never both satisfy: every verb resolves by find()
+  // (first match wins), so the second copy can never be probed or saturated and
+  // wedges the gate closed with only destructive --force recovery (M13). This is
+  // the same uniqueness class validatePanel enforces for slugs — enforce it here
+  // on the payload that drives the gate.
+  {
+    const seen = new Set<string>();
+    const dups = new Set<string>();
+    for (const d of dims) {
+      if (seen.has(d.id)) dups.add(d.id);
+      else seen.add(d.id);
+    }
+    if (dups.size) {
+      throw new Error(
+        `coverage init has duplicate dimension id(s): ${[...dups].join(", ")} — ` +
+          `each dimension id must be unique or the gate can never resolve the duplicate copy`,
+      );
+    }
+  }
   // Re-running init would silently wipe every probe count, dry streak, and
   // attestation — the whole saturation record, unrecoverable. Refuse unless
   // forced OR nothing has been probed yet: bare declarations are exactly what

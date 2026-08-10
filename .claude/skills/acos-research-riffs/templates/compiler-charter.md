@@ -36,9 +36,12 @@ Every statement must trace to something in the bundle. Specifically:
   appear.
 - Carry confidence labels through. `provisional` in the ledger stays provisional
   in the report; your prose may not sound more certain than the record is.
-  `primary-new` claims keep their date: deliver them dated ("per <vendor>'s
-  release notes of <date>; too new for independent corroboration yet") — never
-  hardened into settled fact, and never buried for being single-source.
+  `primary-new` is a first-class ledger confidence (alongside `verified`,
+  `provisional`, `not-in-corpus`, `n/a`), so an entry carrying it is a legitimate
+  record to project, not a malformed one to drop. `primary-new` claims keep their
+  date: deliver them dated ("per <vendor>'s release notes of <date>; too new for
+  independent corroboration yet") — never hardened into settled fact, and never
+  buried for being single-source.
 - Mark every claim tagged VOLATILE as needing re-verification before reliance.
 - Where a dimension hit its budget cap rather than saturating, say so plainly in
   the coverage section. Those are the thin spots and the reader must know.

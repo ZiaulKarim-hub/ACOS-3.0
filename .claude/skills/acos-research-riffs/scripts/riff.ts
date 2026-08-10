@@ -104,13 +104,28 @@ function brief(sessionId: string): string {
   return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
 
-/** Is this pid a live process? (signal 0 probes without touching it) */
-function pidAlive(pid: number): boolean {
+/**
+ * True when `pid` is a live process whose command line contains `marker` — the
+ * same ps-identity judgement session.ts (pidIsLive) and riff-live.ts
+ * (pidIsLiveResponder) make, and the one a bare `kill(pid, 0)` cannot: pids get
+ * recycled, so a stranger's pid passes signal-0 while never being our daemon.
+ * ESRCH means gone. EPERM means alive-but-not-signalable — the process still
+ * exists and `ps` reads its command line across users, so we fall through to
+ * the identity check rather than short-circuiting (mirrors session.ts I19).
+ * Only a failure of `ps` itself leaves us unable to verify, and there we assume
+ * live, matching the siblings' fail-closed fallback.
+ */
+function pidIsLive(pid: number, marker: string): boolean {
   try {
     process.kill(pid, 0);
-    return true;
+  } catch (e) {
+    if ((e as { code?: string }).code !== "EPERM") return false; // ESRCH — gone
+  }
+  try {
+    const cmd = Bun.spawnSync(["ps", "-p", String(pid), "-o", "command="]).stdout.toString("utf8");
+    return cmd.includes(marker);
   } catch {
-    return false;
+    return true; // cannot run ps — assume live
   }
 }
 
@@ -135,21 +150,23 @@ function parseBeacon(statusFile: string): { state: string; pid: number } | null 
 /**
  * Ensure the live responder — a warm `claude -p` pool that answers a clicked
  * seat in ~5-7s, grounded in that seat's findings, with no moderator in the
- * loop. Liveness comes from the room-live.status beacon (CONTRACT-1): a
- * beacon whose pid is alive belongs to the daemon that owns the session lock,
- * so its state is current and no spawn is needed. Anything else is a dead
- * run's leftover — it is unlinked BEFORE the spawn, so whatever the poll
- * reads afterwards provably came from the daemon just spawned (M5). A
- * successful spawn alone proves nothing (the responder may still refuse over
- * an API key, a held lock, or a warmup timeout).
+ * loop. Liveness comes from the room-live.status beacon (CONTRACT-1): a beacon
+ * is believed ONLY when its pid is alive AND running riff-live — a bare pid
+ * check is not enough, because only clean shutdown unlinks the beacon, so a
+ * crash/SIGKILL/reboot leaves it behind and the OS can recycle its pid into
+ * any live same-user process, turning a relic into a false "ready" (M12).
+ * Anything not confirmed ours is a dead run's leftover — it is unlinked BEFORE
+ * the spawn, so whatever the poll reads afterwards provably came from the
+ * daemon just spawned (M5). A successful spawn alone proves nothing (the
+ * responder may still refuse over an API key, a held lock, or a warmup timeout).
  */
 async function ensureLiveResponder(sessionId: string): Promise<string> {
   const root = paths(sessionId).root;
   const statusFile = join(root, "room-live.status");
   const prior = parseBeacon(statusFile);
-  if (prior && pidAlive(prior.pid)) {
-    // A live daemon already owns this session — spawning again would only
-    // bounce off its lock (and restart the log). Report its own state.
+  if (prior && pidIsLive(prior.pid, "riff-live")) {
+    // A live riff-live daemon already owns this session — spawning again would
+    // only bounce off its lock (and restart the log). Report its own state.
     if (prior.state === "ready" || prior.state.startsWith("failed")) return prior.state;
     return "starting (warming up — see room-live.status)";
   }
@@ -517,7 +534,22 @@ async function main(): Promise<void> {
       if (sub === "init") {
         const dims = readPayload(args) as Array<{ id: string; name: string; why: string }>;
         if (!Array.isArray(dims) || dims.length === 0) fail("coverage init needs a non-empty array");
-        dims.forEach((d, i) => checkDimension(d, `coverage init dimension #${i}`));
+        // Shape-check each dimension AND cross-check ids: a duplicate id wedges
+        // the gate — every verb resolves a dimension with find() (first match
+        // wins), so a second same-id copy can never be probed/attested/
+        // saturated, yet it keeps the gate's open-count above zero forever with
+        // only destructive --force recovery (M13). Reject it here with the
+        // CLI's shape hint; initCoverage enforces the same invariant lib-side.
+        const seenDimIds = new Set<string>();
+        const dupDimIds = new Set<string>();
+        dims.forEach((d, i) => {
+          checkDimension(d, `coverage init dimension #${i}`);
+          if (seenDimIds.has(d.id)) dupDimIds.add(d.id);
+          seenDimIds.add(d.id);
+        });
+        if (dupDimIds.size > 0) {
+          fail(`coverage init: duplicate dimension id(s): ${[...dupDimIds].join(", ")} — each dimension id must be unique`);
+        }
         const m = loadManifest(id);
         const force = args.bools.has("force");
         // On a forced re-init the discarded saturation record must survive in
@@ -917,7 +949,13 @@ async function main(): Promise<void> {
             ? "ABSTAIN and dispatch a probe — do not improvise an answer"
             : a.label === "provisional"
               ? "answer, say it is provisional, offer to deepen"
-              : "answer from the corpus with citations",
+              : a.label === "primary-new"
+                ? // CONTRACT-7: a single primary source inside the recency
+                  // window. Delivery must carry the date — never as settled
+                  // fact — so the dated instruction rides the machine-emitted
+                  // action field, not just the free-text reason (M8).
+                  "answer WITH the date (recency.as_of_newest) — single primary source, too new for independent corroboration yet; deliver dated, never as settled fact"
+                : "answer from the corpus with citations",
         stale: a.stale,
         volatile: a.volatile,
         numeric: a.numeric,
@@ -1172,12 +1210,16 @@ async function main(): Promise<void> {
         }
         // An ALIVE server that answered wrongly (e.g. /state 500s over a
         // corrupt session file) is not a stale file: replacing it would orphan
-        // it and leak one more polling listener per invocation (I10). Kill
-        // the pid recorded at spawn — and only that pid; a dead or unrecorded
-        // pid means the port now belongs to someone else, so never kill then.
+        // it and leak one more polling listener per invocation (I10). Kill the
+        // pid recorded at spawn — and only if it is verifiably OUR riff-server.
+        // room.pid persists on disk indefinitely, so after a crash/reboot the
+        // recorded pid is dead and the OS may have recycled it into an
+        // unrelated same-user process (an editor, dev server, another Claude
+        // session) that bare liveness would pass; the ps identity check
+        // (mirroring session.ts) skips anything not running riff-server (M11).
         try {
           const prevPid = Number(readFileSync(pidFile, "utf8").trim());
-          if (Number.isInteger(prevPid) && prevPid > 0 && pidAlive(prevPid)) {
+          if (Number.isInteger(prevPid) && prevPid > 0 && pidIsLive(prevPid, "riff-server")) {
             process.kill(prevPid);
           }
         } catch {

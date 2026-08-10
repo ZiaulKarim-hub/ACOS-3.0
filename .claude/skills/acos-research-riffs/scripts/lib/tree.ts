@@ -143,11 +143,17 @@ export function autofile(
     // Agent-written dimension/slug values arrive unsanitized: a whitespace-only
     // or all-slash value (or one forging the reserved "root" sentinel) would
     // make insert() throw and abort the whole run half-filed — every run, since
-    // the bad value persists in the dossier. Normalize the key; anything that
-    // normalizes away files under the fallback bucket instead, counted in
-    // `defaulted` so the caller can surface a warning. Never fatal.
+    // the bad value persists in the dossier. A truthy NON-string is the same
+    // hazard by another route (M15): ingest preserves raw.dimension/raw.slug
+    // verbatim, so an array like ["pricing","latency"] (a plausible LLM shape for
+    // a claim spanning two dimensions) or a number reaches here despite the
+    // string type, and raw.split would throw. Coerce a non-string to "" so it
+    // normalizes away instead. Anything that normalizes away files under the
+    // fallback bucket, counted in `defaulted` so the caller can surface a
+    // warning. Never fatal.
     const raw = by === "agent" ? c.slug : c.dimension;
-    let key = (raw ?? "").split("/").map((s) => s.trim()).filter(Boolean).join("/");
+    const rawStr = typeof raw === "string" ? raw : "";
+    let key = rawStr.split("/").map((s) => s.trim()).filter(Boolean).join("/");
     if (!key || key.split("/")[0] === "root") {
       if (raw !== undefined) defaulted++; // absent is normal; present-but-unusable is the warning
       key = fallback;

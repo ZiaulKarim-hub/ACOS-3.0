@@ -702,6 +702,30 @@ agent actually produces and what the code was written to consume.
     with `numeric_unprimaried_ids` naming the unprimaried latency figures — the
     exact L1 escalation trigger firing as designed.
 
+23. *Final review → HOLD → targeted fix → SHIP-WITH-NOTES (2026-08-09).* A third
+    adversarial review (workflow `wf_0d1680e7-0cc`, REVIEW-2026-08-09-FINAL.md)
+    returned HOLD: 2 empirically-confirmed HIGH defects in claims.ts (M1 negation
+    parity via count%2 — the founding failure reintroduced; M2 conflict surfacing
+    scoped to hits[0] only) plus 34 other must-fix. A targeted fix pass
+    (`wf_d84cc584-a69`, 6 owners + test + adversarial audit) fixed 16/18 and drove
+    the suite 480 → 522, but left M2 PARTIAL (an answerRelevant≥0.6 BOTH-gate that
+    still missed a <0.6 facet lead) and introduced 1 HIGH regression (report.ts
+    flat() `s.replace` crashed buildBundle on a non-string dimension). Both were
+    hand-fixed: flat() now `String(s ?? "").replace(...)` + ingest guards at
+    claims.ts:458/627 (typeof==="string"); the M2 gate changed BOTH→EITHER
+    disputant-relevant (claims.ts:931-938, cap 1004-1027). A residual-verify
+    workflow (`wf_e2e109ee-b2d`, 528 tests, 2 adversarial auditors + boundary
+    probe) confirmed both FIXED with reachable_leak:false. The remaining M2 edge
+    (answer <0.6 to BOTH disputants) is a DESIGN BOUNDARY the meter/verse
+    `conflicting_ids.length===1` contract deliberately encodes — mechanically
+    indistinguishable from the unrelated-dispute negative control; the only lever
+    that would cap it breaks that contract. Final verdict: SHIP-WITH-NOTES.
+    Two documented notes for future cycles: (a) the M2 off-answer-noise boundary;
+    (b) report.ts:167/179 would throw on a hand-corrupted (non-array) coverage
+    `notes`/`panel.seats` — engine-controlled, not the model-cast path, worth an
+    array-guard later. Suite 528 passed / 0 failed; tsc clean. Improvements (30)
+    from REVIEW-2026-08-09-FINAL remain deferred by scope.
+
 **Files:**
 
 ```

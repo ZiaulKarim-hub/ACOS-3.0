@@ -25,7 +25,13 @@ export const ENTRY_TYPES = [
 
 export type EntryType = (typeof ENTRY_TYPES)[number];
 
-export const CONFIDENCES = ["verified", "provisional", "not-in-corpus", "n/a"] as const;
+// FIX-CONTRACT-B: `primary-new` is the recency label a single fresh primary
+// source earns (claims.ts AssessLabel); the compiler charter carries it through
+// from the record, so the ledger the report is compiled from must be able to
+// hold it. Append-only means recording it never retro-edits when ask-time decay
+// later re-labels the live claim (I3). Anything rendering a confidence must
+// tolerate the fifth value (report.ts interpolates it; summarize keys on it).
+export const CONFIDENCES = ["verified", "provisional", "not-in-corpus", "n/a", "primary-new"] as const;
 
 export type Confidence = (typeof CONFIDENCES)[number];
 
@@ -181,25 +187,43 @@ export function view(sessionId: string): LedgerView[] {
 export function chains(sessionId: string): LedgerView[][] {
   const all = view(sessionId);
   const byId = new Map(all.map((e) => [e.id, e]));
+  // Ledger ordinal = append position; the chain is presented oldest-first.
+  const ordinal = new Map(all.map((e, i) => [e.id, i] as const));
   const isHead = (e: LedgerView) => !e.supersedes;
+  // Every entry that supersedes `e`: the losing superseders of a recorded
+  // conflict followed by the winning superseded_by (newest). Each is itself a
+  // node whose OWN supersession branch must be followed.
+  const supersedersOf = (e: LedgerView): string[] => [
+    ...(e.superseded_by_conflict ?? []),
+    ...(e.superseded_by ? [e.superseded_by] : []),
+  ];
   const out: LedgerView[][] = [];
   for (const head of all.filter(isHead)) {
-    const chain: LedgerView[] = [head];
-    let cur = head;
-    while (cur.superseded_by) {
-      // Losing superseders of a conflict come first — they are older than the
-      // winner, so the chain stays in true append order and no recorded
-      // reversal disappears from the "decisions and reversals" section.
-      for (const loserId of cur.superseded_by_conflict ?? []) {
-        const loser = byId.get(loserId);
-        if (loser) chain.push(loser);
+    // Walk the FULL supersession reachability from the head, not just the
+    // winning spine (M16): a correction that targets a LOSING superseder of a
+    // conflict has its own superseded_by branch, and following only the winner
+    // dropped it — an active, ledgered reversal silently vanishing from
+    // "decisions and reversals" (contradicting the guarantee above). `supersedes`
+    // is single-valued, so each node has exactly one parent and the reachable
+    // set is a tree; `seen` still guards against malformed cycles.
+    const seen = new Set<string>([head.id]);
+    const stack: string[] = [head.id];
+    while (stack.length) {
+      const cur = byId.get(stack.pop()!);
+      if (!cur) continue;
+      for (const nextId of supersedersOf(cur)) {
+        if (!seen.has(nextId) && byId.has(nextId)) {
+          seen.add(nextId);
+          stack.push(nextId);
+        }
       }
-      const nxt = byId.get(cur.superseded_by);
-      if (!nxt) break;
-      chain.push(nxt);
-      cur = nxt;
     }
-    if (chain.length > 1) out.push(chain);
+    if (seen.size > 1) {
+      const chain = [...seen]
+        .map((id) => byId.get(id)!)
+        .sort((a, b) => ordinal.get(a.id)! - ordinal.get(b.id)!);
+      out.push(chain);
+    }
   }
   return out;
 }
