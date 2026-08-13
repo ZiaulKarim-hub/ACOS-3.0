@@ -23,6 +23,29 @@ import { loadCoverage } from "./coverage.ts";
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const TEMPLATE_DIR = join(HERE, "..", "..", "templates");
 
+/**
+ * Where one charter template is read from.
+ *
+ * `RIFF_TEMPLATE_DIR` is an OVERLAY, not a replacement. A launcher that drives
+ * this engine at a different corpus — /investigate reads files where /research
+ * reads the web — needs to reword the probe charter without forking the other
+ * four. So the override dir is consulted per FILE and falls through to the
+ * engine's own templates/ when it does not carry that name. A whole-dir swap
+ * would instead force every overlay to vendor all five templates, and adding a
+ * sixth template here later would silently break every overlay that predates
+ * it (the same "N copies drift" failure the depth dial is data to avoid).
+ *
+ * Unset env → byte-identical behaviour to before this existed.
+ */
+export function resolveTemplate(fileName: string): string {
+  const override = process.env["RIFF_TEMPLATE_DIR"];
+  if (override) {
+    const candidate = join(override, fileName);
+    if (existsSync(candidate)) return candidate;
+  }
+  return join(TEMPLATE_DIR, fileName);
+}
+
 export type SeatRole = "researcher" | "generalist" | "skeptic" | "auditor" | "probe";
 export type SeatStatus = "proposed" | "active" | "done" | "retired";
 
@@ -209,7 +232,7 @@ export function emitCharter(ctx: CharterContext): string {
       : seat.role === "probe"
         ? "probe-charter.md"
         : "researcher-charter.md";
-  const tmplPath = join(TEMPLATE_DIR, tmplName);
+  const tmplPath = resolveTemplate(tmplName);
   if (!existsSync(tmplPath)) throw new Error(`missing template: ${tmplPath}`);
   // The brief is the question of record every guardrail is measured against —
   // a charter frozen with an empty scope block spends the seat's whole budget
@@ -275,8 +298,7 @@ export function emitRoleCharter(
   template: "probe" | "auditor" | "compiler" | "citer" | "eval",
   opts: { slug?: string; objective?: string; dimension?: string; brief: string; tier: Tier },
 ): { path: string; slug: string } {
-  const tmplPath = join(
-    TEMPLATE_DIR,
+  const tmplPath = resolveTemplate(
     template === "eval" ? "eval-rubric.md" : `${template}-charter.md`,
   );
   if (!existsSync(tmplPath)) throw new Error(`missing template: ${tmplPath}`);
