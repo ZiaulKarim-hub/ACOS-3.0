@@ -1,6 +1,6 @@
 ---
 name: acos-xl-update
-description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, and RECENT — sourced only to meetings from the last two weeks, primary focus the last week; a loan with fewer than two updates in that window carries forward the prior week's points, with the neutral "No recent updates received" only as a fallback), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
+description: Automates OKOA Capital's weekly "XL Ant" investor portfolio update. Duplicates the latest dated workbook, rolls the report date forward one week, pulls each loan's payoff / outstanding / per-diem from acos-hypercore-ask (provenance-bound, never guessed), drafts each loan's "Progress Made This Week" and "Key Issues / Blockers" bullets from acos-fireflies-ask (short, diplomatic, and RECENT — sourced only to meetings from the last two weeks, primary focus the last week; a loan with fewer than two updates in that window carries forward the prior week's points, with the neutral "No recent updates received" only as a fallback), and writes them into the new workbook WITHOUT altering its formatting. Non-destructive — originals are never modified; every number is Hypercore-verified or flagged, never fabricated. Also sweeps BOTH work mailboxes read-only (ziaul@okoacapital.com and, already-read messages only, jason@okoacapital.com) for weekly-update points, via one-shot subprocesses pinned to each mailbox's own claude.ai account — no write verb is ever handed over and no message body is ever recorded. Produces a SEPARATE machine-verified reference companion tracing every bullet to its exact Fireflies meeting line (title, date + time, speaker, in-meeting timestamp) or marking it a prior-week carry-forward — references never go in the workbook. Use when the user says "run the XL update", "do this week's XL report", "update the XL Ant portfolio update", or "prepare the XL investor update".
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -54,6 +54,15 @@ draft into the Dropbox series is a separate, user-driven step.
    companion in the draft folder — NEVER inside the investor workbook (no investor-visible internal
    quotes). Quotes are machine-verified verbatim against the cached transcripts; a quote that cannot be
    located is flagged, not shipped.
+7. **Email is READ-ONLY, and Jason's mailbox is read-only AND already-read-only.** (Zee, 2026-08-13.)
+   The sweep reaches both mailboxes through `xl_mail_sweep.ts` and nothing else — the skill holds no
+   Gmail tool of its own, so it has no write verb to misuse. Inside the sweep, every subprocess is
+   handed a fail-CLOSED read-verb allow-list (`list`/`get`/`search`/`read`/`query`/`download`); any
+   other leading verb aborts the run before a single search fires. **`jason@okoacapital.com` queries
+   always carry `is:read`**, so an unread message can never enter the result set — "never open an
+   unopened email" is enforced by the query, not by instruction. **Never** change, label, move, trash,
+   draft, send, or mark anything in either mailbox. Body text is never requested and never recorded.
+   The sweep exists for ONE purpose: finding weekly-update points. Nothing else.
 
 ## The engine
 
@@ -80,18 +89,34 @@ Cells are located by ROW LABEL per sheet (offsets differ between tabs) — never
 
 ## The workbook (8 worksheets)
 
-| # | Worksheet | Hypercore loan (id) | Payoff action |
-|---|---|---|---|
-| 0 | Loan Status Template | — | **leave entirely as-is** (do not put it in the spec) |
-| 1 | Riverdale | Motel 6 | **no payoff write** — it's a formula; setting the date recalcs it |
-| 2 | Utah Shoe | Utah Shoe (**88**) | payoff = **Hypercore payoff** for loan 88 **as of the report date** |
-| 3 | Utah Shoe III | Utah Shoe III (131) | **no change** |
-| 4 | Argent | Argent | **no change** |
-| 5 | Ascent Senior | Beehive Waldorff (**134**) | payoff = **XL's outstanding IN loan 134** (the senior/Beehive loan) |
-| 6 | Ascent Pref | Ascent Pref Equity (**149**) | payoff = **XL's outstanding IN loan 149** |
-| 7 | Lux II | Lux II LOC (**171**) | payoff = **current balance + 7 × per-diem interest for XL in loan 171** (per-diem ≈ 1,029.24 — confirm live) |
+| # | Worksheet | Hypercore loan (id) | XL participation | Payoff action |
+|---|---|---|---|---|
+| 0 | Loan Status Template | — | — | **leave entirely as-is** (do not put it in the spec) |
+| 1 | Riverdale | Motel 6 | — | **no payoff write** — it's a formula; setting the date recalcs it |
+| 2 | Utah Shoe | Utah Shoe (**88**) | **100%** | payoff = **Hypercore payoff** for loan 88 **as of the report date** (safe ONLY because participation is 100% — see the scope rule below) |
+| 3 | Utah Shoe III | Utah Shoe III (131) | **60%** | **CARRY FORWARD** — copy B17 from the latest Dropbox workbook. **No Hypercore call, ever.** (Zee, 2026-08-13) |
+| 4 | Argent | Argent | — | **no change** |
+| 5 | Ascent Senior | Beehive Waldorff (**134**) | partial | payoff = **XL's outstanding IN loan 134** (the senior/Beehive loan) |
+| 6 | Ascent Pref | Ascent Pref Equity (**149**) | partial | payoff = **XL's outstanding IN loan 149** |
+| 7 | Lux II | Lux II LOC (**171**) | partial | payoff = **current balance + 7 × per-diem interest for XL in loan 171** (per-diem ≈ 1,029.24 — confirm live) |
 
 Notes:
+- **EVERY SHEET IS INVESTOR-SCOPED.** These sheets report XL's book, not the borrower's. Proof: cell
+  B11 "Original Loan Amount" equals XL's `funding_commitment` to the dollar on each sheet (Utah Shoe
+  1,025,000; Utah Shoe III 300,000). A loan-level payoff is the WRONG KIND OF NUMBER for these cells
+  unless XL's participation is 100%.
+- **Utah Shoe III is carry-forward, permanently.** Zee ruled 2026-08-13: "Starting next week the utah
+  shoe III number stays whatever we have there" — i.e. whatever sits in the LATEST Dropbox workbook.
+  Read it, copy it, write nothing sourced. Context: OKOA reclassified all 2026 payments from Utah
+  Shoe 1 (loan 88) to Utah Shoe 3 (loan 131) and credited them ALL to XL, though XL is only 60% of
+  that capital stack (OKOA Partners is 40%). That makes every Hypercore figure on loan 131
+  unreliable for investor reporting. The rule attaches to the SHEET, not to any value — if Zee
+  hand-edits it, the next run carries the new figure. Name the carried figure in the provenance file
+  every week so it stays visible.
+- **Loan 88 carries the same reclassification.** Payments were moved OFF it, so its Hypercore payoff
+  is overstated (XL `funding_outstanding` 1,047,958.33 exceeds the 1,025,000 commitment). Zee let
+  the 20260816 figure stand. Keep sourcing it per the table, but **flag the reclassification in the
+  provenance file every week** until Zee says to stop.
 - "XL's outstanding IN <loan>" is the **per-loan** funding figure for the XL Ant investor (funding
   entity id **3**) — NOT XL's portfolio total (XL is invested in several loans).
 - The **loan ids are pinned** (verified live 2026-07-02) so figures are deterministic. They are
@@ -151,9 +176,49 @@ doppler run --project hypercore-ask --config dev_personal -- \
 - **Lux II new balance = `payoff_current` (from the manifest) + 7 × per_diem.** Confirm the per-diem
   against the ≈1,029.24 expectation; if it deviates materially, surface it before writing. Verify
   the figure resolved to loan 171.
-- Riverdale, Utah Shoe III, Argent → **no Hypercore call** (formula / no-change).
+- Riverdale, Utah Shoe III, Argent → **no Hypercore call** (formula / carry-forward / no-change).
 - If a figure REFUSES or resolves to an unexpected loan, leave that payoff cell unchanged and flag
   it in the Phase 5 report — never write an unverified number.
+
+#### Phase 2b — INVESTOR-SUM CHECK (MANDATORY, blocks the write)
+
+Added 2026-08-13 after a live failure: the 20260816 run wrote **273,816.67** into `Utah Shoe III`.
+That was loan 131's LOAN-LEVEL payoff. XL's own line was 48,460.00 and OKOA Partners' was
+225,356.67 — and **48,460.00 + 225,356.67 = 273,816.67 exactly**. The report handed XL the whole
+pot and the 40% co-investor nothing. Every number was faithfully sourced from Hypercore, and the
+sheet was still wrong, because the FIGURE'S SCOPE was never checked. Verifying the source is not
+the same as verifying the scope.
+
+**For every sheet you are about to write a Hypercore-sourced payoff into, run this before writing:**
+
+```
+# 1. XL's participation on the loan. If it is not 100, a loan-level payoff is FORBIDDEN.
+doppler run --project hypercore-ask --config dev_personal -- \
+  python3 .claude/scripts/hca-funding.py --figure funding_participation \
+    --loan-id <LOAN_ID> --funding-entity-id 3
+
+# 2. Every investor's outstanding on that loan. Sweep entity ids 1,2,3 (at minimum) —
+#    1 = OKOA Partners, 2 = OKOA Management, 3 = XL. Sum them.
+doppler run --project hypercore-ask --config dev_personal -- \
+  python3 .claude/scripts/hca-funding.py --figure funding_outstanding \
+    --loan-id <LOAN_ID> --funding-entity-id <E>
+```
+
+Then apply all three gates. **Any gate failing = do not write. Leave the cell unchanged and flag it
+in the Phase 5 report.**
+
+| Gate | Test | Why it fires |
+|---|---|---|
+| **G1 — scope** | Value about to be written **≠** the sum of all investors' `funding_outstanding` | If it EQUALS the sum, you are writing the whole loan into one investor's sheet |
+| **G2 — participation** | Using a loan-level `payoff_as_of` **requires** `funding_participation` == 100 | At 60% the loan payoff is not XL's number, and 60% of it is not either — participation and outstanding are different fields, never derive one from the other |
+| **G3 — commitment** | Sheet cell **B11** should equal XL's `funding_commitment` | Confirms the sheet is investor-scoped, and catches a wrong loan id |
+
+Record the participation percentage and the investor sum in the provenance companion for every
+sourced sheet, so a future reader can re-run the check without re-querying.
+
+**This check does NOT override a "no change" or "carry forward" row in the workbook table.** Those
+sheets are never sourced, so there is nothing to gate. Argent proves the point: a surprising
+Hypercore figure gets written only where the table says to source from Hypercore.
 
 ### Phase 3 — Narrative (acos-fireflies-ask — RECENT: ≤2 weeks, last week primary)
 For each loan worksheet, build the **Progress Made This Week** bullets (≤5) and any **Key Issues /
@@ -176,9 +241,10 @@ Blockers** bullets. **This is a WEEKLY update — recency is a hard rule, not a 
    Portfolio-wide meetings (the weekly *Credit Committee / Portfolio* and *Pipeline Meeting*) are the
    best place to find updates on quieter loans — check them before concluding a loan has none.
 2. **COUNT this cycle's updates per loan, then decide (CONTINUITY RULE — this governs quiet loans).**
-   An **update** = one distinct, substantive new development about the loan this cycle, drawn either from
-   an **eligible-window** (≤2-week) Fireflies meeting line **or** from a document / user-provided input
-   supplied for this run (e.g. a borrower letter, a buyer count). Count them per loan, then:
+   An **update** = one distinct, substantive new development about the loan this cycle, drawn from
+   an **eligible-window** (≤2-week) Fireflies meeting line, **or** from a Phase 3b **email finding**
+   inside the same window, **or** from a document / user-provided input supplied for this run (e.g. a
+   borrower letter, a buyer count). Count them per loan, then:
    - **≥ 2 updates → compose fresh** from those updates (strict-recency path). The prior week's bullets
      (`progress_current`) tell you which storylines to look for, but a storyline with **no update this
      cycle is DROPPED, not carried**. Keep the **top 5** most material points (payoff-relevant,
@@ -214,6 +280,53 @@ Blockers** bullets. **This is a WEEKLY update — recency is a hard rule, not a 
      sentence quotes. Best pulled with a parallel per-loan pass (search the loan terms, read the
      top `~/.fireflies-cache/transcripts/<id>.json` + `extracts/<id>.yaml`, quote verbatim).
 
+### Phase 3b — Email sweep (BOTH mailboxes, read-only) — Zee, 2026-08-13
+
+Run AFTER Phase 3's Fireflies pass, so email adds to the picture rather than driving it.
+
+```
+bun .claude/skills/acos-xl-update/scripts/xl_mail_sweep.ts \
+  --since <cutoff YYYY-MM-DD>  --out mail_sweep.json
+```
+
+`--since` is the SAME cutoff as Phase 3 (report date − 14 days). Add `--dry-run` to print each
+mailbox's auth mode and exact query without contacting anything. `--mailbox ziaul|jason` narrows it.
+
+**How it reaches two accounts from one window.** Each mailbox belongs to a different claude.ai
+account, and the claude.ai connectors follow the logged-in account. The sweep spawns a one-shot
+`claude -p` per mailbox, pinned to the right account. It works identically whichever window you
+started the skill in:
+
+| Mailbox | Account that owns its Gmail connector | How the subprocess is pinned |
+|---|---|---|
+| `ziaul@okoacapital.com` | Zee's own personal Claude account | `CLAUDE_CONFIG_DIR` + `CLAUDE_SECURESTORAGE_CONFIG_DIR` = `/Users/zee/.claude-personal` |
+| `jason@okoacapital.com` | the boss's account (the default config dir) | **both vars REMOVED from the environment** |
+
+**Never retype the default config dir into those vars** — proven to fail 2026-08-13 with
+`Not logged in`, because the default settings file lives at `~/.claude.json` (not inside
+`~/.claude/`) and the default Keychain drawer keeps its legacy unsuffixed name. To restore default
+behaviour you REMOVE the variables. The script already does this; do not "fix" it by setting them.
+
+**What comes back.** Per mailbox, a JSON list of findings, each `{date, subject, loan, point,
+confidence}`. Subject line, date, loan, and a one-sentence summary — **never body text, senders,
+recipients, quotes, links, or attachments.**
+
+**What to do with a finding:**
+- It **counts as an update** for the Phase 3 CONTINUITY RULE, exactly like a Fireflies line.
+- Only findings dated **on or after the cutoff** may be used. Older ones are dropped like any other
+  stale source.
+- **A number seen in an email is NEVER written to the workbook.** Payoffs come from Hypercore
+  (Phase 2) and Utah Shoe III comes from the Dropbox carry-forward — email cannot override either.
+  If an email disagrees with a figure, surface it as a FLAG in Phase 5 and change nothing.
+- `confidence: low` findings are leads for Zee, not bullets. Report them; do not compose from them.
+
+**A mailbox that cannot be reached is a NOTE, not a failure.** The script prints
+`NOTE — <mailbox> unreachable: <reason>` and returns `ok: false` with empty findings. Record it in
+the companion and carry on — an email outage never blocks the report.
+
+**Read `findings: []` honestly.** Empty means "nothing matched the query", not "nothing happened".
+For `jason@` it means specifically: nothing matched **among already-read messages**. Say it that way.
+
 ### Phase 4 — Write, verify & reference
 Assemble a spec and apply it (omit no-change sheets and the template; omit `payoff` where the cell
 is a formula or unchanged):
@@ -247,12 +360,37 @@ Confirm the audit prints `unverified_quotes: 0`, `sourceless_new_bullets: 0`, AN
 `OLDER THAN CUTOFF` and counts as stale. If any count is non-zero, fix it (copy the quote verbatim,
 or drop an out-of-window source) and re-render — an unverifiable or stale reference must not ship.
 
+**Then APPEND the email section** to that same companion — after `xl_provenance.py` has rendered and
+audited it, so the audited counts are never disturbed. One `## Email sweep` heading, then per mailbox:
+the query run, and one line per finding — **mailbox · date · subject line** only, plus which bullet it
+fed (or `lead only — not used`). **Never the body text.** A mailbox that was unreachable gets a line
+saying so. `findings: []` is written as "nothing matched the query" — and for `jason@`, as "nothing
+matched among already-read messages".
+
+```
+## Email sweep (read-only)
+
+### ziaul@okoacapital.com
+query: after:2026/07/31 (XL OR "Utah Shoe" OR …)
+- 2026-08-13 · "Re: Appraisal: 4080 Cooper Lane, Park City, UT 84098" → Ascent Senior, progress bullet 2
+- 2026-08-13 · "Re: Dropbox Access FW: Okoa v. Wolfgramm"             → lead only — not used
+
+### jason@okoacapital.com  (read-only; is:read enforced)
+query: … is:read
+- nothing matched among already-read messages
+```
+
 ### Phase 5 — Report for review (do NOT send)
 Give the user clickable links to **both** the workbook AND the reference companion, plus a concise
 change report:
 - **Payoffs:** each loan → old value → new value → **Hypercore provenance** (or "unchanged" /
   "flagged: <reason>"). Show the Lux II arithmetic (current + 7 × per-diem).
-- **Narrative:** per loan, the final bullets, marked `[carried forward]` vs `[new — Fireflies: <meeting/date>]`.
+- **Narrative:** per loan, the final bullets, marked `[carried forward]` vs `[new — Fireflies: <meeting/date>]`
+  vs `[new — email: <mailbox> <date>]`.
+- **Email sweep:** which mailboxes were reached, how many findings each returned, and every
+  `confidence: low` finding listed as a LEAD for Zee (not written into the workbook). Any email that
+  DISAGREES with a Hypercore figure or the Utah Shoe III carry-forward is flagged here, loudly, with
+  the number left unchanged. State an unreachable mailbox plainly; never let it pass as "nothing found".
 - **Reference companion:** link the standalone `… — Sources & Provenance.md` and state the audit result
   (`unverified_quotes: 0`, `sourceless_new_bullets: 0`). Every bullet is quoted to its exact meeting
   line (date + time) or marked carried-forward. The workbook itself carries no references.
@@ -273,6 +411,12 @@ change report:
   (`fireflies_client.py refresh` + `fireflies_extract.py`) before Phase 3 so the newest meetings are
   available; the reference companion reads verbatim quotes + datetimes straight from
   `~/.fireflies-cache/transcripts/<id>.json`.
+- **Email sweep:** `bun` + `scripts/xl_mail_sweep.ts` + `/opt/homebrew/bin/claude`. No API key and no
+  Gmail tool is held by this skill — each mailbox is read by a one-shot `claude -p` subprocess pinned
+  to the account that owns that mailbox's claude.ai connector. The two logins live in separate macOS
+  Keychain drawers (`Claude Code-credentials` for the boss, `Claude Code-credentials-ad7ff1c5` for
+  Zee's own personal account), so neither can sign the other out. See
+  `reference_claude_code_config_dir_isolates_keychain` for the tested details.
 - Python 3 + openpyxl (system python3 has it); `xl_provenance.py` needs only stdlib + `zoneinfo`
   (Python 3.9+). LibreOffice optional (only to bake cached values / render a PDF preview; not required
   — Excel recalculates on open via `fullCalcOnLoad`).
