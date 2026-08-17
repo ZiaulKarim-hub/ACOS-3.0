@@ -163,6 +163,40 @@ bun "$CTL" follow                              # watch decisions live
 bun "$CTL" stop                                # leave oracle, back to the old number
 ```
 
+### Resolving the goal (autopilot / yolo / oracle)
+
+Never refuse for a missing goal, and never invent a placeholder. Zee removed the
+flat refusal on 2026-08-17: a bare `/acos-oracle-protocol oracle` should fall back
+to finishing the work in progress. But the fallback has to be a REAL goal, because
+the Oracle compares each command against it.
+
+**Why it has to be real.** `rm -rf ~/Documents` was caught in a live test only
+because the goal said "clean temp files in the build folder". The GAP between
+those two is what exposed the harm. A goal of "finish the work" leaves no gap, so
+a destructive command nobody asked for looks no different from one that was.
+
+When the user gives no goal, or the script exits **3** (`NEEDS_GOAL`):
+
+1. **Read the conversation and write the goal yourself.** One line naming what is
+   actually being finished — the subject AND the outcome. Zee's expectation
+   (2026-08-17): "The goal will not be vague assuming it reads the context and
+   understands what is going on and what accomplishment is being attempted."
+   Look at the last several exchanges, not just the last message.
+2. **Check `memory/source-of-truth/vision-document.md` first if it exists** — the
+   project's own statement of what done looks like beats anything inferred.
+3. **Test it against `looksVague()`** in `oracle-ctl.ts`. Under four words fails,
+   and so do the placeholder shapes ("finish the work", "keep going", "resume the
+   task", "continue whatever is going on").
+4. **If it is still unclear, ASK — with a multiple-choice question** (Zee: "the
+   protocol should ask and possibly show a mcq question with options to choose
+   from"). Use AskUserQuestion. Offer 2-4 concrete candidate goals read off the
+   conversation, each self-contained and specific enough to judge against, not
+   generic labels. He can always type his own.
+5. **Show the goal you settled on before starting.** A wrong reading is then one
+   line to spot, rather than something discovered later in a verdict.
+
+Only then run the command with the resolved goal.
+
 **Why words and not numbers.** 11 and 12 were never really rungs on a dial:
 autopilot runs a goal loop and YOLO switches the rules off, so numbering them
 implied a smooth ramp that does not exist (Zee, 2026-08-16). They survive as

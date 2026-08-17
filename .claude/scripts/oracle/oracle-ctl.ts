@@ -102,17 +102,55 @@ async function wakeDaemon(): Promise<boolean> {
   return false;
 }
 
+/**
+ * Phrases that are technically a goal but tell the Oracle nothing.
+ *
+ * The goal is EVIDENCE about harm, not paperwork. `rm -rf ~/Documents` was caught
+ * only because the goal said "clean temp files in the build folder" — the gap
+ * between those two is what exposed it. A goal of "finish the work" leaves no gap
+ * to notice, so it silently costs the Oracle its best signal.
+ *
+ * This is a BACKSTOP, not the real check. The real one happens in the skill,
+ * which can read the conversation and see what is actually being attempted
+ * (Zee, 2026-08-17: "The goal will not be vague assuming it reads the context").
+ * This only catches a goal that slipped through anyway.
+ */
+const VAGUE_GOAL_RE =
+  /^(finish|continue|keep going|carry on|do|complete|resume)?\s*(up)?\s*(whatever|the|my|this|it|some|any)?\s*(work|task|thing|stuff|job|it)?\s*(is|that.s|thats)?\s*(going on|in progress|going|ongoing|left|remaining|pending)?\.?$/i;
+
+export function looksVague(goal: string): boolean {
+  const g = (goal ?? "").trim();
+  if (!g) return true;
+  if (VAGUE_GOAL_RE.test(g)) return true;
+  // Under four words cannot name a subject AND an outcome.
+  return g.split(/\s+/).filter(Boolean).length < 4;
+}
+
+/**
+ * Exit 3 means "no usable goal — ASK HIM", and it is deliberately not exit 2.
+ *
+ * Zee removed the flat refusal (2026-08-17): a missing goal should fall back to
+ * finishing the work in progress, not stop him. But the fallback has to be a REAL
+ * goal read from the conversation, and only the skill can read that. So the
+ * script refuses to invent one and hands the job back with a distinct code the
+ * skill can branch on.
+ */
 function requireGoal(goal: string, what: string): string {
   const g = (goal ?? "").trim();
-  if (g) return g;
+  if (g && !looksVague(g)) return g;
+  const why = g ? `the goal "${g}" is too vague to judge against` : "no goal was given";
   console.error(
-    `${what} needs a goal.\n\n` +
-      `  Why: autopilot cannot run its loop without one, and the Oracle judges a\n` +
-      `  command against what the session is actually for — that mismatch is what\n` +
-      `  catches a destructive command nobody asked for.\n\n` +
-      `  Try:  /acos-oracle-protocol ${what} "clean up temp build artifacts in ToDoTree"`,
+    `NEEDS_GOAL: ${what} — ${why}.\n\n` +
+      `  Do NOT refuse and do NOT invent a placeholder. Read the conversation and\n` +
+      `  write one line naming what is actually being finished. If that is still\n` +
+      `  unclear, ask with a short multiple-choice question, then re-run with the\n` +
+      `  answer:\n\n` +
+      `      /acos-oracle-protocol ${what} "<the real goal>"\n\n` +
+      `  Why it matters: the Oracle compares the command against this. A goal of\n` +
+      `  "finish the work" leaves nothing to compare, so a destructive command\n` +
+      `  nobody asked for would look no different from one that was.`,
   );
-  process.exit(2);
+  process.exit(3);
 }
 
 function auditCtl(event: string, detail: Record<string, unknown>): void {
@@ -127,8 +165,8 @@ function auditCtl(event: string, detail: Record<string, unknown>): void {
 
 // ---------------------------------------------------------------------------
 
-async function cmdStart(goal: string): Promise<void> {
-  const g = requireGoal(goal, "start");
+async function cmdStart(goal: string, typedAs = "oracle"): Promise<void> {
+  const g = requireGoal(goal, typedAs);
   ensureState();
   const prev = currentThreshold();
   writeFileSync(
@@ -187,7 +225,7 @@ async function cmdSet(nameRaw: string, goal: string): Promise<void> {
   ensureState();
 
   if (name === "oracle") {
-    await cmdStart(goal);
+    await cmdStart(goal, "oracle");
     return;
   }
 
@@ -342,35 +380,40 @@ async function cmdFollow(): Promise<void> {
 
 // ---------------------------------------------------------------------------
 
-const [cmd, ...rest] = process.argv.slice(2);
-const arg = rest.join(" ").trim();
+// Guarded so the module can be IMPORTED (tests, other tools) without the act
+// of importing it running a command — an unguarded dispatch made looksVague()
+// untestable, because loading the file printed the help text and exited.
+if (import.meta.main) {
+  const [cmd, ...rest] = process.argv.slice(2);
+  const arg = rest.join(" ").trim();
 
-switch (cmd) {
-  case "oracle":
-  case "start": await cmdStart(arg); break;
-  case "stop": cmdStop(); break;
-  case "status": cmdStatus(); break;
-  case "follow": await cmdFollow(); break;
-  case "autopilot": await cmdSet("autopilot", arg); break;
-  case "yolo": await cmdSet("yolo", arg); break;
-  case "threshold": {
-    const [n, ...g] = rest;
-    await cmdSet(n ?? "", g.join(" "));
-    break;
+  switch (cmd) {
+    case "oracle":
+    case "start": await cmdStart(arg, "oracle"); break;
+    case "stop": cmdStop(); break;
+    case "status": cmdStatus(); break;
+    case "follow": await cmdFollow(); break;
+    case "autopilot": await cmdSet("autopilot", arg); break;
+    case "yolo": await cmdSet("yolo", arg); break;
+    case "threshold": {
+      const [n, ...g] = rest;
+      await cmdSet(n ?? "", g.join(" "));
+      break;
+    }
+    default:
+      if (cmd && /^\d+$/.test(cmd)) { await cmdSet(cmd, arg); break; }
+      console.log(`oracle-ctl — the permission switch
+
+    <1-10>                the dial: how loose ordinary scoring is
+    autopilot "<goal>"    allows, logs the truly destructive, runs the goal loop
+    yolo "<goal>"         allows everything, records nothing, bypasses hard blocks
+    oracle "<goal>"       Opus judges every gated call; you are never asked
+
+    stop                  leave oracle mode, back to the number you were on
+    status                what is on right now, and today's verdict count
+    follow                watch decisions as they happen
+
+  Oracle mode is a switch, not a rung. The 1-12 dial measures how loose the rules
+  are; the Oracle is a different axis, so it has no number.`);
   }
-  default:
-    if (cmd && /^\d+$/.test(cmd)) { await cmdSet(cmd, arg); break; }
-    console.log(`oracle-ctl — the permission switch
-
-  <1-10>                the dial: how loose ordinary scoring is
-  autopilot "<goal>"    allows, logs the truly destructive, runs the goal loop
-  yolo "<goal>"         allows everything, records nothing, bypasses hard blocks
-  oracle "<goal>"       Opus judges every gated call; you are never asked
-
-  stop                  leave oracle mode, back to the number you were on
-  status                what is on right now, and today's verdict count
-  follow                watch decisions as they happen
-
-Oracle mode is a switch, not a rung. The 1-12 dial measures how loose the rules
-are; the Oracle is a different axis, so it has no number.`);
 }
