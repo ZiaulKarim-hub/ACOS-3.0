@@ -447,6 +447,91 @@ try {
   const appr = json("panel", "approve", "--session", S);
   check("valid panel approves", appr.approved === true, appr);
 
+  // -- role is canonicalised at the door (2026-08-17) ------------------------
+  // "Generalist"/"Skeptic" is what a person writes. The structural checks
+  // compare role as an exact lowercase token, so a capitalised seat used to be
+  // rejected as "no generalist seat" while sitting right there in the roster.
+  {
+    const capsPanel = tmpJson("panel-caps.json", [
+      {
+        slug: "generalist",
+        role: "  Generalist ",
+        title: "Basic facts",
+        objective: "Cover fundamentals the specialists skip",
+        lane: "what a vector store is, the standard decision factors",
+        not_lane: "deep vendor comparison",
+        dimensions: [],
+      },
+      {
+        slug: "skeptic",
+        role: "SKEPTIC",
+        title: "Skeptic",
+        objective: "Refute the emerging consensus",
+        lane: "what the other seats will miss; failure cases",
+        not_lane: "cheerleading any option",
+        dimensions: ["selfhost"],
+      },
+    ]);
+    const caps = json("panel", "set", "--session", S, "--json", capsPanel);
+    check(
+      "capitalised roles raise no structural problems",
+      caps.problems.length === 0,
+      caps.problems,
+    );
+    // `panel set` reports a seat COUNT, so read what actually landed on disk —
+    // normalising on ingest is precisely a claim about the stored file.
+    const panelFile = join(ROOT, ".acos", "riffs", S, "panel.json");
+    const capsSeats = (
+      JSON.parse(readFileSync(panelFile, "utf8")) as { seats: Array<{ slug: string; role: string }> }
+    ).seats;
+    check(
+      "role is stored lowercase and trimmed",
+      capsSeats.every((s) => s.role === s.role.toLowerCase().trim()),
+      capsSeats.map((s) => s.role),
+    );
+    check(
+      "the stored tokens are exactly generalist and skeptic",
+      JSON.stringify(capsSeats.map((s) => s.role).sort()) === JSON.stringify(["generalist", "skeptic"]),
+      capsSeats.map((s) => s.role),
+    );
+    const capsAppr = json("panel", "approve", "--session", S);
+    check("a capitalised panel approves", capsAppr.approved === true, capsAppr);
+
+    // An unrecognised role is NOT mapped onto a known one — it is lowercased
+    // and still fails, which is correct: the check is about a seat being tasked
+    // to refute, not about spelling.
+    const oddPanel = tmpJson("panel-odd.json", [
+      {
+        slug: "generalist",
+        role: "Generalist",
+        title: "Basic facts",
+        objective: "o",
+        lane: "fundamentals",
+        not_lane: "x",
+        dimensions: [],
+      },
+      {
+        slug: "advocate",
+        role: "Devil's Advocate",
+        title: "Advocate",
+        objective: "o",
+        lane: "contrarian takes",
+        not_lane: "y",
+        dimensions: [],
+      },
+    ]);
+    const odd = json("panel", "set", "--session", S, "--json", oddPanel);
+    check(
+      "an unknown role is not silently mapped to skeptic",
+      odd.problems.some((p: string) => p.includes("skeptic")),
+      odd.problems,
+    );
+
+    // Restore the real panel for everything downstream.
+    json("panel", "set", "--session", S, "--json", goodPanel);
+    json("panel", "approve", "--session", S);
+  }
+
   // -- charters -------------------------------------------------------------
   console.log("\ncharter rendering");
   const ch = json("charter", "managed-scout", "--session", S);
@@ -4333,6 +4418,45 @@ try {
   );
   check("the rejected seat never reached panel.json", readFileSync(join(sroot, "panel.json"), "utf8") === panelBytesBefore, null);
   check("panel still renders after the rejection", run("panel", "--session", S).code === 0, null);
+
+  // 2026-08-17: `panel set` (an ARRAY) sits directly above `panel add` (ONE
+  // object) in USAGE, and the old refusal said only "expects a seat object" —
+  // which reads as a malformed seat, not a wrong shape. Cost a live depth-5 run
+  // a round trip. The array shape stays REFUSED; only the message is clearer.
+  {
+    const seatJson =
+      '{"slug":"z","role":"generalist","title":"Z","objective":"o","lane":"l","not_lane":"n","dimensions":[]}';
+    const listOfTwo = run("panel", "add", "--session", S, "--data", `[${seatJson},${seatJson}]`);
+    check("panel add still refuses a list", listOfTwo.code !== 0, listOfTwo.err);
+    check("the refusal says ONE seat object", listOfTwo.err.includes("takes ONE seat object"), listOfTwo.err);
+    check("the refusal counts what it got", listOfTwo.err.includes("not a list of 2"), listOfTwo.err);
+    check("the refusal names panel set", listOfTwo.err.includes("panel set --json"), listOfTwo.err);
+    check(
+      "the refusal names the once-per-seat way out",
+      listOfTwo.err.includes("once per seat"),
+      listOfTwo.err,
+    );
+
+    // A single-element array is refused too — the shapes stay distinct.
+    const listOfOne = run("panel", "add", "--session", S, "--data", `[${seatJson}]`);
+    check("a one-element list is refused as well", listOfOne.code !== 0, listOfOne.err);
+    check("and it reports the count as 1", listOfOne.err.includes("not a list of 1"), listOfOne.err);
+
+    // A non-object payload keeps the original wording (it IS a malformed seat).
+    const notAnObject = run("panel", "add", "--session", S, "--data", '"just a string"');
+    check("a non-object still gets the plain message", notAnObject.code !== 0, notAnObject.err);
+    check(
+      "the non-object message is unchanged",
+      notAnObject.err.includes("panel add expects a seat object"),
+      notAnObject.err,
+    );
+
+    check(
+      "none of the rejected payloads reached panel.json",
+      readFileSync(join(sroot, "panel.json"), "utf8") === panelBytesBefore,
+      null,
+    );
+  }
 } catch (e) {
   failed++;
   failures.push(`EXCEPTION: ${e instanceof Error ? e.message : String(e)}`);

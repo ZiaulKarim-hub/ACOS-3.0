@@ -726,7 +726,25 @@ async function main(): Promise<void> {
         // so a malformed seat would crash renderPanel on the next `riff panel`
         // or `riff resume`. Shape-check first; lane-duplication stays a
         // validate-after-save warning (I32).
-        if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
+        // 2026-08-17: this branch already KNEW the payload was a list and said
+        // only "expects a seat object" — which reads as "your seat is malformed",
+        // not "you used the wrong shape for this command". `panel set` sits
+        // directly above `panel add` in USAGE and takes an ARRAY, so reaching for
+        // the array shape here is the natural mistake; it cost a live depth-5 run
+        // a full round trip. Name the shape, the count, and both ways out.
+        // Deliberately NOT accepting an array: the two commands do different
+        // things (set REPLACES the roster and un-approves it; add appends one
+        // seat that goes live immediately, bypassing the approval gate), and
+        // making their payloads interchangeable removes the last cue that they
+        // are not the same command.
+        if (Array.isArray(seat)) {
+          fail(
+            `panel add takes ONE seat object, not a list of ${seat.length} — ` +
+              "use `panel set --json <file>` for a whole roster, " +
+              "or call `panel add` once per seat",
+          );
+        }
+        if (!seat || typeof seat !== "object") {
           fail("panel add expects a seat object");
         }
         const raw = seat as Partial<Seat>;

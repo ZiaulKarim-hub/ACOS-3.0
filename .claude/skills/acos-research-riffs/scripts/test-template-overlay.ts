@@ -10,13 +10,20 @@
  * to vendor all five templates and would break silently whenever a sixth
  * template is added here.
  *
+ * ONE EXCEPTION, added 2026-08-17: probe-charter.md and researcher-charter.md
+ * must agree on which corpus they point at. An overlay carrying the first but
+ * not the second used to fall through silently, so every PANEL SEAT rendered
+ * the engine's web charter while the one-shot probe read files — hit live in a
+ * depth-5 /investigate run. resolveTemplate now throws on that pair, and only
+ * that pair.
+ *
  * Kept separate from test-riff.ts (an end-to-end CLI smoke test) so a unit-level
  * contract does not require standing up a session.
  *
  * Run:  bun .claude/skills/acos-research-riffs/scripts/test-template-overlay.ts
  */
 
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveTemplate, TEMPLATE_DIR } from "./lib/panel.ts";
@@ -77,15 +84,98 @@ try {
   // return a non-existent path here and throw "missing template" at render time.
   {
     setEnv(tmp);
+    // researcher-charter.md is deliberately NOT in this list — see the paired
+    // block below. Every other charter still falls through silently.
     for (const name of [
       "auditor-charter.md",
       "compiler-charter.md",
       "citer-charter.md",
-      "researcher-charter.md",
       "eval-rubric.md",
     ]) {
       eq(`overlay lacks ${name} → falls back`, resolveTemplate(name), join(TEMPLATE_DIR, name));
       check(`${name} fallback actually exists on disk`, existsSync(resolveTemplate(name)));
+    }
+  }
+
+  // ── the probe/researcher PAIR must agree on its corpus ─────────────────────
+  // An overlay that rewords probe-charter.md has declared a different corpus.
+  // Letting researcher-charter.md fall through then aims every panel seat at
+  // the web. That half-installed state is an error, not a fallback.
+  {
+    setEnv(tmp); // tmp carries probe-charter.md only
+    let threw = false;
+    let msg = "";
+    try {
+      resolveTemplate("researcher-charter.md");
+    } catch (e) {
+      threw = true;
+      msg = e instanceof Error ? e.message : String(e);
+    }
+    check("overlay has probe but not researcher → THROWS", threw);
+    check("the error names the missing file", msg.includes("researcher-charter.md"));
+    check("the error names the overlay dir", msg.includes(tmp));
+    check("the error explains the web-charter consequence", msg.includes("WEB"));
+  }
+
+  // ── both halves present → both resolve to the overlay ──────────────────────
+  {
+    const both = mkdtempSync(join(tmpdir(), "riff-overlay-both-"));
+    try {
+      writeFileSync(join(both, "probe-charter.md"), "# probe\n");
+      writeFileSync(join(both, "researcher-charter.md"), "# researcher\n");
+      setEnv(both);
+      eq(
+        "complete overlay → probe from overlay",
+        resolveTemplate("probe-charter.md"),
+        join(both, "probe-charter.md"),
+      );
+      eq(
+        "complete overlay → researcher from overlay",
+        resolveTemplate("researcher-charter.md"),
+        join(both, "researcher-charter.md"),
+      );
+      eq(
+        "complete overlay → citer still inherited",
+        resolveTemplate("citer-charter.md"),
+        join(TEMPLATE_DIR, "citer-charter.md"),
+      );
+    } finally {
+      rmSync(both, { recursive: true, force: true });
+    }
+  }
+
+  // ── the guard is ONE-DIRECTIONAL and narrow ────────────────────────────────
+  // An overlay with neither half is an ordinary overlay: nothing has declared a
+  // different corpus, so researcher falls through exactly as before. And an
+  // overlay carrying only researcher does not force a probe — the pair is
+  // checked in one direction, so this stays a fallback and not a new demand.
+  {
+    const neither = mkdtempSync(join(tmpdir(), "riff-overlay-none-"));
+    const onlyResearcher = mkdtempSync(join(tmpdir(), "riff-overlay-res-"));
+    try {
+      writeFileSync(join(neither, "citer-charter.md"), "# citer\n");
+      setEnv(neither);
+      eq(
+        "overlay declares no probe → researcher still falls back",
+        resolveTemplate("researcher-charter.md"),
+        join(TEMPLATE_DIR, "researcher-charter.md"),
+      );
+
+      writeFileSync(join(onlyResearcher, "researcher-charter.md"), "# researcher\n");
+      setEnv(onlyResearcher);
+      eq(
+        "overlay with only researcher → probe still falls back",
+        resolveTemplate("probe-charter.md"),
+        join(TEMPLATE_DIR, "probe-charter.md"),
+      );
+      eq(
+        "overlay with only researcher → researcher from overlay",
+        resolveTemplate("researcher-charter.md"),
+        join(onlyResearcher, "researcher-charter.md"),
+      );
+    } finally {
+      rmSync(neither, { recursive: true, force: true });
+      rmSync(onlyResearcher, { recursive: true, force: true });
     }
   }
 
@@ -131,8 +221,24 @@ try {
         resolveTemplate("citer-charter.md"),
         join(TEMPLATE_DIR, "citer-charter.md"),
       );
+      // The defect this guard exists for: seats must NOT get the web charter.
+      eq(
+        "/investigate overlay resolves its own SEAT charter",
+        resolveTemplate("researcher-charter.md"),
+        join(real, "researcher-charter.md"),
+      );
+      const seatText = readFileSync(resolveTemplate("researcher-charter.md"), "utf8");
+      check("seat charter does not tell readers to search WIDE", !seatText.includes("search WIDE"));
+      check(
+        "seat charter does not carry the web tier ladder",
+        !seatText.includes("Tier 1 authoritative"),
+      );
+      check(
+        "seat charter names the artifact itself as Tier 1",
+        seatText.includes("Tier 1 — the artifact itself"),
+      );
     } else {
-      console.log("note: /investigate overlay not installed — skipped 2 checks");
+      console.log("note: /investigate overlay not installed — skipped 6 checks");
     }
   }
 } finally {

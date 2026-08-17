@@ -36,12 +36,45 @@ export const TEMPLATE_DIR = join(HERE, "..", "..", "templates");
  * it (the same "N copies drift" failure the depth dial is data to avoid).
  *
  * Unset env → byte-identical behaviour to before this existed.
+ *
+ * ONE PAIR IS NOT ALLOWED TO FALL THROUGH SEPARATELY (2026-08-17). Silent
+ * fallback is right for auditor/compiler/citer — those roles read the corpus,
+ * not the world, so the engine's copy is correct for any overlay. It is WRONG
+ * for the researcher charter. An overlay that rewords `probe-charter.md` has
+ * declared it points at a different corpus; if it then omits
+ * `researcher-charter.md`, every PANEL SEAT silently renders the engine's
+ * web-facing charter and the seats are told to search the internet and to treat
+ * the local artifact as a non-primary source — the exact inversion of what that
+ * overlay set out to do. Hit live on 2026-08-17: /investigate carried only
+ * probe-charter.md, so a depth-5 panel of "internal readers" got charters
+ * reading "search WIDE first" and "Tier 1 authoritative: official docs, papers,
+ * filings, primary sources".
+ *
+ * Deliberately NARROW. It does not demand an overlay vendor all templates —
+ * that would re-create the "adding a sixth template breaks every older overlay"
+ * failure the fallback exists to avoid. It fires only on the probe/researcher
+ * pair, which is the pair whose corpus orientation must agree.
  */
+const OVERLAY_PAIR = { declares: "probe-charter.md", requires: "researcher-charter.md" } as const;
+
 export function resolveTemplate(fileName: string): string {
   const override = process.env["RIFF_TEMPLATE_DIR"];
   if (override) {
     const candidate = join(override, fileName);
     if (existsSync(candidate)) return candidate;
+    if (
+      fileName === OVERLAY_PAIR.requires &&
+      existsSync(join(override, OVERLAY_PAIR.declares))
+    ) {
+      throw new Error(
+        `charter overlay is half-installed: RIFF_TEMPLATE_DIR=${override} carries ` +
+          `${OVERLAY_PAIR.declares} but not ${OVERLAY_PAIR.requires}. Panel seats would ` +
+          `render the engine's WEB researcher charter — telling internal readers to search ` +
+          `the web and to treat the local artifact as a non-primary source. Add ` +
+          `${OVERLAY_PAIR.requires} to that directory (the inward twin of the engine's), ` +
+          `or unset RIFF_TEMPLATE_DIR to run the web panel deliberately.`,
+      );
+    }
   }
   return join(TEMPLATE_DIR, fileName);
 }
@@ -76,6 +109,33 @@ export function savePanel(sessionId: string, p: Panel): void {
   writeJson(paths(sessionId).panel, p);
 }
 
+/**
+ * Canonicalise `role` at the door (2026-08-17).
+ *
+ * `SeatRole` is a lowercase union, and validatePanel's structural checks compare
+ * `s.role === "generalist"` / `=== "skeptic"` as exact tokens. A seat authored
+ * with `"role": "Generalist"` — which is what a person naturally writes — was
+ * therefore rejected as "no generalist seat", with the seat sitting right there
+ * in the roster. Lanes were already normalised one line below those checks
+ * (`s.lane.toLowerCase().trim()`); roles were not, which is the inconsistency.
+ *
+ * Normalising on INGEST rather than at the comparison keeps the file on disk
+ * consistent with the declared type, so any later reader of `role` — the
+ * charter template picker at emitCharter, a report, a future check — sees the
+ * canonical token too. Seats written before this keep their original casing on
+ * disk until they are re-set.
+ *
+ * Deliberately does NOT map unknown words onto known roles. "Devil's Advocate"
+ * stays "devil's advocate" and still fails the skeptic check, loudly, which is
+ * correct: the check is about a seat being TASKED to refute, not about spelling.
+ */
+function canonicalRole<T>(seat: T): T {
+  if (!seat || typeof seat !== "object") return seat;
+  const r = (seat as { role?: unknown }).role;
+  if (typeof r !== "string") return seat;
+  return { ...(seat as object), role: r.toLowerCase().trim() } as T;
+}
+
 export function setPanel(sessionId: string, seats: Seat[]): Panel {
   // The payload arrives as model-authored JSON cast straight to Seat[] — guard
   // the two shapes that would crash HERE before validatePanel's per-seat
@@ -89,7 +149,9 @@ export function setPanel(sessionId: string, seats: Seat[]): Panel {
   }
   const p = loadPanel(sessionId);
   p.seats = seats.map((s) =>
-    s && typeof s === "object" ? { ...s, status: s.status ?? "proposed" } : (s as Seat),
+    s && typeof s === "object"
+      ? canonicalRole({ ...s, status: s.status ?? "proposed" })
+      : (s as Seat),
   );
   p.approved = false;
   // A re-set replaces the whole roster (dropping approval); leave the same
@@ -119,7 +181,7 @@ export function addSeat(sessionId: string, seat: Seat): Panel & { problems: stri
   if (p.seats.some((s) => s.slug === seat.slug)) {
     throw new Error(`seat already exists: ${seat.slug}`);
   }
-  p.seats.push({ ...seat, status: "active", added_at: new Date().toISOString() });
+  p.seats.push(canonicalRole({ ...seat, status: "active", added_at: new Date().toISOString() }));
   p.history.push({
     ts: new Date().toISOString(),
     action: "added",
