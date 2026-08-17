@@ -6,6 +6,8 @@ disable-model-invocation: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion
 ---
 
+**Category: dial skill.** Append it to a message to shape the reply. It stacks with every other dial — run `/dials` to see them all.
+
 # /investigate — internal research launcher
 
 ## What this is

@@ -272,8 +272,13 @@ def load_config(project_root):
     session_threshold_path = project_root / ".acos" / "state" / "oracle-session-threshold"
     if session_threshold_path.is_file():
         try:
+            # Ceiling raised 11 -> 12 for ORACLE MODE (Zee, 2026-08-15).
+            # 11 is YOLO: allow everything, blind. 12 is the rung above: nothing
+            # is blind and Zee is still never asked, because Opus judges each
+            # call in context. The larger number reads as "looser" but is in fact
+            # stricter — 11 allows everything, 12 judges everything.
             val = int(session_threshold_path.read_text().strip())
-            config["threshold"] = max(0, min(11, val))
+            config["threshold"] = max(0, min(12, val))
         except (ValueError, OSError):
             pass
 
@@ -683,7 +688,7 @@ def emit_decision(decision, reason=None):
 # Evaluate a Single Tool Call
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def evaluate(tool_name, tool_input, cwd):
+def evaluate(tool_name, tool_input, cwd, context=""):
     """Evaluate a tool call. Returns (decision, reason, temperature, threshold, reasons)."""
     project_root = find_project_root(cwd)
     config = load_config(project_root)
@@ -693,6 +698,20 @@ def evaluate(tool_name, tool_input, cwd):
         return "allow", None, 0, config["threshold"], []
 
     threshold = config["threshold"]
+
+    # ── Oracle's own judging session (recursion guard) ─────────────────────────
+    # In Oracle mode the judge IS a Claude Code session, and it loads this very
+    # hook. Its first Read would ask the Oracle, which would spawn another judge,
+    # forever. The child carries a secret matching a 0600 file only the daemon
+    # writes, so this is not a flag anything can set (security: H3).
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _oracle_judge import is_oracle_child
+        if is_oracle_child():
+            return "allow", None, 0, threshold, ["oracle_judge_session"]
+    except Exception:
+        pass
 
     # ── Eternity-protocol subordination (precedence over Oracle) ───────────────
     # Per user spec 2026-06-15: Oracle Protocol is NEVER above Eternity Protocol.
@@ -711,6 +730,56 @@ def evaluate(tool_name, tool_input, cwd):
         # Fail-open: if subordination check itself errors, proceed with
         # normal Oracle logic. Better than locking out tool calls.
         pass
+
+    # ── ORACLE MODE (threshold 12) ─────────────────────────────────────────────
+    # Opus judges the call in context. Placed ABOVE the hard-block list on
+    # purpose: Zee's whole point is that a hardcoded list cannot tell a needed
+    # `rm` from a harmful one, so at 12 the list does not get a vote. There is
+    # also no scoring here — temperature is the old regex Oracle, and this rung
+    # replaces it rather than layering on top.
+    #
+    # Deliberately NOT fail-open. Zee, 2026-08-15: "fall back to yolo is not good
+    # because in that case, having the oracle mode would be useless." _oracle_judge
+    # walks socket -> autostart -> direct -> retry, and only refuses when every
+    # one of those failed — a refusal that names exactly what broke.
+    # Oracle mode is a SWITCH, not rung 12 (Zee, 2026-08-16: "12 is actually the
+    # wrong number for this"). The dial measures LOOSENESS and the Oracle is not
+    # looser than anything, so putting it on the dial would have mis-taught the
+    # one thing the dial is for. It now sits in its own state file, and 12 goes
+    # back to meaning YOLO.
+    _mode = None
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _oracle_judge import load_mode
+        _mode = load_mode(project_root)
+    except Exception:
+        _mode = None
+
+    if _mode:
+        try:
+            from _oracle_judge import consult
+            decision, why, layer = consult(
+                tool_name, tool_input, cwd, context,
+                str(Path(__file__).resolve().parent),
+                _mode.get("goal", ""),
+            )
+            reasons = [f"oracle:{layer}"]
+            if decision == "deny":
+                audit_log(project_root, tool_name, "deny", 0, reasons,
+                          tool_input.get("command", ""))
+                return "deny", f"The Oracle: {why}", 0, threshold, reasons
+            return "allow", None, 0, threshold, reasons
+        except Exception as e:
+            # Importing or calling the judge blew up — which is itself an
+            # unreachable Oracle. Refuse rather than wave it through, and say why.
+            return (
+                "deny",
+                f"The Oracle could not be consulted ({type(e).__name__}: {str(e)[:120]}). "
+                "Oracle mode allows nothing it has not judged. "
+                "Set threshold <= 11 to leave Oracle mode.",
+                0, threshold, ["oracle_error"],
+            )
 
     # ── Autopilot short-circuit ────────────────────────────────────────────────
     # When autopilot is active: log high-impact destructive patterns to
@@ -733,11 +802,15 @@ def evaluate(tool_name, tool_input, cwd):
     # Check hard blocks (deny unless YOLO mode — threshold 11)
     if check_hard_blocks(tool_name, tool_input, config):
         command = tool_input.get("command", "")
-        if threshold >= 11:
+        # YOLO moved 11 -> 12 (Zee, 2026-08-16). 11 is now AUTOPILOT: allow, but
+        # write the truly destructive ones down. 12 is the only rung that allows
+        # everything and records nothing, so it is the only one that may bypass
+        # a hard block. The ladder stays honest: higher is looser, all the way up.
+        if threshold >= 12:
             # YOLO mode: bypass hard blocks, warn on stderr, log the override
             print(
                 f"⚠ YOLO MODE: hard block bypassed for '{command[:80]}'. "
-                "All safety guardrails are off. Set threshold <= 10 to re-enable.",
+                "All safety guardrails are off. Set threshold <= 11 to re-enable.",
                 file=sys.stderr,
             )
             audit_log(project_root, tool_name, "yolo", 10, ["hard_block_bypassed"], command)
@@ -1038,7 +1111,38 @@ def main():
         tool_input = data.get("tool_input", {})
         cwd = data.get("cwd", os.getcwd())
 
-        decision, reason, _, _, _ = evaluate(tool_name, tool_input, cwd)
+        # The recent conversation, so the Oracle judges the command IN CONTEXT
+        # rather than as a bare string (Zee: "command plus the recent chat").
+        # Only read when Oracle mode could actually use it — an ordinary session
+        # must not pay transcript I/O on every single tool call.
+        context = ""
+        try:
+            tpath = data.get("transcript_path", "")
+            if tpath and os.path.isfile(tpath):
+                with open(tpath, "r", encoding="utf-8", errors="replace") as f:
+                    tail = f.readlines()[-40:]
+                parts = []
+                for line in tail:
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        continue
+                    msg = ev.get("message", {})
+                    role = msg.get("role", "")
+                    if role not in ("user", "assistant"):
+                        continue
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = " ".join(
+                            c.get("text", "") for c in content if isinstance(c, dict)
+                        )
+                    if content:
+                        parts.append(f"{role}: {str(content)[:1200]}")
+                context = "\n".join(parts[-12:])
+        except Exception:
+            context = ""  # context is a nicety; never let it break the hook
+
+        decision, reason, _, _, _ = evaluate(tool_name, tool_input, cwd, context)
         emit_decision(decision, reason)
 
     except Exception:

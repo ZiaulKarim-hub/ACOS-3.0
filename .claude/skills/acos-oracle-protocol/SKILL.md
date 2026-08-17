@@ -1,6 +1,6 @@
 ---
 name: acos-oracle-protocol
-description: Configures The Oracle permission governance system. Manage threshold, hard blocks, modifiers, learned patterns, view audit log, toggle on/off, and activate session autopilot.
+description: Configures The Oracle permission governance system. FOUR settings, and only one is ever on - /acos-oracle-protocol 1 to 10 (the dial, how loose ordinary scoring is), autopilot (allows, logs the truly destructive, runs the goal loop), yolo (allows everything, records nothing, bypasses hard blocks), and oracle (Opus judges every gated call in context and you are never asked). autopilot, yolo and oracle each REQUIRE a goal. The numbers 11 and 12 are gone from the interface - they were never really rungs, so they became words. Also manages hard blocks, modifiers, learned patterns, the audit log, and status/follow for the Oracle daemon. The separate 'activate session autopilot' command is gone; it is the autopilot setting now.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
@@ -141,22 +141,47 @@ After showing the safety contract, **run the activate-script command** and surfa
 
 Present the user with these options using AskUserQuestion:
 
-1. **Quick Presets** — One-word profiles that set the threshold:
-   - `strict` (threshold 3): Asks about edits, writes, and most bash commands. Only reads and info commands are auto-approved.
-   - `balanced` (threshold 5): Approves reads, basic edits, tests, lints. Asks about installs, destructive ops, sensitive files.
-   - `autonomous` (threshold 8): Minimal prompts. Only sensitive writes and destructive bash escalate.
-   - `default` (threshold 9): Default. Auto-approves everything except destructive bash and hard blocks.
-   - `permissive` (threshold 10): Approves everything except hard blocks.
-   - `YOLO` (threshold 11): No guardrails. Even hard blocks are bypassed. Use with extreme caution.
+**The four settings. Only one is ever on — choosing any clears the others.**
 
-2. **Tune threshold** — Set a specific threshold value (0-11). Show what each level means:
-   - 0 = ask about everything
-   - 3 = strict (preset equivalent)
-   - 5 = balanced (preset equivalent)
-   - 8 = autonomous (preset equivalent)
-   - 9 = default
-   - 10 = permissive (everything except hard blocks)
-   - 11 = YOLO (everything, hard blocks bypassed)
+| Type | Setting | Goal? |
+|---|---|---|
+| `/acos-oracle-protocol 1` … `10` | the dial — how loose ordinary scoring is | no |
+| `/acos-oracle-protocol autopilot "<goal>"` | allows, WRITES DOWN the truly destructive, runs the goal loop | **yes** |
+| `/acos-oracle-protocol yolo "<goal>"` | allows everything, records nothing, bypasses hard blocks | **yes** |
+| `/acos-oracle-protocol oracle "<goal>"` | Opus judges every gated call; you are never asked | **yes** |
+
+Route all four through the control script — do not re-implement them here:
+
+```bash
+CTL=".claude/scripts/oracle/oracle-ctl.ts"
+bun "$CTL" 7                                   # the dial
+bun "$CTL" autopilot "<goal>"                  # was threshold 11
+bun "$CTL" yolo "<goal>"                       # was threshold 11, then 12
+bun "$CTL" oracle "<goal>"                     # Oracle mode
+bun "$CTL" status                              # what is on, today's verdicts
+bun "$CTL" follow                              # watch decisions live
+bun "$CTL" stop                                # leave oracle, back to the old number
+```
+
+**Why words and not numbers.** 11 and 12 were never really rungs on a dial:
+autopilot runs a goal loop and YOLO switches the rules off, so numbering them
+implied a smooth ramp that does not exist (Zee, 2026-08-16). They survive as
+numbers ONLY inside the hook, which still compares a threshold. Typing `11` or
+`12` is refused, and the error names the word that replaced it.
+
+**Offer `oracle` FIRST whenever he wants autonomy.** It is the only setting that
+buys autonomy without giving up judgement. `yolo` gives up judgement entirely;
+`autopilot` only writes a note afterwards.
+
+1. **Quick Presets** (the dial only):
+   - `strict` (3): Asks about edits, writes, and most bash commands.
+   - `balanced` (5): Approves reads, basic edits, tests, lints.
+   - `autonomous` (8): Minimal prompts. Only sensitive writes and destructive bash escalate.
+   - `default` (9): Auto-approves everything except destructive bash and hard blocks.
+   - `permissive` (10): Approves everything except hard blocks.
+
+2. **Tune the dial** — any value 0-10. 0 asks about everything; 10 approves
+   everything except hard blocks. Above 10 there are no numbers, only the words.
 
 3. **Audit analysis** — Read the audit log, show:
    - Top 5 most-escalated tool patterns
@@ -173,12 +198,17 @@ Present the user with these options using AskUserQuestion:
 ### Phase 3: Apply + Validate + Test
 
 After making any changes:
-1. **If YOLO (threshold 11) was selected**, display this warning and require explicit confirmation before applying:
+1. **If `yolo` was selected**, display this warning and require explicit confirmation before applying:
    > **WARNING: YOLO mode disables ALL safety guardrails.**
    > Hard-blocked commands (git push, rm -rf /, DROP TABLE, git reset --hard main)
    > will be auto-approved without any prompt. This is irreversible once executed.
+   > Nothing is judged and nothing is recorded.
+   > If you want autonomy WITH judgement, use Oracle mode instead: it never asks
+   > you either, but Opus reads each call first.
    > Are you sure you want to enable YOLO mode?
-   - Do NOT apply threshold 11 without the user typing explicit confirmation.
+   - Do NOT apply `yolo` without the user typing explicit confirmation.
+   - `autopilot`, `yolo` and `oracle` all REFUSE without a goal — that refusal is
+     by design, not a bug to work around.
 2. Apply changes to `.acos/config/oracle.yaml`
 3. For session overrides, write to `.acos/state/oracle-session-threshold`
 4. For resets, copy from `.claude/skills/acos-oracle-protocol/templates/oracle-default.yaml`
@@ -195,7 +225,63 @@ When a preset is selected, set the threshold AND inform the user what it means:
 | balanced | 5 | + Edit, Write (normal), Bash (tests, lints, info) | Bash (install, destructive), Write/Edit (sensitive) |
 | autonomous | 8 | + installs, Edit sensitive, restricted paths | Write sensitive (.env, creds), Bash destructive (rm -r) |
 | permissive | 10 | + Write sensitive, Bash destructive | Nothing (only hard blocks deny) |
-| YOLO | 11 | Everything including hard blocks | Nothing at all |
+| autopilot | (word) | Everything, but destructive ops are written to `requested-destructive.log` | Nothing (hard blocks still deny) |
+| yolo | (word) | Everything including hard blocks | Nothing at all |
+
+## Oracle Mode — the switch, not a rung
+
+**What it is.** Opus sits at the permission door. Every call that would normally
+stop and ask Zee is handed to it instead, with the command, the recent chat, and
+the session's goal. It answers allow or deny. Zee is never asked.
+
+**Why it has no number.** The 1-12 dial measures how LOOSE the rules are. The
+Oracle is not looser than anything — it is a different axis entirely, where the
+rules get *judged* rather than relaxed. Putting it at 12 taught the wrong thing
+(Zee, 2026-08-16: "12 is actually the wrong number for this"), so it became a
+switch and 12 went back to meaning YOLO.
+
+```bash
+CTL="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/scripts/oracle/oracle-ctl.ts"
+bun "$CTL" oracle "<the goal for this session>"  # Oracle ON
+bun "$CTL" status                                 # what is on, today's verdicts
+bun "$CTL" follow                                 # watch decisions live
+bun "$CTL" stop                                   # OFF, back to the previous threshold
+bun "$CTL" <1-10> | autopilot "<goal>" | yolo "<goal>"   # the other three
+```
+
+**The bar is HARM, not need.** Zee's standing instruction, and the charter quotes
+him verbatim: *"give permission to everything unless it is truly going to cause
+harm to my system"*, and *"just because an operation is outside the work directory
+doesn't automatically mean it is harmful… touching keys or credentials could be
+necessary too"*. Deletes, force pushes, writes outside the project and credential
+reads are ordinary work. There is deliberately NO hardcoded deny-list — a rule
+list would just be the old scoring Oracle wearing a new name.
+
+**The goal is EVIDENCE, not a gate.** Off-topic and harmless is still allow;
+wandering is not damage. What the goal buys is the mismatch case: a live test
+caught `rm -rf ~/Documents` only because the stated task was "clean temp files in
+the build folder". Never let this become an "is it on-task?" test.
+
+**It is never unreachable** (Zee: falling back to YOLO "would be useless"). Five
+layers: live socket -> auto-start the daemon -> call the judge directly with no
+daemon at all -> retry with backoff -> and only then DENY, naming exactly what
+broke. It never silently allows something it has not judged. The cost of that
+last layer is real: a machine with no working Claude CLI and no network would
+refuse gated tools rather than wave them through.
+
+**Where it sits.** Oracle mode is checked BEFORE the hard-block list and before
+autopilot, so at `start` the fixed list gets no vote and autopilot's blanket
+allow never runs. That is deliberate — unattended work is when a real judge is
+worth most.
+
+**Its own session is exempt.** The Oracle judges by running Claude Code, which
+loads this same hook. The child carries a secret matching a 0600 token file, so
+it passes instantly instead of asking itself forever. A wrong token does not
+bypass anything.
+
+Files: daemon `~/.acos/oracle/`, verdicts `~/.acos/oracle/verdicts.log`,
+mode state `.acos/state/oracle-mode.json`, keep-alive
+`~/Library/LaunchAgents/com.acos.oracle.plist`.
 
 ## Temperature Reference
 
