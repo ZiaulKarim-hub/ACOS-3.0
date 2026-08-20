@@ -24,6 +24,13 @@ The five conflict classes Zee defined, in his own words plus the mechanism:
                 become that root.
   SESSION-SHARED
                 one session id is the recorded hint of more than one row.
+  ORDINAL-CLASH two live rows hold one pick_ordinal, so a typed number is
+                ambiguous. Added 2026-08-19 with the permanent-number ruling:
+                auto-assignment is `max(ever issued) + 1` with no lock, so two
+                simultaneous creations can take the same number.
+  ORDINAL-MISSING
+                a live row has no pick_ordinal, so no verb can name it — every
+                verb names a row by its number.
 
 Several windows on ONE project is NOT a conflict — that is a supported mode
 (one row, one book entry with a live-window count, one knowledge store), and
@@ -195,11 +202,65 @@ def scan(home=None):
                 "type": "BLEED",
                 "detail": "cmux surface %s is claimed by %d different projects: %s" % (
                     surf, len(projects), ", ".join(named)),
+                # The file is .ts and runs under bun, not .sh under bash. As
+                # printed before 2026-08-19 this fix line could not be run at
+                # all: `bash ...prune-state-bindings.sh` names a file that has
+                # never existed.
                 "fix": "Prune the stale surface bindings with "
-                       "`bash .claude/scripts/resurrection/prune-state-bindings.sh --apply`. "
+                       "`bun .claude/scripts/resurrection/prune-state-bindings.ts --apply` "
+                       "(dry run first: drop --apply). "
                        "Bindings are rewritten at every SessionStart and were never "
                        "pruned, so dead sessions keep claiming a live surface.",
             })
+
+    # ── ORDINAL-CLASH ────────────────────────────────────────────────────
+    # Two live rows holding one pick_ordinal. This is the detector for the
+    # `max+1` race: registry_lib documents no blocking lock and none surviving
+    # SIGKILL, so two simultaneous creations can both read the same ledger max
+    # and both take it. At one human and a few opens a day that is very
+    # unlikely — but an undetected clash means a typed number opens whichever
+    # row the scan happens to reach first, silently, which is precisely the
+    # ambiguity permanent numbers were introduced to remove.
+    by_ordinal = {}
+    unnumbered = []
+    for r in rows:
+        n = r.get("pick_ordinal")
+        if n is None:
+            unnumbered.append(r)
+        else:
+            by_ordinal.setdefault(n, []).append(r)
+    for n, group in sorted(by_ordinal.items()):
+        if len(group) > 1:
+            findings.append({
+                "type": "ORDINAL-CLASH",
+                "detail": "%d live rows hold pick_ordinal %d: %s" % (
+                    len(group), n,
+                    ", ".join("%r %s @ %s (%s)" % (
+                        g.get("workspace_name") or g.get("name"), g["project_uuid"],
+                        g["root"], g["status"]) for g in group)),
+                "fix": "Give all but one a different number — a typed number "
+                       "must resolve to exactly one row: "
+                       "`python3 .claude/scripts/resurrection/manage-ordinals.py "
+                       "renumber %d to <free-number> --uuid <project_uuid> --apply`. "
+                       "Pick the free number from `manage-ordinals.py status`; "
+                       "the ledger will not auto-reissue a retired one." % n,
+            })
+    if unnumbered:
+        findings.append({
+            "type": "ORDINAL-MISSING",
+            "detail": "%d live row%s carr%s no pick_ordinal: %s" % (
+                len(unnumbered), "" if len(unnumbered) == 1 else "s",
+                "ies" if len(unnumbered) == 1 else "y",
+                ", ".join("%r %s" % (u.get("workspace_name") or u.get("name"),
+                                     u["project_uuid"]) for u in unnumbered)),
+            # An unnumbered row is not merely cosmetic: every verb that names a
+            # row names it BY NUMBER, so an unnumbered row cannot be picked,
+            # renumbered, deleted or restored. It is invisible to the interface.
+            "fix": "Assign the missing numbers: "
+                   "`python3 .claude/scripts/resurrection/backfill-ordinals.py` "
+                   "to see the plan, then re-run with --apply. Existing numbers "
+                   "are never moved by a backfill.",
+        })
 
     return findings
 

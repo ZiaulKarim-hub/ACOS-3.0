@@ -60,6 +60,10 @@ ROW_KEYS = (
     "last_session_id_hint",
     "git",
     "tombstoned_at",
+    # The PERMANENT pick number (Zee's ruling, 2026-08-19). Assigned once and
+    # never moved on its own; see ordinal_lib.py for the ever-issued ledger.
+    # Null only on a pre-backfill row — backfill-ordinals.py fills those in.
+    "pick_ordinal",
 )
 
 
@@ -164,6 +168,15 @@ def _validate_row(row):
     if git is not None:
         if not isinstance(git, dict) or set(git) != set(GIT_KEYS):
             raise ValueError("git must be null or have keys %s" % (GIT_KEYS,))
+    po = row["pick_ordinal"]
+    if po is not None:
+        # bool is an int subclass; True would otherwise pass as ordinal 1.
+        if isinstance(po, bool) or not isinstance(po, int):
+            raise ValueError("pick_ordinal must be null or an int, got %r" % (po,))
+        if po <= 0:
+            raise ValueError(
+                "pick_ordinal must be >= 1; 0 is reserved for 'new project' "
+                "(acos-safe-close/SKILL.md:235-241), got %d" % po)
     return row
 
 
@@ -185,6 +198,11 @@ def load_row(project_uuid, home=None):
     # Pre-workspace_name rows (seeded before the sidebar-name migration) lack
     # the key: default to the folder-level marker. Persisted on next upsert.
     row.setdefault("workspace_name", None)
+    # Pre-ordinal rows (every row written before 2026-08-19) lack pick_ordinal.
+    # Default to null rather than minting here: minting on READ would hand out
+    # a number every time a book is drawn, which is the per-render counter this
+    # ruling replaced. backfill-ordinals.py assigns them, once, deliberately.
+    row.setdefault("pick_ordinal", None)
     return _validate_row(row)
 
 
@@ -237,13 +255,57 @@ def upsert_row(fields, home=None):
         ),
         "git": fields.get("git", existing["git"] if existing else None),
         "tombstoned_at": existing["tombstoned_at"] if existing else None,
+        # NEVER recomputed. An existing row keeps the number it already holds,
+        # through park, active, finish and tombstone alike. Only the explicit
+        # verbs in manage-ordinals.py (renumber / swap / restore / compact) may
+        # move it, and only on a human's instruction.
+        "pick_ordinal": existing["pick_ordinal"] if existing else None,
     }
+
+    # A genuinely NEW row mints max(ever issued) + 1 here rather than at each
+    # call site, so every creation path — enroll-project.sh, the `add` verb,
+    # anything added later — is covered by construction instead of by memory.
+    minted = None
+    if existing is None:
+        import ordinal_lib  # lazy: ordinal_lib imports this module at its top
+        minted = ordinal_lib.next_ordinal(home)
+        row["pick_ordinal"] = minted
+
     _validate_row(row)
     atomic_write_json(row_path(project_uuid, home), row)
+    # Ledger AFTER the row lands. A crash between the two leaves a row holding
+    # an unrecorded number, which conflict-scan can see; the reverse would burn
+    # an ordinal on a row that never existed and is not detectable at all.
+    if minted is not None:
+        import ordinal_lib
+        ordinal_lib.append_event("issue", minted, project_uuid, row["name"], home)
     audit_append(
-        {"event": "upsert", "project_uuid": project_uuid, "root": root, "status": row["status"]},
+        {"event": "upsert", "project_uuid": project_uuid, "root": root,
+         "status": row["status"], "pick_ordinal": row["pick_ordinal"]},
         home,
     )
+    return row
+
+
+def set_pick_ordinal(project_uuid, ordinal, home=None):
+    """Set one row's permanent pick number. Deliberate act, never derived.
+
+    Kept OUT of upsert_row on purpose: upsert recomputes derived fields on
+    every close, park and verify, and an ordinal that could ride along on
+    those writes would be a per-write counter wearing a different name.
+    Callers (manage-ordinals.py) are responsible for the ledger entry — this
+    function only moves the number on the row, so a caller cannot half-record
+    a swap by forgetting which verb it was performing.
+    """
+    row = load_row(project_uuid, home)
+    if row is None:
+        raise KeyError("no registry row for project_uuid %s" % project_uuid)
+    previous = row["pick_ordinal"]
+    row["pick_ordinal"] = ordinal
+    _validate_row(row)
+    atomic_write_json(row_path(project_uuid, home), row)
+    audit_append({"event": "set_pick_ordinal", "project_uuid": project_uuid,
+                  "from": previous, "to": ordinal}, home)
     return row
 
 

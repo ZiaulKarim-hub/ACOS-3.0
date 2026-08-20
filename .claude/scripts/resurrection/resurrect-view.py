@@ -392,6 +392,9 @@ def derive(row, my_sessions, my_ws, folder_sessions, drift_notes, now):
         "root": row["root"],
         "status": row["status"],
         "tier": tier,
+        # The PERMANENT number, read off the row — never counted here.
+        # Null only on a row that predates the backfill.
+        "pick_ordinal": row.get("pick_ordinal"),
         "broken": "; ".join(reasons) if reasons else None,
         "name_drift": drift_notes or None,
         "next_action": (row.get("last_close") or {}).get("next_action"),
@@ -498,19 +501,31 @@ def build_book(home, no_cmux, no_procs):
     projects.sort(key=lambda p: p["ref_time"], reverse=True)
     projects.sort(key=lambda p: TIER_ORDER.index(p["tier"]))
 
-    # Pick numbers: a global 1-based counter over the PICKABLE tiers only, in
-    # exactly the sorted order the human render walks (tier, then recency). The
-    # same integer is the printed gutter AND the book.json `pick_number` the
-    # menu skill resolves a typed number against — assigned ONCE, here, so the
-    # two can never disagree. ARCHIVED rows (sorted last) are not pickable ->
-    # pick_number None (no gutter number in the render).
-    pick_no = 0
+    # Pick numbers: READ off the row, never counted (Zee's ruling, 2026-08-19).
+    #
+    # This used to be a 1-based counter over the pickable tiers in render order.
+    # That made a number MOVE whenever a row changed tier — and a row changes
+    # tier when a tagged cmux workspace appears or disappears, which happens
+    # when a human closes a tab BY HAND, with no registry write at all. In one
+    # session 11 was "Resurrection Protocol" in one render and "OKOA Works" in
+    # the next. A number read off a stale screen resolved to a different
+    # project.
+    #
+    # Now `pick_ordinal` lives on the row (registry_lib.ROW_KEYS) and this only
+    # copies it to `pick_number`. The gutter integer and the book.json
+    # `pick_number` therefore still cannot disagree — in fact more strongly than
+    # before, because one PERSISTED value cannot drift from itself.
+    #
+    # EVERY row gets a number now, ARCHIVED included. Previously archived rows
+    # got None and could not be referred to at all, so `restore`, `renumber` and
+    # `purge` had nothing to name them by. Being NUMBERED is not being PICKABLE:
+    # `pickable` below is the separate flag, and open-picks.sh must test it in
+    # its pre-check BEFORE anything opens.
     for p in projects:
-        if p["tier"] == "ARCHIVED":
-            p["pick_number"] = None
-        else:
-            pick_no += 1
-            p["pick_number"] = pick_no
+        p["pick_number"] = p["pick_ordinal"]
+        p["pickable"] = p["tier"] != "ARCHIVED"
+
+    unnumbered = [p for p in projects if p["pick_number"] is None]
 
     counts = {t: 0 for t in TIER_ORDER}
     for p in projects:
@@ -528,6 +543,10 @@ def build_book(home, no_cmux, no_procs):
             "cmux_workspace_total": len(workspaces),
         },
         "tier_counts": counts,
+        # Rows the backfill has not reached. Surfaced rather than silently
+        # rendered blank: an unnumbered row cannot be picked, restored or
+        # renumbered, so it is invisible to every verb that names a number.
+        "unnumbered_count": len(unnumbered),
         "broken_count": sum(1 for p in projects if p["broken"]) + len(unreadable),
         "listed": len(projects),
         "total": len(projects) + len(unreadable),
@@ -593,17 +612,36 @@ def render_human(book, use_color):
         base, tag = _disp_parts(p)
         return base + tag
 
-    pickable = [p for p in book["projects"] if p.get("pick_number")]
-    num_w = max((len(str(p["pick_number"])) for p in pickable), default=1)
+    # Numbered vs pickable are now two different things. Every row carries a
+    # permanent number (ARCHIVED included, so it can be named by `restore` /
+    # `renumber` / `purge`); only non-ARCHIVED rows may be opened.
+    numbered = [p for p in book["projects"] if p.get("pick_number")]
+    pickable = [p for p in numbered if p.get("pickable")]
+    # Width over EVERY number, not just the pickable ones, so the ARCHIVED
+    # gutter lines up with the rest instead of hanging off the column.
+    num_w = max((len(str(p["pick_number"])) for p in numbered), default=1)
     name_w = min(max([len(_disp(p)) for p in book["projects"]] + [12]), 40)
     next_w = 52
 
     def _fit(text, width):
         return text if len(text) <= width else text[: width - 1] + "…"
 
-    if pickable:
-        lines.append(c(DIM, "pick a project by its number (1–%d) · ARCHIVED rows are not numbered"
-                             % len(pickable)))
+    if numbered:
+        # Deliberately NOT "(1–N)". Numbers are permanent per row, so the gutter
+        # no longer ascends down the page and gaps are real once a row is
+        # deleted or renumbered. Promising a dense range here would be a lie the
+        # moment the first delete lands.
+        highest = max(p["pick_number"] for p in numbered)
+        lines.append(c(DIM, "pick a project by its number · numbers are PERMANENT per project, "
+                            "so they do not run in order down the page and gaps are normal "
+                            "(highest in use: %d)" % highest))
+        lines.append(c(DIM, "ARCHIVED rows keep their number but cannot be opened"))
+        if book.get("unnumbered_count"):
+            lines.append(c(AMBER, "%d row%s carr%s NO number and cannot be picked, restored or "
+                                  "renumbered — run backfill-ordinals.py --apply"
+                           % (book["unnumbered_count"],
+                              "" if book["unnumbered_count"] == 1 else "s",
+                              "ies" if book["unnumbered_count"] == 1 else "y")))
         fl_count = sum(1 for p in book["projects"] if p.get("folder_level"))
         if fl_count:
             lines.append(c(DIM, "[folder] = %d row%s enrolled from a folder with NO project name — "
