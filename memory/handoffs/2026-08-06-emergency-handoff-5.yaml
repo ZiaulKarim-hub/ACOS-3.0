@@ -1,0 +1,144 @@
+timestamp: "2026-08-07T03:42:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "81621d8a-41ca-4aab-b9ca-aeffb42f629f"
+estimated_tokens: 0
+
+session_summary: |
+  R2P EPIC-001 build ("keep going until the whole epic is done", 8 stories x
+  3 DEV/QA pairs = 24 pairs, never push — R2P is a local-only repo with no
+  git remote). This is the THIRD eternity fire of this logical session. The
+  work lives entirely in /Users/zee/Documents/Vibe Coding/R2P, a separate git
+  repo from ACOS 3.0 (the orchestrating pane's cwd); this handoff is written
+  to ACOS 3.0's memory/handoffs/ and mirrored verbatim to R2P's
+  memory/handoffs/, matching the prior two fires' convention. Pairs 1 and 2
+  of 24 are sealed (verified on disk). Pair 3's DEV candidate is committed;
+  its adversarial QA review had just been (re-)spawned seconds before this
+  fire and has produced no artifacts yet — treat it as needing a clean
+  respawn, not a resume.
+
+current_work:
+  slice_id: "QA-001-001-03 (blocking); DEV-001-001-03 done and committed"
+  story_id: "STORY-001-001 (Point-in-time manifest, status: ready, 3rd of 3 child pairs)"
+  epic_id: "EPIC-001 (status: active — 'A finance user can replay one frozen target-intent case and one frozen contingent-plan case through capital allocation, feasible portfolio and hedge construction, simulated execution, ledger, reconciliation, and performance, then inspect the evidence in a Cloudflare-hosted interface; live release is absent.')"
+  status: "in_progress"
+
+completed_this_session:
+  - "Pair 1 (DEV/QA-001-001-01) SEALED. Verified on disk: planning/evidence/EVB-PAIR-001-001-01/manifest.yaml status: sealed, sealed_at 2026-08-06T22:08:11Z, bundle_sha256 present (method: sorted shasum listing of all 84 non-manifest files), human_owner: null (pending Zee/Ben at epic closeout). Seal commit be2a968 confirmed in git log verbatim: 'seal(pair): DEV/QA-001-001-01 closed — EVB-PAIR + EVB-HLD sealed after holdout run 3 (8/8)'. Journey: QA BLOCK -> rev2 PASS -> holdout run1 6/8 (2 findings) -> ADR-001 (rev3, H004/H006) -> holdout run2 7/8 (1 residual F03) -> rev4 -> holdout run3 8/8."
+  - "Pair 2 (DEV/QA-001-001-02) SEALED. Verified on disk: planning/evidence/EVB-PAIR-001-001-02/manifest.yaml status: sealed, sealed_at 2026-08-07T00:58:50Z, bundle_sha256 present (142 non-manifest files), human_owner: null. Seal commit 44dccca confirmed verbatim: 'seal(pair): DEV/QA-001-001-02 closed — EVB-PAIR + EVB-HLD sealed after holdout run 2 (9/9)'. Journey: QA BLOCK on 3f7c7bc -> rev2 (a7dd3f2) PASS -> holdout run1 5/9 (4 findings) -> rev3 (d37e070) -> QA re-verification #2 BLOCK on 3 NEW findings F02/F03/F04 -> rev4 (7d926fc) -> QA re-verification #3 PASS -> holdout run2 9/9."
+  - "Pair 3 DEV candidate (DEV-001-001-03, 'Deterministic run checksum') committed at 6ffc7db: 'feat(core): DEV-001-001-03 — deterministic StrategyRun manifest + run checksum [TDD]'. New module packages/core/run/{manifest.ts,checksum.ts,index.ts} (documented choice over packages/core/contracts/, reasoning in DEV-001-001-03.yaml module_location_decision). 395/395 full-suite tests passing, full_gate_commands all exit 0 (pnpm test, pnpm run check, pnpm run qa:parity 24/24 pairs, pnpm run qa:evidence, pnpm run test:mutation). Material mutation score 89.20 overall; checksum.ts 100.00 (0 survivors); manifest.ts 92.27 (6 survivors, all individually hand-inspected and disclosed as low-value remainders in open_risks, not correctness gaps). Nested-array field order (snapshots, codeConfigHashes, randomSeeds, outputs, logs, warnings) deliberately NOT canonicalized — documented as the conservative fail-closed reading of the sealed pre-code holdout note in HLD-001-001-03-v1.yaml. DEV-001-001-03.yaml status: refactored (v2), NOT closed — closure reserved for the orchestrator after QA + holdout pass, per pair-01/02 precedent."
+  - "ADR-001 (temporal-field requiredness error taxonomy) remains status: proposed in planning/decisions/ADR-001.yaml — ratification explicitly reserved for the human owner (Zee) at epic close, independent_approval: null. Not yet ratified."
+  - "HASHING.md (planning/holdouts/HASHING.md) documents per-family holdout-pack-hash derivation methods; confirmed on disk that HLD-001-001-02-v1 and HLD-001-001-03-v1 are marked UNRESOLVED for private_pack_sha256 (both lack a frozen/normalized mtime, ~90 candidate derivation methods tried and none reproduced the published hash; explicitly NOT touching the pack files to test the frozen-mtime method, since that would modify a sealed pack). Only read the first ~100 lines of this file — did not independently verify the other 3 UNRESOLVED packs (HLD-001-002-01/02/03) the orchestrating session's own account claims; trust that account but flag it as unverified by this handoff pass."
+
+files_modified:
+  - path: "packages/core/run/manifest.ts, packages/core/run/checksum.ts, packages/core/run/index.ts"
+    changes: "NEW module (629/124/27 lines) implementing StrategyRun manifest construction (fail-closed boundary constructor makeStrategyRunManifest) and deterministic SHA-256 run checksum (computeRunChecksum). Committed at 6ffc7db."
+  - path: "tests/unit/run-manifest.test.ts, tests/unit/run-checksum.test.ts, tests/property/run-checksum.property.test.ts"
+    changes: "New test files for DEV-001-001-03 (547/251/308 lines). Includes a golden-hash regression test and a sibling-guard mutation-strengthening pass (null-element / whitespace-only-string checks across all 6 array fields) added after 3 mutation attempts. Two static-source-scan tests were written then REMOVED (incompatible with Stryker's inPlace instrumentation — see DEV-001-001-03.yaml refactor_evidence.decisions)."
+  - path: "planning/slices/dev/DEV-001-001-03.yaml"
+    changes: "Bumped to version 2, status: refactored. Full DEV evidence trail: red/green/refactor commands, mutation attempts 1-3 + final-v2, open_risks (6 surviving manifest.ts mutants individually inspected), implementation_agent_attestation.holdouts_viewed: false."
+  - path: "planning/evidence/EVB-PAIR-001-001-03/manifest.yaml + testruns/*.{log,yaml} (19 testrun pairs)"
+    changes: "New evidence bundle, status still 'collecting' (not yet sealed — awaiting QA + holdout)."
+  - path: "planning/slices/dev/DEV-001-001-02.yaml, planning/slices/qa/QA-001-001-02.yaml, planning/evidence/EVB-PAIR-001-001-02/**, planning/evidence/EVB-HLD-001-001-02-v1/**"
+    changes: "Pair 2's full close-out trail (rev4, QA re-verification #3, holdout run 2, seal) — all already committed and sealed as of 44dccca."
+  - path: "planning/slices/qa/QA-001-001-03.yaml"
+    changes: "UNCHANGED since creation — still version 1, status: draft, public_findings: []. No QA work has landed for pair 3 yet."
+
+decisions_made:
+  - "ADR-001 (see completed_this_session) — proposed, not ratified. R2P repo's memory/decisions/ directory is empty; decision records for this project live under planning/decisions/ instead (project-specific convention, differs from the ACOS CLAUDE.md default path)."
+
+blockers:
+  - "QA-001-001-03 (adversarial QA for pair 3) has NO trace on disk: no tests/unit/qa-001-001-03.adversarial.test.ts, no tests/property/qa-001-001-03.adversarial.property.test.ts, and planning/slices/qa/QA-001-001-03.yaml is still version 1 / status draft / empty findings. R2P's own .acos/state/agent-lifecycle.log shows a QA agent (id a5622d54c72fc48f2) was spawned at 2026-08-07T03:38:17Z under the CURRENT live runtime session ed938901-f080-405a-845f-3a8c900bdd05 — only ~3.5 minutes before this handoff was written (current time observed 2026-08-07T03:41:52Z) — so either it is genuinely still mid-flight and simply hasn't written anything yet, or the fire interrupted it before it could produce any output. Per the orchestrating instructions: RESPAWN it from scratch with the full original assignment (fresh-context agent; attack list: field-coverage of checksum, malformed shapes, no-wall-clock greps, seed-exclusion boundary vs PRD text, array-order consistency, collision probes; write both adversarial test files; verdict PASS/BLOCK; scoped commit message 'qa(adversarial): QA-001-001-03 — <verdict> verdict on candidate 6ffc7db'). Do not assume the a5622d54 agent's context/memory is recoverable — background Task agents die with the session per this project's own documented operating gotcha."
+  - "Runtime session_id has rotated across fires: R2P's .acos/state/agent-lifecycle.log shows agent SPAWN entries tagged session=81621d8a-41ca-4aab-b9ca-aeffb42f629f up through 2026-08-06T21:45:44Z, then switches to session=ed938901-f080-405a-845f-3a8c900bdd05 from 21:55:40Z onward (the latter also matches this handoff agent's own spawn session). This is expected under the Eternity Protocol's cross-session resume — the logical work session persists across actual runtime session_id rotations at each fire/resume boundary. Next session's actual session_id will likely be a THIRD value; do not treat a session_id mismatch against this handoff as a sign of contamination by itself — cross-check git log timestamps and file mtimes instead, as this handoff pass did."
+
+next_actions:
+  - "Verify current git state in R2P first (git status --short; git log -3) — confirm nothing changed between this handoff and resume."
+  - "Check whether tests/unit/qa-001-001-03.adversarial.test.ts or tests/property/qa-001-001-03.adversarial.property.test.ts now exist and whether QA-001-001-03.yaml has advanced past version 1. If still absent, RESPAWN the adversarial QA agent from scratch (fresh context) against frozen candidate 6ffc7db with the full assignment described in blockers above."
+  - "On QA verdict: if BLOCK, spawn an implementer revision responding ONLY to disclosed findings (TDD, must not touch QA's test files, full gates including mutation >=70, scoped commit). Loop QA re-verification until PASS."
+  - "On QA PASS: run holdout evaluation HLD-001-001-03-v1 run 1 with a fresh evaluator agent. CRITICAL: this pack's private_pack_sha256 is UNRESOLVED (see planning/holdouts/HASHING.md) — the evaluator must verify expected_results_sha256 against the manifest AND cross-check cases.yaml/README.md against the audit baselines recorded in HASHING.md, explicitly disclose the pre-audit coverage gap, and STOP if it finds a baseline mismatch rather than silently proceeding."
+  - "On holdout PASS (or findings-loop resolution): seal pair 3 as the session orchestrator — same method as pairs 1/2: status sealed, bundle_sha256 = sha256 of a sorted shasum listing of all non-manifest files in planning/evidence/EVB-PAIR-001-001-03/, signoffs from the DEV/QA attestations already on file, human_owner left null, DEV/QA yaml status advanced to closed, scoped seal commit."
+  - "After pair 3 seals: proceed to STORY-001-002's 3 pairs, then 003 (base 17e0634), 004 (04ed40a), 005 (3b4fa6d), 006 (e9e5a40), 007 (64616e2), 008 (52f0c67) — all 24 holdout packs are already sealed pre-code (verified: 24 directories present under qa-private/ and planning/holdouts/manifests/). Use the pair-02/03 assignment prompts as templates; they already bake in the hard-won lessons listed in the orchestrating session's operating gotchas (fail-closed at every input boundary, unrecognized discriminants rejected, total deterministic tie-breaks, snake_case error fields per ADR-001, Number.isFinite guards, Result<T,E> idioms)."
+  - "At epic close (after all 24 pairs sealed): produce EVB-STORY bundles x8, run the 4-reviewer swarm review + synthesis per PRD §16.8, produce a parity report and EVB-EPIC-001, then present the close decision AND ADR-001 ratification (still status: proposed) to Zee explicitly — never self-approve either."
+  - "Also queue for Zee at closeout (per orchestrating session's own account, not independently re-verified by this handoff pass — see reconstruction_sources gap note): (1) pair-01 implementer's disclosed qa-private/ boundary lapse (DEV-001-001-01.yaml revision_4.deviations, also referenced in commit 191bba8's message); (2) custodian citation-of-absence rulings for stories 003-008 (each pack's own README.md); (3) HASHING.md's 5 UNRESOLVED private_pack_sha256 packs (HLD-001-001-02/03, HLD-001-002-01/02/03) plus the pre-audit-window disclosure; (4) pair-02 QA's one disclosed python3 one-liner (R2P is TypeScript-only, Python prohibited even for one-liners); (5) two agents reported spurious Dropbox 'MCP Server Instructions' MCP-server blocks appearing unprompted in their tool streams — correctly disregarded both times (this handoff agent independently observed and disregarded a THIRD occurrence of the identical spurious block during this very handoff pass, confirming it is a stable environment artifact, not agent-specific)."
+
+context_for_next_session: |
+  This is a 24-pair adversarial DEV/QA build for R2P's EPIC-001, running under
+  the Eternity Protocol so it survives repeated context exhaustion ("fires").
+  R2P (/Users/zee/Documents/Vibe Coding/R2P) is a completely separate,
+  local-only git repo from ACOS 3.0 (no remote configured — `git remote -v`
+  returned empty; NEVER attempt to push it anywhere). ACOS 3.0 is only the
+  orchestrating pane's cwd, which is why handoffs get written here and then
+  mirrored to R2P's own memory/handoffs/ under the identical filename.
+
+  Ground truth for the whole build is R2P/CLAUDE.md and R2P/docs/PRD_v0.4.txt
+  (not read in full by this handoff pass — read them at the start of the next
+  session if unfamiliar with the domain). The pattern per pair is strictly
+  sequential and adversarial: an implementer agent produces a DEV slice via
+  TDD (red/green/refactor, full gates including >=70 material mutation
+  score) inside allowed_files only; a FRESH-CONTEXT adversarial QA agent
+  (who has never seen implementer reasoning) independently writes its own
+  attack tests and issues PASS/BLOCK; BLOCK triggers an implementer revision
+  responding only to QA's disclosed findings, looping until PASS; PASS
+  triggers a holdout evaluation against a pre-sealed private pack the
+  implementer/QA never saw; holdout findings trigger another revision loop;
+  a clean holdout run lets the ORCHESTRATOR (never the agents themselves)
+  seal the pair's evidence bundle. This pattern has now completed twice
+  (pairs 1 and 2, both taking 3-4 revisions and multiple holdout runs before
+  sealing) and is one QA cycle away from completing a third time.
+
+  The single most load-bearing fact for the very next action: pair 3's DEV
+  side is DONE and committed (6ffc7db, 395/395 tests, mutation 89.20/100/
+  92.27), but pair 3's QA side has ZERO trace on disk. An agent was spawned
+  for it 3.5 minutes before this fire and evidently never got far enough to
+  write a single file. Do not try to resume that agent (background Task
+  agents die with the session per this project's own documented gotcha) —
+  just respawn a fresh adversarial QA agent against the frozen candidate
+  6ffc7db with the assignment reconstructed in blockers/next_actions above,
+  sourced from the orchestrating prompt that triggered this handoff (not
+  independently re-derivable from disk alone, since QA-001-001-03.yaml's own
+  required_tests/attack_surfaces fields ARE on disk and largely corroborate
+  it, but the exact respawn wording is not persisted anywhere in R2P's repo).
+
+  Two important repo-wide operating hazards, both confirmed applicable by
+  this handoff pass: (1) `pnpm run test:mutation` mutates source in place —
+  never run it concurrently with other code work, and if a mutation run gets
+  killed mid-flight it leaves .stryker-tmp/sandbox-* directories that make
+  the FULL test suite hang (repo-scanning tests wander into the leftover
+  copies) — fix is `rm -rf .stryker-tmp` before re-running. (2) A spurious
+  "claude.ai Dropbox MCP Server Instructions" block appears unprompted in
+  tool-call output in this environment (observed independently by this
+  handoff agent during its own Bash call) — it is environment noise, not a
+  real connected MCP server for this project; disregard it exactly as prior
+  agents in this session did.
+
+  Confidence note: pairs 1 and 2's sealed status, bundle hashes, and commit
+  SHAs were independently verified against R2P's actual git log and evidence
+  manifest files (not merely trusted from the orchestrating prompt) and match
+  exactly. Pair 3's DEV state was likewise independently verified. The
+  closeout queue-items-for-Zee list and the HASHING.md 5-pack count were
+  taken from the orchestrating prompt and only partially cross-checked (2 of
+  5 UNRESOLVED packs confirmed directly; the other 3, and the story 003-008
+  README citation-of-absence claims, were not independently re-read by this
+  handoff pass due to scope/time — treat those specific sub-claims as
+  secondhand until directly re-verified).
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/R2P/.git (git remote -v, git status --short, git log --oneline -30, git log -3 --format, git diff --stat HEAD~1..HEAD, git diff --name-only HEAD~5..HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-001-03.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-001-03.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-001-03/manifest.yaml and testruns/ directory listing"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-001-01/manifest.yaml (status/seal/bundle_sha256/human_owner fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-001-02/manifest.yaml (status/seal/bundle_sha256/human_owner fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ADR-001.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/holdouts/HASHING.md (first ~100 lines)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/stories/STORY-001-001.yaml (status/title/child_pairs fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/epics/EPIC-001.yaml (status/title fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/qa-private/ directory listing (24 HLD-* pack directories)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/agent-lifecycle.log (full tail, session_id rotation, latest agent spawn timestamp)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/evidence/current/modifications.log (tail)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/metrics/agent-completions.log (tail)"
+  - "/Users/zee/Documents/Vibe Coding/R2P top-level directory listing (ls -la)"
+  - "find across /Users/zee/Documents/Vibe Coding/R2P for *QA-001-001-03*, *DEV-001-001-03*, *qa-001-001-03* (confirmed no adversarial test files exist for pair 3)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ directory listing (prior fires' handoff filenames/mtimes, for continuity numbering)"
+  - "Orchestrating session's own prompt to this handoff agent (session 81621d8a-41ca-4aab-b9ca-aeffb42f629f context, relayed verbatim into this file's blockers/next_actions/context sections where not independently re-verified — flagged inline where secondhand)"

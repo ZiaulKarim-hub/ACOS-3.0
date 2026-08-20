@@ -1,0 +1,408 @@
+timestamp: "2026-08-18T20:23:05Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "745d2d49-a6ab-46ef-b3f7-9359011a5561"
+estimated_tokens: 499291
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Converting the four duplicated skill directories (acos-resume-prompt,
+  investigate, research, security-review-ultimate) into symlinks so the global
+  ~/.claude/skills copy and the ACOS 3.0 project copy can never drift apart.
+
+completed_this_session: |
+  - conflict-scan.py, prune-state-bindings.ts, backfill-key-tags.ts,
+    merge-knowledge.py all written; merge of a156b1b8 -> abe958ef APPLIED.
+  - rename-workspace.sh leading-space bug fixed (symmetric strip comparison).
+  - enroll-project.sh now writes the session->project binding; and
+    eternity-resume-prepend.sh gates its last-resort loop on that binding —
+    test-resume-project-gate.sh proves exit 1 before, exit 0 after.
+  - adopt-project.sh gate 0 (--allow-cross-root) verified live: FruitSync from
+    this tab exits 5, Skill Workshop exits 0.
+  - close-project.sh --park-to <uuid> + orphan retire, guarded; sandbox-verified
+    by test-close-park-to.sh. NEVER run live.
+  - acos-safe-close SKILL.md Step 2c destination picker (typed number, 0 = new
+    project, AskUserQuestion forbidden because autopilot answers it itself).
+  - All four global skill dirs replaced with symlinks into the repo, after a
+    byte-for-byte identity check; originals moved to
+    ~/.claude/skills-backup-pre-symlink-20260818T202623Z/. Shared skill names
+    now 46/46 same-file-on-disk, 0 able to drift.
+
+decisions_made: |
+  - "yes, do all five" — approved the five resurrect/eternity fixes.
+  - FruitSync's 14 learnings must be SAVED, not tombstoned — this is what made
+    merge-knowledge.py necessary rather than optional.
+  - /acos-safe-close must show the same numbered book /acos-resurrect shows, so
+    an unrelated tab's work can be parked onto an existing project line.
+  - A tab parked to no existing line must be able to MINT a new line — there has
+    to be a number for that.
+  - Zee retires the FruitSync duplicate row himself; I do not run it.
+  - "yes, make those four symlinks" — approved this conversion.
+
+blockers: |
+  The destination picker has never run LIVE. Sandbox mode skips cmux validation
+  and the blind round-trip, so the live path is unproven. Nothing else is stuck.
+
+candidate_learnings: |
+  - macOS `stat` does NOT follow symlinks by default; `stat -f '%d:%i'` on a
+    symlink returns the LINK's inode, so a same-file test silently reports
+    "differs". Use `stat -L`.
+  - zsh does not word-split an unquoted string variable, so
+    ${VAR:+--flag "$VAR"} arrives as ONE glued argument. Use an array and
+    "${ARR[@]}".
+  - zsh aborts the WHOLE command when any glob on the line has no match — one
+    dead glob makes an unrelated `ls` look like proof of absence.
+  - ~/.claude/skills uses TWO working conventions: a whole-directory symlink
+    (majority) and a real dir holding a symlinked SKILL.md. Both are discovered.
+
+context_for_next_session: |
+  Nothing is committed. Changes span .claude/scripts/resurrection/,
+  .claude/scripts/, .claude/scripts/tests/, and several SKILL.md files. Any push
+  goes to PERSONAL (ZiaulKarim-hub) unless Zee names work; never a bare git push.
+  conflict-scan.py currently reports 10 conflicts: 4 NAME-CLASH, 3
+  SESSION-SHARED, 3 ROOT-UNREACHABLE.
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  I typed acos-safe-close, why does it say two skills available?
+
+assistant_tail: |
+  Confirmed, and it is not something I introduced. Let me measure how much of it can actually bite.
+  
+  ---
+  
+  Not something my edits caused. The skill exists in two places at once.
+  
+  One copy sits in your personal folder, `/Users/zee/.claude/skills/acos-safe-close/`. The other sits in this project's folder, `.claude/skills/acos-safe-close/`. Claude Code searches both places, so it finds two and lists two. That is my reading from the folder layout, not from the picker's own code.
+  
+  **This is not special to that one skill.** 46 skill names exist in both places.
+  
+  **For `acos-safe-close` it is harmless.** The personal copy's `SKILL.md` is a symlink — a pointer file that leads to another file. It points at the project copy. So both entries open the exact same text. Pick either one; you get the same instructions. That is also why my edit today reached both.
+  
+  42 of the 46 work that way. `acos-resurrect` is one of them.
+  
+  **Four are the real risk.** These are separate files, not pointers:
+  
+  - `acos-resume-prompt`
+  - `investigate`
+  - `research`
+  - `security-review-ultimate`
+  
+  Right now all four match, byte for byte. But nothing keeps them matching. Fix one and the other keeps the old text. That trap already bit `/investigate` once — this project's own knowledge store records it, and the note says the proje […]
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 180
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/eternity-resume-prepend.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/scripts/resurrection/adopt-project.sh"
+  - "M .claude/scripts/resurrection/close-project.sh"
+  - "M .claude/scripts/resurrection/enroll-project.sh"
+  - "M .claude/scripts/resurrection/rename-workspace.sh"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/acos-resurrect/SKILL.md"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/resurrection/backfill-key-tags.ts"
+  - "?? .claude/scripts/resurrection/conflict-scan.py"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/745d2d49-a6ab-46ef-b3f7-9359011a5561.jsonl"
+  transcript_lines_parsed: 1404
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Opening**: The user ran `/model` (set Opus 5 1M context), then `/acos-resurrect`. I ran the preflight, rendered the book, showed it verbatim. The user picked "10" = Skill Workshop. I resolved it against book.json (uuid `97ed3c46-ee91-453e-8746-6d179a79e433`), saw `live.workspaces` was empty, and ran `adopt-project.sh`. Adoption succeeded (exit 0). I read all 8 unread reentry notes and the newest handoff dossier, and checked git drift (branch unchanged, head `66b7b71a11f28a28d828f428ae2c39f2d57bec6a` unchanged, dirty count 145 → 167).
+  
+  **The investigation**: The user asked about the Eternity Protocol and a Research to Portfolio (R2P) / FruitSync name collision + chat bleed, ending with `/investigate 3`. I invoked the `investigate` skill, parsed depth 3 via `investigate-plan.ts`, set up a riff session, declared 5 dimensions, wrote a brief, seated a 5-agent panel (with the required generalist + skeptic), and dispatched 5 Explore agents.
+  
+  Panel findings, one at a time:
+  1. handoff-pipeline: PreCompact hook writes handoff BEFORE compaction; both .ts files untracked; the only handoff with R2P's session was written at 18:00:34Z by a typed /compact
+  2. pane-bleed: 1034 session ids → 105 surfaces; 8 sessions share surface F354478B; `eternity-resume-prepend.sh:170-184` picks by `ls -t` mtime race; a 33-day-stale /compact flag armed
+  3. identity-naming: `adopt-project.sh:555-556` renames the tab; set-description and rename are both non-fatal (adopt :530/:555, launch :218/:236) → untagged tab; leading space could only come from `rename-workspace.sh:35-41`
+  4. r2p-history: R2P and FruitSync share ONE Claude project dir; when a6b28886 compacted at 18:03:16.265Z the newest folder handoff was FruitSync's (ff036fd7, 17:01:11Z)
+  5. skeptic: three of four consensus claims fail — R2P session minted the 'FruitSync (duplicate)' row itself at 18:00:12Z; no leading space in stored title (0 of 8); the PreCompact 8s watchdog is inert because main() is synchronous
+  
+  I ran `riff ask` and got stamp `[1 sources · primary-new]`. Delivered the full cited answer.
+  
+  **Correction 1**: The user said the FruitSync directory looked like the window ran there. I checked and found a reader claim was WRONG — `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-FruitSync/` DOES exist. The cause was a zsh glob quirk: combining `*R2P*` and `*FruitSync*` in one `ls` makes zsh abort the whole command on the no-match. I hit the same trap myself. But its newest content is Jul 26 15:03 — nothing from today. The move happened via an `enroll-adopted-cross-root` event at 08:08:41.
+  
+  **Design conversation**: The user described his intent for `/acos-resurrect` (projects in ACOS 3.0 start there; projects with their own directory start in their own directory). I ran `/restate`. He corrected me with three rules. I restated again. He defined "conflict" and ruled that multi-window is NOT a conflict. He said "yes, do all five".
+  
+  **The five items built**:
+  1. Key-driven resume pick — `enroll-project.sh` writes `state/project-<sid>`; `eternity-resume-prepend.sh` gates on it. Test at `.claude/scripts/tests/test-resume-project-gate.sh` fails pre-fix, passes post-fix.
+  2. Tag backfill — `backfill-key-tags.ts`. My first draft would have bound workspace:24 to the WRONG row (`1b4e2505` @ ACOS 3.0). I tightened it to refuse any name clash. Result: Insightia tagged, workspace:24 and workspace:43 refused.
+  3. `rename-workspace.sh` trim fix — trim at the door + symmetric comparison.
+  4. `prune-state-bindings.ts` — moved 1207 bindings; added PID-reuse guard using recorded lstart.
+  5. `conflict-scan.py` — 5 conflict classes, found 10.
+  Plus Rule 2: `adopt-project.sh` gate 0 CROSS-ROOT exit 5, routing to `launch-project.sh`.
+  
+  **Correction 2 (important)**: The user said "Fruitsync was closed before, I want to save the learnings there." I checked and found my recommendation to tombstone `a156b1b8` would have HIDDEN 14 facts. Built `merge-knowledge.py`, sandbox-tested it, dry-ran it, and applied it (8 → 22 facts in `abe958ef`).
+  
+  **The destination picker**: The user described wanting `/acos-safe-close` to show the menu so he can park a scratch tab's work onto an existing project. I ran `/restate` twice. He ruled: retire the leftover row, and add a numbered option for "new project". I built `--park-to` in `close-project.sh` + step 7b guarded retire + Step 2c in the skill.
+  
+  **Bug I caught**: I first used `${PARK_TO:+--park-to "$PARK_TO"}` — the skill's own comments warn zsh doesn't word-split. I proved it in zsh (glues into one arg) and switched to an array.
+  
+  **Final question**: "I typed acos-safe-close, why does it say two skills available?" I found 46 skill names exist in both `~/.claude/skills/` and the project's `.claude/skills/`. 42 are the same file (symlinked), 4 are separate-but-identical (`acos-resume-prompt`, `investigate`, `research`, `security-review-ultimate`), 0 already differ. `acos-safe-close` and `acos-resurrect` are both in the symlinked group. I had gathered this data but had NOT yet delivered the answer when the summary was requested.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  The conversation moved through five distinct phases:
+  
+  **A. Resurrect a project.** The user ran `/acos-resurrect` and picked row 10 (Skill Workshop, uuid `97ed3c46-ee91-453e-8746-6d179a79e433`).
+  
+  **B. Investigate an incident** (`/investigate 3`). The user asked: does the Eternity Protocol create and save handoffs before compaction? What made the Research to Portfolio (R2P) window take FruitSync's name with FruitSync's chat bleeding in? Why was no R2P handoff findable, why did `claude --resume a6b28886-96ca-4f64-9a7c-edcfc4963795` work, why does the renamed tab show a leading space, and is R2P now correct?
+  
+  **C. State his design intent for `/acos-resurrect`** — three rules he stated:
+  1. Many projects live in ACOS 3.0; there must be **no intermingling**, even sharing one directory.
+  2. Any project outside ACOS 3.0 should run from **its own directory**, even if he forgets to `cd` there first.
+  3. On any conflict, the system must **notify him and name the fix**.
+  
+  **D. Approve and receive five fixes** ("yes, do all five").
+  
+  **E. Design and build a destination picker for `/acos-safe-close`.** His words: *"I may open tabs that doesn't relate to anything but later I decide that the work I did in that tab would add to learnings in say Skill Workshop, so I type /acos-safe-close and then I see a list of all the projects that are already saved. I type the number beside the Skill workshop line and press enter. The work in the tab then safe closes and parks to Skill workshop and when later I do /acos-resurrect, I can start where the 'unrelated tab' ended."* Plus: retire the leftover row, and *"If a tabe is not parked to any old line, then it should create a new line, there should be an option/number to select for that"*.
+  
+  ## 2. Key Technical Concepts
+  
+  - **ACOS Resurrection Protocol** — registry rows in `~/.acos/registry.d/<uuid>.json`, keyed by (folder root, cmux sidebar name); `adopt-project.sh` (adopt-in-place), `launch-project.sh` (focus-or-create), `close-project.sh` (safe close), `resurrect-view.py` (the book), `registry_lib.py`, `knowledge_lib.py`, `windows_lib.py`
+  - **The `[key:<uuid>]` tag** — written into a cmux workspace *description*; outranks the sidebar name; prevents a renamed tab from minting a duplicate row
+  - **Eternity Protocol** — `PreCompact` → `precompact-handoff.ts`, `PostCompact` → `handoff-enrich.ts`, both registered in `~/.claude/settings.json`; `autoCompactWindow: 533000`
+  - **Knowledge store** — `~/.acos/knowledge/<project_uuid>/{facts,entities,edges}.jsonl` + `index.json`; fact ids are content-addressed `sha256(subject\x00claim)[:16]`; strikes and supersedes are EDGES, never deletes
+  - **Tombstone** — hides a row in ARCHIVED, never deletes the file
+  - **cmux constraint** — a workspace's folder is fixed at creation; `--cwd` exists only on `workspace create`; there is no re-point verb
+  - **Claude Code transcripts are keyed by launch cwd** — `~/.claude/projects/<sanitized-cwd>/`, so several projects in one folder share one pile
+  - **zsh does not word-split unquoted string variables** — `${VAR:+--flag "$VAR"}` arrives as ONE glued argument; `"${ARR[@]}"` is safe in both shells
+  - **acos-research-riffs engine** — `riff init/coverage/brief/panel/charter/claims ingest/ask`; seat schema requires `slug, role, title, objective, lane, not_lane, dimensions, status`; roles are a fixed token set; `panel approve` refuses a roster without a generalist AND a skeptic
+  
+  ## 3. Files and Code Sections
+  
+  ### Created
+  
+  **`.claude/scripts/resurrection/conflict-scan.py`** (new, read-only, Python by the extend-existing-Python exception)
+  Reports 5 classes with a named fix each: `BLEED`, `NAME-CLASH`, `ROOT-GONE`, `ROOT-UNREACHABLE`, `SESSION-SHARED`. Stays silent on multi-window (a supported mode). Exit 0 = clean, 1 = conflicts, 2 = could not run. Currently reports **10 conflicts**: 4 NAME-CLASH, 3 SESSION-SHARED, 3 ROOT-UNREACHABLE.
+  
+  **`.claude/scripts/resurrection/prune-state-bindings.ts`** (new, TypeScript per the standing rule)
+  Prunes `cmux-surface-`, `pid-`, `project-`, `stop-` prefixed files. MOVES to `state/pruned/<utc-stamp>/`, never deletes. A binding is pruned only when: no live process holds the session, no `pending-resume-<sid>.txt` exists, and it is older than `--older-than` (default 7) days. The PID-reuse guard:
+  ```ts
+  function sessionLive(sid: string): boolean {
+    const pidFile = join(STATE, `pid-${sid}`);
+    if (!existsSync(pidFile)) return false;
+    let lines: string[] = [];
+    try { lines = readFileSync(pidFile, "utf8").split("\n"); } catch { return false; }
+    const pid = (lines[0] ?? "").trim();
+    if (!/^\d+$/.test(pid)) return false;
+    const liveStart = pidStart(pid);
+    if (liveStart === null) return false;          // not running at all
+    const recordedStart = (lines[1] ?? "").trim();
+    if (!recordedStart) return true;               // cannot disprove — keep it
+    return recordedStart === liveStart;            // same process, or a reused pid
+  }
+  ```
+  
+  **`.claude/scripts/resurrection/backfill-key-tags.ts`** (new, TypeScript)
+  Tags untagged tabs. **Strict rule**: tag only when EXACTLY ONE live row carries the tab's sidebar name; any name clash REFUSES with candidates printed.
+  
+  **`.claude/scripts/resurrection/merge-knowledge.py`** (new, Python)
+  `--from <uuid> --into <uuid> [--apply] [--allow-different-roots]`. Dry run by default. Refuses same uuid, missing rows, a tombstoned target, and differing roots (unless forced). Moves facts via `knowledge_lib.append_fact` (so schema gate + content-addressed dedup apply), stamps `provenance.merged_from_project`, then carries `struck` / `strike-reason` / `supersedes` edges whose endpoints landed in the target. Never modifies the source, never retires a row.
+  
+  **`.claude/scripts/tests/test-resume-project-gate.sh`** (new) — builds a throwaway `$HOME`; CASE 1 (different projects) must be blocked, CASE 2 (same project) must still be served. Verified: **exit 1 on the pre-fix version, exit 0 on the fixed version.**
+  
+  **`.claude/scripts/tests/test-close-park-to.sh`** (new) — CASE A empty scratch row is retired; CASE B a row holding 1 fact REFUSES the retire. Both pass (exit 0).
+  
+  ### Modified
+  
+  **`.claude/scripts/resurrection/rename-workspace.sh`** — the leading-space bug. Line 59 stripped the read-back while line 60 compared to an unstripped `want`. Fix: trim at the door (announced, never silent) plus a symmetric comparison `ct == want.strip()`.
+  
+  **`.claude/scripts/resurrection/enroll-project.sh`** — writes the session→project binding after `upsert_row`:
+  ```python
+      if session_id:
+          try:
+              _state = os.path.join(os.path.expanduser("~"), "Library",
+                                    "Application Support", "acos-token-monitor", "state")
+              os.makedirs(_state, exist_ok=True)
+              _sid = str(session_id)
+              if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", _sid):
+                  _atomic_replace(os.path.join(_state, "project-" + _sid),
+                                  (project_uuid + "\n").encode("utf-8"))
+          except BaseException as exc:  # noqa: BLE001 — never block SessionStart
+              _note("project-binding write skipped: %s: %s" % (type(exc).__name__, exc))
+  ```
+  
+  **`.claude/scripts/eternity-resume-prepend.sh`** — the project-key gate in the last-resort loop:
+  ```bash
+  if [[ -z "$RESUME" && -z "$SIBLING" ]]; then
+      MY_PROJECT=$(cat "$STATE/project-$SESSION_ID" 2>/dev/null | head -1)
+      while IFS= read -r CANDIDATE; do
+          ...
+              CAND_PROJECT=$(cat "$STATE/project-$SID" 2>/dev/null | head -1)
+              if [[ -z "$MY_PROJECT" || -z "$CAND_PROJECT" \
+                    || "$CAND_PROJECT" != "$MY_PROJECT" ]]; then
+                  continue
+              fi
+  ```
+  
+  **`.claude/scripts/resurrection/adopt-project.sh`** — new `--allow-cross-root` flag and gate 0, placed after `me` is resolved and before gate 1:
+  ```python
+      tab_cwd_now = me.get("current_directory") or ""
+      cross_root = bool(tab_cwd_now) and \
+          os.path.realpath(tab_cwd_now).casefold() != row["root_casefold"]
+      if cross_root and not ALLOW_CROSS_ROOT:
+          print("CROSS-ROOT — %r is rooted at %r but this tab's folder is %r." ...)
+          return 5
+  ```
+  Verified: FruitSync from this tab → exit 5; Skill Workshop → exit 0.
+  
+  **`.claude/scripts/resurrection/close-project.sh`** — new `--park-to <uuid>` flag; step 6b redirects `project_uuid` (the single variable the reentry owner marker, the registry `last_close`, and `knowledge_lib.write_learnings` all read); step 7b retires the orphan with guards that refuse on: a previous `last_close`, any knowledge facts, other live windows, or an unreadable store/window count. On refusal it names `merge-knowledge.py --from <orphan> --into <target>`.
+  
+  **`.claude/skills/acos-resurrect/SKILL.md`** — replaced the 2026-07-26 rule "Adoption never CREATES a tab" with the cross-root routing rule; added exit-5 handling; added a `### conflicts` section wiring `conflict-scan.py`.
+  
+  **`.claude/skills/acos-safe-close/SKILL.md`** — added **Step 2c — Choose the DESTINATION**: renders the book with `resurrect-view.py`, shows it verbatim, asks for a typed number (`0` = new project, chosen because the renderer never issues 0). Explicitly forbids `AskUserQuestion` because autopilot answers it itself. Threads `"${PARK_ARGS[@]}"` through all four `close-project.sh` invocations.
+  
+  ## 4. Errors and fixes
+  
+  - **`riff panel set` rejected my seats** — I used `{role, name, expertise, angle, mandate}`. Correct schema is `{slug, role, title, objective, lane, not_lane, dimensions, status}`. Read `panel.ts:85-96` and rewrote.
+  - **A reader claimed no FruitSync project dir exists.** FALSE — `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-FruitSync/` exists. Cause: zsh aborts a whole `ls` when ANY glob in the line has no match, and the reader combined `*R2P*` with `*FruitSync*`. **I hit the identical trap myself in the same turn.** Corrected to the user explicitly.
+  - **`backfill-key-tags.ts` first draft would have bound workspace:24 to the wrong row.** It resolved a name clash by preferring the root-matching row, which meant `1b4e2505` (@ ACOS 3.0) instead of `d86cf151` (@ R2P) — cementing the exact wrong-folder binding. Tightened to refuse ANY name clash.
+  - **My recommendation to tombstone `a156b1b8` was wrong.** The user flagged *"Fruitsync was closed before, I want to save the learnings there."* Checking showed `a156b1b8` holds **14 facts** and `abe958ef` holds **8**. Tombstoning would have put 14 learnings out of normal reach. This drove building `merge-knowledge.py`.
+  - **`${PARK_TO:+--park-to "$PARK_TO"}` was wrong for zsh.** Proved live: it yields `argc=4` with `[3] --park-to abe958ef-...` as ONE argument. Switched to `PARK_ARGS=()` / `"${PARK_ARGS[@]}"`, which gives `argc=5` empty and `argc=7` set.
+  - **Sandbox test seeded the wrong row shape** — SKIP_CMUX mode never sets `ws_name`, so close took the folder-level path and minted a fresh uuid. Fixed by writing `.acos/project-id` and making the scratch row folder-level.
+  - **The saved park-to test lost its `CLOSEDIR` line** to a `sed '1,2d'` during assembly. Restored it.
+  - **Two Stop hooks blocked replies**: `conclude-selfcheck.ts` fired with a spurious 3-word ceiling (it parsed the `3` from `/investigate 3`); handled with a declared overage line. `eden-selfcheck.py` blocked several replies for sentence length.
+  
+  ## 5. Problem Solving
+  
+  **The bleed, fully diagnosed and closed.** Four failures stacked: (1) both panes launched in ACOS 3.0, so they share `~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/`; (2) workspace:24 had no `[key:]` tag; (3) so when the tab was renamed, `enroll-project.sh` looked up `(root, name)`, found nothing, and minted row `9ee4c489 'FruitSync (duplicate)'` at `2026-08-18T18:00:12.741841+00:00`; (4) `eternity-resume-prepend.sh:170-184` then picked by `ls -t` mtime, and at `2026-08-18T18:03:16.265Z` the newest handoff in that folder was FruitSync's (session `ff036fd7`, `17:01:11Z`).
+  
+  **Handoff timing reconciled**: `memory/handoffs/2026-08-18-autocompact-handoff-6.yaml` has `timestamp: "2026-08-18T18:00:34Z"`, `trigger: "precompact-hook:manual"`, `enrichment_status: "deepened"`, mtime `2026-08-18T18:11:40Z`, 26540 bytes. Both readers were right about different fields.
+  
+  **Leading space refuted**: stored `custom_title` is exactly `"Research to Portfolio"`; 0 of 8 workspaces untrimmed.
+  
+  ## 6. All user messages
+  
+  1. `/model` → set Opus 5 (1M context)
+  2. `/acos-resurrect` (invoked several times)
+  3. `10`
+  4. "I need some information about the eternity protocol. It creates the hanoffs before compact and saves them right? I am asking becasuse recently there was a problem with Research to Portfolio, somehow it go the same name as fruitsync and frutitsync chat started to bleed into that chant. I had to use this resume command to resum it: claude --resume a6b28886-96ca-4f64-9a7c-edcfc4963795 after resuming I renamed the chat but the name appears to have some space before it for some reason. I am not sure if i am back to how it should be or if there is something wrong with it. Before resuming, I was talking to claude in that window and I asked it if there was a handoff of the R2P which it couldn't find and said I should use the resume command instead. Is everythign ok. /investigate 3"
+  5. "I need to fix this, fruitsync has a directory, I want to start it there, if I safe close it and restart it in its own directory will it be fixed? /short"
+  6. "I just check the fruitsync directory and it appears that the the window was ran in fruitsync directory, how did it became acos 3.0?"
+  7. "so this happened with /acos-resurrect. my intention with this protocol was that for projects that are in acos 3.0, we should be able to start them from there but any project that has a separte directory, they should start at their own directory but it didn't happen. Everythign is starting at acos 3.0 which was not the intention. /restate"
+  8. "what do you mean by root differs? This is what I want: 1. There are many projects in acos 3.0, there shouldn't be any intermingling in any way even though they are in the same directory. 2. Any project that is outside acos 3.0, I will make sure to get in that directoy and then do the acos-resurrect, but even if I don't, the project should still run from it's own directory. 3. if there is any conflict, the system should notify me and let me know what I need to do to resolve the conflict."
+  9. "Conflict would be something like fruitsync bleeding into research to portfolio somehow and the defaults you mentioned. Project already open elsewhere is handled gracefully, we did some coding for that before, we can have mutliple windows or tabs for the same project and both projects write into the same learning file. default for rest."
+  10. "yes, do all five"
+  11. "now how do I fix the research to portfolio and fruitsync messup? safe close and restart them?"
+  12. "Fruitsync was closed before, I want to save the learnings there. It is not a new tab.]"
+  13. "build the merge tool and dry-run it"
+  14. "apply"
+  15. "I was wondering for future, when I run /acos-safe-close I should be able to see the menu like I do when i run /acos-resurrect so that I can decide to park a project on any of the existing project names/entries. What do you think about this?"
+  16. `/acos-eden-protocol 3` + "This is what I want. I may open tabs that doesn't relate to anything but later I decide that the work I did in that tab would add to learnings in say Skill Workshop, so I type /acos-safe-close and then I see a list of all the projects that are already saved. I type the number beside the Skill workshop line and press enter. The work in the tab then safe closes and parks to Skill workshop and when later I do /acos-resurrect, I can start where the 'unrelated tab' ended. do you understand what I want?"
+  17. "retire it. This will also help the current FruitSync tab parking. Retire this duplicate and save it's learnings to the original which you already did. Even though any bleedin like this will likely not happen in future, if it did, it would still be helpful to park at the right place and have the entry deleted. If a tabe is not parked to any old line, then it should create a new line, there should be an option/number to select for that /restate"
+  18. "Build this. I can retire the fruitsync duplicate to the fruitsync line."
+  19. "Did you create what I asked for? if you did, I can retire the duplicate manually."
+  20. **"I typed acos-safe-close, why does it say two skills available?"** ← most recent, still unanswered
+  
+  **Standing constraints from CLAUDE.md and memory that remain in force:**
+  - Confirmation Gate: pause, restate, ask before interpretive work
+  - TypeScript/Rust over Python for new code; Python only when extending existing Python
+  - Git push defaults to PERSONAL (`ZiaulKarim-hub`); `okoateam` only when named; never a bare `git push`
+  - `/acos-resurrect` hard rule: NEVER write the daemon state dir `~/Library/Application Support/acos-token-monitor/state/` — **the user's explicit prune instruction overrode this for that one task, and this was flagged to him**
+  - `tombstone` is HUMAN-initiated only; never on my own initiative
+  - Autopilot answers `AskUserQuestion` itself — never use it for a human-reserved ruling
+  
+  ## 7. Pending Tasks
+  
+  - **Answer the current question** about two `acos-safe-close` skills showing.
+  - **Retirements** — the user said "I can retire the duplicate manually", so I should NOT run these unless asked. `a156b1b8` (safe only because its 14 facts were merged into `abe958ef`) and `9ee4c489` (`FruitSync (duplicate)`, no learnings, no close record).
+  - Nothing is committed. New/changed files across `.claude/scripts/resurrection/`, `.claude/scripts/`, `.claude/scripts/tests/`, and two SKILL.md files.
+  - The destination picker has never run live — only in sandbox, which skips cmux validation and the blind round-trip.
+  
+  ## 8. Current Work
+  
+  I had just answered "Did you create what I asked for?" — yes, with a verified end-to-end sandbox check showing the parked bundle's `.project-uuid` equals the target uuid and the target row's `last_close.reentry_path` exists with the right `next_action`. I named the one honest gap: sandbox only, never live.
+  
+  The user then asked: **"I typed acos-safe-close, why does it say two skills available?"**
+  
+  I gathered the answer but had not yet delivered it. The findings:
+  - `/Users/zee/.claude/skills/acos-safe-close` is a REAL directory whose `SKILL.md` is a **symlink** to `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-safe-close/SKILL.md`
+  - **46 skill names exist in both** `~/.claude/skills/` and the project's `.claude/skills/`
+  - Of those 46: **42 are the same file** (one side symlinked, cannot drift), **4 are separate files with identical content** (`acos-resume-prompt`, `investigate`, `research`, `security-review-ultimate` — free to drift later), **0 already differ**
+  - Both `acos-safe-close` and `acos-resurrect` are in the symlinked group, so the two entries are the same file and my edits reached both
+  
+  ## 9. Optional Next Step
+  
+  Deliver the answer to the user's most recent, still-unanswered question — **"I typed acos-safe-close, why does it say two skills available?"** — at Eden Level 3: the duplicate listing comes from the skill existing under both `~/.claude/skills/` and the project's `.claude/skills/` (46 shared names); for `acos-safe-close` the two entries are the SAME file because the global `SKILL.md` is a symlink into the repo, so either choice runs identical instructions and my edit reached both; the only drift-capable cases are the 4 separate-file pairs (`acos-resume-prompt`, `investigate`, `research`, `security-review-ultimate`), which are identical today but could diverge — the same trap the investigation already recorded, where `/investigate` existed twice as separate files.
+  
+  </summary>

@@ -1,0 +1,403 @@
+timestamp: "2026-08-17T05:47:22Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "c5978d8d-414c-407d-a34f-c1b84e452544"
+estimated_tokens: 556039
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  Skill /acos-resume-prompt was loaded earlier (see the invoked-skills reminder above); this is a NEW invocation — follow those instructions now, including any setup steps.
+
+assistant_tail: |
+  Step 3 — arming the daemon through the shared core script.
+  
+  ---
+  
+  Armed. Handoff and resume prompt are on disk; `/compact` fires at this turn's end.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 141
+  recent_commits: |
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+    fa16762 fix(research-riffs): close all three-review must-fix items; trust-chain HIGHs → SHIP-WITH-NOTES
+    82188f0 feat(safe-close): capture learnings across every /clear cycle, not just the closer's own memory
+    14343bd fix(eternity-protocol): resolve session-id/handoff selection through one shared script, not 10 copies
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-oracle-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/_oracle_judge.py"
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/oracle/"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/c5978d8d-414c-407d-a34f-c1b84e452544.jsonl"
+  transcript_lines_parsed: 3066
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Session start / resumption context:** This session resumed from a prior compaction. The prior context established the ACOS Eternity Protocol work: three defects had been fixed and tested (54/54 checks), and there was one unanswered question — "Want me to build this?" regarding a native auto-compact migration.
+  
+  **Turn 1 (assistant):** Armed statement — handoff and resume prompt on disk, `/compact` fires at turn end.
+  
+  **Turn 2 (system):** `/compact` ran, then the resume trigger landed.
+  
+  **Turn 3 (assistant):** I checked marker files and reported the cycle worked, then re-asked "Want me to build it? Yes or no."
+  
+  **User message 1:** "i didn't know about autocompact, yeah do what you suggested but you will have to make sure it works without fail, if doesn't we will have to go back to the current specification for the protocol."
+  
+  This is the key authorization with a condition: it must work without fail, or revert.
+  
+  **My investigation phase:** I did extensive binary archaeology on `/Users/zee/.claude/local/node_modules/@anthropic-ai/claude-code/bin/claude.exe` (version 2.1.229). Key findings:
+  - `autoCompactEnabled: false` at `~/.claude/settings.json:126`
+  - `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69` at `~/.zshrc:6` with stale comment "~138k/200k tokens"
+  - `autoCompactWindow: ct().int().min(1e5).max(1e6).optional()` — integer 100000-1000000
+  - `ex()` = enabled check: `if(Q.DISABLE_COMPACT) return false; if(fn(process.env.DISABLE_AUTO_COMPACT)) return false; return pd("autoCompactEnabled",!0).value`
+  - `dq(e,t,r)` = window resolution, env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` takes precedence
+  - `xhe(e,t)` = effective window = `window - min(SVt(e), 20000)`
+  - `xzo(e,t)` = trigger: `let r=e-13000; let n=t.testPctOverride; if(n!==void 0&&!isNaN(n)&&n>0&&n<=100) return Math.min(Math.floor(e*(n/100)),r); return r`
+  - PreCompact hook input: `{...hg(e,Gt()), hook_event_name:"PreCompact", trigger, custom_instructions}` — matcher matches on trigger
+  - PreCompact stdout becomes `newCustomInstructions`
+  - PostCompact input: `{hook_event_name:"PostCompact", trigger, compact_summary}` — schema confirmed
+  - Only SessionStart and UserPromptSubmit support `additionalContext`
+  
+  **Build phase:** Created 6 tasks. Built:
+  1. Backup + rollback at `.migration-backup-2026-08-12/rollback.sh` (tested before any change, exit 0)
+  2. `.claude/scripts/precompact-handoff.ts` — TypeScript/bun PreCompact hook
+  3. Test suite `precompact-hook.test.ts` — initially 72 checks
+  4. settings.json: `autoCompactEnabled: true`, `autoCompactWindow: 533000`, PreCompact hook registered
+  5. `.zshrc` — removed `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69`, replaced with explanatory comment
+  6. Kill switch in `eternity-cmux-inpane.sh`
+  
+  Verified live: `/autocompact` reported "Auto-compact window: 533k tokens (from settings)", `/context` reported "Autocompact buffer | 33k" confirming 533000 − 20000 − 13000 = 500000.
+  
+  **User message 2:** "So what is the current status of this whole thing? /conclude 200" — asked for a 200-word status.
+  
+  **User message 3:** "I am not clear on the steps yet. Correct me if i am wrong: 500k token reached -> Handoff and resume prompt created -> Autocompact -> the session resumes (with goal if any) Is this exactly how it happens? You said something about autocompact running first."
+  
+  I clarified: auto-compaction is the whole event; handoff happens inside its first moment. I verified the autopilot goal survives (file `.acos/state/autopilot-active-<sid>`, session-scoped) but flagged `/goal` as unverified.
+  
+  **User message 4:** "How is the handoff file written, does the autocompact system follow the way we do handoffs or it is a built in system."
+  
+  I answered: it's ours, my script; keeps our format but not our depth. Listed field differences.
+  
+  **User message 5:** "Yes definitely! I was surprised that you didn't consider the fact that this current system is costing us our handoff depth."
+  
+  Fair criticism — I had decided the depth trade-off for them instead of surfacing it. I built `.claude/scripts/handoff-enrich.ts` with two passes (PostCompact + SessionStart), registered both hooks, wrote `handoff-enrich.test.ts`.
+  
+  **Critical debugging sequence — the summary refusals:**
+  - First live test: summary was a refusal. I blamed my instructions' wording ("continue the prior work directly" + demanding "exact file paths").
+  - Rewrote instructions. Second test: refused again, citing "from the ACOS handoff system" as an untagged provenance claim.
+  - Rewrote again removing provenance.
+  - Third test: refused again.
+  - **Ran a CONTROL** with the hook disabled entirely — it ALSO refused, objecting to Claude Code's own built-in summary prompt ("using special tags"). This proved my text was never the cause. I corrected myself explicitly.
+  - Added `summaryHealth()` detection to `handoff-enrich.ts` with `REFUSAL_MARKERS`, writing `summary_quality: "ok"|"suspect"` and appending to `.eternity-ALERT`.
+  
+  **User message 6:** "Keep an eye open for a widow crossing 500k, i will come back then."
+  
+  I built a watcher. First attempt (`watch-500k.sh` via Bash background) was killed a minute in without polling. Replaced with `Monitor` persistent running `monitor-500k.sh`, reporting FIRED/ENRICHED/SUSPECT/STUCK/CROSSED. Smoke-tested (first smoke test failed due to my own ordering error — fixture created before the script's start mark).
+  
+  **Monitor events sequence:**
+  - FIRED at 353564 tokens (OKOA Works, session bc68f376) — matched my prediction for a pane with pct=69 still in env
+  - Discovered an earlier compaction at 18:57:04Z that had completed fully: `enrichment_status: "deepened"`, `summary_quality: "ok"`, 56482 chars, 24 keys — the first full end-to-end proof
+  - Boundary: `19:01:56.423Z trigger=auto pre=358623 post=31455 durationMs=283220`
+  - More firings; I narrowed reporting
+  
+  **Test pollution incident:** ALERT events fired with session `enrich-session-aaaa-bbbb` — my own test fixtures had written 7 lines to the live `.eternity-ALERT`. I cleared it (backup at `.eternity-ALERT.test-pollution-backup`), made `SUITE_HOME` isolation the default in the test, added group 9 verifying the real log stays untouched.
+  
+  **User message 7:** "did you look at To Do Tree? I had to manually press yes for something, can you confirm that it is not something that relates to the eternity protocol."
+  
+  I found 4 ASK entries in `/Users/zee/Documents/Vibe Coding/ToDoTree/.acos/state/oracle-audit.log`, all `destructive_cmd +5`. The last at `2026-08-15T22:55:56Z`, 680 seconds before the compaction at `23:07:16Z`. Confirmed unrelated. Also corrected my own first grep which used the wrong pattern and reported zero.
+  
+  **The 500k milestone:** FIRED at 499786 (ToDoTree, session e6f6d525, started Aug 15 09:50:21 — after the boundary, no pct override). Boundary showed `pre=499984 post=32522 durationMs=130233`, `enrichment_status: deepened`, `summary_quality: ok`, 27991 chars.
+  
+  **The regression discovery:** CROSSED event for session 8a247361 at 506795, later 514525 — actively working, NEVER compacted. I ran a decisive experiment (`settings-live-test.sh`) keeping one session alive across a settings change: it reported "533k (from settings)" four times while the file said 900000. **Settings are read once at process start.** This meant panes started before the settings change had NO native auto-compaction, and my blanket kill switch had removed their keystroke fallback — 6 of 8 panes unprotected. My error, live ~2 days.
+  
+  Fixed with `.native-autocompact-since` marker (mtime pinned `202608121700.00`) and a conditional stand-down.
+  
+  **The pgrep bug:** Following up on my own window crossing 500k (501872, then 504881), I found the process lookup returned empty. `pgrep -f -- "--session-id $SID"` finds nothing for cmux panes (huge `--settings` blob); `ps -eo pid,command | grep` finds them all. My fix had been silently classifying nothing for a day. It failed safe (no double-fire — ToDoTree had 4 autocompact handoffs, 0 emergency handoffs, `/acos-eternity-protocol` never typed there). Fixed to use ps. Two test fixtures failed for unrelated reasons (sleep rejects flags; `bash -c 'sleep 30'` EXECs and loses flags); switched to asserting against a real live pane. Final: 73 + 94 + 86 = 253 checks, all exit 0.
+  
+  **User message 8:** `/acos-eternity-protocol` slash command invocation.
+  
+  I ran the protocol. Step 0 initially failed because cwd had drifted to `memory/handoffs`; re-ran from project root. Step 1: handoff agent wrote `memory/handoffs/2026-08-16-emergency-handoff.yaml` (17995 bytes, 0 min old, verified session match). Step 2: resume prompt — the last-user-message capture initially grabbed a "Skill /acos-resume-prompt was loaded earlier" synthetic turn; I added "Skill /" to SYNTH and re-captured Zee's actual words. Wrote resume prompt (2792 chars, ~930 tokens). Step 3: core script sourced, `PRE_CLEAR_TOTAL=553415`. Step 4: status block. Step 5: both clear flags armed, freeze-early disarmed.
+  
+  Now at Step 6: exit cleanly.
+  
+  Let me make sure I capture all user messages verbatim and note the security-relevant constraints.
+  </analysis>
+  
+  <summary>
+  
+  1. **Primary Request and Intent:**
+  
+     The conversation began with an unanswered question from before compaction ("Want me to build this?" — the native auto-compact migration). The user's explicit requests, in order:
+  
+     - **Build authorization with a condition:** "i didn't know about autocompact, yeah do what you suggested but you will have to make sure it works without fail, if doesn't we will have to go back to the current specification for the protocol."
+     - **Status check:** "So what is the current status of this whole thing? /conclude 200"
+     - **Clarify the step order:** "I am not clear on the steps yet. Correct me if i am wrong: 500k token reached -> Handoff and resume prompt created -> Autocompact -> the session resumes (with goal if any) Is this exactly how it happens? You said something about autocompact running first."
+     - **Understand handoff authorship:** "How is the handoff file written, does the autocompact system follow the way we do handoffs or it is a built in system."
+     - **Restore handoff depth (with criticism):** "Yes definitely! I was surprised that you didn't consider the fact that this current system is costing us our handoff depth."
+     - **Watch for a crossing:** "Keep an eye open for a widow crossing 500k, i will come back then."
+     - **Confirm an unrelated prompt:** "did you look at To Do Tree? I had to manually press yes for something, can you confirm that it is not something that relates to the eternity protocol."
+     - **Run the protocol:** `/acos-eternity-protocol` (Execution Policy: "Autonomous — invoking IS authorization")
+  
+     The governing invariant carried from earlier: eternity protocol runs → handoff created → resume prompt created → compact runs → eternity resumes.
+  
+  2. **Key Technical Concepts:**
+  
+     - Claude Code 2.1.229 native auto-compaction; binary at `/Users/zee/.claude/local/node_modules/@anthropic-ai/claude-code/bin/claude.exe` (compiled, not cli.js)
+     - `autoCompactEnabled` / `autoCompactWindow` settings; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`, `DISABLE_AUTO_COMPACT` env vars
+     - Trigger formula: `min(floor(effectiveWindow × pct/100), effectiveWindow − 13000)` where `effectiveWindow = window − min(maxOutputTokens, 20000)`
+     - PreCompact / PostCompact hooks; PreCompact stdout → `newCustomInstructions`; PostCompact receives `compact_summary`; PostCompact stdout only becomes `userDisplayMessage`
+     - `additionalContext` injection supported ONLY on SessionStart and UserPromptSubmit
+     - **Settings are read ONCE at process start** — a running session never sees a settings.json change
+     - **`pgrep -f` cannot match cmux-launched claude panes** (huge inline `--settings` JSON blob); `ps -eo pid,command | grep` works
+     - The Oracle: PreToolUse temperature scoring; `destructive_cmd +5` escalates even under `--dangerously-skip-permissions`
+     - cmux in-pane hooks (`eternity-cmux-inpane.sh`, `eternity-cmux-resume-inpane.sh`) are regular files in `~/Library/Application Support/acos-token-monitor/bin/`, NOT symlinks, NOT in git
+  
+  3. **Files and Code Sections:**
+  
+     - **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/precompact-handoff.ts`** (NEW, TypeScript/bun, symlinked to `bin/precompact-handoff.ts`)
+       - The PreCompact hook. Writes a mechanical handoff YAML with `session_id`, `human_last_message` (verbatim), `in_flight_subagents`, `repo_state`, `uncommitted_files`, `enrichment_status: "pending"`.
+       - `HARD_LIMIT_MS = 8_000`, `TRANSCRIPT_TAIL_BYTES = 6MB`, always `process.exit(0)`.
+       - `buildInstructions()` was rewritten twice. Final form carries no provenance claim, no instruction to act, all items conditional:
+         ```
+         When writing the summary, keep these if they appear in the conversation:
+         - the user's most recent request, in their own words, if it is still unanswered
+         - any decision the user made, including a decision made by rejecting an option
+         - exact file paths, commands, numbers, and identifiers, unchanged
+         - which work is finished and verified, kept separate from what was only proposed
+         Leave out anything above that the conversation does not actually contain, rather than inventing it.
+         ```
+  
+     - **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/handoff-enrich.ts`** (NEW, symlinked to `bin/handoff-enrich.ts`)
+       - Dispatches on `hook_event_name`. PostCompact pastes the real `compact_summary` into the handoff (`enrichment_status: "summary-written"`); SessionStart(compact) emits `additionalContext` asking for the judgement fields (`→ "deepened"`).
+       - `summaryHealth()` with `REFUSAL_MARKERS` regex list writes `summary_quality: "ok"|"suspect"` + `summary_quality_reason`, and appends to `.eternity-ALERT`.
+       - `findHandoff()` matches on `session_id` (never newest-file) with `MAX_HANDOFF_AGE_MS = 30 min`.
+  
+     - **`/Users/zee/.claude/settings.json`**
+       - `"autoCompactEnabled": true`, `"autoCompactWindow": 533000`
+       - `PreCompact` hook registered (timeout 15), `PostCompact` hook registered (timeout 15), `SessionStart` matcher `"compact"` added (timeout 10)
+  
+     - **`/Users/zee/.zshrc`** — removed `export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=69` (line 6), replaced with a comment explaining the retirement
+  
+     - **`/Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh`**
+       - Kill switch added before `GUARD=`, then made conditional on pane age:
+         ```bash
+         if [ -f "$STATE/.native-autocompact-active" ]; then
+             _NATIVE_SINCE="$STATE/.native-autocompact-since"
+             _stand_down=0
+             if [ -f "$_NATIVE_SINCE" ]; then
+                 _since=$(stat -f %m "$_NATIVE_SINCE" 2>/dev/null || echo 0)
+                 _cpid=$(ps -eo pid,command 2>/dev/null | grep -- "--session-id $SID" | grep -v grep | awk '{print $1}' | head -1)
+                 ...
+         ```
+       - Gate sits at line ~622, AFTER Priority 1 (`/compact` send) and Priority 1.5 (`_resume_landed`, lines 383-456)
+  
+     - **`~/Library/Application Support/acos-token-monitor/.migration-backup-2026-08-12/rollback.sh`** — checksum-verified restore of settings.json, .zshrc, eternity-cmux-inpane.sh, config.yaml; deletes the kill switch. Tested before any change (exit 0).
+  
+     - **`~/Library/Application Support/acos-token-monitor/state/.native-autocompact-since`** — boundary marker, mtime pinned to `202608121700.00`
+  
+     - **Test suites** (in session scratchpad, ephemeral): `precompact-hook.test.ts` (94), `handoff-enrich.test.ts` (86), `order-barrier.test.ts` (73) — **253 checks, all exit 0**
+  
+  4. **Errors and fixes:**
+  
+     - **Three consecutive summary refusals in live testing.** I twice blamed my own instruction wording and rewrote it. **A control run with the hook fully disabled ALSO refused**, objecting to Claude Code's own built-in prompt ("using special tags"). I corrected myself explicitly: my text was never the cause. The rewrites were kept anyway (telling a summarizer to "continue the prior work" is aimed at the wrong reader), and I added refusal detection so the failure is loud rather than silent.
+     - **User feedback on handoff depth:** "I was surprised that you didn't consider the fact that this current system is costing us our handoff depth." — I had decided the trade-off instead of surfacing it. Acknowledged and built the two-pass enrichment.
+     - **Test suite polluted the live alert log** — 7 fake alerts with session `enrich-session-aaaa-bbbb`. Cleared (backup at `.eternity-ALERT.test-pollution-backup`); made `SUITE_HOME` isolation the default; added group 9 asserting the real log is byte-for-byte unchanged.
+     - **Test helper `.sort().pop()` picked the wrong file** — `handoff-2.yaml` sorts before `handoff.yaml` because `-` (0x2D) < `.` (0x2E). Fixed to find by `session_id` inside the file.
+     - **First watcher killed after 1 minute** without polling; replaced with `Monitor` persistent.
+     - **First smoke test found nothing** — I created the fixture before the script set its "newer than" mark. Test bug, not code bug.
+     - **THE REGRESSION I INTRODUCED:** the blanket kill switch removed the keystroke path from all panes, but panes started before the settings change have no native auto-compaction — 6 of 8 panes had NO protection for ~2 days. Proved by experiment: a live session reported `533k (from settings)` four times while the file said `900000`. Live proof: session 8a247361 at 514525 tokens, actively working, never compacted.
+     - **`pgrep -f` silently found nothing** for cmux panes, so the age-classification resolved empty for every pane for ~1 day. Failed safe (verified no double-fire). Fixed to `ps -eo pid,command | grep`.
+     - **`mktemp` on macOS** only substitutes trailing X's — `...XXXXXX.json` creates a literal file.
+     - **fifo deadlock** — `exec 3>"$FIFO"` blocks until a reader opens it; fixed with `exec 3<>"$FIFO"`.
+     - **Two test fixtures failed for unrelated reasons** — `sleep 30 --session-id X` exits immediately; `bash -c 'sleep 30' X --flags` EXECs sleep and loses the flags. Switched to asserting against a real live pane.
+     - **`/acos-eternity-protocol` Step 0 failed** — shell cwd had drifted to `memory/handoffs`; re-ran from project root.
+     - **Last-user-message capture grabbed a synthetic turn** — "Skill /acos-resume-prompt was loaded earlier…". Added `"Skill /"` to `SYNTH` and re-captured.
+     - **Wrong grep pattern on the Oracle audit log** — used `\| (ASK|DENY) ` and reported zero; correct pattern is `\] (ASK|DENY)`, giving 4.
+  
+  5. **Problem Solving:**
+  
+     Solved: the swallowed-keystroke failure, by removing keystrokes entirely. Verified end-to-end live multiple times. Restored handoff depth via PostCompact + SessionStart. Added refusal detection. Fixed the unprotected-pane regression and the pgrep classification bug.
+  
+     **Verified live (not merely proposed):**
+     - `2026-08-13-autocompact-handoff.yaml` (session bc68f376): boundary `19:01:56.423Z trigger=auto pre=358623 post=31455 durationMs=283220`; `enrichment_status: "deepened"`, `summary_quality: "ok"`, 56482-char summary, 24 keys
+     - `2026-08-15-autocompact-handoff.yaml` (session e6f6d525, ToDoTree): fired at `estimated_tokens: 499786`; boundary `pre=499984 post=32522 durationMs=130233`; `deepened`, `ok`, 27991 chars — the 500,000 target proof
+     - Claude Code's own reports: `Auto-compact window: 533k tokens (from settings)` and `Autocompact buffer | 33k`
+  
+  6. **All user messages:**
+  
+     - "i didn't know about autocompact, yeah do what you suggested but you will have to make sure it works without fail, if doesn't we will have to go back to the current specification for the protocol."
+     - "So what is the current status of this whole thing? /conclude 200"
+     - "I am not clear on the steps yet. Correct me if i am wrong: 500k token reached -> Handoff and resume prompt created -> Autocompact -> the session resumes (with goal if any) Is this exactly how it happens? You said something about autocompact running first."
+     - "How is the handoff file written, does the autocompact system follow the way we do handoffs or it is a built in system."
+     - "Yes definitely! I was surprised that you didn't consider the fact that this current system is costing us our handoff depth."
+     - "Keep an eye open for a widow crossing 500k, i will come back then."
+     - "did you look at To Do Tree? I had to manually press yes for something, can you confirm that it is not something that relates to the eternity protocol."
+     - `/acos-eternity-protocol` (slash command invocation)
+  
+     **Standing constraint stated by the user (still in force):** "you will have to make sure it works without fail, if doesn't we will have to go back to the current specification for the protocol."
+  
+  7. **Pending Tasks:**
+  
+     - **OPEN DECISION, the user's alone:** six older panes still use the typed fire path because they started before the settings landed and cannot see them. Only a restart moves them onto native auto-compaction. A restart interrupts their work. I stated repeatedly this is his call and have not acted on it.
+     - Flagged risk from the handoff agent: `.claude/scripts/precompact-handoff.ts`, `.claude/scripts/handoff-enrich.ts`, and `~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh` are **untracked in git**; a clean would lose them.
+     - Test suites live in the ephemeral session scratchpad, flagged for promotion if the coverage should persist.
+     - Unverified: whether a native `/goal` condition survives compaction (autopilot goal was verified to survive; `/goal` is reasoning only).
+  
+  8. **Current Work:**
+  
+     Executing `/acos-eternity-protocol` (cmux variant) on this session, `c5978d8d-414c-407d-a34f-c1b84e452544`, surface `75047E08-2466-4896-9F38-660CF2B3CA4E`. This pane has no native auto-compaction (started before the settings change), so the typed path is correct for it.
+  
+     Completed Steps 0–5:
+     - **Step 0:** misfire guard OK (230233 context tokens), cmux socket `/Users/zee/.local/state/cmux/cmux.sock`, heartbeat 8s old, freeze-early armed
+     - **Step 1:** handoff-agent wrote `memory/handoffs/2026-08-16-emergency-handoff.yaml` (17995 bytes, 0 min old, session id verified)
+     - **Step 2:** resume prompt written to `pending-resume-c5978d8d-414c-407d-a34f-c1b84e452544.txt` (2792 chars, ~930 tokens); no goal to carry forward; 0 in-flight subagents; last real user message captured (150 chars) after fixing the `"Skill /"` filter gap
+     - **Step 3:** `eternity-protocol-core.sh` sourced; `PRE_CLEAR_TOTAL=553415`; sidecar written; `RESUME_SIBLING=memory/handoffs/2026-08-16-emergency-handoff.resume.md`; `ETERNITY_POINTER=.eternity-pointer-pid-29649`
+     - **Step 4:** status block printed
+     - **Step 5:** RPC method `surface.send-input` verified from cache; both flags armed — `.clear-requested-c5978d8d-414c-407d-a34f-c1b84e452544` and `.clear-requested-surface-75047E08-2466-4896-9F38-660CF2B3CA4E`; freeze-early disarmed
+  
+  9. **Optional Next Step:**
+  
+     **Step 6: exit cleanly.** The skill states: "The post-skill turn-end (Stop event) wakes `eternity-cmux-inpane.sh`. It sees `.clear-requested-<sid>` (or the surface-keyed copy), and sends `/compact` directly into the cmux surface via `cmux send`… No reasoning, no tool calls after this point — keep the input idle."
+  
+     No further work should be started. When the session resumes, the resume prompt directs the next session to read `memory/handoffs/2026-08-16-emergency-handoff.yaml` and states that the user's last question (the ToDoTree yes-press) is already answered and closed, and that the six-pane restart decision remains open and is his alone — "Do NOT restart anything without him saying so."
+  
+  </summary>
+
+# ── Judgement fields, added by the resumed session (enrichment pass 2) ───────
+current_work: |
+  Nothing is mid-flight. This compaction was the Eternity Protocol firing on
+  THIS pane by the typed path (/acos-eternity-protocol -> /compact), which is
+  correct for this pane: it started before the autoCompactWindow setting
+  landed, so it has no native auto-compaction of its own.
+
+completed_this_session: |
+  - Migration off cmux keystroke injection onto Claude Code's own
+    auto-compaction, plus the PreCompact/PostCompact/SessionStart handoff
+    chain. Verified live end-to-end three times now, this fire included.
+  - Depth restoration: handoff-enrich.ts pastes the real model-written
+    compaction summary (PostCompact), then the resumed session appends the
+    judgement fields (SessionStart). Both stages ran on THIS file.
+  - Refusal detection: summary_quality ok|suspect + .eternity-ALERT append.
+    This fire scored "ok".
+  - pgrep -> ps fix in eternity-cmux-inpane.sh (pgrep -f cannot match a
+    cmux-launched claude pane; its --settings JSON blob defeats the match).
+    Verified live against all 9 panes.
+  - 253 checks across three suites, all exit 0.
+
+decisions_made: |
+  - Zee approved the migration WITH a condition, in his words: "you will have
+    to make sure it works without fail, if doesn't we will have to go back to
+    the current specification for the protocol."
+  - Zee rejected the silent trade-off I had made on handoff depth: "I was
+    surprised that you didn't consider the fact that this current system is
+    costing us our handoff depth." Depth was restored rather than traded away.
+  - CLAUDE_AUTOCOMPACT_PCT_OVERRIDE is retired and must not be re-added.
+
+blockers: |
+  (none technically blocked)
+  OPEN AND ZEE'S ALONE: six older panes still use the typed fire path because
+  they started before the settings landed and cannot see them. Claude Code
+  reads settings.json ONCE, at process start, so only a restart moves them
+  onto native auto-compaction — and a restart interrupts their work. Do NOT
+  restart anything without him saying so.
+
+candidate_learnings: |
+  - MEMORY CORRECTION: project_eternity_native_autocompact claims the two hook
+    scripts are "in git" because bin/ symlinks point at them. The symlinks are
+    correct, but `git ls-files` says BOTH .claude/scripts/precompact-handoff.ts
+    and .claude/scripts/handoff-enrich.ts are UNTRACKED (not ignored — just
+    never added). A `git clean -fd` would delete the live PreCompact and
+    PostCompact hooks. Unfixed as of this handoff; needs Zee's go-ahead to
+    commit.
+  - Run the CONTROL before blaming your own change. Two refusal "fixes" were
+    both wrong diagnoses; a hook-disabled control run reproduced the refusal.
+  - Watch for "should have fired and didn't", not just the happy path. The
+    unprotected-pane regression only surfaced because the monitor watched for
+    a missing crossing.
+
+context_for_next_session: |
+  The Eternity Protocol now has two fire paths running side by side, and which
+  one a pane uses depends only on when that pane started:
+    - started AFTER the 2026-08-12 settings edit -> native auto-compaction at
+      500,000 tokens (autoCompactWindow: 533000), zero keystrokes.
+    - started BEFORE it -> the old typed path, gated by
+      state/.native-autocompact-active + .native-autocompact-since.
+  Both end in the same place: a handoff in memory/handoffs/, enriched twice.
+  Rollback is one command, checksum-verified, tested before any change:
+    bash "$HOME/Library/Application Support/acos-token-monitor/.migration-backup-2026-08-12/rollback.sh"

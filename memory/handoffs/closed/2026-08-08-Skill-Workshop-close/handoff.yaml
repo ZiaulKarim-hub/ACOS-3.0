@@ -1,0 +1,84 @@
+timestamp: 2026-08-08T19:54:06+00:00
+status: parked
+type: close-project
+session_id: 3a587192-c0f5-46da-9ff3-e7b69cb3d51d
+slug: 2026-08-08-Skill-Workshop-close
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0
+session_summary: Safe close of Skill Workshop — branch=acos-deficiency-fixes-2026-06-04 head=d3ee7714ce0f0bf822035068a5a79775c6d8cf2f dirty_count=40; next: Ask Zee how to handle the privilege/litigation gap before the watcher runs live.
+git_state: branch=acos-deficiency-fixes-2026-06-04 head=d3ee7714ce0f0bf822035068a5a79775c6d8cf2f dirty_count=40
+git:
+  branch: acos-deficiency-fixes-2026-06-04
+  head: d3ee7714ce0f0bf822035068a5a79775c6d8cf2f
+  dirty_count: 40
+  dirty_listed: listed 40 of 40
+dirty_files:
+  -  M .claude/scripts/_autopilot_eternity.py
+  -  M .claude/scripts/autopilot-activate.py
+  -  M .claude/scripts/autopilot-context-injector.py
+  -  M .claude/scripts/autopilot-stop-handler.py
+  -  M .claude/scripts/git-manager/ids.json
+  -  M .claude/scripts/html-to-pdf.js
+  -  M "Logo Builder/brandsync/commands.jsonl"
+  - ?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-3.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-3.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-4.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-4.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-5.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-5.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff.yaml
+  - ?? memory/handoffs/2026-08-07-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-07-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-07-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-07-emergency-handoff.yaml
+  - ?? memory/handoffs/2026-08-08-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-08-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-08-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-08-emergency-handoff.yaml
+  - ?? memory/handoffs/closed/2026-07-21-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-22-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-26-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-28-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-02-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-04-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-05-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-05-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-05-Resurrection-Protocol-close/
+  - ?? memory/handoffs/closed/2026-08-06-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-06-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-06-Resurrection-Protocol-close/
+  - ?? memory/handoffs/closed/2026-08-07-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-07-OKOA-Works-close/
+next_actions:
+  - Ask Zee how to handle the privilege/litigation gap before the watcher runs live.
+next_action: Ask Zee how to handle the privilege/litigation gap before the watcher runs live.
+intent_core: |
+  next_action: Ask Zee how to handle the privilege/litigation gap before the watcher runs live.
+  project: ACOS 3.0 — acos-communication-tracker skill build
+  decisions: |
+    - Built a new global skill, acos-communication-tracker (~/.claude/skills/acos-communication-tracker/), that groups Zee's Gmail into activity-level "communication groups" with High-School-level 150-word summaries and to-dos.
+    - Ran the first full live sweep via 4 parallel forks across ~20 deal/activity Gmail labels (~146+ threads), producing ~40 groups now in state/groups.json.
+    - Built scripts/watcher.ts as a deliberately lightweight cmux wake-timer (shells out directly to the real `cmux send`/`cmux ping` CLI) instead of reimplementing the ~1800-line production Eternity Protocol daemon (token-watcher.py) — the watcher's only job is waking the pane; the live Claude session does the actual Gmail check with its own connected tools.
+    - Built scripts/server.ts, a local Bun HTTP server on 127.0.0.1:4747 (loopback-only) that renders state/groups.json fresh on every request, replacing an earlier static-HTML-file approach per Zee's request.
+    - Added on-page action buttons (Mark to-do done, Deprecate) that POST to /action and edit groups.json directly, per Zee's explicit ask that the slash-command syntax was too complicated. Tested end-to-end against a throwaway group before use on real data.
+    - Patched ~/.claude/skills/acos-create-skill/SKILL.md with a new Background/Watcher Skills design pattern section, since it had none, and later corrected it to describe the real `cmux send --surface <ref> -- <text>` mechanism (an earlier note wrongly said `cmux rpc surface.send-input`, a deprecated/wrong guess).
+    - Documented two confirmed Gmail MCP tool limits in memory/reference_gmail_mcp_tool_limits.md: `label:` search queries return empty for every label (use from:/subject: search or full-mailbox pagination + client-side labelIds filtering instead), and attachments are metadata-only — no tool in the connected Gmail MCP set can fetch attachment file content.
+  rejected_alternatives: |
+    - Full production-grade daemon hardening (PID-recycling checks, health-gate breakers, orphan-resume claiming, matching token-watcher.py) for the new watcher — rejected as overkill for a simple wake-and-notify loop; the real `cmux send`/`cmux ping` CLI already provides enough reliability for this use case.
+    - A scheduled cloud cron agent (via the schedule skill / CronCreate) as the watcher mechanism — documented as a valid alternative in acos-create-skill's new pattern section but not built, since Zee explicitly wants the watcher tied to a cmux pane he keeps open.
+  traps: |
+    - The tool surfaced ACTIVE LITIGATION (a Rubin fraud lawsuit against OKOA with outside counsel actively requesting discovery documents; creditor lawsuits against Wolfgramm/Ascent guarantors) and one message marked "Attorney Client Privileged Communication" that the sweeping instance chose not to open — a judgment call, not an enforced rule. The skill has ZERO built-in privilege-exclusion step today. A warning banner is written directly into SKILL.md — read it before ever letting the Phase 7 watcher run unattended again.
+    - state/groups.json's Investors/deals/brokers portion (Website SEO/SMS, Brokers, New Deal leads, Pixsy copyright claim, Zee's pay/tax items, Investors/Variant, Investors/LK Cap, Fund Prospectus) reflects a rougher FIRST pass from one fork. That same fork self-revised into a better second pass (cleaner group boundaries, honest "needs-full-content" status) after a mid-flight course-correction message, but the second pass was never merged back in — don't assume groups.json is already the best available version there.
+    - Never retry a Gmail `label:` search query — it silently returns empty for every label regardless of message count. Use from:/to:/subject: search or a query-less mailbox-wide search_threads paginated and filtered client-side on each thread's own labelIds field instead.
+    - DBBL is a real Bangladeshi bank (Zee holds an account there) — its SMS alerts must never be flagged as spam/phishing; already recorded in memory/user_dbbl_bank.md.
+    - server.ts MUST stay bound to hostname "127.0.0.1". It was briefly left on Bun's default (0.0.0.0), which exposed the litigation-containing page to every other device on the same network before this was caught and fixed mid-session.
+  open_questions: |
+    - How should the privilege/litigation gap actually be closed — a dedicated privilege scanner (acos-dataroom-v2's asymmetric-veto pattern is the suggested precedent), or some other direction from Zee? Completely unresolved.
+    - Should the rougher first-pass Investors/deals/brokers groups be reconciled against the better second pass sitting in this session's transcript?
+    - Zee was asked whether he also wants Discard and Flag-as-spam buttons added alongside the two just built (Mark to-do done, Deprecate) — no answer yet as of close.
+    - Slack is still blocked (OKOA's workspace is on a free plan at its 10-app limit); Zee messaged his boss Zach Hoffman asking to free a slot or upgrade — no reply yet.
+    - Google Messages (phone texts) pairing works and scope is narrowed to exactly 3 threads ("OKOA Team", "Brad Heitmann OKOA", "Zach Hoffman U"), but it is not yet wired into live tracking.
+    - Attachment content (PDFs, XLSX term sheets, etc.) cannot be read via the current Gmail MCP tools at all — no workaround exists; would need an entirely different capability if this is ever required.

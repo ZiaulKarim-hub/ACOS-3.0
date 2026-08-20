@@ -1,0 +1,367 @@
+timestamp: "2026-08-19T20:59:57Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "fcfd3717-def3-425f-914b-59efa589abee"
+estimated_tokens: 482865
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  A session-scoped Stop hook is now active with condition: "find David tafuna's financials from Ascent/waldorf/wolframm related folders". Briefly acknowledge the goal, then immediately start (or continue) working toward it — treat the condition itself as your directive and do not pause to ask the user what to do. The hook will block stopping until the condition holds. It auto-clears once the condition is met — do not tell the user to run `/goal clear` after success; that's only for clearing a goal early.
+
+assistant_tail: |
+  The hook is right that I should not stop at "absent" without closing real gaps. Three remain: image-only scans that full-text search cannot read, folders outside Dropbox, and financial files not named for him.
+  
+  ---
+  
+  New ground: a separate local deal tree at `okoa-labs`. Let me search it, and close the scanned-document gap.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 196
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/eternity-resume-prepend.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/scripts/resurrection/adopt-project.sh"
+  - "M .claude/scripts/resurrection/close-project.sh"
+  - "M .claude/scripts/resurrection/enroll-project.sh"
+  - "M .claude/scripts/resurrection/launch-project.sh"
+  - "M .claude/scripts/resurrection/rename-workspace.sh"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/acos-resurrect/SKILL.md"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/resurrection/backfill-key-tags.ts"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/fcfd3717-def3-425f-914b-59efa589abee.jsonl"
+  transcript_lines_parsed: 650
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me chronologically walk through this conversation.
+  
+  **Turn 1 (user):** "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-17-OKOA-Works-close-2/2026-08-17-OKOA-Works-close-2.reentry.md first, follow its Read"
+  
+  I read the reentry note, the handoff.yaml, checked git drift (HEAD unchanged at 66b7b71a11f28a28d828f428ae2c39f2d57bec6a, branch acos-deficiency-fixes-2026-06-04, dirty count went 152 → 195, all drift from other projects), and verified the Wilderness Trails folder state. The pending next action was "Split page 24 out of Wilderness Trails DRAFT LOAN DOCS.pdf if Zee says yes."
+  
+  **Turn 2 (user):** "That work is done!" — I did NOT split. I stamped `.reentry-consumed` in the closed bundle folder using bundles_lib.py conventions.
+  
+  **Turn 3 (user):** `/goal` with args: "look inside the wolfgramm/waldorf/beehive/ascent files in dropbox and find definitive answer to this question: Who is the signign authority of Wolfgramm Capital? Is Phil Wolfgramm an authorized signer?"
+  
+  Major research effort. Found: Wolfgramm Capital LLC = Delaware LLC formed 1 December 2021 at 5:49 PM, file 6440905. Members: Phillip Wolfgramm 30.6%, Koloa Wolfgramm 29.7%, Russell Handy 29.7%, David Tafuna 10%. Verified two EXECUTED signatures visually (rendered to PNG and looked): (1) recorded Deed of Trust Summit County entry 01216493, pp.34-35 of 39, signed 9 Feb 2024, Phil Wolfgramm as Manager of Wolfgramm Capital, notarized by TEJAY RASBAND Commission 734176 expiring November 15, 2027; (2) Lone Star West Gray Operating Agreement PDF p.48 (doc p.43) of 68, dated October 16, 2023, Russell Handy signing as Manager of Wolfgramm Capital. Key negative finding: NO Wolfgramm Capital operating agreement exists anywhere in Dropbox. Certificate of Incumbency exists only as "proposed format" draft.
+  
+  **Turn 4 (user):** "Create a one page summary file with all the reference docuemnts symlinked in a way that the document will open in a browswer as long as dropbox is signed in from any computer."
+  
+  I identified that symlinks cannot do this, used Dropbox web URLs instead. Verified empirically in Chrome that this is a Dropbox Business TEAM account (`is_team: true`, from ~/.dropbox/info.json), that `/home` redirects to `/work`, and that `https://www.dropbox.com/preview/<encoded-path>?context=browse&role=work` works for PDF, DOCX, and paths with `!`. Built the HTML via a Python generator script at scratchpad/build.py. Initially wrote it into the Dropbox War Room folder.
+  
+  Encountered an encoding bug (â€" instead of —) because standalone HTML file lacked `<meta charset="utf-8">`; fixed by emitting a full HTML document.
+  
+  **Turn 5 (user):** "make it a pdf and open"
+  
+  Generated PDF via puppeteer with printBackground + preferCSSPageSize. Verified all 15 links survived as clickable /URI annotations. Opened in Chrome. Tuned print CSS. 3 pages initially.
+  
+  **Turn 6 (user):** "Remove this sections:" + pasted the "WHAT COULD NOT BE PROVEN, AND WHY" block AND the "How these links work / Method" footer.
+  
+  Removed both blocks (`<div class="gap">` and `<p class="foot">`). Tightened print CSS to get from 3 pages to 2.
+  
+  **Turn 6b (mid-turn user message):** "Also, I don't understand if the unsigned drafts prove anything, anyone can make a draft and put the name of anyone as a signer, unless signed it is not a proof. Let me know if I am worng in this."
+  
+  I confirmed he was right. Critically, I then VERIFIED that the percentages (30.6/29.7/29.7/10) appear ONLY in the two unsigned resolutions — no executed document states any percentage. But the four NAMES are recited in §1.4 of the SIGNED West Gray Operating Agreement. I added two evidentiary caveats to the document.
+  
+  **Turn 7 (user):** "should we include the links to the unsigned drafts?"
+  
+  I recommended KEEPING them, and proposed splitting the table into "What proves the finding" (2 executed + 4 state records) vs "Reviewed but not proof" (5 drafts + 3 context + 1 caution), noting the Borrowing Resolution (DE) row is mis-tagged CONTEXT but is unsigned. **This proposal is still unanswered / pending.**
+  
+  (A Stop hook Eden self-check failure occurred here and I rewrote the reply at Level 3.)
+  
+  **Turn 8 (user):** "Where did you save the output files?"
+  
+  Answered with the Dropbox War Room path.
+  
+  **Turn 9 (user):** "no, always create the output files in my docuemnts/OKOA unless stated otherwise. Move the files."
+  
+  Moved both files to /Users/zee/Documents/OKOA/. Repointed build.py OUT path. Saved two memories: feedback_output_files_go_to_documents_okoa.md and reference_okoa_dropbox_web_links.md, indexed both in MEMORY.md.
+  
+  **Turn 10 (user):** "Whenever I click a link, this message shows: www.dropbox.com is blocked / www.dropbox.com refused to connect. / ERR_BLOCKED_BY_RESPONSE"
+  
+  Diagnosed: verified the URL loads fine top-level in his Chrome; confirmed via curl that Dropbox sends `x-frame-options: SAMEORIGIN` and CSP `frame-ancestors 'self'`. Chrome's PDF viewer navigates in-frame → blocked. Fix: use the HTML (all 15 links have target="_blank"), or Preview, or right-click → Open link in new tab. Opened the HTML in Chrome.
+  
+  **Turn 11 (user):** "Consider this work completed. New work: Look inside this prospectus: /Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus_Final.pdf We need to update the phone number and email address provided here. New phone number: 801 557 0909 New email: jason@okoacapital.com"
+  
+  Completed and verified. Old: ir@okoacapital.com / (702) 582-5456. New: jason@okoacapital.com / (801) 557-0909 (formatted to match house style). Source was `OKOA_Prospectus V003.html`. Did a CONTROL BUILD first — discovered the original had a "Page N of 20" puppeteer footer not in the HTML, matched it exactly (font-size:10.6667px) until bbox matched to 6 decimals and text diff was empty. Then edited and rebuilt: exactly 2 changed lines across 20 pages. Backups stamped 133128.
+  
+  **Turn 12 (user):** `/goal` with args: "find David tafuna's financials from Ascent/waldorf/wolframm related folders"
+  
+  Searched extensively. Found NO David Tafuna PFS. The four "Wolfgramm personal financials" folders each hold the same 6 files: Phil ×2, Koloa ×2, Handy ×2 (including the unnamed `!Personal Financial Statement -- May of 2023.pdf` which I opened and confirmed is Handy's). Found the Guaranty §6 requiring annual CPA-compiled PFS + tax returns; OKOA's estimate "David + Melissa Tafuna — $10–20M (community property)"; demand letter principal $27,240,937.50, total $29,185,866.00 as of September 15, 2025; K-1 variance ~$980,000.
+  
+  **Turn 13 (Stop hook feedback):** The goal hook rejected "not found" and pushed me to keep searching.
+  
+  I then found genuine new territory: `/Users/zee/okoa-labs/okoa_ops/deals/02_active/ascent-park-city/` (a separate local deal tree), `/Users/zee/Documents/OKOA/OKOA Old Documents/`, knowledge-graph vault files including `moana-m-tafuna.md` (note: MOANA M. TAFUNA — a name variant not previously seen; the litigant list said "Melissa Tafuna"), and `/Users/zee/okoa-labs/okoa_ops/sandboxes/zach/thoughts/research/2026-06-19_wolfgramm-tafuna-guarantor-asset-search.md` — a file whose name directly matches the goal. Also ran an image-only-PDF scan of the Wolfgramm Dropbox trees (results returned, none look like a PFS so far).
+  
+  This is exactly where the conversation was cut off. The most important untouched leads are the okoa-labs research file and knowledge-graph party files.
+  
+  Security-relevant constraints stated by the user or in system context that must be preserved:
+  - Standing rule: never touch jason@ mail/calendar/drive (from memory: feedback_never_touch_boss_email). I deliberately did NOT search email for Tafuna financials.
+  - The Wolfgramm Properties Org Chart contains Social Security numbers in plain view — flagged repeatedly, must not circulate.
+  - "External Data Rooms -- EXTERNALLY SHARED" folders are reachable by whoever holds the share.
+  - Push defaults to PERSONAL GitHub account; never bare `git push`.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  The session covered five distinct pieces of work, in order:
+  
+  **(a) Resume the parked project** — Read the reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-17-OKOA-Works-close-2/2026-08-17-OKOA-Works-close-2.reentry.md` and follow its read order. User then said **"That work is done!"** — cancelling the pending page-24 split.
+  
+  **(b) `/goal`: "look inside the wolfgramm/waldorf/beehive/ascent files in dropbox and find definitive answer to this question: Who is the signign authority of Wolfgramm Capital? Is Phil Wolfgramm an authorized signer?"** — COMPLETED.
+  
+  **(c) Build a one-page summary with linked reference documents** — "Create a one page summary file with all the reference docuemnts symlinked in a way that the document will open in a browswer as long as dropbox is signed in from any computer." Then "make it a pdf and open". Then remove two named sections. COMPLETED.
+  
+  **(d) Update the prospectus contact details** — "Look inside this prospectus: /Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus_Final.pdf We need to update the phone number and email address provided here. New phone number: 801 557 0909 New email: jason@okoacapital.com" — COMPLETED AND VERIFIED.
+  
+  **(e) `/goal`: "find David tafuna's financials from Ascent/waldorf/wolframm related folders"** — IN PROGRESS, currently active goal.
+  
+  ## 2. Key Technical Concepts
+  
+  - **Dropbox Business team-space web URLs** — `https://www.dropbox.com/preview/<url-encoded-path>?context=browse&role=work` (file) and `https://www.dropbox.com/work/<path>` (folder). `/home` redirects to `/work`. Verified empirically.
+  - **`x-frame-options: SAMEORIGIN` / CSP `frame-ancestors 'self'`** — cause of `ERR_BLOCKED_BY_RESPONSE` when links are clicked inside Chrome's PDF viewer.
+  - **Puppeteer PDF generation** — `preferCSSPageSize`, `printBackground`, `displayHeaderFooter`, `footerTemplate`; `<a href>` preserved as clickable `/URI` PDF annotations.
+  - **Control-build verification** — rebuild from unmodified source, diff against original, only then edit.
+  - **Spotlight `mdfind` content search** — `kMDItemTextContent == "*X*"cd`; cannot read image-only scans (a real blind spot).
+  - **OCR via `pdftoppm` + `tesseract`** — required for image-only PDFs.
+  - **Visual signature verification** — text extraction cannot distinguish a signed line from a blank one; pages must be rendered and looked at.
+  - **sha256 checksums** for copy verification.
+  - **ACOS Resurrection Protocol** — `.reentry-consumed` marker, `bundles_lib.py`, append-only stamping.
+  
+  ## 3. Files and Code Sections
+  
+  **`/private/tmp/claude-501/.../scratchpad/build.py`** — Python generator for the signing-authority page. Emits full HTML doc with `<meta charset="utf-8">`. Contains the `dbx()` helper:
+  ```python
+  def dbx(path):
+      """Dropbox Business team-space preview URL. Verified working 2026-08-19."""
+      return "https://www.dropbox.com/preview/" + urllib.parse.quote(path) + "?context=browse&role=work"
+  ```
+  Output path now: `OUT = os.path.expanduser("~/Documents/OKOA/Wolfgramm-Capital-Signing-Authority.html")`
+  
+  **`/Users/zee/Documents/OKOA/Wolfgramm-Capital-Signing-Authority.html`** (19,485 bytes before final caveat edit; 15 links, all `target="_blank"`) and **`.pdf`** (2 pages, 15 clickable links). MOVED here from Dropbox at user instruction.
+  
+  **`/Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus V003.html`** — the prospectus source. Edited lines 1083–1084:
+  ```
+  <strong>Email</strong> jason@okoacapital.com<br>
+  <strong>Phone</strong> (801) 557-0909<br>
+  ```
+  Page CSS: `@page { size: 11in 8.5in; margin: 0; }`
+  
+  **`/Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus_Final.pdf`** — rebuilt, 20 pages, 792 x 612 pts, 8,814,898 bytes.
+  
+  **Backups created (stamp `133128`):** `OKOA_Prospectus V003.backup-pre-contactupdate-133128.html`, `OKOA_Prospectus_Final.backup-pre-contactupdate-133128.pdf`
+  
+  **`scratchpad/prospectus-pdf2.js`** — the matching build; footer template that reproduced the original exactly:
+  ```js
+  footerTemplate: '<div style="width:100%;text-align:center;font-size:10.6667px;color:#808080;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>'
+  ```
+  
+  **Memories written:**
+  - `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_output_files_go_to_documents_okoa.md`
+  - `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_okoa_dropbox_web_links.md`
+  - Both indexed at lines 77–78 of `MEMORY.md`.
+  
+  **Files copied (sha256-verified identical) into `/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/External Data Rooms -- EXTERNALLY SHARED/Phil Wolfgramm Lawsuit/Wilderness Trails Signing/`:**
+  `_A__Deed of Trust - recorded copy.pdf` (3,943,984), `Copy of OA with signatures.pdf` (488,292), `Certificate of Incumbency Wolfgramm Capital LLC - proposed format.docx` (34,555), `Consent Resolution - Wofgramm Capital.docx` (25,037), `Authorizing Resolution APCI - draft for CMB.docx` (25,232), `Wolfgramm-Capital-Signing-Authority.pdf` (465,440), `Wolfgramm-Capital-Signing-Authority.html` (19,485). Originals untouched.
+  
+  ## 4. Errors and Fixes
+  
+  - **Mojibake (â€" for —) in the HTML** — standalone file had no charset. Fixed by emitting `<!doctype html><html><head><meta charset="utf-8">…`.
+  - **Control build did not match the prospectus PDF** — original had a "Page N of 20" footer absent from the HTML, plus horizontal text shifts. Fixed by adding `displayHeaderFooter` with a footerTemplate, then tuning font-size from `8px` → `10.6667px` (a 1.333× factor derived from the bbox ratio) until bbox matched to six decimals and the text diff was empty.
+  - **Chrome extension blocks `file://` and `localhost`** — worked around by rendering with puppeteer instead.
+  - **puppeteer `MODULE_NOT_FOUND` from scratchpad** — fixed with `NODE_PATH="/Users/zee/Documents/Vibe Coding/ACOS 3.0/node_modules"`.
+  - **War Room corpus grep returned nothing** — file was Windows-1252, not UTF-8. Fixed with `iconv`.
+  - **Eden self-check Stop hook failure** — reply exceeded Level 3 register; rewrote once at Level 3.
+  
+  **User feedback / corrections received:**
+  - "no, always create the output files in my docuemnts/OKOA unless stated otherwise. Move the files." — saved as a standing rule.
+  - "I don't understand if the unsigned drafts prove anything… unless signed it is not a proof. Let me know if I am worng in this." — he was right; I verified the percentages rest ONLY on unsigned drafts and added explicit caveats to the document.
+  
+  ## 5. Problem Solving
+  
+  **Signing authority (answered definitively):** Phil Wolfgramm IS an authorized signer — proven by executed, notarized, county-recorded instruments. He is NOT the only one; Russell Handy also signed as Manager. Wolfgramm Capital's own Operating Agreement does not exist anywhere in Dropbox, so the manager count/roster and whether one may act alone cannot be proven.
+  
+  **Evidentiary hygiene:** Confirmed the member percentages (30.6% / 29.7% / 29.7% / 10%) appear ONLY in the two unsigned resolutions — no executed document states any percentage. The four member NAMES ARE recited in §1.4 of the SIGNED Lone Star West Gray Operating Agreement.
+  
+  **Link portability:** symlinks cannot travel between computers; Dropbox web links can. No new share links were created (safer for litigation material).
+  
+  ## 6. All User Messages
+  
+  1. "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-17-OKOA-Works-close-2/2026-08-17-OKOA-Works-close-2.reentry.md first, follow its Read"
+  2. "That work is done!"
+  3. `/goal` — "look inside the wolfgramm/waldorf/beehive/ascent files in dropbox and find definitive answer to this question: Who is the signign authority of Wolfgramm Capital? Is Phil Wolfgramm an authorized signer?"
+  4. "Create a one page summary file with all the reference docuemnts symlinked in a way that the document will open in a browswer as long as dropbox is signed in from any computer."
+  5. "make it a pdf and open"
+  6. "Remove this sections:" followed by the pasted "WHAT COULD NOT BE PROVEN, AND WHY" section and the "How these links work / Method" footer text.
+  7. (mid-turn) "Also, I don't understand if the unsigned drafts prove anything, anyone can make a draft and put the name of anyone as a signer, unless signed it is not a proof. Let me know if I am worng in this."
+  8. "should we include the links to the unsigned drafts?"
+  9. "Where did you save the output files?"
+  10. "no, always create the output files in my docuemnts/OKOA unless stated otherwise. Move the files."
+  11. "Whenever I click a link, this message shows: www.dropbox.com is blocked / www.dropbox.com refused to connect. / ERR_BLOCKED_BY_RESPONSE"
+  12. "Consider this work completed. New work: Look inside this prospectus: /Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus_Final.pdf We need to update the phone number and email address provided here. New phone number: 801 557 0909 New email: jason@okoacapital.com"
+  13. "Copy the first 5 files in the document and the document itself in this folder: '/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/External Data Rooms -- EXTERNALLY SHARED/Phil Wolfgramm Lawsuit/Wilderness Trails Signing'"
+  14. `/goal` — "find David tafuna's financials from Ascent/waldorf/wolframm related folders"
+  
+  **Security-relevant constraints in force (from memory/system context, not user chat this session):** never touch jason@ mail/calendar/drive; the Wolfgramm Properties Org Chart contains Social Security numbers in plain view and must not circulate; "External Data Rooms -- EXTERNALLY SHARED" contents are readable by anyone holding the share; git pushes default to the PERSONAL GitHub account and a bare `git push` is denied outright.
+  
+  ## 7. Pending Tasks
+  
+  - **ACTIVE GOAL:** find David Tafuna's financials from Ascent/Waldorf/Wolfgramm folders.
+  - **UNANSWERED question I posed to the user:** whether to split the signing-authority table into "What proves the finding" (2 executed + 4 Delaware state records) vs "Reviewed but not proof" (5 unsigned drafts + 3 context + 1 caution), which would also move the mis-tagged `Borrowing Resolution (DE)` row out of CONTEXT.
+  - **Offered, not accepted:** refresh `OKOA_Prospectus_WIP.pdf` (still carries the old phone/email); strip the "Page N of 20" footer artifact from the prospectus; rebuild the summary so its links point at the copies in the Wilderness Trails Signing folder; draft a formal document request for Tafuna's statements and tax returns.
+  
+  ## 8. Current Work
+  
+  Working the active goal: finding David Tafuna's financials. My first pass concluded **no personal financial statement for David Tafuna exists**, and the Stop hook rejected that conclusion, pushing me to keep searching. I acknowledged three genuine gaps and began closing them:
+  
+  > "The hook is right that I should not stop at 'absent' without closing real gaps. Three remain: image-only scans that full-text search cannot read, folders outside Dropbox, and financial files not named for him."
+  
+  **Established so far (verified):**
+  - All four `Wolfgramm personal financials` folders hold the same six files: `Pwolfgramm PFS Q1 2023.pdf`, `Pwolfgramm PFS Q1 2025.pdf`, `PFS Koloa Wolfgramm Apr 2023.pdf`, `PFS Koloa Wolfgramm 3.31.2025.pdf`, `Handy PFS -- April 21 2025.pdf`, `!Personal Financial Statement -- May of 2023.pdf`. I opened the unnamed one — it is **Russell Handy's** (his name printed at top; Total Assets $78,179,088, Total Liabilities $776,839, Net Worth $77,402,249).
+  - Guaranty of Payment and Performance — Ascent (FINAL 12.28.23) §6 requires each Guarantor to furnish "within ninety (90) days after the end of each calendar year, annual certified public accountant compiled personal financial statements" plus federal income tax returns within thirty (30) days after filing.
+  - Demand letter 15 September 2025: principal **$27,240,937.50**, total as of September 15, 2025 **$29,185,866.00**, joint and several.
+  - OKOA internal estimate only: "David + Melissa Tafuna — $10–20M (community property)"; K-1 variance of approximately **$980,000**.
+  - No Tafuna file in `~/Documents/OKOA`, `~/OKOA`, `~/Downloads`, `~/Desktop`, or Google Drive.
+  
+  **NEW territory just surfaced in the last tool results and not yet examined:**
+  - `/Users/zee/okoa-labs/okoa_ops/sandboxes/zach/thoughts/research/2026-06-19_wolfgramm-tafuna-guarantor-asset-search.md` — filename matches the goal exactly.
+  - `/Users/zee/okoa-labs/okoa_ops/knowledge-graph/vault/deals/ascent-park-city/parties/david-tafuna.md` and `.../parties/moana-m-tafuna.md` — note **"Moana M. Tafuna"**, a spouse-name variant differing from "Melissa Tafuna" in the litigant list.
+  - `/Users/zee/okoa-labs/okoa_ops/deals/02_active/ascent-park-city/06_litigation/13_ASSET_SEARCH_AUTHORIZATION_2026.01.29.md`
+  - `.../analysis/synthdocs/0405_Wolfgramm_Asset_Schedule_synth_2026.01.21.yaml` and `0405_Wolfgram_RE_Owned_w_Loan_Balances_synth_2026.01.27.yaml`
+  - `.../05_collateral/collateral_lists/Wolfgram RE Owned w Loan Balances (1).xlsx`
+  - The image-only-PDF scan of the Dropbox Wolfgramm trees returned ~40 scanned files (lien waivers, recorded deeds, formation certificates) — none obviously a PFS, but not yet individually OCR'd.
+  
+  ## 9. Optional Next Step
+  
+  Read the okoa-labs research file whose name directly matches the goal, plus the knowledge-graph party files and the asset-schedule synthdocs, since these are the highest-probability remaining sources:
+  
+  - `/Users/zee/okoa-labs/okoa_ops/sandboxes/zach/thoughts/research/2026-06-19_wolfgramm-tafuna-guarantor-asset-search.md`
+  - `/Users/zee/okoa-labs/okoa_ops/knowledge-graph/vault/deals/ascent-park-city/parties/david-tafuna.md`
+  - `/Users/zee/okoa-labs/okoa_ops/knowledge-graph/vault/deals/ascent-park-city/parties/moana-m-tafuna.md`
+  - `/Users/zee/okoa-labs/okoa_ops/deals/02_active/ascent-park-city/06_litigation/13_ASSET_SEARCH_AUTHORIZATION_2026.01.29.md`
+  - `/Users/zee/okoa-labs/okoa_ops/deals/02_active/ascent-park-city/analysis/synthdocs/0405_Wolfgramm_Asset_Schedule_synth_2026.01.21.yaml`
+  - `/Users/zee/okoa-labs/okoa_ops/deals/02_active/ascent-park-city/05_collateral/collateral_lists/Wolfgram RE Owned w Loan Balances (1).xlsx`
+  
+  Then run a Spotlight content search restricted to `/Users/zee/okoa-labs` for Tafuna plus financial terms, and resolve the "Moana M. Tafuna" vs "Melissa Tafuna" spouse-name discrepancy. Do NOT search email — the standing rule forbids touching jason@ mail/calendar/drive.
+  
+  </summary>
+
+current_work: |
+  Active /goal: locate David Tafuna's financials in the Ascent / Waldorf /
+  Wolfgramm material. Dropbox is exhausted; now sweeping /Users/zee/okoa-labs.
+
+completed_this_session: |
+  - Wolfgramm Capital signing-authority finding + HTML/PDF one-pager (links are
+    Dropbox team-space web URLs, not symlinks); moved to ~/Documents/OKOA;
+    5 source files + the summary copied into the Dropbox Wilderness Trails
+    Signing folder, sha256-verified.
+  - OKOA prospectus contact block updated to (801) 557-0909 / jason@okoacapital.com;
+    PDF rebuilt to 20 pages and byte-verified against a control build.
+  - Confirmed the six "Wolfgramm personal financials" PDFs are Phil (x2),
+    Koloa (x2), Koloa-Wolfgramm-family, and Russell Handy. No Tafuna PFS.
+
+decisions_made: |
+  - "That work is done" — page-24 split of Wilderness Trails DRAFT LOAN DOCS cancelled.
+  - Deliverables go to ~/Documents/OKOA by default, never into the source folder.
+  - Unsigned drafts are NOT proof; the member-percentage claims rest only on
+    unsigned resolutions and must be captioned as such.
+  - Keep links to the unsigned drafts, but labelled as unexecuted.
+
+blockers: |
+  - Wolfgramm Capital's own Operating Agreement does not exist anywhere in
+    Dropbox, so the manager roster and act-alone authority cannot be proven.
+  - No personal financial statement for David Tafuna has been found in any
+    searched location.
+
+candidate_learnings: |
+  - Dropbox Business team-space URL forms (/work/, /preview/?role=work) —
+    already saved as reference_okoa_dropbox_web_links.
+  - Spotlight cannot read image-only scans; OCR is required to close that gap.
+  - "Moana M. Tafuna" (knowledge graph, guarantor) vs "Melissa Tafuna"
+    (asset-search authorization, spousal consent 2026-02-09) is an unresolved
+    spouse-name discrepancy.
+
+context_for_next_session: |
+  Tafuna's financial exposure is documented only as obligations and estimates,
+  never as a statement he produced: 10% of Wolfgramm Capital, joint-and-several
+  on $29,185,866 (demand 2025-09-15), "Estimated Assets $20,000,000+" in the
+  2026-01-29 asset-search authorization, and an OKOA internal $10-20M community
+  property guess. The Guaranty §6 obliges each guarantor to deliver annual CPA
+  compiled personal financial statements plus tax returns — so the right output
+  may be a demand for them rather than a search. Do not search jason@ email.

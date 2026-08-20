@@ -1,0 +1,284 @@
+timestamp: "2026-08-17T19:42:39Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 541957
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Post-reset resume. Autopilot confirmed still armed (iteration 5/1000, same session).
+  Finishing /research Phase 5: automation-scout dossier (automation-scout.md, 33224 bytes)
+  is on disk but its claims file is not yet written — agent still running; ingest waits.
+  Decision 2 (MG21-R2) is held in front of Zee as plain text.
+
+completed_this_session: |
+  Verified done: MG21-R1=C recorded (R2P b51d714), four-file measurement (b5b1ac6),
+  RULING-BAR-90 (14afc81), OBS-MG23 (53c02f9). /investigate 5 report FINAL with audit
+  PASS (107 citations). 10-item recommendations synthesis delivered in chat.
+  Eternity Steps 0-5 completed and the reset fired cleanly.
+
+decisions_made: |
+  Zee: "Do C." on MG21-R1; bar raised to 90 on BOTH scores, all 75 files
+  ("we are dealing with real money here"); Eden level set to 4.
+  Decision 2 (nine 0.00 scaffolds, A/B/C) deliberately NOT decided yet.
+
+blockers: |
+  Zee's rulings: Decision 2 (A/B/C), then MG21-R1a (which run is gate of record),
+  then the rest of the 14 in RATIFICATION-PACKET-EPIC-001.yaml. Document version
+  of the recommendations was offered and is unanswered.
+
+candidate_learnings: |
+  /investigate has 4 skill defects (fix prompt in scratchpad/fix-investigate-prompt.md).
+  Killed-only score rise at raised timeout is arithmetically forced — only magnitude informs.
+  ISSTA 2019 run-to-run variance is FOUR percentage points (ledger L-0025).
+  Stryker issue #6073 (nondeterministic verdicts, 9.6.1+vitest) is open upstream.
+
+context_for_next_session: |
+  R2P is LOCAL-ONLY, no git remote, never push. Never AskUserQuestion for rulings
+  while autopilot is active (OBS-AP1). Records are additive — supersede with siblings.
+  Verify disk state (R2P git log, riff dossiers/, Task #29) before trusting summaries.
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  Compare the investiation result and the reserch result and compile a list of best recommendations.
+
+assistant_tail: |
+  Steps 4 and 5 — status, then arm the reset.
+  
+  ---
+  
+  Armed. The reset fires at turn-end and the resume follows on its own.
+  
+  Three things this save carries safely across:
+  
+  - Your unanswered Decision 2 — the nine 0.00 files, A, B, or C.
+  - The one still-running researcher. Its results land on disk either way.
+  - The verified four-point drift figure, with its correction on record.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 148
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+  - "?? memory/handoffs/.harvested/"
+  - "?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl"
+  transcript_lines_parsed: 2359
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  This session continued (post-compaction) the R2P autopilot work. Chronology:
+  
+  1. Resumed via eternity-protocol; enriched the autocompact handoff depth pass; presented Decision 1 of 14 (MG21-R1) to Zee with options A/B/C.
+  2. Zee asked to understand C more deeply with an R2P example; I started the three raised-timeout re-runs in background (needing no ruling), presented trigger-grammar results mid-conversation.
+  3. Zee ruled "Do C." — recorded at R2P commit b51d714; also asked for a complete picture of R2P and what "research signal" means; set Eden to level 4. I discovered "research signal" was my invented phrase (0 hits in the PRD), corrected it, walked the ten PRD §5.1 steps.
+  4. All four re-runs finished — GATE-READING-002 committed (b5b1ac6): four files did NOT behave alike; two corrections recorded (premature "forming pattern"; killed-only rise arithmetically forced).
+  5. Zee asked walk-through of the complete process; then asked whether timeouts were rigor or size; I showed size doesn't explain it.
+  6. Zee said it was all confusing (/simple → Eden 5 for one reply) — gave the smoke-alarm framing.
+  7. Zee then issued the big directive: /investigate 5 why tests fail, /research 5 solutions per cause, and raise threshold to 90 "because we are dealing with real money here" (/restate). I restated; he confirmed "yes, 90 on both scores, all 75 files."
+  8. Recorded RULING-BAR-90 (14afc81) with measured cost: 40 of 64 fail at 90, deficit 3887 kills.
+  9. Ran /investigate 5 (8 seats, auditor, compiler, citer) — hit and worked around 4 skill defects; report finalized, audit PASS, 107 citations. Zee asked mid-flight for a fix prompt for /investigate — written to scratchpad.
+  10. Zee asked "is anything working?" — answered: code fine, alarms being graded.
+  11. Presented Decision 2 (MG21-R2, nine 0.00 scaffolds) — STILL UNANSWERED.
+  12. Ran /research 5 (7 web seats, 209 claims, gate passed, audit FAIL with real gaps; gap round: automation-scout seat still running; ISSTA figure verified FOUR pp via L2 probe, ledger L-0025; OBS-MG23 committed 53c02f9).
+  13. Zee asked: "Compare the investiation result and the reserch result and compile a list of best recommendations." — I delivered a 10-item synthesis in chat, offered a document version (unanswered).
+  14. Zee invoked /acos-eternity-protocol — Steps 0-5 completed: handoff 2026-08-17-emergency-handoff-2.yaml verified (20889 bytes, 16 keys, content-checked), resume prompt written, core armed (PRE_CLEAR_TOTAL=539921), both clear flags armed, freeze-early disarmed. Step 6 = exit cleanly.
+  
+  All standing constraints must be preserved verbatim. Key numbers, commits, session ids, and file paths must be exact.
+  </analysis>
+  
+  <summary>
+  1. **Primary Request and Intent**
+  
+     **The standing goal (autopilot, ACTIVE, iteration ~5 of max 1000):**
+     > "Complete the R2P project in /Users/zee/Documents/Vibe Coding/R2P to the end-state defined by docs/PRD_v0.4.txt: first finish EPIC-001 (all 24 DEV/QA pairs through the adversarial cycle - DEV, QA, holdout, orchestrator seal - then EVB-STORY bundles x8, 4-reviewer swarm review, EVB-EPIC-001, close packet), then plan and execute each subsequent PRD phase as new epics under the same adversarial cycle with sealed evidence throughout. At every epic close, present the ratification packet (ADRs, finding dispositions, disclosure queue) to Zee and continue non-dependent work (e.g. planning the next epic) while awaiting his decision. Never self-approve; never treat silence as approval; never push (local-only repo). Re-derive current position from repo state (planning/, git log) at each iteration."
+     Re-arm command after reset: `python3 .claude/scripts/autopilot-activate.py on "<goal>" --goal-file "/Users/zee/Documents/Vibe Coding/R2P/docs/PRD_v0.4.txt" --max-iter 1000`
+  
+     **Zee's rulings THIS session (decisions made, recorded, done):**
+     - **MG21-R1 = C** ("Do C."): the killed-only bar BINDS, but re-measure the other three killed-only shortfalls at raised timeout first. Recorded R2P commit `b51d714`; measurement complete at `b5b1ac6`.
+     - **BAR RAISED to 90 on BOTH scores, all 75 files**: "I don't like 70 as the threshold, I would prefer 90, because we are dealing with real money here." Confirmed scope: "yes, 90 on both scores, all 75 files". Recorded commit `14afc81`. House rule on top of PRD 16.7's ">=70" (PRD text NOT edited).
+     - **/investigate 5** why the gate fails + **/research 5** solutions per cause — both executed (investigate DONE; research in Phase-5 tail).
+  
+     **Zee's requests still open:**
+     - **Decision 2 of 14 (MG21-R2), UNANSWERED**: the nine 0.00 `SCAFFOLD-PLACEHOLDER` files. Options presented: **A** = write tests now (66 kills total; deficits 3,4,5,5,6,7,9,9,18); **B** = exempt until superseded (matches `tools/mutation-gate.ts`'s own first-line skip — committed gate command measures 65 files, the recorded log measured 75); **C** = split (test the five money/gate-logic ones, exempt four fixtures). Recommended A. Must be plain reply text, never AskUserQuestion.
+     - "Compare the investiation result and the reserch result and compile a list of best recommendations." — ANSWERED in chat with a 10-item synthesis; a document version was OFFERED and is unanswered.
+     - One-at-a-time ruling walk-through continues after Decision 2: MG21-R1a (which run is the gate of record — evidence now says likely median-of-N), then the rest of the 14 in `RATIFICATION-PACKET-EPIC-001.yaml`.
+  
+     **Standing constraints (preserve verbatim):**
+     - R2P is **LOCAL-ONLY — NEVER push. No git remote configured at all.** Never a bare `git push` anywhere.
+     - **AP-06:** never weaken a test, an invariant or a tolerance. (Raising to 90 strengthens — allowed.)
+     - **AP-07:** no agent approves, seals, closes or ratifies. Records may TRANSCRIBE a ruling Zee actually made. Never treat silence as approval.
+     - **Zee IS the human gate.** "Ben" in PRD §18.3 is the ROLE name. `owner: Ben` records mean Zee; new records use `owner: Zee`.
+     - Records are **ADDITIVE** — supersede with a SIBLING; never edit prior text.
+     - **TypeScript/Rust only, zero new python3** (existing-python edits allowed).
+     - Scoped `git add` only; READ THE STAGED LIST BEFORE WRITING THE COMMIT MESSAGE.
+     - **NEVER run tsc/typecheck while a stryker run is live** — `inPlace: true` prepends `// @ts-nocheck` to all 75 in-scope files DURING a run (transient; tree self-restores after).
+     - **NEVER AskUserQuestion for rulings while autopilot is active** — a hook auto-picks "(Recommended)" and forges the ruling (OBS-AP1).
+     - **FORBIDDEN score levers:** project-wide `excludedMutations`; `// Stryker disable` except per-site for demonstrated equivalent with written reason; narrowing `mutate` globs; weakening tests; `ignoreStatic`.
+     - macOS has no `timeout`/`gtimeout`; repo path contains a SPACE; Bash call caps at 2 minutes.
+     - Eden protocol now at **Level 4** (`~/.claude/state/eden-level` = 4; set via `/acos-eden-protocol 4`).
+  
+  2. **Key Technical Concepts**
+     - Two scores: **standard** = (killed+timeout)/valid; **killed-only** = killed/valid; valid = killed+timeout+survived+noCoverage. killedOnly ≤ standard always, so killed-only binds.
+     - Stryker 9.6.1 + vitest runner; `inPlace: true`; `coverageAnalysis: "perTest"`; thresholds break evaluates AGGREGATE only — no per-file gate exists anywhere in Stryker.
+     - `timeoutMS` 5000 / `timeoutFactor` 1.5 are unset schema defaults, not choices; `vitest.config.ts:10` `testTimeout: 15_000` is a second, independent clock.
+     - Equivalent mutant (cannot alter observable behaviour); "unproductive" mutant class (killable only by freezing a documented don't-care).
+     - Quantization: (N-1)/N ≥ 90 requires N ≥ 10; small files must score 100.00.
+     - riff engine (acos-research-riffs) for both /investigate (RIFF_ROOT=~/.acos-investigate, RIFF_TEMPLATE_DIR overlay) and /research (RIFF_ROOT=~/.acos-research); panel/dimensions/gate/auditor/compiler/citer pipeline; claims corpus with tiered provenance.
+  
+  3. **Files and Code Sections**
+  
+     **R2P commits this session (all local, never pushed):**
+     - `planning/evidence/EVB-EPIC-001/close-packet/RULING-MG21-R1-ZEE-CHOSE-C.yaml` (commit `b51d714`) — transcribes "Do C." with full measurement status.
+     - `planning/evidence/EVB-EPIC-001/close-packet/GATE-READING-002-THE-FOUR-FILE-TIMEOUT-SET.yaml` + two run logs (commit `b5b1ac6`) — the four-file 120000ms table: benchmark-alpha 81.53/63.52→67.54/64.79 (91.7% of resolved timeouts became survivors, FAILS); trigger-grammar 75.05/55.84→63.45/63.45 (60.4%, FAILS); contingent-plan-engine 85.50/60.56→74.21/74.05 (45.6%, PASSES); time/result 100.00/50.00→100.00/100.00 (0.0%, PASSES). Includes the arithmetic-forced-direction correction and new open question **MG21-R1a** (which run is the gate of record).
+     - `planning/evidence/EVB-EPIC-001/close-packet/RULING-BAR-90-ZEE-RAISED-THE-MUTATION-BAR.yaml` (commit `14afc81`) — bar 90 both scores all 75 files; 40 of 64 fail (9 zero-coverage + 31 scoring); 27 newly failing carrying 2918 survivors + 998 noCoverage; four of the six previously-fixed files now fail (88.49/88.20, 85.13/84.39, 83.03/81.05, 82.55/82.10); full worst-first list embedded.
+     - `planning/evidence/EVB-EPIC-001/close-packet/OBS-MG23-THE-WOBBLE-IS-AN-OPEN-UPSTREAM-BUG.yaml` (commit `53c02f9`) — Stryker OPEN issue #6073 (nondeterministic verdicts on 9.6.1+vitest; retry fix unmerged as of v10.0.0, 2026-08-14); ISSTA 2019 ~4pp variance; bears on MG21-R1a (likely median-of-N).
+  
+     **/investigate 5 session** `2026-08-17-why-the-r2p-mutation-gate-fails-against-a-bar-of-90-on-both-` (RIFF_ROOT=`~/.acos-investigate`):
+     - `report/report.md` — 8 ranked causes, FINAL, `riff report audit` verdict **PASS** (107 cited claims, 0 unknown ids). I applied 5 citer-mandated fixes via Edit (range-style claim ids expanded; eight-files-≤5 corrected; 385-toBe miscount corrected to 46-lines-.code/19-literal; "consumed 81%" → "estimated"; toContain fifth value 2 added with counter-example note; staller noCoverage mapping 45/28/13/41 clarified).
+     - Causes ranked: (1) assertion gap on executed code — max 2328 of 3887; (2) unreached defensive/refusal code — max 1471; (3) timeout clock crediting — max 1738; (4) 23 of 27 never had a fix pass, winning playbook = drive noCoverage to zero; (5) no per-file gate mechanically exists; (6) small-file quantization (2 files); (7) 5 confirmed equivalents, timestamp-precision.ts hard-capped 83.33; (8) unproductive mutants.
+  
+     **/research 5 session** `2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate` (RIFF_ROOT=`~/.acos-research`, tier deep):
+     - 7 seats ingested: assertion-engineer 23, guard-coverage-engineer 37, stryker-operator 29 (1 kept figure conflict), policy-researcher 29+1dup, reproducibility-researcher 26, generalist 39, skeptic 26 → 209 claims + probe-01's 3.
+     - Mechanical gate PASSED (all 8 dims saturated); coverage AUDIT returned **FAIL**: blocking = auto-test-generation (Meta ACH arXiv 2501.12862 with 73% acceptance, MuTAP, PRIMG), survivor-triage (Google 85% unproductive), run-architecture (sampling/tiered), ISSTA 4pp-vs-5pp conflict. Audit file: `coverage-audit.md`. Also unpriced premises (stability-protocol runtime; #6146 unmerged fix; PBT runtime; total labor for 3887 kills) and weak claims (policy-researcher-024 tier; guard-coverage-engineer-020 Tier-4).
+     - Gap round 1 (of max 3): dims `auto-test-generation` + `run-architecture` added; seat `automation-scout` dispatched (**still running at reset time**; dossier lands in `dossiers/` regardless); L2 `probe-01` RESOLVED the conflict — ISSTA 2019 says **FOUR percentage points** (range 77.7%–82.0%; generalist-010 superseded; correction ledgered as `L-0025`; caveat: paper never mentions machine load, isolated per-JVM).
+  
+     **Eternity protocol artifacts (Steps 0–5 complete):**
+     - Handoff: `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-17-emergency-handoff-2.yaml` — 20889 bytes, 16 keys, 0 stub markers, content-checked (b51d714 + 14afc81 + automation-scout present). HIGH confidence per agent.
+     - Resume prompt: `~/Library/Application Support/acos-token-monitor/state/pending-resume-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.txt` (3482 bytes) — carries both rulings, research resume state, Decision 2 pending, autopilot re-arm command, Zee's verbatim last message.
+     - Core armed: `PRE_CLEAR_TOTAL=539921`; sidecar written; both clear flags armed (sid-keyed + surface-keyed `F354478B-743B-472C-AFF8-69DF9820031B`); RPC method `surface.send-input` cached-verified; freeze-early disarmed.
+  
+     **Other:** `/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf/scratchpad/fix-investigate-prompt.md` — standalone fix prompt for the 4 /investigate defects (Zee asked for this to run in another window). Task #29 carries full research-pipeline resume detail. Handoff notes `DECISIONS-FOR-BEN.yaml` stopped being the front door after 2026-08-12 — new rulings are standalone YAML files.
+  
+  4. **Errors and fixes**
+     - **"Research signal" was my invented phrase** — 0 occurrences in `docs/PRD_v0.4.txt`; corrected openly; R2P's non-goals exclude signal logic by design.
+     - **False zero from `grep -rl --include=*.ts`** (zsh "no matches found" → printed 0) then **wrong conclusion that Stryker leaves `// @ts-nocheck` behind** — actually a transient DURING-RUN state; tree self-restored to 0 of 75 after the last run; task #28 corrected+closed. Lesson kept: any typecheck during a live run is void; use `find ... -exec grep -l {} +`.
+     - **Premature "forming pattern" after two files** — files 3–4 broke it; worse, the killed-only rise is arithmetically FORCED (killed can only increase at fixed valid); only magnitude is informative. Both corrections written into GATE-READING-002, not dropped.
+     - **~9 min/file estimate wrong** — contingent-plan-engine took ~29m (2462 mutants).
+     - **/investigate skill defects (4)**: (1) SERIOUS — depth 3-5 seat charters render the engine's WEB researcher charter (overlay ships only `probe-charter.md`); worked around via `riff render probe` per seat; (2) `panel approve` requires literal lowercase `role: "generalist"`/`"skeptic"` (panel.ts:192); (3) `panel set` takes array, `panel add` takes single object; (4) charters hard-fail without an installed brief despite "skip the interview". Fix prompt written for Zee.
+     - **Compiler's report failed citation audit (5 findings)** — all fixed by me in report.md; re-audit PASS.
+     - **ISSTA 4pp-vs-5pp cross-seat conflict** — resolved by L2 primary verification: FOUR (generalist-010 also wrong on its 10pp companion figure; paper says 9% unknown-status pairs).
+     - **Last-user-message capture grabbed a skill expansion** — re-ran excluding "Base directory for this skill:" prefix; captured the true message.
+     - **Eden Stop-hook rewrites** (several turns) — register-only fixes, one rewrite each, content preserved.
+     - **conclude-selfcheck misfired** reading "/acos-eden-protocol 4"'s `4` as a word ceiling — declared overage per its rule 4 and moved on.
+  
+  5. **Problem Solving**
+     - Executed Zee's C ruling completely: all four killed-only shortfalls measured; result NOT uniform (91.7/60.4/45.6/0.0% survivor shares).
+     - Priced the 90 bar without a new run by re-reading the gate log at `--bar 90`: 3887 kills needed; per-bucket ceilings noCoverage 1471 / survivors 2328 / timeouts 1738.
+     - Full causal map of the gate failure (8 causes, cited, audited) + full solutions corpus (209+ claims) with honest gaps (auto-test-gen etc.) being closed.
+     - 10-item best-recommendations synthesis delivered: fix the ruler first (deliberate clocks, low concurrency, idle machine, median-of-3); wire per-file gate via json reporter + exit code; grade killed-only; run the noCoverage-to-zero playbook on 23 untouched files; three assertion levers (whole-error, 3-value boundaries, identity-breaking fixtures); guard kits (`as unknown`, must-reject corpora, refusal tables); exception book for equivalents (per-site, written reason); small-file house rule; settle Decision 2 + MG21-R1a; consider changed-lines-only gate (Google/Meta practice). Warning kept: Google found 85% of raw survivors unproductive.
+  
+  6. **All user messages**
+     - "/compact" (local command) + "Resume the eternity-protocol handoff and continue exactly where the previous session left off."
+     - "I need to understand C more deeply, what does it mean to appy the bar to real numbers instead of a file's result. Give me an example of how this relates to research to portfolio's portfolio creation."
+     - "Do C. \n I need a complete picture of what R2P does, step by step. What do you mean by research signal? \n /acos-eden-protocol 4"
+     - "The steps you gave me still contains a lot of jargon without any explanation to them. It doesn' sound like eden level 4 at all. Give the answer again, now make sure you explain any word that you suspect I may not know the meaning of in the context of R2P."
+     - "Give me a real example of complete process from begining to end step by step in simple language."
+     - "When we do 120 second run, the kill is increasing. Does it mean that the whatever the system was reading, it needed more time to read that and couln't kill it until the read was complete? Meaning is the failure a reading rigor issue or content size issue. do you understand what I mean?"
+     - "It all still is sounding super confusing to me. Why does this test matter? What is the whole thing? /simple"
+     - "Investigate why the tests are failing. /investigate 5 / for each reason you uncover research solutions /research 5 / O dpm" [interrupted, then re-sent:] "Investigate why the tests are failing. /investigate 5 / for each reason you uncover research solutions /research 5 / I don't like 70 as the threshold, I would prefer 90, because we are dealing with real money here./restate"
+     - "yes, 90 on both scores, all 75 files"
+     - "You said there were some issues with /investigate, can you give me a prompt in the context that will allow me to fix it in another window?" (mid-turn guidance)
+     - "is anything working?"
+     - "Compare the investiation result and the reserch result and compile a list of best recommendations."
+     - "/acos-eternity-protocol" (slash-command invocation)
+     (Stop-hook feedback, Eden rewrite demands, and task-notifications were system-generated, not user input.)
+  
+  7. **Pending Tasks**
+     - **Decision 2 (MG21-R2) awaits Zee: A, B, or C** on the nine 0.00 scaffolds (recommended A; 66 kills total).
+     - Finish /research Phase 5 per Task #29: ingest `automation-scout` when its dossier lands, credit coverage, re-gate, `report bundle` → ONE compiler → citer → `report audit` loop to PASS → `riff eval`; deliver solutions per cause at Eden 4; flag score-laundering per the brief's priority.
+     - Then MG21-R1a (which run is gate of record; OBS-MG23 evidence: likely median-of-N) and the remaining rulings of the 14 (index: `RATIFICATION-PACKET-EPIC-001.yaml`).
+     - Offered, unanswered: a proper document version of the recommendations once the cited report lands.
+     - Task #15 (barrel exports) and #27 (six files before Zee) remain pending from earlier; pair 24 revision 4 (`20f6d06`) still unreviewed.
+  
+  8. **Current Work**
+     Executing `/acos-eternity-protocol` (cmux variant), invoked by Zee. All steps complete through Step 5:
+     - Step 0 pre-flight PASSED (520782 tokens; surface `F354478B-743B-472C-AFF8-69DF9820031B`; socket `/Users/zee/.local/state/cmux/cmux.sock`; heartbeat 1s; freeze-early armed).
+     - Step 1: handoff-agent wrote `memory/handoffs/2026-08-17-emergency-handoff-2.yaml`; verified fresh (age 0 min), 20889 bytes, 16 keys, 0 stub markers, content check passed (both ruling hashes + automation-scout present).
+     - Step 2: resume prompt written (3482 bytes) after re-capturing Zee's true last message ("Compare the investiation result...").
+     - Step 3: core sourced OK; `PRE_CLEAR_TOTAL=539921`; sidecar written.
+     - Steps 4/5: status printed; RPC method `surface.send-input` cached-verified; sid-keyed AND surface-keyed clear flags armed; freeze-early disarmed. Final output: "In-pane Stop hook fires /compact at turn-end."
+     The `automation-scout` research agent was still running in background at fire time — its dossier lands on disk in the session's `dossiers/` directory regardless of the reset.
+  
+  9. **Optional Next Step**
+     Per the protocol's Step 6, verbatim: "Exit cleanly... No reasoning, no tool calls after this point — keep the input idle." The in-pane Stop hook types `/compact`; after compaction the daemon injects the resume prompt. The resume prompt directs the next session to, in order: (1) re-arm autopilot with the exact `autopilot-activate.py on ... --max-iter 1000` command; (2) check Zee's last message ("Compare the investiation result and the reserch result and compile a list of best recommendations.") against the already-delivered 10-item synthesis; (3) finish research Phase 5 per Task #29; (4) hold Decision 2 (A/B/C) in front of Zee as plain text — never AskUserQuestion.
+  </summary>

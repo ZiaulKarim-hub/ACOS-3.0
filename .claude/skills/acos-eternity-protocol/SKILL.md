@@ -1,6 +1,6 @@
 ---
 name: acos-eternity-protocol
-description: Eternity protocol — cmux variant. Fully automatic. At 400k tokens, generates the handoff + resume prompt, signals the daemon via state/.clear-requested-<sid> + state/cmux-surface-<sid>; daemon uses cmux Unix-socket RPC (cmux rpc <method> with surface/text JSON payload fields) to inject /clear into the cmux surface, then — after compaction — injects the RAW pending-resume content directly into the surface (it does NOT type /acos-eternity-protocol-resume; the resume skill is never invoked in this auto path). Loops forever — sessions never end. Designed for cmux surfaces where the Unix-socket IPC eliminates the AXTitle marker race that breaks Warp.
+description: Eternity protocol — cmux variant. Fully automatic. At the configured token threshold (500k as of 2026-08-09; read config.yaml, don't trust a hardcoded number), generates the handoff + resume prompt, signals the in-pane Stop hook (eternity-cmux-inpane.sh) via state/.clear-requested-<sid> + state/cmux-surface-<sid>; that hook types /compact (switched from /clear on 2026-08-09 — same session id survives, closing the whole "wrong session's handoff got loaded" bug class) into the cmux surface via `cmux send`, then — once compaction completes — the paired SessionStart(clear|compact) hook (eternity-cmux-resume-inpane.sh) submits a short trigger prompt into that SAME surface, which fires eternity-resume-prepend.sh to supply the full handoff as additionalContext. Loops forever — sessions never end. Designed for cmux surfaces where the Unix-socket IPC eliminates the AXTitle marker race that breaks Warp. NOTE (2026-08-09): the Architecture diagram below still describes an older detached-daemon RPC-injection design (inject-via-cmux.py via kqueue) that the in-pane Stop hook appears to have superseded in practice — Step 5's own code already arms a surface-keyed flag specifically for the in-pane hook to consume. That diagram was not rewritten as part of this change; treat eternity-cmux-inpane.sh and eternity-cmux-resume-inpane.sh as the current source of truth for what actually runs.
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill
@@ -74,7 +74,9 @@ upcoming RPC injection.
 
 Threshold and other config live at
 `~/Library/Application Support/acos-token-monitor/config.yaml`. Change via
-`/acos-eternity-protocol-threshold N`. Default: 400k.
+`/acos-eternity-protocol-threshold N`. Current value: 500k (2026-08-09 —
+do not hardcode a number here; read the live file, since this line will
+drift out of date exactly like the "400k" it replaced did).
 
 ## Pre-requisites
 
@@ -166,13 +168,13 @@ if [[ "${CMUX_ETERNITY_FORCE:-}" != "1" ]]; then
         # Newest saved resume note in this project, if any (recovery target).
         _note=$(ls -t memory/handoffs/*.resume.md 2>/dev/null | head -1)
         echo "REFUSING TO FIRE — this session is near-empty (${_measure:-unmeasurable}),"
-        echo "  far below the ~400k threshold. Eternity SAVES-then-clears, so firing now"
-        echo "  would checkpoint a blank chat. A /clear likely just ran, and the RESUME —"
-        echo "  not another fire — belongs in this slot."
+        echo "  far below the configured threshold. Eternity SAVES-then-resets, so firing"
+        echo "  now would checkpoint a blank chat. A /clear or /compact likely just ran,"
+        echo "  and the RESUME — not another fire — belongs in this slot."
         echo
         echo "  Recover instead (nothing here is lost):"
         echo "    - Pending resume, if any:   /acos-eternity-protocol-resume"
-        echo "      (After a BARE /clear nothing was saved, so this may also find nothing.)"
+        echo "      (After a BARE /clear or /compact nothing was saved, so this may also find nothing.)"
         if [[ -n "$_prev" ]]; then
             echo "    - Previous chat in this pane (its full work is on disk):"
             echo "        session $_prev  ->  $SESSION_DIR/$_prev.jsonl"
@@ -235,8 +237,8 @@ if [[ -f "$HEARTBEAT" ]]; then
     else
         HB_AGE=$(( $(date +%s) - HB_MTIME ))
         if [[ $HB_AGE -gt 150 ]]; then
-            echo "ERROR: daemon heartbeat is ${HB_AGE}s old (>150s) — refusing to fire /clear."
-            echo "       Daemon stalled or dead; the post-/clear resume injection would never fire."
+            echo "ERROR: daemon heartbeat is ${HB_AGE}s old (>150s) — refusing to fire the reset."
+            echo "       Daemon stalled or dead; the post-reset resume injection would never fire."
             echo "       Restart: launchctl kickstart -k gui/\$UID/com.acos.token-monitor"
             exit 1
         fi
@@ -367,9 +369,10 @@ cat <<EOF
 │  Resume sibling:    ${RESUME_SIBLING:-(none)}                              │
 │  Per-PID pointer:   ${ETERNITY_POINTER:-(none)}                            │
 │                                                                       │
-│  Next: daemon will inject /clear via cmux RPC within ~60s.            │
-│        Post-/clear, daemon injects the RAW resume prompt content      │
-│        directly into the surface. You don't need to do anything.      │
+│  Next: the in-pane Stop hook will type /compact within ~60s.          │
+│        Once compaction finishes, the paired SessionStart hook types   │
+│        a short resume trigger into the same pane. You don't need to   │
+│        do anything.                                                   │
 └───────────────────────────────────────────────────────────────────────┘
 EOF
 ```
@@ -447,9 +450,11 @@ else
 ┌───────────────────────────────────────────────────────────────────────┐
 │  ABORT: cmux RPC method '$METHOD' is NOT in 'cmux capabilities'        │
 ├───────────────────────────────────────────────────────────────────────┤
-│  The daemon would clear this session and then fail to resume it.      │
-│  No /clear has been requested — your handoff + resume prompt are safe  │
-│  on disk for the manual path.                                          │
+│  This probe is a legacy check against a method the in-pane hook does  │
+│  not actually use (it calls `cmux send` directly) — kept as belt-and- │
+│  suspenders, not because a failure here is currently expected. No     │
+│  reset has been requested — your handoff + resume prompt are safe on  │
+│  disk for the manual path.                                            │
 │                                                                       │
 │  Fix: inspect the method list above and either                        │
 │    • export CMUX_INJECT_METHOD=<correct-method>  and re-run, OR        │
@@ -512,7 +517,7 @@ if [[ -n "$MY_SURFACE" ]]; then
     cp -f "$CLEAR_FLAG" "$SURF_FLAG" 2>/dev/null && chmod 600 "$SURF_FLAG" 2>/dev/null || true
     echo "Surface-keyed clear-request armed: $SURF_FLAG"
 fi
-echo "In-pane Stop hook fires /clear on next turn-end (surface-keyed; sid-churn-proof)."
+echo "In-pane Stop hook fires /compact on next turn-end (surface-keyed; sid-churn-proof)."
 
 # 2026-06-24 FREEZE-EARLY DISARM: pending-resume-<sid> (Step 2) and .clear-requested-<sid>
 # (just written) now carry subordination through /clear and are daemon-managed (consumed
@@ -526,14 +531,15 @@ echo "Freeze-early disarmed (subordination now continues via daemon-managed mark
 
 ### Step 6: Exit cleanly
 
-The post-skill JSONL turn-end marker wakes the daemon's kqueue. The daemon
-sees `.clear-requested-<sid>`, reads `cmux-surface-<sid>`, and calls
-`inject-via-cmux.py`, which issues `cmux rpc <method> '{"surface":"<id>",
-"text":"/clear\n"}'` (surface/text are JSON payload fields, not CLI flags).
-After compaction confirms, the daemon injects the RAW pending-resume content
-the same way — it does NOT type `/acos-eternity-protocol-resume`; the resume
-skill is never invoked in this auto path. No reasoning, no tool calls after
-this point — keep the input idle.
+The post-skill turn-end (Stop event) wakes `eternity-cmux-inpane.sh`. It sees
+`.clear-requested-<sid>` (or the surface-keyed copy), and sends `/compact`
+directly into the cmux surface via `cmux send`. Once compaction finishes,
+Claude Code fires a SessionStart event with `source: "compact"` in that same
+pane; `eternity-cmux-resume-inpane.sh` catches it and submits a short trigger
+prompt, which fires `eternity-resume-prepend.sh` to supply the full handoff as
+additionalContext — it does NOT type `/acos-eternity-protocol-resume`; that
+skill is a manual fallback only, never invoked in this auto path. No
+reasoning, no tool calls after this point — keep the input idle.
 
 ---
 

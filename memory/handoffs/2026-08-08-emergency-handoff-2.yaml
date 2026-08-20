@@ -1,0 +1,197 @@
+timestamp: "2026-08-08T08:24:46Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active work is NOT in the ACOS 3.0 repo. It is the ACOS Logo Forge shape
+  library, in the SEPARATE global repo ~/.claude/skills (app at
+  ~/.claude/skills/acos-logo-forge/app), remote `personal` ONLY, branch main.
+  This is not part of ACOS 3.0 and not OKOA work — do not offer to switch to
+  OKOA work. Batches 16 (39 shapes) and 17 (38 shapes) were authored on top of
+  batch 15 (HEAD 900a7b6). Both are complete through visual verification
+  (goal step 6) and uncommitted by design. During THIS handoff's own
+  verification pass, the ten-suite test run that was still in the background
+  at handoff time finished: all ten suites now report EXIT 0 with the full
+  expected 420/420 assertions, plus audit.ts 0 findings. Goal step 7 is
+  therefore satisfied for batch 17 as of right now — the next session's first
+  job is to re-verify this is still true, then report per goal step 8 and
+  WAIT rather than committing, pushing, or starting batch 18 unprompted.
+
+current_work:
+  slice_id: "n/a — not ACOS planning-hierarchy work"
+  story_id: "n/a"
+  epic_id: "logo-forge shape-library-growth (informal, tracked via /goal, not planning/)"
+  status: "in_progress — batch 17 test pass just completed clean; awaiting report-and-wait per goal step 8 before commit/push or starting batch 18"
+
+completed_this_session:
+  - "Batch 16 authored: shapes-src/batch16.ts, 39 shapes (chess + games, plus objects/technology/tools/transport/buildings/food). Header comment in the file documents a name-check that killed 3 candidates before drawing (gantt bars, quadrant chart, garlic — all pre-existing) and 4 more that died on the contact sheet after being drawn (dam, sack truck, pepper mill, egg cup — silhouette collisions) plus a circular saw cut after two failed redraws because it read as the existing 'grinder' (a collision, not a fault — redrawing cannot fix that)."
+  - "Batch 17 authored: shapes-src/batch17.ts, 38 shapes (household + transport + buildings + food). Per the launching agent's note, it collided with itself pre-drawing (4 domes: yurt/hangar/dumpling/scone plus batch 16's igloo; 3 triangles: samosa/meringue/nachos; 3 gun outlines) and shipped 38 rather than force two rushed replacements (glider, stone circle) through a 4th redraw round after both failed their own first sheet."
+  - "shapes.json rebuilt via build-shapes.ts to include both batches: verified NOW at 1,277 total shapes (264 base + 1,013 authored), NOT the 1,200/936 figure baked into the standing /goal text (that figure is intentionally stale — it records the count when the goal was set, not a live count)."
+  - "Visual verification (goal steps 5/6) for both batches: render evidence present in scratchpad as b16.png/b16-pairs.png/b16-fix.png/b16-fix2.png/b16-final.png and b17.png/b17-pairs.png/b17-fix.png/b17-fix2.png/b17-final.png, consistent with the launching agent's note that both batches are 'complete through step 6.'"
+  - "Ten-suite test pass for the current uncommitted state (fill/ribbon/shapes/forge/explode/shapelib/button against port 8816, symbols against 8819, gallery/reject against 8817) COMPLETED during this handoff's verification window, all EXIT 0: fill 27/27, ribbon 192/192, shapes 28/28, forge 19/19, explode 12/12, shapelib 25/25, button 37/37, symbols 25/25, gallery 38/38, reject 17/17 = 420/420, matching the goal note's expected breakdown exactly."
+  - "audit.ts (the server/security/button-scan checker) reported 0 findings, EXIT 0: gallery-lockup 377 buttons scanned, gallery-symbol 651, gallery-wordmark 285, editor 224, preview 0; all server path-traversal/malformed-request probes returned expected codes (404/400/200 as appropriate)."
+  - "Confirmed via lsof that Zee's live server (PID 43272, port 8815) was never touched, and confirmed via ps that no test server processes (8816/8817/8819) or runner scripts remain alive after the suite run finished."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/batch16.ts"
+    changes: "NEW, untracked. 39 shapes for batch 16 (chess/games + objects/technology/tools/transport/buildings/food). Not yet committed — per goal step 8, batches stop before commit until reported and cleared."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/batch17.ts"
+    changes: "NEW, untracked. 38 shapes for batch 17 (household/transport/buildings/food). Not yet committed."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes.json"
+    changes: "Modified (build artifact, rebuilt by build-shapes.ts to fold in batch16 + batch17). Verified length = 1277. Never hand-edit this file — edit shapes-src/*.ts and rebuild."
+  - path: "(UNRELATED — do not stage) ~/.claude/skills/acos-create-skill/SKILL.md, acos-okoa-works/SKILL.md, acos-okoa-works/references/deal-index.md, acos-okoa-works/references/formatting-rules.md, acos-okoa-works/references/playbooks/loan-lifecycle-docs.md, acos-okoa-works/references/playbooks/underwriting-ic.md, plus untracked acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/"
+    changes: "Pre-existing uncommitted work in the SAME global ~/.claude/skills repo, unrelated to logo-forge and NOT to be touched, staged, or committed alongside the logo-forge batches. Confirmed present via `git -C ~/.claude/skills status --short` (full, unscoped)."
+  - path: "(UNRELATED — ACOS 3.0 repo) .claude/scripts/_autopilot_eternity.py, autopilot-activate.py, autopilot-context-injector.py, autopilot-stop-handler.py, .claude/scripts/git-manager/ids.json, .claude/scripts/html-to-pdf.js, Logo Builder/brandsync/commands.jsonl"
+    changes: "Pre-existing modifications in the ACOS 3.0 working tree, visible in `git status --short` there. Not part of this session's logo-forge work (the logo-forge test harness copies FROM 'Logo Builder/brandsync' into ephemeral workspaces, it does not write back to it; the commands.jsonl drift is more likely from Zee's own live server usage). Not investigated further — out of scope for this handoff."
+
+decisions_made: []
+
+blockers: []
+
+next_actions:
+  - "VERIFY, DO NOT TRUST: this note itself could go stale the same way three prior ones did. Before doing anything else, re-run: git -C ~/.claude/skills log --oneline -3 ; git -C ~/.claude/skills status --short acos-logo-forge/ ; bun -e 'console.log(JSON.parse(require(\"fs\").readFileSync(process.env.HOME+\"/.claude/skills/acos-logo-forge/app/shapes.json\",\"utf8\")).length)' — confirm HEAD is still 900a7b6, the same two untracked batch files plus modified shapes.json are still the only logo-forge changes, and the count is still 1,277 (264 base + 1,013 authored)."
+  - "If the ten-suite + audit.ts results captured in this handoff still look current (check mtimes/content of /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/473ea2a9-c6ea-45a7-bf37-e4e93af435cf/scratchpad/suites.log and suites3.log — NOTE this scratchpad is session-scoped and may not exist for a new session, in which case re-run the ten suites from scratch using the pattern in shapes-src/AUTHORING.md, remembering the port/argv split: fill/ribbon/shapes/forge/explode/shapelib/button on 8816, symbols on 8819, gallery/reject on 8817 with an ABSOLUTE workspace path as argv[2]), then per goal step 8: STOP, do not commit, do not push, REPORT batch 17 (and batch 16, still pending its own report) to Zee, and wait."
+  - "Not independently re-confirmed by this handoff: shape-audit.ts (the live-server duplicate/collision detector used in goal step 4, DISTINCT from audit.ts) was not found freshly logged for batch 17 in the scratchpad. The launching agent's note states batch 17 is 'complete through step 6,' which implies step 4 already passed, but verify this before treating batch 17 as fully clean for commit."
+  - "Only after Zee reviews and clears both batches: commit ONLY acos-logo-forge/app/shapes-src/batch16.ts, acos-logo-forge/app/shapes-src/batch17.ts, and acos-logo-forge/app/shapes.json. Do not stage any of the unrelated files listed under files_modified above."
+  - "Then batch 18: read shapes-src/AUTHORING.md first, NAME-CHECK BEFORE DRAWING (dump existing names per touched category, grep every candidate against the whole library) before authoring shapes-src/batch18.ts."
+  - "Recreate scratchpad/batch-sheet.ts (used to read shape names from the batch SOURCE rather than shapes.json's sorted order) if the scratchpad is gone — it is not committed anywhere."
+
+context_for_next_session: |
+  Ignore anything in this repo (ACOS 3.0) that looks like active work signals —
+  git status there shows only pre-existing, unrelated drift (autopilot scripts,
+  git-manager ids.json, html-to-pdf.js, a brandsync commands.jsonl) and there is
+  no in-progress ACOS planning-hierarchy slice/story/epic behind this handoff.
+  The real work is the ACOS Logo Forge shape library in the separate global repo
+  ~/.claude/skills, branch main, remote personal only — do not confuse it with
+  ACOS 3.0 and do not offer OKOA work, this project has nothing to do with OKOA.
+
+  The standing /goal (set by Zee, still active, reproduce verbatim when quoting
+  it) reads:
+
+    Grow the ACOS Logo Forge shape library. Repo ~/.claude/skills, branch main.
+    App ~/.claude/skills/acos-logo-forge/app. NOT the ACOS 3.0 repo, NOT OKOA work.
+    Now at 1,200 shapes: 264 base + 936 authored. Floor 2,500 authored (2,764 total).
+    Target 3,200+ total. Every shape authored from scratch. No third-party icon sets.
+    No variants of a shape already in the library.
+    Weight toward objects, technology, tools, buildings, transport, food, diagram
+    shapes, and chess pieces. Animals and nature stay stylised, capped at 300.
+    Batches of roughly 40. Follow shapes-src/AUTHORING.md exactly; read it first.
+    Per batch:
+    1. NAME-CHECK BEFORE DRAWING. Dump existing names for every category the batch
+       touches; grep each candidate against the whole library. Batch 15 lost 14 of 41
+       shapes to pictures already owned. Do this before drawing, not after rendering.
+    2. Author shapes-src/batchNN.ts from kit.ts primitives.
+    3. bun build-shapes.ts. Check the per-batch count against what you intended.
+    4. bun shape-audit.ts against a live server on 8816. 0 failures required.
+    5. RENDER THE BATCH AND LOOK AT IT. Take names from the batch SOURCE — the build
+       sorts, so the last N records are not the batch you wrote. Judge each shape
+       against its own name AND against what it could be mistaken for.
+    6. Redraw or cut whatever failed step 5, cause written beside it. A redraw is done
+       only when the NEW render has been looked at. Prefer cutting to forcing.
+    7. All ten suites exit 0 — exit code, never the printed tally — plus audit.ts
+       0 findings. Ports and arguments are in AUTHORING.md.
+    8. STOP THERE. Do not commit. Do not push. Report the batch and wait.
+    Never touch the live server on 8815 — run lsof first.
+    Record what you did not fix rather than shipping it quietly as fine.
+    Stop and report if one shape fails three redraws, or if a batch loses more than a
+    third of its shapes to duplicates.
+
+  IMPORTANT: the count inside that goal text ("1,200 shapes: 264 base + 936
+  authored") is stale BY DESIGN — it is a snapshot from when Zee set the goal,
+  not a live figure. The TRUE current count, independently verified during this
+  handoff, is 1,277 total (264 base + 1,013 authored). Always recompute the true
+  count from shapes.json rather than trusting either the goal text or any prior
+  resume note — three prior resume notes already got this wrong (one claimed
+  698/batch-04-next when the repo held 990; a later one repeated a stale claim
+  when the repo held 1,070; a same-day handoff at 00:33 today said 1,159 at
+  HEAD 59f147b, which was correct for that moment but is now two commits and
+  118 shapes behind).
+
+  Where things actually stand: HEAD is 900a7b6 ("docs(logo-forge): write down
+  how to run step 4 and step 6"), with 9e77072 (batch 15) and 59f147b (batch 14)
+  behind it — all pushed. Batches 16 and 17 exist only as uncommitted files
+  (shapes-src/batch16.ts, shapes-src/batch17.ts, and a rebuilt shapes.json) by
+  design, because goal step 8 says stop and report before committing. As of
+  THIS handoff's own verification (not carried over from any prior note), the
+  full ten-suite pass plus audit.ts for the CURRENT uncommitted state (batches
+  16+17 folded into shapes.json) came back completely clean: 420/420 assertions
+  across fill(27) ribbon(192) shapes(28) forge(19) explode(12) shapelib(25)
+  button(37) symbols(25) gallery(38) reject(17), all EXIT 0, and audit.ts found
+  0 findings. This test run was STILL IN PROGRESS in the background when the
+  launching agent fired this handoff (that is why the handoff instructions said
+  to check suites.log/suites3.log first) — it finished cleanly while this
+  handoff agent was gathering state, so the "waiting on background tests" phase
+  is now over. The one thing this handoff could NOT independently confirm is a
+  fresh run of shape-audit.ts (goal step 4's live-duplicate detector, distinct
+  from audit.ts) specifically against the batch-17 state — the launching
+  agent's note describes batch 17 as "complete through step 6," which implies
+  step 4 already ran and passed, but no matching log for it was found in the
+  session-scoped scratchpad during this handoff's search.
+
+  The correct next move is therefore NOT to relaunch the test suites (they just
+  passed) and NOT to start batch 18. It is to: (1) re-verify the git/count
+  facts above have not drifted further, (2) sanity-check the test results are
+  still trustworthy (or re-run if the scratchpad evaporated), (3) follow goal
+  step 8 literally — report batches 16 and 17 to Zee and WAIT, rather than
+  committing or pushing unprompted, since nothing in the goal or this handoff
+  authorizes committing on its own. Only after Zee clears the batches should
+  anything be staged, and only the three logo-forge files named above — the
+  same ~/.claude/skills repo also carries unrelated uncommitted work
+  (acos-create-skill, acos-okoa-works, and three untracked skill folders:
+  acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/) that
+  must never be swept in with a broad `git add`.
+
+  Durable lessons (also written into shapes-src/AUTHORING.md — read that file
+  rather than relying on memory of this list, but it is repeated here in case
+  the file is not read): use EXIT CODE never the printed tally, since a suite
+  that dies mid-run still prints a plausible "N/N passed"; the ten suites do
+  NOT share a port/argv contract (7 of them on 8816, symbols on 8819, gallery
+  and reject on 8817 with an ABSOLUTE workspace path as argv[2] because they
+  run after cd-ing into the app dir); six suites (fill, ribbon, shapes, forge,
+  gallery, reject) are not idempotent and need a fresh copy of
+  "ACOS 3.0/Logo Builder/brandsync" per run; shapes.json is a build artifact,
+  never hand-edited; build-shapes.ts SORTS the library so "the last N records"
+  is never the batch just written — read names from the batch source file
+  instead (scratchpad/batch-sheet.ts does this); C() and E() in kit.ts wind
+  anticlockwise while R()/P()/NGON()/STAR()/TRAP()/WEDGE()/ARCBAND() wind
+  clockwise, and overlapping opposite windings silently cancel under nonzero
+  fill (build every shape from one winding-consistent column, or from parts
+  that only touch, not overlap; avoid L()/PL()); two crossing bars inside an
+  evenodd shape punch each other back out (use one non-self-overlapping
+  polygon instead); a redraw is not done until the NEW render has actually
+  been looked at; redrawing fixes a FAULT, not a collision — if a shape reads
+  as another already-named shape, cut it, do not keep redrawing it; count
+  FORMS not names while drafting a batch, since near-identical silhouettes
+  (domes, triangular piles, gun outlines) can collide with each other inside
+  the same batch even when none of the names look alike; a hastily-drawn
+  replacement is still an unreviewed shape and must pass its own first sheet
+  like anything else; Callouts, bar-style Charts, and ring-with-marks Bakery
+  shapes are SATURATED — no more members; shape-audit.ts only catches
+  IDENTICAL twins, not merely confusable ones, and its 3 standing warnings
+  (rectangle~round corner, round corner~round top at 98.8%, zoom in~zoom out
+  at 99.0%) are pre-existing and already accepted, not new findings to chase.
+  Also: an autopilot goal referencing "R2P EPIC-001" belongs to a different,
+  concurrent session and is not this project; and Eden Protocol Level 3 is
+  active, so chat replies to Zee should stay in plain middle-school language
+  with every number kept verbatim and every caveat kept.
+
+reconstruction_sources:
+  - "git -C ~/.claude/skills log --oneline -3"
+  - "git -C ~/.claude/skills status --short acos-logo-forge/ (and unscoped, full repo)"
+  - "git -C ~/.claude/skills log -1 --stat HEAD -- acos-logo-forge/ (full 900a7b6 commit message)"
+  - "bun -e 'console.log(JSON.parse(require(\"fs\").readFileSync(...,\"shapes.json\")).length)' -> 1277"
+  - "~/.claude/skills/acos-logo-forge/app/shapes-src/batch16.ts (header comment: name-check narrative, collisions found)"
+  - "~/.claude/skills/acos-logo-forge/app/shapes-src/batch17.ts (existence/untracked status; content not fully read)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/473ea2a9-c6ea-45a7-bf37-e4e93af435cf/scratchpad/suites.log (full contents: fill/ribbon/shapes/forge/explode/shapelib/button/audit.ts, all EXIT 0)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/473ea2a9-c6ea-45a7-bf37-e4e93af435cf/scratchpad/suites3.log (full contents: symbols/gallery/reject, all EXIT 0)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/473ea2a9-c6ea-45a7-bf37-e4e93af435cf/scratchpad/run-suites.sh and run-three.sh (script bodies, to understand the port/workspace contract)"
+  - "ls of scratchpad directory (render PNGs b16*/b17*, batch-sheet.ts, commitmsg.txt confirming step 5/6 evidence exists)"
+  - "ps aux (confirmed run-suites.sh/run-three.sh chain was live mid-gather, then confirmed it exited cleanly with no stray test-server or runner processes afterward)"
+  - "lsof -i :8815, :8816, :8817, :8819 (confirmed Zee's live server PID 43272 on 8815 untouched; ephemeral test servers cleaned up)"
+  - "memory/handoffs/2026-08-08-emergency-handoff.yaml (prior same-day handoff, written ~00:33 after batch 14 at HEAD 59f147b/1159 shapes — read to cross-check and confirm this handoff supersedes it with two more commits' worth of state)"
+  - "git status --short and git log --oneline -20 in ACOS 3.0 repo (confirmed unrelated pre-existing drift there, no active planning-hierarchy work in progress)"
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ in ACOS 3.0 repo (no today's-date artifacts relevant to the active work; last decision file dated 2026-07-05)"
+  - "Launching agent's task instructions (this handoff's own prompt) — source of the verbatim standing /goal text and the immediate-next-step pointer to suites.log/suites3.log; no separately persisted goal-state file was found on disk during this handoff to independently corroborate the goal text, so it is trusted as given"

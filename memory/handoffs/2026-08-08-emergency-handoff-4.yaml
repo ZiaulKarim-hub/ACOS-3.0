@@ -1,0 +1,157 @@
+timestamp: "2026-08-08T23:57:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "5ea55afd-5517-4ff4-afc2-36a6be55bd6e"
+estimated_tokens: 0
+
+session_summary: |
+  Parent session is the R2P (Research-to-Portfolio Platform) EPIC-001 build
+  orchestrator, running the eternity-protocol save/clear cycle repeatedly
+  throughout 2026-08-08 in a SEPARATE, local-only git repo at
+  "/Users/zee/Documents/Vibe Coding/R2P" (no remote — NEVER push). It runs the
+  ACOS DEV/QA/holdout pair lifecycle (TDD build -> adversarial QA -> withheld
+  holdout -> seal) across 24 planned pairs spanning 8 stories under EPIC-001.
+  Pairs 1-6 of 24 are SEALED on disk (stories 1 and 2 of 8 fully closed,
+  confirmed via `git log` and every DEV-001-00{1,2}-0{1,2,3}.yaml status field).
+  Pair 7 (DEV-001-003-01 "Capital budgets", first slice of STORY-001-003) was
+  spawned as a background Task agent shortly after the pair-6 seal commit and,
+  as of this handoff's own disk check, has produced NO commits, NO
+  planning/evidence/EVB-PAIR-001-003-01 or EVB-HLD-001-003-01-v1 directories, and
+  no change to DEV-001-003-01.yaml (still version 1, status draft) — but its
+  subagent transcript file was touched ~4 minutes before this handoff was
+  written, so it is very likely still running, not crashed or abandoned.
+
+current_work:
+  epic_id: "EPIC-001"
+  story_id: "STORY-001-003"
+  slice_id: "DEV-001-003-01 / QA-001-003-01"
+  status: "in_progress"
+
+completed_this_session:
+  - "Pair 6 (DEV-001-002-03 / QA-001-002-03, STORY-001-002) sealed at commit 2bae322 in R2P — 'seal(pair): DEV/QA-001-002-03 closed — EVB-PAIR + EVB-HLD sealed after holdout run 2 (9/9)'. Verified first-hand via `git log` and both slice YAMLs' status fields."
+  - "Prior to that seal: holdout HLD-001-002-03-v1 run 2 returned 9/9 at commit 65203d5 (candidate 55771e5), QA re-verification #2 PASS sustained at commit 72d0099 (130/130 own suite + 1278/1278 full suite), and revision-3 mutation gate returned aggregate material score 81.48 (>= 70 threshold) — approval-envelope.ts 75.48, contingent-plan-checksum.ts 78.69, contingent-plan.ts 86.21, trigger-grammar.ts 61.41 (untouched by revision 3, still sub-70 in isolation, disclosed as a known/accepted 'sheer size' characterization, not a new gap)."
+  - "All 4 project gates (qa:evidence, qa:parity, validate-planning-yaml, full test suite) confirmed exit 0 immediately before the pair-6 seal commit."
+  - "Pair-7 builder (background Task agent, agentId adcc6aadd43d984de) spawned for DEV-001-003-01 'Capital budgets' — STORY-001-003's first slice, the sleeve capital-budget allocation engine (PRD §10.1, PORT-004, Appendix B). Confirmed only as SPAWNED — no committed output yet as of this handoff."
+  - "Two separate emergency-handoff writes were triggered this session via the eternity-protocol save/clear cycle around the pair-6 seal and again after the pair-7 spawn (this document is the second)."
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-002-03.yaml"
+    changes: "status changed from 'implemented' to 'closed' by the session orchestrator (2026-08-08T23:50:32Z), citing holdout run 2 9/9, QA re-verification #2 PASS, mutation gate 81.48, EVB-PAIR-001-002-03 sealed."
+  - path: "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-002-03.yaml"
+    changes: "status changed from 'passed' to 'closed', same seal event."
+  - path: "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-002-03/manifest.yaml"
+    changes: "sealed as part of the pair-6 close commit 2bae322."
+  - path: "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-HLD-001-002-03-v1/manifest.yaml"
+    changes: "status changed from 'collecting' to 'sealed'; a `seal:` block (sealed_at, bundle_sha256) appended via a heredoc append (not Edit) as part of the same commit."
+  - path: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-08-emergency-handoff-4.yaml"
+    changes: "this handoff document (written by this handoff-agent run, in the ACOS 3.0 repo — the session's own tool/framework home, NOT the R2P project repo being built)."
+
+decisions_made:
+  - "No new memory/decisions/ entries in the ACOS 3.0 repo today from this session (checked memory/decisions/, nothing dated today attributable to this session)."
+  - "In the R2P repo's own planning/decisions/, ADR-001 through ADR-005 all remain status: proposed — 'ratification reserved for the human owner at epic close.' None were ratified this session; ADR-005 (formalizing DEV-001-002-03 revision-3's tier-cooldown-requiredness fix, the asOf-relative approval-envelope expiry check, and the requiredApprovalPolicy checksum-payload field) was authored earlier this session as part of pair-6's fix cycle, prior to the seal captured above."
+
+blockers:
+  - "None hard-blocking. Pair 7 (DEV-001-003-01) is mid-build with no verifiable progress artifacts yet — next session must check disk first (git log in R2P, EVB-PAIR-001-003-01/, DEV-001-003-01.yaml version bump) before assuming it crashed; only respawn if genuinely absent AND no fresh partial files, since background agents in this project have survived /clear repeatedly before."
+  - "6 holdout findings across pairs 3-6 (STORY-001-001 and STORY-001-002) remain dispositioned but marked pending_human_review, owner Ben, to be ratified at epic close — not a build blocker, but an outstanding human-review queue item."
+  - "trigger-grammar.ts carries a persistent, disclosed sub-70 mutation score (61.41 as of pair-6) — accepted as a known 'file size relative to necessarily-bounded test count' characterization across multiple pairs, not treated as a fix-now defect, but flagged for epic-close awareness."
+  - "QA-001-002-03's own re-verification #2 disclosed two harmless, no-op `python3 --version` invocations during that pass (habitual leftover checks, zero file impact) — technically a letter-of-the-rule violation of this project's ZERO-python3 rule even though `pnpm run check`'s forbidden-language scan still passed; this is one entry in a broader running disclosure queue the orchestrator brief describes as count 10 across the session (not independently re-tallied by this handoff agent)."
+  - "'/goal' autopilot watchdog is confirmed ABSENT in R2P's .acos/state/ (no autopilot-goal* file) — it is session-scoped, not persistent, so the next session should re-arm it with /goal if wanted."
+
+next_actions:
+  - "CHECK DISK FIRST in R2P before doing anything else: `git log --oneline -5`, `ls planning/evidence/EVB-PAIR-001-003-01/`, and `cat planning/slices/dev/DEV-001-003-01.yaml` (look for version bumped past 1 and status past draft). As of this handoff, all three still show no progress (clean git status, no evidence dir, version 1/draft) but the pair-7 builder's subagent transcript was touched ~4 minutes before this handoff was written, so it is likely still mid-run, not dead."
+  - "If pair-7 builder is confirmed genuinely absent (no process, no fresh partial files) and NOT merely slow, respawn it using the same brief: DEV-001-003-01 'Capital budgets', expected commit message EXACTLY 'feat(core): DEV-001-003-01 — hard sleeve capital budgets + constraint-first scarce-capital allocation [TDD]', suite baseline 1278 (the count at pair-6's seal)."
+  - "Once DEV-001-003-01 lands: spawn QA-001-003-01 adversarial pass (independent agent/context, per this Story's own established parity-and-independence pattern from pairs 1-6)."
+  - "Then holdout HLD-001-003-01-v1 (uses planning/holdouts/HASHING.md audit baselines, per the existing holdout-manifest convention) -> seal pair 7 -> proceed to pairs 8-9 (remaining STORY-001-003 slices DEV-001-003-02, DEV-001-003-03) -> then stories 004 through 008."
+  - "At epic close: surface the full ratification queue to Zee — ADR-001 through ADR-005 (all proposed), the pending_human_review holdout findings across pairs 3-6 (pair-3 F01/F02, pair-4 F01/F02/F03, pair-5 F01/F02, pair-6 F01/F02), the python3 no-op-invocation disclosure queue, the trigger-grammar.ts sub-70 mutation disclosure, the asOf forward-looking orchestrator note (QA-001-002-03's own disclosed observation that a future real caller of makeApprovalEnvelope must actually supply asOf — no such caller exists yet), and the UNRESOLVED private_pack_sha256 / pre-audit-window gap noted in planning/holdouts/HASHING.md and multiple holdout manifests."
+  - "Re-arm the /goal autopilot watchdog for the R2P session if continuous unattended operation toward docs/PRD_v0.4.txt end-state is wanted — it does not persist across sessions."
+
+context_for_next_session: |
+  This handoff agent's primary source was the invoking session's OWN transcript
+  (SESSION_ID 5ea55afd-5517-4ff4-afc2-36a6be55bd6e), which was supplied directly
+  and read first, then every claim in it was independently re-verified against
+  live disk state in the R2P repo (a separate local-only git repo at
+  "/Users/zee/Documents/Vibe Coding/R2P", NOT this ACOS 3.0 repo) — this is a
+  high-confidence reconstruction, not an inferred one.
+
+  The actual project being built is R2P — a Research-to-Portfolio platform
+  under EPIC-001, following a strict ACOS-style pair lifecycle: a fresh-context
+  TDD implementation agent (DEV) builds a slice, an independent adversarial QA
+  agent tries to break it, a withheld holdout pack (never seen by DEV or QA)
+  runs against the frozen candidate, and only after the holdout run and QA both
+  pass does the session orchestrator itself seal the pair — DEV/QA agents never
+  self-approve (AP-07 in this project's own conventions). Confirmed via
+  `git log --oneline -30` in R2P: 6 of 24 pairs are sealed (DEV/QA-001-001-01,
+  -02, -03, and DEV/QA-001-002-01, -02, -03), each following the same pattern —
+  feat commit -> QA BLOCK -> fix revision(s) -> QA PASS -> holdout run 1
+  (typically finds 1-3 MEDIUM findings) -> fix revision responding to findings
+  -> QA re-verification PASS sustained -> holdout run 2 (typically 9/9) ->
+  mutation gate (>=70 material score) -> seal commit. This is a slow, evidence-
+  heavy, adversarial-trust build process, not a normal feature-development loop
+  — the next session should expect and preserve this rigor, not shortcut it.
+
+  Pair 7, DEV-001-003-01 "Capital budgets," is the first slice of STORY-001-003
+  (Fund/sleeve allocation) and implements hard sleeve capital budgets applied
+  BEFORE any priority-weighted allocation of remaining scarce capital (PRD
+  §10.1 step 2, PORT-004, worked example fixtures in PRD Appendix B). Its task
+  spec lives at
+  R2P/planning/preeng/001-research-to-portfolio-platform/tasks/DEV-001-003-01.md
+  and its slice artifact at R2P/planning/slices/dev/DEV-001-003-01.yaml (still
+  version 1 / status draft as of this handoff — the builder agent had not yet
+  written anything to disk). The pre-existing scaffold file
+  R2P/packages/core/allocation/index.ts is an untouched placeholder from an
+  earlier toolchain commit (825531e), not pair-7's own output. The builder's
+  own background subagent transcript file
+  (~/.claude/projects/.../agent-adcc6aadd43d984de.jsonl, reached via the
+  symlink .../tasks/adcc6aadd43d984de.output) had an mtime only ~4 minutes
+  before this handoff was written, which is the strongest available signal
+  that it is still actively running rather than crashed — the next session
+  should treat "no commit yet" as "probably still working," not "needs a
+  respawn," and re-check disk state again before concluding otherwise. Do NOT
+  duplicate its work by starting a second builder on the same slice while it
+  may still be alive.
+
+  Two important process disclosures surfaced during pair 6's QA re-verification
+  (in R2P/planning/slices/qa/QA-001-002-03.yaml): (1) an "asOf forward-looking"
+  observation — the new optional `asOf` parameter on makeApprovalEnvelope is
+  architecturally sound today (no real caller exists yet in this codebase, and
+  this project's own no-wall-clock-reads rule makes a mandatory parameter
+  impossible), but QA explicitly flagged that whichever future integration
+  becomes the real caller MUST actually supply a genuine asOf — this is
+  recorded as a non-blocking but real follow-up obligation for whoever builds
+  that future orchestrator; and (2) two harmless `python3 --version` no-op
+  invocations occurred during that QA pass despite this project's hard
+  ZERO-python3 rule — disclosed in full, zero code/file impact, but the
+  orchestrator brief that spawned this handoff describes a broader "python3
+  incident queue running count 10" across the whole session, which this
+  handoff agent did not independently re-tally to 10 (only directly confirmed
+  the pattern is real and disclosed, not the exact count).
+
+  R2P has NO remote (`git remote -v` returns empty) and must never be pushed.
+  Its own memory/handoffs/ directory exists (with an archive/ subfolder, unlike
+  ACOS 3.0's closed/ convention) and had no 2026-08-08-dated handoff before this
+  one, so this handoff was mirrored there as
+  R2P/memory/handoffs/2026-08-08-emergency-handoff.yaml per the orchestrator's
+  explicit instruction. ACOS 3.0's own working tree (this repo) has unrelated,
+  pre-existing modified/untracked files (autopilot scripts, git-manager ids.json,
+  html-to-pdf.js, Logo Builder commands.jsonl, and a large backlog of prior-date
+  emergency handoffs) that are NOT part of this session's own R2P build work —
+  they were not touched by this session and should not be attributed to it.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/5ea55afd-5517-4ff4-afc2-36a6be55bd6e.jsonl (invoking session's own transcript — read via tail -c 200000 and targeted python3 JSONL parsing of the final ~110 lines)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.git (git status --short, git log --oneline -30, git remote -v)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-003-01.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-003-01.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-002-03.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-002-03.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/*.yaml and planning/slices/qa/*.yaml (bulk status grep across all 24 dev slices + 8 stories + EPIC-001)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ADR-001.yaml through ADR-005.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-003-01/ (confirmed absent)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-HLD-001-003-01-v1/ (confirmed absent)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/packages/core/allocation/index.ts (pre-existing scaffold, unmodified)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/ (skipped-skills.txt, oracle-audit.log, agent-lifecycle.log — no autopilot-goal* file, confirming /goal watchdog is absent)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/memory/handoffs/ (directory listing, confirmed exists, no 2026-08-08 entry prior to this mirror)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/81621d8a-41ca-4aab-b9ca-aeffb42f629f/tasks/adcc6aadd43d984de.output (symlink target mtime check only, per instructions not to read subagent transcript content directly)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.git (git status --short, for contrast/attribution only)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (directory listing — confirmed several prior 2026-08-08 emergency handoffs already exist from earlier eternity-protocol cycles this same session)"

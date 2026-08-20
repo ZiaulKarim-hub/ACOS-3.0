@@ -1,0 +1,184 @@
+timestamp: "2026-08-18T08:03:20Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "ff036fd7-705d-49a8-b24b-771e9cb47513"
+estimated_tokens: 0
+
+session_summary: |
+  IMPORTANT PATH CAVEAT: this session's shell cwd is /Users/zee/Documents/Vibe
+  Coding/ACOS 3.0, but ALL substantive work happened in the SEPARATE repo
+  /Users/zee/Documents/Vibe Coding/FruitSync (Unity 6000.4.10f1 C# fruit-merge
+  game, remote = https://github.com/ZiaulKarim-hub/FruitSync.git — PERSONAL
+  account, never push to okoateam). The next session MUST cd into FruitSync
+  and use absolute paths under it; nothing meaningful for this thread lives
+  under ACOS 3.0 itself except this handoff file. This is an eternity-protocol
+  session that resumed from a 2026-08-06 emergency handoff and continued
+  working the same FruitSync project for the following 12 days without a hard
+  session boundary. In this final active stretch the session (1) built and
+  proved a working headless Unity phone-deploy pipeline after the Unity
+  licence went stale, (2) fixed a real gameplay bug where fiery fruits died
+  without being properly suffocated, and (3) implemented a new "burned" fruit
+  art look (variant 6) per the user's stated vision, built it to the phone,
+  and is now awaiting the user's verdict after they play it.
+
+current_work:
+  slice_id: "unknown — no ACOS planning/slice artifacts exist for this thread; it is a direct dev session on FruitSync, not orchestrated via ACOS planning hierarchy"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+completed_this_session:
+  - "Phone deploy pipeline fixed and proven working headless: Unity licence had gone stale after 12 days idle; user re-signed into Unity Hub to fix it."
+  - "New build method BuildAndroid.BuildDevApkSideBySide (FruitSync/Assets/Editor/BuildAndroid.cs, added 2026-08-18) builds build/FruitSync-devtest-side.apk under package id com.ziaulkarim.fruitsync.dev / product name 'FruitSync Dev', installing SIDE-BY-SIDE with the Play-store copy (which is Play-signed, so a direct adb install over it fails INSTALL_FAILED_UPDATE_INCOMPATIBLE) — this preserves the Play-copy's saves. Verified via: adb install -r build/FruitSync-devtest-side.apk (target device P21297001145) then `adb shell monkey -p com.ziaulkarim.fruitsync.dev -c android.intent.category.LAUNCHER 1`."
+  - "Added the 'L' on-screen cheat button (left edge) for level-skip during device testing. GameController.DevCheatsActive gate = ForceDevCheats(const false) || Debug.isDebugBuild || Application.identifier.EndsWith(\".dev\") — so a real store build can never show cheats. GameController.cs line ~977 wires KeyCode.L in editor; the on-device button calls DevCheat('L') at line ~1025, which drops the graduating watermelon pair for the current level (happy/angry/fiery/burned by level; level 5 only logs). Per user instruction on 2026-08-18, the A/F/N on-screen cheat buttons were removed from the HUD (their editor keyboard equivalents remain); only 'L' still shows on-screen."
+  - "Fixed the fiery-suffocation bug the user reported ('fiery fruits dying without getting suffocated after a few turns'). Two root causes plus a persistence fix, landed across FruitSync/Assets/Scripts/Core/Fruit/FierySuffocation.cs and NEW FruitSync/Assets/Scripts/Core/Fruit/SuffocationClock.cs: (1) ProcessSuffocation now snapshots ONLY settled fruit (IsSettledForLoss) so a fruit that is still falling/just-dropped no longer counts as a 'lid'; (2) FierySuffocation.IsOverhead now requires the blocking fruit to be within 1.5x the summed radii (new Tuning.SuffocationOverheadReachMul, default 1.5f) — a fruit far above is treated as open sky, not a lid; (3) NEW SuffocationClock class makes flame death require PERSISTENCE — a fiery fruit only chars after Tuning.SuffocationGraceTurns (default 2) CONSECUTIVE suffocated drop-checks, with the streak reset in ClearAllViews and NOT persisted across saves (deliberate: worst case grants one extra grace turn after a load, which favors the player over versioning the save format)."
+  - "Updated tests to match: FierySuffocationTests.cs (far-above test inverted to expect NOT suffocated; the Above() helper now places a real lid at 2R; added a new near-hover test) plus a brand-new SuffocationClockTests.cs (8 tests). Full FruitSync.Core.Tests suite verified GREEN: 213/213 passing (was 204 before this session's additions), confirmed via `dotnet test` with exit implied 0 (the 'Passed!' summary banner) — run from FruitSync/build/dotnet with DOTNET_ROOT=$HOME/.dotnet and PATH prepended, since dotnet is not on the default PATH."
+  - "Implemented burned-fruit art per explicit user rejection of all 6 original charcoal variants (0-5), which the user said lost the fruit's texture/pattern. User's exact stated vision (mid-session correction, quoted verbatim from the transcript): 'my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone.' Implemented as FruitArt.BurnedVariant = 6 (Assets/Scripts/Unity/FruitArt.cs line ~530, NOW THE DEFAULT), which: keeps the fiery molten hue, applies angry's exact darkening recipe (lerp toward black 0.20 + toward red 0.18), reuses angry-style core/edge/spec shading (case 6 in ApplyBurnedVariantPalette, line ~554), and draws the FIERY face (DrawFieryFace) rather than the old X-eyed 'burned' face. The old X-eye face and variants 0-5 remain reachable behind the BurnedVariant switch, not deleted."
+  - "Built two comparison images via NEW FruitSync/Assets/Editor/BurnedVariantCatalog.cs: playcheck/burned-variants.png (original 6 rejected variants, rows 0-5) and playcheck/burned-vision.png (fiery / burned-v6 / angry rows, generated after the user's correction). Both were opened for the user in Google Chrome via `open -a \"Google Chrome\"`. The user has SEEN burned-vision.png but has NOT yet given explicit verbal confirmation that variant 6 is correct — the session ended on 'awaiting verdict', not on approval."
+  - "Rebuilt and reinstalled the side-by-side dev APK with the variant-6 burned look and the suffocation fix baked in; it was launched on the phone (device P21297001145) as the very last action before this handoff was triggered."
+  - "Compile-verified the FruitArt.cs and BurnedVariantCatalog.cs edits via FruitSync/build/dotnet/unity-compile-check.sh, which reported 'OK (<player>)' and 'OK (UNITY_EDITOR)' before the final build."
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Editor/BuildAndroid.cs"
+    changes: "Modified (55 lines added). New BuildDevApkSideBySide() method (line ~124) added alongside existing Build()/BuildDevApk(); builds under com.ziaulkarim.fruitsync.dev so it installs alongside the Play-signed copy instead of conflicting with it."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/FierySuffocation.cs"
+    changes: "Untracked (new file this saga) or modified — IsOverhead now takes an overheadReachMul parameter (mirrors Tuning.SuffocationOverheadReachMul) so only fruit within 1.5x summed radii counts as a lid; far-above fruit no longer suffocates a flame."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/SuffocationClock.cs"
+    changes: "NEW FILE (untracked). Streak-based grace clock — a fiery fruit must be suffocated on Tuning.SuffocationGraceTurns (default 2) CONSECUTIVE checks before it chars. Pure C#, no UnityEngine dependency, so it is covered by the .NET mirror test suite."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/SuffocationClockTests.cs"
+    changes: "NEW FILE (untracked). 8 tests for the new grace-clock persistence behavior."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/FierySuffocationTests.cs"
+    changes: "NEW/updated (untracked) — far-above test inverted to expect NOT-suffocated; Above() helper repositioned to be a real lid at 2R; new near-hover suffocation test added."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/FruitArt.cs"
+    changes: "Modified, +294 lines net. Added BurnedVariant switch (default 6), ApplyBurnedVariantPalette (angry-style darkening for variant 6), DrawBurnedVariantOverlay, and wiring so variant 6 draws DrawFieryFace instead of the old X-eyed burned face. Variants 0-5 and the old face kept behind the switch, not removed."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Editor/BurnedVariantCatalog.cs"
+    changes: "NEW FILE (untracked). Editor tool that renders comparison sheets: Generate() -> playcheck/burned-variants.png (rows 0-5), plus a second 'user's-vision check' render -> playcheck/burned-vision.png (fiery / burned-v6 / angry rows). Includes a tiny bitmap-font digit-labeler for row numbers."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/GameController.cs"
+    changes: "Modified, +507 lines net (this is the largest single diff and spans multiple sub-features from the whole multi-day saga, not just today). Confirmed today's specific additions: ForceDevCheats const (line 951), DevCheatsActive gate (958-959), KeyCode.L wiring (977), case 'L' level-skip handler (1025). A/F/N on-screen cheat buttons were removed from the HUD per user request; their GameController hookups for editor keyboard keys remain."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/HudView.cs"
+    changes: "Modified, +727 lines net (largest diff; spans the whole multi-day saga — Level Guide panel, dev readout, blast gizmo, sell desk UI, burned phase, cheat buttons, RTL Arabic layout work). Contains the documented-but-unfixed Arabic level_next_4 rendering bug at ApplyGuideParagraph (line ~3798, comment at ~3811)."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/Loc.cs"
+    changes: "Modified, +197 lines — Level Guide localization strings (31 entries per the 2026-08-06 handoff) including the Arabic level_next_4 entry with the problematic second paragraph."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Economy/CoinCurve.cs"
+    changes: "Modified (economy retune, part of the broader multi-day saga, not today's specific fixes)."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/MergeResolver.cs"
+    changes: "Modified, 91 lines changed — part of the broader multi-day saga."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Scoring/ScoreCurve.cs"
+    changes: "Modified — part of the broader multi-day saga (scoring/economy retune)."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/SaveSystem.cs"
+    changes: "Modified, +25 lines — part of the broader multi-day saga."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/StatsSystem.cs"
+    changes: "Modified, +81/-? lines — part of the broader multi-day saga."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Config/ (directory, untracked)"
+    changes: "NEW — Tuning.cs lives here (SuffocationGraceTurns, SuffocationOverheadReachMul added this session at lines 175/183, defaults set at 259-260)."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Economy/SellDesk.cs"
+    changes: "NEW FILE (untracked) — sell-desk economy feature from the broader saga (per 2026-08-06 handoff)."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Lifecycle/LevelGuide.cs"
+    changes: "NEW FILE (untracked) — Level Guide feature (C-083) from the broader saga."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/unity-compile-check.sh"
+    changes: "NEW FILE (untracked) — headless Unity compile-check script, run from build/dotnet, compiles the Unity script tree against real UnityEngine assemblies in ~1s."
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/FruitSync-devtest-side.apk"
+    changes: "Build artifact, NOT in git (28,026,534 bytes as of 2026-08-18T01:59). This is the currently-installed-on-phone build, containing the burned-variant-6 art and the suffocation fix. Rebuilding will overwrite it — if the user's phone-side verdict on variant 6 is negative, this exact binary is the one they tested."
+
+decisions_made: []
+
+candidate_learnings:
+  - "FruitSync (Unity 6 C# fruit-merge game) is a SEPARATE git repo at /Users/zee/Documents/Vibe Coding/FruitSync from ACOS 3.0, with its own remote (https://github.com/ZiaulKarim-hub/FruitSync.git, personal account). A Claude Code session whose shell cwd is ACOS 3.0 can still be doing 100% of its real work in FruitSync via absolute paths — always check which repo a session's edits actually landed in, not just the shell's cwd, before writing a handoff. (evidence: this entire session's git diff/status is empty in ACOS 3.0 for FruitSync-related work, and entirely present under FruitSync's git status.)"
+  - "The Unity editor license on this machine goes stale after long idle periods (observed: ~12 days) and silently breaks headless batchmode builds; the fix is simply having the user sign back into Unity Hub interactively — there is no known CLI-only recovery. (evidence: session summary provided by the invoking agent, corroborated by the fact that a build pipeline that had been failing then started succeeding mid-session.)"
+  - "dotnet is not on this machine's default PATH; FruitSync's .NET test mirror must be run with `export DOTNET_ROOT=$HOME/.dotnet && export PATH=$HOME/.dotnet:$PATH`, from the build/dotnet directory. (evidence: repeatedly used exact command in this session's Bash tool_use calls, e.g. 07:44:41Z and 07:57:59Z.)"
+  - "adb installing a side-by-side dev-signed APK over a Play-store-signed install of the same app fails with INSTALL_FAILED_UPDATE_INCOMPATIBLE; the working pattern for keeping Play-copy saves intact while device-testing is a distinct package id (here com.ziaulkarim.fruitsync.dev) built by a dedicated BuildDevApkSideBySide() method, installed with `adb install -r`. (evidence: BuildAndroid.cs comment at line ~113-124 and the CRITICAL CONTEXT the invoking session supplied.)"
+  - "This user (Zee) mid-session art-direction correction pattern: when shown AI-drawn options he rejects, he will restate his actual vision in plain language rather than pick a number — treat a rejection of all N options as a signal to re-derive intent from his restated description, not to re-offer variants of the same options. (evidence: rejected all 6 burned-variant options, then stated 'my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone' — a single new spec, not a pick from the menu.)"
+
+blockers:
+  - "User has not yet confirmed the burned-variant-6 art look on the actual phone screen (only confirmed via Chrome comparison image + the session's own read of it). If the user rejects it after playing, FruitArt.BurnedVariant would need a different value or a new hand-tuned palette."
+  - "Known, documented, NOT YET FIXED: Arabic level_next_4 Level Guide entry — its second paragraph never renders. Root-caused (not just observed) to HudView.ApplyGuideParagraph (FruitSync/Assets/Scripts/Unity/HudView.cs, comment starting line ~3811): 'the only guide string with a SECOND paragraph — everything after [it] ...' — the wrap logic inside ShapeBlock stops firing once paragraphs merge, even though ShapeBlock's own output is correct. This means Arabic-locale players miss the suffocation-shortcut tip specifically on level_next_4. Fix is scoped/localized but not yet applied."
+  - "The entire FruitSync working tree is uncommitted: 40 files (16 modified, 24 untracked incl. .meta files) sitting on branch main with nothing staged. This spans BOTH today's suffocation/art work AND the prior (2026-08-06) session's Level Guide/economy/sell-desk work — none of it has ever been committed. Needs a commit (and per standing rule, push only to the PERSONAL github.com/ZiaulKarim-hub remote, never okoateam) before it is safe against loss."
+  - "Left-side cushion visual issue (mentioned in the invoking session's context) still needs a user repro — no file/line was identified for it in this session's own transcript tail, so it may be leftover from an earlier day in this same eternity saga."
+  - "Autopilot stale-marker fix (move foreign .compact-fired-* markers to consumed/) is still awaiting a user go-ahead per the invoking session's notes; not something touched in this session's own final stretch."
+
+next_actions:
+  - "Get the user's phone-side verdict on the new burned look (FruitArt.BurnedVariant = 6) — the currently installed build (build/FruitSync-devtest-side.apk, com.ziaulkarim.fruitsync.dev) already has it live, so this just needs the user to play and report back."
+  - "Get the user's verdict on the suffocation fix in real play: fiery fruits should stay lit in an open pile, survive a fruit being dropped nearby, but still die if deliberately walled in with a lid fruit for 2 consecutive drop-checks (Tuning.SuffocationGraceTurns)."
+  - "Once both are confirmed good, commit the entire FruitSync working tree (branch main) with an appropriately scoped message, and push to the PERSONAL remote only (https://github.com/ZiaulKarim-hub/FruitSync.git) — per the standing CLAUDE.md rule this is the default destination and does not need to be re-asked."
+  - "Fix the Arabic level_next_4 second-paragraph rendering bug in HudView.ApplyGuideParagraph once the above is settled — root cause is already localized (see blockers)."
+  - "Confirm the Level Guide panel (tap the evolution ring), sell-desk buttons, and dev readout/blast gizmo from the prior (2026-08-06) session's work are all still behaving correctly on-device, since none of that has been re-verified in this session's own transcript tail."
+  - "If BurnedVariant needs a different final value than 6, re-run FruitSync/build/dotnet/unity-compile-check.sh, then rebuild via BuildAndroid.BuildDevApkSideBySide via the Unity batchmode command pattern already proven this session, then adb install -r + monkey launch."
+
+context_for_next_session: |
+  Start by `cd`-ing into /Users/zee/Documents/Vibe Coding/FruitSync — this handoff
+  lives in the ACOS 3.0 repo (memory/handoffs/) purely because that is where the
+  handoff tooling is installed; none of the actual game work is there. FruitSync
+  is a Unity 6000.4.10f1 C# fruit-merge mobile game, its own git repo on branch
+  main, remote https://github.com/ZiaulKarim-hub/FruitSync.git (PERSONAL account
+  — never push to okoateam).
+
+  This is a long-running eternity-protocol session (transcript spans 2026-08-06
+  through 2026-08-18 without a hard boundary) that has been iterating on FruitSync
+  the whole time. In its final stretch (today, 2026-08-18) it did three concrete
+  things, all verified working: (1) restored the headless Unity batchmode build
+  pipeline after a stale Unity Hub license blocked it (user re-signed into Unity
+  Hub to fix — no CLI-only fix is known), and added a new
+  BuildAndroid.BuildDevApkSideBySide() build method that installs a dev-signed
+  APK (package com.ziaulkarim.fruitsync.dev) alongside the Play-signed production
+  install rather than conflicting with it (INSTALL_FAILED_UPDATE_INCOMPATIBLE was
+  the failure mode being worked around); (2) fixed a real gameplay bug — fiery
+  fruits suffocating and dying incorrectly — via three changes: only settled
+  fruit counts as a suffocation 'lid' (a falling/just-dropped fruit no longer
+  counts), overhead reach is now capped at 1.5x summed radii (far-away fruit is
+  open sky), and death now requires 2 CONSECUTIVE suffocated checks via a new
+  SuffocationClock class rather than a single unlucky snapshot; the full
+  FruitSync.Core.Tests suite is green at 213/213 (dotnet test, run from
+  build/dotnet with DOTNET_ROOT/PATH set to $HOME/.dotnet); (3) implemented a new
+  'burned' fruit look (FruitArt.BurnedVariant, now defaulted to 6) after the user
+  rejected six AI-proposed charcoal variants and instead described his own vision
+  in plain language — darken the fiery fruit's body the way angry fruits are
+  darkened, keep the fiery face, remove the flame — which is exactly what variant
+  6 implements (angry's darkening recipe + angry's shading + DrawFieryFace). Two
+  comparison PNGs were generated via a new Assets/Editor/BurnedVariantCatalog.cs
+  and shown to the user in Chrome; the LATEST build (variant 6 + the suffocation
+  fix) was installed and launched on the user's phone (device P21297001145) as
+  the final action of this session, but the user had not yet given an explicit
+  verbal thumbs-up on the new look before the handoff fired — that is the single
+  most important open question for the next session to resolve first.
+
+  The whole FruitSync working tree is uncommitted (40 files: 16 modified, 24
+  untracked including Unity .meta files) — this spans not just today's work but
+  the entire prior 2026-08-06 session's Level Guide (LevelGuide.cs / HudView.cs
+  panel / 31 new Loc.cs entries), sell-desk economy feature, dev readout, blast
+  gizmo, and economy retune, none of which has ever been committed. Do not treat
+  a clean `git log` as evidence nothing happened — check `git status --short`
+  first. A known, root-caused-but-unfixed bug remains: the Arabic level_next_4
+  Level Guide entry's second paragraph never renders, traced to
+  HudView.ApplyGuideParagraph's wrap logic inside ShapeBlock not re-firing once
+  paragraphs merge (comment already in the file at ~line 3811 documents this
+  precisely) — low priority relative to getting user sign-off and committing, but
+  a real correctness gap for Arabic-locale players. There is also an 'A/F/N
+  cheat buttons removed from the HUD, only L (level-skip) remains on-screen'
+  detail worth knowing if the phone UI looks different than expected — those
+  removals were explicit user instructions this session, not a regression.
+
+  A structural caveat for whoever picks this up: this repo (ACOS 3.0) is
+  routinely worked on by multiple concurrent Claude Code sessions/windows at
+  once. Several other 2026-08-18 handoff files exist in memory/handoffs/
+  (session_ids d72f5b72-... and b26287de-...) that are UNRELATED to this
+  FruitSync work — do not conflate them. This handoff was reconstructed by
+  reading this session's OWN transcript (SESSION_ID ff036fd7-705d-49a8-b24b-
+  771e9cb47513) directly, which is the one signal that is unambiguously scoped
+  to this session rather than a sibling one.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/ff036fd7-705d-49a8-b24b-771e9cb47513.jsonl (this session's own transcript — final ~150 structured turns from 2026-08-18T07:44Z to 08:01Z, extracted via jq into /private/tmp/.../scratchpad/transcript_tail150.txt)"
+  - "Invoking agent's CRITICAL CONTEXT block in this handoff-agent's own prompt (2026-08-18 session summary, open items, build-env facts)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync — git status --short, git log --oneline -15, git diff --stat HEAD (repo state: 40 uncommitted files, branch main, remote https://github.com/ZiaulKarim-hub/FruitSync.git)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Editor/BuildAndroid.cs (BuildDevApkSideBySide method, package id, line numbers)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/GameController.cs (DevCheatsActive gate, case 'L' handler, line numbers)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/SuffocationClock.cs (full doc comment read)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/FierySuffocation.cs and Assets/Scripts/Core/Config/Tuning.cs (IsOverhead, SuffocationOverheadReachMul, SuffocationGraceTurns — grep + line numbers)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/FruitArt.cs (BurnedVariant switch, case 6, default value, line numbers)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/HudView.cs (ApplyGuideParagraph / level_next_4 bug comment, line numbers)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet — `dotnet test FruitSync.Core.Tests/FruitSync.Core.Tests.csproj` run live during this reconstruction: 213/213 passing"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/build/FruitSync-devtest-side.apk (ls -la — confirms the build artifact exists, 28,026,534 bytes, timestamped 2026-08-18T01:59)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-06-emergency-handoff.yaml (and siblings -2 through -5) — confirms this session's eternity-protocol lineage traces back to 2026-08-06 FruitSync work"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0 — git status --short (confirmed this repo's own working-tree changes are UNRELATED to this session's FruitSync work — other concurrent sessions' edits)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ directory listing (confirmed 2026-08-18-emergency-handoff.yaml, -3.yaml, autocompact-handoff*.yaml belong to different session_ids d72f5b72-... and b26287de-..., i.e. sibling concurrent sessions, not this one)"

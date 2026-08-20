@@ -1,0 +1,123 @@
+timestamp: "2026-08-11T05:40:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-eternity-protocol (handoff written by the MAIN session, not handoff-agent — see caveat below)"
+session_id: "b26287de-bfbc-42ca-b4fe-ca61570d277e"
+estimated_tokens: 437832
+
+handoff_provenance_caveat: |
+  READ THIS FIRST. This file was NOT written by handoff-agent. The agent
+  (acd8324446569b5d7) wrote its 496-byte STUB and then stalled — 667 seconds
+  with no transcript write at 745KB — and never enriched it. The stub said
+  "STUB — enrichment in progress. If this text survives, the handoff agent was
+  cut off before finishing".
+
+  That stub would have PASSED the eternity protocol's Step 1 freshness guard,
+  which checks only that the newest session-matched handoff exists, is
+  non-empty, and is under 10 minutes old. A stub is all three. So the guard
+  has a real hole: it cannot tell "the agent finished" from "the agent started".
+  The main session detected the stub by reading it, aborted the automatic path,
+  and wrote this file directly from live context. That is strictly better
+  sourcing than a transcript re-read, not worse — the main session WAS the
+  session — but it is a deviation from the documented flow and is recorded
+  here rather than hidden.
+
+  SUGGESTED FIX for whoever picks this up: add a completeness check to Step 1
+  of .claude/skills/acos-eternity-protocol/SKILL.md — e.g. refuse a handoff
+  that still contains the literal string "STUB — enrichment in progress", or
+  one under some floor size (every healthy handoff this week is 18-24KB; the
+  stub is 496 bytes).
+
+session_summary: |
+  Logo Forge ribbon work, in a SEPARATE repo at ~/.claude/skills (the Logo
+  Forge app lives at ~/.claude/skills/acos-logo-forge/app). This is NOT the
+  ACOS 3.0 repo the shell is cd'd into. This session made ZERO edits inside
+  ACOS 3.0; anything dirty in ACOS 3.0's git status belongs to other
+  concurrent sessions.
+
+  The session ran in four phases.
+
+  (1) Committed the prior session's Logo Forge backlog. Commit 179aad7 on
+  branch main: 108 files, 13095 insertions, 65 deletions — 102 new shape
+  batch files (batch16..batch117), the Home/Editing tool move, the C4 dropper
+  icon, winding.ts, and the two updated test suites. Zee chose "Logo Forge
+  only" and "no push", so it is a LOCAL commit; the other skills' dirty files
+  were deliberately left alone.
+
+  (2) Diagnosed why Clear-space / Board / Ghost original sat underneath the
+  Clipboard icons. Measured cause: `.ribbody.on` carried `flex-wrap:wrap`, the
+  six Home groups need a fixed 1328px, so below ~1366px the last group (Show)
+  wrapped to a second line and landed at x=6 — the same left edge as Clipboard.
+  The wrap ALSO broke Zee's 2026-08-03 "ribbon never gets taller" rule: 177px
+  at 1366, 245px at 1280, 293px at 1100.
+
+  (3) Rebuilt the ribbon. `flex-wrap:nowrap` plus a new fitRibbon() that parks
+  whole .rgroup elements, right to left, into a `.rmenu.ribwell` panel behind a
+  ▾ caret. Show became a 2x2 grid of Clear-space / Board / Ghost / Smooth, with
+  #smoothB MOVED off the Draw tab and #convertGroup deleted. A flush-right
+  spacer was added and then REMOVED at Zee's instruction (it opened a 629px
+  hole at 1920). Groups now pack left.
+
+  (4) Merged Font + Paragraph into ONE #textGroup at the right end and trimmed
+  it to the commands Zee named. This is the most recent work and it is COMPLETE
+  and verified.
+
+current_work:
+  project: "Logo Forge (~/.claude/skills/acos-logo-forge/app)"
+  status: "complete_and_verified_but_uncommitted"
+  last_action: "Merged Font+Paragraph into #textGroup, ran the full test bar, took screenshots, cleaned up test servers."
+
+completed_this_session:
+  - "COMMITTED 179aad7 on branch main of ~/.claude/skills — 108 files, 13095 insertions, 65 deletions. Logo Forge only. LOCAL ONLY; Zee explicitly did not ask for a push. Remote configured is `personal -> git@github.com-personal:ZiaulKarim-hub/claude-skills-personal.git`."
+  - "Moved a stray 31414-byte scratch file `acos-logo-forge/app/x` (a leftover dropper-preview HTML render) OUT of the app folder into the session scratchpad rather than deleting it."
+  - "Measured the ribbon wrap defect with puppeteer across 12 viewports and produced the table that became the fix's justification."
+  - "Ran a 4-phase Workflow (wf_a1286683-b50) with 3 blind design proposals; STOPPED the judge/synthesise/red-team phases when Zee asked why it was slow. All 3 proposals returned and were synthesised by hand instead."
+  - "Rebuilt the ribbon: .ribbody.on flex-wrap:wrap -> nowrap; new fitRibbon() (~40 lines) + ribWell()/ribClose(); .ribmore caret; revealTool() extended to open the well when a target's group is parked."
+  - "Show group became a 2x2: #showRow{display:grid;grid-template-columns:repeat(2,58px);gap:2px}. #smoothB relocated from the Draw tab; #convertGroup deleted; #ghostB relabelled 'Ghost original' -> 'Ghost' (the long form wrapped to 2 lines and lifted the ribbon 2px)."
+  - "Fixed a LATENT pre-existing bug found by two independent design agents: editor.html:2909 and :2961 assigned $('#smoothB').textContent, which destroyed the <svg> paintIcons draws and put the ✨ pictograph back. paintIcons sets dataset.iconed and never repaints, so the damage lasted until reload. Fixed by giving #smoothB a <span class=\"lbl\"> and routing both writes through a new smoothSay(word)."
+  - "Fixed a bug that only a SCREENSHOT caught: `.rmenu.on{display:block}` at specificity (0,2,0) beat a bare `.ribwell{display:flex}` at (0,1,0), so parked groups STACKED instead of sitting side by side. Every assertion still passed — nothing was missing or off-screen. Fixed with the 3-class selector `.rmenu.ribwell.on`, and a new assertion 'parked groups sit side by side in the well, never stacked'."
+  - "REMOVED the flush-right spacer at Zee's instruction. `.rsp{flex:1 1 0}` measured 629px at 1920, 309px at 1600, 149px at 1440, 75px at 1366 — the gap he circled in a screenshot. Groups now pack left; #showGroup sits at 1152..1285 at every width, gap to #editGroup = 0px."
+  - "MERGED Font + Paragraph into #textGroup at the right end of Home. Group order is now: (clipboard), drawingGroup, editGroup, showGroup, textGroup."
+  - "Text group bar contents (icons only, no word labels, per Zee's 'Do icons only'): row 1 = txtFamily, txtSize; row 2 = txtBold, txtItalic, txtUnderline, txtTrackB, txtColorB, txtHiB; row 3 = txtDirB, txtVAlignB, txtAlignB."
+  - "Built the Office-style group launcher that this file's CSS had described for a year without one existing: .rgll, position:absolute in the .rgl caption row so it costs ZERO width and height. It opens #textMore holding txtClearFmt, txtStrike, txtSup, txtSub, txtCaseB, txtLineSpB."
+  - "Collapsed the four alignment buttons into ONE #txtAlignB. The four originals were NOT rebuilt as menu rows — the real buttons MOVED into #alignPop, so their handlers and .on state kept working with no new code. #txtAlignB's icon mirrors the current alignment via syncTextControls."
+  - "DELETED #txtGrow and #txtShrink outright (markup, both onclick handlers, and their entries in syncTextControls' dim-list). Zee, asked delete-or-hide, said 'delete'."
+  - "Home tab width fell from 1328px (original) to 1279px (after the 2x2) to 1019px (after the Font/Paragraph merge). Nothing parks behind the caret until 1024px now; it used to start wrapping at 1280px."
+
+test_state:
+  - "ribbon-test.ts: 243/243, exit 0. Grew from ~200 to 243 assertions across this session (16 added for the Text group alone)."
+  - "All ten suites via the scratchpad runner: '10 suites, 0 non-zero', and this time ZERO FAIL lines in every log including shapes at 28/28."
+  - "audit.ts: 0 findings, exit 0."
+  - "A bespoke verify-ribbon.ts in the scratchpad: 32/32, exit 0."
+  - "IMPORTANT CAVEAT, discovered this session: three suites — explode-test.ts, gallery-test.ts and shapes-test.ts — call NO process.exit, so their exit code is 0 whether they pass or fail. The runner judges by exit code, so for those three the bar measures nothing. This was reported to Zee and NOT fixed; he has not said whether to fix it."
+  - "shapes-test showed 3 FAILs twice (once on the current file, once on `git show HEAD:acos-logo-forge/app/editor.html`, proving they predate this work) and then 28/28 on a third run. They are INTERMITTENT, not steady. Names: '⌘-click did NOT collapse to a single selection', 'renaming did not change the shape count', '⌘A selects every visible piece'."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/app/editor.html"
+    changes: "UNCOMMITTED. The whole ribbon rebuild: nowrap + fitRibbon/ribWell/ribClose/.ribmore, the 2x2 #showRow, #textGroup merging Font+Paragraph, .rgll launcher + #textMore + #alignPop + textPopOpen/textPopClose, smoothSay(), #txtAlignB, deletion of #txtGrow/#txtShrink and of #convertGroup."
+  - path: "~/.claude/skills/acos-logo-forge/app/ribbon-test.ts"
+    changes: "UNCOMMITTED. 243 assertions. New: a 12-width height sweep across all three tabs, monotone-parking (no-flicker) check, caret shown-iff-parked, side-by-side well check, the Text group's row-by-row id assertions, launcher/alignment pop-out checks, and the deleted-steppers check."
+  - path: "~/.claude/skills/acos-logo-forge/app/button-test.ts"
+    changes: "COMMITTED in 179aad7. Needed no further change — it runs at a 1500px viewport where nothing parks."
+
+next_actions:
+  - "ASK Zee whether to commit the two uncommitted files (editor.html, ribbon-test.ts — 724 insertions, 89 deletions). Last time he chose 'Logo Forge only' and local-only, no push. Do NOT commit without asking."
+  - "He may respond to the Text group screenshots with more layout changes — the last message before this handoff was the delivery of those screenshots, and he had asked to 'let me see how it all looks'."
+  - "OPEN, offered but not accepted: (a) add the missing process.exit calls to explode-test.ts / gallery-test.ts / shapes-test.ts so their exit codes mean something; (b) investigate the intermittent shapes-test failures. Both are separate from the ribbon work."
+  - "OPEN, flagged in this file: the Step 1 freshness guard in acos-eternity-protocol accepts a handoff-agent STUB. See handoff_provenance_caveat."
+
+blockers:
+  - "None blocking the work. The only open item is the commit decision, which is Zee's."
+
+standing_constraints:
+  - "NEVER touch the live server on port 8815 (PID 43272 all session). It is Zee's own. Test servers use 8816 / 8817 / 8818 / 8819. `lsof -nP -iTCP:8815 -sTCP:LISTEN` first, every time. Verified untouched at every checkpoint this session."
+  - "Judge test suites by EXIT CODE, never the printed tally — but see test_state: three suites have no exit code, so for those the tally is all there is."
+  - "Zee's 2026-08-03 rule: the ribbon must never get taller. Now enforced as a measurement across 12 widths on all three tabs rather than a single spot check."
+  - "The file's own rule: relocate, don't duplicate. One tool, one button, one id, one handler. Applied twice more this session (the well, and #alignPop/#textMore)."
+  - "Screenshots: p.screenshot({clip}) defaults to captureBeyondViewport:true, under which position:fixed panels DO NOT PAINT. Pass captureBeyondViewport:false or the picture will lie about a floating panel being missing."
+
+reconstruction_sources:
+  - "~/.claude/skills — `git log -1` (179aad7) and `git status --porcelain -- acos-logo-forge` (2 modified files)."
+  - "~/.claude/skills/acos-logo-forge/app/editor.html — every change carries a dated comment naming the instruction that caused it."
+  - "~/.claude/skills/acos-logo-forge/app/ribbon-test.ts — the assertions ARE the specification; each new block cites Zee's words."
+  - "Session scratchpad /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/b26287de-bfbc-42ca-b4fe-ca61570d277e/scratchpad/lf/ — run-suites.sh, verify-ribbon.ts, measure-ribbon.ts, sweep2.ts, shot-*.ts and the live-*.png / rib-*.png screenshots."

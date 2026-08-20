@@ -27,9 +27,26 @@ dedup, same source tiers, same trust gates. Two things differ:
   and omits `url` entirely. Dedup keys on `s.url ?? s.source`, so file paths
   dedup with no engine change.
 - **Charters are overlaid.** `RIFF_TEMPLATE_DIR` (below) points the engine at
-  this skill's `templates/`, which carries a file-reading `probe-charter.md`.
-  The override is per-FILE with fallback, so every other charter — auditor,
-  compiler, citer — is inherited from the engine unchanged.
+  this skill's `templates/`. The override is per-FILE with fallback, so exactly
+  two charters are ours and the rest are the engine's:
+
+  | Charter | Source | Why |
+  |---|---|---|
+  | `probe-charter.md` | **this skill** | the depth 1–2 reader — reads files |
+  | `researcher-charter.md` | **this skill** | the depth 3–5 PANEL SEAT — reads files |
+  | `auditor-charter.md` | engine | reads the corpus, not the world |
+  | `compiler-charter.md` | engine | reads the corpus, not the world |
+  | `citer-charter.md` | engine | re-opens cited sources; inward by construction |
+  | `eval-rubric.md` | engine | scoring, corpus-only |
+
+  **Both file-reading charters must exist here, and the engine now enforces it.**
+  Until 2026-08-17 this directory carried only `probe-charter.md`, so at depths
+  3–5 every panel seat silently fell through to the engine's WEB researcher
+  charter — telling "internal readers" to `search WIDE first` and ranking
+  `official docs, papers, filings` as Tier 1 above the artifact itself. That is
+  the exact inversion of the ladder below. `resolveTemplate` in the engine now
+  throws when this directory has `probe-charter.md` but not
+  `researcher-charter.md`, rather than falling through silently.
 
 **It is read-only.** It finds and explains; it never edits, and it never fixes
 what it finds. Handing you the diagnosis is the deliverable.
@@ -177,6 +194,10 @@ auditor) — with these deltas that make it a *launcher*, not the full skill:
 - **Skip Phase 1.1 (the interview)** and **Phase 1.5 (the interactive plan
   gate).** Auto-derive the brief, dimensions and panel from the target. Instead
   of the gate, print the plan's `costNote` as a single line, then proceed.
+  **"Auto-derive the brief" means WRITE it to a file and INSTALL it** — skipping
+  the interview does not skip the brief. Every charter render reads it, and a
+  session without one dies with `no brief for session <id> — run \`riff brief\`
+  before rendering charters`. Install it before any `charter` or `render` call.
 - Derive dimensions from the CODE's shape, not a topic taxonomy: the subsystems,
   layers or files the question spans. One dimension per place the answer could
   be hiding.
@@ -191,6 +212,69 @@ auditor) — with these deltas that make it a *launcher*, not the full skill:
 - **One synthesized answer, no report.** After research (and the gate at depth
   4), answer via `riff ask "<target>" --session <id>` and deliver with its
   stamp. Do NOT compile a report at depths 3–4 (`plan.report === false`).
+
+#### The order, in full
+
+Each of these depends on the one above it. Running them out of order is how a
+depth-5 run on 2026-08-17 lost four separate commands to avoidable errors.
+
+```bash
+riff init --topic "<target>" --tier <lite|standard|deep>   # capture session_id
+riff coverage init --session <id> --json <dimensions.json>
+riff brief      --session <id> --file <brief.md>           # ← REQUIRED, easy to miss
+riff panel set  --session <id> --json <panel.json>         # ARRAY of seats
+riff panel approve --session <id>
+riff phase panel-research --session <id>
+riff charter <slug> --session <id>                         # once per seat
+#   → dispatch one Task per seat, in a single message
+riff claims ingest --session <id> --slug <slug>
+riff coverage probe <dim-id> --session <id> --novel <n> --note "seat: <slug>"
+riff gate --session <id>                                   # depth 4+
+riff report --session <id>                                 # depth 5 only
+```
+
+#### Two seats are STRUCTURAL, and `role` is a matched token
+
+`panel approve` refuses a roster that has no generalist and no skeptic:
+
+```
+no generalist seat — specialists will collectively skip fundamentals
+no skeptic seat — nothing is tasked with refuting the consensus
+```
+
+The generalist covers the fundamentals every specialist assumes someone else
+took; the skeptic is tasked to refute the emerging consensus. Seat both.
+
+`role` is **matched against a fixed set of tokens**, not free text. The valid
+values are `researcher`, `generalist`, `skeptic`, `auditor`, `probe`. Since
+2026-08-17 the engine lower-cases and trims `role` on ingest, so `"Generalist"`
+and `" SKEPTIC "` now work. It does **not** map an unrecognised word onto a
+known role — `"Devil's Advocate"` is still not a skeptic, and `panel approve`
+will still refuse. Give one seat the literal role `skeptic`.
+
+#### `panel set` and `panel add` take DIFFERENT shapes
+
+The two commands sit next to each other in `riff --help` and their JSON payloads
+are not interchangeable:
+
+| Command | Payload | Use |
+|---|---|---|
+| `panel set --json <file>` | `[{...}, {...}]` — an **array** | seat the whole roster |
+| `panel add --json <file>` | `{...}` — **one object** | add a single seat mid-session |
+
+Handing `panel add` an array is refused, and since 2026-08-17 the refusal names
+the way out rather than reading like a malformed seat:
+
+```
+riff: panel add takes ONE seat object, not a list of 2 — use `panel set --json
+<file>` for a whole roster, or call `panel add` once per seat
+```
+
+A single-element array is refused too. The shapes stay deliberately distinct,
+because the two commands do different things: `panel set` REPLACES the roster and
+drops approval, while `panel add` appends one seat that is live immediately,
+bypassing the approval gate. To add two seats, call `panel add` twice, or re-run
+`panel set` with the full roster.
 
 ### Depth 5 (full sweep + cited report)
 

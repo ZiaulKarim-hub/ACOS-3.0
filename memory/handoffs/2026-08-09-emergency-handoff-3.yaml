@@ -1,0 +1,132 @@
+timestamp: "2026-08-09T08:00:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "47e91c02-1a1c-4ab9-9e5e-6f384fb55aa1"
+estimated_tokens: 0
+
+session_summary: |
+  This session is the orchestrator for the R2P project (a SEPARATE, local-only git
+  repo at /Users/zee/Documents/Vibe Coding/R2P — never push) driving EPIC-001 through
+  ACOS's adversarial DEV/QA/holdout/mutation-gate/seal cycle, one of 24 DEV/QA pairs
+  at a time. Pairs 1-7 are sealed. Pair 8 (DEV-001-003-02 "Opposing-order netting",
+  STORY-001-003) has cleared DEV, QA re-verification #2 (PASS sustained), and holdout
+  run 2 (9/9, both findings RESOLVED) — everything confirmed on disk against R2P's own
+  git log and planning yaml/manifest files. The only step left before pair 8 can seal
+  is the mutation gate on packages/core/allocation/netting.ts, which the DEV slice
+  yaml explicitly records as `mutation_gate_run: false` (deferred by task directive
+  until after QA/holdout closed on it). This handoff resumes exactly at that step.
+
+current_work:
+  slice_id: "DEV-001-003-02 / QA-001-003-02"
+  story_id: "STORY-001-003"
+  epic_id: "EPIC-001"
+  status: "in_progress"
+
+completed_this_session:
+  - "Pair 7 (DEV/QA-001-003-01, capital-budget.ts) sealed at commit 7c3b2d6 — QA re-verification #2 PASS sustained (b706c9d), holdout HLD-001-003-01-v1 run 1 9/9 zero findings (3e5de18) with a DISCLOSED run-2 waiver (deterministic pack, byte-identical code since run 1), mutation gate revision 4 capital-budget.ts 93.25 / aggregate 83.77 (1d4596d), after a revision-3 gate run showed a 64.76 changed-material shortfall (0230649, PRD §16.7 bar is 70). EVB-PAIR-001-003-01 confirmed sealed on disk."
+  - "Pair 8 (DEV-001-003-02, 'Opposing-order netting') carried through: feat a001a56 -> QA BLOCK 27dd156 (F01 key-collision HIGH, F02 String() throw HIGH) -> rev2 c4f52a8 -> QA PASS 1a12c87 -> holdout run 1 7/9 dc647a7 (F01/H005 idempotent-retry MEDIUM, F02/H007 liveness MEDIUM) -> rev3 4cb0a77 (ADR-006 authored, status: proposed — optional instructionId/checksum dual-proof absorption + optional liveness exclusion) -> QA re-verification #2 PASS sustained f691e83 (27 fresh probes, zero new defects, ADR-006 coherence zero mismatch) -> holdout run 2 9/9 9cd618e (both findings' run_2_status RESOLVED; dispositions stay pending_human_review, owner Ben)."
+  - "Suite baseline advanced to 1595/1595 (1568 pre-existing + QA's 27 new ADR-006-surface cases)."
+  - "Spawned this handoff agent via /acos-handoff after re-arming/re-verifying the eternity-protocol pre-flight (misfire guard passed at 517998 context tokens, daemon heartbeat fresh, freeze-early armed)."
+
+files_modified:
+  - path: "packages/core/allocation/netting.ts"
+    changes: "Revision 3: added optional instructionId?/checksum? dual-proof idempotent-retry absorption (F01/H005 fix) and optional liveness? exclusion from nettedQuantity with gross attribution preserved (F02/H007 fix). Production code confirmed byte-identical between candidate 4cb0a77 and current HEAD f691e83/9cd618e (only QA/holdout-owned log/yaml/test files differ after that commit)."
+  - path: "planning/decisions/ADR-006.yaml"
+    changes: "New ADR authored at revision 3, status: proposed — documents the dual-proof absorption and liveness-exclusion design, including a disclosed open_risk about checksum-content verification being out of this module's scope."
+  - path: "planning/slices/dev/DEV-001-003-02.yaml"
+    changes: "version 4, status: implemented. Explicitly records mutation_gate_run: false at all 3 revisions — deferred per this slice's own task directive. This is the concrete gap the next session must close."
+  - path: "planning/slices/qa/QA-001-003-02.yaml"
+    changes: "version 4, status: passed (PASS SUSTAINED at re-verification #2). Not yet closed — pending mutation gate, seal, and human ratification."
+  - path: "planning/evidence/EVB-PAIR-001-003-02/manifest.yaml"
+    changes: "version 3, status: collecting, seal: null. Awaiting mutation gate evidence + seal."
+  - path: "planning/evidence/EVB-HLD-001-003-02-v1/manifest.yaml"
+    changes: "version 2 (bumped for run 2), status: collecting, seal: null. Run 2 (9cd618e) recorded both findings RESOLVED; custodian never self-seals (AP-07)."
+  - path: "tests/unit/allocation-netting.test.ts, tests/property/allocation-netting.property.test.ts, tests/unit/qa-001-003-02.adversarial.test.ts"
+    changes: "Append-only additions across revisions/re-verifications; own suite now 69/69 (dev) and 79/79 (QA, 52 unmodified + 27 new)."
+
+decisions_made:
+  - "ADR-006 (planning/decisions/ADR-006.yaml, R2P repo) — status: proposed, ratification reserved for the human owner (Zee/Ben) at epic close, per this project's own AP-07 rule (no agent self-ratifies an ADR or a pair)."
+
+blockers:
+  - "None hard-blocking, but pair 8 cannot seal until the mutation gate runs and netting.ts clears the PRD §16.7 changed-material bar (per-file score >= 70) — pair-7's own precedent (0230649/1d4596d) shows the AGGREGATE score passing is NOT sufficient on its own; the changed file's own isolated score must also clear 70, and a shortfall there requires a tests-only strengthening revision before seal, exactly as pair 7 needed."
+  - "Multiple concurrent Claude Code sessions are active on this same machine/repo tree — memory/handoffs/2026-08-09-emergency-handoff.yaml (session b8dea5d0) and -2.yaml (session fec689b9) are from OTHER sessions, not this one, and are unrelated to R2P. Do not conflate them with this handoff."
+
+next_actions:
+  - "Run the mutation gate on packages/core/allocation/netting.ts: pnpm run test:mutation, single process, rm -rf .stryker-tmp before and after, repo untouched during the run (~10 min), post-run git status + full suite restoration check. Confirm netting.ts's OWN per-file score >= 70 (PRD §16.7), not just the aggregate."
+  - "If netting.ts's own score is below 70 (as capital-budget.ts's was at pair 7), author a tests-only revision (revision 4) to strengthen mutation coverage on netting.ts specifically, re-run the gate, and re-verify production code stays byte-identical (sha256-attested) before proceeding."
+  - "Record TESTRUN evidence for the mutation gate run(s) and add the corresponding manifest entry to planning/evidence/EVB-PAIR-001-003-02/manifest.yaml."
+  - "Seal pair 8: flip both planning/slices/dev/DEV-001-003-02.yaml and planning/slices/qa/QA-001-003-02.yaml to status: closed, and seal both EVB-PAIR-001-003-02 and EVB-HLD-001-003-02-v1 manifests with bundle_sha256 via the established `find | sort | xargs shasum` method (excluding manifest.yaml itself), only after all 4 project gates (pnpm test, pnpm run check, pnpm run qa:parity, pnpm run qa:evidence) exit 0 against the sealed state."
+  - "After pair 8 seals, proceed to pair 9 (DEV-001-003-03), then stories 004-008, then the EPIC-001 close ratification packet — which must include: ADR-001 through ADR-006 (all status: proposed, awaiting Zee/Ben ratification), both HLD-001-003-02-v1 finding dispositions (owner Ben, pending_human_review), the pair-7 holdout run-2 waiver (disclosed deviation from precedent), the 40 residual mutation survivors inside capital-budget.ts's 93.25 score, the trigger-grammar.ts 61.41 standing sub-70 disclosure (untouched file, run-to-run Stryker variance not a code change), and the disclosed operational anomalies (three-agent-hang incidents pre-mutation-gate, the python3 -c \"\" no-op incident logged in QA-001-003-01.yaml)."
+  - "If subagents stall after interim narration mid-task, SendMessage 'continue in ONE pass' has resolved this reliably (~10 times this session). If an agent hangs mid-turn (observed 3 times this session, always pre-mutation-gate), TaskStop then SendMessage-resume recovers it; if a fresh finisher also hangs, the orchestrator can run the mutation gate itself directly with full actor disclosure in the evidence, as was done for pair 7."
+  - "The autopilot goal for this session is session-scoped and was still active as of this handoff (sentinel: .acos/state/autopilot-active-47e91c02-1a1c-4ab9-9e5e-6f384fb55aa1 in the ACOS 3.0 repo, iteration_count 0, max_iterations 1000). If it has expired or been cleared, re-arm with `python3 .claude/scripts/autopilot-activate.py` from the ACOS 3.0 directory; the full goal text (complete EPIC-001 through all 24 pairs, then continue to subsequent PRD phases as new epics, present ratification packets to Zee at each epic close, never self-approve, never push) is preserved verbatim in that sentinel file."
+
+context_for_next_session: |
+  This handoff was reconstructed with HIGH confidence: the invoking session's own
+  transcript (47e91c02-1a1c-4ab9-9e5e-6f384fb55aa1.jsonl) was read directly and every
+  factual claim in it was independently cross-checked against R2P's live git log,
+  planning slice yaml files, and evidence manifests — all matched exactly, including
+  commit hashes, test counts, and mutation-gate scores. R2P is a SEPARATE, local-only
+  git repository at /Users/zee/Documents/Vibe Coding/R2P; its git status is currently
+  clean at commit 9cd618e on branch main. It must NEVER be pushed. TypeScript only —
+  zero python3 in R2P's own code/tests (the "python3 incident" disclosures referenced
+  in QA slice yaml files are about DISCLOSED no-op shell invocations during agent
+  work, not actual Python code in the codebase). The project uses pnpm; there is no
+  `timeout`/`gtimeout` command available on this macOS machine, so long-running
+  commands (like the ~10-minute mutation gate) must be run without a timeout wrapper
+  and monitored directly.
+
+  The very next concrete action is the mutation gate on packages/core/allocation/
+  netting.ts (`pnpm run test:mutation`), because everything else pair 8 needs —
+  implementation, QA sign-off, and holdout validation — is already done and confirmed
+  on disk. Both EVB-PAIR-001-003-02/manifest.yaml and EVB-HLD-001-003-02-v1/
+  manifest.yaml are `status: collecting` / `seal: null`, i.e. explicitly NOT yet
+  sealed, exactly as expected at this point in the cycle. planning/slices/dev/
+  DEV-001-003-02.yaml literally states `mutation_gate_run: false # explicitly out
+  of scope per this slice's own task directive at all 3 revisions` — this is not an
+  oversight, it was deliberately deferred to this point, mirroring pair 7's own
+  sequencing (mutation gate always runs last, right before seal).
+
+  Pair 7's own history is the load-bearing precedent for how the mutation gate should
+  be judged: at pair 7, the AGGREGATE mutation score passed (80.19, later 83.77) but
+  the single CHANGED file (capital-budget.ts) scored only 64.76 in isolation — below
+  the PRD §16.7 "changed-material" 70 bar — which forced a tests-only revision 4
+  before the pair could seal (capital-budget.ts 64.76 -> 93.25). The next session
+  must apply the same per-file bar to netting.ts, not just check the aggregate.
+
+  Beyond pair 8, the roadmap is: pair 9 (DEV-001-003-03) closes out STORY-001-003,
+  then stories 004 through 008 proceed pair-by-pair through the same DEV -> QA ->
+  holdout -> mutation-gate -> seal cycle, and finally EPIC-001 closes with a
+  ratification packet presented to Zee (never self-approved) covering: six ADRs
+  (ADR-001 through ADR-006, all still status: proposed in planning/decisions/),
+  outstanding holdout finding dispositions (owner Ben, pending_human_review — this
+  includes both of pair 8's own findings, which are code-RESOLVED but disposition-
+  pending), the pair-7 holdout run-2 waiver, the 40 residual mutation survivors
+  inside capital-budget.ts's own 93.25 score, and the standing trigger-grammar.ts
+  61.41 sub-70 disclosure (an untouched file with Stryker run-to-run variance, not a
+  regression — confirmed in QA-001-002-03.yaml).
+
+  IMPORTANT — multiple concurrent sessions: this machine currently has several
+  Claude Code sessions/windows open across different projects that share this same
+  ACOS 3.0 repo's memory/handoffs/ directory. Two OTHER emergency handoffs were
+  written earlier today under different session_ids (b8dea5d0 and fec689b9) that are
+  NOT related to R2P/EPIC-001 — do not confuse them with this one when resuming. This
+  handoff (session 47e91c02) is the third handoff written by this specific session
+  today, reflecting continued eternity-protocol resume cycles; treat it as the
+  authoritative, most-current state for the R2P/EPIC-001 work specifically.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/47e91c02-1a1c-4ab9-9e5e-6f384fb55aa1.jsonl (invoking session's own transcript, tail ~200KB read directly plus targeted offset reads)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.git (git status --short, git log --oneline -30, git diff --stat HEAD~5..HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-003-02.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-003-02.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-003-02/manifest.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-HLD-001-003-02-v1/manifest.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-003-01/manifest.yaml (pair-7 mutation gate precedent, TESTRUN-31 disclosures)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/epics/EPIC-001.yaml (status: active)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/stories/STORY-001-003.yaml (status: ready)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ADR-001.yaml through ADR-006.yaml (all status: proposed)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-002-03.yaml (trigger-grammar.ts 61.41 disclosure corroboration)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-active-47e91c02-1a1c-4ab9-9e5e-6f384fb55aa1 (session-scoped autopilot goal sentinel)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/ (agent-lifecycle.log, oracle-audit.log — runtime state, no active scope markers)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-09-emergency-handoff.yaml and -2.yaml (checked session_id fields; confirmed these belong to OTHER concurrent sessions, not this one)"

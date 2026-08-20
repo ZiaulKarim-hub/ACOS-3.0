@@ -208,9 +208,9 @@ fi
 
 # --- 4. hardcoded last resort ---
 if [[ -z "$PRE_CLEAR_TOTAL" ]]; then
-    PRE_CLEAR_TOTAL=400000
+    PRE_CLEAR_TOTAL=500000
     PRE_CLEAR_DEFAULTED=1
-    echo "WARN: all pre-clear total sources failed (.last-total, log scrape, config.yaml) — defaulting to 400000" >&2
+    echo "WARN: all pre-clear total sources failed (.last-total, log scrape, config.yaml) — defaulting to 500000" >&2
 fi
 export PRE_CLEAR_TOTAL PRE_CLEAR_DEFAULTED
 

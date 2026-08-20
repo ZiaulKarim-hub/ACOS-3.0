@@ -1,0 +1,142 @@
+timestamp: "2026-08-09T00:42:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "26c28ec4-d9cc-435c-b8d7-ef50eddd33e9"
+estimated_tokens: 0
+
+session_summary: |
+  This session did infrastructure/tooling work on Claude Code itself (hooks,
+  skills, and the Eternity Protocol daemon), not planning-hierarchy work — no
+  slice/story/epic was touched. It opened by validating a prior session's
+  autopilot-related edits (still uncommitted), then fixed and shipped three
+  things end-to-end: (1) the handoff-agent scoping bug (this very agent
+  definition) so it reads its own invoking session's transcript first —
+  committed and pushed; (2) a native `/goal` re-arm mechanism so the Eternity
+  Protocol's `/clear` cycle no longer silently drops an active `/goal`
+  condition — built, live-tested twice (Claude Code v2.1.220 and v2.1.226) in
+  disposable cmux panes, but NOT yet committed; (3) a cmux sidebar "status
+  pill" showing live token counts on every window even while busy (not just
+  idle) — built, deployed to all 11 running token-watcher.py daemons, verified
+  live, but lives in a directory with NO git repository at all (zero backup).
+  A new standing behavioral rule (95%-confidence-or-say-nothing on stated
+  facts) was also adopted and saved to global memory this session, in direct
+  response to user frustration with confidently-wrong asides. The session
+  ended via the routine Eternity Protocol auto-fire (token/heartbeat guard
+  passed, not a user-initiated stop or a mid-task interruption) — the
+  in-progress token-count-pill work had already been completed and verified
+  moments before the fire.
+
+current_work:
+  slice_id: "unknown — not applicable, this was infra/tooling work outside the planning hierarchy"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed"
+
+completed_this_session:
+  - "Fixed handoff-agent scoping bug: .claude/agents/handoff-agent.md (ACOS 3.0 repo) and ~/.claude/skills/acos-handoff/SKILL.md (separate ~/.claude/skills git repo) now pass the invoking session's own SESSION_ID and TRANSCRIPT_PATH into the spawned handoff-agent's prompt, so it reads its own session's transcript first instead of guessing from repo-wide git/file heuristics (which had previously produced a mis-scoped handoff — see memory/handoffs/2026-08-08-emergency-handoff-4.yaml, session_id 5ea55afd-..., which belongs to a concurrent R2P/EPIC-001 build session, NOT this one)."
+  - "Verified the fix live: read CLAUDE_CODE_SESSION_ID and derived TRANSCRIPT_PATH inside a real Bash call, confirmed both resolve correctly and the transcript file exists (4081... bytes at test time)."
+  - "Committed and pushed to the personal GitHub remote (per the standing personal-by-default rule, since Zee said 'commit & push' without naming an account): ACOS 3.0 commit 930b552 ('fix(handoff-agent): read the invoking session's own transcript first'), pushed to github.com-personal:ZiaulKarim-hub/ACOS-3.0.git on branch acos-deficiency-fixes-2026-06-04. Separately, ~/.claude/skills repo commit ed753e6 ('fix(acos-handoff): pass invoking session's transcript to handoff-agent'), pushed to github.com-personal:ZiaulKarim-hub/claude-skills(-personal)."
+  - "Investigated and explained why ~/.claude/skills/ files don't show as tracked in the main ~/.claude git status: skills/ is a SEPARATE nested git repo with its own history (already backed up to ZiaulKarim-hub), not untracked inside the parent ~/.claude repo. First answer given was wrong (checked the parent repo, not the nested one); corrected in the same turn after checking skills/.git directly."
+  - "Investigated and confirmed live (via python3 byte-search on the installed Claude Code binaries) that /clear drops any active /goal, and that /goal requires hooks NOT be restricted (disableAllHooks / allowManagedHooksOnly unset) — confirmed both v2.1.220 (Homebrew Caskroom copy) and v2.1.226 (the npm-based copy cmux panes actually launch via a wrapper/shim chain) contain the same '/goal can't run while hooks are restricted' guard string."
+  - "Designed and implemented a /goal re-arm mechanism: acos-resume-prompt/SKILL.md Step 2.6 now captures an active /goal condition at /clear time and writes a single-line, machine-typeable re-arm command to .goal-rearm-<session_id> in the acos-token-monitor state dir; eternity-cmux-inpane.sh's Stop hook was extended to type that line as real input into the cmux surface after firing the real /clear, so the new session's own /goal actually reactivates (not just a mention in prose, which slash commands never parse as input)."
+  - "Live end-to-end tested the /goal re-arm fix TWICE in disposable cmux workspaces: once on the exact v2.1.220 binary (workspace:28→29, surface:40→41), once on v2.1.226 (workspace:32, surface:44) — in both cases, after a simulated real fire-and-clear cycle using the actual global Stop hook (not a manual invocation), the post-clear session showed 'Goal set: read `<handoff path>` first, then: <condition>' and the goal remained genuinely active, not just noted. All test scratch files, cmux workspaces, and orphaned test session dirs were cleaned up afterward."
+  - "Confirmed the project-local and global copies of acos-resume-prompt/SKILL.md are back in sync (project-local copy was ahead by the new Step 2.6 content; copied over the global ~/.claude/skills/acos-resume-prompt/SKILL.md to match) — this is the same split-copy trap the session flagged as already having bitten a different skill (acos-logo-forge) earlier."
+  - "Investigated why the cmux token-count display only appears when a window is idle ('Crunched for Xm Ys...') and not while actively working — confirmed via AskUserQuestion + user screenshots this was the real question, not a misunderstanding."
+  - "Found and used cmux's own 'set-status' sidebar-pill feature (a per-workspace status entry, always visible regardless of Claude's idle/busy state) as the fix, rather than trying to alter Claude Code's own status line."
+  - "Patched token-watcher.py (the per-session background daemon) to also call `cmux set-status` with the live token count every time it writes .last-total-<sid>, resolving the daemon's known CMUX_SURFACE_ID to a workspace ID via `cmux list-pane-surfaces` / `cmux --id-format uuids`."
+  - "Syntax-checked the patch (python3 -m py_compile), then live-verified the resolve-and-set-status logic against this session's own real surface/workspace (78D08AA5-... -> D9097822-...) before touching any other window."
+  - "Killed one orphaned leftover token-watcher.py process (PID 19959, pointed at a deleted test-session file, an artifact of the /goal end-to-end testing) as cleanup."
+  - "Restarted all 11 real running token-watcher.py daemons one at a time (verified each PID swap) so every open Claude Code window picks up the patched status-pill code, then seeded an immediate status pill on every workspace from each session's already-known last-total token count (rather than waiting for each window's next reply) — spot-checked several resulting pills (e.g. 'tokens=802.2k tokens', 'tokens=123.5k tokens') to confirm they render correctly."
+  - "Adopted a new standing behavioral rule after direct user pushback about repeated confidently-wrong side-facts: saved memory/feedback_high_confidence_claims_only.md (95%+ confidence via an actual falsifying check before stating any fact, including incidental side-facts; omit unverifiable asides that don't matter rather than stating them; don't narrate the play-by-play of every verification check) and linked it into MEMORY.md."
+  - "This session's own transcript (the last event, timestamps ~00:41 UTC 2026-08-09) shows the routine Eternity Protocol Step 0 misfire-guard/heartbeat check passing (515729 context tokens, freeze-early armed), followed by the standard Step 1 handoff spawn (this document) — i.e., this handoff was triggered by the normal auto-clear cycle, not a crash or a user request to stop."
+
+files_modified:
+  - path: ".claude/agents/handoff-agent.md"
+    changes: "COMMITTED (930b552) and PUSHED to personal. Session_id/transcript-path passing added to Step 2.0, plus updated 'session_id' guidance and 'Critical Constraints' section to match."
+  - path: "~/.claude/skills/acos-handoff/SKILL.md (separate ~/.claude/skills git repo)"
+    changes: "COMMITTED (ed753e6, repo HEAD) and PUSHED to personal. Updated the spawn-time prompt so it now includes the invoking session's SESSION_ID and TRANSCRIPT_PATH."
+  - path: ".claude/skills/acos-resume-prompt/SKILL.md"
+    changes: "UNCOMMITTED (76 insertions, confirmed via `git diff --stat`). Added Step 2.6 'Check for goals to carry forward' (autopilot goal + native /goal capture) and a new goal-rearm file writer, plus a 'GOALS TO CARRY FORWARD' section in the generated resume prompt. Project-local and global (~/.claude/skills/...) copies are in sync as of end of session."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh"
+    changes: "UNCOMMITTED — this directory has NO git repository at all (confirmed: `git status` returns 'not a git repository'). Extended the post-/clear RE-ARM step to type the .goal-rearm-<sid> file's contents into the cmux surface as real input, and the /clear-verification block was reviewed/adjusted around it. Syntax-checked (bash -n) and live end-to-end tested twice, but has ZERO backup of any kind right now."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/token-watcher.py"
+    changes: "UNCOMMITTED, same no-git-repo directory as above. Added a `_update_cmux_status` function called from the existing `_write_last_total` call site; resolves the daemon's tracked CMUX_SURFACE_ID to a workspace ID and calls `cmux set-status` to show a live token-count sidebar pill regardless of idle/busy state. Live-verified across all 11 currently-running daemon instances after a rolling restart."
+  - path: ".claude/scripts/_autopilot_eternity.py, autopilot-activate.py, autopilot-context-injector.py, autopilot-stop-handler.py"
+    changes: "UNCOMMITTED, carried over from a PRIOR session (predates this session's own edits — this session only re-verified them: Python syntax check confirmed OK on all four, and confirmed the acos-resume-prompt/SKILL.md project-local/global sync was intact). This session did not further modify these four files."
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_high_confidence_claims_only.md"
+    changes: "NEW FILE, created this session, uncommitted (the parent ~/.claude repo has a broader backlog of uncommitted memory files unrelated to this session)."
+  - path: "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md"
+    changes: "Edited to add a link entry for the new feedback_high_confidence_claims_only.md file. Uncommitted (same repo as above)."
+
+decisions_made:
+  - "No formal memory/decisions/ ADR was written this session (memory/decisions/ has nothing dated today)."
+  - "New standing behavioral rule adopted via direct user instruction and confirmed via the /restate skill loop: never state a fact — including incidental side-facts — without first running an actual falsifying check; if a fact can't be verified to ~95% confidence and doesn't matter to the answer, omit it rather than stating or hedging it. Saved as memory/feedback_high_confidence_claims_only.md (see files_modified above). This directly supersedes/tightens prior session behavior that had produced repeated confident-but-wrong asides earlier in this same session (e.g. the /clear vs okoateam.claude repo mix-up)."
+
+blockers:
+  - "HIGHEST RISK: ~/Library/Application Support/acos-token-monitor/bin/ (containing both eternity-cmux-inpane.sh and token-watcher.py, both modified and tested this session) has NO git repository — zero version-controlled backup of either fix. A disk failure would lose both fixes entirely, per the assistant's own explicit warning to the user mid-session."
+  - "Four autopilot files (_autopilot_eternity.py, autopilot-activate.py, autopilot-context-injector.py, autopilot-stop-handler.py) plus .claude/skills/acos-resume-prompt/SKILL.md remain uncommitted in the ACOS 3.0 repo — on-disk but not backed up to GitHub. The user was asked directly whether to commit+push these (same pattern as the handoff-agent fix) and the conversation moved on to other work (eternity /goal re-arm, then token-count pill) before an explicit yes/no was captured in this transcript window — next session should confirm with Zee and complete this."
+  - "git status also shows .claude/scripts/git-manager/ids.json, .claude/scripts/html-to-pdf.js, and 'Logo Builder/brandsync/commands.jsonl' as modified — these were explicitly flagged mid-session as UNRELATED to this session's work (likely other concurrent sessions' output) and should not be swept into any commit for the items above without separately checking their origin."
+
+next_actions:
+  - "Confirm with Zee, then git add + commit + push (to personal, per the standing default) the four autopilot files and .claude/skills/acos-resume-prompt/SKILL.md in the ACOS 3.0 repo — same commit-then-push pattern already used for the handoff-agent fix (930b552/ed753e6)."
+  - "Set up SOME form of version control / backup for ~/Library/Application Support/acos-token-monitor/bin/ (e.g. init a git repo there, or fold it into an existing tracked location) before anything else touches eternity-cmux-inpane.sh or token-watcher.py again — currently a single-point-of-failure with two just-built, just-tested fixes sitting on it."
+  - "Do NOT re-commit .claude/scripts/git-manager/ids.json, .claude/scripts/html-to-pdf.js, or 'Logo Builder/brandsync/commands.jsonl' as part of the above — verify their origin separately first, they are out of this session's scope."
+  - "No planning-hierarchy (slice/story/epic) follow-up is needed from this session — it was pure tooling/infra work outside that pipeline."
+
+context_for_next_session: |
+  This handoff was reconstructed primarily from the invoking session's OWN
+  transcript (SESSION_ID 26c28ec4-d9cc-435c-b8d7-ef50eddd33e9, read via
+  TRANSCRIPT_PATH per the 2026-08-08 handoff-agent fix this very session
+  built), which is the highest-confidence source available and was read
+  first, per protocol. Git state, the ~/.claude and ~/.claude/skills nested
+  repos, planning/evidence/decisions directories, and today's other handoff
+  files were all cross-checked afterward and are consistent with the
+  transcript's narrative.
+
+  Three concrete pieces of work shipped this session, in order: (1) the
+  handoff-agent transcript-scoping bug — fully committed and pushed on both
+  affected repos; (2) a /goal re-arm mechanism for the Eternity Protocol's
+  /clear cycle — built and proven end-to-end on two real Claude Code binary
+  versions in disposable cmux panes, but not yet committed anywhere; (3) a
+  cmux sidebar status pill giving an always-visible live token count (fixing
+  the complaint that the existing on-screen counter only shows while idle) —
+  built, deployed live to all 11 running daemons, verified, but sitting in a
+  directory with literally no git repository. The single most urgent
+  follow-up is getting version control onto that directory, since two
+  brand-new, tested fixes currently have zero backup.
+
+  Separately, this session opened by correcting a mis-scoped PRIOR handoff:
+  memory/handoffs/2026-08-08-emergency-handoff-4.yaml (session_id
+  5ea55afd-5517-4ff4-afc2-36a6be55bd6e) describes a DIFFERENT, concurrent
+  session working on the R2P/EPIC-001 build in a separate local-only repo —
+  it is NOT part of this session's work and should not be conflated with the
+  items above. This handoff (5) and handoff-4 both being "today's" files is
+  expected in this shared-folder multi-session environment; only the
+  session_id field distinguishes them, and this document's session_id
+  (26c28ec4-...) is verified correct via the transcript itself.
+
+  Also worth carrying forward: a new standing behavioral rule was adopted
+  this session after direct, pointed user feedback about repeated
+  confidently-stated-then-corrected facts (memory/feedback_high_confidence_
+  claims_only.md, linked from MEMORY.md) — next session should actually
+  apply it (verify before stating, including side-facts; say nothing rather
+  than hedge on things that don't matter) rather than treat it as inert
+  documentation.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/26c28ec4-d9cc-435c-b8d7-ef50eddd33e9.jsonl (this session's own transcript, 1273 lines, parsed into a condensed narrative — PRIMARY source)"
+  - "git status --short (ACOS 3.0 repo)"
+  - "git log --oneline -20 (ACOS 3.0 repo)"
+  - "git diff --stat HEAD~5..HEAD (ACOS 3.0 repo)"
+  - "git diff --stat on the 4 autopilot files + .claude/skills/acos-resume-prompt/SKILL.md"
+  - "git diff .claude/skills/acos-resume-prompt/SKILL.md (full diff, confirms Step 2.6 content)"
+  - "git -C ~/.claude log --oneline -5 and git -C ~/.claude status --short"
+  - "git -C ~/.claude/skills log --oneline -5 (confirms ed753e6 HEAD, matching the transcript's commit)"
+  - "ls -lt planning/ (ACOS 3.0 repo — no activity relevant to this session; confirms this was not planning-hierarchy work)"
+  - "ls -lt .acos/evidence/ and ls -lt memory/decisions/ (nothing dated today, confirms no formal ADR/evidence produced this session)"
+  - "ls -la .acos/state/ (routine autopilot/eternity sentinel files, nothing anomalous)"
+  - "ls -lt memory/handoffs/*.yaml + grep session_id/trigger across all of today's handoff files (confirms handoff-4 belongs to a different, concurrent session; confirms this is the first handoff written by session 26c28ec4)"
+  - "memory/handoffs/2026-08-08-emergency-handoff-4.yaml (read in full to confirm it is a DIFFERENT session's work, not this one's)"
+  - "~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_high_confidence_claims_only.md (read in full)"
+  - "git status attempted on ~/Library/Application Support/acos-token-monitor (confirmed: 'not a git repository')"

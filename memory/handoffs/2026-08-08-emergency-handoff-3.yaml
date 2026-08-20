@@ -1,0 +1,158 @@
+timestamp: "2026-08-08T21:04:05Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  Active work is NOT in the ACOS 3.0 repo. It is the ACOS Logo Forge shape
+  library in the SEPARATE global repo ~/.claude/skills (app at
+  ~/.claude/skills/acos-logo-forge/app), remote `personal` only, branch main.
+  Since the last same-day handoff (2026-08-08-emergency-handoff-2.yaml,
+  written ~08:24 UTC after batch 17, count 1,277), the session has authored
+  batches 18 through 35 — 18 more batches, all still uncommitted by design
+  (goal step 8 says stop-and-report, not commit). shapes.json now totals
+  1,545 shapes and was rebuilt at the same minute batch 35 was finished. At
+  the moment this handoff was written, a live test process cycle (server on
+  port 8816, workspace "forge-ws") was actively running against the current
+  uncommitted state — this session is mid-verification right now, not idle.
+
+current_work:
+  slice_id: "n/a — not ACOS planning-hierarchy work"
+  story_id: "n/a"
+  epic_id: "logo-forge shape-library-growth (informal, tracked via /goal, not planning/)"
+  status: "in_progress — batch 35 just authored (shapes.json rebuilt to 1545 at the same minute), ten-suite/audit verification actively running at handoff time; batches 16-35 (20 batches) all uncommitted per goal step 8 (stop and report before commit)"
+
+completed_this_session:
+  - "Batches 18-28 authored (10 batches, shapes-src/batch18.ts through batch28.ts), all between 02:35 and 04:04 local on 2026-08-08 — continuing straight past the prior 08:24 UTC handoff without a session break."
+  - "Session then resumed batches 29-35 (7 more batches) between 13:24 and 15:02 local today, after an apparent ~9-hour gap (04:04 to 13:24) with no batch activity."
+  - "AUTHORING.md updated with a new 'Cause 6' failure mode, discovered in batch 29: `ARCBAND(cx, cy, ro, ri, 0, 360)` renders EMPTY because a full-sweep arc's start and end points coincide, silently dropping the ring. It cost five wheel shapes (unicycle, tricycle, penny farthing, handcar, coal hopper) before being caught. Fix documented: build a full ring as two half-bands via a new RG() helper (two ARCBAND halves, both clockwise, safe under the nonzero-fill cancellation rule (Cause 5))."
+  - "AUTHORING.md also gained a 'What the library will and will not accept' table closing five shape families with cited evidence: knots (overlap order unexpressable in silhouette), heraldic field divisions (knock-outs delete the shield outline), textures/repeating fills (need area a 100x100 icon doesn't have), smooth organic masses (Nature category already saturated at 20 plants), isometric solids (only counts when the projection changes AND the new silhouette is unowned)."
+  - "Batch 35 (sea life, fossils, repeating patterns, sport apparatus, weapons) documents a refined name-check: a full-string duplicate set-check (not just word-wise grep) caught 7 exact duplicates immediately (vr headset, smartwatch, webcam, taco, dumpling, sandwich, spirit level) that the older word-wise check had missed; 6 more were cut via a 'look-alike probe' (ice axe/pickaxe as axe variants, teacup==coffee cup, milkshake==smoothie, benzene ring==hex frame, carabiner==safety harness clip); more were cut on form-count grounds (flying fish==bird/bat silhouette, snowshoe==tennis racket frame, several diagram shapes collapsing onto existing Flowchart family members)."
+  - "shapes.json rebuilt (build artifact, never hand-edited) to fold in all of batches 16-35: verified length 1,545 as of the same minute (15:02 local) batch 35's file was written."
+  - "A ten-suite / audit verification cycle was OBSERVED ACTIVELY RUNNING at handoff time: process `bun shape-audit.ts` (PID 6638) had just completed against a server on 8816 (workspace path under session 473ea2a9's scratchpad — an older session ID, not the current one), and immediately after, a fresh server process was seen starting on 8816 with workspace 'forge-ws', consistent with the ten-suite runner moving to the next suite in sequence. Zee's own live server on 8815 (PID 43272) was confirmed untouched throughout."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/batch16.ts through batch35.ts"
+    changes: "20 NEW untracked files, batches 16-35. Sizes/line-counts vary widely (batch16 248 lines/39 shapes down to batch28 at 72 lines, up to batch32-34 in the 250-300 line range) — later small batches (18-28) likely reflect heavier duplicate/form-collision cutting per the AUTHORING.md findings, not verified precisely by this handoff. Not committed — goal step 8 requires report-and-wait before commit."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes.json"
+    changes: "Modified build artifact, rebuilt via build-shapes.ts to fold in batches 16-35. Verified length = 1,545 (up from 1,277 as of the prior 08:24 UTC handoff, which itself only covered batches 16-17). Never hand-edit; always rebuild from shapes-src/*.ts."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/AUTHORING.md"
+    changes: "Modified (uncommitted). Added 'Cause 6' (ARCBAND full-sweep silent-empty bug + RG() fix) and a new 'What the library will and will not accept' closed-families table (knots, heraldic field divisions, textures, organic masses, isometric solids) plus two screening-rule callouts. This is durable documentation, not throwaway — should be committed alongside the next cleared batch, per the file's own pattern from prior batches."
+  - path: "(UNRELATED — ACOS 3.0 repo, pre-existing drift, unchanged from prior handoff's investigation) .claude/scripts/_autopilot_eternity.py, autopilot-activate.py, autopilot-context-injector.py, autopilot-stop-handler.py, .claude/scripts/git-manager/ids.json, .claude/scripts/html-to-pdf.js, Logo Builder/brandsync/commands.jsonl, .claude/skills/acos-resume-prompt/SKILL.md"
+    changes: "git status --short in ACOS 3.0 shows the same pre-existing modified files as the prior handoff PLUS one new one: .claude/skills/acos-resume-prompt/SKILL.md, which gained a 'Step 2.6: Check for goals to carry forward (2026-08-08)' section — this teaches the resume-prompt writer to detect and re-carry both autopilot goals and /goal conditions across a /clear, since neither survives one on its own. This looks like real, intentional, already-complete work (not drift) but this handoff could not determine whether it was authored by the current session or an earlier one today; treat it as awaiting Zee's review like everything else uncommitted, not as garbage to discard."
+  - path: "(UNRELATED — SAME global ~/.claude/skills repo) acos-create-skill/SKILL.md, acos-okoa-works/SKILL.md and references/, acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/ (untracked)"
+    changes: "Pre-existing uncommitted work in the same repo, unrelated to logo-forge. Do not stage or commit alongside logo-forge batches."
+
+decisions_made: []
+
+blockers:
+  - "Goal step 8 says STOP after each batch and report before continuing — but this session ran 18 additional batches (18-35) past batch 17 without an apparent stop/report checkpoint being reached (no new commits exist beyond 900a7b6, and no evidence was found in this repo of Zee clearing batches 16/17 mid-session). This may be authorized (Zee may have told the session to keep going through many batches before reporting) or may be a protocol drift worth flagging to Zee explicitly. This handoff cannot determine which from disk alone."
+  - "A test workspace actively in use at handoff time (port 8816, most recently 'forge-ws') sits under scratchpad path .../473ea2a9-c6ea-45a7-bf37-e4e93af435cf/scratchpad/ — an OLDER session ID, not the current session (9e3ba701-4304-413a-9614-c5c03e4497e7, whose own scratchpad only contains an unrelated window_check.txt from 2026-08-07). This may simply be an intentionally persisted/reused test workspace (avoiding the per-run brandsync copy cost AUTHORING.md warns about), or may indicate a stale/cross-session workspace being tested against — the next session should confirm the workspace's shapes.json/brandsync copy is current before trusting any in-flight results found in it."
+  - "No independent confirmation, from this handoff, of full ten-suite + audit.ts PASS results for the batch 16-35 cumulative state — a suite cycle was observed actively running (mid-flight) at handoff time, not completed. The next session must check whether it finished and what the exit codes were, or re-run from scratch."
+
+next_actions:
+  - "FIRST: check whether the in-flight test cycle (server activity on 8816, most recently 'forge-ws' workspace) finished, and with what result. `ps aux | grep -i 'shape-audit\\|server.py'` and check for any log files the runner may have written (this handoff did not find a persisted suites.log for today's later batches — the 08:24 UTC handoff's suites.log/suites3.log lived under session 473ea2a9's scratchpad and covered only batches 16-17, not 18-35)."
+  - "Re-verify ground truth before trusting anything above: `git -C ~/.claude/skills log --oneline -3` (expect HEAD still 900a7b6), `git -C ~/.claude/skills status --short acos-logo-forge/` (expect batch16.ts-batch35.ts untracked, shapes.json + AUTHORING.md modified, nothing else), and recompute the shapes.json count (expect 1,545) — do not trust any cached number, including this handoff's."
+  - "Run/complete the full ten-suite + audit.ts pass against the CURRENT state (batches 16-35 folded into shapes.json) if not already confirmed clean: fill/ribbon/shapes/forge/explode/shapelib/button on 8816, symbols on 8819, gallery/reject on 8817 with an ABSOLUTE workspace path as argv[2]. Use EXIT CODE, never the printed tally, per AUTHORING.md's own warning (a suite that dies mid-run still prints a plausible 'N/N passed')."
+  - "Also independently confirm shape-audit.ts (goal step 4's live-duplicate detector — distinct from the audit.ts server/security checker) has passed cleanly against the full batch 16-35 state, not just an individual batch."
+  - "Per goal step 8: once verification is confirmed clean, STOP and REPORT the full run of batches (16 through 35, not just 16-17) to Zee, including the AUTHORING.md documentation additions, and WAIT — do not commit, push, or start batch 36 unprompted. If Zee already gave standing permission to run many batches before reporting (unconfirmed by this handoff), report anyway so the batch-16-35 backlog does not keep growing silently."
+  - "Ask Zee (do not assume) whether the acos-resume-prompt/SKILL.md 'Step 2.6' addition in the ACOS 3.0 repo is finished, intentional work from earlier today that should be committed on its own, separate from the logo-forge batches — this handoff could not establish its authorship or completeness."
+  - "Only after Zee clears the batches: commit ONLY the relevant logo-forge files (shapes-src/batch16.ts through batch35.ts, shapes.json, AUTHORING.md) in the ~/.claude/skills repo. Do not sweep in the unrelated pre-existing drift (acos-create-skill, acos-okoa-works, acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/) or the ACOS 3.0 repo's own drift."
+  - "Then batch 36: read shapes-src/AUTHORING.md first (now including Cause 6 and the closed-families table), run the batch-35-style two-stage name check (word-wise grep AND full-string duplicate set-check) before drawing anything."
+
+context_for_next_session: |
+  Ignore anything in the ACOS 3.0 repo itself that looks like an active-work
+  signal — its git status is pre-existing, mostly-unrelated drift (autopilot
+  scripts, git-manager ids.json, html-to-pdf.js, a brandsync commands.jsonl,
+  plus one newer item, acos-resume-prompt/SKILL.md's Step 2.6 addition, whose
+  provenance this handoff could not pin down). There is no in-progress ACOS
+  planning-hierarchy slice/story/epic behind this handoff; planning/,
+  .acos/evidence/, and memory/decisions/ all show only older, unrelated
+  artifacts (last decision file dated 2026-07-05, last evidence bundle
+  2026-08-02).
+
+  The real work is the ACOS Logo Forge shape library, in the SEPARATE global
+  repo ~/.claude/skills, branch main, remote personal only. App lives at
+  ~/.claude/skills/acos-logo-forge/app. This has nothing to do with OKOA and
+  nothing to do with ACOS 3.0's own planning hierarchy — do not confuse the
+  two, and do not offer OKOA work.
+
+  Timeline reconstructed from file mtimes and a prior same-day handoff
+  (2026-08-08-emergency-handoff-2.yaml, written ~08:24 UTC / ~02:26 local,
+  itself covering only through batch 17 at 1,277 shapes): batches 18-28 were
+  authored 02:35-04:04 local, immediately continuing past that handoff without
+  a session break; there was then a roughly 9-hour gap with no batch activity
+  (04:04-13:24 local, presumably an overnight pause); batches 29-35 were then
+  authored 13:24-15:02 local, ending at essentially the moment this handoff
+  agent began gathering state. shapes.json was rebuilt to 1,545 shapes at the
+  same minute batch 35 finished (15:02 local), and a live test-server process
+  cycling through ports 8816 (workspace 'forge-ws' most recently observed) was
+  caught actively running when this handoff was written — meaning the
+  originating session was mid-verification, not idle, at handoff time.
+
+  The standing /goal (set by Zee, reproduce verbatim when quoting it, per the
+  prior handoff's capture — this handoff did not re-read a persisted goal-state
+  file and is trusting that prior capture as still accurate) is: grow the
+  shape library from a base of 1,200 shapes (264 base + 936 authored, a
+  deliberately stale snapshot baked into the goal text at the time it was set)
+  toward a floor of 2,500 authored (2,764 total) and a target of 3,200+ total,
+  every shape original, no third-party icon sets, no variants of an existing
+  shape, weighted toward objects/technology/tools/buildings/transport/food/
+  diagram/chess with animals/nature capped at 300, in batches of roughly 40,
+  following an 8-step per-batch protocol from shapes-src/AUTHORING.md
+  (name-check before drawing, author, build, shape-audit.ts on 8816, render
+  and look at it, redraw-or-cut, all ten suites + audit.ts EXIT 0, then STOP
+  and report — do not commit, do not push). Never touch the live server on
+  8815 (lsof first). Stop and report if one shape fails three redraws or a
+  batch loses more than a third of its shapes to duplicates.
+
+  Two things this handoff flags as needing Zee's attention rather than being
+  resolved unilaterally: (1) whether running 18 batches (18-35) past the prior
+  stop-and-report checkpoint at batch 17 without an intervening report was
+  authorized — no commit or other on-disk evidence confirms Zee cleared
+  batches 16/17 before the session continued, so either Zee gave a standing
+  go-ahead to keep batching, or step 8 was not followed as written; and (2)
+  the acos-resume-prompt/SKILL.md change sitting in the ACOS 3.0 repo, which
+  reads as complete, deliberate work (a real feature: carrying autopilot/goal
+  state forward across a /clear) but this handoff cannot confirm whether it
+  is finished or from today's session at all.
+
+  Durable technical lessons already written into AUTHORING.md (read that file
+  rather than relying on memory of this list): use EXIT CODE never the
+  printed tally; the ten suites split 8816 (seven of them) / 8819 (symbols) /
+  8817 (gallery, reject — needs an absolute workspace path as argv[2]); six
+  suites are not idempotent and need a fresh brandsync copy per run;
+  shapes.json is a build artifact, never hand-edited; build-shapes.ts sorts
+  the library, so "the last N records" is never the batch just written (read
+  names from the batch source file instead); C()/E() in kit.ts wind
+  anticlockwise while R()/P()/NGON()/STAR()/TRAP()/WEDGE()/ARCBAND() wind
+  clockwise and opposite windings silently cancel under nonzero fill (Cause
+  5); crossing bars inside an evenodd shape punch each other out; a redraw
+  isn't done until the new render has actually been looked at; redrawing
+  fixes a fault, not a collision (cut collisions instead); NEW as of today —
+  Cause 6: `ARCBAND(..., 0, 360)` silently renders nothing because its start
+  and end points coincide, use two clockwise half-bands (RG helper) for a
+  full ring instead; and NEW as of today — a name-check needs BOTH a
+  word-wise grep AND a full-string duplicate set-check, since near-miss
+  compound names (vr headset, spirit level) can pass a word-wise net while
+  being exact duplicates.
+
+reconstruction_sources:
+  - "git status --short, git log --oneline -20, git diff --stat HEAD~5..HEAD (ACOS 3.0 repo) — confirmed only pre-existing/unrelated drift plus one new item (acos-resume-prompt/SKILL.md), no in-progress planning-hierarchy work"
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ (ACOS 3.0 repo) — no today's-date artifacts relevant to the active work"
+  - "git diff -- .claude/skills/acos-resume-prompt/SKILL.md (ACOS 3.0 repo) — full diff of the new 'Step 2.6' goal-carry-forward section"
+  - "memory/handoffs/2026-08-08-emergency-handoff-2.yaml (prior same-day handoff, ~08:24 UTC, read in full — source of the standing /goal verbatim text, the batch 16/17 narrative, and the baseline count of 1,277 used to measure this session's subsequent progress)"
+  - "git -C ~/.claude/skills log --oneline -5 and log --oneline -5 -- acos-logo-forge/ — confirmed HEAD still 900a7b6, no new commits since the prior handoff"
+  - "git -C ~/.claude/skills status --short acos-logo-forge/ — confirmed batch16.ts through batch35.ts untracked, shapes.json + AUTHORING.md modified"
+  - "git -C ~/.claude/skills diff -- acos-logo-forge/app/shapes-src/AUTHORING.md — full diff: new Cause 6 (ARCBAND full-sweep bug) and the closed-families table"
+  - "bun -e '...JSON.parse(shapes.json).length' -> 1545"
+  - "ls -la of shapes.json (mtime 15:02 local, same minute as batch35.ts)"
+  - "ls -la of shapes-src/batch10.ts through batch35.ts with mtimes, used to reconstruct the authoring timeline and the ~9-hour overnight gap between batch28 and batch29"
+  - "head -40 of shapes-src/batch35.ts — header comment documenting the two-stage name-check refinement (full-string duplicate set-check) and specific cuts made"
+  - "lsof -nP -iTCP:8815 -iTCP:8816 -iTCP:8817 -iTCP:8819 -sTCP:LISTEN and ps aux (two passes, a few seconds apart) — confirmed Zee's live server on 8815 (PID 43272) untouched, and caught a live shape-audit.ts run finishing on 8816 followed immediately by a new server starting on 8816 with workspace 'forge-ws', both under an older session's scratchpad path (473ea2a9-...) rather than the current session's"
+  - "ls -la of the current session's own scratchpad (9e3ba701-4304-413a-9614-c5c03e4497e7) — contains only an unrelated window_check.txt from 2026-08-07, confirming the live test activity is not using this session's own scratchpad"
+  - ".acos/state/agent-lifecycle.log (tail) — confirmed current session ID 9e3ba701-4304-413a-9614-c5c03e4497e7 via this handoff-agent's own SPAWN entry, and found 'fork' and 'claude-code-guide' agent spawns earlier in the same session (19:55-20:12 UTC) whose purpose this handoff could not determine — no matching agent definition found anywhere under ~/.claude or the ACOS 3.0 repo's .claude/agents/"
+  - "find for a 'fork' agent definition under ~/.claude and ACOS 3.0's .claude/agents/ — none found; noted as an open question, not resolved"
+  - ".acos/state/autopilot-active-0b667f8c-3399-40ac-8a56-fdcecc4841c4 (JSON) — confirmed this is a DIFFERENT, concurrent autopilot session working on the separate R2P project (not this session, not this repo's work); mtime 2026-08-07, not touched today"

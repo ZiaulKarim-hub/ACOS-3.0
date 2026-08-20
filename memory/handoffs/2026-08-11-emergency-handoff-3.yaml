@@ -1,0 +1,186 @@
+timestamp: "2026-08-11T21:26:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 0
+
+session_summary: |
+  This ACOS orchestrator session (running from cwd /Users/zee/Documents/Vibe Coding/ACOS 3.0,
+  invoking a Claude Code agent) is driving development of a SEPARATE project, R2P
+  (Research-to-Portfolio Platform), at /Users/zee/Documents/Vibe Coding/R2P, under a
+  standing autopilot goal: "complete all the slices, stories, epics and the vision for
+  this app." R2P's EPIC-001 has 24 DEV/QA pairs; 15 are sealed, 4 are frozen and in
+  review, 1 was mid-build, and 4 have not started. At the moment this handoff fired the
+  autopilot Stop hook had just re-evaluated the goal as NOT MET (15/24 sealed) and the
+  orchestrator had just dispatched four fresh background agents to open the next fronts:
+  three re-reviews/reviews and one new build.
+
+current_work:
+  slice_id: "multiple — see in_flight_agents below (DEV-001-006-02, QA-001-006-01, QA-001-007-01, QA-001-007-02)"
+  story_id: "STORY-001-006 / STORY-001-007 (EPIC-001)"
+  epic_id: "EPIC-001"
+  status: "in_progress"
+
+# ---- IN-FLIGHT AGENTS: DO NOT RE-DISPATCH ----
+# These four were launched via async Task()/Agent calls by THIS session moments before
+# the handoff fired. Confirmed both from the transcript tool_use blocks and from
+# /Users/zee/Documents/Vibe Coding/R2P/.acos/state/agent-lifecycle.log (SPAWN lines
+# timestamped 2026-08-11T21:23:01Z-21:23:31Z, session=d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf).
+# If the next session finds these agents' output files/records already written on disk,
+# treat them as DONE and pick up from their results — do not re-run.
+in_flight_agents:
+  - agent: "QA-001-007-02 adversarial pass 1"
+    role: "qa-reviewer"
+    note: >
+      Pair 20's FIRST review — DEV-001-007-02 (benchmark/alpha) was built and committed
+      (7146476) but never reviewed until this pass. Blind-derivation artifact expected
+      at planning/evidence/EVB-PAIR-001-007-02/QA-PASS1-BLIND-DERIVATION.yaml (already
+      present, uncommitted, as of this handoff — the agent may still be mid-flight).
+      Record expected at planning/slices/qa/QA-001-007-02.yaml.
+  - agent: "QA-001-006-01 re-verify pass 4"
+    role: "qa-reviewer"
+    note: >
+      Re-verifying revision 3 (commit 8d451f8) of DEV-001-006-01 — F13 fix and the
+      tagged published-figure sweep. Pre-read artifact at
+      planning/evidence/EVB-PAIR-001-006-01/QA-PASS4-EXPECTATIONS-PREREAD.yaml (present,
+      uncommitted). Prior verdict (pass 3, commit 3cc689c): all 12 NR items EXECUTED,
+      BLOCK on F13 alone.
+  - agent: "QA-001-007-01 re-verify pass 3"
+    role: "qa-reviewer"
+    note: >
+      Re-verifying revision 3 (commit aff6a34) of DEV-001-007-01 — QA2-F14 fix and its
+      22-site aggregate-collapse sweep (revision 3 found 4 sites of the bug class where
+      pass 2 named only 1). Pre-read artifact at
+      planning/evidence/EVB-PAIR-001-007-01/QA-PASS3-EXPECTATIONS-PREREAD.yaml (present,
+      uncommitted). Prior verdict (pass 2, commit 88ddc2c): BLOCK on ONE NEW defect
+      (QA2-F14), 13 of 14 agree.
+  - agent: "DEV-001-006-02 build"
+    role: "developer"
+    note: >
+      New build — first of the four not-yet-started pairs (DEV-001-006-02,
+      DEV-001-006-03, DEV-001-007-03, DEV-001-008-02, DEV-001-008-03 — note the
+      transcript names only 4 as "not yet started" per the user's framing; the fifth,
+      DEV-001-006-02, is this in-flight build). Slice file
+      planning/slices/dev/DEV-001-006-02.yaml still shows status: draft on disk as of
+      this handoff (agent may still be mid-flight). Task: cash/position event booking
+      sibling work, interoperating with (but never modifying) DEV-001-006-01's
+      packages/core/ledger/event-booking.ts.
+
+completed_this_session:
+  - "Prior turns in this session drove R2P from earlier states through the following R2P commits (newest first), confirmed via `git log`: 8d451f8 (DEV-001-006-01 rev 3, F13 fixed, tagged sweep), aff6a34 (DEV-001-007-01 rev 3, QA2-F14 fixed, sweep found 4 sites), 3cc689c (QA-001-006-01 pass 3, all 12 NR items, BLOCK on F13), 88ddc2c (QA-001-007-01 pass 2, BLOCK on QA2-F14), f6ea2e8 (QA-001-006-01 pass 2, INCONCLUSIVE), 1bf55ec (QA-001-008-01 pass 2, PASS), 7146476 (DEV-001-007-02 build), 6cbf7c4 (DEV-001-007-01 rev 2 + ERR-01), 0f84ff6 (DEV-001-006-01 rev 2 + ERR-08), 9d46959 (DEV-001-008-01 rev 2), 58559f7 (QA-001-007-01 BLOCK), a5eda75."
+  - "Earlier in the same session: EVB-STORY-001-001..005 collected then sealed (commits dcf94e3, 976cef3) — 5 story bundles; 3 of 5 record the 'holdout passed without tuning' DoD clause as NOT MET (see open_items below)."
+  - "Earlier still: pair 15 (DEV/QA-001-005-03) fully closed — holdout run 2, mutation gate CLEAR at 74.25 per-file (bar 70), seal (commits 0989693, ade20a5, 081571a)."
+  - "At the moment of this handoff: the autopilot Stop hook fired with prompt 'complete all the slices, stories, epics and the vision for this app.', evaluated goal_status met=false (reason: 15/24 pairs sealed, 4 frozen and in review, 5 not yet built), and the orchestrator responded by dispatching the four in-flight agents listed above."
+
+files_modified:
+  - path: "planning/evidence/EVB-PAIR-001-006-01/QA-PASS4-EXPECTATIONS-PREREAD.yaml"
+    changes: "New, untracked — QA-001-006-01 pass 4 pre-read artifact, written by the in-flight QA re-verify agent before it started reading builder code (blind-derivation-style pre-read)."
+  - path: "planning/evidence/EVB-PAIR-001-007-01/QA-PASS3-EXPECTATIONS-PREREAD.yaml"
+    changes: "New, untracked — QA-001-007-01 pass 3 pre-read artifact, same pattern."
+  - path: "planning/evidence/EVB-PAIR-001-007-02/QA-PASS1-BLIND-DERIVATION.yaml"
+    changes: "New, untracked — QA-001-007-02 pass 1 blind derivation (Step 1 of that agent's mandated order-of-work), written before it read the builder's code."
+  - path: "planning/slices/qa/QA-001-006-01.yaml"
+    changes: "Grown to 147,659 bytes as of pass 3 (commit 3cc689c) — largest QA record in the repo; will grow further once pass 4 lands."
+  - path: "planning/slices/qa/QA-001-007-01.yaml"
+    changes: "Grown to 114,103 bytes as of pass 2 (commit 88ddc2c); will grow further once pass 3 lands."
+  - path: "planning/slices/dev/DEV-001-007-02.yaml"
+    changes: "60,140 bytes as of the initial build (commit 7146476) — still status implemented, awaiting its first-ever review (in-flight QA-001-007-02 pass 1)."
+
+decisions_made:
+  - "No memory/decisions/ entries exist in the R2P repo (directory checked, empty) — decisions in this project appear to be recorded inline in evidence-bundle manifests and slice records instead, notably the EVB-STORY-001-001..005 manifests' verbatim DoD-clause verdicts."
+
+candidate_learnings:
+  - "R2P is a SEPARATE project/repo from ACOS 3.0 (/Users/zee/Documents/Vibe Coding/R2P vs /Users/zee/Documents/Vibe Coding/ACOS 3.0), but this ACOS orchestrator session drives R2P work from the ACOS 3.0 cwd via Task()/Agent dispatch with subagents cwd'd into R2P — the transcript's own cwd field confirms every dispatched agent ran with cwd=/Users/zee/Documents/Vibe Coding/R2P even though the top-level session/transcript lives under the ACOS-3.0 project path. (evidence: transcript tool_use entries all show \"cwd\":\"/Users/zee/Documents/Vibe Coding/R2P\")"
+  - "R2P qa-reviewer agents are deliberately given Read+Bash and NO Write tool, and are instructed to use printf-based file writes instead of shell here-documents, because the environment guard in this repo fires on shell COMPOUNDING (a loop with a redirect, or a pipe plus a status chain) rather than on ordinary code tokens or here-docs. (evidence: verbatim HARD CONSTRAINTS section repeated across all three QA agent prompts in the transcript)"
+  - "R2P's per-pair QA review methodology mandates a blind derivation/pre-read step (reading only the slice requirements + relevant PRD sections, writing predictions to an EXPECTATIONS-PREREAD or BLIND-DERIVATION yaml) BEFORE the reviewer is allowed to open the builder's code — this is the project's standing adversarial-review order-of-work, not a one-off. (evidence: identical 'THE ORDER OF WORK IS THE METHOD' instruction block in all three QA agent dispatch prompts)"
+  - "The R2P mutation gate (PRD §16.7) allowlist only covers packages/core/**; code placed under packages/app/** is silently unmeasured by the mutation gate. (evidence: verbatim instruction in the DEV-001-006-02 build agent's dispatch prompt, item 1 under YOUR TASK)"
+
+blockers:
+  - "None of the four in-flight agents' completion status is known to this handoff — the transcript ends immediately after dispatch (the last captured event is a /compact prompt marker, not agent completion notifications). The next session must check each agent's output artifacts / git status for evidence of completion before assuming they finished cleanly."
+  - "Human ruling still outstanding on all items in open_items_for_ben_zee below — these are NOT resolved and must not be silently closed by an agent (per R2P's AP-07: no agent self-approves, seals, or ratifies)."
+
+open_items_for_ben_zee:
+  - "3 of the 5 sealed EVB-STORY bundles (EVB-STORY-001-001..005, sealed commit 976cef3) record the DoD clause 'holdout passed without tuning' as NOT MET or NOT ESTABLISHED — confirmed by reading planning/evidence/EVB-STORY-001-001/manifest.yaml line 58 (verdict: NOT MET) and the surrounding rationale (holdout cases were REBOUND to match fixes across HLD-01/02/03 runs, each pre-declared in an adapter change log, but still 'the tuning the clause forbids' in the bundle's own words)."
+  - "private_pack_sha256 is UNRESOLVED for two of story 001-001's holdout packs — confirmed verbatim in planning/evidence/EVB-STORY-001-001/manifest.yaml: 'private_pack_sha256 is UNRESOLVED for HLD-001-001-02-v1 and HLD-001-001-03-v1 and was never recomputed; cases.yaml/README.md were verified only against a 2026-08-06T22:31:19Z audit baseline.'"
+  - "F04 on pair 16 and on pair 19, deferred with written options (named in the invoking-agent's own briefing; not independently re-verified in this pass due to time — see reconstruction_sources for what WAS checked)."
+  - "F09 on pair 19 (same caveat as above)."
+  - "DIS-01: two coexisting BenchmarkDefinition/BenchmarkDeclaration shapes between DEV-001-007-01 and DEV-001-007-02 — confirmed in the QA-001-007-02 pass 1 dispatch prompt: DEV-001-007-02 REPLACED sibling DEV-001-007-01's BenchmarkDeclaration shape rather than adopting it, reasoning that the original shape carries a version but no content and cannot detect a silently-changed benchmark. The sibling's own record authorised either choice; not yet ruled on."
+  - "OBS-16 on pair 19, demonstrated and not fixed — the clean remedy would narrow the accepted input domain again (same caveat: named in briefing, not independently re-verified here)."
+  - "The 'pre-existing' reading question in ERR-01 — whether a defect found during a revision pass should be classified as pre-existing or newly introduced — which the agent argues belongs in the slice template rather than being decided ad hoc per pair (same caveat)."
+
+next_actions:
+  - "Check whether the four in-flight agents (QA-001-007-02 pass 1, QA-001-006-01 pass 4, QA-001-007-01 pass 3, DEV-001-006-02 build) have completed — look for updated planning/slices/qa/QA-001-007-02.yaml (currently only 2,883 bytes, template-sized), updated planning/slices/dev/DEV-001-006-02.yaml (currently only 2,406 bytes, still status: draft), and any new commits beyond 8d451f8. Do NOT re-dispatch any of the four if their artifacts show completed work."
+  - "Once each of pairs 19, 20, and 22's reviews land, commit each as its own freeze point (per this project's established one-commit-per-pair-action discipline visible in the git log)."
+  - "After freezing, run holdouts (custodian only, run EXACTLY once per pair) for the newly reviewed/built pairs."
+  - "Then run the PRD §16.7 mutation gate per pair: per-file score >= 70, run DETACHED, repo must stay untouched during the run."
+  - "Then orchestrator seal for each pair (never an agent — AP-07)."
+  - "Then build the four remaining not-yet-started pairs: DEV-001-006-03, DEV-001-007-03, DEV-001-008-02, DEV-001-008-03."
+  - "Then three more EVB-STORY bundles for stories 001-006, 001-007, 001-008 (following the same collect-then-seal pattern already used for 001-001..005)."
+  - "Then the four-reviewer independent SWARM review (SWARM-001-v1: finance-correctness, adversarial-QA, code-taste, product/auditability reviewers + synthesis, per R2P CLAUDE.md's Quality Operating System section)."
+  - "Then EVB-EPIC-001 (epic-level evidence bundle)."
+  - "Then the ratification/close packet for Zee: ADRs, finding dispositions, disclosure queue — including all open_items_for_ben_zee above, which must NOT be silently resolved by any agent."
+
+context_for_next_session: |
+  This handoff was written with a supplied SESSION_ID and TRANSCRIPT_PATH, which is the
+  strongest possible reconstruction signal per the handoff-agent protocol, and every
+  fact above was cross-checked against the R2P repo on disk (git log, git status,
+  planning/slices/dev and qa directories, planning/evidence manifests, .acos/state/
+  agent-lifecycle.log) — all corroborate the transcript. Confidence is HIGH.
+
+  The working repo for the actual task is /Users/zee/Documents/Vibe Coding/R2P, NOT
+  ACOS 3.0 (this handoff file lives in ACOS 3.0's memory/handoffs/ only because that is
+  where this orchestrator session's own transcript/handoff infrastructure resides — the
+  session drives R2P via subagent dispatch with each subagent's cwd set to R2P).
+
+  R2P is a deterministic trading/portfolio/ledger/backtesting platform for a small
+  internal investment team (PRD at R2P/docs/PRD_v0.4.txt, ground truth). EPIC-001 has
+  24 DEV/QA pairs across 8 stories (STORY-001-001 through 001-008, 3 pairs each). As of
+  this handoff: 15 pairs sealed (stories 001-001 through 001-005, all fully closed and
+  their EVB-STORY bundles sealed at commit 976cef3), 4 pairs frozen and in re-review
+  (pairs 16=DEV-001-006-01, 19=DEV-001-007-01, both on their third+ revision/review
+  cycle; and pair 20=DEV-001-007-02 on its very first review), 1 pair mid-build
+  (DEV-001-006-02, the fifth pair under STORY-001-006), and 4 pairs not yet started
+  (DEV-001-006-03, DEV-001-007-03, DEV-001-008-02, DEV-001-008-03).
+
+  The project runs on ACOS's autopilot Stop-hook continuation loop: at the end of each
+  turn, the hook re-checks the standing goal ("complete all the slices, stories, epics
+  and the vision for this app") against the transcript, and if not met, feeds that
+  reason back to the orchestrator to keep working. The last thing this session did
+  before the handoff fired was receive exactly that feedback (goal_status met=false,
+  15/24 pairs sealed) and respond by launching the four in-flight agents captured above
+  — this is a live, mid-flight state, not a natural stopping point. The transcript
+  itself ends right after the fourth dispatch with a /compact prompt marker; there is
+  no confirmation in the transcript that any of the four agents completed.
+
+  R2P has its own strict standing rules (R2P/CLAUDE.md, read in full): TypeScript only,
+  Python PROHIBITED throughout (stricter than the personal-level "Python when
+  unavoidable" exception — R2P overrides it to a hard zero); local-only git, push only
+  when Zee explicitly names a remote, never a bare `git push`; DEV/QA parity is
+  mandatory (no orphan DEV, no retrofitted QA); TDD with authentic Red/Green/Refactor
+  evidence; coverage gates ratchet up only; qa-private/ is custodian-only and no agent
+  may open it; AP-06 (never weaken a test/invariant/tolerance) and AP-07 (no agent
+  self-approves/seals/closes/ratifies — every finding stays pending_human_review, owner
+  Ben) are load-bearing project constants repeated verbatim in every agent dispatch
+  prompt seen in the transcript.
+
+  The next session's first move should be a status check on the four in-flight agents
+  (see next_actions) before doing anything else — re-dispatching a still-running or
+  already-completed agent would duplicate work or corrupt evidence. After that, the
+  work is a straightforward continuation of the established per-pair pipeline: freeze
+  -> holdout (once, custodian-run) -> mutation gate (detached, >=70 per-file) -> seal,
+  repeated for pairs 19/20/22, then the four remaining builds, then the three story
+  bundles, then SWARM-001-v1, then EVB-EPIC-001, then Zee's close packet. All seven
+  open_items_for_ben_zee items must be carried forward into that close packet
+  unresolved — none of them may be closed by an agent under AP-07.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (invoking session's own transcript, last ~200KB / tail read; confirmed session_id, cwd=R2P, the four in-flight agent dispatches with full prompts, the Stop-hook goal_status feedback that triggered them)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.git (git status --short, git log --oneline -20, git diff --stat HEAD~5..HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/*.yaml (directory listing + spot reads of DEV-001-006-02.yaml, DEV-001-006-03.yaml, DEV-001-008-02.yaml to confirm draft/status and file sizes)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/*.yaml (directory listing to confirm sizes/mtimes for QA-001-006-01.yaml, QA-001-007-01.yaml, QA-001-007-02.yaml)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/ (directory listing; confirmed EVB-STORY-001-001..005 sealed, EVB-PAIR-001-006-01/007-01/007-02/008-01 present)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-STORY-001-001/manifest.yaml (read for the private_pack_sha256 UNRESOLVED and 'holdout passed without tuning' NOT MET verbatim findings)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/agent-lifecycle.log (tail — confirmed SPAWN entries for the four in-flight agents' role/timestamp/session match)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/CLAUDE.md (read in full — R2P's own standing rules: TypeScript-only/Python-prohibited, git rules, Quality Operating System, economic invariants)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/memory/decisions/ (checked, empty — no decision records in this repo)"

@@ -1,0 +1,120 @@
+timestamp: "2026-08-12T20:41:26Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "c5978d8d-414c-407d-a34f-c1b84e452544"
+estimated_tokens: 532154
+
+session_summary: |
+  This session was reverse-engineering how the ACOS Eternity Protocol should solve
+  a real usability bug: when a cmux-injected keystroke (e.g. a resume prompt or the
+  handoff-trigger command) is sent into a session that is busy running background
+  helpers/subagents, the typed Enter is sometimes swallowed and the message sits
+  unsent in the input box. Zee rejected two proposed workarounds — a Unix-socket
+  "mailbox" injector (blocked because 3 of 7 live sessions predate the feature and
+  restarting them to add it would defeat the purpose; also requires flipping
+  `crossSessionInbound` to `accept`, which would reintroduce permission prompts and
+  break autonomy) and repeated blind Enter keypresses (rejected on Zee's own
+  observation that Enter does nothing while helpers are running). Zee then ran
+  `/research 2`, spawning 3 parallel research probes via the `acos-research-riffs`
+  engine. All three came back with a converging recommendation: stop trying to
+  inject keystrokes into a busy pane at all, and instead turn on Claude Code's own
+  native `autoCompactEnabled`/`autoCompactWindow` self-compaction (currently OFF in
+  `/Users/zee/.claude/settings.json:126`), paired with a `PreCompact` hook (not
+  currently registered anywhere in this setup) that writes the handoff before
+  Claude Code compacts on its own, keystroke-free. The session was mid-conversation
+  — the assistant had just asked "Want me to build this?" — when its own context
+  hit 532,154 tokens and the Eternity Protocol's own token-watcher fired the
+  standard `/acos-eternity-protocol` pre-clear sequence, which spawned this
+  handoff-agent. This is a designed, expected auto-fire, not a crash.
+
+current_work:
+  slice_id: "unknown — no active planning slice; this was an ad-hoc infrastructure research/design conversation, not slice-tracked work"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "blocked — awaiting Zee's yes/no on 'Want me to build this?' before any implementation begins"
+
+completed_this_session:
+  - "Confirmed via live inspection that `autoCompactEnabled: false` is set in /Users/zee/.claude/settings.json:126, and has been off since that file's first commit (`cc5ce4a chore: first commit`) — deliberately, almost certainly so the Eternity Protocol could own compaction instead of native Claude Code."
+  - "Confirmed the currently registered hook events on this machine are only PreToolUse, SessionStart, Stop, UserPromptSubmit — PreCompact is NOT registered anywhere, so no handoff-before-compaction mechanism exists today for native auto-compact."
+  - "Ran `/research 2` (depth-2 grounded research pass via acos-research-riffs) with topic 'How an external tool can make a busy Claude Code session compact and resume itself without keystrokes...' — riff session id `2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com`, root at /Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/."
+  - "Probe 1 (native auto-compact, 17 verified claims): auto-compact fires with zero keypresses, fires mid-turn while tools are running, background helpers survive it (their records live in separate files that a main-session compaction does not touch), requires Claude Code >=2.1.221 (this machine is exactly 2.1.221). One unresolved gap: whether a main-session compaction waits for still-running helpers before firing is nowhere documented — reasonable inference is 'no', but unverified. Claims file: dossiers/probe-01.claims.jsonl."
+  - "Probe 2 (PreCompact hook mechanics, 12 verified claims): PreCompact fires on BOTH manual (/compact) and automatic compaction, distinguished by a `trigger` field ('manual'/'auto') on stdin; it blocks execution until it completes (600s default timeout), so a handoff write in this hook is guaranteed to finish before compaction starts. It can only cancel a compaction (risky — cancelling an auto-fired-from-overflow compaction makes the current request fail), cannot delay one, and cannot inject text into the compaction summary (systemMessage/continue fields are discarded). SessionStart afterwards reports source 'compact' for both auto and manual — the auto/manual distinction is lost by the time SessionStart runs, so any downstream logic needing it must be captured and stashed by PreCompact/PostCompact. Claims file: dossiers/probe-02.claims.jsonl."
+  - "Probe 3 (input-during-subagents, 13 verified claims): typed submission during a busy turn is DEFERRED to turn-end, not blocked, and Anthropic's docs do NOT tie this to subagents specifically (an open bug, anthropics/claude-code#73118, matches Zee's exact symptom — messages sit pending until the turn ends; a second, closed bug #49373 reports the opposite, flushing 'after a subagent returns' — so the real flush point is inconsistent/undocumented, not a documented subagent-block). Corrected an earlier claim in this same conversation that Escape's role in unsticking messages was confirmed — it is not; no source ties an interrupt to flushing a stuck message. Two non-keystroke, non-mailbox steering paths do exist and are documented: Channels (an MCP server pushing events into a live session — research-preview, allowlist-gated) and Stop hooks / /goal / /loop (start the next turn under a script's own control). Claims file: dossiers/probe-03.claims.jsonl."
+  - "Synthesized final recommendation to Zee across all three probes (delivered, awaiting reply): stop trying to type into a busy pane; turn on autoCompactEnabled with a token trigger matching the current threshold; add a new PreCompact hook that writes the handoff (does not exist today); leave SessionStart alone (already fires after any compaction); retire the cmux keystroke-injection machinery to avoid double-compaction if both mechanisms ran simultaneously."
+
+files_modified:
+  - path: "(none — read-only research session; no application code was edited)"
+    changes: "All work this session was investigative (Bash inspection commands + spawned research-riffs probes writing to /Users/zee/.acos-research/, outside this repo). No files under /Users/zee/Documents/Vibe Coding/ACOS 3.0 were edited by this session's own turns."
+
+decisions_made:
+  - "No formal memory/decisions/ entry was written this session for the auto-compact-vs-mailbox tradeoff — the analysis and recommendation exist only in the parent session's transcript and the riff claims files cited above. If Zee confirms 'yes, build it,' a decision record documenting the chosen approach (native auto-compact + new PreCompact hook, keystroke injection retired) would be a reasonable next artifact."
+
+candidate_learnings:
+  - "Claude Code's cross-session keystroke mailbox (Unix-domain socket, one per session PID under /tmp/cc-socks/<pid>.sock) only exists on sessions started after the feature shipped — 3 of 7 live sessions checked this session (Research to Portfolio, Insightia, Logo Builder) had no socket, and the only way to add one is a restart that would discard the very context being preserved (evidence: transcript, live `ls -S` check on cc-socks across 7 sessions, 2026-08-12)."
+  - "autoCompactEnabled is set to false in /Users/zee/.claude/settings.json:126 and has been false since that file's very first commit (cc5ce4a) — this was a deliberate choice, not an oversight, made so the Eternity Protocol's cmux-injection mechanism could own compaction timing instead of native Claude Code (evidence: git log -S on settings.json, this session)."
+  - "This ACOS setup currently registers only PreToolUse, SessionStart, Stop, and UserPromptSubmit hooks — PreCompact and PostCompact are not wired anywhere, so no handoff-before-compaction safety net exists for native auto-compact today; if native auto-compact is ever turned on without adding a PreCompact hook, handoffs would not be written before the context is summarized (evidence: python json inspection of ~/.claude/settings.json hook keys, this session)."
+  - "Anthropic's own open bug anthropics/claude-code#73118 documents that a typed message can stay pending and unacted-on until the current turn ends — this matches Zee's own observed symptom of Enter being 'swallowed' while helpers run, but Anthropic's docs describe the deferral as turn-scoped, not subagent-scoped, and a separate closed bug (#49373) reports the opposite flush timing ('after a subagent returns'), so the exact flush condition is genuinely undocumented/inconsistent rather than a settled fact (evidence: probe-03 claims, dossiers/probe-03.claims.jsonl, sourced from Anthropic docs + GitHub issue states via gh CLI)."
+  - "A new lightweight `/research <depth 1-5>` skill exists at .claude/skills/research/ (untracked in git as of 2026-08-12) — it is a thin launcher over the acos-research-riffs engine for quick, grounded, cited research passes mid-conversation, distinct from the full acos-research-riffs interactive engine and from acos-deep-research's one-shot reports (evidence: .claude/skills/research/SKILL.md, read this session)."
+
+blockers:
+  - "The parent session cannot proceed on this thread until Zee answers 'Want me to build this?' — the recommended next step (flip autoCompactEnabled on, set a matching token trigger, add a PreCompact hook, retire keystroke injection) has not been approved or started."
+  - "One factual gap remains open per Probe 1: whether a main-session auto-compaction waits for still-running background helpers/subagents before firing, or fires regardless, is nowhere documented by Anthropic. The probes' own recommendation was that only a live empirical test on this exact setup (not more reading) can close this gap."
+
+next_actions:
+  - "Resume the parent conversation and ask Zee whether to proceed with the recommended change: (1) set autoCompactEnabled: true and autoCompactWindow to match the current Eternity Protocol token threshold in /Users/zee/.claude/settings.json, (2) add a new PreCompact hook that writes the ACOS handoff (mirroring what the Stop-hook-based autopilot/Eternity Protocol machinery does today, but triggered pre-compaction instead), (3) confirm SessionStart's existing 'source: compact' handling is sufficient for post-compaction resume, (4) retire or gate off the cmux keystroke-injection resume path so it cannot double-fire alongside native auto-compact."
+  - "Before implementing, run a live empirical test on this machine to close the one remaining documented gap: does a main-session auto-compact wait for still-running Task() subagents, or fire regardless and leave them orphaned? (Probe 1's stated open question.)"
+  - "If proceeding, write a memory/decisions/ record for the chosen compaction/handoff architecture, since this materially changes how the Eternity Protocol operates (moving compaction ownership from the cmux daemon to native Claude Code)."
+  - "Review the full probe outputs before implementing — they are the primary source, not just this handoff's summary: dossiers/probe-01.claims.jsonl (17 claims), probe-02.claims.jsonl (12 claims), probe-03.claims.jsonl (13 claims), all under /Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/dossiers/."
+
+context_for_next_session: |
+  Read from the invoking session's own transcript (SESSION_ID
+  c5978d8d-414c-407d-a34f-c1b84e452544, high confidence — this is a real transcript
+  read, not repo-wide inference). The session was NOT doing planning-hierarchy work
+  (no slice/story/epic touched); it was a live design conversation about fixing a
+  real, Zee-observed bug in the ACOS Eternity Protocol's cross-session resume
+  mechanism: cmux-injected keystrokes sometimes fail to reach a busy Claude Code
+  pane because Enter gets swallowed while background helper subagents are running.
+  Zee explicitly rejected two prior proposals (a socket-based "mailbox" injector,
+  and blind repeated Enter presses) for concrete, evidence-backed reasons captured
+  above. He then invoked /research 2, and three background research probes
+  (spawned as Task agents, now completed) converged on a single recommendation:
+  abandon keystroke injection entirely and let Claude Code's own native
+  autoCompactEnabled/autoCompactWindow self-compaction handle context management,
+  paired with a new PreCompact hook (currently absent from this setup's hook
+  registration) that writes the handoff file before compaction runs — this works
+  because PreCompact fires on both manual and automatic compaction, blocks until
+  it finishes (600s cap), and can distinguish the two via a `trigger` field. The
+  assistant's synthesized answer was delivered to Zee ending in "Want me to build
+  this?" — and the very next thing in the transcript is the Eternity Protocol's own
+  preflight firing (532,154 context tokens, over threshold), which is what spawned
+  this very handoff-agent invocation. So the next session's first job is simple:
+  resume this exact conversation, re-surface the recommendation (or point Zee at
+  this handoff plus the three probe claims files), and get his yes/no before
+  touching any hook or settings file. No code was changed this session — it was
+  pure investigation — so there is no half-finished diff to worry about; git status
+  shows only unrelated pre-existing modifications/untracked files from other
+  parallel sessions (Logo Builder brandsync candidate/rejected SVG churn,
+  communication-tracker decision doc, prior emergency handoffs, an untracked
+  .claude/skills/investigate/ directory not referenced anywhere in this session's
+  transcript, and .claude/skills/research/ which WAS used this session via
+  research-plan.ts). Recommend the next session start by reading this handoff plus
+  the three claims files, then asking Zee directly rather than re-deriving the
+  research from scratch.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/c5978d8d-414c-407d-a34f-c1b84e452544.jsonl (parent session's own transcript — primary source, read via tail -c 200000 plus targeted grep/sed passes for full message text)"
+  - "git status --short (repo root, /Users/zee/Documents/Vibe Coding/ACOS 3.0)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "/Users/zee/.claude/settings.json (lines 118-134: autoCompactEnabled=false, hook registration keys)"
+  - "/Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/ (riff session root, coverage.json, ledger.jsonl, manifest.json, panel.json, charters/, dossiers/)"
+  - "/Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/dossiers/probe-01.claims.jsonl (17 claims, native auto-compact)"
+  - "/Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/dossiers/probe-02.claims.jsonl (12 claims, PreCompact hook)"
+  - "/Users/zee/.acos-research/.acos/riffs/2026-08-12-how-an-external-tool-can-make-a-busy-claude-code-session-com/dossiers/probe-03.claims.jsonl (13 claims, input during subagents)"
+  - ".claude/skills/research/SKILL.md"
+  - "ls -lt planning/ (no recently modified slice/story/epic — confirms this was not planning-hierarchy work)"
+  - "ls -lt .acos/evidence/ (no evidence bundle from today — confirms no slice work produced evidence this session)"
+  - "ls -lt memory/decisions/ (most recent is 2026-08-10, not from this session)"
+  - "ls -la .acos/state/ and ~/Library/Application Support/acos-token-monitor/state/ (confirmed Eternity Protocol arming/fired markers for this session_id, corroborating the auto-fire narrative from the transcript)"
+  - "memory/handoffs/2026-08-12-emergency-handoff.yaml, -2.yaml, -3.yaml, -4.yaml (prior handoffs from today, not read in depth — this handoff was written to -5.yaml to avoid collision, per the deterministic-path protocol)"

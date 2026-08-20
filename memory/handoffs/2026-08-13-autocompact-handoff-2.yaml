@@ -1,0 +1,395 @@
+timestamp: "2026-08-13T22:14:11Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "bc68f376-b446-4c9a-ad76-7dbd3004289d"
+estimated_tokens: 353564
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Finishing /research 2 on whether a second Claude Code login signs the boss's
+  account (jason@okoacapital.com) out of this session. All 3 probes ingested;
+  `riff ask` run; delivering the labelled answer.
+
+completed_this_session: |
+  - Ascent internal status report + buyer-facing Q&A .docx both built and verified.
+  - XL skill corrected: Utah Shoe III = CARRY FORWARD, Phase 2b investor-sum check
+    (G1 scope / G2 participation / G3 commitment) added. SKILL.md still uncommitted.
+  - Memory note reference_xl_update_utah_shoe_sheets.md rewritten + MEMORY.md pointer.
+  - Confirmed ziaul@okoacapital.com is NOT reachable from this session (Superhuman
+    list_accounts returns only jason@; Gmail is the same mailbox).
+
+decisions_made: |
+  - "Starting next week the utah shoe III number stays whatever we have there" —
+    carry forward from the latest DROPBOX workbook, no Hypercore call, permanently.
+  - Loan 88 (Utah Shoe) keeps sourcing from Hypercore; he let 1,031,257.17 stand.
+  - Argent stays no-change; follow the skill.
+  - jason@okoacapital.com: read-only, never open an unread message, no writes at all.
+    (Amends the standing never-touch rule; restatement NOT yet confirmed.)
+
+blockers: |
+  - ziaul@okoacapital.com is unreachable — one Keychain credential on this Mac,
+    and the connectors follow the logged-in claude.ai account.
+  - Thread 5 (email as an XL source) cannot be built until he picks a route.
+  - Unresolved: Cobble Creek lien — $92,000.00 or $92,000,000.00 (sources disagree).
+
+candidate_learnings: |
+  - A figure can be faithfully copied from its source and still be WRONG for the
+    cell it lands in. Verify SCOPE (investor vs loan level), not just provenance.
+  - Always re-list Dropbox by modified time before diffing; the published file can
+    appear after the draft was built.
+  - CLAUDE_CODE_OAUTH_TOKEN gives per-process auth without touching the Keychain,
+    but such a session cannot fetch claude.ai connectors — so it cannot read mail.
+
+context_for_next_session: |
+  The live question is mail access, not the XL numbers — those are settled. Route A
+  (Zee runs the mail step in his own Claude, saves the result into the XL draft
+  folder, this session reads the file) is the zero-risk option, offered and not yet
+  chosen. Do not attempt a second /login on this machine to test it.
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  reserch if it really logs my boss's account out. /research 2
+
+assistant_tail: |
+  Yes to the cmux half. The login half has a real risk I have to name first.
+  
+  ## The blocker: there is only one login on this machine
+  
+  Claude Code keeps its credentials in the macOS Keychain, under service `Claude Code-credentials`, account `zee`. **One entry, keyed to your Mac user — not to a window.**
+  
+  So a second window logging in as your personal account would very likely overwrite that entry. That would sign this session out of your boss's account, mid-work.
+  
+  I did **not** test this. Testing it is the thing that breaks it. `CLAUDE_CONFIG_DIR` does exist in the binary, so a separate config folder is supported — but I could not confirm it moves the keychain entry too, and finding out the hard way costs you the session.
+  
+  ## The cmux half works, and there is a simpler version
+  
+  You do not need to talk to the window. **Have it write a file.**
+  
+  The second session searches ziaul@okoacapital.com, writes what it found to a file in the draft folder, and stops. This session reads that file. Shared disk is a plain, reliable channel. No message passing, no timing, nothing to go wrong.
+  
+  The pieces already exist and are proven. `cmux send --surface <ref> -- <text>` puts a command into a pane —  […]
+  
+  ---
+  
+  Researching at level 2 (light-plus): "does a second Claude Code login sign the boss's account out?"
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 126
+  recent_commits: |
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+    fa16762 fix(research-riffs): close all three-review must-fix items; trust-chain HIGHs → SHIP-WITH-NOTES
+    82188f0 feat(safe-close): capture learnings across every /clear cycle, not just the closer's own memory
+    14343bd fix(eternity-protocol): resolve session-id/handoff selection through one shared script, not 10 copies
+    bf8cfda fix(autopilot/eternity): resume-prompt SKILL.md + autopilot session-scoping fixes
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/acos-xl-update/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+  - "?? memory/handoffs/.harvested/"
+  - "?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/bc68f376-b446-4c9a-ad76-7dbd3004289d.jsonl"
+  transcript_lines_parsed: 1148
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically. It began mid-stream (continued from a prior compaction) and covers several distinct work threads.
+  
+  **Thread 1 (inherited, completed): Ascent seven-question research.**
+  The conversation resumed with me needing to deliver a seven-part answer about Ascent Park City. I first did handoff bookkeeping (editing the autocompact handoff YAML with judgement fields), then delivered the full seven-part answer with references and shown calculations.
+  
+  **Thread 2: Save findings as a report (.doc).**
+  User asked to save findings to Documents/OKOA as .doc and give short highlights. I built an HTML file in scratchpad, converted with `/Users/zee/.claude/scripts/html-to-docx.py` (pandoc + python-docx two-pass), verified with openpyxl-style python-docx checks.
+  
+  **Thread 3: A second, buyer-facing document.**
+  User gave 7 specific content directives with new facts overriding my findings (gas/water meters done, MEP partially done, 80% complete; role/party/status table; October 31 2027 target with buyout-in-October calculation; Hilton confirmed Curio promotion in writing, not binding on buyer; $18M construction cost, liens wiped; Ohana answer for presales; no legal issues affecting title). Asked to preview before building. I previewed, they gave edits (remove title/subtitle/property description, remove Curio explainer, tentative table, remove per-key checks, etc.), then asked to consolidate the 9-line cost table into 3-4 lines. I rolled it into 4 lines. Then "Build a doc" — I built and verified it.
+  
+  **Thread 4: XL weekly update investigation — the major thread.**
+  User asked why Utah Shoe III showed 273,816.67 in yesterday's XL weekly update. I found:
+  - Provenance file at `/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft/XL Ant Portfolio Update 20260816 — Sources & Provenance.md`
+  - Memory note `reference_xl_update_utah_shoe_sheets.md`
+  - The number = Hypercore payoff_as_of loan 131 = principal 193,050.00 + totalFees 60,000.00 + totalPenalties 20,766.67
+  
+  Then user asked: what does the instruction say, what's XL's percentage, did it change? I read the skill at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-xl-update/SKILL.md` and ran live Hypercore queries via doppler. Found XL participation on loan 131 = 60%, outstanding = 48,460.00. Loan 88 = 100% participation.
+  
+  User then pushed back hard: OKOA reclassified all 2026 payments from Utah Shoe 1 to Utah Shoe 3 and attributed them all to XL; XL is 60%, another investor 40%; "This is incorrect and why I dont trust AI to do these things."
+  
+  I verified: loan 131 investors = XL 48,460.00 + OKOA Partners 225,356.67 + OKOA Management 7,500.00. XL + OKOA Partners = 273,816.67 exactly. I corrected the memory note.
+  
+  User then said Utah Shoe III current number should stay the same, and typed /restate. I invoked the restate skill, flagged ambiguity about "latest book." User corrected: look at latest updated file in Dropbox; starting next week Utah Shoe III stays whatever's there. I found a NEW Dropbox file `XL Ant Portfolio Update 20260816.xlsx` saved Aug 13 14:45 with Utah Shoe III = 36000 (hand-edited by user).
+  
+  User confirmed "yes, and add the investor-sum check to the skill." I edited the SKILL.md (added XL participation column, CARRY FORWARD row, Phase 2b investor-sum check with G1/G2/G3 gates), updated memory note and MEMORY.md.
+  
+  **Thread 5: Email access.**
+  User asked to add emails to the skill (ziaul@okoacapital.com, plus read jason@okoacapital.com with strict no-change guardrails), typed /restate. I restated, flagging the standing rule change. User added: don't open unread messages in boss's email; asked if I can access ziaul@. I checked: Superhuman lists only jason@okoacapital.com; Gmail is the same mailbox. Answer: no.
+  
+  User asked about the communication tracker skill. I checked: same MCP tools, same mailbox, and it has WRITE verbs (label_thread, label_message, create_label).
+  
+  User proposed opening a new cmux context window with personal login, communicating via cmux. I checked: credentials in macOS Keychain service "Claude Code-credentials" account "zee", single entry; CLAUDE_CONFIG_DIR string exists in binary. Flagged risk of logging boss out. Offered 3 routes.
+  
+  **Thread 6 (current, incomplete): /research 2.**
+  User typed "reserch if it really logs my boss's account out. /research 2". I invoked the research skill, ran research-plan.ts (depth 2, light-plus, lite tier, maxProbes 3, no panel/gate/report, nextRung 3), initialized session, declared coverage dimension, rendered 3 probes, dispatched 3 Task agents, got all 3 back, ingested (7/8/8 novel claims). The `riff ask` step has NOT been run yet. This is where the summary request interrupted.
+  
+  Key security/constraint instructions to preserve verbatim.
+  
+  Let me make sure I capture the exact numbers and paths accurately.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  The conversation contains six threads. Threads 1–4 are complete; threads 5–6 are in progress.
+  
+  **Thread 1 (completed).** Deliver a seven-question answer on Ascent Park City (Wolfgramm, Beehive) with references and shown calculations, under an active `/goal` Stop hook.
+  
+  **Thread 2 (completed).** *"Save the findings as a report in documents/okoa (.doc). Now give me highlights of each answer to each question. Make the highligts short."*
+  
+  **Thread 3 (completed).** Build a second, buyer-facing document. User gave seven numbered content directives that OVERRIDE the earlier research findings, then a round of edits, then a table-consolidation request, then "Build a doc."
+  
+  **Thread 4 (completed).** Investigate why the XL weekly update showed a 273,816.67 payoff for Utah Shoe III; then what the instruction says, what XL's percentage is, and whether it changed; then correct the skill.
+  
+  **Thread 5 (in progress, unresolved).** Add email as a source to the XL skill — ziaul@okoacapital.com plus read-only access to jason@okoacapital.com with several guardrails. Blocked: ziaul@ is not reachable from this session.
+  
+  **Thread 6 (in progress, current).** *"reserch if it really logs my boss's account out. /research 2"* — research whether a second Claude Code login signs the boss's account out.
+  
+  ## 2. Key Technical Concepts
+  
+  - **html-to-docx pipeline:** `/Users/zee/.claude/scripts/html-to-docx.py` — two-pass (pandoc HTML→DOCX, then python-docx institutional styling: sage-80 `#465D53`, zebra `#EEF3F0`, IBM Plex Sans). Usage: `python3 html-to-docx.py <input.html> <output.docx>`. System `python3` has python-docx 1.2.0; pandoc at `/opt/homebrew/bin/pandoc`. The `.venv-design` python does NOT have python-docx.
+  - **acos-hypercore-ask scripts** under `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/`: `hca-figures.py --loan-id N --date YYYY-MM-DD` (payoff_as_of), `hca-funding.py --figure {funding_outstanding,funding_commitment,funding_participation,funding_receivable,per_diem_interest} --loan-id N --funding-entity-id E`, `hca-entities.py --resolve NAME --type {loan,client,equity,fundingEntity}`. All run under `doppler run --project hypercore-ask --config dev_personal --`.
+  - **Funding entity ids:** 1 = OKOA Partners, 2 = OKOA Management, 3 = XL.
+  - **acos-research-riffs engine:** `riff` shell function = `bun "$HOME/.claude/skills/acos-research-riffs/scripts/riff.ts"`; `RIFF_ROOT="$HOME/.acos-research"`. Commands: `init --topic --tier`, `coverage init --session --json`, `render probe --session --question --dimension`, `claims ingest --session --slug`, `coverage probe q --session --novel --note`, `ask "<target>" --session`. Charters passed BY PATH to Task agents, never inlined. `subagent_type: claude` (riff-researcher not registered; never general-purpose — no web tools).
+  - **Claude Code auth:** macOS Keychain, service `Claude Code-credentials`, account `zee` (single entry). No `~/.claude/.credentials.json`. `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_SIMPLE` present as strings in the binary at `/opt/homebrew/bin/claude`. Claude Code version on this machine: 2.1.231 darwin-arm64.
+  - **cmux:** binary at `/Applications/cmux.app/Contents/Resources/bin/cmux`. `cmux send --surface <ref> -- <text>` is the verified injection mechanism (used by the communication tracker's `watcher.ts`).
+  
+  ## 3. Files and Code Sections
+  
+  ### Created / modified (verified)
+  
+  **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-13-autocompact-handoff.yaml`** — appended judgement fields (`current_work`, `completed_this_session`, `decisions_made`, `blockers`, `candidate_learnings`, `context_for_next_session`) and set `enrichment_status: "deepened"`.
+  
+  **`/Users/zee/Documents/OKOA/Ascent Park City - Status Report 2026-08-13.docx`** — internal seven-question report. Built from scratchpad HTML. Verified: 154 paragraphs, 15 tables, 36 headings, all 15 spot-checked figures present.
+  
+  **`/Users/zee/Documents/OKOA/Ascent Park City - Purchaser Questions and Answers 2026-08-13.docx`** — buyer-facing Q&A. Built from `/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/bc68f376-b446-4c9a-ad76-7dbd3004289d/scratchpad/ascent-buyer-qa.html`. Verified: 5 tables, 32 paragraphs, 7 headings, first line = "1. Construction status" (no title, per instruction), all 17 spot-checked figures present.
+  
+  **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-xl-update/SKILL.md`** — now 334 lines. Two edits, both verified (5-column table renders correctly; 5 new anchors found).
+  
+  Edit 1 — the workbook table gained an **XL participation** column and the Utah Shoe III row changed:
+  
+  ```
+  | # | Worksheet | Hypercore loan (id) | XL participation | Payoff action |
+  |---|---|---|---|---|
+  | 2 | Utah Shoe | Utah Shoe (**88**) | **100%** | payoff = **Hypercore payoff** for loan 88 **as of the report date** (safe ONLY because participation is 100% — see the scope rule below) |
+  | 3 | Utah Shoe III | Utah Shoe III (131) | **60%** | **CARRY FORWARD** — copy B17 from the latest Dropbox workbook. **No Hypercore call, ever.** (Zee, 2026-08-13) |
+  ```
+  
+  Plus new notes: "**EVERY SHEET IS INVESTOR-SCOPED.**" (proof: B11 equals XL's `funding_commitment` to the dollar), "**Utah Shoe III is carry-forward, permanently.**", "**Loan 88 carries the same reclassification.**"
+  
+  Edit 2 — new **Phase 2b — INVESTOR-SUM CHECK (MANDATORY, blocks the write)** section with the failure narrative and three gates:
+  
+  | Gate | Test |
+  |---|---|
+  | **G1 — scope** | Value about to be written **≠** the sum of all investors' `funding_outstanding` |
+  | **G2 — participation** | Loan-level `payoff_as_of` **requires** `funding_participation` == 100 |
+  | **G3 — commitment** | Sheet cell **B11** should equal XL's `funding_commitment` |
+  
+  **`/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_xl_update_utah_shoe_sheets.md`** — rewritten twice. Now carries: the error and the check; the investor table; the reclassification; the ruling section quoting *"Starting next week the utah shoe III number stays whatever we have there."*; the 36,000 figure; "ALWAYS RE-LIST DROPBOX FIRST."
+  
+  **`/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/MEMORY.md`** — pointer line updated to lead with the carry-forward rule.
+  
+  ### Read (not modified)
+  
+  - `/Users/zee/Documents/OKOA/XL Ant Weekly Update Draft/XL Ant Portfolio Update 20260816 — Sources & Provenance.md` — traced 273,816.67 to `payoff_as_of` loan 131.
+  - `/Users/zee/Documents/OKOA/Ohana Query/Ohana Answers.docx` — 56 paragraphs. Q1 verbatim: *"73 contracts were originally signed, the number of interested parties eventually came down to 68, out of 68, 2 parties didn't begin preparation to close remaining 66 was in the process to close."* Also records Cobble Creek at **$92,000,000.00** per the ALTA Commitment (conflicting with Greenberg Traurig's $92,000.00).
+  - `/Users/zee/.claude/skills/acos-communication-tracker/SKILL.md` — 241 lines. `allowed-tools` includes `mcp__claude_ai_Gmail__label_thread`, `label_message`, `create_label` — i.e. it WRITES.
+  - `/Users/zee/.claude/projects/.../memory/project_acos_communication_tracker.md` — records the 2026-08-10 blocking discovery that the tracker ran against jason@okoacapital.com.
+  
+  ### Workbook cell history (read-only)
+  
+  `Utah Shoe III` B17 across published books: 110000 (Apr 5 – May 3) → 97540 (May 10 – Aug 9) → **36000** in the Dropbox 20260816 file. My draft had 273816.67.
+  
+  `Utah Shoe` B17: 981348.84 (20260809) → 1031257.17 (20260816, both Dropbox and my draft — user did not revert it).
+  
+  ## 4. Errors and fixes
+  
+  1. **Wrong figure written to the XL report (the central error).** The 20260816 run wrote `273,816.67` into `Utah Shoe III` B17. That is loan 131's LOAN-LEVEL payoff. Proof of error: XL outstanding 48,460.00 + OKOA Partners outstanding 225,356.67 = **273,816.67 exactly**. Fix: skill rule changed to CARRY FORWARD, Phase 2b check added.
+  
+  2. **I over-claimed on the Cobble Creek lien.** I told the user "the Cobble Creek lien is $92,000.00, not $92M" and offered to fix the fact-sheet. The Ohana document showed the ALTA Commitment states **$92,000,000.00**. Two sources disagree. I corrected myself and told him not to change the fact-sheet on my say-so.
+  
+  3. **I proposed 48,460.00 as the "correct" replacement.** The user's reclassification account showed that figure is also distorted. Fix: I stopped proposing a replacement number and asked how he wanted the reclassification handled.
+  
+  4. **I compared against the wrong base file.** I used the 20260809 Dropbox file and my own draft. A newer `XL Ant Portfolio Update 20260816.xlsx` had appeared in Dropbox (saved Aug 13 14:45) with the user's hand edit. Fix: re-listed by modified time; recorded "ALWAYS RE-LIST DROPBOX FIRST" in memory.
+  
+  5. **`hca-entities.py` with only `--type fundingEntity` errored** — requires `--resolve NAME`. Fix: looped funding-entity ids 1–10 against `funding_participation` for loan 131 instead.
+  
+  6. **Eden self-check failed twice** (sentences over the 15-word cap). Fix: shortened prose; the pasted document draft content was the main contributor.
+  
+  7. **User feedback, verbatim and important:** *"This is incorrect and why I dont trust AI to do these things."* — in response to the report giving XL the full payoff while the 40% investor got none.
+  
+  ## 5. Problem Solving
+  
+  **Solved and verified:**
+  - Traced 273,816.67 to its exact source and proved it wrong by arithmetic (investor lines sum to it exactly).
+  - Established XL participation: loan 131 = 60%, loan 88 = 100%. Commitments: 300,000 and 1,025,000 — matching each sheet's B11 exactly, proving the sheets are investor-scoped.
+  - Confirmed the user's reclassification account with data: loan 131's outstanding split (XL 17.7% / OKOA Partners 82.3%) is inverted against the 60/40 participation split; loan 88's XL outstanding (1,047,958.33) exceeds its 1,025,000 commitment.
+  - Confirmed ziaul@okoacapital.com is NOT reachable: Superhuman `list_accounts` returned only `jason@okoacapital.com` (isPrimary true); Gmail `list_labels` returned the same mailbox's labels.
+  - Confirmed the communication tracker cannot help: same MCP tools, same mailbox, and it holds write verbs.
+  
+  **Open:**
+  - Whether `CLAUDE_CONFIG_DIR` isolates credentials from the shared Keychain entry (the current research).
+  - The Utah Shoe (loan 88) reclassification — user let 1,031,257.17 stand but the distortion remains.
+  - Whether the Cobble Creek lien is $92,000.00 or $92,000,000.00.
+  
+  ## 6. All user messages
+  
+  1. *"Save the findings as a report in documents/okoa (.doc). Now give me highlights of each answer to each question. Make the highligts short."*
+  
+  2. *"Write a doc with the answers to the questions, use the following info: 1. Use the table that shows the construction status, but update it with the fact that gas meters and water meters are done, Mechanical, electrical, plumbing and fire trim are partially done Say overall 80% complete. 2. Create a table with Role Party & current status (the current shatus show where each party stand today. 3. Constuction needs to be completed before the next ski season, say october 31st 2027. Show a table with calculation assuming a buyout happens in october and steps that may need to be taken to start construction (time) + Construction time (6-8 months) + Coushion. 4. Hilton is the flag, they said it in writing that they will promote the ascent to curio (I don't have the exact document but know about it so word it correctly, this is for a interested buyer). The buyer has the option to either honor the agreement with hilton or not, it is not binding on them. 5. Remaining development cost: All the mechanics liens got wiped out so no trade bill is currently due. An independent appraiser said that the construction completion would cost in total of 18 million so show a number around that calculation. 6. Give the same answer as the one that was given to Ohana. 73 was sold, and 66 remain outstading. 7. No legal issues affecting the property or title that we are aware of. There are litigations but none of them affect the title or the property. Show me what you are going to write here in the context and I will give you a go to create a .doc file out of it."*
+  
+  3. *"Remove title, subtitle and property description. it is just question answer. They would know what a curio collection is, remove this: Curio Collection is a higher tier within Hilton's collection of independent-brand hotels, which supports a stronger rate position and a broader distribution reach. For construction of 18 million show a table with tentative calculations (mention tentative). The independent appraiser is an experienced GC who did the estimate verbally so we don't want to mention that. Say outstanding trade bills and mechanic's liens got wiped at foreclosure. remove this: Checks on that figure: [per-key and per-SF lines] All mechanic's liens recorded against the property were extinguished by the trustee's sale on July 22, 2026. No trade bills are currently due, and a purchaser does not inherit prior-contractor payables. update: All junior liens, including every recorded mechanic's lien, were extinguished by the trustee's sale on July 22, 2026, and Okoa Capital holds title by Trustee's Deed recorded that same day, Entry No. 01254897, Book 2913, Page 1584, Summit County."*
+  
+  4. *"for this table, the breakdown is a bit too much. Accumulate expenses under broader categories. I would like 3-4 line items."*
+  
+  5. *"Build a doc."*
+  
+  6. *"No, investigate an old work you did. We created xl weekly update yesterday and Utah Shoe III showed a 273816.67 payoff, why was this number used?"*
+  
+  7. *"what does the instruction say about calculating the payoff for this loan? What is Xl's percentage? Did the percentage change?"*
+  
+  8. *"How is this correct? OKOA reclassified all 2026 payments on the Utah Shoe 1 payment to Utah Shoe 3 and attributed all of them directly to XL. XL is 60% of the capital stack in Utah Shoe 3, and 40% another investor. Why are they getting the full payoff amount and the other investor is getting none? This is incorrect and why I dont trust AI to do these things."*
+  
+  9. *"For utah shoe III the current number in the latest book should stay the same./restate"*
+  
+  10. *"No, look at the latest updated file in dropbox. Starting next week the utah shoe III number stays whatever we have there."*
+  
+  11. *"yes, and add the investor-sum check to the skill"*
+  
+  12. *"Also, add my emails to the skill so that any update I receive in any of the eamils is reflected in the skill too.. my email is ziaul@okoacapital.com also look in jason@okoacapital.com for any updates too, hard rule don't make any change there in any possible way, have several gurdrails./restate"*
+  
+  13. *"don't open any message that is not read already in my boss's email. No change is a strict rule. also can you access ziaul@okoacapital.com"*
+  
+  14. *"I have a /communication tracker skill can you use that to access ziaul@okoacapital.com?"*
+  
+  15. *"can you open a new context window whenever I run the skill where I can login using my personal account and can you read from that context window by communicating with that window in cmux?"*
+  
+  16. *"reserch if it really logs my boss's account out. /research 2"*
+  
+  **Security-relevant constraints in force (preserve verbatim):**
+  - STANDING (from memory): *"never touch jason@okoacapital.com mail/calendar/drive — that's the boss's, not Zee's"* — the user is currently in the process of amending this to read-only, but has NOT yet confirmed the restatement.
+  - User's new hard rules for jason@okoacapital.com: *"hard rule don't make any change there in any possible way, have several gurdrails"* and *"don't open any message that is not read already in my boss's email. No change is a strict rule."*
+  - *"Do not call the AgentTool unless the user requested it"* and *"Do not use workflows or deep-research unless the user requested it"* — the user requested research via `/research 2`, which authorized the current Task dispatches.
+  - Subscription not API: never `ANTHROPIC_API_KEY`; never Z.ai/GLM endpoints for confidential OKOA/borrower data.
+  - GitHub: push defaults to PERSONAL (`ZiaulKarim-hub`); `okoateam` only when named; never a bare `git push`.
+  - OKOA red lines: boss cold-look rule; folder names are NOT facts; copies only (never move/rename/delete Dropbox originals); public-content privacy blocklist; verified figures only with as-of dates; clickable full percent-encoded `file://` URLs.
+  - Eden Protocol Level 3 governs top-level replies.
+  
+  ## 7. Pending Tasks
+  
+  1. **Finish the `/research 2` pass** — run `riff ask` and deliver the grounded answer with its stamp, then offer "keep riffing? (deepen to level 3, or jump to 5)".
+  2. **Thread 5 remains unconfirmed.** The email-source addition to the XL skill has not been built. The user has not answered which of routes A/B/C to build against, and has not confirmed the amended standing rule on jason@okoacapital.com.
+  3. **Offered, not accepted:** commit the modified `acos-xl-update/SKILL.md` (currently uncommitted).
+  
+  ## 8. Current Work
+  
+  Executing `/research 2` on whether a second Claude Code login signs the boss's account out.
+  
+  Plan resolved: `{depth: 2, name: "light-plus", tier: "lite", panel: false, maxProbes: 3, gate: false, recency: false, report: false, handoff: null, costNote: null, nextRung: 3}`.
+  
+  Session: `2026-08-13-does-a-second-claude-code-login-with-a-different-anthropic-a` at `/Users/zee/.acos-research/.acos/riffs/`. One coverage dimension `q`.
+  
+  Three probes dispatched and returned; all three ingested (`probe-01 -> novel q=7`, `probe-02 -> novel q=8`, `probe-03 -> novel q=8`) and coverage credited.
+  
+  **Probe findings:**
+  
+  - **Probe 1 (provisional):** Credentials in the login Keychain as service `Claude Code-credentials`, file fallback `<config dir>/.credentials.json`. Claims 2.1.144+ scopes the Keychain entry to the config directory via an 8-hex SHA-256 prefix of the expanded config-dir path (`Claude Code-credentials-<hash>`). Third-party tooling sets BOTH `CLAUDE_CONFIG_DIR` and `CLAUDE_SECURESTORAGE_CONFIG_DIR`. Caveat: Tier 3–4 sources only; Anthropic docs cover neither variable. Counter-observation: this machine runs 2.1.231 with `CLAUDE_CONFIG_DIR` unset and holds only the legacy unsuffixed entry.
+  
+  - **Probe 2 (provisional):** No native multi-account support. Two concurrent different-account sessions require either per-process env credentials (`CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` / `ANTHROPIC_PROFILE`, documented as ranking ABOVE the `/login` credential) or a separate config dir with both variables set. **On a shared default config directory there is exactly one credential store, so a second `/login` overwrites the first.** Only Tier-3 statement on the running session: *"Existing sessions keep the account with which they were started."* Nothing at any tier states what happens at the running session's NEXT TOKEN REFRESH.
+  
+  - **Probe 3 (verified, Tier 1 — the decisive finding):** `CLAUDE_CODE_OAUTH_TOKEN` is per-process, ranks 5th vs `/login`'s 7th, and `claude setup-token` *"does not save the token anywhere"* — so it does not disturb the Keychain. **BUT** claude.ai MCP connectors are *"fetched only when your active authentication method is a claude.ai subscription login"*, and a `CLAUDE_CODE_OAUTH_TOKEN` session *"can only make model requests, so it can't establish Remote Control sessions or fetch claude.ai connectors."* So the safe auth route cannot load Gmail at all. Superhuman specifically is not named in Anthropic's connector docs — that classification is inference.
+  
+  ## 9. Optional Next Step
+  
+  Run the final research step and deliver, exactly as the skill's Step 2 specifies:
+  
+  ```bash
+  export RIFF_ROOT="$HOME/.acos-research"
+  riff() { bun "$HOME/.claude/skills/acos-research-riffs/scripts/riff.ts" "$@"; }
+  riff ask "Does running a second Claude Code session with a different Anthropic account log the first account out?" --session 2026-08-13-does-a-second-claude-code-login-with-a-different-anthropic-a
+  ```
+  
+  Then deliver per the label table, printing the returned `stamp` field verbatim, honouring `numeric_unprimaried_ids`, and never answering past the label. End with the opt-in line: *"keep riffing? (deepen to level 3, or jump to 5) — say the word."*
+  
+  The answer must address the user's question in their words — *"reserch if it really logs my boss's account out"* — and should carry the decisive Tier-1 finding forward: the `CLAUDE_CODE_OAUTH_TOKEN` route avoids the Keychain but **cannot fetch claude.ai connectors**, which is the entire purpose (reading Gmail), so it does not solve thread 5. Route A (user runs the mail step in his own Claude and saves the result to the draft folder) remains the zero-risk option previously recommended and not yet chosen.
+  
+  </summary>

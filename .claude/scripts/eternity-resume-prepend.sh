@@ -167,7 +167,27 @@ fi
 # Unverifiable (either side unknown — e.g. a Warp pane, or an age-GC'd
 # binding) => fail CLOSED: skip the candidate. Warp recovery keeps its
 # documented PRIMARY path, the manual /acos-eternity-protocol-resume skill.
+#
+# 2026-08-18 PROJECT-KEY gate (Zee's Rule 1: no intermingling inside a shared
+# folder). $PROJECT_SESSIONS is derived from the sanitized CWD, so it is a
+# FOLDER set, not a project set. Research to Portfolio, FruitSync, Skill
+# Workshop, Website-builder and Logo Builder all live in "ACOS 3.0", so all of
+# their sessions pass that test. The surface gate above was meant to narrow it
+# further, but cmux-surface-<sid> bindings are never pruned — on 2026-08-18
+# there were 1034 of them mapping onto 105 surfaces, with EIGHT sessions
+# (including R2P's a6b28886) all claiming surface F354478B. Both discriminators
+# therefore collapsed and `ls -t` decided by mtime, which served FruitSync's
+# handoff (session ff036fd7, 17:01:11Z) to the R2P pane.
+#
+# A folder cannot distinguish those projects; only the project_uuid can. So a
+# candidate is claimable ONLY when its recorded project binding
+# (state/project-<sid>, written by enroll-project.sh at SessionStart) equals
+# THIS session's. Unknown on either side => fail CLOSED, exactly like the
+# surface gate. Failing closed here is safe: it only disables the LAST-RESORT
+# path, while the session's own pending-resume file and the per-PID pointer —
+# both already identity-scoped — keep working untouched.
 if [[ -z "$RESUME" && -z "$SIBLING" ]]; then
+    MY_PROJECT=$(cat "$STATE/project-$SESSION_ID" 2>/dev/null | head -1)
     while IFS= read -r CANDIDATE; do
         [[ -z "$CANDIDATE" ]] && continue
         SID=$(basename "$CANDIDATE" .txt | sed 's/^pending-resume-//')
@@ -175,6 +195,11 @@ if [[ -z "$RESUME" && -z "$SIBLING" ]]; then
             CAND_SURFACE=$(cat "$STATE/cmux-surface-$SID" 2>/dev/null | head -1)
             if [[ -z "$CMUX_SURFACE_ID" || -z "$CAND_SURFACE" \
                   || "$CAND_SURFACE" != "$CMUX_SURFACE_ID" ]]; then
+                continue
+            fi
+            CAND_PROJECT=$(cat "$STATE/project-$SID" 2>/dev/null | head -1)
+            if [[ -z "$MY_PROJECT" || -z "$CAND_PROJECT" \
+                  || "$CAND_PROJECT" != "$MY_PROJECT" ]]; then
                 continue
             fi
             RESUME="$CANDIDATE"

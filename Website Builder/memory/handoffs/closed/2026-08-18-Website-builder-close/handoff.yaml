@@ -1,0 +1,86 @@
+timestamp: 2026-08-18T21:47:23+00:00
+status: parked
+type: close-project
+session_id: 71d8fa6e-edbf-4415-9e33-1081bbf25b2b
+slug: 2026-08-18-Website-builder-close
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder
+session_summary: Safe close of Website-builder — non-git; next: Sign off the 4 unsigned section-18 rows, then settle DECISIONS.md item 2
+git_state: non-git project (no usable git state at root)
+git:
+  branch: null
+  head: null
+  dirty_count: 0
+  dirty_listed: listed 0 of 0
+dirty_files:
+next_actions:
+  - Sign off the 4 unsigned section-18 rows, then settle DECISIONS.md item 2
+next_action: Sign off the 4 unsigned section-18 rows, then settle DECISIONS.md item 2
+intent_core: |
+  next_action: Sign off the 4 unsigned section-18 rows, then settle DECISIONS.md item 2
+  project: Website-builder
+  decisions: |
+    - BUILD ROUTE = /acos-preeng-classic. Zee picked it after asking "why no /acos-genesis
+      or /acos-preeng?" against my recommendation of /acos-plan. Full pipeline ran to
+      completion: runner -> worker (specify, research, plan, tasks, analyze, instructions)
+      -> completeness gate -> bridge. Gate printed "RESULT: OK - 78 task file(s), all
+      required artifacts present, no QA rejections." exit=0.
+    - DECISION 1 (DECISIONS.md item 1) SETTLED as option B, 2026-07-26: v1 MUST ship
+      gridlines and full constraint dragging. Zee chose B against my recommendation of C
+      (split v1a/v1b). Recorded inline in DECISIONS.md with the accepted cost: section 18's
+      ~16-24 days, ~25-35 days revised baseline, both tagged inference not measurement.
+    - Worker run STAGED, not single-pass. Stage A (specify+research), Stage B (plan+tasks),
+      Stage C1 (tasks QA + analyze + CAGE csvs), C2 (agent_instructions). Each preeng
+      command is disk-gated by design, so splitting preserved the determinism contract
+      while checkpointing progress against repeated agent deaths.
+    - The 55 remaining task files were written by FOUR PARALLEL agents on disjoint ranges
+      (S24-S36, S37-S50, S51-S64, S65-S78), not one agent grinding sequentially.
+    - Bridge written BY THE MAIN SESSION in TypeScript (_bridge-to-slices.ts), not
+      delegated. 78 ACOS slice skeletons in Website Builder/planning/slices/, all parsing.
+    - Preeng slice ids (S01..S78) carried VERBATIM into the ACOS slices. No second
+      numbering scheme, because this project already suffers O31/O32/O33/O34 and A91+
+      id collisions and a new scheme would add to them.
+  rejected_alternatives: |
+    - /acos-plan as the build route. My recommendation; Zee chose preeng-classic instead.
+    - /acos-genesis-protocol. Fits the 216-row component library, but its own SKILL.md
+      self-subordinates to acos-plan and its /acos-synthesis-protocol execution path to
+      the reviewer machinery was unverified.
+    - One worker agent running all six preeng commands. Died twice (session limit, then
+      connection closed mid-write leaving a TRUNCATED domain-lattice.json). Staged instead.
+    - RESTARTING stalled agents. Resumed via SendMessage instead, preserving ~197k tokens
+      of reads two agents had already paid for.
+    - Minting fresh ACOS slice ids. Rejected - see decisions above.
+  traps: |
+    - THE BASH TOOL CWD PERSISTS BETWEEN CALLS. An earlier `cd planning/slices` silently
+      broke the safe-close preflight, which resolved a nonexistent session dir. Always
+      `cd` to an absolute root at the top of any block that depends on pwd.
+    - FOLDER CAVEAT: this tab's shell folder is `ACOS 3.0`; the project root is
+      `ACOS 3.0/Website Builder`. It cannot be changed. Use absolute paths for everything.
+    - AGENTS BURN AN ENTIRE TURN READING AND WRITE NOTHING. Three did. Cause: being told
+      to read stories.json (152,839 bytes) plus plan/tech_prd/data-model before writing.
+      Fix that worked: pre-extract per-agent metadata (_rangeA..D-slices.json, ~21-27 KB)
+      and instruct "STOP READING - START WRITING".
+    - FR ids are defined in spec.md, NOT plan.md. plan.md cites only 4 of 188. Checking
+      coverage against plan.md produces a FALSE 184-orphan alarm - I nearly relayed it.
+    - Backticks inside a TypeScript template literal close the string early. It broke
+      _bridge-to-slices.ts on a `slice.yaml` comment.
+    - Criterion ids contain LITERAL double quotes (e.g. "section 12.17-A100"), which break
+      double-quoted YAML scalars. Route every emitted value through one escaper.
+    - A truncated JSON file that looks big is worse than a missing one - a later stage
+      reads it happily. Always re-parse, never trust a byte count.
+    - 74 of the 78 slice files carry `# TODO: confirm` on dependency `what_it_provides`
+      (120 entries). Deliberate: the task files say A depends on B but not what A needs.
+  open_questions: |
+    - FOUR section-18 sign-off rows REMAIN UNSIGNED and by section 18's own precondition
+      they gate v1 build start: 4(c) rich-text-is-v2, 4(d) one-direction-only/no
+      cross-direction-swaps, 4(f) editor-lacks-zoom-pan-rulers-multi-select, 6 charts-partial.
+    - DECISIONS.md items 2-16 remain open (15). Item 2 is the most load-bearing: the real
+      component inventory is 216 rows / 1,228 variants [V sec 8.2]; 87/674 is only the v1
+      cut candidate; ~50/~430 is the stale figure sections 18 and 13 were sized against.
+    - analysis-report.md carries 13 NEW defects (D-01..D-21). Worst: the A91+ collision is
+      THREE-way (sec 7 A91-A97, sec 12.17 A91-A101, sec 18 A91-A101), plan.md cites A102
+      and A112 which NO section defines, O31/O32 each carry FOUR meanings, and the demo-id
+      contradiction is four-for-four (plan.md sec 3.2 vs stories.json for all 4 demos).
+    - MoSCoW is flat: 77 MUST / 1 COULD, no SHOULD, no WON'T. Exactly one trade-back lever
+      exists if the schedule slips.
+    - Whether to push anything. Commits 88c1597 and 551301a plus this session's entire
+      preeng output are unpushed. Asked across several sessions, still unanswered.

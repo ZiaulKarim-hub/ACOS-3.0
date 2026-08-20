@@ -1,0 +1,235 @@
+timestamp: "2026-08-18T18:00:34Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "a6b28886-96ca-4f64-9a7c-edcfc4963795"
+estimated_tokens: 435067
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  card 1: A, card 2: B
+
+assistant_tail: |
+  API Error: Connection closed mid-response. The response above may be incomplete.
+  
+  ---
+  
+  API Error: Unable to connect to API (ENOTFOUND)
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 166
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/tests/test_oracle_hard_blocks.py"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+current_work: |
+  R2P card 7 (write a specification for every checksum recipe), split into three
+  lanes. Lane A is verified and awaiting its seal (QA record + scoped commit).
+  Lane B's builder finished; its blind QA never returned a verdict. Lane C's
+  builder stalled after partial edits to the four presentation files.
+
+completed_this_session: |
+  Six DEV/blind-QA pairs run to completion and sealed with scoped commits:
+  a34021b (rulings for cards 1+2), e29d0c3 (card 1), bbed381 (card 5),
+  b7582ee (card 6a), 29470f5 (card 4), 23cff24 (card 2-B docs).
+  Card 7 lane A re-QA PASSED after a FAIL/repair round; not yet committed.
+
+decisions_made: |
+  Zee ruled "card 1: A, card 2: B". Card 1 (SBL-D3) = A: fix the basis label so
+  it reads the raw deltas. Card 2 (SBL-D4) = B: keep freeze-in-place and
+  document the contract loudly — he rejected option A (clone at the door).
+
+blockers: |
+  OBS-VG1 is with Zee and unanswered (verify gate red on 3 unformatted files;
+  options R-A reformat / R-B biome exemption / R-C accept red). Silence is not
+  approval, so nothing proceeds on it. Card 7 lanes B and C need fresh agents —
+  the pre-compaction subagent ids are dead.
+
+candidate_learnings: |
+  A 600-second stream watchdog can stall a subagent mid-audit; after a compaction
+  the old agent ids no longer resolve, so the work must be re-dispatched, not
+  resumed. Agent self-reports are not evidence: lane A's builder reported a spec
+  that was not on disk, and only the blind QA caught it. The disk is authority.
+
+context_for_next_session: |
+  R2P is LOCAL-ONLY with no git remote — never push. No agent approves or seals;
+  Zee is the gate. Records are additive — supersede by sibling, never edit.
+  Card 7's rule: production diffs are comment-only, no digest output may change,
+  and tests pin the spec in both directions with no golden hash literals.
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a6b28886-96ca-4f64-9a7c-edcfc4963795.jsonl"
+  transcript_lines_parsed: 916
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  This session is an eternity-protocol resumed session (after /clear) in the ACOS 3.0 project directory, working on the external R2P project. The only genuine user message is "card 1: A, card 2: B". Everything else is system notifications (task completions) and Eden self-check Stop-hook rewrite demands.
+  
+  Chronology:
+  1. Resume: read persisted resume output + 2026-08-18-emergency-handoff.yaml. Handoff said tasks 35/41 pending, card 2 web half unstarted, four pairs blocked by subagent cap.
+  2. Disk verification showed handoff STALE: R2P HEAD was c336c22 (not f400a06) — a middle session had done tasks 35 (8e0f36a), 41 (d01ef82 + a2d0197), and completed card 2 evidence (c336c22, "A/B ready for Zee"). Re-armed autopilot (max 1000 iterations).
+  3. Read card records to pin A/B meanings: RECORD-SBL-D4-INVESTIGATION-BOTH-HALVES-COMPLETE.yaml defines card 2 A=clone at door, B=keep freeze-in-place + document (rec B); RULING-BATCH-2026-08-18-EIGHT-CARDS.yaml defines cards 3-10 rulings and card 1 explanation (A=fix label, B=document, rec A); DECISIONS-FOR-BEN.yaml SBL-D3 at line 272.
+  4. Fact-checked the basis vocabulary in packages/core/reconciliation/statement-break-lifecycle.ts: money_difference (:523), quantity_times_price (:524); NO quantity_difference member; defect ternary at :2845-2851 tests quantityPart===0n.
+  5. Created 9 tasks; transcribed rulings as RULING-SBL-D3.yaml + RULING-SBL-D4.yaml → commit a34021b.
+  6. Dispatched 4 DEV agents (cards 1, 4, 5, 6a) in parallel, then blind QA per pair, then sealed each with scoped commits: e29d0c3 (card 1), bbed381 (card 5), b7582ee (card 6a), 29470f5 (card 4).
+  7. Presented OBS-VG1 to Zee (options R-A/R-B/R-C from VERIFY-GATE-BLOCKER.yaml + ownership correction record; asked answer format "OBS-VG1: A/B/C" to avoid collision with card 10's "R-A"). STILL UNANSWERED.
+  8. Card 2-B docs pair: DEV (151 comment-only lines) + QA PASS 14/15 → sealed 23cff24.
+  9. Card 7 split into 3 lanes. Lane A DEV done → QA FAIL (missing 8th spec computeApprovalPolicyChecksum + false citation) → DEV repaired 5 items → re-QA PASS (8/8 specs, 2 LOW step-number mis-citations). Lane A seal (QA record + commit) NOT YET DONE — interrupted.
+  10. Lane B DEV done (8 producers + 1 acceptor) → QA launched, stalled at watchdog (600s) — needs resume.
+  11. Lane C DEV launched, stalled at watchdog (600s) after baselines + starting figures.ts — needs resume; partial edits to figures.ts/export-parity.ts may exist.
+  
+  Agent IDs for resume: lane A DEV af1864dfc2b6ca1a0; lane A QA a2f3959e5e7933319; lane B DEV acc7a5ac3a6eee3ee; lane B QA a5f46a4de8222c00f; lane C DEV af77fc5a3fa26d817.
+  
+  Errors: wrong path guesses (fixed via git ls-files); zsh unquoted === error; repeated agent mid-work stalls (fixed via SendMessage nudges); lane A DEV false report caught by QA; lane B transient tsc errors (cleared); Eden hook rewrite failures (need ≤12-word sentences, glosses).
+  
+  Standing constraints must be preserved verbatim-ish: LOCAL-ONLY repo, never push; AP-06/AP-07; additive records; no AskUserQuestion under autopilot; scoped git add with staged-list read; no formatters/biome; sealed file untouchable; macOS no timeout, 2-min Bash cap; TS/Rust only; Eden Level 4.
+  
+  Defect queue for Zee accumulated across lanes — list them.
+  
+  Next steps: write QA-CARD7-LANE-A-BLIND-VERDICT-PASS.yaml, stage lane A's 11 files, commit; resume lane C DEV and lane B QA via SendMessage; seal lanes B and C after PASS; then task 9 queue; OBS-VG1 awaits Zee.
+  </analysis>
+  
+  <summary>
+  1. Primary Request and Intent:
+     - This is an eternity-protocol auto-resumed session (after `/clear`; new session id a6b28886-96ca-4f64-9a7c-edcfc4963795 with fresh subagent capacity). Project: R2P at `/Users/zee/Documents/Vibe Coding/R2P` — **LOCAL-ONLY, NO git remote, NEVER push** (verified: `git remote -v` empty). Branch `main`. Transcript filed under ACOS 3.0.
+     - The resume prompt ordered: read the handoff in full, re-arm autopilot FIRST, verify real disk state before trusting the handoff, dispatch the four blocked DEV/QA pairs (cards 4, 5, 6a, 7), then continue per Zee's standing order: "now that all the decisions are resolved, please move to coding the next phase."
+     - The only genuine user message this session: **"card 1: A, card 2: B"** — Zee's rulings on the last two open cards. Card 1 (SBL-D3) = A: fix the basis label. Card 2 (SBL-D4) = B: keep freeze-in-place, document the contract loudly the Immer way (matches the recommendation on record).
+     - Autopilot goal re-armed (iteration cap 1000): complete R2P to PRD_v0.4.txt end-state; EPIC-001 (24 DEV/QA pairs → EVB-STORY bundles ×8 → 4-reviewer swarm → EVB-EPIC-001 → close packet); never self-approve; silence is never approval; Zee IS the gate.
+  
+  2. Key Technical Concepts:
+     - Adversarial DEV/blind-QA pair cycle: DEV builds+tests; blind qa-reviewer (never sees DEV reasoning) verifies; orchestrator seals with a ClosePacketRecord + scoped commit.
+     - AP-06 (never weaken any test/invariant/tolerance; replacements must be strictly stronger), AP-07 (no agent approves/seals/ratifies; records TRANSCRIBE rulings; additive records — supersede by SIBLING, never edit).
+     - OBS-AP1: NEVER AskUserQuestion while autopilot is active (a hook forges the answer) — rulings go to Zee as plain text in conversation.
+     - Scoped `git add` with explicit pathspecs; READ the staged list before writing each commit message; commits end with `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
+     - Card 7 spec discipline: each digest spec documents the EXISTING recipe (field order | joining | encoding | placeholders | hash); production diffs COMMENT-ONLY; NO digest output may change; tests pin both directions — (a) spec-derived second implementation asserted equal, (b) one-component-at-a-time sensitivity; NO golden 64-hex literals.
+     - Eden Protocol Level 4 active: top-level replies need Flesch-Kincaid grade ≤5.0, sentences ≤12 words, every backticked identifier glossed on first use, acronyms spelled out; eden-selfcheck.py Stop hook forces one rewrite on failure (failed ~6 times this session).
+     - Environment gotchas: macOS has no `timeout` command; Bash 2-minute foreground cap; repo path contains a SPACE (always quote); never run tsc during a live stryker run; no formatters/biome runs allowed (OBS-VG1 pending); test tallies must carry exit codes (`echo $?` unpiped).
+     - Sealed file `tests/unit/presentation-risk-performance-view.test.ts` (sha256 617fa84eebbc467de543a2e6fc92343be14cfbe56f3c14c99669d94690e981ba) — untouchable without an explicit grant.
+     - Subagents stall/pause frequently (task-notification on stop); resume via SendMessage with the agent id and explicit finish instructions. A 600s stream watchdog can mark agents "failed" (still resumable).
+  
+  3. Files and Code Sections:
+     - `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-18-emergency-handoff.yaml` — the handoff; found STALE against disk (drift check worked).
+     - R2P commits made THIS session (all local, branch main): `a34021b` (rulings cards 1+2), `e29d0c3` (card 1 fix), `bbed381` (card 5 fix), `b7582ee` (card 6a fix), `29470f5` (card 4 fix), `23cff24` (card 2-B docs).
+     - `planning/evidence/EVB-EPIC-001/close-packet/RULING-SBL-D3.yaml` (created): card 1 = A; execution: ternary classifies from RAW deltas; zero-priced quantity break → `quantity_times_price` with amountMinor 0; vocabulary fact-check recorded (no `quantity_difference` member exists).
+     - `planning/evidence/EVB-EPIC-001/close-packet/RULING-SBL-D4.yaml` (created): card 2 = B; freeze-in-place accepted; documentation only; clone clause does not fire; clone-refusal pin at lifecycle test:1853-1862 stands.
+     - `packages/core/reconciliation/statement-break-lifecycle.ts` — card 1 hunk (`:2845-2851` region): `candidate.quantityPart === 0n` → `candidate.signedQuantity === 0n`; `candidate.moneyPart === 0n` → `candidate.signedMoney === 0n`; two previously-wrong classes moved (class 6 zero-priced pure quantity → quantity_times_price; class 7 mixed with zero mark → money_and_quantity, QA judged inside the ruling). Later +151 comment-only lines (card 2-B freeze docs, 8 placements).
+     - `packages/core/presentation/design-manifest.ts` — card 5: both inputs gated against `MINTED_MANIFESTS` at :556/:562 before content read at :569; union gains `{kind:"not_minted", error}`; ratchet test in `tests/unit/presentation-ui-auditability.test.ts` inverted (DECLARED_EXCEPTIONS 1→0, plus exact-count assertion of two `MINTED_MANIFESTS.has(` reads).
+     - `packages/core/presentation/risk-performance-view.ts` — card 6a: `assertPublishInstant` (:843-849) reusing the single `ISO_INSTANT_PATTERN` (:252), called as check 0 at :1071; new error `E_DISPLAY_PUBLISHED_AT_INVALID`; tests in the two contracts files (+207, +117).
+     - `packages/core/ledger/sleeve-conservation.ts` — card 4: guard at :1966-1981 refusing `asOfMillis < 0 || > MAX_SLEEVE_TIMESTAMP_MILLIS` with `legal_position_figure_out_of_range` (the REAL gap was the legal view's own instant at :1926, not money figures); insertions-only 70/0; contracts suite exclusion self-retired (UNPRODUCIBLE 1→0, PRODUCIBLE 27→28).
+     - QA verdict records created and committed: `QA-SBL-D3-BLIND-VERDICT-PASS.yaml`, `QA-REV-DM-1-BLIND-VERDICT-PASS.yaml`, `QA-RPV-2-BLIND-VERDICT-PASS.yaml`, `QA-REV-SLEEVE-1-BLIND-VERDICT-PASS.yaml` (includes the OBS-MG13 correction), `QA-SBL-D4-DOCS-BLIND-VERDICT-PASS.yaml`.
+     - Card 7 lane A (QA re-PASS, **UNCOMMITTED — awaiting seal**): production comment-only specs in `packages/core/contracts/result-checksum.ts`, `contracts/trigger-grammar.ts` (3 SPEC blocks), `contracts/contingent-plan-checksum.ts` (2), `orders/contingent-plan-engine.ts` (3 SPEC blocks — third added in repair at :1930-1998 for `computeApprovalPolicyChecksum`, digest id `approval-policy-checksum/1`), `run/checksum.ts` (2); new test files `tests/unit/contracts-result-checksum.spec-pin.test.ts`, `contracts-trigger-grammar-digests.spec-pin.test.ts`, `contracts-contingent-plan-checksum.spec-pin.test.ts`, `orders-contingent-plan-engine-digests.spec-pin.test.ts` (carries a PROVENANCE CORRECTION paragraph at :20-31), `run-checksum.spec-pin.test.ts` — 122 tests total, final runs 32/32, 32/32, 58/58, pre-existing 379/379, tsc exit 0.
+     - Card 7 lane B (DEV done, **QA stalled, UNCOMMITTED**): comment-only specs in `packages/core/performance/benchmark-alpha.ts` (+405/−2, 7 spec sections), `ledger/event-booking.ts` (+111/−0, computeReplayChecksum 9-component POS lines), `allocation/virtual-sleeve.ts` (+78/−1, checkOptionalChecksum specced as an ACCEPTOR); additive-only appends to `tests/unit/performance-benchmark-alpha.test.ts` (82→95), `ledger-event-booking.test.ts` (168→177), `allocation-virtual-sleeve.test.ts` (224→229); tsc exit 0.
+     - Card 7 lane C (DEV stalled early): baselines captured; partial edits may exist in `packages/core/presentation/figures.ts` and `export-parity.ts`; scope = 4 presentation files + `registerChecksum` (statement-break-lifecycle) + `reconciliationChecksum` (sleeve-conservation, executing RULING-REV-SLEEVE-2's what_A_requires).
+     - `planning/evidence/EVB-EPIC-001/close-packet/VERIFY-GATE-BLOCKER.yaml` + `OBS-VG1-OWNERSHIP-CORRECTION.yaml` — the OBS-VG1 decision presented to Zee: R-A (reformat 3 files + re-record digests), R-B (biome exemption, recorded loudly per PRD 16.7), R-C (accept red verify, gate on individual commands); no recommendation by design; two files are pair 17's, third (`tests/unit/qa-001-006-01.adversarial.test.ts`) is reviewer-owned; card 4's ruled edit to sleeve-conservation.ts makes R-A's cost partially sunk for that one file.
+  
+  4. Errors and fixes:
+     - Handoff staleness: claimed tasks 35/41 pending and card 2 web half unstarted; disk showed all done (commits 8e0f36a, d01ef82, a2d0197, c336c22). Fixed by trusting `git log` per the drift-check rule.
+     - Wrong path guesses (`close-packet/` at repo root; `src/reconciliation/...`): fixed via `git show --name-only` and `git ls-files` (real paths under `planning/evidence/EVB-EPIC-001/close-packet/` and `packages/core/...`).
+     - zsh `echo ===` parse error (`== not found`): quote such strings.
+     - Agents repeatedly stopping mid-work (their stop fires a task-notification): fixed each time with SendMessage resume nudges carrying explicit finish instructions; two later hard-stalled on the 600s stream watchdog (lane C DEV, lane B QA) — resumable the same way.
+     - Lane A DEV falsely reported a spec for `computeApprovalPolicyChecksum` that was not on disk; its test file cited a nonexistent spec (mirror labelled as second opinion — the exact OBS-MG16 defect). Blind QA returned FAIL with a required-before-resubmission list; DEV executed all 5 fixes, recorded a written PROVENANCE CORRECTION in the test file; re-QA PASS. Lesson applied: the disk is the authority over agent reports.
+     - Lane B transiently broke repo-wide `npx tsc --noEmit` (TS6133 ×2, TS6196 in `tests/unit/performance-benchmark-alpha.test.ts`); instructed to clear them; final state exit 0.
+     - Eden selfcheck Stop-hook failures (~6 rewrites): keep top-level replies at sentences ≤12 words, gloss every backticked identifier on first use (e.g. `asOfMillis`, `legal_position_figure_out_of_range`), spell out OBS/PASS/LOW-type labels.
+  
+  5. Problem Solving:
+     - Closed the ten-card ruling packet: transcribed Zee's "card 1: A, card 2: B" as additive records after fact-checking the vocabulary on disk.
+     - Ran six full DEV → blind-QA → seal cycles to completion (cards 1, 4, 5, 6a, 2-B, and lane A of card 7 through re-QA), managing concurrent lanes in one working tree via strict per-pair file scoping and explicit-pathspec commits.
+     - Card 4's stop-condition resolved correctly: money/quantity already refused everywhere; the genuine acceptance hole was `asOfMillis` (QA independently reproduced acceptance of −1 and 9007199254740991 on the pre-change module); OBS-MG13's "harmless" claim corrected additively.
+     - Defect queue accumulated for Zee (reported, never fixed — fixes would move published fingerprints): lane A D1 HIGH (result-checksum: Dates 4 years apart share one checksum; wrong payload accepted at boundary), D2 MEDIUM (headers claim declaration order; hashing is alphabetical), D3 MEDIUM (observation property insertion order is hashed → cross-node divergence), D4/D5 LOW; lane B D-1 (computeReplayChecksum delimiter-injection surface, no witness constructed), D-2 (digestCoverageRule outside its own digest), D-3 (census misclassification); card 6a observations (captureDisplayForExport atUtc unvalidated; :901 raw interpolation); assorted LOW prose notes in each QA record; lane A re-QA 2 LOW step-number mis-citations (orders-...spec-pin.test.ts:356, :391).
+  
+  6. All user messages:
+     - "card 1: A, card 2: B" — the only genuine user message this session (Zee's rulings; both executed). Everything else was system notifications and Stop-hook rewrite demands, explicitly NOT user input.
+     - Decision still open with the user: OBS-VG1 (awaiting reply in the form `OBS-VG1: A`, `B`, or `C`).
+     - Standing security/process constraints in force: R2P is LOCAL-ONLY with NO git remote — NEVER push; never a bare `git push` anywhere (GitHub guard hook armed; personal account is default, `okoateam` only when Zee names it); review-rules/ may never be read or modified; no agent approves/seals/ratifies — Zee IS the gate; silence is never approval.
+  
+  7. Pending Tasks (task list state):
+     - #6 in_progress — Card 7 spec pairs: lane A re-QA PASSED, needs SEAL (QA record + scoped commit); lane B DEV done, blind QA stalled mid-audit, needs resume then seal; lane C DEV stalled early, needs resume, then blind QA, then seal.
+     - #8 in_progress — OBS-VG1 presented to Zee; awaiting his `OBS-VG1: A/B/C`; do not re-ask; silence is not approval.
+     - #9 pending — Remaining queue after the ten cards: MAP-Q1 epic title, 15 open HIGHs, 12 ADRs, OBS-SW2 deadlines, charter 16.7 P0-sentence amendment offer, the new defect queue from card 7 lanes, then EVB-STORY bundles ×8, 4-reviewer swarm, EVB-EPIC-001, close packet per the autopilot goal.
+     - Completed: #1 rulings (a34021b), #2 card 1 (e29d0c3), #3 card 4 (29470f5), #4 card 5 (bbed381), #5 card 6a (b7582ee), #7 card 2-B (23cff24).
+  
+  8. Current Work:
+     Immediately before this summary, I was interrupted mid-turn with three actions declared but not yet executed: "Two things now. Lane C's builder stalled... I will restart it in place. And lane A's seal still needs its record and commit. Doing both." Then a second watchdog notification arrived: lane B's QA also stalled ("Agent stalled: no progress for 600s") at "Now let me read the appended ledger test block and judge its second-implementation provenance." So three concrete actions are queued: (a) seal lane A — write `planning/evidence/EVB-EPIC-001/close-packet/QA-CARD7-LANE-A-BLIND-VERDICT-PASS.yaml` capturing the FAIL → repair → re-PASS story (missing spec written honestly, provenance correction recorded, census closed 8/8, runs 32/32 + 32/32 + 58/58 + 379/379 + tsc 0, two LOW step-number mis-citations left open), then stage EXACTLY the 5 lane A production files + 5 spec-pin test files + the record (explicit pathspecs — lane B and lane C dirty files must NOT be swept in), read the staged list, commit; (b) resume lane C DEV (agent id af77fc5a3fa26d817) — it had captured baselines and begun `figures.ts`; check for partial edits; (c) resume lane B QA (agent id a5f46a4de8222c00f) to finish census, spec-truth (including the ledger replay checksum), test assessment, runs, and its eight-part verdict. Other live agent ids: lane A DEV af1864dfc2b6ca1a0, lane A QA a2f3959e5e7933319, lane B DEV acc7a5ac3a6eee3ee.
+  
+  9. Optional Next Step:
+     Execute the three queued actions from the interrupted turn, in one batch where independent: (1) Write `QA-CARD7-LANE-A-BLIND-VERDICT-PASS.yaml` and seal lane A with a scoped commit of exactly: `packages/core/contracts/result-checksum.ts`, `packages/core/contracts/trigger-grammar.ts`, `packages/core/contracts/contingent-plan-checksum.ts`, `packages/core/orders/contingent-plan-engine.ts`, `packages/core/run/checksum.ts`, the five `tests/unit/*spec-pin.test.ts` files, plus the record; (2) SendMessage to af77fc5a3fa26d817 to restart lane C from its captured baselines; (3) SendMessage to a5f46a4de8222c00f to finish the lane B verdict. Direct quotes anchoring this: my interrupted turn said "Lane C's builder stalled — a watchdog stopped it after 600 seconds of silence... And lane A's seal still needs its record and commit. Doing both."; the final notification added the lane B QA stall with instruction context "Continue from where you left off." After lane B QA PASSes, seal lane B; after lane C DEV reports, dispatch its blind QA and seal; then proceed to task #9's queue while OBS-VG1 remains with Zee.
+  </summary>

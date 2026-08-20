@@ -1,0 +1,290 @@
+timestamp: "2026-08-18T03:04:05Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 573726
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "summary-written"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  (Re-invocation of /acos-resume-prompt — the skill instructions were previously loaded; the arguments or dynamic output below are new.)
+
+assistant_tail: |
+  Steps 3 and 4 — arm the daemon, then status.
+  
+  ---
+  
+  Armed. The reset fires at turn-end, and the resume follows on its own.
+  
+  I caught one bad file along the way. The first save was an empty placeholder. It was fresh, so the age check passed it. I read it anyway and waited for real content. The saved file is now 21354 bytes, checked line by line.
+  
+  Three things this save carries.
+  
+  Your open question — the second clock. Raise it, or leave it.
+  
+  Today's turning point. You told me nobody explained R2P to you. That is written into the save and into memory, not just this chat.
+  
+  And the honest correction. Twelve packet items remain, not ten.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 155
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/tests/test_oracle_hard_blocks.py"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl"
+  transcript_lines_parsed: 2004
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Session start:** This session resumed from a prior compaction via the eternity protocol. The summary carried R2P (Research-to-Portfolio) autopilot work, Zee's prior rulings (MG21-R1 = C, bar raised to 90), and open Decision 2 (MG21-R2, nine 0.00 scaffold files).
+  
+  **Early actions:** I re-armed autopilot (found already active, iteration 5/1000), enriched the autocompact handoff, and checked the automation-scout research agent's dossier.
+  
+  **Research pipeline completion:** The automation-scout gap seat finished with 49 claims. I ingested it, credited coverage probes, attested the reproducibility dimension (it was `thin` due to an artifact — the L2 tie-break probe), and the coverage gate passed with all 10 dimensions saturated/attested. Then: report bundle → one compiler agent → mechanical audit PASS (246 citations) → citer agent → round 1 FAIL (4 unsupported statements) → I fixed all four in REPORT.md → ledgered correction L-0031 → citer round 2 PASS. Then `riff eval` returned FAIL on two checks (source-independence warn, figures-primary-sourced fail — 10 of 68 measurement claims lack Tier 1-2 sources), which I verified were all labeled provisional in the report.
+  
+  **Zee's Decision 2 ruling:** He asked me to remind him of Decision 2 and options. I laid out A/B/C. He said "A". I wrote `RULING-MG21-R2-ZEE-CHOSE-A.yaml`, verified the nine files' counts independently from `GATE-RERUN-2026-08-12-READING.json` (68 valid mutants, 66 kills needed: 3,4,5,5,6,7,9,9,18), committed `61ca415`.
+  
+  **Decision 3 (MG21-R1a):** I presented A/B/C on which run is the run of record. Zee asked clarifying questions about run times (I explained the 938x spread and that the tool already scales per-test budgets). He asked "what would c actually do? /explain 2" — I gave a step-by-step at level 2. He then asked "Can we really consider timeout as success? I think only kills should count" — I showed his instinct was already law via the 90-on-both ruling, with the honest exception of infinite-loop mutants. He ruled **C** ("for the decision, go with C for this one too"). I wrote `RULING-MG21-R1A-ZEE-CHOSE-C.yaml`, committed `06e71ba`.
+  
+  **Executing ruling A:** I ran 45 step-0 baseline runs (5 per file × 9 files). Result: 8 of 9 files aborted with ConfigError "No tests were executed" (instrument-cannot-run), and identity/index.ts showed killed 0 / timeouts 16,16,16,18,8 / standard swinging 42.11–94.74 (spread 52.63 points) with killed-only stable at 0.00. Wrote `OBS-MG24`, committed `234bcd8` with the 45 logs.
+  
+  **PREREG-GATE-002:** I wrote the settings sheet with four questions (Q1 time budget, Q2 concurrency, Q3 scope, Q4 spread rule), priced what could be priced, committed `0f5b921`.
+  
+  **DEV/QA cycle for the nine files:** A developer agent wrote 144 tests in a worktree, claiming 68/68 mutants killed (never ran stryker; applied mutants by hand). I verified the patch: 18 files, only deleted lines were the nine `// SCAFFOLD-PLACEHOLDER` markers. A blind qa-reviewer agent stopped twice without a verdict (tool guard on long heredocs, then chasing an out-of-scope git error); I resumed it twice with workarounds. Final verdict: **PASS, 20/20**, independently re-derived mutants by driving StrykerJS 9.6.1's own `allMutators` list, negative control passed. I applied the patch, ran vitest (exit 0, 144/144), confirmed gate script now reports 74 material targets (up from 65), committed `bfbbdf1`.
+  
+  **Q1 ruling and the multiplier investigation:** Zee asked why Q1 was being re-opened — a fair challenge. I acknowledged my framing error (his C ruling had scoped 120000 to those four measuring runs only, per its own text). He then proposed making the time a function of the measured run time. I confirmed the tool already has `timeoutFactor`. He said "Since 120000ms cleared 95.9% of the timeouts, let's go with that then" — I recorded `RULING-PREREG2-Q1` with a scope caveat (the 95.9% was measured in single-file runs where the flat term dominates; a whole-codebase run is a different regime, ~26% not 7.6x). Committed `df1622e`.
+  
+  He then asked what "smaller clearance" meant — I explained with the driving-test analogy. He pushed back: "That's is why I wanted to keep the time variable, but you said I needed to give it a fixed time." I explained the scaling runs backward from need (big allowance where no problem, tiny where the problem is), and noted the two dials are independent. He said "Yes, make the multiplier 1.6". I wrote `RULING-PREREG2-Q1B`, applied both settings to `stryker.config.mjs`, verified it parses, committed `4614218`.
+  
+  **The /investigate 2 run:** Zee asked for a multiplier covering all files without waste, via `/investigate 2`. I ran three readers on distinct angles. Findings: netTime spans 938x (292.29 ms to 274229.20 ms); identity has the fastest suite yet times out most; the repo's own fix moved the constant not the factor; and critically — OBS-MG19's recorded margin of 1.5182 is WRONG (drops the `timeOverheadMS` term), the real figure is 1.6025, and the error propagated into four documents including PREREG-GATE-002. Wrote `OBS-MG25`, committed `fe1bce3`.
+  
+  **Q2/Q3/Q4:** Zee replied "A A A". I read this as Q2/Q3/Q4 and deliberately left the second clock unassigned (it was a raise-or-leave question). Wrote `RULING-PREREG2-Q2Q3Q4`, committed `4c3630e`. Then executed Q2's ordered measurement: 10 runs (5 at concurrency 1, 5 at 9). All 10 returned 100.00/100.00, killed 19, timeout 0, spread 0.00 at both. But two things had changed since the baselines — the tests AND the clock. I ran a separation experiment (new tests + OLD 5000/1.5 clock): 100.00/100.00 all three times. **The tests did it, not the clock.** Wrote `OBS-MG26`, committed `fd487ae`.
+  
+  **THE PIVOTAL MESSAGE:** Zee wrote: "why do i not understand what you are talking about... the plan for research to portfolio was created by someone else. I don't even know what it is, what it is supposed to do and how it is supposed to work... Even when I ask you to define the terms, you define the ones that I already know about and leave the one's I don't know. How do we fix that? if we don't, this whole exercise could end up being useless."
+  
+  This was the most important message of the session. I read the PRD (sections 1, 1.1, 1.2, 1.3, 5.1) and built `docs/WHAT-R2P-IS-plain-language.html` — an HTML orientation doc with the lending analogy (R2P is the loan servicing system, the strategy is the credit committee), the non-goals, the ten components, and a ~25-term domain glossary. Committed `17fb1c1`, opened in Chrome. Wrote standing memory `feedback_define_domain_words_not_code_words.md` and indexed it in MEMORY.md.
+  
+  He replied: "It makes way more sense now. What is the next decision?"
+  
+  I answered with the second clock, and corrected a count error: I had said ten packet items were open; the packet holds 14, 2 ruled, so 12 remain.
+  
+  **The 12 decisions doc:** I read the full detail on all findings from `DECISIONS-FOR-BEN.yaml` and built `docs/THE-12-OPEN-DECISIONS-plain-language.html`, grouping them into three sets. Committed `ff46201`, opened in Chrome.
+  
+  **Eternity protocol (current work):** Zee invoked `/acos-eternity-protocol`. Step 0 pre-flight passed (539244 tokens, socket live, heartbeat 5s). Step 1: handoff agent spawned. **Critical catch:** the first handoff file was 496 bytes and contained "STUB — enrichment in progress" — it passed the protocol's age-based freshness guard but was empty. I refused to arm on it and waited for content instead. The agent then finished: 21354 bytes, 16 keys, 0 stub markers, HIGH confidence, 16 sources. I verified content independently with grep probes. Step 2: the last-user-message capture grabbed a skill re-invocation wrapper ("(Re-invocation of /acos-resume-prompt...") — a prefix missing from the filter list. I re-ran with it added and captured the true message: "It makes way more sense now. What is the next decision?" Wrote the resume prompt (4590 bytes). Step 3: sourced core.sh, PRE_CLEAR_TOTAL=572739. Step 5: armed both clear flags, disarmed freeze-early.
+  
+  The protocol is now armed and Step 6 says exit cleanly with no further reasoning.
+  
+  Key security/operational constraints to preserve verbatim: R2P is LOCAL-ONLY, no git remote, NEVER push. AP-06 never weaken a test/invariant/tolerance. AP-07 no agent approves/seals/closes/ratifies; silence is never approval. Never AskUserQuestion for a ruling while autopilot is active. Forbidden score levers list. Records are additive.
+  </analysis>
+  
+  <summary>
+  
+  1. **Primary Request and Intent:**
+  
+     **The standing goal (autopilot ACTIVE, iteration 9 of max 1000):**
+     > "Complete the R2P project in /Users/zee/Documents/Vibe Coding/R2P to the end-state defined by docs/PRD_v0.4.txt: first finish EPIC-001 (all 24 DEV/QA pairs through the adversarial cycle - DEV, QA, holdout, orchestrator seal - then EVB-STORY bundles x8, 4-reviewer swarm review, EVB-EPIC-001, close packet), then plan and execute each subsequent PRD phase as new epics under the same adversarial cycle with sealed evidence throughout. At every epic close, present the ratification packet (ADRs, finding dispositions, disclosure queue) to Zee and continue non-dependent work (e.g. planning the next epic) while awaiting his decision. Never self-approve; never treat silence as approval; never push (local-only repo). Re-derive current position from repo state (planning/, git log) at each iteration."
+  
+     Re-arm command: `python3 .claude/scripts/autopilot-activate.py on "<goal>" --goal-file "/Users/zee/Documents/Vibe Coding/R2P/docs/PRD_v0.4.txt" --max-iter 1000`
+  
+     **THE PIVOTAL REQUEST OF THIS SESSION (verbatim):** "why do i not understand what you are talking about. Let me give you some context, the plan for research to portfolio was created by someone else. I don't even know what it is, what it is supposed to do and how it is supposed to work. That is the reason I don't understand what you are talking about most of the time. Even when I ask you to define the terms, you define the ones that I already know about and leave the one's I don't know. How do we fix that? if we don't, this whole exercise could end up being useless."
+  
+     **Rulings Zee made this session (all recorded and committed):**
+     - **MG21-R2 = A** ("A"): all nine 0.00 SCAFFOLD-PLACEHOLDER files get tests now. Commit `61ca415`.
+     - **MG21-R1a = C** ("for the decision, go with C for this one too"): no single run is the run of record; the official per-file verdict is a median of three runs under frozen settings, applied per disputed file. Commit `06e71ba`.
+     - **PREREG-GATE-002 Q1 = A** ("Since 120000ms cleared 95.9% of the timeouts, let's go with that then"): `timeoutMS` 120000. Commit `df1622e`.
+     - **PREREG-GATE-002 Q1b** ("Yes, make the multiplier 1.6"): `timeoutFactor` 1.6. Applied to `stryker.config.mjs`, commit `4614218`.
+     - **PREREG-GATE-002 Q2/Q3/Q4 = A/A/A** ("A A A"): measure concurrency before adopting; median applies to files scoring 85.00–95.00 on either bar plus disagreeing files; spread > 10 points = NO VERDICT. Commit `4c3630e`.
+  
+     **Standing constraints (preserve verbatim):**
+     - R2P is **LOCAL-ONLY — NEVER push. No git remote configured at all.** Never a bare `git push` anywhere.
+     - **AP-06:** never weaken a test, an invariant or a tolerance.
+     - **AP-07:** no agent approves, seals, closes or ratifies. Records may TRANSCRIBE a ruling Zee actually made. Never treat silence as approval.
+     - **Zee IS the human gate.** "Ben" in PRD §18.3 is the ROLE name.
+     - Records are **ADDITIVE** — supersede with a SIBLING; never edit prior text.
+     - **TypeScript/Rust only, zero new python3** (existing-python edits allowed).
+     - Scoped `git add` only; READ THE STAGED LIST BEFORE WRITING THE COMMIT MESSAGE.
+     - **NEVER run tsc/typecheck while a stryker run is live** — `inPlace: true` prepends `// @ts-nocheck` during a run.
+     - **NEVER AskUserQuestion for rulings while autopilot is active** — a hook auto-picks "(Recommended)" and forges the ruling (OBS-AP1).
+     - **FORBIDDEN score levers:** project-wide `excludedMutations`; `// Stryker disable` except per-site for demonstrated equivalent with written reason; narrowing `mutate` globs; weakening tests; `ignoreStatic`.
+     - macOS has no `timeout`/`gtimeout`; repo path contains a SPACE; Bash call caps at 2 minutes.
+     - Eden protocol at **Level 4** (`~/.claude/state/eden-level` = 4).
+  
+  2. **Key Technical Concepts:**
+     - Two scores: **standard** = (killed+timeout)/valid; **killed-only** = killed/valid. killedOnly ≤ standard always.
+     - Stryker 9.6.1 + vitest runner; `inPlace: true`; `coverageAnalysis: "perTest"`; thresholds break is AGGREGATE only — no per-file gate exists.
+     - **The timeout formula (Tier 1, from `mutant-test-planner.js:122-126`):** `timeoutFactor * netTimeMs + timeoutMS + overheadMs` — THREE added terms plus the factor product.
+     - Second clock: `vitest.config.ts:10` `testTimeout: 15_000`, independent of Stryker's.
+     - riff engine (acos-research-riffs) for both /investigate (`RIFF_ROOT=~/.acos-investigate`) and /research (`RIFF_ROOT=~/.acos-research`); coverage dimensions, gate, auditor/compiler/citer, claims corpus with tiered provenance.
+     - Eternity protocol cmux variant: handoff → resume prompt → core.sh → clear flags → in-pane Stop hook fires `/compact`.
+  
+  3. **Files and Code Sections:**
+  
+     **R2P commits this session, in order (all local, never pushed):**
+     - `61ca415` — `RULING-MG21-R2-ZEE-CHOSE-A.yaml`. Verified counts from `GATE-RERUN-2026-08-12-READING.json`: nine files, 68 valid mutants, 66 kills needed (3,4,5,5,6,7,9,9,18).
+     - `06e71ba` — `RULING-MG21-R1A-ZEE-CHOSE-C.yaml`. Records honest flags: median gating is a house invention (no primary source prescribes it, `generalist-016`); N=3 is Zee's judgment call.
+     - `234bcd8` — `OBS-MG24-IDENTITY-SCORE-IS-PURE-CLOCK.yaml` + 45 baseline logs. Eight of nine files abort with ConfigError "No tests were executed"; identity killed 0 in all 5 runs, timeouts 16,16,16,18,8, standard 42.11–94.74 (spread 52.63 points), killed-only stable 0.00.
+     - `0f5b921` — `PREREG-GATE-002-THE-MEDIAN-PROTOCOL-SETTINGS.yaml`, four questions with costs priced (full sweep 8h 44m so tripling = 26h 12m; identity 51–92s/run; contingent-plan-engine ~29m).
+     - `fe1bce3` — `OBS-MG25-NO-SINGLE-MULTIPLIER-AND-A-CORRECTED-MARGIN.yaml`. Corrects OBS-MG19's 1.5182 → **1.6025** (second run 1.6147); the error propagated into `RATIFICATION-PACKET-EPIC-001.yaml:60`, `PREREG-GATE-002:72`, `OBS-MG21:205`, and a log header.
+     - `df1622e` — `RULING-PREREG2-Q1-ZEE-CHOSE-120000MS.yaml`.
+     - `4614218` — `stryker.config.mjs` change:
+       ```js
+       timeoutMS: 120000,
+       timeoutFactor: 1.6,
+       ```
+       plus `RULING-PREREG2-Q1B-ZEE-SET-THE-FACTOR-TO-1POINT6.yaml`. Guards against a future reader inferring 1.6 was derived from 1.6025 (coincidence).
+     - `4c3630e` — `RULING-PREREG2-Q2Q3Q4-ZEE-CHOSE-A-A-A.yaml`.
+     - `bfbbdf1` — nine scaffold test files (144 tests) + nine marker-line deletions. QA PASS 20/20, 68/68 killed, vitest exit 0 in main tree, gate script now reports **74 material targets** (up from 65).
+     - `fd487ae` — `OBS-MG26-Q2-MEASURED-AND-THE-TIMEOUTS-WERE-AN-ASSERTION-GAP.yaml` + 13 logs.
+     - `17fb1c1` — `docs/WHAT-R2P-IS-plain-language.html` (204 lines). The orientation doc built in response to Zee's pivotal message.
+     - `ff46201` — `docs/THE-12-OPEN-DECISIONS-plain-language.html` (194 lines).
+  
+     **ACOS 3.0 files:**
+     - `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_define_domain_words_not_code_words.md` — new standing memory, indexed in MEMORY.md.
+     - `memory/handoffs/2026-08-17-emergency-handoff-3.yaml` — 21354 bytes, 16 keys, 0 stub markers, verified.
+     - `~/Library/Application Support/acos-token-monitor/state/pending-resume-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.txt` — 4590 bytes.
+  
+  4. **Errors and fixes:**
+     - **Q1 re-opened when it shouldn't have been (Zee's challenge: "I thought Q1 was already settled, why are we talking about it again?").** He was half right — his C ruling's own text says "It does not establish that 120000 ms is the correct project timeout — only that 5000 ms was too short for the files measured so far." I acknowledged the framing error openly.
+     - **I recommended option D (raise the multiplier) then had to withdraw it.** The /investigate 2 findings showed the scaling runs backward from need. Zee's pushback ("That's is why I wanted to keep the time variable, but you said I needed to give it a fixed time") was fair and I explained the direction problem rather than re-asserting.
+     - **OBS-MG19's 1.5182 margin is wrong** — it drops the `timeOverheadMS` term the source formula adds. Real figure 1.6025. Recorded as a Tier-1-over-Tier-3 correction in OBS-MG25; four documents inherit the understatement.
+     - **QA reviewer stopped twice with no verdict** — first on a tool guard blocking long heredocs, then chasing `fatal: not a git repository` in out-of-scope tests. Resumed twice with explicit workarounds (small appends; scope to the nine new test files only).
+     - **Handoff stub nearly armed the reset.** The first handoff was 496 bytes reading "STUB — enrichment in progress." It passed the protocol's age-based freshness guard. I read the content, refused, and waited on a content test instead (no stub marker AND > 3000 bytes). **This is a real gap in the protocol's guard worth fixing: "recent" and "complete" are different facts.**
+     - **Last-user-message capture grabbed a skill wrapper** ("(Re-invocation of /acos-resume-prompt…"). The `SYNTHETIC_PREFIXES` list lacked `"(Re-invocation of"`. Re-ran with it added; captured the true message.
+     - **Count error I corrected openly:** I said ten packet items were open. The packet holds 14, Zee ruled 2, so **12 remain**. MG21-R1a was an extra item, not one of the 14.
+     - **My prediction that identity would trip Q4's spread rule is WITHDRAWN** — its spread is now 0.00.
+     - **Eden self-check rewrites** fired on many turns (register only, one rewrite each, content preserved).
+  
+  5. **Problem Solving:**
+     - Completed the /research 5 pipeline: 261 claims, 10 dimensions saturated/attested, report compiled (246 citations), citer round 1 FAIL → 4 fixes → round 2 PASS, `riff eval` disclosed 2 honest failures.
+     - Executed ruling A end-to-end: baselines → DEV → blind QA → patch applied → committed.
+     - Ran a **separation experiment** rather than accept the flattering reading: new tests + OLD 5000/1.5 clock returned 100.00/100.00 killed 19 / timeout 0 three times, proving the TESTS fixed identity, not Zee's clock ruling.
+     - Built two plain-language HTML docs answering the comprehension gap, plus a standing memory so the fix outlives the session.
+  
+  6. **All user messages:**
+     - "/compact" + "Resume the eternity-protocol handoff and continue exactly where the previous session left off."
+     - "remind me about decision 2 and the options."
+     - "A"
+     - "How long should an average rigorous run take? it shouldn't be same for all files. Can you give me information on that?"
+     - "remind me about decision 3 and the options. Given the runs would vary depending on how big the files are, does the option choices change?"
+     - "what would c actually do? /explain 2"
+     - "Can we really consider timeout as success? I think only kills should count. What do you think?"
+     - "for the decision, go with C for this one too." (mid-turn)
+     - "Did you create a recommendation list based on the research and investigation?"
+     - "I would like to implement the recommendations, when do we do that?" (mid-turn)
+     - "/model" (local command)
+     - "I would want a multiplier that covers all the files with sufficient time yet is not too much over what is needed. /investigate 2 and find out." (mid-turn)
+     - "Since 120000ms cleared 95.9% of the timeouts, let's go with that then."
+     - "So expect a smaller clearance in a whole-codebase run. what do you mean by that? state in simple language" (+ "/login" local command)
+     - "That's is why I wanted to keep the time variable, but you said I needed to give it a fixed time."
+     - "Yes, make the multiplier 1.6"
+     - "I thought Q1 was already settled, why are we talking about it again?"
+     - "remind me the remaining decisions and the options"
+     - "A A A"
+     - "/acos-eden-protocol 4"
+     - **"why do i not understand what you are talking about. Let me give you some context, the plan for research to portfolio was created by someone else. I don't even know what it is, what it is supposed to do and how it is supposed to work. That is the reason I don't understand what you are talking about most of the time. Even when I ask you to define the terms, you define the ones that I already know about and leave the one's I don't know. How do we fix that? if we don't, this whole exercise could end up being useless."**
+     - "It makes way more sense now. What is the next decision?"
+     - "/acos-eternity-protocol"
+  
+  7. **Pending Tasks:**
+     - **THE SECOND CLOCK — awaiting Zee: "raise it" or "leave it."** `vitest.config.ts:10` `testTimeout: 15_000` fires before Stryker's ruled 120000 on a hanging test, making the chosen budget unreachable for that class. Posed as raise-or-leave, NOT a lettered option, and deliberately left unassigned when Zee answered "A A A." Provisional inference from runner source + vitest docs; no Stryker doc states it.
+     - **The 12 open packet decisions** (14 total, 2 ruled), now written plainly in `docs/THE-12-OPEN-DECISIONS-plain-language.html`.
+     - **Q2 is not resolved** by its own measurement — a concurrency still needs choosing, and needs a file that actually wobbles. Candidates: benchmark-alpha.ts (~9m15s/run) or contingent-plan-engine.ts (~29m/run).
+     - **PREREG-GATE-002 is NOT frozen.** No official median-protocol run may be read as a verdict until the second clock is ruled and a concurrency chosen.
+     - Task #15 (barrel exports) and #27 (six files before Zee) remain pending; pair 24 revision 4 still unreviewed.
+     - Seven behaviour suspicions from the DEV/QA cycle await disposition, notably: `simulateFill` books a silent NaN price when `tickSize` is 0 (HIGH); `hedge` silently drops a hedge leg on a factor absent from `pre` (deserves its own ruling per QA).
+  
+  8. **Current Work:**
+     Executing `/acos-eternity-protocol` (cmux variant), invoked by Zee. All steps complete through Step 5:
+     - Step 0 pre-flight PASSED: 539244 tokens, surface `F354478B-743B-472C-AFF8-69DF9820031B`, socket `/Users/zee/.local/state/cmux/cmux.sock`, heartbeat 5s, freeze-early armed.
+     - Step 1: handoff-agent wrote `memory/handoffs/2026-08-17-emergency-handoff-3.yaml`. **First write was a 496-byte stub which I caught and refused**; final file verified independently: 21354 bytes, 16 keys, 0 stub markers, all content probes present (`4614218`, `second clock`, `15_000`, `ff46201`, `WHAT-R2P-IS`, `autopilot-activate.py`, LOCAL-ONLY). Agent reported HIGH confidence, 16 sources.
+     - Step 2: resume prompt written (4590 bytes, est. 1530 tokens) after re-capturing Zee's true last message ("It makes way more sense now. What is the next decision?"). Autopilot goal carried forward with `--max-iter 1000`.
+     - Step 3: core.sh sourced; `PRE_CLEAR_TOTAL=572739`; sidecar written; git snapshot appended (HEAD `66b7b71a11f2`, 154 dirty — that is ACOS 3.0's own tree, not R2P).
+     - Step 5: RPC method `surface.send-input` cached-verified; both clear flags armed (sid-keyed and surface-keyed); freeze-early disarmed. Final output: "In-pane Stop hook fires /compact at turn-end."
+  
+  9. **Optional Next Step:**
+     Per the protocol's Step 6, verbatim: "No reasoning, no tool calls after this point — keep the input idle." The in-pane Stop hook fires `/compact` at turn-end; after compaction the resume prompt is injected automatically. The resume prompt directs the next session to, in order: (1) re-arm autopilot with the exact `autopilot-activate.py on ... --max-iter 1000` command; (2) verify real state on disk before trusting any summary; (3) put the SECOND CLOCK ruling in front of Zee as plain text — never AskUserQuestion; (4) then the 12 packet decisions.
+  
+  </summary>

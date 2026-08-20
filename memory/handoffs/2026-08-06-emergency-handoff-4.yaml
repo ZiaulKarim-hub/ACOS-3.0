@@ -1,0 +1,140 @@
+timestamp: "2026-08-06T21:49:47Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "81621d8a-41ca-4aab-b9ca-aeffb42f629f"
+estimated_tokens: 0
+
+session_summary: |
+  MIRROR NOTE: this handoff is duplicated verbatim at
+  "/Users/zee/Documents/Vibe Coding/R2P/memory/handoffs/2026-08-06-emergency-handoff-4.yaml"
+  because the orchestrating pane's cwd is ACOS 3.0 while every file, commit,
+  and test run described below lives in R2P (Research-to-Portfolio Platform,
+  local-only, NO git remote — `git remote -v` returns empty, matches Zee's
+  standing "never push without a named destination" rule; nothing to fix).
+  This is the SECOND eternity fire this session (session_id
+  81621d8a-41ca-4aab-b9ca-aeffb42f629f, confirmed via the scratchpad path and
+  via .acos/state/agent-lifecycle.log in R2P). The prior handoff in this same
+  session is R2P/memory/handoffs/2026-08-06-emergency-handoff.yaml (mirrored
+  at ACOS 3.0/memory/handoffs/2026-08-06-emergency-handoff-3.yaml), written
+  at 21:38:50Z — roughly 11 minutes before this one. Goal (unchanged, session-
+  scoped /goal Stop-hook condition): build EPIC-001 (8 Stories, 24 DEV/QA
+  pairs) for R2P until the whole epic is done, per Zee's "keep going until
+  the whole epic is done" directive. Since the prior handoff, holdout run 2
+  and two new custodian manifests landed and were committed (HEAD is now
+  5559dec), and — critically — a REVISION 4 fix for the one remaining residual
+  finding (F03) has just landed ON DISK, UNCOMMITTED, and I independently
+  verified it is GREEN (101/101 tests, qa:parity 24/24) at the moment I wrote
+  this handoff. Two background agents were spawned at 21:45:25Z and 21:45:44Z
+  and have no completion trace in the lifecycle log (that log only ever
+  records SPAWN, never STOP, in this environment — its absence proves
+  nothing either way). Treat the state below as a real, first-hand-verified
+  snapshot at 21:49:47Z, not as "done" — nothing from revision 4 is committed
+  and the DEV slice YAML has not been bumped to reflect it yet.
+
+current_work:
+  slice_id: "DEV-001-001-01 / QA-001-001-01 (pair 1 of 24 in EPIC-001) — mid revision 4"
+  story_id: "STORY-001-001 (Point-in-time manifest) — status: ready"
+  epic_id: "EPIC-001 (R2P mechanics harness, all 8 Stories) — status: active"
+  status: "in_progress"
+
+completed_this_session_since_prior_handoff:
+  - "Holdout run 2 for HLD-001-001-01-v1 landed and committed (commit 38a88f1, evidence in planning/evidence/EVB-HLD-001-001-01-v1/manifest.yaml + holdout-run2-20260806T213914Z.log, additive — run-1 section preserved intact): 7/8 secret cases now PASS against candidate 3f3accb (rev3). Finding H004 (source_version taxonomy) is RESOLVED — exact match. Finding H006 (empty instrument_id silently accepted) is functionally fixed (now a typed MALFORMED_IDENTIFIER_MAPPING rejection) but left ONE residual finding, HLD-001-001-01-v1-F03: the error's field VALUE is reported as 'instrumentId' (camelCase, the TS property name) where the sealed expectation says 'instrument_id' (snake_case) — a naming-convention-only mismatch, not a repeat of the original fail-open defect. All findings' disposition remains pending_human_review, owner Ben; the custodian does not self-approve (signoffs block is still all-null, seal.sealed_at still null)."
+  - "STORY-001-001 pairs 02/03 public holdout manifests landed and committed (commit 5559dec): planning/holdouts/manifests/HLD-001-001-02-v1.yaml and HLD-001-001-03-v1.yaml, 9 cases each, sealed pre-code. HLD-001-001-02-v1 covers [INV-001, INV-005]; HLD-001-001-03-v1 covers [INV-002, INV-005]. Both record private_pack_sha256/expected_results_sha256; hashing method documented in-manifest. Per the pair-03 case design, no order-canonicalization is declared anywhere in the PRD for this artifact, so permuted field order changes the checksum — recorded explicitly as a citation-of-absence, not an oversight."
+  - "Gates re-verified FIRST-HAND by me (this handoff agent), not just trusted from a prior transcript: `pnpm run qa:parity` exit 0, output 'qa:parity PASS — 24/24 DEV/QA pairs verified, 1 epic(s), 8 stor(y/ies), 6 holdout manifest(s), 0 swarm review(s), 2 evidence bundle(s), 0 issues.' — 6 manifests now (up from 4 in the prior handoff), matching pairs 01/02/03 for STORY-001-001 plus 01/02/03 for STORY-001-002. `pnpm test` exit 0, 101/101 passed, 9 test files — this ALSO reflects the in-flight revision 4 fix below, since it is present on disk uncommitted."
+  - "IN-FLIGHT AND CAUGHT MID-PROGRESS: the REVISION 4 implementer for DEV-001-001-01 (spawned 21:45:25Z or 21:45:44Z per .acos/state/agent-lifecycle.log — both still show no STOP trace, but this log format never logs STOP in this environment) has, as of 21:49:47Z: (1) written a TDD RED test change to tests/unit/identifier-mapping.test.ts respelling the two MALFORMED_IDENTIFIER_MAPPING assertions' expected field value from 'instrumentId' to 'instrument_id', citing ADR-001's snake_case convention and F03; (2) captured a genuine RED run at planning/evidence/EVB-PAIR-001-001-01/testruns/TESTRUN-20260806T214745Z-34-rev4-red.log (.log + .yaml, both untracked) showing exactly 2 failed / 12 passed in that file at that moment; (3) THEN — observed by me between my first and second read of the file, i.e. it happened live while I was gathering this handoff — edited packages/core/identity/mapping.ts to change the IdentifierMappingValidationError field literal from 'instrumentId' to 'instrument_id' (with an explanatory doc comment citing revision 4 / F03 / ADR-001), which is now GREEN: I independently reran `pnpm test` myself and got 101/101 passed, 9/9 files, exit 0. NONE of this is committed yet. No rev4 'green' testrun record exists yet (only the rev4-red one). DEV-001-001-01.yaml is STILL 'version: 3, status: refactored' — not yet bumped to reflect revision 4. Full gate suite for rev4 (pnpm run check, a rev4-specific qa:parity record, and CRITICALLY pnpm run test:mutation with material score >= 70) has NOT yet been run/recorded for this revision."
+
+files_modified:
+  - path: "packages/core/identity/mapping.ts"
+    changes: "UNCOMMITTED. IdentifierMappingValidationError.field literal and its one call site changed from 'instrumentId' (camelCase) to 'instrument_id' (snake_case) — revision 4 fix for holdout finding F03. resolve.ts's own MALFORMED_IDENTIFIER_MAPPING variant does not carry a field key (uses namespace/identifierValue instead) so it needed no change — confirmed by grep, zero matches."
+  - path: "tests/unit/identifier-mapping.test.ts"
+    changes: "UNCOMMITTED. Two assertions in the makeIdentifierMapping describe block updated to expect field: 'instrument_id' instead of 'instrumentId'; describe/it titles updated with REVISION 4 / F03 provenance comments. This is the TDD test-first half of the same fix."
+  - path: "planning/evidence/EVB-PAIR-001-001-01/testruns/TESTRUN-20260806T214745Z-34-rev4-red.log + .yaml"
+    changes: "UNTRACKED. Genuine RED evidence for the revision-4 fix, captured before mapping.ts was edited (2 failed / 12 passed in tests/unit/identifier-mapping.test.ts). No corresponding GREEN testrun record exists yet as of this handoff."
+  - path: "planning/evidence/EVB-HLD-001-001-01-v1/manifest.yaml + holdout-run2-20260806T213914Z.log + qa-parity-run2-20260806T213926Z.log"
+    changes: "COMMITTED (38a88f1). Run-2 section appended additively (run-1 preserved). 7/8 pass. F01/F02 marked run_2_status RESOLVED (pending Ben's human sign-off). New finding F03 recorded with two disclosed resolution options: (a) DEV respells the field value to instrument_id [this is what the in-flight agent chose], or (b) QA/PRD amends the sealed expectation instead, under the same change-control ADR-001 used."
+  - path: "planning/holdouts/manifests/HLD-001-001-02-v1.yaml, HLD-001-001-03-v1.yaml"
+    changes: "COMMITTED (5559dec). New public holdout manifests for STORY-001-001 pairs 2 and 3, 9 cases each, sealed pre-code, private packs already staged in qa-private/HLD-001-001-02-v1/ and -03-v1/ (git-ignored, confirmed present on disk)."
+
+decisions_made:
+  - "ADR-001 (planning/decisions/ADR-001.yaml, unchanged this session-segment): status remains 'proposed', independent_approval: null. No new decision record was written in this segment; the revision-4 fix explicitly invokes ADR-001's existing snake_case-for-external-field-identifiers precedent rather than creating a new ADR, on the reasoning that F03 is an internal-consistency correction within the same revision-3 change, not a new design choice."
+
+blockers:
+  - "Nothing is committed from this segment except what's listed above as COMMITTED. The revision-4 mapping.ts + test file changes are real, verified-green-by-me uncommitted working-tree edits — if the in-flight implementer agent is dead/stalled and never resumes, the next session must pick up from exactly this point rather than re-doing the work: run the full gate suite (pnpm run check, pnpm run qa:parity, pnpm run test:mutation — mutation score for the changed files must stay >= 70, was 79.54 material / mapping.ts individually 100.00 at revision 3) and only then commit."
+  - "STORY-001-003 custodian: as of this handoff, ZERO output on disk. I searched explicitly: no qa-private/HLD-001-003-* directories exist (confirmed via `find . -iname '*HLD-001-003*'`, only planning/preeng/.../tasks and tasks_qa_report.json matched, both unrelated pre-existing preeng artifacts), and planning/holdouts/manifests/ contains no HLD-001-003-0{1,2,3}-v1.yaml files. Do not assume this custodian made partial progress not yet flushed to disk — there is no evidence of any progress at all. If it is dead, it needs to be re-spawned from scratch, not resumed."
+  - "DEV-001-001-01.yaml (the slice record) is stale relative to the working tree: it still says version: 3, status: refactored, with no revision_4 block — the F03 fix exists in code/tests but is not yet reflected in the slice's own evidence trail. Do not treat pair 001-001-01 as closeable until this is reconciled AND a holdout run 3 confirms 8/8."
+  - "EVB-PAIR-001-001-01 and EVB-HLD-001-001-01-v1 both remain status: collecting, all four signoffs null, seal.sealed_at null, by design (no agent self-approves) — but this also means neither bundle can be sealed until revision 4 is committed, gates re-recorded, and holdout run 3 lands 8/8."
+
+next_actions:
+  - "1. FIRST: check disk state fresh (do not trust this snapshot as still current — it was accurate at 21:49:47Z, and this is a fast-moving unattended session). Re-run `git status --short` and `ls -lt planning/evidence/EVB-PAIR-001-001-01/testruns/` in R2P to see if revision 4 has progressed further (green testrun, check/qa:parity/mutation runs, DEV-001-001-01.yaml version bump, or a commit) since this handoff was written."
+  - "2. If revision 4 is still just the uncommitted mapping.ts + test file edit described above: run the remaining gates yourself and check EXIT CODES (never trust a printed 'N/N passed' summary) — `pnpm run check`, `pnpm test`, `pnpm run qa:parity`, then `pnpm run test:mutation` (NOTE: this mutates files in place — do not run any concurrent code-writing work, including a still-live rev4 agent, while it runs). Confirm mapping.ts's individual mutation score stays >= 70 (was 100.00 at revision 3; a one-line field-value respelling should not move it, but confirm rather than assume). Then update DEV-001-001-01.yaml to version: 4 / add a revision_4 block documenting the F03 fix (mirror the revision_2/revision_3 block structure), and commit."
+  - "3. Run holdout evaluation run 3 for HLD-001-001-01-v1 against the new frozen (committed) revision-4 candidate — expect 8/8. The evaluator must re-verify pack hashes first (private_pack_sha256 931c2fc4764c72b478138df5f64f01ae08324e06b45960badb8a2d8add2f1a71, expected_results_sha256 7b42c9f23eda5f503f724729b6e22f80cbe16f5276831f9c83cf7b7f19c67eb8 — these are the values supplied in the launching agent's task context, not independently re-derived by me this pass; re-derive them from qa-private/HLD-001-001-01-v1/ yourself before trusting them), run each case exactly once, and write run-3 evidence additively (run-1 and run-2 sections must remain byte-identical to what's already committed)."
+  - "4. If run 3 comes back 8/8: seal EVB-PAIR-001-001-01 and EVB-HLD-001-001-01-v1 (status -> sealed, bundle_sha256 computed, signoffs recorded — human_owner signoff stays null pending Zee) and mark DEV-001-001-01 / QA-001-001-01 closed. This closes pair 1 of 24 for real."
+  - "5. Re-spawn (from scratch, per blocker above) or verify-then-resume the STORY-001-003 custodian: three private holdout packs qa-private/HLD-001-003-0{1,2,3}-v1/ plus three public manifests planning/holdouts/manifests/HLD-001-003-0{1,2,3}-v1.yaml. Once landed, `pnpm run qa:parity` should report 9 holdout manifests (up from today's verified 6)."
+  - "6. Implement pairs 001-001-02 and 001-001-03 (holdouts already sealed, per completed_this_session above): implementer (§G.1, real TDD red-green-refactor, allowed_files scoped per plan.md §3 — packages/core/universe|events|contracts, NEVER reads qa-private/) -> fresh-context adversarial QA (§G.2) -> one-shot holdout evaluation (§G.3), same discipline as pair 001-001-01."
+  - "7. STORY-001-002 (holdouts already sealed, 3 manifests committed), STORY-001-003 (holdouts in flight per #5), Stories 004-008 (custodians not yet started for any of them) — same DEV->QA->holdout cycle per story, 3 pairs each."
+  - "8. At epic close: EVB-STORY bundles for all 8 stories, 4-independent-reviewer swarm review + synthesis (PRD §16.8), a parity report, EVB-EPIC-001, and present the close decision AND ADR-001 ratification to Zee explicitly — never self-approve the epic as done."
+
+context_for_next_session: |
+  This is the SECOND eternity fire of an unattended long-running build
+  (session_id 81621d8a-41ca-4aab-b9ca-aeffb42f629f; session-scoped /goal
+  Stop-hook: keep going until EPIC-001's 24 DEV/QA pairs are all done). Only
+  1 of 24 pairs (001-001-01) is anywhere close to closed, and even that one
+  is NOT closed: a real, verified-correct fix for its last open finding (F03)
+  exists on disk right now, uncommitted, and I confirmed it independently
+  (101/101 tests green, not just trusted from an agent's self-report) rather
+  than relying on any prior transcript. But the fix is not gated end-to-end
+  (no rev4 check/qa:parity/mutation runs recorded), not reflected in
+  DEV-001-001-01.yaml's version field, and holdout run 3 hasn't happened —
+  so pair 1 still cannot be sealed. Treat this as "one commit and one holdout
+  run away from closed," not as "closed." STORY-001-003's custodian has
+  produced literally nothing on disk despite being spawned — either it never
+  got to writing anything, or it's still working and just hasn't flushed;
+  either way, do not assume partial progress exists that isn't visible.
+  R2P's own CLAUDE.md carries hard, non-negotiable constraints for every
+  future pair: TypeScript only (Python PROHIBITED everywhere in this repo,
+  even tests/scripts — this overrides Zee's personal-level "Python when
+  unavoidable" exception), pnpm + Vitest + fast-check + Biome + Stryker, no
+  live-trading code path enabled, docs/PRD_v0.4.txt (64 pages) is ground
+  truth over any planning artifact when they conflict. The
+  implementer-writes-tests-first / holdout-packs-sealed-pre-code /
+  fresh-context-adversarial-QA / nobody-self-approves discipline has held
+  faithfully across 4 revisions of pair 1 now and must be the template for
+  all 23 remaining pairs — the 'keep going' directive is not license to
+  shortcut TDD, independence, or sealing discipline under time pressure.
+  Standing gotchas from the prior handoff still apply and were reconfirmed
+  this segment: subagents in this environment stall after interim status
+  messages — resume with 'continue in ONE pass, no narration'; never trust a
+  printed test tally without checking the actual exit code (I personally
+  re-ran pnpm test and qa:parity myself rather than trusting any agent's
+  claim, and that is what surfaced the live-in-progress rev4 fix); Stryker
+  mutation testing has inPlace:true and physically rewrites files during a
+  run, so never run code-writing work concurrently with a
+  test:mutation gate; qa-private/ is git-ignored and must only ever be read
+  by custodians/evaluators, never by an implementer; ADR-001
+  (planning/decisions/ADR-001.yaml) is still status: proposed and Zee
+  ratifies it (and the epic close) only at the very end — no agent
+  self-approves either. Eden Protocol Level 3 remains active for top-level
+  replies to Zee.
+
+reconstruction_sources:
+  - "git status --short / git log --oneline -30 / git diff --stat HEAD~5..HEAD (run from within R2P, both at the start of this handoff and re-run after mapping.ts changed live)"
+  - "git remote -v (R2P — empty, confirms no remote configured)"
+  - "git diff packages/core/identity/mapping.ts and tests/unit/identifier-mapping.test.ts (R2P, uncommitted working tree)"
+  - "planning/evidence/EVB-PAIR-001-001-01/testruns/TESTRUN-20260806T214745Z-34-rev4-red.log (full) and directory listing sorted by mtime"
+  - "planning/slices/dev/DEV-001-001-01.yaml (version/status header + full revision_2/revision_3 blocks)"
+  - "planning/evidence/EVB-HLD-001-001-01-v1/manifest.yaml (run_2 section, findings_and_dispositions, reproduction_run_2, signoffs, seal — full read)"
+  - "planning/holdouts/manifests/HLD-001-001-02-v1.yaml and HLD-001-001-03-v1.yaml (full read)"
+  - "planning/decisions/ADR-001.yaml (full read)"
+  - "planning/stories/STORY-001-001.yaml and STORY-001-003.yaml (status/title fields)"
+  - "planning/evidence/ directory listing and planning/evidence/EVB-PAIR-001-001-01/manifest.yaml (top section: status collecting, candidate block)"
+  - "qa-private/ directory listing (confirms HLD-001-001-01/02/03-v1 and HLD-001-002-01/02/03-v1 present; confirms NO HLD-001-003-* directories exist)"
+  - "find . -iname '*HLD-001-003*' (R2P — zero matches outside unrelated preeng artifacts)"
+  - "`pnpm run qa:parity` — run live by this handoff agent, exit 0, '24/24 DEV/QA pairs verified... 6 holdout manifest(s), 0 swarm review(s), 2 evidence bundle(s), 0 issues'"
+  - "`pnpm test` — run live by this handoff agent TWICE (before and after observing mapping.ts change), both exit 0, 101/101 passed, 9/9 files"
+  - ".acos/state/agent-lifecycle.log (R2P — tail; confirms session_id 81621d8a-41ca-4aab-b9ca-aeffb42f629f and two most recent SPAWN entries at 21:45:25Z / 21:45:44Z, no STOP entries anywhere in the log for any agent — this log format never records STOP in this environment)"
+  - ".acos/state/oracle-audit.log (R2P — tail; shows an interrupted tar+shasum256 reverification loop over the -02/-03 holdout packs, now superseded since those manifests are committed)"
+  - "R2P/memory/handoffs/2026-08-06-emergency-handoff.yaml (the PRIOR handoff this session, full read — used to establish the baseline this handoff diffs against)"
+  - "R2P/CLAUDE.md and package.json (§18.4 command surface — read in the prior handoff, referenced here, not re-read verbatim this pass)"
+  - "Critical context block supplied directly by the launching agent at task start (goal, the two in-flight background agents' identities/timestamps, hash values for run-3 verification, gotchas list) — treated as authoritative for anything not independently re-confirmed on disk above; where I DID independently re-confirm (qa:parity counts, pnpm test result, the live mapping.ts edit), I've marked it explicitly as verified-by-me rather than merely repeated from the prompt"
+  - "Authoritative copy: /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-06-emergency-handoff-4.yaml"

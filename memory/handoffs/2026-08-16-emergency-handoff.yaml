@@ -1,0 +1,259 @@
+timestamp: "2026-08-17T05:44:22Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "c5978d8d-414c-407d-a34f-c1b84e452544"
+estimated_tokens: 504881
+
+session_summary: |
+  Multi-day (2026-08-11 through 2026-08-17) infrastructure investigation into why
+  "/compact" was firing outside the ACOS Eternity Protocol's intended order
+  (protocol runs -> handoff created -> resume prompt created -> compact runs ->
+  eternity resumes). The work produced a new native-auto-compact path
+  (.claude/scripts/precompact-handoff.ts + handoff-enrich.ts, both currently
+  untracked in git) as an alternative to cmux keystroke injection, backed by three
+  new test suites (order-barrier.test.ts, precompact-hook.test.ts,
+  handoff-enrich.test.ts, all in the ephemeral scratchpad). The session's final
+  arc (2026-08-15 23:09 to now) answered a direct question from Zee about a
+  manual "yes" he had to press in the "ToDoTree" cmux window: while checking,
+  the session found and fixed a REAL bug — the pane-liveness/"native-armed"
+  classification lookup in the live installed daemon script used `pgrep -f --
+  "--session-id <sid>"`, which returns nothing for cmux-launched panes because
+  their command line carries a huge inline --settings JSON blob past pgrep's
+  match window, so it had silently classified every window as "not native ->
+  keystroke path stays armed" for roughly a day. Switched to `ps -eo
+  pid,command | grep`, verified working against all of Zee's then-9 live cmux
+  windows, and confirmed ToDoTree's manual yes-press was NOT related to the
+  Eternity Protocol's keystroke-injection mechanism (no typed command was ever
+  sent to that window). 253 checks pass across the three test suites (exit 0).
+
+current_work:
+  slice_id: "unknown — no active planning slice; this is ad-hoc Eternity Protocol
+    infrastructure work, not slice-tracked"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "completed — the immediate question Zee asked (2026-08-15 23:09) was
+    answered and the underlying pgrep bug was found, fixed, and verified; the
+    session then hit its own token threshold (504,881) and the Eternity
+    Protocol's own pre-clear sequence fired, spawning this handoff"
+
+completed_this_session:
+  - "Diagnosed original bug (2026-08-11 20:16 start): '/compact' ran outside the
+    Eternity Protocol's intended order in the 'Research to Portfolio' cmux
+    window; established and hardened the correct order-barrier sequence
+    (eternity protocol runs -> handoffs created -> resume prompt created ->
+    compact runs -> eternity resumes) with a .awaiting-resume marker + 300s
+    cooldown (see memory/feedback_eternity_order_barrier.md, in Claude's
+    project-memory store, not this repo)."
+  - "Ran /research 2 on 2026-08-12 (3 parallel research probes via
+    acos-research-riffs) which converged on recommending native Claude Code
+    auto-compact (autoCompactEnabled) paired with a new PreCompact hook, as an
+    alternative to cmux keystroke injection which can be swallowed while
+    background helpers are busy. Zee approved building it."
+  - "Built .claude/scripts/precompact-handoff.ts (writes an ACOS handoff from a
+    PreCompact hook, tagged type: autocompact, trigger: precompact-hook:auto)
+    and .claude/scripts/handoff-enrich.ts (enrichment pass). Both are new,
+    currently UNTRACKED in git (see git status)."
+  - "Confirmed the new PreCompact mechanism is live and firing in production:
+    memory/handoffs/2026-08-13-autocompact-handoff.yaml and
+    2026-08-14-autocompact-handoff.yaml are real artifacts written by
+    precompact-handoff.ts for a DIFFERENT session (session_id
+    bc68f376-b446-4c9a-ad76-7dbd3004289d, not this session) — corroborates the
+    feature this session engineered is working end-to-end elsewhere."
+  - "2026-08-15 23:09 — Zee asked whether a manual 'yes' he pressed in the
+    ToDoTree cmux window related to the Eternity Protocol. Investigating this
+    triggered a long (multi-hour, autopilot-continuation-loop) deep dive into
+    the pane-liveness/native-arm classification logic."
+  - "Found the root cause: the classification lookup in the LIVE INSTALLED
+    daemon script /Users/zee/Library/Application Support/acos-token-monitor/
+    bin/eternity-cmux-inpane.sh used `pgrep -f -- \"--session-id $SID\"`, which
+    returns nothing for cmux panes (their command line has a large inline
+    --settings JSON blob past pgrep's match window) — so the check had
+    silently found nothing for every window for about a day, always falling
+    back to 'keystroke path stays armed' (fail-safe direction; no window ever
+    lost protection, but no window was correctly recognized as native-armed
+    either)."
+  - "Fixed it: replaced the pgrep lookup with `ps -eo pid,command | grep --
+    \"--session-id $SID\" | grep -v grep | awk '{print $1}'` at line ~656 of
+    that script (confirmed present on disk as of this handoff). Verified
+    against the user's 9 then-live cmux windows: 8 (including this session,
+    c5978d8d, and window d3a68abf, 71d8fa6e, f8040456, 81621d8a, 8a247361,
+    bf688f1d, 8509526c) correctly classify as 'no native -> keystroke path
+    stays armed'; only ToDoTree (session e6f6d525) classifies as 'native armed
+    -> keystroke stands down'."
+  - "Answered Zee's question directly: ToDoTree has 4 self-shrink (native
+    auto-compact) handoffs and 0 handoffs from the typed-keystroke path, and
+    the eternity-protocol typed command was never sent to that window — so the
+    manual yes-press he saw was NOT the Eternity Protocol; it is something
+    else (most likely a native Claude Code / Oracle permission prompt in that
+    window, not identified further this session)."
+  - "Fixed two test-fixture bugs found along the way in
+    scratchpad/order-barrier.test.ts (a fake stand-in process using `sleep 30
+    --session-id ... --settings ...` doesn't work because `sleep` rejects
+    those flags and exits immediately with nothing to find; replaced with
+    `bash -c 'sleep 30' stand-in --session-id ... --settings ...` so the
+    process both stays alive and carries a command line of the right shape)."
+  - "Final full verification: order-barrier.test.ts, precompact-hook.test.ts,
+    handoff-enrich.test.ts all run clean — 253 checks pass across the three
+    suites, exit code 0 on each."
+
+files_modified:
+  - path: ".claude/scripts/handoff-enrich.ts"
+    changes: "New file (untracked in git). Handoff enrichment logic for the
+      native-auto-compact PreCompact path."
+  - path: ".claude/scripts/precompact-handoff.ts"
+    changes: "New file (untracked in git). PreCompact hook that writes an ACOS
+      handoff (type: autocompact) before native Claude Code auto-compaction
+      runs, since PreCompact is guaranteed to finish (600s cap) before
+      compaction starts."
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh"
+    changes: "OUTSIDE this git repo (installed daemon runtime, not
+      version-controlled here) — fixed the native-arm pane-liveness lookup
+      from a broken `pgrep -f` to a working `ps -eo pid,command | grep` at
+      line ~656. This is the session's most consequential fix and will NOT
+      show up in `git status` for this repo."
+  - path: "/Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-resume-inpane.sh"
+    changes: "Also touched this session (same class of pane-lookup fix,
+      companion to eternity-cmux-inpane.sh) — outside this git repo, not
+      independently re-verified in this handoff pass; worth a quick diff
+      check next session."
+  - path: "/Users/zee/.claude/settings.json"
+    changes: "Touched this session in connection with the earlier
+      autoCompactEnabled research/decision (2026-08-12); exact current value
+      not re-verified in this pass — check `autoCompactEnabled` /
+      `autoCompactWindow` keys before assuming state."
+  - path: "scratchpad/order-barrier.test.ts, precompact-hook.test.ts, handoff-enrich.test.ts"
+    changes: "Ephemeral test suites under this session's own scratchpad
+      (/private/tmp/claude-501/.../c5978d8d.../scratchpad/), ALL PASSING as of
+      the last run (253 checks, exit 0 across all three). These will not
+      persist beyond this session's scratchpad lifecycle — if they encode
+      durable regression coverage worth keeping, they should be promoted into
+      a tracked location next session."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_eternity_native_autocompact.md, feedback_eternity_order_barrier.md, feedback_session_names_not_ids.md, MEMORY.md"
+    changes: "Claude's own project-memory store (not this repo's memory/
+      directory) — updated with durable facts about the order-barrier fix and
+      native-autocompact research."
+
+decisions_made:
+  - "No new memory/decisions/ entry was written by this session (checked;
+    most recent is 2026-08-10-communication-tracker-privilege-policy.md,
+    unrelated). The architectural decision to add native-auto-compact +
+    PreCompact-hook handoff writing as a second path alongside cmux keystroke
+    injection was approved by Zee in conversation on 2026-08-12 but is
+    recorded only in the transcript and in the prior handoff
+    memory/handoffs/2026-08-12-emergency-handoff-5.yaml, not as a formal ADR."
+
+candidate_learnings:
+  - "cmux-launched Claude Code panes carry a large inline --settings JSON blob
+    on their process command line; `pgrep -f -- \"--session-id <sid>\"` cannot
+    match past that blob and silently returns nothing for these panes, while
+    `ps -eo pid,command | grep -- \"--session-id <sid>\"` finds them reliably —
+    any future pane-liveness/session-lookup logic for cmux windows must use ps
+    +grep, not pgrep -f (evidence: this session's live debugging and fix at
+    /Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh:656)."
+  - "When building a Bash test fixture for a process whose command line must
+    contain specific flags (e.g. `--session-id X --settings <blob>`), do not
+    pass those flags to a real binary like `sleep` — it will reject unknown
+    flags and exit immediately, leaving nothing to find. Use `bash -c '<real
+    command>' <fake-argv0> <flags...>` so the flags become inert positional
+    parameters the process keeps alive with, while still appearing on its
+    command line (evidence: scratchpad/order-barrier.test.ts fixture fix, this
+    session)."
+  - "PreCompact hooks in Claude Code fire on BOTH manual (/compact) and
+    automatic compaction, are distinguished by a `trigger` field on stdin, and
+    block execution until they finish (600s default cap) — so a PreCompact
+    hook is a reliable place to guarantee a handoff is written before native
+    auto-compact destroys context, unlike trying to intercept via keystroke
+    timing (evidence: 2026-08-12 acos-research-riffs probe-02, 12 verified
+    claims, cited in memory/handoffs/2026-08-12-emergency-handoff-5.yaml)."
+  - "This ACOS 3.0 repo folder is worked on by multiple concurrent Claude Code
+    windows/sessions sharing the same working directory at once (observed
+    directly this session: 9 live cmux windows classified by session_id, only
+    one of which — c5978d8d — is this session). git status / git log for this
+    repo reflect ALL of them, not just this session; do not attribute
+    repo-wide changes (e.g. the /investigate skill, xl-update email sweep
+    commits, Logo Builder SVG churn seen in git status) to this session
+    without transcript confirmation (evidence: live pane enumeration and
+    session_id cross-check, this session and prior handoff
+    2026-08-12-emergency-handoff-5.yaml)."
+
+blockers:
+  - "None identified as blocking — the question Zee asked this session was
+    answered and the underlying bug was fixed and verified. No open
+    'awaiting Zee's answer' item remains from this session's own thread (unlike
+    the prior 2026-08-12 handoff, which WAS blocked on a yes/no that Zee has
+    since evidently given, since the PreCompact mechanism was built)."
+
+next_actions:
+  - "Confirm with Zee that the ToDoTree finding fully answers his question
+    (manual yes-press there was unrelated to the Eternity Protocol's
+    keystroke-injection path) — this was delivered in-conversation but should
+    be explicitly re-surfaced at the start of the next session in case the
+    reply was cut off by the handoff firing."
+  - "Diff and, if correct, formally commit/track the two new repo scripts
+    .claude/scripts/handoff-enrich.ts and .claude/scripts/precompact-handoff.ts
+    — they are currently untracked and could be lost to an accidental clean."
+  - "Independently verify the companion fix in
+    /Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-resume-inpane.sh
+    (touched this session alongside eternity-cmux-inpane.sh) actually contains
+    the same ps-based lookup, not just the primary inpane.sh file which was
+    explicitly re-checked in this handoff pass."
+  - "Consider promoting scratchpad/order-barrier.test.ts,
+    precompact-hook.test.ts, and handoff-enrich.test.ts (253 passing checks)
+    out of the ephemeral scratchpad into a tracked test location if this
+    regression coverage should survive past this session."
+  - "Re-verify current autoCompactEnabled / autoCompactWindow values in
+    /Users/zee/.claude/settings.json — this session touched that file but the
+    final state was not re-confirmed in this handoff pass."
+
+context_for_next_session: |
+  Read from THIS session's own transcript (SESSION_ID
+  c5978d8d-414c-407d-a34f-c1b84e452544) — high confidence; primary source, not
+  repo-wide inference. This is a single continuous ~6-day session (started
+  2026-08-11 20:16, no /clear has fired on it yet — it lacks native
+  self-compaction because it predates the settings change that enabled it, so
+  it relies on the cmux keystroke-injection path to eventually be cleared and
+  resumed) doing pure Eternity Protocol infrastructure work, not
+  planning-hierarchy (slice/story/epic) work. Arc: (1) Zee reported /compact
+  firing out of order; (2) research and hardening of the intended order
+  (eternity protocol -> handoff -> resume prompt -> compact -> resume); (3) a
+  parallel research effort recommended and then built a NEW native-auto-compact
+  path (precompact-handoff.ts + handoff-enrich.ts, both untracked in git,
+  confirmed live and firing for a different session bc68f376 on 2026-08-13/14);
+  (4) Zee's most recent question (2026-08-15 23:09, the LAST human-typed prompt
+  in this transcript) about a manual yes-press in the ToDoTree cmux window led
+  to discovering and fixing a real, previously-silent bug: the native-arm
+  pane-lookup in the LIVE INSTALLED daemon script
+  /Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh
+  used `pgrep -f` which cannot match cmux panes' huge --settings command-line
+  blob, so it had been silently misclassifying every window for about a day
+  (fail-safe direction — nothing was ever unprotected). Fixed with a `ps -eo
+  pid,command | grep` lookup, verified live against all 9 of Zee's cmux
+  windows, confirming only ToDoTree is native-armed and that its manual
+  yes-press was unrelated to the eternity protocol's own typed-command path.
+  253 test checks pass across three suites. The session then hit its own
+  504,881-token threshold and the Eternity Protocol's own pre-clear sequence
+  fired /acos-eternity-protocol -> /acos-handoff -> this handoff-agent, exactly
+  as designed (not a crash). IMPORTANT for the next session: the single most
+  consequential code change this session made lives OUTSIDE this git repo (in
+  ~/Library/Application Support/acos-token-monitor/bin/), so `git status` in
+  this repo will show it as nothing at all — check that file directly, not git,
+  to see the fix. Also important: this repo folder is shared by multiple
+  concurrent Claude Code windows at once, so most of the entries in `git
+  status` (Logo Builder SVG churn, the /investigate skill, xl-update email
+  sweep commits, dozens of memory/handoffs/*.yaml and closed/*/ folders from
+  other project names like 'OKOA-Works', 'Skill-Workshop', 'Research Riffs')
+  belong to OTHER sessions, not this one — do not narrate them as this
+  session's own work. The two genuinely-this-session untracked repo files are
+  .claude/scripts/handoff-enrich.ts and .claude/scripts/precompact-handoff.ts.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/c5978d8d-414c-407d-a34f-c1b84e452544.jsonl (this session's own transcript, primary source — read via tail -c 200000, full-file grep for ai-title/lastPrompt/tool file_path/pgrep occurrences, and a python pass extracting all assistant text blocks and human-authored user turns)"
+  - "git status --short (repo root, /Users/zee/Documents/Vibe Coding/ACOS 3.0)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "memory/handoffs/2026-08-12-emergency-handoff-5.yaml (this session's own FIRST emergency handoff, written 2026-08-12T20:41Z — corroborating, not overriding, the transcript read)"
+  - "memory/handoffs/2026-08-13-autocompact-handoff.yaml and 2026-08-14-autocompact-handoff.yaml (real production artifacts from the precompact-handoff.ts mechanism this session built, written for a different session bc68f376-b446-4c9a-ad76-7dbd3004289d — confirms the feature works end-to-end)"
+  - "/Users/zee/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh (live installed daemon script, directly grepped to confirm the ps-based fix is present on disk at line ~656)"
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ (confirmed no planning-hierarchy artifacts or new decisions from this session)"
+  - "ls -lt memory/handoffs/*.yaml *.md (confirmed no other handoff attempt from this session besides -5.yaml and this one)"

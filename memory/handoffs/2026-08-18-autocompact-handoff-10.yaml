@@ -1,0 +1,103 @@
+timestamp: "2026-08-18T21:51:52Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 355575
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "pending"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  [Request interrupted by user]
+
+assistant_tail: |
+  Yes — and you just approved it. Here is the honest part first. I cannot restart my own process. I live inside it. It is like an engine asking to rebuild itself while running.
+  
+  But you can do it with one command. And I packed the bags already, so nothing is lost:
+  
+  1. **A fresh handoff is on disk.** It holds tonight's state, the four pair orders, and all rules. File: `memory/handoffs/2026-08-18-emergency-handoff-2.yaml`.
+  2. **A resume note is staged for the machinery.** A hook (a small helper script) watches your next message. After a clear, it attaches my resume note to it. The new me reads it and re-arms the goal first thing.
+  
+  **Why this works.** `/clear` (the command that starts a fresh chat session) gives a new session id. The 200-agent limit counts per session. New session, fresh 200. That is the cure. A caveat, stated honestly: the hook path is the fail-safe route. If the note somehow does not attach, the handoff file still works. Just tell the new me to read it.
+  
+  **So the one action is this.** Type `/clear`. Then send one short message. Best of all: make that message your two letters — card 1 and card 2. Example: "card 1: A, card 2: B". The resume note rides along with it. The […]
+  
+  ---
+  
+  Understood — we park this tab properly instead. The close script does the safety work; I only route. Running preflight first, then composing the intent core:
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 186
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/eternity-resume-prepend.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/scripts/resurrection/adopt-project.sh"
+  - "M .claude/scripts/resurrection/close-project.sh"
+  - "M .claude/scripts/resurrection/enroll-project.sh"
+  - "M .claude/scripts/resurrection/rename-workspace.sh"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/acos-resurrect/SKILL.md"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/resurrection/backfill-key-tags.ts"
+  - "?? .claude/scripts/resurrection/conflict-scan.py"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl"
+  transcript_lines_parsed: 1998
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"

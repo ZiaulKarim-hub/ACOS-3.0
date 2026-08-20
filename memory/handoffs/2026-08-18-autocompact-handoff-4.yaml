@@ -1,0 +1,287 @@
+timestamp: "2026-08-18T08:06:57Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "ff036fd7-705d-49a8-b24b-771e9cb47513"
+estimated_tokens: 549784
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Post-compact resume. Verified on disk: FruitArt.BurnedVariant == 6
+  (FruitArt.cs:530) and the dev APK is dated Aug 18 01:59 — the variant-6
+  build the user is about to judge on the phone. Awaiting their verdict on
+  the burned look and the suffocation-fix feel.
+
+completed_this_session: |
+  - Tasks 10+12 done 2026-08-06 (Level Guide panel, +31 Loc entries, dev
+    readout, blast-radius gizmo).
+  - Phone deploy loop proven: BuildDevApkSideBySide → adb install -r →
+    monkey-launch com.ziaulkarim.fruitsync.dev on P21297001145 (adb "Success").
+  - L level-skip cheat behind DevCheatsActive; only L on-screen.
+  - Fiery-suffocation fix (settled-only snapshot, 1.5x reach cap, 2-turn
+    grace clock); 213/213 tests, exit 0.
+  - Burned-look variant 6 (fiery face + angry darkening, flame gone) built,
+    installed, launched.
+
+decisions_made: |
+  - Side-by-side .dev install; never wipe the Play copy's saves.
+  - A/F/N cheat buttons removed — "they will confuse rather than help".
+  - Burned variants 0-5 REJECTED: texture/pattern must stay; vision =
+    fiery face, darkened like angry, flame gone → variant 6 is default.
+
+blockers: |
+  - Burned look v6 unconfirmed — user has not played the new build yet.
+  - Arabic level_next_4 second paragraph unrendered (ShapeBlock wrap test
+    root-caused, NOT fixed) — user to rule dig-deeper vs ship.
+  - Entire FruitSync tree uncommitted on main (personal repo ONLY; never
+    okoateam; never bare git push).
+
+candidate_learnings: |
+  - Unity license goes stale after ~12 days idle; only a Hub sign-in fixes it.
+  - Play-signed installs reject adb updates → ship a ".dev" package id
+    side-by-side instead of uninstalling.
+  - Eden L4 measures tool-call narration too; keep every sentence ≤12 words.
+
+context_for_next_session: |
+  FOLDER TRAP: shell cwd is ACOS 3.0 but all work is in
+  "/Users/zee/Documents/Vibe Coding/FruitSync" (separate repo, PERSONAL
+  GitHub only). First move: collect the user's verdict on the burned look +
+  suffocation feel; nudge FruitArt case 6 palette if asked, rebuild via
+  BuildDevApkSideBySide, adb install -r, relaunch.
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone.
+
+assistant_tail: |
+  Step 5 — verify the injection method, then arm the reset flag.
+  
+  ---
+  
+  Armed. This chat now saves itself and compacts within about a minute. The resume fires on its own — you don't need to do anything.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 164
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/tests/test_oracle_hard_blocks.py"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/ff036fd7-705d-49a8-b24b-771e9cb47513.jsonl"
+  transcript_lines_parsed: 950
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me walk through this conversation chronologically.
+  
+  **Session start (2026-08-06):** The session resumed via eternity-protocol auto-resume with a handoff from `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-06-emergency-handoff.yaml`. The FOLDER TRAP: shell cwd is ACOS 3.0 but all work is in FruitSync repo. Tasks 10 and 12 remained from an 11-item change list.
+  
+  **Task 10/12 work (2026-08-06):** I added 28+3 Loc.cs entries, built the Level Guide panel in HudView.cs (opened by tapping evolution ring), added LocCoverageTests.cs (3 tests), created unity-compile-check.sh, added dev readout + blast gizmo to GameController.cs. Tests went 201→204. Eden protocol at Level 3 (middle-school register) governed replies; failed twice and rewrote.
+  
+  **User: "I need to check how the game looks now."** I wired EditorPreviewLevelGuide into HudView, created LevelGuideMock.cs, ran Unity batch mode to render 16 screenshots. Found 3 layout bugs (Spanish overflow into button, caption overlap, tools row spacing) and fixed them. Found Arabic level_next_4 second-paragraph rendering bug — investigated extensively (rowLens diagnostics 72/74/0/67/69, probe at 100-290 chars, prefH constant 97, blank-row padding, Truncate→Overflow, fresh TextGenerator, merged paragraphs showing unwrapped spill) — root-caused to ShapeBlock's wrap test ceasing to fire, documented as known limitation, NOT fixed. Unity generated the missing .meta files.
+  
+  **Time gap to 2026-08-18.** User asked: "What are the fixes you did last? Did you install them on the phone for me to check? is there anything remaining?" I verified repo state unchanged, found phone P21297001145 connected via adb, discovered BuildAndroid.BuildDevApk, started build — failed exit 198 (Unity license stale). Opened Unity Hub, retried, failed again. User signed in ("signed in"), build succeeded, but adb install failed INSTALL_FAILED_UPDATE_INCOMPATIBLE (Play-store copy installed Jul 21, Play-signed). Asked user; user answered "Can you install a separate copy?" — I created BuildDevApkSideBySide (package id com.ziaulkarim.fruitsync.dev, product name "FruitSync Dev"), built, installed side-by-side successfully.
+  
+  **User: "add a cheat later removable that will allow me to pass levels quickly."** I added DevCheatsActive gate (ForceDevCheats || Debug.isDebugBuild || Application.identifier.EndsWith(".dev")), case 'L' in DevCheat (drops graduating watermelon pair per level), L button in HudView, KeyCode.L editor key. Rebuilt, installed.
+  
+  **User: "Remove the A F and N, they will confuse ratehr than help."** Changed labels array to only L at 130f; editor keyboard keys retained. Rebuilt, installed.
+  
+  **User: "The firey fruits are dying without getting suffocated after a few turns. Also, I have how the burned fruits look, create a few versions of how they may look and I will choose one."** Two tasks:
+  1. Suffocation bug: root causes — falling just-dropped fruit counts as overhead lid (ProcessSuffocation runs right after SpawnFruit); unlimited-height overhead check. Fixed: settled-only snapshot (IsSettledForLoss), IsOverhead reach cap (1.5x summed radii, Tuning.SuffocationOverheadReachMul), new SuffocationClock Core class with grace turns (Tuning.SuffocationGraceTurns=2), clock reset in ClearAllViews. Updated FierySuffocationTests (Above() helper now 2R, far-above test inverted, new near-hover test), new SuffocationClockTests (8 tests). 213/213 passing.
+  2. Art variants: added FruitArt.BurnedVariant 0-5 (charcoal, ember cracks, ash cap, underglow, cold cracks, white ash), made a mis-edit with placeholder that broke DrawBurnedFace, repaired it. Created BurnedVariantCatalog.cs, rendered playcheck/burned-variants.png.
+  
+  **User: "did you open the burned look picture?"** — opened in Chrome per feedback_open_in_chrome.
+  
+  **User rejected all 6: "I don't like any of those looks, the texture and the underlying pattern of the fruits should not be gone" / "my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone."** Implemented variant 6 (now default): fiery molten hue kept, angry darkening recipe (lerp black 0.20 + red (0.55,0.12,0.10) 0.18), angry-style core/edge/spec in ApplyBurnedVariantPalette case 6, DrawFieryFace instead of X eyes. Created GenerateComparison → playcheck/burned-vision.png (rows fiery/burned-v6/angry), opened in Chrome, rebuilt phone APK in background.
+  
+  **User invoked /acos-eternity-protocol.** I ran Step 0 pre-flight (failed first from wrong cwd — playcheck; re-ran from ACOS 3.0 root; passed: 527294 tokens, session ff036fd7-705d-49a8-b24b-771e9cb47513, surface 9E0AEBC6-A670-48CB-A871-AF4AEF27D74D). Background build completed mid-protocol; I installed the variant-6 build on the phone and launched it. Step 1: spawned handoff-agent → wrote memory/handoffs/2026-08-18-emergency-handoff-2.yaml, verified fresh. Step 2: acos-resume-prompt — wrote pending-resume file with in-flight registry (0 tasks), last user message (102 chars), no goals. Step 3: sourced core script (HEAD 66b7b71a11f2, 163 dirty). Step 4: printed status. Step 5: RPC method verified (cached), armed .clear-requested-ff036fd7... and surface-keyed flag. Step 6 remains: exit cleanly with no reasoning — but this summary request arrived instead (compaction is happening now, which is exactly what the protocol armed).
+  
+  Security/constraint rules to preserve verbatim: FruitSync is PERSONAL (github.com/ZiaulKarim-hub/FruitSync), never push to okoateam; never bare git push; Eden protocol Level 4 active; nothing committed.
+  
+  Eden protocol failures: I failed the eden-selfcheck Stop hook 4 times total (L3 twice, L4 twice) and rewrote each time — lesson: keep sentences ≤12 words at L4, gloss all terms, note that tool-call narration between calls is also measured.
+  
+  All user messages to list (excluding synthetic/hook/notification): the resume trigger (synthetic), "I need to check how the game looks now.", "/effort" and "/model" (local commands, caveated), "What are the fixes you did last? Did you install them on the phone for me to check? is there anything remaining?", "signed in", AskUserQuestion answer "Can you install a separate copy?", "add a cheat later removable that will allow me to pass levels quickly.", "Remove the A F and N, they will confuse ratehr than help.", "The firey fruits are dying without getting suffocated after a few turns. Also, I have how the burned fruits look, create a few versions of how they may look and I will choose one.", "did you open the burned look picture?", "I don't like any of those looks, the texture and the underlying pattern of the fruits should not be gone" + "[Request interrupted by user] my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone.", "/acos-eternity-protocol" invocation.
+  
+  Current state at summary time: eternity protocol Step 5 completed (clear flags armed), Step 6 = exit cleanly; the in-pane Stop hook will type /compact. This summary IS the compaction. The resume prompt is on disk and will guide the next session.
+  </analysis>
+  
+  <summary>
+  1. Primary Request and Intent:
+     The session (started 2026-08-06 via eternity-protocol auto-resume, continued 2026-08-18) worked on the FruitSync Unity game. Sequential user requests:
+     - Resume prior work: finish task 10 (per-level instructions: Loc.cs entries + HUD panel for LevelGuide.cs) and task 12 (runId debug readout + in-editor blast-radius preview) — COMPLETED 2026-08-06.
+     - "I need to check how the game looks now." — rendered 16 screenshots via Unity batch mode, fixed 3 layout bugs found.
+     - (2026-08-18) "What are the fixes you did last? Did you install them on the phone for me to check? is there anything remaining?" — led to building the phone-deploy pipeline.
+     - "signed in" (after Unity license fix request).
+     - "Can you install a separate copy?" (AskUserQuestion answer, choosing side-by-side install over wiping the Play-store copy's saves).
+     - "add a cheat later removable that will allow me to pass levels quickly." — L level-skip cheat.
+     - "Remove the A F and N, they will confuse ratehr than help." — only L button on-screen now.
+     - "The firey fruits are dying without getting suffocated after a few turns. Also, I have how the burned fruits look, create a few versions of how they may look and I will choose one." — suffocation bug fix + 6 art variants.
+     - "did you open the burned look picture?" — wanted it opened in Chrome on THEIR screen (per standing feedback_open_in_chrome).
+     - "I don't like any of those looks, the texture and the underlying pattern of the fruits should not be gone" / "my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone." — rejected variants 0-5; variant 6 built to this exact spec.
+     - `/acos-eternity-protocol` — full protocol executed; compaction armed.
+  
+  2. Key Technical Concepts:
+     - FOLDER TRAP: shell cwd is "/Users/zee/Documents/Vibe Coding/ACOS 3.0" but ALL work is in "/Users/zee/Documents/Vibe Coding/FruitSync" (separate repo; use absolute paths).
+     - FruitSync is PERSONAL (github.com/ZiaulKarim-hub/FruitSync) — must NEVER be pushed to okoateam; never use bare `git push`.
+     - .NET test mirror only compiles Assets/Scripts/Core; unity-compile-check.sh compiles the Unity tree headless against real UnityEngine DLLs.
+     - dotnet not on PATH: `export DOTNET_ROOT=$HOME/.dotnet && export PATH=$HOME/.dotnet:$PATH`, run from `build/dotnet`.
+     - Unity 6000.4.10f1 batch mode: `-batchmode -quit -projectPath ... -executeMethod ... -logFile`; license goes stale after ~12 days idle → user must sign into Unity Hub.
+     - Play-signed store copy blocks adb install (INSTALL_FAILED_UPDATE_INCOMPATIBLE) → side-by-side install under package id `com.ziaulkarim.fruitsync.dev` ("FruitSync Dev"); phone device id P21297001145.
+     - Cheat gate: `GameController.DevCheatsActive => ForceDevCheats || Debug.isDebugBuild || Application.identifier.EndsWith(".dev")` — store build can never show cheats.
+     - Fiery suffocation rule (C-025): survives if touching fiery, touching happy, or open sky; fixes = settled-only snapshot, 1.5x reach cap, 2-turn grace clock (all in Tuning).
+     - FruitArt.BurnedVariant switch (0-5 charcoal variants kept; 6 = user's vision = default).
+     - Eden Protocol Level 4 active (elementary register, ≤12-word sentences, gloss all terms, no trailing appendix); eden-selfcheck.py Stop hook rewrites; failed 4 times this session — tool-call narration text is also measured.
+     - Eternity protocol cmux variant: session ff036fd7-705d-49a8-b24b-771e9cb47513, surface 9E0AEBC6-A670-48CB-A871-AF4AEF27D74D, threshold 500k (fired at 527294 tokens).
+  
+  3. Files and Code Sections:
+     All FruitSync paths are absolute under `/Users/zee/Documents/Vibe Coding/FruitSync/`. NOTHING is committed — entire tree (~163 dirty files per core script; ~40 in FruitSync) sits on branch main at HEAD af7d31e433f0 (FruitSync) / 66b7b71a11f2 (ACOS 3.0 per core snapshot).
+     - `Assets/Scripts/Unity/Loc.cs` — +31 entries (28 LevelGuide keys + level_guide/tools_and_powers/this_level), 5 languages each, no tunable numbers in copy (they'd become lies on retune). Arabic level_next_4 restored to two paragraphs (`\n\n`).
+     - `Assets/Scripts/Unity/HudView.cs` — Level Guide panel (BuildLevelGuide, two pages, EvoGuideBtn invisible tap target on evolution ring, pauses via `Time.timeScale = 0f` like settings), ApplyGuideParagraph (Arabic ShapeBlock path + KNOWN LIMITATION comment: level_next_4 second paragraph never renders; ShapeBlock output correct — rows 72/74/0/67/69 — wrap test stops firing when paragraphs merge; Arabic players miss the suffocation tip), EditorPreviewLevelGuide + PoseGuideForPreview, BuildDevReadout/SetDevReadout, dev-cheat labels now `var labels = new[] { ('L', "L", 130f) };`, gate `if (GameController.DevCheatsActive)`.
+     - `Assets/Scripts/Unity/GameController.cs` — `SetGuideLevel(LevelGuide.LevelOf(...))` pushed from RefreshHud; DevReadoutLine(); `#if UNITY_EDITOR` OnDrawGizmos blast-radius preview (BlastReach = `Mathf.Max(mul * MergeLadder.RadiusOf(resultTier), min)`); DevCheatsActive property; case 'L' (drops two MaxTier watermelons, mood by level: 1→Happy, 2→Angry, 3→Fiery, 4→Burned; registers fiery/burned tier; level 5 logs only); KeyCode.L; ProcessSuffocation rewritten:
+       ```csharp
+       foreach (var kv in _views)
+           if (kv.Value != null && kv.Value.IsSettledForLoss)
+               _suffocationScratch.Add(kv.Value.ToCoreFruit());
+       var suffocatedNow = FierySuffocation.FindSuffocated(_suffocationScratch,
+           FierySuffocation.ContactEpsilon, Tuning.SuffocationOverheadReachMul);
+       var outIds = _suffocationClock.Advance(suffocatedNow, Tuning.SuffocationGraceTurns);
+       ```
+       `_suffocationClock.Reset()` added in ClearAllViews.
+     - `Assets/Scripts/Core/Fruit/FierySuffocation.cs` — `DefaultOverheadReachMul = 1.5f`; IsOverhead now: `if (dy > reach * overheadReachMul) return false;` (reach = summed radii); param threaded through IsSuffocated/FindSuffocated.
+     - `Assets/Scripts/Core/Fruit/SuffocationClock.cs` — NEW: Advance(suffocatedNow, graceTurns) → ids failing graceTurns CONSECUTIVE checks; self-pruning; Reset(); streaks deliberately not saved (player-favouring).
+     - `Assets/Scripts/Core/Config/Tuning.cs` — `SuffocationGraceTurns = 2` (ints table), `SuffocationOverheadReachMul = 1.5f` (floats table).
+     - `Assets/Scripts/Unity/FruitArt.cs` — `public static int BurnedVariant = 6;` (default = user's vision). Variant 6 in burned branch:
+       ```csharp
+       fill = Color.Lerp(fill, Color.black, 0.20f);
+       fill = Color.Lerp(fill, new Color(0.55f, 0.12f, 0.10f), 0.18f);
+       ```
+       (angry recipe over the molten fiery hue); ApplyBurnedVariantPalette case 6: `core = Color.Lerp(fill, Color.white, 0.12f); edgeDark = Color.Lerp(fill, Color.black, 0.24f); spec = 0.45f;`; face dispatch: variant 6 uses `DrawFieryFace(px, size, c, r, FieryFaceOf(faceName), burnedYShift)` (X eyes kept for 0-5); variants 1-5 painters (DrawCracks/DrawUnderglow/DrawAshCap/DrawAshMottle); sprite cache does NOT key on variant → ClearCache() needed on change.
+     - `Assets/Editor/BuildAndroid.cs` — NEW method BuildDevApkSideBySide: package id `PackageId + ".dev"`, productName "FruitSync Dev", output `build/FruitSync-devtest-side.apk`, restores identifier+name+buildAppBundle in finally.
+     - `Assets/Editor/LevelGuideMock.cs` — screenshot harness (BatchAll renders playcheck/level-guide-*.png).
+     - `Assets/Editor/BurnedVariantCatalog.cs` — Generate (variants 0-5 grid → playcheck/burned-variants.png) + GenerateComparison (rows fiery/burned-v6/angry → playcheck/burned-vision.png); dot-matrix digit badges 0-6; restores BurnedVariant + ClearCache in finally.
+     - `build/dotnet/FruitSync.Core.Tests/` — LocCoverageTests.cs (3), SuffocationClockTests.cs (8 NEW), FierySuffocationTests.cs (Above() helper now `At(id, 0f, 2 * R, mood)`; far-above test inverted to open-sky; new near-hover test at 0.8/0.95). Suite: **213/213 passing, exit 0**.
+     - `build/dotnet/unity-compile-check.sh` + `build/dotnet/UnityCompileCheck/UnityCompileCheck.csproj` — headless Unity-tree compile check (~1s, both `<player>` and `UNITY_EDITOR` defines).
+     - ACOS 3.0: `memory/handoffs/2026-08-18-emergency-handoff-2.yaml` (fresh handoff, verified) + `.resume.md` sibling; resume prompt at `~/Library/Application Support/acos-token-monitor/state/pending-resume-ff036fd7-705d-49a8-b24b-771e9cb47513.txt`.
+  
+  4. Errors and fixes:
+     - First APK build failed exit 198: "No valid Unity Editor license found" (stale token after 12 days). Opening Unity Hub didn't fix; user signed in → build succeeded.
+     - `adb install -r` failed INSTALL_FAILED_UPDATE_INCOMPATIBLE (phone copy from Play, installerPackageName=com.android.vending, Jul 21, Play-signed). Asked user (uninstall wipes saves); user chose "Can you install a separate copy?" → BuildDevApkSideBySide.
+     - FruitArt mis-edit: left `this_is_a_placeholder` and consumed DrawBurnedFace's opening — repaired by rewriting the block; relocated orphaned doc comment back onto DrawBurnedFace.
+     - Eternity Step 0 first run failed (`.claude/scripts/resolve-session-id.sh: No such file or directory`) — shell cwd had drifted to FruitSync/playcheck; re-ran with `cd "/Users/zee/Documents/Vibe Coding/ACOS 3.0"`.
+     - Arabic level_next_4: ruled out (measured, not guessed) blank row, Truncate, length threshold, atlas warm-up, stale TextGenerator; merged-paragraph test showed unwrapped spill → ShapeBlock wrap-test fault localised; left as two paragraphs (renders para 1 cleanly), documented in HudView comment. NOT FIXED.
+     - Eden-selfcheck Stop hook failed 4× (sentence length caps, unglossed terms like `preferredHeight`, `rowLens`, uGUI, APK, HUD) — rewrote each; at L4 keep sentences ≤12 words and gloss every term inline.
+     - User corrected art direction after rejecting all 6 variants: texture/pattern must remain; vision = fiery face + angry darkening + no flame → variant 6.
+     - User corrected cheat UX: remove A/F/N buttons (kept editor keys only).
+  
+  5. Problem Solving:
+     - Diagnosed fiery-death bug via code reading: ProcessSuffocation ran on all views right after SpawnFruit (falling fruit = lid) + unlimited overhead reach. Fixed with 3 tunable mechanisms, 9 new tests.
+     - Established repeatable phone loop: build (BuildDevApkSideBySide) → `adb install -r build/FruitSync-devtest-side.apk` → launch via `adb shell monkey -p com.ziaulkarim.fruitsync.dev -c android.intent.category.LAUNCHER 1`.
+     - Visual review loop: batch-render PNGs → sips downscale → Read → fix → re-render; opened deliverables in Chrome for the user (`open -a "Google Chrome"`).
+     - Full eternity-protocol fire executed correctly at 527294 tokens.
+  
+  6. All user messages:
+     - (auto-injected resume, not user-typed): "Resume the eternity-protocol handoff and continue exactly where the previous session left off."
+     - "I need to check how the game looks now."
+     - (local commands, caveated): /effort → xhigh; /model → Fable 5.
+     - "What are the fixes you did last? Did you install them on the phone for me to check? is there anything remaining?"
+     - "signed in"
+     - (AskUserQuestion answer): "Can you install a separate copy?"
+     - "add a cheat later removable that will allow me to pass levels quickly."
+     - "Remove the A F and N, they will confuse ratehr than help."
+     - "The firey fruits are dying without getting suffocated after a few turns. Also, I have how the burned fruits look, create a few versions of how they may look and I will choose one."
+     - "did you open the burned look picture?"
+     - "I don't like any of those looks, the texture and the underlying pattern of the fruits should not be gone" [interrupted, then:] "my vision was have the face style of firey fruits just darkeened like the angry fruits and flame gone."
+     - /acos-eternity-protocol (skill invocation)
+  
+  7. Pending Tasks:
+     - Collect user's verdict on burned-look variant 6 (installed on phone, unconfirmed) — nudge FruitArt case 6 palette if asked, rebuild, reinstall.
+     - User to test on phone: suffocation fix feel, L cheat, Level Guide panel (tap evo ring), sell buttons.
+     - Arabic level_next_4 second-paragraph bug: root-caused (ShapeBlock wrap test), NOT fixed — user to decide dig-deeper vs ship.
+     - Autopilot stale .compact-fired-* markers: fix (move foreign markers to consumed/) awaits user go-ahead.
+     - Left-side cushion visual issue: needs user repro.
+     - Commit the entire uncommitted FruitSync tree (personal repo ONLY; never okoateam; no bare `git push`).
+  
+  8. Current Work:
+     Executing `/acos-eternity-protocol` (cmux variant) to completion. All steps done: Step 0 pre-flight OK (527294 tokens, surface 9E0AEBC6-A670-48CB-A871-AF4AEF27D74D); mid-protocol I installed + launched the final variant-6 build on phone P21297001145 (adb "Success"); Step 1 handoff written + freshness-verified (`memory/handoffs/2026-08-18-emergency-handoff-2.yaml`); Step 2 resume prompt written (`pending-resume-ff036fd7-705d-49a8-b24b-771e9cb47513.txt`, includes verbatim last user message and note that variant 6 was built/installed AFTER it); Step 3 core sourced (HEAD 66b7b71a11f2, 163 dirty); Step 4 status printed; Step 5 clear-request flags armed (`.clear-requested-ff036fd7-...` + `.clear-requested-surface-9E0AEBC6-...`), freeze-early marker removed. The in-pane Stop hook types /compact next — this compaction is that step working as designed.
+  
+  9. Optional Next Step:
+     Per the protocol's Step 6: "EXIT cleanly … No reasoning, no tool calls after this point — keep the input idle." The reset/compaction is now in flight. In the post-compact session, follow the injected resume prompt: verify real disk state (FruitArt.BurnedVariant == 6, Aug 18 build timestamps on `build/FruitSync-devtest-side.apk`), then collect the user's verdict on the new burned look — the resume prompt itself instructs: "Next step: get the user's verdict on the new burned look + suffocation feel from on-phone play; nudge FruitArt case 6 palette if asked, rebuild via BuildAndroid.BuildDevApkSideBySide, adb install -r, relaunch."
+  </summary>

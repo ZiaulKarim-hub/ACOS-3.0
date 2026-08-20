@@ -1,0 +1,273 @@
+timestamp: "2026-08-18T06:39:47Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 550574
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  now that all the decisions are resolved, please move to coding the next phase.
+
+assistant_tail: |
+  Armed. The reset fires at turn-end. The resume follows on its own.
+  
+  This save carries three things that matter.
+  
+  Your standing order — "move to coding the next phase" — rides in the resume, front and center.
+  
+  The reset itself cures today's blocker. A fresh session gets fresh agents. The four ruled fix pairs dispatch first thing: the producer, the register check, the timestamp, and the 19 recipes. The card-2 web research dispatches too.
+  
+  And your two open cards travel with it. Card 1 waits on your A or B. Card 2 waits on the research you ordered.
+  
+  One disclosure: the handoff writer is also an agent, so the cap blocked it too. I wrote the handoff myself, with full context, and said so inside it. It verified clean — 8890 bytes, fresh, every probe present.
+  
+  ---
+  
+  Armed. The reset fires at turn-end. The resume follows on its own.
+  
+  This save carries three things that matter.
+  
+  Your standing order rides in the resume, front and center. It reads: "move to coding the next phase."
+  
+  The reset itself cures today's blocker. A fresh session gets fresh agents. The four ruled fix pairs dispatch first thing. The producer. The register check. The timestamp. The 19 recipes. The card-2 web research dispatches too.
+  
+  And your two open cards travel with it. Card 1 waits on your A or B. Card 2 waits on the research you ordered.
+  
+  One disclosure. The handoff writer is an agent too. The cap blocked it as well. So I wrote the handoff myself, with full context. I said so inside the file. It verified clean — 8890 bytes, fresh, every probe present.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 158
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/tests/test_oracle_hard_blocks.py"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl"
+  transcript_lines_parsed: 2088
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  This session continued R2P work under an active autopilot goal, resumed via eternity protocol. Chronology:
+  
+  1. Resume: re-armed autopilot (already active), verified R2P state (HEAD ff46201, no remote, clock dials committed).
+  2. Second-clock work: TASK 32 measured with json reporter → OBS-MG27 (source-read: two clocks, hangs split) committed 0086096; OBS-MG28 (d37597d): 0/968 kills timeout-caused, 29/41 timeouts are hit-limit counter; OBS-MG29 (665ecca) self-correction (wrong witness). Zee asked for recommendation, then ruled "leave it and add the report" → RULING-SECOND-CLOCK + config change (824e9c0).
+  3. TASK 33 (wobble found: 0.19 on fills-and-costs, OBS-MG30 90b097b — async class cannot exist: 0 of 75 source files async) and TASK 34 (serial priced 45m25s ≈3.7x, OBS-MG31 04e98f5).
+  4. Zee: "A, and strike the second half" → concurrency 9 final + SBL-D1 half 2 struck (86034b7); frozen settings sheet fd0783b.
+  5. SBL-D1 pair executed and landed 4f5942f (QA PASS 17/17); SBL-D2 ruled A (ab483a4), pair landed 56570b2 (QA PASS; tsc exit 1 attributed to tools/read-mutation-gate.ts, 20 pre-existing strict-null errors; vocab is 36 not 28).
+  6. Zee demanded much more detail per decision ("I feel like for each of the decisions, you are not giving enough information") → deep source reads (DECISIONS-FOR-BEN.yaml 638 lines, P0-INVARIANT-AUDIT readings R-A..R-D, code sites); found card-6 conflation (RPV-2 timestamp vs REV-RPV-2 sealed file); presented 10 cards in depth.
+  7. Zee ruled: 3=A (verified conditional → db5dd59), then batch "3.A 4.A 5.A 6a.A 6b.A 7.A 8.A 9.A 10.R-A" with card 1 held (asked quantity/money question) and card 2 sent to /investigate 3 + /research 3 → RULING-BATCH-2026-08-18 (c04fa2e), tasks 36-41.
+  8. Card 1 answered: zero-price corner; ternary at :2845-2851 tests money-valued quantityPart not raw share delta; right tag quantity_times_price exists.
+  9. Card 2 depth-3: both riff sessions set up; SPAWN CAP 200/200 hit — only mech-reader agent launched; I ran history/sibling/skeptic lanes orchestrator-direct (disclosed); findings: freeze is deliberate post-green anti-tamper (DEV-001-006-03.yaml:125), caller-freezing unstated, identity binds only the authorization object (test:1853-1862; shallow spread :3196), sibling norm freeze-what-you-built. Web seats never dispatched.
+  10. Zee: "now that all the decisions are resolved, please move to coding the next phase" → corrected premise (cards 1, 2 open), executed card 6b sealed-file correction (f400a06, comment-only, sha256s recorded, suites 52/52).
+  11. Zee invoked /acos-eternity-protocol → all steps executed: pre-flight passed (536054 tokens), handoff written DIRECTLY (agent cap) to memory/handoffs/2026-08-18-emergency-handoff.yaml (8890 bytes verified), resume prompt written, core sourced (PRE_CLEAR_TOTAL=543875), both clear flags armed, freeze-early disarmed. Reset fires at turn-end.
+  
+  Key user feedback preserved: define domain words not code words; orient before rulings; the batch-ruling style; his overrides of my recommendations (4=A producer over B-delete; 7=A all-19 over B-boundary).
+  </analysis>
+  
+  <summary>
+  1. Primary Request and Intent:
+  
+     **The standing autopilot goal (re-arm command, exact):**
+     `python3 .claude/scripts/autopilot-activate.py on "Complete the R2P project in /Users/zee/Documents/Vibe Coding/R2P to the end-state defined by docs/PRD_v0.4.txt: first finish EPIC-001 (all 24 DEV/QA pairs through the adversarial cycle - DEV, QA, holdout, orchestrator seal - then EVB-STORY bundles x8, 4-reviewer swarm review, EVB-EPIC-001, close packet), then plan and execute each subsequent PRD phase as new epics under the same adversarial cycle with sealed evidence throughout. At every epic close, present the ratification packet (ADRs, finding dispositions, disclosure queue) to Zee and continue non-dependent work (e.g. planning the next epic) while awaiting his decision. Never self-approve; never treat silence as approval; never push (local-only repo). Re-derive current position from repo state (planning/, git log) at each iteration." --goal-file "/Users/zee/Documents/Vibe Coding/R2P/docs/PRD_v0.4.txt" --max-iter 1000`
+  
+     **Zee's most recent standing order (in force, partially executed):** "now that all the decisions are resolved, please move to coding the next phase." (Premise corrected: cards 1 and 2 remain open, held by Zee himself.)
+  
+     **Then Zee invoked `/acos-eternity-protocol`** — fully executed; the reset fires at turn-end and the resume prompt auto-injects.
+  
+     **Rulings Zee made THIS session (all recorded and committed):**
+     - Second clock: "leave it and add the report" → `testTimeout: 15_000` unchanged; json reporter added (824e9c0). Standing rule: any kill with a timeout statusReason reopens it (four zeros so far).
+     - "A, and strike the second half" → concurrency stays 9 (Q2 closed); SBL-D1 half 2 STRUCK with revival condition (86034b7).
+     - SBL-D1 half 1: "I agree the code must check every step, fix the check goin forward." (ca5b7c3) — fix landed 4f5942f.
+     - SBL-D2: "A" refuse negative price at the door (ab483a4) — fix landed 56570b2.
+     - REV-SLEEVE-2: conditional "Based on your information we should go with A" — condition verified (cross-node purpose confirmed, not a strategy identifier) → ruled A (db5dd59).
+     - Batch (c04fa2e): 4=A build producer for `legal_position_figure_out_of_range` (my rec B DECLINED); 5=A extend mint-register check to `compareManifestIdentity`; 6a=A validate `atUtc` to ISO_INSTANT_PATTERN; 6b=A sealed-file edit authorized (EXECUTED f400a06); 7=A specs for ALL 19 digest functions (my rec B DECLINED); 8=A killed-only bar stays absolute (MG17-R1 closed); 9=A tainted run stands as map (MG20-R1 closed); 10=R-A the six epic invariants INV-001..006 are the P0 set plus schema field.
+     - Cards NOT ruled: card 1 (SBL-D3 — Zee asked to understand quantity-vs-money first; explained; awaiting A/B) and card 2 (SBL-D4 — Zee ordered "/investigate 3 /research 3" first; investigate done, web half undispatched).
+  
+     **Standing constraints (verbatim-critical):** R2P is LOCAL-ONLY — NO git remote, NEVER push. AP-06: never weaken a test, invariant or tolerance. AP-07: no agent approves, seals, closes or ratifies; records may TRANSCRIBE a ruling Zee actually made; silence is never approval. Zee IS the human gate ("Ben" is the PRD role name). Records are ADDITIVE — supersede with a SIBLING. NEVER AskUserQuestion for rulings while autopilot is active (OBS-AP1 — a hook forges it). Forbidden score levers: project-wide excludedMutations; Stryker disable except per-site demonstrated-equivalent with written reason; narrowed mutate globs; weakened tests; ignoreStatic. TypeScript/Rust only. Scoped git add; read the staged list before writing the commit message. NEVER run tsc while a stryker run is live. macOS has no timeout command; repo path contains a SPACE. Eden protocol Level 4 — gloss DOMAIN words (feedback_define_domain_words_not_code_words), orient before every ruling; this unlocked 12+ rulings today.
+  
+  2. Key Technical Concepts:
+     - Frozen measuring rulebook (PREREG-GATE-002-FROZEN-SETTINGS-SHEET, fd0783b): timeoutMS 120000, timeoutFactor 1.6, vitest testTimeout 15_000 as-is + json sensor, concurrency 9, median-of-three per disputed file, 85.00-95.00 band + bar disagreements, spread >10 = NO VERDICT, killed-only is the bar.
+     - Two clocks: Stryker outer (`timeoutFactor * netTime + timeoutMS + timeOverheadMS`, mutant-test-planner.js:124, enforced timeout-decorator.js:37) vs vitest inner (testTimeout, never overridden by the runner — zero "timeout" strings in @stryker-mutator/vitest-runner/dist/src/).
+     - Hit-limit counter ("Hit limit reached (1161501/1161500)") vs wall-clock timeouts; async class cannot exist (0 of 75 source files use async/await/Promise/timers; single test-file hit is a string literal at tests/unit/presentation-ui-auditability.test.ts:967).
+     - Break lifecycle: states detected/owned/resolved/escalated; BREAK_LIFECYCLE_TRANSITIONS 12-cell frozen table (~:700-714); foldLifecycle per-occurrence validation; basis vocabulary money_difference | quantity_times_price | money_and_quantity | categorical_gross_notional (ternary at :2845-2851 tests money-valued quantityPart — the zero-price defect).
+     - deepFreeze design: deliberate post-green anti-tamper (DEV-001-006-03.yaml:125, attack 1.8); aliasing (registerCore.riskGate IS policy.riskGate ~:3165/3125; row.resolution.explanation IS event.explanation ~:2293/2267) unstated; identity minting deliberate (WeakSet, clone-refusal attack 2.3, pinned test:1853-1862; shallow spread :3196 preserves it); sibling norm freeze-what-you-built (drilldown.ts builds from scalars, freezes, then identity-registers).
+     - riff engine depth-3 panels (lite tier, generalist+skeptic mandatory); orchestrator-direct fallback disclosed in dossiers when spawn-capped.
+     - 200-subagent session cap (CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION raises it); fresh session resets capacity.
+  
+  3. Files and Code Sections (R2P commits this session, newest first):
+     - `f400a06` — sealed-file correction (card 6b): tests/unit/presentation-risk-performance-view.test.ts:672-682 false provenance claim ("A SECOND, INDEPENDENT implementation... written from the documentation") replaced with certified TRANSCRIPTION/lockstep wording; sha256 before b8120c8849679144fb8cc15939a58461c0e4b6102e3ac70e274b8ac9095586f9, after 617fa84eebbc467de543a2e6fc92343be14cfbe56f3c14c99669d94690e981ba; comment-only mechanically verified; both RPV suites 52/52 exit 0; helper NAME independentPanelsDigest deliberately unchanged (beyond grant). Record: RECORD-SEALED-FILE-CORRECTION-EXECUTED-UNDER-CARD-6B.yaml.
+     - `c04fa2e` — RULING-BATCH-2026-08-18-EIGHT-CARDS.yaml (verbatim message + 8 rulings + execution constraints; card 4 stop-condition: if already refused under siblings everywhere, return to Zee).
+     - `db5dd59` — RULING-REV-SLEEVE-2-ZEE-CHOSE-A-AFTER-VERIFICATION.yaml (checksum recipe at sleeve-conservation.ts:3034-3053; QA-F1 note :147-153 confirms cross-node byte-identity; spec documents, never changes).
+     - `ab483a4` / `56570b2` — SBL-D2 ruling + fix: statement-break-lifecycle.ts:1007-1033 guarded checkInteger + sign check mirroring validateMarks :1107-1148; reason `record_field_out_of_declared_bounds` (:330); BLOCK N16 settled + BLOCK N17 (6 cases incl. the no-break both-sides case pre-fix ACCEPTED, contracts:4423-4444); QA-SBL-D2-BLIND-VERDICT-PASS.yaml (tsc attribution; vocab 36 not 28; -0 admitted).
+     - `ca5b7c3` / `4f5942f` — SBL-D1 ruling + fix: fold from index 0, structural occurrence-boundary reset; 3 new tests (210 lines, 0 deletions); QA PASS 17/17; QA-SBL-D1-HALF1-BLIND-VERDICT-PASS-17-17.yaml.
+     - `b7b1aa4` — OBS-SBL-D1-HALF2-PREMISE (27 claims, [2 sources · verified]: module cannot persist — one import createHash; index.ts doesn't re-export; only 6 holdout break records, all detected/owned; "closed" not a state; naive index-0 fold breaks contracts:3001-3049 and lifecycle:1070-1096).
+     - `86034b7` — RULING-PREREG2-Q2-FINAL (9) + RULING-SBL-D1-HALF2-STRUCK; `fd0783b` — PREREG-GATE-002-FROZEN-SETTINGS-SHEET.
+     - `04e98f5` — OBS-MG31 (serial 45m25s vs 12m34s mean ≈3.7x; one-run hint killed 1295/timeouts 6; rec A keep 9). `90b097b` — OBS-MG30 (wobble 0.19; medians 83.33/82.38; sensor 0,0,0; against 2026-08-12 gate: standard 92.78→83.33 DOWN, killed-only 72.7330779054917→82.38 UP). `665ecca` — OBS-MG29 (wrong-witness self-correction). `824e9c0` — RULING-SECOND-CLOCK + stryker.config.mjs `reporters: ["clear-text", "progress", "json"]` + reports/ gitignored (evidence copies task-stamped with sha256 into close-packet/testruns/). `d37597d` — OBS-MG28. `0086096` — OBS-MG27.
+     - ACOS 3.0: memory/handoffs/2026-08-18-emergency-handoff.yaml (8890 bytes, orchestrator-written, verified fresh, all probes OK); pending-resume-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.txt (resume prompt with re-arm command + coding order).
+     - Riff sessions: ~/.acos-investigate/.acos/riffs/2026-08-18-why-the-freeze-in-place-deepfreeze-design-was-chosen-deliber (47 claims: mech-reader agent 37 + 3 orchestrator-direct dossiers); ~/.acos-research/.acos/riffs/2026-08-18-freeze-in-place-versus-copy-then-freeze-for-returned-records (brief + 3-seat panel approved + charters rendered, seats NEVER dispatched — spawn cap).
+  
+  4. Errors and fixes:
+     - **OBS-MG27's sync-hang mechanism wrong**: corrected by OBS-MG28 (29/41 are hit-limit counter, not outer clock). Scoring consequence unchanged.
+     - **OBS-MG28 overstated its witness**: benchmark-alpha's hangs are synchronous — could not see the async class. Withdrawn in OBS-MG29 BEFORE Zee ruled.
+     - **Picked wrong witness twice**: fills-and-costs also has zero async — but chasing it found the structural answer (0 of 75 files async).
+     - **Card 6 conflation**: the plain-language doc fused RPV-2 (timestamp, Medium) with REV-RPV-2 (sealed-file false claim, High); I followed it without checking. Both presented split; sealed-file item had never been shown to Zee.
+     - **"28-member vocabulary" stale**: reconciliation's list has 36 (DEV corrected me); 28 belongs to sleeve-conservation. Corrected beside the ruling in QA-SBL-D2.
+     - **"Six candidates" for F-02 was really reading R-A of four readings** — corrected when presenting.
+     - **tsc exit 1**: QA attributed all 20 errors to tools/read-mutation-gate.ts alone (pre-existing since 7f1d3b4, 2026-08-12); not caused by the pairs; environmental hypothesis disproved (allowJs false).
+     - **QA agents stopping mid-review**: resumed via SendMessage twice; both delivered PASS verdicts.
+     - **Spawn cap 200/200**: hit when dispatching card-2 seats (only mech-reader launched of 7). Fallback: orchestrator-direct lanes, disclosed in dossiers; handoff-agent also blocked so handoff written directly; production pairs (tasks 36-38, 40) deferred to fresh session.
+     - **User feedback shaping behavior**: "I feel like for each of the decisions, you are not giving enough information. I need more details on contexts, backgrounds..." → deep source-record reads per card; Zee then ruled fluently. Eden self-check rewrites fired repeatedly (register only).
+  
+  5. Problem Solving:
+     - Completed the entire measurement-settings arc: second clock ruled with standing detection; concurrency measured (wobble 0.19 found; serial priced 3.7x) then ruled 9; PREREG-GATE-002 frozen — official verdict runs are unblocked.
+     - Executed three production changes through full adversarial cycles (SBL-D1, SBL-D2) plus one authorized sealed edit — all landed with QA PASS and evidence records.
+     - Verified SBL-D1 half-2 premise death via 3-reader investigation; answered card-1 mechanism (zero-price corner) and card-2 design history (deliberate armor, accidental reach, identity constraint) from Tier-1 sources.
+  
+  6. All user messages:
+     - "Resume the eternity-protocol handoff and continue exactly where the previous session left off." (+ /compact local command)
+     - "what is recommendation and why?"
+     - "leave it and add the report"
+     - (/model local command) "continue"
+     - "The serial mode is slower, what was the reason for choosing this? I agree the code must check every step, fix the check goin forward. We don't have actual data, so how can there be closed breaks that needs examining, I don't understand, can you double check this? /investigate 2 also research how the check every step can be done more effectively and efficiently /research 2."
+     - "A, and strike the second half"
+     - "explain the next decision with options and your recommendation."
+     - "A\nGive all other decisions remaining along with options and your recommendations."
+     - "1. If there is a quantity difference, doesn't it automatically translate to money difference too? Number of shares difference if 1, doesn't it automatically mean mony difference is equal to the price of the share? Need to understand it further. \n2. I feel there could me more to it. Why was it decided? Investigate and reserch this. I need more information /investigate 3 /research 3\n3. A\n4. A\n5. A\n6a. A\n6b. A\n7. A\n8. A\n9. A, how can this be made useful?\n10. R-A"
+     - "now that all the decisions are resolved, please move to coding the next phase."
+     - "/acos-eternity-protocol" (skill invocation)
+     - (earlier in session, preserved from prior summary context): "1. Explain in detail. 2. Need to know what it is being frozen... 3. find out if there is any other reason behind the checksum... Based on your information we should go with A 4. what is that menu word? what is the reason. .. I feel like for each of the decisions, you are not giving enough inforamtion. I need more details on contexts, backgrounds and any information you think I need to know about to make the decisions.. do this for the rest of them."
+  
+  7. Pending Tasks (task list ids):
+     - #36 Card 4 pair: producer for legal_position_figure_out_of_range (BLOCKED: spawn cap; stop-condition: if already refused under siblings everywhere, return to Zee)
+     - #37 Card 5 pair: mint-register check into compareManifestIdentity (BLOCKED: cap)
+     - #38 Card 6a pair: atUtc ISO_INSTANT_PATTERN (BLOCKED: cap)
+     - #40 Card 7: specs for ALL 19 digest functions (BLOCKED: cap; 18 remain after REV-SLEEVE-2)
+     - #35 tools/read-mutation-gate.ts 20 strict-null tsc errors (orchestrator-direct OK; output must stay byte-identical)
+     - #41 Card 10 R-A: priority field + validate-planning-yaml update + INV-001..006 marked P0 in EPIC-001.yaml + P0 audit re-run (orchestrator-direct/planning scope)
+     - Card 2 web half: dispatch 3 seats (charters rendered in ~/.acos-research session), ingest, riff ask, then put A/B to Zee
+     - Card 1: awaiting Zee's A/B (explained)
+     - Older open: #12, #13, #15 (barrel exports — note OBS-02 boundary conflict), #16, #27, #31; beyond the cards: MAP-Q1, OBS-VG1, 15 open HIGHs, 12 ADRs, OBS-SW2, next-epic decisions D-002-*/D-003-*
+  
+  8. Current Work:
+     Zee invoked `/acos-eternity-protocol`. ALL steps completed: Step 0 pre-flight PASSED (536054 tokens, surface F354478B-743B-472C-AFF8-69DF9820031B, socket ~/.local/state/cmux/cmux.sock, heartbeat 6s, freeze-early armed). Step 1: handoff written DIRECTLY by orchestrator (handoff-agent blocked by 200-agent cap, disclosed inside) to memory/handoffs/2026-08-18-emergency-handoff.yaml — verified: resolves for this session, 8890 bytes, age 0 min, 0 stub markers, probes f400a06/quantity_times_price/freeze-in-place/autopilot-activate/LOCAL-ONLY/200-subagent all OK. Step 2: resume prompt written to `$HOME/Library/Application Support/acos-token-monitor/state/pending-resume-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.txt` (carries Zee's exact last message, re-arm command, coding order, constraint block; core.sh appended a git snapshot). Step 3: core sourced, PRE_CLEAR_TOTAL=543875, sidecar written. Steps 4+5: status printed; RPC method 'surface.send-input' cache-verified; sid-keyed and surface-keyed clear flags armed; freeze-early disarmed. "In-pane Stop hook fires /compact at turn-end."
+  
+  9. Optional Next Step:
+     Per the protocol's Step 6: "No reasoning, no tool calls after this point — keep the input idle." The reset fires; the resume prompt auto-injects. The resume prompt (verbatim from the file) directs the next session to: (1) re-arm autopilot with the exact command; (2) verify real state on disk (R2P git log — HEAD should be f400a06; task list); (3) execute Zee's order "move to coding the next phase" in this order — dispatch the four blocked pairs (tasks 36, 37, 38, 40 — fresh agent capacity; mind card 4's stop-condition) plus the 3 card-2 web seats; do orchestrator-direct tasks 35 and 41; (4) put card 1's A/B and (after web research) card 2's A/B back to Zee as plain text, never AskUserQuestion.
+  </summary>
+
+# ── Deepened by the resumed session, 2026-08-18 ─────────────────────────────
+current_work: >-
+  Executing Zee's order "move to coding the next phase": dispatching the four
+  ruled production pairs (tasks 36/37/38/40) plus the 3 card-2 web-research
+  seats, then orchestrator-direct tasks 35 (read-mutation-gate tsc fix) and
+  41 (card 10 R-A execution). Verified on resume: R2P HEAD f400a06, tree
+  clean, 0 remotes; autopilot still active at iteration 9/1000.
+completed_this_session: >-
+  PREREG-GATE-002 settings frozen (fd0783b); SBL-D1 fix landed (4f5942f, QA
+  PASS 17/17); SBL-D2 fix landed (56570b2, QA PASS); sealed-file correction
+  executed under card-6b grant (f400a06, comment-only, sha256s recorded);
+  ruling records committed (824e9c0, 86034b7, ca5b7c3, ab483a4, db5dd59,
+  c04fa2e); card-2 INVESTIGATE half done (47 claims).
+decisions_made: >-
+  Zee ruled 12+ decisions: second clock "leave it and add the report";
+  concurrency 9 + SBL-D1 half 2 struck; SBL-D1 half 1 fix; SBL-D2 A;
+  REV-SLEEVE-2 A (after his ordered verification); batch 4=A (producer, my B
+  declined), 5=A, 6a=A, 6b=A (executed), 7=A (all 19 specs, my B declined),
+  8=A (killed-only absolute), 9=A (tainted run stands as map), 10=R-A.
+  Cards 1 and 2 deliberately NOT ruled — held by Zee himself.
+blockers: >-
+  Cards 1 and 2 await Zee (card 1: his A/B letter; card 2: web-research half
+  then A/B). The prior 200-subagent cap may persist through compaction (same
+  session id) — if dispatch fails, that is why. pnpm run verify still red for
+  OBS-VG1 (open Zee decision) + task-35 tsc errors.
+candidate_learnings: >-
+  (1) The eden orientation rule (gloss domain words, orient before rulings)
+  unlocked 12+ rulings in one day after months of stalling. (2) Summaries
+  drift — card-6 conflation, "28-member vocabulary", "six candidates" were
+  all caught only by depth-reading SOURCE records. (3) /compact keeps the
+  session id, so the autopilot sentinel and possibly the subagent cap both
+  survive it.
+context_for_next_session: >-
+  Read memory/handoffs/2026-08-18-emergency-handoff.yaml — it is the richer,
+  orchestrator-written companion to this mechanical file. The coding order,
+  the two open cards, and the full constraint block live there.

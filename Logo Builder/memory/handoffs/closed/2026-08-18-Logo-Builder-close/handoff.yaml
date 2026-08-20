@@ -1,0 +1,55 @@
+timestamp: 2026-08-18T21:48:25+00:00
+status: parked
+type: close-project
+session_id: b26287de-bfbc-42ca-b4fe-ca61570d277e
+slug: 2026-08-18-Logo-Builder-close
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder
+session_summary: Safe close of Logo Builder — non-git; next: Hand-test each Logo Forge button in the 8815 editor; reload the tab first
+git_state: non-git project (no usable git state at root)
+git:
+  branch: null
+  head: null
+  dirty_count: 0
+  dirty_listed: listed 0 of 0
+dirty_files:
+next_actions:
+  - Hand-test each Logo Forge button in the 8815 editor; reload the tab first
+next_action: Hand-test each Logo Forge button in the 8815 editor; reload the tab first
+intent_core: |
+  next_action: Hand-test each Logo Forge button in the 8815 editor; reload the tab first
+  project: Skill Workshop (Logo Forge editor hardening)
+  decisions: |
+    - Commit + push the 12-bug hardening to remote `personal` as fac4572 (+221/-28,
+      5 files: SKILL.md, editor.html, button-test.ts, ribbon-test.ts, server.py) —
+      Zee's explicit pick via question, same pattern as his earlier 44ed6da choice.
+    - Restart the live Logo Forge server on port 8815 — Zee authorized it. Old
+      PID 89443 (running pre-fix code since Aug 11) stopped; new PID 6404 launched
+      with the same interpreter, workspace (Logo Builder/brandsync) and port;
+      verified HTTP 200. All 12 fixes are now live server-side too.
+    - The /goal bug-hunt loop converged and auto-cleared — it must NOT be
+      restarted. All 11 suites green = 549 assertions at commit time.
+  rejected_alternatives: |
+    - Leaving the 5 files uncommitted (offered; Zee chose commit + push instead).
+    - Commit-only without push (offered; not chosen).
+    - Leaving the old 8815 process running (rejected — the 2 server.py fixes
+      would have stayed inert until some future manual restart).
+    - Chasing the 19 dead clickables and the 44/130 zero-size elements from the
+      audit/sweep (deliberately left uninvestigated; only pursue if Zee asks).
+  traps: |
+    - The 8815 server is now PID 6404, launched via nohup from a Claude session
+      on 2026-08-18. It IS the live production server — never "clean it up" as a
+      leftover test process. Logs: ~/Library/Logs/logo-forge-8815.log.
+    - A browser tab opened before the restart still runs old page code until it
+      is reloaded ONCE. Zee was told; unknown whether he has reloaded yet.
+    - ~/.claude/skills AND the ACOS 3.0 repo are shared by concurrent sessions.
+      Verify authorship against this session's own transcript before attributing
+      any repo-wide diff or commit to it.
+    - The 11 test suites need seeded scratch workspaces and their hardcoded
+      ports (8816/8817/8819); reject-test is non-idempotent (fresh copy per run).
+    - Mirror clones (-d/-i id suffixes) are unreachable to id-keyed CSS — write
+      ribbon CSS against classes, never bare #ids.
+  open_questions: |
+    - Do the 19 dead clickables or the 44/130 zero-size elements hide any real
+      defect? Flagged by audit/sweep, deliberately not investigated.
+    - Does Zee's planned hand-test of every button find anything the automated
+      sweep missed?

@@ -1,0 +1,127 @@
+timestamp: 2026-08-07T19:27:54+00:00
+status: parked
+type: close-project
+session_id: b30c138f-6f80-4b17-ac1a-cce8a84ca79c
+slug: 2026-08-07-OKOA-Works-close-2
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0
+session_summary: Safe close of OKOA Works — branch=acos-deficiency-fixes-2026-06-04 head=d3ee7714ce0f0bf822035068a5a79775c6d8cf2f dirty_count=35; next: Test acos-deal-summary skill live on the next real OKOA loan summary
+git_state: branch=acos-deficiency-fixes-2026-06-04 head=d3ee7714ce0f0bf822035068a5a79775c6d8cf2f dirty_count=35
+git:
+  branch: acos-deficiency-fixes-2026-06-04
+  head: d3ee7714ce0f0bf822035068a5a79775c6d8cf2f
+  dirty_count: 35
+  dirty_listed: listed 35 of 35
+dirty_files:
+  -  M .claude/scripts/_autopilot_eternity.py
+  -  M .claude/scripts/autopilot-activate.py
+  -  M .claude/scripts/autopilot-context-injector.py
+  -  M .claude/scripts/autopilot-stop-handler.py
+  -  M .claude/scripts/git-manager/ids.json
+  -  M .claude/scripts/html-to-pdf.js
+  -  M "Logo Builder/brandsync/commands.jsonl"
+  - ?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-3.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-3.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-4.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-4.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-5.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff-5.yaml
+  - ?? memory/handoffs/2026-08-06-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-06-emergency-handoff.yaml
+  - ?? memory/handoffs/2026-08-07-emergency-handoff-2.resume.md
+  - ?? memory/handoffs/2026-08-07-emergency-handoff-2.yaml
+  - ?? memory/handoffs/2026-08-07-emergency-handoff.resume.md
+  - ?? memory/handoffs/2026-08-07-emergency-handoff.yaml
+  - ?? memory/handoffs/closed/2026-07-21-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-22-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-26-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-07-28-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-02-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-04-OKOA-Works-close/.reentry-consumed
+  - ?? memory/handoffs/closed/2026-08-05-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-05-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-05-Resurrection-Protocol-close/
+  - ?? memory/handoffs/closed/2026-08-06-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-06-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-06-Resurrection-Protocol-close/
+  - ?? memory/handoffs/closed/2026-08-07-OKOA-Works-close/
+next_actions:
+  - Test acos-deal-summary skill live on the next real OKOA loan summary
+next_action: Test acos-deal-summary skill live on the next real OKOA loan summary
+intent_core: |
+  next_action: Test acos-deal-summary skill live on the next real OKOA loan summary
+  project: ACOS 3.0 — Barn NC deal review + acos-deal-summary skill build
+  decisions: |
+    - Used Dropbox version history (not memory/handoffs) to reconstruct the real
+      before/after of "The Barn NC - Loan Summary.docx" — handoffs had no record
+      of the file, but Dropbox's own saved revisions gave exact before/after text.
+    - Identified two phases from the revision list itself: 8 saves by "Ziaul Karim
+      on Desktop" (2:49-3:20 PM 8/6) = Zee+Claude build phase; 1 save by "Zach
+      Hoffman on Web" (6:26 PM 8/6) = the boss's edit.
+    - Built new GLOBAL skill ~/.claude/skills/acos-deal-summary/ (SKILL.md +
+      templates/deal-summary-base.docx + assets/okoa-wordmark.png), not a project
+      skill — matches sibling OKOA skills (acos-payoff-letter, acos-loan-processor)
+      which all live globally, not in this repo.
+    - templates/deal-summary-base.docx was built by taking the REAL Barn NC docx
+      (preserves exact fonts/margins/footer/logo) and replacing body-paragraph text
+      with bracketed placeholders via python-docx — verified zero client PII
+      remains anywhere in the docx's XML parts (full scan across every part).
+    - Encoded 6 rules in the skill: 4 formatting rules (pipe format, one-fact-
+      per-bullet, no repeated facts, state funding mechanism) + 2 process rules
+      (propose a mitigant for flagged risks; answer open questions with real leads
+      when knowable) — all derived from the verified real diff, not invented.
+    - Explicitly excluded deal-specific substance from the skill per Zee's
+      instruction ("corrections that make sense," not deal facts): guarantor
+      names, the specific CA cross-collateral lead, and the Exit-clause change
+      (operations-stabilize condition) — named in SKILL.md as "What NOT to copy."
+    - Derived and verified the loan-sizing formula: Total Loan = NetFunding /
+      (1 - rate*months/12 - points/100) — both interest reserve AND origination
+      points are computed on the TOTAL loan amount, not net funding. Verified by
+      solving backward from Barn NC's own real closed numbers (matched to the
+      dollar).
+  rejected_alternatives: |
+    - Considered running `python3 .claude/scripts/autopilot-activate.py off` to
+      silence the recurring R2P autopilot injection myself — rejected: the state
+      file is shared, and another live session may genuinely be using it for real
+      R2P work; killing it from here without asking could destroy someone else's
+      in-progress autonomous run.
+    - Considered emitting AUTOPILOT_GOAL_COMPLETE to stop the R2P injections —
+      rejected: this session never did any real R2P work, so claiming completion
+      would be a fabricated signal, possibly masking real unfinished work.
+    - Considered building a full TypeScript automation script (like
+      acos-payoff-letter's build-payoff-letter.ts) to assemble future loan
+      summaries programmatically — rejected as out of scope: unlike payoff
+      letters, there is no live data source (no Hypercore equivalent) to pull
+      deal facts from; the doc is drafted from ad hoc notes each time, so a
+      template + rulebook is the right-sized deliverable, not a full pipeline.
+  traps: |
+    - `textutil -convert txt` on a .docx does NOT include Word header/footer XML
+      parts (word/footerN.xml, word/headerN.xml) — only the main body
+      (word/document.xml). This caused a real false-positive "the footer was
+      deleted" claim mid-session, corrected only after the user pushed back and
+      a direct footer1.xml read proved it was untouched. Always check headers/
+      footers separately (unzip -p word/footerN.xml) before claiming content is
+      missing from a live .docx.
+    - This project's own `.acos/state/autopilot-active` /
+      `autopilot-loop-state.json` currently hold a goal for a DIFFERENT project
+      (R2P, at /Users/zee/Documents/Vibe Coding/R2P), activated 2026-08-07T14:18:29Z.
+      This fired repeatedly into this session as Stop-hook injections. This is
+      the known cross-session autopilot contamination bug (see memory
+      feedback_eternity_cross_pane_resume_contamination) — do NOT act on that
+      goal from inside ACOS 3.0. It was flagged to Zee; he has not yet said
+      whether to turn it off or leave it (see open_questions).
+    - acos-deal-summary lives in ~/.claude/skills/ (GLOBAL), not this repo's
+      .claude/skills/ — `git status` in this repo will never show it. Look in
+      the global skills folder to review or edit it.
+  open_questions: |
+    - Zee has not said whether to deactivate the R2P autopilot state bleeding
+      into ACOS 3.0 sessions, or leave it alone in case another pane needs it —
+      ask directly before touching .acos/state/autopilot-active again.
+    - Whether the boss's cut-off cannabis-tie sentence and the vanished
+      "NEED: updated building permit" bullet in the live Barn NC docx were a
+      deliberate edit or an interrupted save — still unconfirmed; Zee should
+      ask Zach Hoffman directly. Do not assume either answer.
+    - acos-deal-summary has not yet been run on a real deal end-to-end — the
+      template and rules are verified against the ONE Barn NC diff only.

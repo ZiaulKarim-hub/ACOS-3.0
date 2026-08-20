@@ -1,0 +1,135 @@
+timestamp: "2026-08-17T19:39:33Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 0
+
+session_summary: |
+  This session's ENTIRE working directory is /Users/zee/Documents/Vibe Coding/R2P
+  (LOCAL-ONLY, no git remote — confirmed: `git remote -v` returns nothing — NEVER
+  push this repo anywhere). The transcript file lives under the ACOS-3.0 project
+  slug only because that was the cwd when Claude Code was launched; this is not
+  ACOS-3.0 work. The session is deep in EPIC-001's mutation-testing gate close-out:
+  a whole-codebase Stryker run completed, Zee (the human gate — "Ben" in the PRD
+  is the role name for Zee, not a third party) has made two binding rulings today
+  raising and refining the bar, one ruling (the nine 0.00 SCAFFOLD-PLACEHOLDER
+  files) is presented to Zee and UNANSWERED, an /investigate skill run (depth 5)
+  completed and audit-passed diagnosing 8 root causes of gate failure, and an
+  /research skill run (depth 5) is IN PROGRESS RIGHT NOW closing two coverage
+  gaps found by its own audit — one gap (an ISSTA 2019 citation conflict) resolved
+  and ingested at 2026-08-17T19:35:48Z, the other (automation-scout, researching
+  automated test generation / survivor triage / run architecture) still running
+  as of this handoff's creation (its subagent transcript file was still growing
+  at 13:36 local / 19:36 UTC, no output file yet).
+
+current_work:
+  slice_id: "unknown (see epic-level artifacts below; no active SLICE file identified this pass)"
+  story_id: "unknown"
+  epic_id: "EPIC-001 (R2P repo, planning/evidence/EVB-EPIC-001/close-packet/)"
+  status: "blocked — awaiting a human ruling from Zee (Decision 2 / MG21-R2), plus one still-running research subagent"
+
+completed_this_session:
+  - "MG21-R1 ruling recorded: Zee said 'Do C' — the killed-only bar BINDS, but the three remaining killed-only shortfalls are re-measured at timeoutMS 120000 first, on a measured set rather than judging off benchmark-alpha.ts alone. R2P commit b51d714 (RULING-MG21-R1-ZEE-CHOSE-C.yaml)."
+  - "Option C's measurement half completed: all four killed-only-shortfall files re-measured at timeoutMS 120000. Result: NOT uniform. benchmark-alpha.ts (64.79) and trigger-grammar.ts (63.45) fail both bars at an adequate timeout; contingent-plan-engine.ts (74.21/74.05) and time/result.ts (100.00/100.00) pass both. R2P commit b5b1ac6 (GATE-READING-002-THE-FOUR-FILE-TIMEOUT-SET.yaml)."
+  - "Zee raised the mutation bar to 90 on BOTH scores (standard and killed-only), for ALL 75 instrumented files. His exact words, quoted verbatim in the commit: 'I don't like 70 as the threshold, I would prefer 90, because we are dealing with real money here' and, confirming scope, 'yes, 90 on both scores, all 75 files.' Re-reading the existing gate log at --bar 90 (no new run needed) puts 40 of 64 scored files below the bar, total deficit 3,887 kills. R2P commit 14afc81 (RULING-BAR-90-ZEE-RAISED-THE-MUTATION-BAR.yaml)."
+  - "OBS-MG23 recorded: the session's own solutions-research reproducibility seat found upstream Stryker tracker issue #6073 (open, unmerged as of v10.0.0/2026-08-14) — non-deterministic Killed/Timeout/Survived verdicts on 9.6.1 + vitest, this project's exact stack — externally confirming the internally-measured verdict wobble (OBS-MG7, GATE-READING-002). Bears on the still-open MG21-R1a ruling (which run is the gate of record) — a median-of-N protocol may be needed. R2P commit 53c02f9."
+  - "/investigate 5 completed and audit-passed: 8 ranked root causes for why the gate fails against a bar of 90-on-both, 107 citations, all resolving. Report at /Users/zee/.acos-investigate/.acos/riffs/2026-08-17-why-the-r2p-mutation-gate-fails-against-a-bar-of-90-on-both-/report/report.md. Findings include: an equivalent-mutant hard-caps timestamp-precision.ts at 83.33 (i.e. some files may be mathematically incapable of reaching 90 without new code, not just new tests); no per-file gate exists mechanically today (Stryker's break threshold is aggregate-only); two-run instability up to 16.67 points on a single file; vitest's own testTimeout of 15,000ms is a second, unrelated clock from Stryker's timeoutMS; 27 of the 40 currently-failing files never had a fix pass; and the corpus's own recommended playbook is to drive noCoverage (untested code, not weak assertions) to zero first."
+  - "/research 5 in progress: riff session 2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate (RIFF_ROOT=$HOME/.acos-research), tier deep, 8 dimensions, 7 seats, 209 claims ingested, mechanical gate PASSED, but a coverage AUDIT returned FAIL with 3 blocking gaps: auto-test-generation (mutation-guided automated test generation — MuTAP, Meta's ACH paper arXiv 2501.12862 with a reported 73% engineer-acceptance rate, PRIMG, DSpot family — none of which any of the 7 seats had searched for, because all 8 dimensions were cause-shaped and silently assumed a human writes every test), survivor-triage (no method exists in-corpus for sorting the 2,918 survived mutants into productive vs. unproductive despite the corpus's own Tier-1 finding that 85% of Google's raw survivors were unproductive), and run-architecture (seeded mutant sampling / tiered run schedules — the run is ~81% static-mutant-dominated and this had no home in the cause-shaped dimensions). A fourth item flagged: two Tier-1 claims (generalist-010 vs reproducibility-researcher-016) disagreed on the ISSTA 2019 paper's reported average run-to-run mutation-score variance (5pp vs 4pp)."
+  - "Closed the gap round, live: added two new coverage dimensions (auto-test-generation, run-architecture), spawned a new researcher seat 'automation-scout' (agentId ae6f2945de639ea97) to research all three automation/triage/scheduling gaps, and dispatched an L2 primary-verification probe 'probe-01' (agentId aad06055ace2abcfd) to fetch the actual ISSTA 2019 PDF and resolve the citation conflict."
+  - "probe-01 COMPLETED and was ingested (ledger entry L-0025, 2026-08-17T19:35:48Z): the ISSTA 2019 paper (Shi/Bell/Marinov, DOI 10.1145/3293882.3330568) states mutation scores vary by 4 percentage points on average, quoted verbatim from the abstract (p.1) and Conclusion (p.10), overall range 77.7%-82.0%. generalist-010's 5pp figure is a confirmed misquote and is superseded; reproducibility-researcher-016's 4pp figure stands. A caveat was captured for the eventual report: the ISSTA paper never mentions machine load and isolated tests per-JVM, so this project's own machine-load attribution (OBS-MG7) is a separate, unconfirmed-by-ISSTA observation."
+  - "Delivered an in-chat synthesis to Zee comparing the /investigate and /research findings: a 10-item best-recommendations list (fix the gate-reading instrument first; wire a real per-file gate via Stryker's json reporter; grade killed-only; use the untouched-27-files playbook; three named assertion-strengthening levers; guard-code test kits; an exception-policy precedent book; a small-file quantization rule; naming the two still-open rulings; a changed-lines gate for CI). Told Zee two likely additions once the still-running gap agent lands: machine-generated killing tests, and a survivor-sorting/triage step before any human chases an individual survivor. Zee was offered a formal document version of this list once the cited report lands — this offer is UNANSWERED."
+  - "Read the /investigate skill's own defects live, mid-session: identified and wrote up 4 concrete defects in ~/.claude/skills/investigate/ hit during today's depth-5 run, with reproduction steps and a proposed (not-yet-approved) fix for each, saved to a scratchpad prompt file so a fix session can pick it up directly."
+
+files_modified:
+  - path: "R2P: planning/evidence/EVB-EPIC-001/close-packet/RULING-MG21-R1-ZEE-CHOSE-C.yaml"
+    changes: "New file, committed b51d714. Transcribes Zee's verbatim 'Do C' ruling on MG21-R1 (killed-only bar binds, but on a re-measured set)."
+  - path: "R2P: planning/evidence/EVB-EPIC-001/close-packet/GATE-READING-002-THE-FOUR-FILE-TIMEOUT-SET.yaml (+ 2 raw run logs it reads)"
+    changes: "New files, committed b5b1ac6. Records option C's re-measurement of all four killed-only-shortfall files at timeoutMS 120000 — result is non-uniform across the four."
+  - path: "R2P: planning/evidence/EVB-EPIC-001/close-packet/RULING-BAR-90-ZEE-RAISED-THE-MUTATION-BAR.yaml"
+    changes: "New file, committed 14afc81. Transcribes Zee's verbatim ruling raising the bar to 90/90 across all 75 files; 40 of 64 scored files now fail, deficit 3,887 kills."
+  - path: "R2P: planning/evidence/EVB-EPIC-001/close-packet/OBS-MG23-THE-WOBBLE-IS-AN-OPEN-UPSTREAM-BUG.yaml"
+    changes: "New file, committed 53c02f9. Records upstream Stryker issue #6073 as external confirmation of the verdict-wobble problem; raises the median-of-N question for MG21-R1a."
+  - path: "$HOME/.acos-research/.acos/riffs/2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate/ (dossiers/, coverage.json, coverage-audit.md, ledger.jsonl, panel.json, charters/automation-scout.md, charters/probe-01.md)"
+    changes: "Research riff session working state (NOT a git repo — user-home data dir, not under version control). 209 claims from 7 seats ingested; coverage audit FAIL; 2 new dimensions and 2 gap agents added mid-session; probe-01's result already ingested as ledger entry L-0025."
+  - path: "/private/tmp/.../scratchpad/fix-investigate-prompt.md"
+    changes: "New scratchpad file (session-local, not project-tracked) documenting 4 reproducible defects in ~/.claude/skills/investigate/, ready to hand to a fix session. Defect 1 (serious): at depths 3-5 the panel-seat charter renders the engine's WEB-search researcher-charter.md instead of an inward file-reading one, because the investigate skill's template overlay only ships probe-charter.md — so internal readers get told to search the internet. Defects 2-4 are smaller: 'riff panel approve' silently requires two specific seats and exact-lowercase role matching; 'panel set' takes an array but 'panel add' takes a single object with no docs distinguishing them; 'riff charter' hard-fails without a brief even at depths that are told to skip the interview."
+
+decisions_made:
+  - "MG21-R1 (R2P, Zee): 'Do C' — killed-only bar binds, measured set first. Committed b51d714."
+  - "RULING-BAR-90 (R2P, Zee): mutation bar raised to 90 on both scores, all 75 files. Committed 14afc81."
+  - "No decision found in memory/decisions/ (ACOS-3.0 repo) dated today — this work is entirely local to the R2P repo's own close-packet, not tracked in ACOS-3.0's decision log."
+
+candidate_learnings:
+  - "In this multi-project setup, a session's own transcript can carry a DIFFERENT project's cwd metadata than the repo the handoff script runs from — this session's every transcript line shows cwd \"/Users/zee/Documents/Vibe Coding/R2P\" even though the .claude project-slug directory on disk is named for ACOS-3.0; always check the transcript's own cwd field rather than trusting the project-slug folder name (evidence: every JSONL line in d72f5b72-...jsonl carries \"cwd\":\"/Users/zee/Documents/Vibe Coding/R2P\")."
+  - "R2P's git remote is genuinely empty (`git remote -v` returns nothing) — this is not a defensive convention to double-check, it is mechanically true right now; any push attempt to this repo has nowhere valid to go and should be treated as a hard error, not just discouraged (evidence: direct `git remote -v` run in this session)."
+  - "The R2P close-packet's 'front door' document (DECISIONS-FOR-BEN.yaml) stopped being the place new rulings get appended after 2026-08-12 — since then each new ruling/observation is its own standalone YAML file in planning/evidence/EVB-EPIC-001/close-packet/ (RULING-*.yaml, OBS-*.yaml, GATE-READING-*.yaml) and RATIFICATION-PACKET-EPIC-001.yaml (last touched Aug 15) is the actual index of record, itself now stale relative to the newest rulings; a future session reading only DECISIONS-FOR-BEN.yaml would miss everything from MG21-R1 onward (evidence: `ls -lt` on close-packet/ shows 5 files newer than DECISIONS-FOR-BEN.yaml, none of which are additions to it)."
+  - "The acos-research-riffs engine supports adding coverage dimensions and panel seats MID-SESSION after the coverage gate has already passed, in direct response to a coverage-audit FAIL — `riff coverage add`, `riff panel add`, then `riff charter <slug>` — and this correctly reopens the audit loop rather than requiring a fresh session (evidence: ledger entries L-0021 through L-0024 in the 2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate riff session, all timestamped within the same minute as the audit FAIL verdict)."
+
+blockers:
+  - "Decision 2 (MG21-R2, the nine 0.00 SCAFFOLD-PLACEHOLDER files) is presented to Zee and UNANSWERED. Options as presented in chat: A = write tests now (66 kills total across the nine, individual deficits 3,4,5,5,6,7,9,9,18) — recommended; B = exempt scaffolds until superseded, which would match tools/mutation-gate.ts's own first-line skip rule, but note the ratification packet flags a scope caveat: the baseline run instrumented 65 files while the current run instruments 75, so these nine are newly MEASURED, not newly broken; C = split — test the five files touching money/gate logic, exempt the four pure fixtures. Zee must answer with plain text (A, B, or C) — AskUserQuestion is barred while autopilot is active per OBS-AP1 (a hook auto-picks the '(Recommended)' option, which would forge a human ruling)."
+  - "automation-scout research subagent (agentId ae6f2945de639ea97) is STILL RUNNING as of this handoff (its transcript file was 3.3MB and still growing at the moment of writing, no claims/dossier file produced yet) — the research riff's Phase 5 (bundle -> compiler -> citer -> report audit loop -> eval) cannot start until it lands and gets ingested."
+  - "Remaining ruling queue beyond Decision 2: MG21-R1a (which mutation-gate run counts as the gate of record — OBS-MG23's upstream-bug finding suggests this may need a median-of-N protocol rather than a single answer) and the rest of the 14-item RATIFICATION-PACKET-EPIC-001.yaml (12 ADRs pending ratification, plus tier-2 correctness findings from reviewers e.g. REV-DM-1, REV-SLEEVE-1/2, REV-RPV-2, SBL-D1..D4, MG16-R1, MG17-R1, MG20-R1, F-02)."
+  - "The 10-item best-recommendations synthesis was delivered only as chat text, not as a document; Zee was offered a formal version pending the completed cited research report, and has not yet answered that offer."
+
+next_actions:
+  - "Poll for automation-scout's completion (check for a new file at $HOME/.acos-research/.acos/riffs/2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate/dossiers/automation-scout.claims.jsonl, or check whether /private/tmp/claude-501/.../81621d8a-.../tasks/ae6f2945de639ea97.output has resolved from a symlink pointing at a still-growing subagent transcript)."
+  - "Once automation-scout lands: `riff claims ingest` its dossier, `riff coverage probe` the two new dimensions plus a novel-claim check, `riff gate` (spawn an auditor if coverage is thin-but-honest), then Phase 5 — bundle the report, run ONE compiler agent, a separate citer agent, loop the report through audit to PASS, then `riff eval`."
+  - "Deliver the final cited solutions report to Zee at Eden reading level 4, organized per root cause, explicitly marking which recommendations raise REAL detection strength versus which merely raise the numeric score (the brief's own stated priority ordering)."
+  - "Re-present Decision 2 (MG21-R2, the nine scaffold files, options A/B/C) to Zee and wait for his plain-text answer — do not use AskUserQuestion for this or any of the remaining human-gate rulings."
+  - "Once Decision 2 is answered, work through the rest of the 14-item ruling queue in RATIFICATION-PACKET-EPIC-001.yaml, starting with MG21-R1a (gate of record, informed by OBS-MG23's upstream-bug finding)."
+  - "Separately (lower priority, not blocking EPIC-001): hand /private/tmp/.../scratchpad/fix-investigate-prompt.md to a session that can fix the /investigate skill's 4 documented defects — Defect 1 (wrong charter served at depth 3-5) is the serious one and needs Zee's confirmation on the proposed fix approach before writing code, per the prompt's own instruction."
+
+context_for_next_session: |
+  This handoff was reconstructed primarily from the invoking session's own transcript
+  (read via the supplied TRANSCRIPT_PATH — a strong, session-scoped signal) plus
+  extensive corroboration against R2P's git log/working tree and the on-disk research
+  riff session state, so confidence is HIGH that the picture above reflects this
+  session's actual work rather than a concurrent sibling session's.
+
+  The single most important fact for whoever picks this up: the real project is
+  /Users/zee/Documents/Vibe Coding/R2P, not ACOS-3.0 — cd there first. It is a
+  local-only git repo (no remote configured at all) working through EPIC-001's
+  close-out, specifically a mutation-testing quality gate that Zee has twice
+  tightened today (once to bind the killed-only sub-score, once to raise both
+  bars from 70 to 90 across all 75 files). That second raise alone created a
+  3,887-kill deficit across 40 files, which is why this session spawned two
+  parallel research efforts to find real solutions rather than score-gaming
+  levers: an /investigate run (COMPLETE, audit-passed, 8 ranked causes) and a
+  /research run (IN PROGRESS, one of two gap-closing subagents already landed
+  and ingested, the other — automation-scout, researching automated test
+  generation, Meta's ACH paper, survivor triage, and run-architecture sampling
+  — still actively running as this handoff was written).
+
+  The most urgent open item is NOT technical: Zee has an unanswered decision
+  sitting in front of him (Decision 2 / MG21-R2 — what to do about nine files
+  that score 0.00 and turned out, on inspection, to hold real trading-logic
+  functions rather than harmless barrel re-exports as originally assumed). The
+  next session's first move should be to check whether Zee has answered that
+  in the interim (search R2P's git log for a new RULING-MG21-R2*.yaml commit,
+  or ask him directly) before doing anything else in EPIC-001.
+
+  A structural note worth carrying forward: the close-packet's original
+  "front door" document, DECISIONS-FOR-BEN.yaml, stopped receiving new
+  addenda after 2026-08-12. Every ruling and observation since then (including
+  everything in this handoff) lives in its own standalone YAML file in the
+  same close-packet/ directory, and RATIFICATION-PACKET-EPIC-001.yaml (last
+  touched 2026-08-15) is the nominal index but is itself now three commits
+  stale. A session that reads only the two "obvious" files will miss the
+  entire second half of today's work — read `git log --oneline` and `ls -lt`
+  on that directory directly instead.
+
+reconstruction_sources:
+  - "Transcript (session-scoped, primary source): /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (tail ~200KB, lines 1-62 of that excerpt)"
+  - "R2P git log: `git log --oneline -25` in /Users/zee/Documents/Vibe Coding/R2P"
+  - "R2P git status/remote: `git status --short`, `git remote -v` in /Users/zee/Documents/Vibe Coding/R2P"
+  - "R2P git show --stat for commits b51d714, 14afc81, 53c02f9, b5b1ac6"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/DECISIONS-FOR-BEN.yaml (tail, addenda 1-5)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/RATIFICATION-PACKET-EPIC-001.yaml (full)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/ (ls -lt listing, mtimes)"
+  - "/Users/zee/.acos-investigate/.acos/riffs/2026-08-17-why-the-r2p-mutation-gate-fails-against-a-bar-of-90-on-both-/report/ (ls -la, confirms report.md exists)"
+  - "/Users/zee/.acos-research/.acos/riffs/2026-08-17-solutions-for-the-eight-root-causes-of-the-r2p-mutation-gate/ (ls -la on session dir, dossiers/, charters/; coverage.json; ledger.jsonl tail, especially entries L-0021 through L-0025)"
+  - "Subagent transcript file size/mtime check for agentId ae6f2945de639ea97 (automation-scout) confirming it is still running"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf/scratchpad/fix-investigate-prompt.md (head, defect list headers)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/evidence/ and memory/decisions/ (ls -lt, confirmed no today-dated ACOS-3.0 artifacts relate to this session's work)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/ (ls -la, confirmed agent-lifecycle.log actively updated today)"

@@ -1,0 +1,454 @@
+timestamp: "2026-08-13T18:57:04Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "bc68f376-b446-4c9a-ad76-7dbd3004289d"
+estimated_tokens: 342834
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Writing and delivering the final seven-part answer on Ascent Park City
+  (Wolfgramm / Beehive) — construction status, who is working on it, completion
+  date, hotel flag/operator, remaining development costs, condo sales, legal
+  issues. All research and arithmetic verification is done; only the write-up
+  remained at the moment of compaction.
+
+completed_this_session: |
+  - Read ~20 primary source documents across the Dropbox loan folder, the
+    dataroom, and Zee's local OKOA working folder. All read-only, no originals
+    touched.
+  - Established (previously unknown in memory) that the trustee's sale DID
+    occur: held 07/22/2026, OKOA credit bid $24,000,000.00 accepted, Trustee's
+    Deed recorded same day, Entry No. 01254897, B2913 P1584.
+  - Established the depositors' TRO was DENIED 07/17/2026 (Char v. Okoa
+    Capital, Case No. 260500343, Judge Kuendig).
+  - Established construction is fully stopped: "No contractors currently
+    working on site" (OKOA legal call summary, 07/16/2026).
+  - Verified six arithmetic chains exactly, all deltas $0.00: C-PACE payoff
+    $30,321,016.01; credit-bid shortfall $7,591,080.65 vs the 06/12/2026
+    payoff; Feb-2026 model construction cash $23,933,144.22; appraisal
+    remaining cost $36,398,116 / 48.14%; Young deposit $361,095.00; Summit
+    County tax arrears $197,994.10.
+  - Found a real footing defect in "The Ascent Balance to Finish Budget
+    Final.pdf": the printed Total row does not foot to its own 21 visible line
+    items (off by ~$1.22M), and is internally inconsistent by $18,486.24.
+
+decisions_made: |
+  - Zee abandoned the /acos-resurrect pick without choosing a project; he
+    redirected to the Ascent research goal instead. That skill run is dead
+    unless he returns to it.
+  - He set the goal via /goal, which armed a session-scoped Stop hook, with an
+    explicit standing instruction: keep working until the answer is found OR
+    it is confirmed with assurance that it cannot be found. "I don't know" is
+    an acceptable answer only when it is proven.
+  - He required references for every found fact and a shown calculation
+    process for every derived figure.
+
+blockers: |
+  (none blocking delivery.) Three research gaps are genuinely unclosable from
+  the material on disk and are being reported as gaps, not guessed at:
+  dollar amounts for 8 of the 11 recorded construction liens (the Utah State
+  Construction Registry printout referenced at Trustee's Sale Guarantee
+  Schedule B item 53 is not on disk); any construction status report after
+  SPD #19 (August 2025); any cost-to-complete update after the Feb 12, 2026
+  model. Email was not searched — standing rule forbids touching
+  jason@okoacapital.com.
+
+candidate_learnings: |
+  - CORRECTION to acos-okoa-works references/deal-index.md: the Cobble Creek
+    Homes lien is $92,000.00, NOT "$92M". A three-orders-of-magnitude error in
+    a fact-sheet Zee reads before deals.
+  - The 2026-05-20 franchise memo's CRITICAL finding F-001 ("Okoa has NO
+    comfort letter with Hilton") is SUPERSEDED. Hilton's own letter of
+    2026-05-26 names an OKOA Comfort Letter dated 03/14/2025 and an OKOA SNDA
+    dated 03/12/2025. The memo was built off the dataroom, and those two
+    documents were not in it.
+  - The Ascent presale count does not reconcile across four sources and nobody
+    has ever reconciled it: 60 (appraisal, eff. 10/20/2025) / 64 (OKOA model,
+    02/12/2026) / ~66 (legal call, 07/16/2026) / 73 (OKOA unified buyer
+    roster). Deposits likewise: $8,158,053 / $9,093,264 / $8,530,795.
+  - Darwin Fielding appears in SPD's project-team table as "Developer (Limited
+    Partner)" AND is the signer of the Velmont LOI now buying the project from
+    OKOA. Same person on both sides of the foreclosure.
+
+context_for_next_session: |
+  Ascent is no longer a loan — it is OKOA-owned real estate under contract to
+  sell. OKOA took title by trustee's deed on 07/22/2026 and accepted a
+  $31,000,000 LOI from Velmont Park City LLC on 07/30/2026; OKOA's own PSA
+  redline dated 08/12/2026 asks $31,500,000 with the buyer assuming C-PACE on
+  top. Read every "Ascent" question through that lens — anything framed as
+  "our borrower's project" is stale.
+
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  A session-scoped Stop hook is now active with condition: "find answer to the following questions for Ascent (wolfgramm, beehive):
+  Current status is in terms of construction
+  Who is working on it
+  When will construction be completed
+  Is there a hotel flag/operator currently lined up to manage and operate the property
+  Remaining development costs
+  Details about any condo unit sales (or contracts for sale once completed)
+  Legal issues (any lingering debts, liens, encumbrances, or clouds on title)
+  Keep working until you find the answer or confirm with assurance that the answer can't be found. If you find the answer, show it with reference, if you calculate it, show with calculation process.". Briefly acknowledge the goal, then immediately start (or continue) working toward it — treat the condition itself as your directive and do not pause to ask the user what to do. The hook will block stopping until the condition holds. It auto-clears once the condition is met — do not tell the user to run `/goal clear` after success; that's only for clearing a goal early.
+
+assistant_tail: |
+  Found the C-PACE payoff letter dated 06/30/2026. Reading it.
+  
+  ---
+  
+  All seven answers are sourced. Let me verify the arithmetic before I report.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 123
+  recent_commits: |
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+    fa16762 fix(research-riffs): close all three-review must-fix items; trust-chain HIGHs → SHIP-WITH-NOTES
+    82188f0 feat(safe-close): capture learnings across every /clear cycle, not just the closer's own memory
+    14343bd fix(eternity-protocol): resolve session-id/handoff selection through one shared script, not 10 copies
+    bf8cfda fix(autopilot/eternity): resume-prompt SKILL.md + autopilot session-scoping fixes
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+  - "?? memory/handoffs/.harvested/"
+  - "?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml"
+  - "?? memory/handoffs/2026-08-06-emergency-handoff-2.resume.md"
+  - "?? memory/handoffs/2026-08-06-emergency-handoff-2.yaml"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/bc68f376-b446-4c9a-ad76-7dbd3004289d.jsonl"
+  transcript_lines_parsed: 500
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Message 1 (user):** `/acos-resurrect` — a slash command invoking the ACOS Resurrect skill (the Resurrection Protocol menu). The skill body was expanded into the transcript with full instructions.
+  
+  **My response:** I ran Step 0 preflight (verified resurrection scripts present at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection`), then Step 1 (rendered the book fresh via `resurrect-view.py --color never` and `--json`). The book showed 47 projects (46 pickable, 1 archived), exit=0. I presented the book verbatim in a fenced block and asked for a free-text pick (>4 pickable projects). No UNMATCHED WORKSPACES.
+  
+  **Message 2 (user):** `/goal` command with args setting a session-scoped Stop hook goal — find answers for Ascent (Wolfgramm, Beehive) on 7 specific questions:
+  1. Current status in terms of construction
+  2. Who is working on it
+  3. When will construction be completed
+  4. Is there a hotel flag/operator currently lined up to manage and operate the property
+  5. Remaining development costs
+  6. Details about any condo unit sales (or contracts for sale once completed)
+  7. Legal issues (any lingering debts, liens, encumbrances, or clouds on title)
+  Plus: "Keep working until you find the answer or confirm with assurance that the answer can't be found. If you find the answer, show it with reference, if you calculate it, show with calculation process."
+  
+  This abandoned the /acos-resurrect pick (never made). I acknowledged and immediately started work.
+  
+  **My work sequence:**
+  1. Invoked `acos-okoa-works` skill (OKOA work accelerator) — it loaded the router/knowledge base with alias traps, folder map, red lines.
+  2. Read the Ascent fact-sheet from `/Users/zee/.claude/skills/acos-okoa-works/references/deal-index.md` and located Dropbox folders.
+  3. Found: `Wolfgramm_Ascent_Beehive - Waldorf (30M)` (3,344 files) and `Wolfgramm_Ascent_LKCAP Okoa Preferred Equity` (757 files) under `Okoa Loans - 2. Active/1. In HyperCore`.
+  4. Created 4 tasks (#1-#4) via TaskCreate; never created tasks 5-7 and never marked any complete.
+  5. Discovered `10 Trustee's Deed_Recorded.pdf` — scanned, no text layer. Rendered to PNG via PyMuPDF and read via vision.
+  6. Key findings accumulated (detailed below).
+  
+  **Errors encountered:**
+  - `cd /Users/zee/Documents/OKOA` caused "Shell cwd was reset" — fixed by not using `cd`, using absolute paths only.
+  - `pdftotext` returned empty on Trustee's Deed and TRO Ruling (image-only PDFs) — fixed by rendering pages to PNG at 150 DPI with PyMuPDF and reading with the Read tool (vision).
+  - Heredoc `<<PY` with `$` in regex was expanded by bash producing 0 matches — fixed by using quoted heredoc `<<'PY'` and passing paths via environment variables.
+  - zsh "bad math expression" from `$[0-9,]` in a grep regex — fixed by moving to python.
+  - Initial balance-to-finish sum mismatch (~$1.2M) — I suspected dropped rows, re-extracted the full page, confirmed only 21 line items exist, so the printed Total row genuinely does not foot to its own line items. This is a real finding.
+  - Tax total initially 0 (regex issue) then double-counted (123 "Total" lines = 122 account totals + 1 grand total) — resolved by reading page 34 which shows "Total For All Accounts ... $197,994.10".
+  - The v4 Foreclosure Report (SL6038T) turned out to be for Dakota Mountain Lodge (DMLC) parcels, not Ascent — so it did not supply the later Ascent lien amounts.
+  
+  **Memory corrections discovered:**
+  - Memory/fact-sheet said "Cobble Creek $92M" — actually **$92,000.00**.
+  - Memory said trustee sale outcome unknown — now confirmed: sale held 07/22/2026, OKOA credit bid $24,000,000 accepted, Trustee's Deed recorded.
+  - The May 20, 2026 franchise analysis's CRITICAL finding F-001 ("Okoa has NO comfort letter with Hilton") is contradicted by Hilton's own May 26, 2026 letter which names a Comfort Letter dated March 14, 2025 and an SNDA dated March 12, 2025 among Owner, Manager, and OKOA.
+  
+  **Constraints in effect (must preserve):**
+  - User email is jason@okoacapital.com but memory states STANDING rule: never touch jason@okoacapital.com mail/calendar/drive — that's the boss's, not Zee's. So no Gmail search was done.
+  - System prompt: "Do not call the AgentTool unless the user requested it" and "Do not use workflows or deep-research unless the user requested it" — so all research was done directly, no subagents.
+  - Eden Protocol Level 3 register applies to top-level replies.
+  - Confirmation Gate in CLAUDE.md (both /Users/zee/CLAUDE.md and project).
+  - GitHub routing rules: push defaults PERSONAL (ZiaulKarim-hub); never bare `git push`; okoateam only when named.
+  - OKOA red lines: boss cold-look rule; folder names are NOT facts; copies only; public-content privacy blocklist; subscription not API (never ANTHROPIC_API_KEY); verified figures only; clickable links.
+  
+  **Verification run (last action):** I ran a python script verifying 6 arithmetic checks, all of which passed exactly. This was the last tool call before the summary request.
+  
+  **State:** All 7 questions have been researched and sourced. The final answer has NOT yet been written/delivered to the user. The goal Stop hook is still active.
+  
+  Let me make sure I capture all the specific numbers and citations accurately.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  **First request (superseded):** The user typed `/acos-resurrect`, invoking the ACOS Resurrection Protocol menu skill. I rendered the registry book fresh and presented it verbatim, then asked for a pick from 46 pickable projects. **The user never made a pick** — they redirected with a new goal instead. That skill run is therefore incomplete/abandoned.
+  
+  **Second request (active, verbatim via `/goal`):**
+  
+  > find answer to the following questions for Ascent (wolfgramm, beehive):
+  > Current status is in terms of construction
+  > Who is working on it
+  > When will construction be completed
+  > Is there a hotel flag/operator currently lined up to manage and operate the property
+  > Remaining development costs
+  > Details about any condo unit sales (or contracts for sale once completed)
+  > Legal issues (any lingering debts, liens, encumbrances, or clouds on title)
+  > Keep working until you find the answer or confirm with assurance that the answer can't be found. If you find the answer, show it with reference, if you calculate it, show with calculation process.
+  
+  A session-scoped Stop hook is active on this condition and blocks stopping until it holds. It auto-clears on success. The instruction was to acknowledge briefly and immediately start working, without pausing to ask what to do.
+  
+  ## 2. Key Technical Concepts
+  
+  - **ACOS Resurrection Protocol** — `resurrect-view.py` (book render), `adopt-project.sh`, `launch-project.sh`, `registry_lib.py`, global registry at `~/.acos/registry.d/`
+  - **acos-okoa-works skill** — OKOA Capital work router + knowledge base (alias traps, folder quick-map, playbooks, red lines)
+  - **PDF extraction:** system `python3` has PyMuPDF 1.27.2 (`import fitz`); `pdftotext` and `qpdf` at `/opt/homebrew/bin/`. The `.venv-design` python does NOT have fitz.
+  - **Scanned-PDF workaround:** render pages at 150 DPI to PNG with `page.get_pixmap(dpi=150)`, then Read the PNG (Claude vision)
+  - **openpyxl 3.1.5** available for XLSX
+  - **DOCX extraction:** unzip `word/document.xml`, regex `<w:p...>` paragraphs and `<w:t>` runs, `html.unescape`
+  - Utah non-judicial foreclosure (3-month statutory minimum after NoD), Utah R. Civ. P. 65A (TRO), Utah PACE Act (Utah Code Ann. §11-42a), equitable conversion (*Sims Financial, LLC v CBC Fin. Corp.*, 2017 UT 90, 417 P.3d 70), AIA A133-2019 GMP contracts, C-PACE statutory super-lien, SNDA/Comfort Letter/franchise-agreement interplay
+  
+  ## 3. Files and Code Sections
+  
+  ### Source documents examined (all read-only)
+  
+  **Dropbox root:** `/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Wolfgramm_Ascent_Beehive - Waldorf (30M)` (3,344 files)
+  
+  - **`Foreclosure Process/Ascent PC/10 Trustee's Deed_Recorded.pdf`** — 4 pp, image-only, read via vision. Entry **01254897, B: 2913 P: 1584**, Summit County Recorder-Surveyor Gregory R. Wolbach, recorded **07/22/2026 04:07:27 PM**, fee $269.00. Grantor/Successor Trustee **Shane L. Keppner** (Bennett Tueller Johnson & Deere, 3165 East Millrock Drive, Suite 500, SLC UT 84121). Grantee **OKOA CAPITAL, LLC**, a Utah LLC, "WITHOUT right of redemption." Trustors: **Beehive Hospitality WAPC LLC** and **Beehive Hospitality Ascent PC, LLC** (both Delaware LLCs). Trust Deed dated Feb 9 2024, recorded March 5 2024, **Entry No. 01216493**. Substitution of Trustee recorded March 5 2026, **Entry No. 01248863**. NoD recorded, **Entry No. 01248880**. Sale held **July 22, 2026 at 10:00 a.m.**, main entrance Third Judicial District Courthouse, 6300 Justice Center Road, Park City UT 84098; published in The Salt Lake Tribune, last publication July 5, 2026. **¶5: "Grantor (Successor Trustee) accepted Grantee's credit bid for the Property for the sum of $24,000,000.00."** ¶7: express **no-merger** clause. Tax notices to Okoa Capital, LLC, Attn: Tyler Corbridge, Manager, 1441 West Ute Blvd., Suite 130, Park City UT 84098. Notary Hollsie Turner, commission 733275.
+  
+  - **`Foreclosure Process/Ascent PC/Deposit Holders Lawsuits/Ruling - TRO.pdf`** — 2 pp, image-only, read via vision. *RANDALL CHAR; et al v. OKOA CAPITAL LLC; et al*, Third Judicial District, Summit County, **Case No. 260500343**, **Judge Patricia C. Kuendig**. **"The Plaintiffs' Motion for Temporary Restraining Order is denied."** Dated **July 17, 2026**. Reasoning: REPCs limit buyer's remedies to termination + financial sum (REPC ¶10(a)); "[i]n no event shall Buyer be entitled to obtain specific performance of Seller's obligations hereunder or other equitable relief…"; REPCs contemplate seller may encumber and assign freely (¶¶8(a) & 14); *Sims* bars equitable conversion where a contract excludes specific performance. Hearing deemed unnecessary.
+  
+  - **`Foreclosure Process/Ascent PC/Ascent Park City Legal Call Summary.pdf`** — call date **July 16, 2026**, OKOA Capital LLC, 1441 W. Ute Blvd. Suite 130, Park City UT 84098. Key verbatim: **"No contractors currently working on site. Security cameras are installed on site."** Also: "Ongoing deterioration of the partially built property, including degrading protective coverings over window openings heading into cold weather"; "Material arrears to another secured party on the property (approximately $3 million C-PACE unpaid, plus unpaid county property taxes and utilities"; "Franchise-relationship risk with Hilton if delays continue to compound"; "prospective purchasers and their lenders have already expressed timing concerns tied to the 2027 ski season." Seven depositors, ~10 units, aggregate deposits **~$1.3 million** paid to the original developer, not OKOA. **"approximately 66 pre-sale deposits remain outstanding on the property in total."**
+  
+  - **`Foreclosure Process/Ascent PC/Deposit Holders Lawsuits/2026-08-05 Notice of Default and Demand to Okoa Capital LLC re Return of Deposits Under REPCs.pdf`** — 140 pp. Foley & Lardner (Jordan Bledsoe, 95 S State Street Suite 2500, SLC UT 84111), **August 5, 2026**, to Okoa Capital LLC Attn: Jason Meyer and to Shane L. Keppner. Represents **Daniel Young** and **Super Easy Tech LLC**; four REPCs each dated **January 15, 2021** between Young (original Buyer) and **T S 1, LLC** (Seller) for **Units 108, 110, 147, and 237**, **The Ascent Park City, 4080 N. Cooper Lane, Park City, Utah 84098**. Deposits **~$361,095**. Asserts REPCs predate the OKOA deed of trust (recorded 03/05/2024, Entry 01216493), that OKOA had actual knowledge, is not a bona fide purchaser, and took title subject to the REPCs. On July 21, 2026 the firm wrote the trustee; at the **July 22, 2026** sale their associate made an on-the-record statement before bidding opened; **"Approximately ten people were present at the sale, including Jason Meyer on behalf of Okoa."** Confirms **"credit bid of approximately $24,000,000."** **30-day cure period from August 5, 2026** under REPC §10(a); then termination + return of deposits.
+  
+  - **`Hilton Franchise Agreement Response Letter 20260527.pdf`** — letter dated **May 26, 2026**, from Hilton Domestic Operating Company Inc., signed **Dianne Jaskulske, Vice President**, to Okoa Capital, LLC / jason@okoacapital.com. Names five agreements with Beehive Hospitality Ascent PC LLC: (i) **SNDA dated March 12, 2025** (Owner, Manager, Okoa Capital LLC as "Lender"); (ii) **Management Agreement dated March 12, 2025**; (iii) **Franchise Agreement dated September 29, 2023**; (iv) **Condominium Marketing License Agreement dated October 11, 2018**, amended Sept 29, 2023; (v) **Comfort Letter dated March 14, 2025**. Quotes SNDA §3: "No Foreclosure will result in the amendment, modification, cancellation or termination of the Management Agreement." SNDA §4: on Foreclosure the Management Agreement "will automatically continue in full force and effect as a direct agreement between the Transferee, as owner, and Manager," and "Lender will assume, or will cause the Transferee to assume, all of the obligations of Borrower as 'Owner' … including … the obligation to repay unamortized key money upon a termination of the Management Agreement." Management Agreement term through the twentieth full year of operations, Owner required to maintain through at least the third full year (§§1.1, 13.3(b)). **"The Franchise Agreement runs through September 30, 2043."** Comfort Letter §2(b): absent a Waiver Notice the Hilton Agreements continue; on acquisition Lender must perform all Franchisee obligations existing or accruing after the Acquisition date, including fees.
+  
+  - **`Nuveen Demand Letter 20260528.pdf`** — email chain, Kathryn J. Carlisle-Kesling (Holland & Hart) to Shane Keppner, sent **May 13, 2026**. Demands answers by May 18, 2026 on: PACE lien survivability on credit bid; third-party purchaser taking subject to CPACE; assignment of Financing Agreement per Section 4.10; property-condition preservation "given concerns about exposed framing and potential deterioration." Cites **Intercreditor Agreement dated March 1, 2024** (6th recital) acknowledging statutory priority; PACE lien runs with the land, not extinguished in a non-judicial foreclosure (Utah Code Ann. §11-42a); Notice of Assessment Interest recorded in Summit County binds each subsequent owner.
+  
+  - **`LK Cap Takeover Scenario/Nuveen Payoff Letter The Ascent 20260630.pdf`** — "NGC P 1 LLC PREPAYMENT INSTRUCTIONS," dated April 6, 2026, to Beehive Hospitality Ascent PC LLC, Attn: Phil Wolfgramm. Financing Agreement dated **December 29, 2023** with **Greenworks Lending LLC**, assigned to **NGC P 1 LLC**. Date of prepayment **June 30th, 2026**. **Total Prepayment Amount Due: $30,321,016.01** — (a) 11/30/2025 Past Due Assessment $2,907,431.42; (b) Interest and penalties on unpaid Assessment $210,788.78; (c) Principal to be prepaid $29,611,548.58; (d) Accrued Interest $1,443,859.11 (per diem **$6,810.66**); (e) Administrative Fees $280.00; (f) Lien Removal Fees $40.00; (g) Prepayment Penalty $592,230.97; (h) Undisbursed Funds $(4,445,162.85). Signed Nancy Montour, Associate Director, Asset Management.
+  
+  - **`Appraisal Ascent Park City 20251205.pdf`** (also `Ascent Appraisal December 2025.pdf`, same size) — LWHA®, **Job No. 25-NY-612**, report dated **December 5, 2025**, **effective date of value October 20, 2025**, 177 pages. Prepared for **Eb5 Lending Alliance (Ali Jahangiri) & Wolfgramm Capital (Phil Wolfgramm)** — **not OKOA**; intended use "internal decision making purposes," no other Intended Users. Property: **The Ascent Park City, Tapestry Collection by Hilton, 4080 Cooper Lane, Park City, Summit County, UT 84098**, 2.24-acre partially improved site, 120 rooms, 138,544± GBA, 2,223 sq ft meeting space, 90 parking spaces, zoning RC – Resort Center, Zone X flood.
+    - **As Is Market Value (Economic Residual) $41,300,000 / $344,000 per key** as of 10/20/2025
+    - **Prospective Upon Completion $84,000,000 / $700,000 per key** as of assumed completion **March 1, 2026** (residual table shows **$84,100,000 / $701,000**)
+    - **Prospective Upon Stabilization – Hotel $46,900,000 / $391,000 per key, March 1, 2028**
+    - Development cost table (Source: Property Ownership): Site Acquisition $35,277,901 / spent $35,277,901; Direct Costs $28,379,653 / spent $0; Indirect Costs $4,750,493 / spent $2,534,536; FF&E $2,000,000 / spent $46,223; Financing $1,300,000 / spent $0; Developer Fee $2,785,010 / spent $1,121,211; Contingency/Reserve $558,116 / spent $223,186; Pre-Opening $550,000 / spent $0. **Total Cost $75,601,173 ($630,010/key); Total Spent to Date $39,203,057 ($326,692/key); Total Remaining to be Spent $36,398,116 ($303,318/key) = 48.14%** (table shows 52% spent / 48% remaining).
+    - Residual: Upon Completion $84,100,000 − [$36,398,116 + 15% entrepreneurial profit $5,459,717 = $41,857,834] = **$42,242,166**, rounded to $41,300,000.
+    - **Internal contradiction:** the extraordinary-assumptions section states acquisition cost **$32,500,000 or $270,833 per key**, while p.134/135 state **$35,277,901 or $293,983 per key** — a $2,777,901 difference.
+    - Franchise synopsis: Effective Date "Property opening date (March 1, 2025)"; Franchisor **Hilton Franchise Holding, LLC**; Franchisee **Beehive Hospitality Ascent PC LLC**; Term 20 years from opening; Royalty 3.00% Yr1, 4.00% Yr2, 4.00% Yr3, 5.00% Yr4+ of Rooms Revenue; Program/Marketing 4.00% of Rooms Revenue; Reserves 4.00% of Total Revenue; "May be terminated with liquidated damages."
+    - Management synopsis: dated **January 27, 2025** (conflicts with Hilton's letter, which says March 12, 2025); Manager **Tapestry Management LLC**; Owner may terminate (with fee) after 3 years; expiration Dec 31 of the 20th Full Operating Year after Opening Date; **Encumbered by Management: Yes**; Base fee 1% Yr1 / 1.25% Yr2 / 1.5% Yr3; Incentive 4% of Adjusted GOP capped at 1.25% of Total Operating Revenue; Termination Fee = 2× management fees earned in prior 12 full calendar months.
+    - Condo section (p.139–142): 120 units, gross **sellable area 68,471 sq ft** in narrative vs **54,082 total SF** in the sell-out table (unexplained conflict). Studio to one-bedroom. **60 of 120 units (50%) under contract at average $1,286/SF**, aggregate **$34,298,029** over 26,673 SF. Remaining **35 available units** (to be sold over next 24 months) projected $1,212–$1,420/SF, $21,628,208 over 15,744 SF at $1,374/SF. **25 units retained by ownership.** Appraisal assumes **95 units sold**. Unit-type split (Total/Sold/Retained/Available): Junior Suite 20/13/4/3 (351 SF avg, sold avg $420,567 @ $1,198); Executive Suite 18/10/4/4 (383 SF, $447,586 @ $1,169); Deluxe Executive Suite 64/28/11/25 (451 SF, $609,733 @ $1,352); Luxury Suite 18/9/6/3 (628 SF, $809,143 @ $1,288). **Eight units listed for sale but not actively marketed**; **eight units sold whose owners have expressed interest in cancelling** (excluded from the 60). Sell-out: Already Sold (Remaining Balance) $34,470,035; Total Sales Revenue (Gross Sellout) $34,298,029 | 2025/26 $46,072,635 | 2026/27 $10,025,608 | Total **$56,098,243** | $590,508/unit; Less Deposits Paid **$8,158,053**, Remaining Commissions @4.0% $464,104 + $401,024 = $865,128, Holding Costs @ $15,000/unsold unit $375,000 + $120,000 = $495,000; Total Expenses $9,518,181; Gross Proceeds $46,580,062; discount 10% (90.9% / 82.6%); Proceeds/Value as of 3/1/2026 $41,560,008, **rounded $41,600,000** ($437,895/unit on 95 units). Note: $34,470,035 vs $34,298,029 differ by $172,006, unexplained.
+  
+  - **`Ascent_Park_City_Dataroom/Construction Status Reports/Nuveen Updates/The Ascent Park City - Status Report #19.pdf`** — 15 pp, **AUGUST 2025**, by **SPD Advisory Group / Sterling Project Development**, 4 World Trade Center, 150 Greenwich Street, Floor 49, New York NY 10007. Distributed to Nuveen Green Capital (Spencer Olson, Alicia Helgans, Jon Blahosky, Matt Yerushalmi, Sean Ribble, Alexander Mendik) and SPD (Richard Browne, Jim Hill, Kevin Ahn, Matthew Rossi).
+    - Project: 138,544-gross-square-foot development "marketed as condominium hotel units managed by Hilton's boutique operator, the Tapestry Collection." Three sections Areas A, B, C. 5 Stories; 64 Feet; **120 Units**; **91 Integral Parking Spaces**.
+    - **PROJECT TEAM: Developer: Wolfgramm Capital. Developer (Limited Partner): Darwin Fielding. Owners Representative: SJ Company. General Contractor: Westland Construction (Terminated). General Contractor: Verity (JV between Wolfgramm Capital and SJ Company). Architect and Interior Design: Think Architecture. Structural Engineer: ARW Engineers. MEP Engineer: Engineering System Solutions. Civil Engineer: Reeve and Associates, Inc.**
+    - Westland contract: AIA A133-2019 between **TS1, LLC** and **Westland Construction Inc.** executed **July 1, 2021**; GMP Amendment Aug 23, 2021 = **$15,126,425**; Addenda #1 and #2 (Jan 2022, Mar 2022) raised base GMP to **$46,658,396**. **"Westland Construction was terminated for cause on April 11, 2024."**
+    - Verity contract: AIA A133-2019 between **Beehive Hospitality Ascent PC, LLC** and **Verity LLC** executed **May 15, 2024**, GMP **$23,733,877**; GMP Amendment **May 20, 2024** revised GMP to **$21,718,458**.
+    - Permit: Full Building Issued **08/24/21**.
+    - Workforce: **"The labor force is averaging less than five workers daily"**; "no subcontractors were present during our most recent site visit, and the sponsor asserts that this is due to a lack of funding."
+    - Superstructure complete: Area A top-out May 2024, Area B August 2023, Area C August 2024. Permanent power energized March 2025. Gas meters outstanding (Dominion Energy). Water meters outstanding. Telecom: **Safety Net Access contracted by Hilton** for internet, CCTV, A/V, TV.
+    - **SCHEDULE:** "an updated schedule has not been received by SPD since March 2025." From Verity's March 24, 2025 completion schedule: Site Utilities/Sitework/Landscaping/Exterior Finishes finish **07/08/25**; Substantial Completion Area B **07/11/25**; Area C **07/25/25**; Area A **08/08/25**. "The project schedule provided at loan closing represents a total remaining construction duration of approximately 10 months, with an anticipated project completion date of **November 28, 2024**." "Substantial Completion is anticipated by August 8, 2025. This represents a **36-week delay** from the schedule provided at loan closing." "Overall progress appears to be tracking **five to six months behind**… milestone dates outlined in the schedule above, **which have since passed and are no longer valid**."
+    - Procurement: Buyout Log 7/21/2025, Verity reports executed subcontracts totaling **$15.9MM** = 100% of buyout; SPD reviewed executed contracts totaling **$12.4MM** = 87%. GMP includes 20 allowances totaling $1MM. Tariffs: sponsor indicated $20K escalation on FF&E.
+  
+  - **`Ascent_Park_City_Dataroom/Construction Draws & Lien Waivers/The Ascent Balance to Finish Budget Final.pdf`** — 1 page, 21 line items + Total. Columns: Total Budget | Billed to Date As of Draw July 2025 | Retention | Outstanding Owed As of July 2025 | Final Cost To Complete Including Outstanding to be Paid. Printed totals: **$29,554,585.60 | $18,273,425.23 | $895,185.02 | $8,291,392.71 | $20,486,224.34**. Per-line formula verified: Final = Total Budget − Billed + Outstanding + Retention (exact on all 21 rows). **Finding: the printed Total row does NOT foot to its own visible line items** — column sums are $28,337,154.92 / $17,314,178.15 / $865,708.92 / $7,381,265.75 / $19,269,951.44, i.e. printed totals are higher by $1,217,430.68 / $959,247.08 / $29,476.10 / $910,126.96 / $1,216,272.90. Additionally the printed Total row is internally inconsistent by $18,486.24 (29,554,585.60 − 18,273,425.23 + 8,291,392.71 + 895,185.02 = 20,467,738.10 ≠ 20,486,224.34). No HVAC (Division 23) line appears anywhere.
+  
+  - **`Ascent_Park_City_Dataroom/Construction Draws & Lien Waivers/_B__Balance to finish verity2.pdf`** — Verity LLC (447 North Cooley Street, Grantsville, Utah 84029) AIA Application No. 11, Project No. **V2401**, period 03/01/25–03/31/25, to Beehive Hospitality Ascent PC, LLC (1401 E Winding Way Suite E, Friendswood, Texas 77546), via architect Chris Jensen (Think Architecture). Original Contract Sum **$21,079,604.38**; net change by change orders **$425,376.86**; Contract Sum to date **$21,504,981.24**; Total completed and stored to date **$15,628,508.39**; Retainage 5.00% **$781,425.45**; Total earned less retainage **$14,847,082.94**; less previous certificates **$13,778,177.03**; **Current payment due $1,068,905.91**; **Balance to finish including retainage $6,657,898.30**.
+  
+  - **`The Ascent Park City Project Model Overview 2-2026bp[12].xlsx`** — dated **2026-02-12**. Sheets: Overview, Bal to Complete Budget, Construction Draw Schedule, Senior Loan Balance Forecast, Condo Unit Sales Forecast, Ascent Financial Stmts. **Built for a refinance that did not happen** (new senior lender paying off OKOA).
+    - At-Closing S&U (Feb 2026): New Senior Lender Funding $35,770,000; New Investor Equity $1,800,000; Payoff Old Senior Lender **$30,200,000** ("Okoa is sole existing senior lender"); Interest Reserve $4,250,000; Loan Fees $1,200,000 (est. 2%); I-B Fee $1,800,000 (est. 3%); Legal $120,000. Totals $37,570,000.
+    - Post-Closing S&U (March 2026 – Dec 2027): New Senior Lender Draws $19,233,144; **CPACE Draws $4,700,000** ("CPACE's remaining funding under existing $30MM unsecured commitment"); **Pay off Trade Bills Currently Due (50%) $11,232,315.35** ("Construction draws due as of 12/31/2025. 50% pd in March 2026, 50% pd in April 2026"); **Construction Completion $8,245,925.18** ("3rd Party vetted current Cost to Complete. **Est CofO on 9/30/2026**"); **Current Construction Retention $1,042,607.43**; **New Construction Retention $412,296.26** (5%); **Construction Contingency $3,000,000** ("3rd Party expert advised additional contingency reserve"). Totals **$23,933,144.22**.
+    - Construction Draw Schedule: "Restart Billing Window: March 2026 – September 2026"; Total Balance to Finish Billing $8,245,925.18; Outstanding Owed $11,232,315.35; **Total Contractor Billing $19,478,240.53**.
+    - Bal to Complete Budget sheet has 192 rows with per-subcontractor detail naming **Verity, Jrock (concrete), IMS Masonry, United, Wicked, Procore, Rocky Mountain Power, SiteStream (site security)**.
+    - Condo Unit Sales Forecast: **Total Units Pre-Sold 64**; Presold Unit Conversion % **65%**; Units Converted 42; **Units Non-Converted 22**; Average Pre-Sold Unit Sales Price **$710,411.25**; Average Non-Refundable Deposit Held $142,082.25; **Total Pre-Sale Deposits Taken $9,093,264** on **Total Sales $45,466,320** (20%); Deposits Credited at Conversion −$5,967,454.50; **Total Deposits Forfeited & Earned $3,125,809.50**. Required CPACE Paydown $7,500,000. **Total Ascent Project Costs $126,852,727.78**; 120 units; **Average Cost Per Unit $1,057,106.06**.
+    - Balance Sheet 12/31/2025: Construction Trade AP $11,232,315.35; Retention Owed $1,042,607.43; **Okoa Construction Loan $30,200,000**; Deferred Revenue Liability $9,093,264; **CPACE Loan $25,300,000**; Okoa Preferred Equity $15,000,000; Original Developer Rollover to Equity $5,940,733; Sponsor Equity $14,810,500.
+  
+  - **`Sources and Uses - Genesis.xlsx`** (Feb 2026 file date) — an **abandoned/earlier scenario** with 2025 dates: Genesis Proceeds $53,144,864; PACE Proceeds left to draw $4,000,000; Payoff Senior Loan $30,800,000; PACE Nov 2025 payment $2,907,432; PACE Nov 2026 payment $2,907,432; **Cost to Complete Ascent $15,000,000**; Hotel Ops Working Capital $1,000,000. Debt stack PACE $27,834,000 + Genesis $53,144,864 = $80,978,864. Wolfgramm Equity $20,000,000 "wiped out"; LKCap/Okoa Pref Equity $15,000,000 "converted to equity." Timeline: Foreclosure 2025-06-01; Construction re-start 2025-07-15 ("plan to get GC readied during foreclosure"). Ascent Condo Sales $102,000,000 @ $850,000/unit; Ascent Hotel Sale $35,000,000 at 10% cap on hedged NOI.
+  
+  - **`Foreclosure Process/Ascent PC/Trustees Sale Guarantee.pdf`** — Fidelity National Title Insurance Company, **Guarantee No. FTUT2602227-TJR**, printed 06.17.26, **Date of Guarantee: April 28, 2026 at 08:00 AM**, Amount of Liability **$33,500,000.00**, fee $44,053.94. Assured: Trustee Shane L. Keppner; Beneficiary Okoa Capital, LLC. Title vested in **Beehive Hospitality Ascent PC LLC, a Utah limited liability company**. Fee Simple as to Parcel 1, Easements as to Parcel 1A. Exhibit A lists **122 parcels** (APC-101 … APC-356, APC-D-1, APC-H-1); Condominium Plat recorded December 31, 2019, Entry No. 1124627, Book 2548 Page 240; Declaration Entry No. 1124628, Book 2548 Page 241.
+    - Parties entitled to notice: Dakota Mountain Lodge Homeowners Association (Attn: Mark Bober, President); The Canyons Resort Village Association, Inc.; SJ Managing Company (447 N Cooley St, Grantsville UT); Mountain Regional Water Special Service District; **Cobble Creek Homes, Inc.**; **ServTek & Design, LLC dba New Element Construction**; **Quality Fire Protection, Inc.**; **Atlas Sheet Metal, Inc.**; **Shamrock Plumbing, LLC**; The Frostwood Master Owners Association, Inc.; **JRock Construction, LLC**; **Gabriel Del Rio** (c/o Miller Harrison, LLC); **J.T. Steel, Inc.**; Wolfgramm Capital, LLC; Okoa Capital LLC.
+    - Schedule B money items: **Item 1** — 2026 taxes accruing not yet due; **2025 taxes Delinquent** including interest penalty and costs; **Special Assessments also Delinquent**. **Item 33** Notice of Construction Lien rec. Dec 9 2022, Entry 1198593. **Item 34** DoT **$2,550,000.00**, dated Dec 12 2022, Trustor **T S 1, LLC**, Beneficiary **Wolfgramm Capital, LLC**, rec. Dec 14 2022, Entry 01198791 B2766 P1755. **Item 35** DoT **$10,000,000.00**, dated Oct 20 2023, Trustors Beehive Hospitality Ascent PC LLC, Beehive Hospitality WAPC LLC & **Integrity RS LLC**, Beneficiary **Okoa Capital LLC**, rec. Oct 26 2023, Entry 1211470 B2799 P134. **Item 36** Notice of Certification and Lien rec. Oct 31 2023, Entry 1211713. **Item 37** C-PACE chain: Memorandum of Agreement rec. Jan 2 2024 Entry 1214117; Notice of Assessment Interest Entry 1214118; Assignment of Notice of Assessment Interest Entry 1214119; Assignment and Assumption rec. Mar 4 2024 Entry 1216430; Assignment and Assumption rec. Apr 1 2024 Entry 1217600. **Item 38** DoT **$30,000,000.00**, dated Feb 9 2024, Trustors Beehive Hospitality WAPC LLC & Beehive Hospitality Ascent PC LLC, Beneficiary Okoa Capital, LLC, rec. **March 5, 2024**, Entry 1216493 B2810 P1861; Request for Notice of Default by **Dakota Mountain Lodge Homeowners Association** rec. Oct 24 2025 Entry 1242939; Substitution of Trustee (Shane L. Keppner) rec. March 5 2026 Entry 1248863 B2896 P1166; Notice of Default rec. March 5 2026 Entry 1248880 B2896 P1265. **Items 39–47, 50** — eight further construction liens + one Mechanic's Lien: 39 (Mar 26 2025, Entry 1233208), 40 Mechanic's Lien (May 12 2025, Entry 1235408), 41 & 42 (both Aug 18 2025, Entries 1239785 / 1239786), 43 & 44 (both Dec 4 2025, Entries 1244933 / 1244934), 45 (Dec 8 2025, Entry 1245017), 46 (Dec 19 2025, Entry 1245670), 47 (Jan 12 2026, Entry 1246472), 50 (Feb 26 2026, Entry 1248536). **Items 48, 49, 51 — three Notices of Lis Pendens**: Case No. **260500043** rec. Jan 28 2026 Entry 1247009; Case No. **260500074** rec. Feb 12 2026 Entry 1247758; Case No. **260500131** rec. Mar 17 2026 Entry 1249350. **Item 52** rights of parties in possession under unrecorded contracts. **Item 53** Utah State Construction Registry searched **May 13, 2026** — "See SCR Printout" (printout not located). **Item 54** any further mechanics'/materialman's liens. 24-month chain of title: **NONE**.
+    - **Note: the Trustee's Sale Guarantee does not state dollar amounts for the construction liens.**
+  
+  - **`Foreclosure Process/Ascent PC/Foreclosure Report (GT) (Non Judicial TD) SL63660T (v3).PDF`** — Greenberg Traurig foreclosure title report, File No. SL63660T (older, ~Oct 2025). Item 47 DoT $2,550,000.00 (Wolfgramm Capital); Item 48 DoT $30,000,000.00 (Okoa Capital LLC). Lien amounts: **Item 49 Cobble Creek Homes Inc. — $92,000.00** (rec. March 26, 2025, Entry 1233208); **Item 50 ServTek & Design LLC dba New Element Construction — $140,640.53** (rec. May 12, 2025, Entry 1235408); **Item 51 Quality Fire Protection Inc. — $80,687.64** (rec. August 18, 2025, Entry 1239785). Item 46 covers the Greenworks/Summit County C-PACE recordings.
+  
+  - **`Foreclosure Process/Ascent PC/Ascent PC Condo Summary of Taxes Due as of 07.27.26.pdf`** — 34 pp, generated "sfisher @ Jul 22, 2026 12:24:00 PM". 122 parcels, owner of record **BEEHIVE HOSPITALITY ASCENT PC LLC**, situs 4080 N COOPER LN #___. Page 34 grand total: **"Total For All Accounts — Tax $183,091.32 | Interest $10,325.54 | Penalty $4,577.24 | Total Due $197,994.10"** as of 07/27/2026. By year: 2024 = 1 row, $826.20 due; 2025 = 122 rows, $197,167.90 due.
+  
+  - **`Sale Offers/Velmont (Darwin)/Velmont_LOI_Ascent_Park_City 7.28.26 (1).pdf`** — **VELMONT PARK CITY LLC**, 881 West State St, Ste 140-204, Pleasant Grove UT 84062, darwinf08@gmail.com, 435-668-0346, signed **Darwin Fielding, Authorized Signer**. Dated **July 28, 2026**, to Okoa Capital LLC Attn: Jason Meyer. **Purchase Price $31,000,000.00** cash at Closing. Earnest Money **$750,000.00** with Fidelity Title within 3 business days of PSA execution. Due Diligence Period 30 days. Closing no later than 60 days from PSA execution. **Exclusivity 60 days** from acceptance. Binding sections: 7 (Exclusivity), 8 (Costs), 9 (Confidentiality) only. **ACCEPTED AND AGREED — Okoa Capital LLC, Jason Meyer, Partner, Date July 30, 2026.**
+  
+  - **`Sale Offers/Velmont (Darwin)/Velmont OKOA PSA - Draft 1 - OKOA Redline (8-12-26).docx`** — modified **2026-08-13**, 178 paragraphs. **This is OKOA's redline, not an agreed document.** Seller **OKOA CAPITAL LLC**, Buyer **VELMONT PARK CITY LLC** (Wyoming LLC). Recital A: **"Seller is the owner of the development project commonly known as Ascent Park City."**
+    - §1.1(b): "All buildings, structures, and improvements located on the Land, **including the partially completed condominium-hotel improvements**, fixtures, and building systems."
+    - **§2.1 Purchase Price: "Thirty-One Million Five Hundred Thousand and No/100 Dollars ($31,500,000.00)"** — raised from the LOI's $31,000,000 — "in addition to, and shall not be reduced or offset by, the C-PACE Assessment, which Buyer shall assume at Closing in accordance with Section 3.5."
+    - §2.2 Earnest Money $750,000.00 with Fidelity National Title Insurance Company, Park City office.
+    - §3.3 Permitted Exceptions include the C-PACE Assessment. §3.4 Seller cures only "Seller Monetary Liens" created by/through/under Seller during Seller's ownership; expressly excludes the C-PACE Assessment and real property taxes.
+    - **§3.5 C-PACE Assessment; Assumption by Buyer** — Buyer assumes the C-PACE assessment "in favor of Nuveen Green Capital"; "Seller shall have no obligation to pay, prepay, defease, discharge, satisfy, or obtain the release of the C-PACE Assessment."
+    - §4.1 Due Diligence Period 30 days, extendable once by 15 days with an additional **$250,000.00** deposit (immediately released to Seller, non-refundable).
+    - §5.1: "Buyer acknowledges that Seller acquired the Property through foreclosure of a construction loan, that Seller has never developed, constructed, marketed, sold, or operated the Project."
+    - **§5.1(r) Presales and Deposits:** "Seller has not entered into any reservation, purchase contract, or brokerage or commission agreement with respect to any unit in the Project. Seller does not hold and has never held any purchaser deposit relating to the Project, and Seller shall have no liability or obligation of any kind with respect to any … deposit … arising from the activities of any prior owner, as to all of which Buyer takes the Property subject."
+    - **§5.4 AS-IS, WHERE-IS** — no warranty as to "PHYSICAL CONDITION, CONSTRUCTION STATUS OR QUALITY, COST OR FEASIBILITY OF COMPLETION, ENTITLEMENTS, PERMITS, ZONING, ENVIRONMENTAL CONDITION, TITLE OTHER THAN AS INSURED, DECLARANT RIGHTS, PRESALES, PURCHASER DEPOSITS, OR SUITABILITY FOR ANY PURPOSE."
+    - **§(g) Hilton: "Intentionally omitted. Buyer's obligations under this Agreement are not conditioned upon any arrangement with Hilton or any other franchisor, brand, or manager."**
+  
+  ### Working files (Zee's local)
+  
+  - **`/Users/zee/Documents/OKOA/Ascent Updates/Ascent_Unified_Buyer_Roster.xlsx`** — 2 sheets. Header note: "One row per contracted unit. Sources joined on Unit #: contract folders (buyer↔unit) · Ascent Condo Pricing 12.27.2024.xlsx (type/sqft/price) · Depositor Summary (agreed price, 20% deposit per REPC §1(d))." **DEPOSITS CAVEAT (per Ohana Answers.docx, 6/18/2026): "presale deposits were collected BEFORE OKOA financed Ascent; their whereabouts are unknown and NO paydown of the OKOA note or C-PACE has occurred. Deposit column = contracted amount, NOT cash available to OKOA."**
+    - **TOTAL: 73 contracted units | 32,454 SF | agreed $42,654,019 | 20% deposits $8,530,795 | suggested re-list (12/27/24) $54,043,011 | re-list upside $11,388,992.**
+    - Buyer Mix: by type — A (351 SF studio) 15 units 21% $6,285,567 / $1,257,113; B (451 SF studio) 34 units 47% $20,784,990 / $4,156,993; C (383 SF studio) 12 units 16% $5,776,089 / $1,155,217; D (628 SF 1-BR) 12 units 16% $9,807,373 / $1,961,472.
+    - **Distinct buyers: 54. Multi-unit buyers: 14 (holding 33 of 73 units).** Largest: **Young 4 units (108, 110, 147, 237) $1,805,475 / $361,094**; Kaiva 3 (226, 228, 230) $2,900,001 / $579,999; DeMink 3 (253, 255, 256) $1,620,704 / $324,141; APC Holdings 3 (113, 144, 313) $1,380,626 / $276,125; **Char 2 (241, 311) $779,990 / $155,998**; Kumar 2 $1,766,789; Waggoner 2 $1,665,416; Danube Holdings 2 $1,382,402; Miller Hancock 2 $1,225,363; Paxton 2 $1,190,263; Newby 2 $1,138,513; Andrus 2 $1,045,690; Smith 2 $1,038,850; Rex 2 $878,690.
+    - Deal context: 120 total units; **73 under contract; 47 not under contract; 61% pre-sold.**
+  
+  - **`/Users/zee/Documents/OKOA/Ascent loan accounts 06-12-26/2026-06-12_beehive-waldorff-combined-loan-ledger.pdf`** — "Beehive Waldorff / WOLFGRAMM CAPITAL LLC · CONFIDENTIAL · LEDGER THROUGH JUNE 12, 2026." **PAST DUE — "Loan matured 08/15/2025 · No late payment penalties charged."** Funded 02/09/2024; Original Maturity 08/15/2025; Loan Type Bridge — Interest Only; **Loan Amount $30,000,000.00**; **Interest Rate 15.00% / 360-day**; Origination Fee 4% — $1,200,000.00; Interest Reserve (lender-funded) $2,250,000.00; Minimum Interest 3 Months; Exit Fee —. **PAYOFF AMOUNT AS OF 06/12/2026: $31,591,080.65.** Borrower Cash Payments $3,757,500.00 (excludes $2,250,000 interest reserve & $4,000,000 collateral release). Totals: Debit $34,103,437.50 / Credit $(9,632,500.00) / Running balance $31,591,080.65.
+  
+  - **`/Users/zee/Documents/OKOA/Ascent_Foreclosure_Franchise_Analysis_2026-05-20/SUMMARY.md`** and **`red-flags.yaml`** — internal diligence memo dated **2026-05-20**, carries a LEGAL DISCLAIMER ("not legal advice"). Bottom line: "**Foreclosure does NOT preserve the Tapestry Collection by Hilton franchise on the Ascent** — Hilton has at least four independent immediate-termination triggers that fire on foreclosure, the franchise is not a recorded property interest on the title, and Okoa has no comfort letter, recognition agreement, or tri-party agreement with Hilton." Findings: **CRITICAL F-001** "No Okoa-Hilton comfort letter"; **CRITICAL F-008** "Tapestry franchise is NOT on title" (zero Hilton/Tapestry/franchise hits across all 34 Ascent-specific Schedule B exceptions 30–63 of the 69-page title policy); **F-003/F-004/F-005** FA §§12.2.3 (Change of Ownership), 13.2.3 (fail-to-pay-debts), 13.2.4 (receivership/bankruptcy), **13.2.5 (loss of possession)**, 13.2.10 (unconsented Transfer); **F-006** pre-opening Liquidated Damages under §13.4.1.2 = **$10,000 × 120 keys = $1,200,000** (vs operating-phase §13.4.1.4 = 60 × Average Monthly Royalty Fees ≈ $2.75M); **F-011** foreclosure purchaser must execute Hilton's then-current form + application/PIP fees + PIP at **$20–50K/key = ~$2.4–6M**; **F-014** C-PACE super-lien survives foreclosure; **F-016** condo-hotel brand-warranty exposure. Also states the deal profile as of that date: "Under construction; target completion 03.01.2026; 48% of construction cost spent (~$36.4M remaining)"; "Junior: Wolfgramm Capital $2.55M junior DoT; **3 mechanics' liens (~$313K)**"; C-PACE Lender Greenworks Lending LLC (Nuveen Green Capital) $30M Assessment Advance. Notes the prior version wrongly framed the brand as "Waldorf Astoria"; corrected — Waldorf in the joint title policy = **Dakota Mountain Lodge**, Sept-2024 appraisal $81.5M.
+    - **This memo is materially superseded on F-001 by Hilton's May 26, 2026 letter, which names an OKOA Comfort Letter dated March 14, 2025 and an OKOA SNDA dated March 12, 2025.**
+  
+  ### Skill/reference files read
+  - `/Users/zee/.claude/skills/acos-okoa-works/references/deal-index.md` — Ascent fact-sheet (Hypercore IDs: Ascent Senior = loan **134** "Beehive Waldorff", Ascent Pref = **149**, Lux II = 171, XL Ant = fundingEntity 3).
+  - `/Users/zee/.claude/skills/acos-resurrect/SKILL.md` (expanded into transcript).
+  - `/Users/zee/.claude/skills/acos-okoa-works/SKILL.md` (expanded into transcript).
+  
+  ## 4. Errors and fixes
+  
+  1. **`cd` reset the shell** — running `cd /Users/zee/Documents/OKOA` returned "Shell cwd was reset to /Users/zee/Documents/Vibe Coding/ACOS 3.0" and swallowed all output. **Fix:** never `cd`; use absolute paths in every command.
+  2. **`pdftotext` returned nothing** on `10 Trustee's Deed_Recorded.pdf` and `Ruling - TRO.pdf`. Diagnosed with PyMuPDF: `pages=4 textchars=0` and `pages=2 textchars=0` — image-only scans. **Fix:** rendered each page at 150 DPI to PNG into the scratchpad and read them with the Read tool (vision).
+  3. **Bash expanded `$` inside an unquoted heredoc**, so a tax-total regex matched 0 lines. **Fix:** use `<<'PY'` (quoted heredoc) and pass file paths through `os.environ`.
+  4. **zsh "bad math expression"** from `grep -E "...\$[0-9,]+\.[0-9]{2}..."`. **Fix:** moved the search into python.
+  5. **Tax totals double-counted** — 123 "Total" lines summed to $395,988.20, exactly 2× the year-row sum. **Fix:** read page 34 directly, which prints "Total For All Accounts … $197,994.10"; the 123rd line was the grand total.
+  6. **Balance-to-Finish sum mismatch (~$1.2M).** I first assumed the extraction had dropped rows. **Fix:** dumped the full single page — only 21 line items exist. So the mismatch is real: the PDF's own Total row does not foot to its line items. Recorded as a finding rather than a tooling error.
+  7. **Wrong report for later lien amounts** — `Foreclosure Report (GT) (Non Judicial TD) SL6038T v4.PDF` turned out to cover **Dakota Mountain Lodge (DMLC-*) parcels**, not Ascent. Amounts for the Aug 2025 – Feb 2026 Ascent liens remain **unlocated** (the SCR printout referenced at Schedule B item 53 was not found on disk).
+  8. **Memory error found:** the deal-index fact-sheet says "Cobble Creek $92M" — the Greenberg Traurig report says **$92,000.00**.
+  
+  ## 5. Problem Solving
+  
+  **Solved:**
+  - Established that the trustee sale **did occur** (memory recorded it as "outcome unknown — check"): held 07/22/2026, OKOA credit bid $24,000,000 accepted, Trustee's Deed recorded same day, Entry 01254897.
+  - Established that the depositor TRO was **denied** on 07/17/2026.
+  - Established that construction is **stopped** and that OKOA is now the owner selling the project.
+  - Reconciled the Young/Super Easy Tech demand ($361,095) against OKOA's own buyer roster (units 108/110/147/237, $1,805,475 agreed × 20%).
+  - Verified all six key arithmetic chains exactly (see below).
+  
+  **Unresolved / to flag:**
+  - **Presale count does not reconcile across sources:** appraisal 60 under contract (eff. 10/20/2025); OKOA Feb-2026 model 64 pre-sold; legal call summary ~66 deposits outstanding (7/16/2026); OKOA Unified Buyer Roster 73 contracted units. Deposit totals likewise differ: $8,158,053 (appraisal) / $9,093,264 (model) / $8,530,795 (roster).
+  - Dollar amounts for the eight-plus construction liens recorded Aug 2025 – Feb 2026 are not in the Trustee's Sale Guarantee and the SCR printout was not found.
+  - Balance-to-Finish Budget PDF total row does not foot to its own line items; no HVAC (Division 23) line exists.
+  - Appraisal internal conflict on acquisition cost ($32,500,000 vs $35,277,901) and on sellable SF (68,471 vs 54,082); and "spent to date" shows **$0 Direct Costs** despite ~$18.3M billed by contractors per the Balance-to-Finish Budget.
+  - Appraisal shows 4 stories / 90 parking; SPD shows 5 stories / 64 feet / 91 parking.
+  - Management Agreement date conflict: appraisal says January 27, 2025; Hilton's letter says March 12, 2025.
+  - Franchise Agreement version conflict: dataroom holds `_A__Hilton.FranchiseAgreement.Signed.12.15.18 copy.pdf` (Dec 15, 2018); Hilton's letter cites a Franchise Agreement dated September 29, 2023 running to September 30, 2043. The May-2026 memo's termination-trigger analysis was performed against the 2018 form.
+  
+  ## 6. All user messages
+  
+  1. `/acos-resurrect` (slash command, no additional text).
+  2. `/goal` with args: *"find answer to the following questions for Ascent (wolfgramm, beehive): Current status is in terms of construction / Who is working on it / When will construction be completed / Is there a hotel flag/operator currently lined up to manage and operate the property / Remaining development costs / Details about any condo unit sales (or contracts for sale once completed) / Legal issues (any lingering debts, liens, encumbrances, or clouds on title) / Keep working until you find the answer or confirm with assurance that the answer can't be found. If you find the answer, show it with reference, if you calculate it, show with calculation process."*
+  
+  **Standing constraints in force (from CLAUDE.md / memory / system prompt — preserve verbatim):**
+  - "**never touch jason@okoacapital.com mail/calendar/drive — that's the boss's, not Zee's**" (STANDING). No email search was performed.
+  - "**Do not call the AgentTool unless the user requested it**" and "**Do not use workflows or deep-research unless the user requested it**." All research done directly.
+  - Confirmation Gate (MANDATORY) in both `/Users/zee/CLAUDE.md` and the project `CLAUDE.md`: pause, restate, ask, proceed only after "yes" — exception for small, unambiguous instructions.
+  - Language preference: **TypeScript / Rust over Python** for any new code (MANDATORY default).
+  - GitHub routing: **push defaults to PERSONAL (`ZiaulKarim-hub`), do not ask**; `okoateam` only when Zee names it; **never use a bare `git push`** — always name the remote; `ACOS 3.0` has BOTH remotes with `origin` = **work**.
+  - OKOA red lines: boss cold-look rule; **folder/file names are NOT facts** (3 independent source-document confirmations + grep triangulation); **copies only** — never move/rename/delete Dropbox originals, never write WIP into `External Data Rooms -- EXTERNALLY SHARED`; public-content privacy blocklist (never reveal active book scale ~30 loans, AUM, deal counts, loss rate, target returns, named deals/borrowers/investors, OKOA loan pricing); **subscription, not API — never ANTHROPIC_API_KEY**, never Z.ai/GLM endpoints for confidential OKOA/borrower data; verified figures only with as-of dates; clickable full percent-encoded `file://` URLs with short labels.
+  - Ascent-specific trap: "**Phil Wolfgramm must NEVER appear in marketing**"; "presale data wiped in foreclosure — mark TBD, never reconstruct."
+  - Eden Protocol Level 3 register governs top-level replies (plain language, every number verbatim, no dropped caveats, exempt spans byte-for-byte with a plain-language gloss, no trailing "Exact figures & terms" appendix).
+  
+  ## 7. Pending Tasks
+  
+  - **Deliver the seven-part answer with references and shown calculations.** This is the only outstanding task; the goal Stop hook remains active until it is satisfied.
+  - Task list state: tasks **#1 (current construction status), #2 (who is working on it), #3 (construction completion date), #4 (hotel flag / operator status)** were created and are all still marked `pending`. Tasks for questions 5 (remaining development costs), 6 (condo unit sales), and 7 (legal issues) were never created.
+  - Optional follow-ups surfaced but not requested: correct the deal-index memory line "Cobble Creek $92M" → **$92,000.00**; record the trustee-sale outcome; record that the May-2026 franchise memo's F-001 is superseded by Hilton's May 26, 2026 letter.
+  - The `/acos-resurrect` pick was never made and that skill run is abandoned unless the user returns to it.
+  
+  ## 8. Current Work
+  
+  Immediately before the summary request I ran a single Python verification script checking every figure I intend to publish. **All six checks passed exactly:**
+  
+  1. **C-PACE payoff (NGC P 1 LLC, prepayment date 06/30/2026):** $2,907,431.42 + $210,788.78 + $29,611,548.58 + $1,443,859.11 + $280.00 + $40.00 + $592,230.97 − $4,445,162.85 = **$30,321,016.01** — matches the stated total exactly (delta $0.00).
+  2. **Credit bid vs OKOA debt:** payoff as of 06/12/2026 **$31,591,080.65** − credit bid accepted 07/22/2026 **$24,000,000.00** = **$7,591,080.65** shortfall measured against the 06/12/2026 payoff. (Noted: the actual deficiency depends on the 07/22/2026 payoff, which kept accruing at 15%/360; the Trustee's Deed ¶7 has an express no-merger clause.)
+  3. **Feb-2026 model, total construction cash still required:** $11,232,315.35 + $8,245,925.18 + $1,042,607.43 + $412,296.26 + $3,000,000.00 = **$23,933,144.22** — matches stated. Sub-check: "Construction Completion" $8,245,925.18 + $1,042,607.43 + $412,296.26 = **$9,700,828.87** (stated). Total contractor billing $11,232,315.35 + $8,245,925.18 = **$19,478,240.53** (stated).
+  4. **Appraisal development cost:** $75,601,173 − $39,203,057 = **$36,398,116** (stated); **48.14%** remaining (stated); $303,317.63/key (stated $303,318); 15% entrepreneurial profit $5,459,717.40 (stated $5,459,717); total costs $41,857,833.40 (stated $41,857,834); $84,100,000 − $41,857,834 = **$42,242,166** (stated), rounded as-is **$41,300,000**.
+  5. **Young / Super Easy Tech deposit:** unit 108 $482,487 + unit 110 $482,487 + unit 147 $460,557 + unit 237 $379,944 = **$1,805,475**; × 20% = **$361,095.00** — matches the Foley letter's "approximately $361,095"; sum of per-unit rounded 20% = $361,094, which is what OKOA's roster shows (a $1 rounding difference).
+  6. **Summit County tax arrears:** $183,091.32 + $10,325.54 + $4,577.24 = **$197,994.10** as of 07/27/2026 across 122 parcels.
+  
+  **The final seven-part answer has not yet been written or delivered to the user.**
+  
+  ## 9. Optional Next Step
+  
+  Write and deliver the seven-part answer, at Eden Level 3 register, with a citation for every claim and the calculation shown wherever a figure was derived — directly satisfying the user's instruction: *"If you find the answer, show it with reference, if you calculate it, show with calculation process."*
+  
+  Planned content, one section per question:
+  
+  1. **Construction status** — Stopped. Structure topped out (Area B Aug 2023, Area A May 2024, Area C Aug 2024) and permanent power energized March 2025, but interiors, envelope, gas/water meters and trim remain unfinished. Last workforce data: SPD Status Report #19 (Aug 2025) — *"The labor force is averaging less than five workers daily"* and *"no subcontractors were present during our most recent site visit."* Most current statement: OKOA legal call summary of **July 16, 2026** — *"No contractors currently working on site. Security cameras are installed on site."* Nuveen's counsel raised *"concerns about exposed framing and potential deterioration"* (May 13, 2026). The Aug 12, 2026 PSA describes *"the partially completed condominium-hotel improvements"* and sells AS-IS with no representation as to construction status.
+  2. **Who is working on it** — Nobody is building. Historically: Westland Construction (terminated for cause 04/11/2024), then Verity LLC (JV of Wolfgramm Capital and SJ Company, contract 05/15/2024, GMP $21,718,458), architect Think Architecture, ARW Engineers, Engineering System Solutions, Reeve and Associates, owner's rep SJ Company, construction monitor SPD Advisory Group for Nuveen. **Ownership changed 07/22/2026 — OKOA Capital, LLC now holds title** and is selling to Velmont Park City LLC (Darwin Fielding), the same person listed as Developer (Limited Partner) in the SPD report.
+  3. **Completion date** — No live completion date exists. Every date on record has passed: loan-closing schedule Nov 28, 2024; Verity's 3/24/2025 schedule Substantial Completion Aug 8, 2025 (SPD: *"which have since passed and are no longer valid"*); appraisal's assumed completion March 1, 2026; Feb-2026 model's *"Est CofO on 9/30/2026"* — which depended on a refinance that did not happen. Answer with assurance: **cannot be determined from the file; no current schedule exists.**
+  4. **Flag / operator** — Yes on paper, and disputed. Tapestry Collection by Hilton; Franchisor Hilton Franchise Holding LLC; Manager **Tapestry Management LLC**; Franchise Agreement runs to **September 30, 2043**. Hilton's May 26, 2026 letter asserts the SNDA (3/12/2025) §§3–4 make the Management Agreement continue automatically through foreclosure and bind OKOA/any transferee, including unamortized key money. OKOA's own May 20, 2026 memo reached the opposite conclusion — but on the express premise that no OKOA comfort letter existed, which Hilton's letter contradicts (Comfort Letter dated 3/14/2025). Both positions live in the record. The Velmont PSA leaves Hilton out entirely: *"Intentionally omitted."*
+  5. **Remaining development costs** — three sourced figures at three dates, all shown with derivation: appraisal **$36,398,116** remaining (eff. 10/20/2025, 48.14% of $75,601,173); Balance-to-Finish Budget **$20,486,224.34** (July 2025 draw, hard costs, with the footing defect flagged); Feb-2026 model **$23,933,144.22** total construction cash (trade bills $11,232,315.35 + cost to complete $8,245,925.18 + retention $1,042,607.43 + $412,296.26 + contingency $3,000,000).
+  6. **Condo sales** — 120 units. OKOA's own roster: **73 contracted units, $42,654,019 agreed, $8,530,795 in 20% deposits, 54 distinct buyers, 14 multi-unit buyers holding 33 units**, with the standing caveat that the deposits predate OKOA, their whereabouts are unknown, and no paydown occurred. Appraisal (10/20/2025): 60 under contract at $1,286/SF = $34,298,029, deposits paid $8,158,053, 8 listed, 8 wanting to cancel, 35 available, 25 retained. Feb-2026 model: 64 pre-sold, 65% conversion assumption. Flag the 60/64/66/73 spread honestly. PSA §5.1(r): OKOA holds no deposits and takes no liability; Buyer takes subject.
+  7. **Legal issues** — OKOA loan payoff **$31,591,080.65** (06/12/2026), matured 08/15/2025, credit bid $24,000,000, shortfall $7,591,080.65 with express no-merger; **C-PACE $30,321,016.01** (06/30/2026) which Nuveen asserts survives foreclosure and runs with the land (Utah Code Ann. §11-42a; Intercreditor 3/1/2024, 6th recital) and which Velmont assumes under PSA §3.5; **property taxes $197,994.10** delinquent as of 07/27/2026 across 122 parcels; Wolfgramm Capital junior DoT $2,550,000 and OKOA's earlier $10,000,000 DoT; **~11 recorded construction/mechanic's liens** (three with known amounts: Cobble Creek Homes $92,000.00, ServTek & Design $140,640.53, Quality Fire Protection $80,687.64 — the rest unpriced in the record); **three Notices of Lis Pendens** (Cases 260500043, 260500074, 260500131); *Char v. OKOA Capital* Case No. 260500343 (TRO denied 7/17/2026, case not dismissed); the Foley/Young REPC demand with a 30-day cure running from 08/05/2026; the Hilton contractual dispute; a Personal Guarantee Lawsuit against Phil Wolfgramm (Complaint and Demand Letter 07/21/2026, Letter to Timothy Pack 08/07/2026); Schedule B item 52 (rights of parties in possession under unrecorded contracts) and item 54 (further mechanics' liens); the SCR printout referenced at item 53 was not located.
+  
+  I should also surface, as corrections: **Cobble Creek is $92,000.00, not $92M**, and the May-2026 franchise memo's CRITICAL F-001 is superseded by Hilton's May 26, 2026 letter.
+  
+  </summary>

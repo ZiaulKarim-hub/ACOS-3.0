@@ -4,7 +4,7 @@ The Oracle — Permission Governance Agent for ACOS v3.0
 
 PreToolUse hook that evaluates tool calls on a temperature scale (0-10).
 Low-temperature actions are auto-approved; high-temperature ones escalate to user.
-Threshold 11 (YOLO) bypasses everything including hard blocks.
+Threshold 12 (YOLO) bypasses everything including hard blocks; 11 is autopilot.
 
 Autopilot mode (.acos/state/autopilot-active present):
   - Effective threshold raised to 11 (auto-approve everything by score)
@@ -134,6 +134,41 @@ def parse_yaml(text):
     return result if isinstance(result, dict) else {}
 
 
+def _unescape_double_quoted(body):
+    """Resolve the backslash escapes YAML defines for a double-quoted scalar.
+
+    Hand-written rather than `codecs.decode(body, "unicode_escape")`, which
+    round-trips through latin-1 and would quietly mangle any non-ASCII character
+    in a value — a to-do's own text can reach this parser.
+
+    An UNKNOWN escape keeps its backslash. Real YAML rejects those outright, but
+    a permission hook that refuses to load its own config is worse than one that
+    passes an odd sequence through: the caller would lose every guard in the
+    file rather than one line of it.
+    """
+    known = {
+        "\\": "\\", '"': '"', "/": "/", "n": "\n",
+        "t": "\t", "r": "\r", "0": "\0", "b": "\b",
+    }
+    out = []
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if ch == "\\" and i + 1 < len(body):
+            nxt = body[i + 1]
+            if nxt in known:
+                out.append(known[nxt])
+                i += 2
+                continue
+            out.append(ch)
+            out.append(nxt)
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _parse_value(s):
     """Parse a YAML scalar value."""
     s = s.strip()
@@ -142,9 +177,29 @@ def _parse_value(s):
     # Remove inline comments
     if "  #" in s:
         s = s[:s.index("  #")].strip()
-    # Quoted strings
-    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-        return s[1:-1]
+    # Quoted strings.
+    #
+    # Stripping the quotes is NOT enough, and the shortfall was invisible for a
+    # long time. YAML's two quote styles differ exactly here: a double-quoted
+    # scalar processes backslash escapes, a single-quoted one does not. Returning
+    # the raw inside of a double-quoted string handed every regex in
+    # `hard_blocks` back with its escapes still doubled — `"git\\s+push"` arrived
+    # as the literal `git\\s+push`, which as a regex means "a backslash, then an
+    # s" and matches no command ever typed.
+    #
+    # So every project that listed its own `hard_blocks` had all of them dead, at
+    # every threshold, with no error and with --diagnose still printing the list.
+    # Projects using the built-in DEFAULTS were fine, because those are r"..."
+    # literals in code and never travel through here. Found 2026-08-17 when a
+    # real `git push` ran unblocked at a threshold that should have refused it.
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):
+        body = s[1:-1]
+        if s[0] == "'":
+            # Single quotes are literal apart from a doubled quote. Regexes are
+            # commonly written this way precisely to keep their backslashes, so
+            # unescaping here would break them in the opposite direction.
+            return body.replace("''", "'")
+        return _unescape_double_quoted(body)
     # Booleans
     if s.lower() in ("true", "yes", "on"):
         return True
@@ -891,7 +946,12 @@ def run_diagnose(config_path=None):
         print(f"  Session override: none")
     print(f"  Effective threshold: {threshold}")
 
-    yolo_active = threshold >= 11
+    # 12, not 11. Zee moved YOLO 11 -> 12 on 2026-08-16 and 11 became autopilot,
+    # but only the enforcing branch was updated. This reporter kept the old
+    # boundary, so at 11 it announced "ALL guardrails are disabled" while the
+    # hard blocks were in fact still refusing. A safety report that cries wolf
+    # gets ignored, which is the one failure a safety report cannot afford.
+    yolo_active = threshold >= 12
 
     # Autopilot short-circuits evaluate() to allow for everything (see evaluate()),
     # so every diagnose case is EXPECTED to be 'allow' while autopilot is active.
@@ -902,13 +962,13 @@ def run_diagnose(config_path=None):
     if yolo_active:
         print()
         print("  ┌─────────────────────────────────────────────────────────┐")
-        print("  │  ⚠  YOLO MODE ACTIVE (threshold=11)                    │")
+        print("  │  ⚠  YOLO MODE ACTIVE (threshold=12)                    │")
         print("  │                                                         │")
         print("  │  ALL guardrails are disabled, including hard blocks.     │")
         print("  │  Commands like git push, rm -rf /, and DROP TABLE       │")
         print("  │  will be auto-approved without any prompt.              │")
         print("  │                                                         │")
-        print("  │  To restore safety: set threshold to 10 or lower.       │")
+        print("  │  To restore safety: set threshold to 11 or lower.       │")
         print("  └─────────────────────────────────────────────────────────┘")
     if autopilot_active:
         print()

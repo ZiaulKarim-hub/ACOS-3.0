@@ -1,0 +1,480 @@
+timestamp: "2026-08-14T16:30:48Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "bc68f376-b446-4c9a-ad76-7dbd3004289d"
+estimated_tokens: 351630
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+current_work: |
+  Filling the remaining fields of the Deer Hollow loan extension letter
+  (/Users/zee/Documents/OKOA/Deer Hollow Loan Extension/Deer Hollow Loan Extension
+  Letter 20260716.docx). Zee filled the header himself; the body still carries the
+  NC FH template's numbers. Verified values go in plain; anything unsourced gets
+  yellow highlight per his instruction.
+
+completed_this_session: |
+  - Route B proven: CLAUDE_CONFIG_DIR + CLAUDE_SECURESTORAGE_CONFIG_DIR isolate the
+    Keychain; the boss's credential fingerprint be7b83080efcf349 was unchanged.
+  - xl_mail_sweep.ts + Phase 3b in acos-xl-update SKILL.md, run end-to-end live.
+  - Commit 7f11ce2 pushed to `personal`.
+  - /acos-safe-close ran clean: blind round-trip PASS, SAFE TO CLOSE THIS TAB.
+  - Deer Hollow parcel conflict resolved to 00-0021-9345 (Wasatch County record).
+  - Loan Agreement date established: April 28, 2023.
+
+decisions_made: |
+  - "clear both folder settings instead of setting them" — Zee's call on how the
+    sweep reaches the boss's mailbox; tested and correct.
+  - Boss's mailbox: read-only, is:read only, subject+date+mailbox recorded, never
+    body text. A narrow carve-out to the standing never-touch rule.
+  - "when you open a window, always do it in acos 3.0 directory."
+  - He fills the extension letter himself; my job is to supply information and now
+    to fill what he left and highlight what has no source.
+
+blockers: |
+  - No document on disk sets the CURRENT maturity (2026-08-17) or commitment
+    (188,173.31). The last paper says Final Payment Date January 4, 2026. The
+    3-page SELLER SETTLEMENT STATEMENT ... CLOSING 2-18 REV5.pdf is fully scanned
+    and un-OCR'd — most likely hiding place. Offered, not yet accepted.
+  - The four EXTENSION TERMS (new maturity, period, fee, new rate) are Zee's
+    commercial decision, not derivable from any source. They stay highlighted.
+
+candidate_learnings:
+  - claim: "hca-ask.py requires the --ask flag; a bare positional question errors, and a compound multi-fact question gets mis-parsed into a nonexistent loan name and REFUSED."
+    evidence: "Hit live 2026-08-14 asking for maturity + rate + amount for loan 178 in one question."
+  - claim: "Deer Hollow loan is Hypercore loan 178 'Deer Hollow (Carry)'; the Deed of Trust routes disputes to Utah County though the property is in Wasatch County — the doc was built from another deal's template."
+    evidence: "hca-entities.py --resolve 'Deer Hollow'; Trust Deed - OKOA Capital - Jordan T Larkin.docx"
+  - claim: "The 20260716 extension letter in Documents/OKOA is an NC FH, LLC template — every number in its body belongs to a different loan until replaced."
+    evidence: "Paragraphs 9-17 and 27 carried NC FH / Jose Alejandro Gonzalez values."
+
+context_for_next_session: |
+  The letter is the live task. Zee owns the commercial terms; I own the verified
+  history. Never write a figure without an as-of date, never invent one. Loan 178
+  payoff was 199,338.26 as of 2026-08-14 (188,173.31 principal + 11,164.95 interest).
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight.
+
+assistant_tail: |
+  One more check — a file name in the Red Ledges folder contains that parcel number.
+  
+  ---
+  
+  **April 28, 2023.** That is the only Loan Agreement in this file. Everything since is an amendment to it.
+  
+  ## The chain
+  
+  | Date | Document | What it did |
+  |---|---|---|
+  | **April 28, 2023** | Loan Agreement + Promissory Note | OKOA Capital LLC lent **$1,650,000** to Encore Properties 32, LLC |
+  | **July 9, 2025** | First Amendment + Note Modification | Added **Jordan T. Larkin** as borrower and guarantor. Added **$257,500**. Pledged the Deer Hollow condo as extra security. Set a Final Payment Date of **January 4, 2026** |
+  | **February 18, 2026** | Discounted payoff | The original property was paid off |
+  
+  A "guarantor" is someone who promises to pay if the borrower does not.
+  
+  ## One thing you should know before you write that date
+  
+  That April 28, 2023 agreement was not originally about Deer Hollow. It was about a different property: **431 N Haystack Mountain Dr #32, Heber City, Wasatch County**.
+  
+  The Deer Hollow condo was added later, in July 2025, as extra collateral. Collateral means property the lender can take if the loan is not repaid.
+  
+  Then the Heber City property was paid off in February 2026. The Deer Hollow condo is what stayed behind. That is why the loan is called "(Carry) […]
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 128
+  recent_commits: |
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+    fa16762 fix(research-riffs): close all three-review must-fix items; trust-chain HIGHs → SHIP-WITH-NOTES
+    82188f0 feat(safe-close): capture learnings across every /clear cycle, not just the closer's own memory
+    14343bd fix(eternity-protocol): resolve session-id/handoff selection through one shared script, not 10 copies
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+  - "?? memory/handoffs/.harvested/"
+  - "?? memory/handoffs/2026-08-05-emergency-handoff-2.yaml"
+  - "?? memory/handoffs/2026-08-06-emergency-handoff-2.resume.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/bc68f376-b446-4c9a-ad76-7dbd3004289d.jsonl"
+  transcript_lines_parsed: 1814
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Thread A — finishing `/research 2` (inherited from a prior compaction).**
+  The session resumed mid-way through a `/research 2` pass on whether a second Claude Code login signs the boss's account out. I ran `riff ask`, got label `primary-new`, stamp `[1 sources · primary-new]`, and delivered the answer. Also did the bookkeeping edit to the autocompact handoff YAML.
+  
+  **Thread B — testing route B (the second login).**
+  User said "Let's test route B and I will login with my own account and see what happens." I gave a test plan. User then said "I thought you would start the window." — a correction: he wanted me to DRIVE it, not hand him commands. I then:
+  - backed up the credential
+  - created a cmux workspace
+  - discovered `mdat` moved on its own (bad signal) → switched to content hash `be7b83080efcf349`
+  - user logged in
+  - verified: boss untouched, new keychain drawer `Claude Code-credentials-ad7ff1c5` created
+  - user corrected: "when you open a window, always do it in acos 3.0 directory" → I saved that as a memory and re-created the window
+  - user asked "Why can't you write /mcp and check?" — another correction. I then discovered headless `claude -p` works and Gmail reaches `ziaul@okoacapital.com`.
+  
+  **Thread C — building the XL email sweep.**
+  User: "So, do this for xl update skill..." with symmetry requirement and guardrails. I restated (Eden self-check failed once, rewrote). User asked two `/explain` questions (sources-file recording; clear-vs-set config vars). I tested both variants — cleared works, set-by-hand fails. Then "go" → built `xl_mail_sweep.ts` + Phase 3b in SKILL.md, tested end-to-end.
+  
+  **Thread D — commit, push, safe close.**
+  User: "commit and push" + `/acos-safe-close`. I found the repo is PUBLIC and that `xiaulkarim@gmail.com` was in 0 tracked files → swapped it for a neutral label before pushing. Committed `7f11ce2`, pushed to `personal`. Ran the full safe-close protocol: dry run, generation, blind round-trip (PASS), final pass. Receipt said SAFE TO CLOSE THIS TAB.
+  
+  **Thread E (current) — Deer Hollow extension letter.**
+  User: fill an extension letter form. Template at `/Users/zee/Documents/OKOA/Deer Hollow Loan Extension`, target loan folder `Larkin - Deer Hollow (Carry)`.
+  
+  I discovered:
+  - Template is actually for NC FH, LLC / 488 Albert Avenue, Las Vegas NV
+  - Loan folder docs describe Encore Properties 32, LLC / Jordan T. Larkin
+  - Hypercore: loan 178 "Deer Hollow (Carry)" Active, loan 166 "Larkin - Red Ledges" Closed
+  - I restated and asked. User answered: "It is the deer hollow loan" and "Can you tell what is the conflict with the percel number. I am filling up the form, you just need to help me find information."
+  - I found THREE parcel numbers, resolved to `00-0021-9345` via Wasatch County's own record
+  - User: "Tell me what is the date of the loan agreement." → April 28, 2023
+  - User (most recent): "I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight."
+  
+  I just read the current state of the letter. He has filled: date, borrower entity, attn, Re: line with parcel. He has NOT updated: the agreement date (still October 17, 2025 from the template), the four ORIGINAL LOAN INFORMATION values (still NC FH's numbers), the EXTENSION TERMS (still NC FH's), and the borrower signature block (still NC FH, LLC by Jose Alejandro Gonzalez).
+  
+  Note a detail: his parcel entry reads `00-00219345` (missing a hyphen) vs the county's `00-0021-9345`. That's worth flagging.
+  
+  The work is NOT yet done — I read the file but have not made the edits. That is the pending work.
+  
+  Security constraints to preserve verbatim across compaction.
+  
+  Let me make sure I capture exact figures:
+  - Hypercore loan 178: payoff `199338.26` as of 2026-08-14; commitment `188173.31`; accrued interest `11164.95`; maturity/scheduleEndDate `2026-08-17`
+  - 188,173.31 + 11,164.95 = 199,338.26
+  - Rate 11% from First Amendment July 9, 2025
+  - Loan Agreement April 28, 2023, $1,650,000
+  - First Amendment July 9, 2025: +$257,500, total $2,286,816.68, Final Payment Date January 4, 2026
+  - Settlement statement 20250709: Loan Amount 450,000.00, points 7,500.00, reserves 310,414.99, due to borrower 125,000.00, 2024 taxes 5,171.01
+  - Red Ledges payoff: $2,388,407.79 / $2,381,400, per diem $582.85, good through 18 February 2026
+  - Parcel `00-0021-9345`, serial `0YJ-1330-A-024-024`
+  - Rejected parcels: `34-07-355-024`, `54:452:0003`
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  Five threads. A–D are complete; E is active.
+  
+  **Thread A (complete).** Finish the `/research 2` pass on whether a second Claude Code login signs the boss's account out.
+  
+  **Thread B (complete).** *"Let's test route B and I will login with my own account and see what happens"* — test whether a second `/login` with an isolated config directory clobbers the boss's credential. Two corrections from the user reshaped it: *"I thought you would start the window."* (drive it, don't hand over commands) and *"Why can't you write /mcp and check?"* (do the check yourself).
+  
+  **Thread C (complete).** Add a read-only email sweep to `acos-xl-update`, reaching both mailboxes from either window, with hard guardrails on the boss's mailbox.
+  
+  **Thread D (complete).** *"commit and push"* plus `/acos-safe-close`.
+  
+  **Thread E (ACTIVE, unfinished).** Fill in a loan extension letter for the Deer Hollow loan. Most recent instruction, verbatim:
+  
+  > *"I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight."*
+  
+  Earlier in the same thread: *"I am filling up the form, you just need to help me find information."*
+  
+  ## 2. Key Technical Concepts
+  
+  - **Claude Code multi-account isolation (PROVEN 2026-08-13, v2.1.231):** setting BOTH `CLAUDE_CONFIG_DIR` and `CLAUDE_SECURESTORAGE_CONFIG_DIR` to a non-default folder creates a separate macOS Keychain item named `Claude Code-credentials-<first 8 hex of sha256 of the folder path>`. The default folder keeps the legacy unsuffixed name `Claude Code-credentials`.
+  - **The reverse direction:** to return a subprocess to default auth you must REMOVE both vars (`env -u`). Setting them to `/Users/zee/.claude` FAILS — the default settings file is `~/.claude.json`, not inside `~/.claude/`.
+  - **Keychain `mdat` is a useless change signal** — it moves on its own from token refresh. Compare a content hash: `security find-generic-password -s "Claude Code-credentials" -a zee -w | shasum -a 256`.
+  - **Headless `claude -p` with `--allowedTools`** drives a second account from the main session — no cmux message-passing needed.
+  - **`CLAUDE_CODE_OAUTH_TOKEN`** is per-process and skips the Keychain, but such a session cannot fetch claude.ai connectors, so it can never read Gmail.
+  - **acos-hypercore-ask scripts** at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/`: `hca-figures.py --loan-id N --date YYYY-MM-DD`, `hca-entities.py --resolve NAME --type loan`, `hca-ask.py --ask "<question>"` (note: `--ask` flag is required; a bare positional argument errors). All under `doppler run --project hypercore-ask --config dev_personal --`.
+  - **docx handling:** system `python3` has python-docx 1.2.0. Highlighting uses `run.font.highlight_color = WD_COLOR_INDEX.YELLOW`.
+  - **PDF/OCR:** PyMuPDF (`fitz`) for text extraction; `tesseract` at `/opt/homebrew/bin/tesseract` for scanned pages, rendered at `dpi=200`.
+  - **cmux:** `cmux workspace create --name --cwd --env KEY=VALUE --command --focus`; `cmux workspace env <ref>`; `cmux workspace close <ref>`. A workspace's `--cwd` cannot be changed after creation.
+  
+  ## 3. Files and Code Sections
+  
+  ### Created and committed
+  
+  **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-xl-update/scripts/xl_mail_sweep.ts`** (268 lines, new)
+  
+  Read-only email sweep. Key constants and the guardrail:
+  
+  ```ts
+  const CLAUDE_BIN = "/opt/homebrew/bin/claude";
+  const PERSONAL_CONFIG_DIR = "/Users/zee/.claude-personal";
+  
+  const READ_TOOLS = [
+    "mcp__claude_ai_Gmail__search_threads",
+    "mcp__claude_ai_Gmail__get_thread",
+    "mcp__claude_ai_Gmail__get_message",
+    "mcp__claude_ai_Gmail__list_labels",
+  ] as const;
+  
+  const READ_VERBS = ["list", "get", "search", "read", "query", "download"];
+  
+  function assertNoWriteVerbs(tools: readonly string[]): void {
+    const offenders = tools.filter((t) => {
+      const tail = t.split("__").pop()?.toLowerCase() ?? t.toLowerCase();
+      const verb = tail.split("_")[0] ?? tail;
+      return !READ_VERBS.includes(verb);
+    });
+    if (offenders.length > 0) { /* prints and process.exit(2) */ }
+  }
+  
+  function gmailQuery(mb: Mailbox, since: string, terms: string[]): string {
+    const after = since.replaceAll("-", "/");
+    const orTerms = terms.map((t) => (t.includes(" ") ? `"${t}"` : t)).join(" OR ");
+    const parts = [`after:${after}`, `(${orTerms})`];
+    if (mb.readOnlyAlreadyRead) parts.push("is:read");   // G-B
+    return parts.join(" ");
+  }
+  
+  function envFor(mb: Mailbox): Record<string, string> {
+    const env: Record<string, string> = { ...(process.env as Record<string, string>) };
+    if (mb.auth.kind === "config-dir") {
+      env.CLAUDE_CONFIG_DIR = mb.auth.dir;
+      env.CLAUDE_SECURESTORAGE_CONFIG_DIR = mb.auth.dir;
+    } else {
+      delete env.CLAUDE_CONFIG_DIR;
+      delete env.CLAUDE_SECURESTORAGE_CONFIG_DIR;
+    }
+    return env;
+  }
+  ```
+  
+  Usage: `bun xl_mail_sweep.ts --since YYYY-MM-DD [--mailbox both|ziaul|jason] [--out file.json] [--dry-run]`
+  
+  **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-xl-update/SKILL.md`** — now 422 lines. Added guardrail 7, Phase 3b, an email section appended to the provenance companion, a Phase 5 reporting line, and a Dependencies entry. `allowed-tools` deliberately UNCHANGED (`Read, Write, Edit, Glob, Grep, Bash`) — zero Gmail tools, verified by grep.
+  
+  Both committed as `7f11ce2` and pushed with `git push personal acos-deficiency-fixes-2026-06-04`.
+  
+  ### Memory files written
+  
+  - `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/reference_claude_code_config_dir_isolates_keychain.md` (new)
+  - `.../memory/feedback_new_windows_open_in_acos_3_0.md` (new)
+  - `.../memory/feedback_never_touch_boss_email.md` (amended with the narrow carve-out)
+  - `.../memory/MEMORY.md` (pointers added; a hook warns it is 19.7KB against a 24.4KB read limit and asks for compaction — offered, NOT done)
+  
+  ### Thread E — files READ (nothing written yet)
+  
+  **`/Users/zee/Documents/OKOA/Deer Hollow Loan Extension/Deer Hollow Loan Extension Letter 20260716.docx`** — 31 paragraphs, 0 tables. **CURRENT state as of the last read (mtime Aug 14 10:29), showing what the user has already filled vs. what is still the NC FH template content:**
+  
+  ```
+  [000] August 14, 2026                                      <- USER FILLED
+  [002] Encore Properties 32, LLC                            <- USER FILLED
+  [003] Attn: Jordan T. Larkin                               <- USER FILLED
+  [004] Re:  2303 West Deer Hollow Road, Unit #1330, Park City, Utah 84060; Parcel no. 00-00219345   <- USER FILLED
+  [005] THIS NOTICE IS SENT REGARDING YOUR LOAN EXTENSION REQUEST AND OUTLINES THE TERMS AND CONDITIONS FOR EXTENDING YOUR LOAN MATURITY DATE.
+  [006] Dear Borrower:
+  [007] ... pursuant to that Promissory Note and Loan Agreement dated October 17, 2025. ...   <- STALE (NC FH)
+  [008] ORIGINAL LOAN INFORMATION:
+  [009] Original Loan Amount: $420,000.00                    <- STALE (NC FH)
+  [010] Current Outstanding Balance: $336,220.00             <- STALE (NC FH)
+  [011] Maturity Date: July 14, 2026                         <- STALE (NC FH)
+  [012] Current Interest Rate: 12%                           <- STALE (NC FH)
+  [013] EXTENSION TERMS OFFERED:
+  [014] New Maturity Date: October 12, 2026                  <- STALE (NC FH)
+  [015] Extension Period: 90 Days                            <- STALE (NC FH)
+  [016] Extension Fee: $4,800.00 Due upon execution of this agreement   <- STALE (NC FH)
+  [017] Interest Rate: 12%                                   <- STALE (NC FH)
+  [018] WE HEREBY OFFER these extension terms ... within five (5) days from the date of this letter. ...
+  [019] BORROWER ACKNOWLEDGMENT AND ACCEPTANCE: ...
+  [020]-[023] four acknowledgment bullets
+  [024] If you have any questions regarding these extension terms, please contact our office immediately.
+  [026] BORROWER ACCEPTANCE:\nSignature:
+  [027] _________________________________ \nNC FH, LLC, by Jose Alejandro Gonzalez\nDate: _____________   <- STALE (NC FH)
+  [028] LENDER:\nSignature:
+  [029] ______________________________ \nZach Hoffman\nAssociate, Investments\nOKOA Capital Management
+  ```
+  
+  Note: the user typed the parcel as `00-00219345` (no hyphen before 9345); the county record reads `00-0021-9345`.
+  
+  **Loan folder `/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Larkin - Deer Hollow (Carry)/`** contains: `595-254305053 Updated PR.pdf` (28 pages, scanned, no text layer), `Borrowers Settlement Statement 20250709.pdf`, `Larkin Loan Amendment Docs 20250709.docx`, `Larkin Signed Closing Docs Extension 20250710.pdf` (19 pages, scanned), `Park City Collateral Property Pictures/`, `SELLER SETTLEMENT STATEMENT FOR ENCORE TO WHITLOCK AND GANESHAN - CLOSING 2-18 REV5.pdf` (3 pages, ALL SCANNED — not yet OCR'd), `SET Wire PDF.pdf`, `Trust Deed - OKOA Capital - Jordan T Larkin.docx`.
+  
+  **Verified Deer Hollow facts (with sources):**
+  
+  | Field | Value | Source |
+  |---|---|---|
+  | Property | 2303 West Deer Hollow Road, Unit #1330, Park City, Utah 84060 | all documents agree |
+  | Legal | Residential Unit 1330, Building A, Pioche Village Condominiums, Wasatch County | Deed of Trust + title report |
+  | Parcel | **00-0021-9345** | Wasatch County Redemption Payoff Summary |
+  | County serial | 0YJ-1330-A-024-024 | same county document |
+  | Loan Agreement | **April 28, 2023**, $1,650,000, Encore Properties 32, LLC | First Amendment recital A |
+  | First Amendment | July 9, 2025; +$257,500; total $2,286,816.68; rate 11%; Final Payment Date January 4, 2026 | `Larkin Loan Amendment Docs 20250709.docx` |
+  | Hypercore loan | **178** `Deer Hollow (Carry)`, Active | `hca-entities.py --resolve "Deer Hollow"` |
+  | Maturity | **2026-08-17** | `$.body.record.scheduleEndDate` |
+  | Commitment | **188,173.31** | `$.body.record.commitment` |
+  | Accrued interest | **11,164.95** | `$.body.record.summary.totalOutstanding.interest` |
+  | Payoff as of 2026-08-14 | **199,338.26** | `getLoanRepaymentDistribution`, gate `pass` |
+  
+  188,173.31 + 11,164.95 = 199,338.26 exactly.
+  
+  Other figures found: settlement statement 20250709 shows Loan Amount 450,000.00, points 7,500.00, reserves held 310,414.99, due to borrower 125,000.00, 2024 Wasatch County taxes 5,171.01. Red Ledges discounted payoff: $2,388,407.79 struck to $2,381,400, per diem $582.85, good through 18 February 2026.
+  
+  ## 4. Errors and fixes
+  
+  1. **Deny-list guardrail was wrong in both directions.** My first `assertNoWriteVerbs` matched substrings and rejected `mcp__claude_ai_Gmail__list_labels` because it contains "label". It would also have silently passed any unlisted write verb. Fixed with a fail-CLOSED allow-list on the tool's LEADING verb. Proven by injecting `mcp__claude_ai_Gmail__label_thread` — it aborted before any search ran.
+  
+  2. **`mdat` was a bad test signal.** I designed the login test around the Keychain item's last-changed date. It moved from `20260813205901Z` to `20260814045541Z` on its own, with byte-identical contents. Fixed by switching to a content hash (`be7b83080efcf349`).
+  
+  3. **User correction: "I thought you would start the window."** I had handed over commands instead of driving. Fixed by running the backup and creating the cmux workspace myself.
+  
+  4. **User correction: "when you open a window, always do it in acos 3.0 directory."** I had created it with `--cwd "$HOME"`. A workspace's cwd cannot be changed after creation, so I closed `workspace:41` and created `workspace:42` with `--cwd "/Users/zee/Documents/Vibe Coding/ACOS 3.0"`. Saved as a standing memory.
+  
+  5. **User correction: "Why can't you write /mcp and check?"** I had asked him to run `/mcp`. I could do it myself via headless `claude -p`. That discovery removed the entire cmux message-passing design.
+  
+  6. **`perl -pi -e` substitution left "the personal Claude account account"** (doubled word) and two awkward backticked phrases in SKILL.md. Fixed with a second substitution and two targeted Edits.
+  
+  7. **`hca-ask.py` rejected a bare positional question** — requires `--ask`. Also, a compound question ("maturity date, interest rate, and original loan amount for loan id 178") was mis-parsed into a nonexistent loan name and REFUSED. Fixed by asking one question at a time using the loan NAME.
+  
+  8. **Eden self-check failed once** on the Thread-C restatement (a 30-word sentence, ungloss ed `emailAddress`). Rewrote at Level 3.
+  
+  9. **Safe-close: one learning REFUSED** — `path_contains needs a needle`. I had used `expect` instead of `needle`. Re-submitted via `knowledge_lib.confirm_ruling` with the correct key; recorded as `f-941d4bc60d0e3181`.
+  
+  ## 5. Problem Solving
+  
+  **Verified and finished:**
+  - Route B works. Boss's credential fingerprint `be7b83080efcf349` unchanged before and after; new drawer `Claude Code-credentials-ad7ff1c5` created; personal account `xiaulkarim@gmail.com`; its Gmail connector reads `ziaul@okoacapital.com`.
+  - Cleared-vars variant returns `jason@okoacapital.com`. Set-by-hand variant fails with `Claude configuration file not found at: /Users/zee/.claude/.claude.json` / `Not logged in · Please run /login`, creates no drawer, and leaves the boss's credential untouched.
+  - Live sweep across both mailboxes: `ziaul@` returned 2 findings (an Ascent appraisal thread and an Okoa v. Wolfgramm discovery thread); `jason@` returned `[]` under `is:read`.
+  - Commit `7f11ce2` pushed to `personal`; `xiaulkarim@gmail.com` scrubbed from the two files first because `ZiaulKarim-hub/ACOS-3.0` is PUBLIC and that address was in 0 tracked files (the two okoacapital.com addresses were already in 11 and 1).
+  - Safe close: blind round-trip PASS on attempt 1; receipt `SAFE TO CLOSE THIS TAB`; 11 machine facts + 2 rulings + 1 re-submitted fact recorded; 2 handoffs marked harvested.
+  - Parcel conflict resolved: three numbers exist in the signed package (`00-0021-9345` ×5 incl. title report, `34-07-355-024` ×1 in an Exhibit B header, `54:452:0003` ×1 in the Deed of Trust). Wasatch County's own record confirms `00-0021-9345`. The Deed of Trust also routes disputes to Utah County despite the property being in Wasatch County — evidence it was built from another deal's template.
+  
+  **Open:**
+  - **The missing amendment.** Nothing on disk sets the current maturity `2026-08-17` or commitment `188,173.31`. The last document says Final Payment Date January 4, 2026 at $2,286,816.68. The 3-page `SELLER SETTLEMENT STATEMENT ... CLOSING 2-18 REV5.pdf` is fully scanned and NOT yet OCR'd — I named it as the most likely hiding place and offered to hunt.
+  - **Borrower name is unsettled.** First Amendment says Encore Properties 32, LLC with Jordan T. Larkin as Additional Borrower/Guarantor; the settlement statement and Deed of Trust say Jordan T Larkin individually. The user has since written `Encore Properties 32, LLC` / `Attn: Jordan T. Larkin` into the letter.
+  - **Recorded Deed of Trust may carry the wrong parcel number** — flagged for whoever handles title; explicitly not legal advice.
+  - Cobble Creek lien: $92,000.00 vs $92,000,000.00, unresolved, stored as a contested fact.
+  - MEMORY.md compaction offered, not done.
+  
+  ## 6. All user messages
+  
+  1. *"Let's test route B and I will login with my own account and see what happens"*
+  2. *"I thought you would start the window."*
+  3. *"I have logged in, when you open a window, always do it in acos 3.0 directory."*
+  4. *"Why can't you write /mcp and check?"*
+  5. *"So, do this for xl update skill. in case i run it in a window that is logged in to xiaulkarim account and has access to ziaul@okoacapital account, it should log in to jason's account and vice versa for the other way around. no touching jason's gamil, only read and if reading requires opening an unopened email, never open it. The purpose is to look for update points for the xl-update nothign else. Does it make sense?"*
+  6. *"What gets written down about an email? Default: the sources file records the mailbox, the date, and the subject line. Never the body text /explain"*
+  7. *"clear both folder settings instead of setting them. Setting them by hand may look for a drawer that is not there. Clearing them acts like a normal window. I will test this before trusting it. /explain"*
+  8. *"run it"*
+  9. *"go"*
+  10. *"commit and push"* (with `/acos-safe-close` invoked in the same turn)
+  11. *"I need your help with a new task. I am filling up an extension letter form, help me fill this. This is a template with information from a different loan, I need to do this for this loan: '/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 2. Active/1. In HyperCore/Larkin - Deer Hollow (Carry)' Here is the template: '/Users/zee/Documents/OKOA/Deer Hollow Loan Extension'"*
+  12. *"It is the deer hollow loan. Can you tell what is the conflict with the percel number. I am filling up the form, you just need to help me find information."*
+  13. *"Tell me what is the date of the loan agreement."*
+  14. *"I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight."*
+  
+  **Security-relevant constraints in force (verbatim where the user stated them):**
+  - STANDING: never touch `jason@okoacapital.com` mail/calendar/drive — with ONE carve-out the user granted on 2026-08-13: *"no touching jason's gamil, only read and if reading requires opening an unopened email, never open it. The purpose is to look for update points for the xl-update nothign else."*
+  - *"hard rule don't make any change there in any possible way, have several gurdrails"* and *"don't open any message that is not read already in my boss's email. No change is a strict rule."*
+  - *"when you open a window, always do it in acos 3.0 directory."*
+  - *"Do not call the AgentTool unless the user requested it"* and *"Do not use workflows or deep-research unless the user requested it."* The one Agent call made was required by `/acos-safe-close`, which the user invoked.
+  - Subscription, not API: never `ANTHROPIC_API_KEY`; never Z.ai/GLM endpoints for confidential OKOA/borrower data.
+  - GitHub: push defaults to PERSONAL (`ZiaulKarim-hub`); `okoateam` only when the user names it; never a bare `git push`.
+  - OKOA red lines: boss cold-look rule; folder names are NOT facts; copies only (never move/rename/delete Dropbox originals); verified figures only with as-of dates; never fabricate a number.
+  - Eden Protocol Level 3 governs every top-level reply.
+  
+  ## 7. Pending Tasks
+  
+  1. **Fill the remaining fields of the Deer Hollow extension letter, highlighting anything without data.** This is the active, unfinished request.
+  2. Offered and not accepted: OCR the scanned `SELLER SETTLEMENT STATEMENT FOR ENCORE TO WHITLOCK AND GANESHAN - CLOSING 2-18 REV5.pdf` to find the amendment that set the `2026-08-17` maturity.
+  3. Offered and not accepted: compact `MEMORY.md` (19.7KB vs a 24.4KB limit).
+  
+  ## 8. Current Work
+  
+  Filling the rest of `/Users/zee/Documents/OKOA/Deer Hollow Loan Extension/Deer Hollow Loan Extension Letter 20260716.docx`, per the user's most recent instruction: *"I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight."*
+  
+  I had just read the file's current state and confirmed what remains stale. **No edit has been made yet.**
+  
+  Fields to fill, with what I have:
+  
+  | Paragraph | Current (stale) | Replacement | Status |
+  |---|---|---|---|
+  | [007] | `Loan Agreement dated October 17, 2025` | `April 28, 2023` | verified |
+  | [009] Original Loan Amount | `$420,000.00` | no clean answer — Hypercore `commitment` is 188,173.31; documents show $1,650,000 (2023), $2,286,816.68 (July 2025), $450,000.00 (settlement) | **HIGHLIGHT** |
+  | [010] Current Outstanding Balance | `$336,220.00` | `$199,338.26` as of 2026-08-14 | verified |
+  | [011] Maturity Date | `July 14, 2026` | `August 17, 2026` | verified (Hypercore `scheduleEndDate`) |
+  | [012] Current Interest Rate | `12%` | `11%` | from First Amendment, not Hypercore |
+  | [014] New Maturity Date | `October 12, 2026` | unknown | **HIGHLIGHT** |
+  | [015] Extension Period | `90 Days` | unknown | **HIGHLIGHT** |
+  | [016] Extension Fee | `$4,800.00` | unknown | **HIGHLIGHT** |
+  | [017] Interest Rate | `12%` | unknown | **HIGHLIGHT** |
+  | [027] borrower signature | `NC FH, LLC, by Jose Alejandro Gonzalez` | `Encore Properties 32, LLC, by Jordan T. Larkin` (to match his [002]/[003]) | matches his entries |
+  
+  Also worth raising with him: his [004] reads `Parcel no. 00-00219345`; the Wasatch County record reads `00-0021-9345`.
+  
+  Note the file was open in Word earlier (a `~$` lock file existed at 10:01); the lock file is gone as of the 10:30 listing, and the docx mtime is 10:29.
+  
+  ## 9. Optional Next Step
+  
+  Edit `/Users/zee/Documents/OKOA/Deer Hollow Loan Extension/Deer Hollow Loan Extension Letter 20260716.docx` in place with python-docx: write the four verified values ([007] April 28, 2023; [010] $199,338.26; [011] August 17, 2026; [012] 11%), update the borrower signature block [027] to match the entity the user already entered, and apply `WD_COLOR_INDEX.YELLOW` highlighting to every field I cannot source — Original Loan Amount [009] and all four EXTENSION TERMS [014]–[017] — then verify the result by re-reading the file and report the parcel-number typo.
+  
+  Direct quote of the task: *"I have already filled part of extension letter, you fill up the rest. whereever you don't have data, highlight."*
+  
+  </summary>

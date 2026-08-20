@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck
 // ACOS Loan Document Generator -- HTML to PDF Converter
 // Uses Puppeteer (headless Chrome) for full CSS Paged Media support
 //

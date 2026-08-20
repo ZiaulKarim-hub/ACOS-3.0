@@ -1,0 +1,130 @@
+timestamp: "2026-08-06T16:21:53-06:00"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  ABSOLUTE-PATHS CAVEAT: this handoff is filed under ACOS 3.0's memory/handoffs/
+  (Eternity Protocol convention) but the active work is entirely in the SEPARATE,
+  GLOBAL skill repo ~/.claude/skills/acos-logo-forge/app/ — remote `personal`
+  only (git@github.com-personal:ZiaulKarim-hub/claude-skills-personal.git),
+  PRIVATE. This session made SEVEN commits there (6b1679d..25c49a5, parent
+  bc0d302), all UNPUSHED — branch is 7 ahead of personal/main. This corrects an
+  earlier same-day handoff (2026-08-06-emergency-handoff-2.yaml) which reported
+  "all 6 commits pushed" — that was true of the 6 commits ending at bc0d302 at
+  the time it was written, but 7 MORE commits have landed since and none of
+  them are pushed. Work covered: a Home-tab Drawing group redesign matched to
+  Clipboard's icon-left/word-right style, real Home-tab text-run formatting
+  (superscript/subscript, colour, highlight, justify, Quick Styles), a 2,095-
+  symbol vector-path Symbols tool, and a shape library expansion from 44 to 264
+  shapes. Nine test suites now pass at exit 0, 381 assertions total, audit.ts 0
+  findings. Nothing has been pushed; Zee has not asked for a push yet.
+
+current_work:
+  slice_id: "unknown — this is a global ~/.claude/skills feature, not an ACOS 3.0 planning/ slice (confirmed: no planning/**/*logo* or *forge* match)"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+completed_this_session:
+  - "6b1679d fix(logo-forge): redrew two Clipboard-group icons that failed at their real 20px ship size. Format Painter: a brush with a ferrule band (breaks the outline at the join so it survives 20px, where the earlier flared-quad version read as a continuous-outline knife/blade) plus two orange sparkles (colour, not shape, separates it from neighbours once the star is lost at small sizes). History: a clock face (a round form among squares — the strongest available 'earlier' signal) replacing an offset-sheet motif that read identically to Paste's clipboard-with-clip silhouette; ruled lines added inside so the clipboard reads as holding entries. Also killed an orphaned test server left bound on port 8817. Layout unchanged: Clipboard group 112.3px tall / 177.4px wide / 6 buttons, Home tab 1270px of 1680. Tests exit 0: 355 assertions (pre-symbols-suite baseline), audit.ts 0 findings."
+  - "0e0eabb feat(logo-forge): Home tab brought up to what Zee's real PowerPoint has (screenshot-compared, 1913px wide). Root cause of prior 'no room': #ribbon .rbtn set min-width:42px for every button including unlabelled icon-only ones — nine buttons were sitting on a floor none of them needed. New .rbtn.ic class narrows just those. Font group grew 6->13 buttons in 324px (was 278px); Paragraph 3->7 buttons, 147px->128px. Added real text-run formatting: t.runs = [{s,e,k}] half-open ranges over t.text, textMarkup() emits one <tspan> per segment with cumulative-dy math so mid-line superscript doesn't corrupt following-line baselines; shiftRuns() re-points ranges on edit; selection comes straight from the textarea's selectionStart/selectionEnd. Font colour (t.color, was set-once/unreachable) and new highlight (measured via a hidden reused <svg>) both got real menu controls. Justify uses textLength+lengthAdjust='spacing', with the honest limitation that a line containing a superscript can't be stretched (textLength can't span multiple tspans). Quick Styles added, routed through the existing applyFill/applyOutline so undo and the Format Painter need no special case. Explicitly NOT done: nothing else — bullets/numbering/indents were ruled OUT by Zee (a wordmark isn't a paragraph). Measured: Home tab 1270->1346px of 1680, no wrap, Clipboard group unchanged 112.3px. Tests exit 0: 355 assertions + 12 new live-server functional checks (runs, run-shifting, toggling, colour, highlight, spacing, justify), audit.ts 0 findings."
+  - "b41a4f0 fix(logo-forge): rebuilt the Drawing group to match Clipboard's visual style per Zee's direct correction ('I don't like the drawing tool group... same style as the clipboard icons'). Stacked icon-over-word tiles replaced with .rbtn.sm icon-left/word-right rows in 3 columns split by function: adds (Pictures/Shapes/Text Box), modifies (Arrange/Quick Styles), colour menus (Fill/Outline). Needed #drawingGroup > .rrow{align-items:flex-start} because the default .rrow centring (correct when every column has 3 rows, as in Clipboard) left two shorter columns floating mid-row here. Group narrowed 377px->318px, Home tab 1346px->1287px. Redrew fill/outline/quickstyles icons (see ad0bee3 below — Zee rejected these first-pass icons and asked for a rendered comparison instead). Tests exit 0: 355 assertions, audit.ts 0 findings, 12 text-run checks re-run 12/12."
+  - "ad0bee3 fix(logo-forge): swapped in Zee's picked icon set (of 4 rendered options at 20/16/48/96px and inverted, in place inside the real group), replacing the first-pass icons from b41a4f0. fill = the shape itself filling with colour (no bucket — both bucket variants failed render: upright read as a padlock at 20px, tilted read as a desk lamp). outline = a hollow shape with a thick coloured edge (shows outline by being one). quickstyles = a 2x2 gallery of 4 differently-dressed swatches. Known/accepted tradeoff, written down as a decision not a defect: quickstyles' 2x2 grid resembles the Gallery button one group over — told apart only by CONTENTS (4 dressed swatches vs 4 empty frames+1 accent), the weaker signal at 20px; chosen anyway, do not 'fix' without asking Zee again. Layout untouched. Tests exit 0: 355 assertions, audit.ts 0 findings."
+  - "d12a47d fix(logo-forge): fixed 'the outline line looks stripped' by re-cropping Zee's real PowerPoint screenshot (x=1200..1400 of 1913px) instead of guessing, and found PowerPoint puts the colour-bar swatch DIRECTLY UNDER the icon at icon width (.icb unit), not past the ▾ as a separate chip. Repositioning the bar (.split .sw now 18x4 under the icon, was 22x6 after it) is ALSO why the no-fill diagonal-slash marker (PowerPoint's own convention) started reading as an unrelated red barber stripe once squeezed into the smaller bar — it needs the ~20px square a menu row gives it. Replaced with a hollow DASHED bar (.nil class): white fill = solid bar with hairline edge, no fill = dashed with nothing inside, unambiguous either way. Test updated not deleted: the old assertion checked the MECHANISM (a linear-gradient in inline style); re-anchored to the REQUIREMENT (a colourless swatch must be visibly marked) via .nil class + dashed border + empty computed background, plus a new companion check that a coloured swatch renders solid — 177->178 assertions. Measured: Drawing group 318->291px, Home tab 1287->1260px, Clipboard group still 112.3px (guard fails above 113.3). Tests exit 0: 356 total (pre-symbols), audit.ts 0 findings, 12 text-run checks 12/12."
+  - "dfb3a8a feat(logo-forge): built a Symbols tool with 2,095 symbols extracted as REAL VECTOR PATHS (not text-layer font references) — deliberately more expensive than a text approach because an exported SVG sent to someone without the same font would silently render wrong or empty. build-symbols.py (new file, Python via fontTools — documented exception to the TS/Rust default, build-time only, produces symbols.json and ships no Python into the editor) reads 4 installed macOS fonts: Apple Symbols 1715, Zapf Dingbats 184, Arial Unicode 195 (filtered to usable Unicode blocks — arrows/geometric/dingbats/maths/technical/currency/etc, dropping the tens of thousands of CJK text codepoints), Symbol 1. Two easy-to-miss, silent-failure details handled: font-space Y is flipped for SVG's y-down convention, and glyphs under MIN_INK bbox coverage are dropped as specks. Picker (forced by the 2,095 count, vs. shape library's 45-then-264): symbols.json (1.1MB) fetches on FIRST OPEN not at boot, category chip + search filter before drawing, SYM_PAGE=240 cells built at a time behind Show more; search matches name OR codepoint OR category. New suite symbols-test.ts, 25 assertions — load-bearing one asserts every symbol is a <path> with zero font-family instances anywhere near an inserted symbol. One test assertion was initially wrong (checked query-in-NAME, failed on legitimate codepoint/category hits like 'arrow'->harpoon symbols) and was corrected, not loosened. Layout cost: zero — Drawing group unchanged at 291px/112.3px, Home tab 1260px of 1680. Tests exit 0: 381 total (fill 27, ribbon 178, shapes 28, forge 19, explode 12, gallery 38, reject 17, symbols 25, button 37), audit.ts 0 findings."
+  - "25c49a5 feat(logo-forge): shape library expanded 44->264 (a prior count of '45' was wrong, corrected via git — actual old breakdown: Basics 14, Stars&bursts 7, Arrows 4, Symbols 15, Frames 4 = 44). A 22-agent workflow researched PowerPoint's OOXML preset-geometry AutoShapes list (~180 presets), authored path data across 10 new categories (Rectangles 12, Basic shapes 26, Block arrows 25, Equation 6, Flowchart 25, Stars&banners 15, Callouts 8, Frames&badges 17, Nature 27, Objects&tech 59 = 220 shapes), and adversarially verified each — verifiers found/fixed 81 authoring defects. Governing rule: RENDER and LOOK at it, not just parse the path — a shape that doesn't look like its own name fails, which no per-category verifier structurally can catch alone; 3 cross-category duplicates (two 'rounded frame', two 'tag', two 'spiral') survived all 10 per-category passes and were only caught laying categories side by side — two pairs were genuinely different and renamed, one spiral pair was near-identical and one was dropped (221 authored, 220 shipped). Kept INLINE in editor.html (56,651 bytes of rows), deliberately unlike symbols.json's lazy fetch, because of the ~20x size difference — picker stays instant. Verified in the real editor: SHAPES.length 264, all 264 cells draw with 0 blank, no page errors, insertion still yields a <path>. Tests exit 0: 381 total, audit.ts 0 findings."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/app/editor.html"
+    changes: "Grew from ~240KB (per handoff-2, post-bc0d302) to 338,435 bytes across all 7 commits: Drawing-group rebuild + icon redraws, Home-tab text-run engine + Font/Paragraph/Quick-Styles expansion, colour-bar repositioning, Symbols tool wiring, and 264-shape inline library. Diff bc0d302..HEAD: 1063 insertions across editor.html alone."
+  - path: "~/.claude/skills/acos-logo-forge/app/build-symbols.py"
+    changes: "NEW file this session, 178 lines added (6,088 bytes on disk). Build-time-only Python/fontTools script (documented TS/Rust-default exception) that reads 4 system fonts and emits symbols.json. Not shipped into the running editor."
+  - path: "~/.claude/skills/acos-logo-forge/app/symbols.json"
+    changes: "NEW file, 1,109,795 bytes, generated by build-symbols.py. 2,095 symbols as SVG path data. Fetched lazily on first Symbols-tool open, never at boot."
+  - path: "~/.claude/skills/acos-logo-forge/app/symbols-test.ts"
+    changes: "NEW file this session, 166 lines / 25 assertions. Asserts lazy load, paging (SYM_PAGE=240), search-by-name/codepoint/category, and that every inserted symbol is a <path> with no font-family."
+  - path: "~/.claude/skills/acos-logo-forge/app/ribbon-test.ts"
+    changes: "28 lines changed across the session (177->178 assertions net from the d12a47d no-fill-swatch re-anchor). File is 55,094 bytes / mtime Aug 6 14:37. NOTE: per Zee's own carried-forward instruction, ribbon-test.ts still contains a clipboard-permission-note assertion that names the WRONG conclusion (records the NotAllowedError symptom, not the real cause) — see next_actions."
+  - path: "\"ACOS 3.0/Logo Builder/brandsync/commands.jsonl\""
+    changes: "Modified in the ACOS 3.0 working tree (still uncommitted) — normal server-side pick-log telemetry appended by the live Logo Forge workspace server (PID 43272, port 8815), not hand-edited, not logo-forge FEATURE work per se."
+  - path: "\"ACOS 3.0/.claude/scripts/_autopilot_eternity.py\""
+    changes: "Modified, uncommitted, in ACOS 3.0. Per the prior same-day handoff-2's finding this is NOT attributable to the logo-forge thread — likely a different concurrent tab's infrastructure work. Not re-diffed line-by-line this pass."
+  - path: "\"ACOS 3.0/.claude/scripts/git-manager/ids.json\" and \"ACOS 3.0/.claude/scripts/html-to-pdf.js\""
+    changes: "Also showing as modified/uncommitted in ACOS 3.0's working tree per current git status; not examined this pass, not part of the logo-forge thread, flagged so the next session doesn't misattribute them."
+
+decisions_made:
+  - "(from commit ad0bee3, recorded as a decision not a defect) The quickstyles icon uses a 2x2 grid that visually resembles the Gallery button one group over, told apart only by contents not outline. Zee saw this tradeoff spelled out and chose it anyway. Do not 'fix' this without asking him first."
+  - "(from commit dfb3a8a) Symbols are inserted as vector paths (font outlines extracted at build time), never as <text font-family=...> layers — chosen specifically because exported SVGs must render correctly on machines without the source font."
+  - "No entries in memory/decisions/ dated today — these are commit-message-level decisions from the logo-forge repo, not ACOS decision-log entries."
+
+blockers:
+  - "Nothing is pushed. All 7 commits (6b1679d..25c49a5) sit ahead of personal/main. Zee has not asked for a push."
+  - "THREE clipboard-image recommendations from an earlier completed research workflow (wf_d6521208-267 / dynamic run) were reported to Zee and NEVER APPLIED, and he never answered which to apply before moving on to icon work: (1) add a settle-guarantee in pngBlobOfSelection() so an image decode that fires neither onload nor onerror can't hang write() forever — measured 'STILL PENDING after 3s' with no browser-enforced deadline; (2) add a clipboardWhy(e) helper so three distinct failure causes stop collapsing into one printed 'NotAllowedError'; (3) fix ribbon-test.ts's clipboard-permission note, which currently records the NotAllowedError SYMPTOM but names the wrong CONCLUSION — correct permissions set is ['clipboard-read','clipboard-sanitized-write']."
+  - "Ports 8816, 8817, 8819 are all currently free (checked via lsof this pass) — the previously-orphaned PID 55948 on 8817 (flagged in handoff-2) is gone. Port 8815 is confirmed live: PID 43272, must not be touched."
+  - "The scratchpad directory holding this session's research/build artifacts is SESSION-SCOPED (/private/tmp/claude-501/.../0c6ed8df-.../scratchpad/) and may be garbage-collected. Confirmed present this pass: results.txt (268,629 bytes), verdicts.txt (71,184), summaries.txt (15,825), problems.txt (133,832), plan.txt (26,724) from the clipboard/shape research; lib/*.final.json, merged.json (63,496 bytes), final.json (62,272), rows.js (56,652 — matches the 264-shape inline rows added to editor.html), allshapes.png (375,307) from the shape-library build; brushes.html/history.html/drawing.html icon-comparison preview pages. None of this is copied anywhere durable yet."
+
+next_actions:
+  - "Ask Zee whether to apply the 3 outstanding clipboard fixes (settle-guarantee in pngBlobOfSelection, clipboardWhy(e) helper, ribbon-test.ts permission-note correction) before doing anything else clipboard-related — he was asked once already and moved on to icons without answering."
+  - "Ask Zee whether to push the 7 unpushed commits to `personal` (git@github.com-personal:ZiaulKarim-hub/claude-skills-personal.git) — per the standing CLAUDE.md rule this IS the personal account already, so a push needs no account disambiguation, only Zee's go-ahead."
+  - "Before relying on it again, copy anything worth keeping out of the session-scoped scratchpad (results.txt/verdicts.txt/summaries.txt/problems.txt/plan.txt from clipboard+shape research; lib/*.final.json/merged.json/final.json/rows.js/allshapes.png from the shape build; brushes.html/history.html/drawing.html icon preview pages) into a durable location — it may be GC'd."
+  - "If resuming test runs: remember EXIT CODE is the only trustworthy signal (a suite that throws mid-run can still print an 'N/N passed'-looking tally — this is a standing project lesson, not specific to this session). Six suites (fill, ribbon, shapes, forge, gallery, reject) need a FRESH copy of \"ACOS 3.0/Logo Builder/brandsync\" per run; symbols-test.ts, button-test.ts, explode-test.ts are safe against the live/shared workspace. Ports: fill/ribbon/shapes/forge/explode -> 8816 + /tmp/forge-ws; gallery/reject -> 8817 + /tmp/rej-ws (workspace path passed as process.argv[2]); symbols -> 8819 + /tmp/sym-ws; button -> 8815 (the LIVE server — read-only, run `lsof -i :8815` first, never kill PID 43272)."
+  - "If resuming icon/visual work: Zee picks from RENDERED comparison sheets, not descriptions — render options in place at multiple sizes (20/16/48/96px, inverted) before asking him to choose, per the established pattern from ad0bee3."
+  - "Do not re-litigate: Drawing group must match Clipboard's icon-left/word-right style; 'F2 set' = fill F2 + outline O2 + quickstyles Q2 specifically; the colour-bar-under-icon-with-dashed-no-fill-marker design (not a diagonal slash — that read as a barber stripe at this size); quickstyles' resemblance to Gallery is an accepted tradeoff, not a bug. Always verify a feature is actually WIRED INTO the UI (not just present as data) before reporting it done — Zee's 'Did you insert them?' catch on symbols is the standing example."
+
+context_for_next_session: |
+  The whole active thread lives in ~/.claude/skills/acos-logo-forge/app/, a
+  GLOBAL skill repo entirely separate from ACOS 3.0, remote `personal` only
+  (github.com-personal:ZiaulKarim-hub/claude-skills-personal.git), private, no
+  ACOS planning/ slice exists or is expected for it. This session added 7
+  commits on top of bc0d302 (which handoff-2 correctly reported pushed at the
+  time): 6b1679d (Painter/History icon fixes), 0e0eabb (Home-tab text-run
+  engine + Font/Paragraph/Quick-Styles catch-up with real PowerPoint), b41a4f0
+  (Drawing group restyled to match Clipboard), ad0bee3 (Zee's chosen F2 icon
+  set), d12a47d (colour bar repositioned under the icon, dashed no-fill
+  marker), dfb3a8a (2,095-symbol vector Symbols tool, build-time Python via
+  fontTools), 25c49a5 (shape library 44->264 via a 22-agent research+verify
+  workflow). None of the 7 are pushed — confirmed via `git log
+  personal/main..HEAD` listing all 7 and `git status -sb` showing `ahead 7`.
+
+  Test posture is now NINE suites, 381 assertions, all confirmed exit 0 as of
+  the last commit (25c49a5's own message states the exact tally); audit.ts 0
+  findings. symbols-test.ts is new this session. The two newest suites
+  (symbols, button) plus explode are idempotent-safe against shared state; the
+  other six need a fresh brandsync copy per run — this was true in handoff-2
+  and remains an open operational fact, not independently re-verified by
+  running the suites in this pass (avoided to prevent disturbing the live
+  server on 8815, confirmed still up as PID 43272).
+
+  Three concrete threads are still open and unresolved, in priority order as
+  Zee left them: (1) three clipboard-image code fixes were recommended by
+  completed research and never applied or explicitly declined — he was asked
+  and moved on to icon work without answering; (2) the seven commits await a
+  push decision; (3) this session's scratchpad artifacts (shape-library
+  research/verification files and icon-comparison preview pages) are sitting
+  in a session-scoped /private/tmp path that is not guaranteed to survive and
+  nothing has been copied out yet.
+
+  Process pattern worth carrying forward: twice this session a failing test
+  turned out to be testing its own implementation detail rather than the
+  actual requirement (the no-fill-swatch mechanism check in d12a47d, and the
+  query-must-be-in-NAME search check in dfb3a8a) — both were re-anchored to the
+  real requirement and came out STRICTER, not weaker. If a test fails and the
+  code looks right, check whether the test is asserting the wrong thing before
+  assuming the code is wrong.
+
+reconstruction_sources:
+  - "\"ACOS 3.0\" (cwd) git status --short, git log --oneline -20, git diff --stat HEAD~5..HEAD"
+  - "~/.claude/skills git status --short, git log --oneline -20, git status -sb, git remote -v"
+  - "~/.claude/skills git show --stat <sha> for all 7 commits: 25c49a5, dfb3a8a, d12a47d, ad0bee3, b41a4f0, 0e0eabb, 6b1679d (full commit messages + file stats read)"
+  - "~/.claude/skills git log personal/main -1 --oneline; git merge-base HEAD personal/main; git log --oneline personal/main..HEAD (confirmed all 7 commits unpushed, merge-base = bc0d302)"
+  - "~/.claude/skills git diff --stat bc0d302..HEAD (aggregate: 5 files changed, 1366 insertions, 70 deletions)"
+  - "ls -la ~/.claude/skills/acos-logo-forge/app/ (confirmed file sizes/mtimes: editor.html 338,435B, symbols.json 1,109,795B, build-symbols.py 6,088B, symbols-test.ts 9,345B, ribbon-test.ts 55,094B)"
+  - "\"ACOS 3.0\" memory/handoffs/2026-08-06-emergency-handoff.yaml (head — confirmed unrelated FruitSync-thread handoff from a different tab)"
+  - "\"ACOS 3.0\" memory/handoffs/2026-08-06-emergency-handoff-2.yaml (full read — prior same-day logo-forge handoff, written after bc0d302 and before this session's 7 new commits; used to detect the now-stale 'all pushed' claim and to carry forward unresolved blockers)"
+  - "\"ACOS 3.0\" ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ (confirmed no logo-forge-specific planning/evidence/decision artifacts; latest evidence dir is 2026-08-02, latest decision is 2026-07-05 — neither relates to this thread)"
+  - "lsof -i :8815 (confirmed live server PID 43272), :8816, :8817, :8819 (all free — no orphaned processes this pass)"
+  - "ls -la /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/0c6ed8df-cbed-4cf1-acaa-2b475cb28f29/scratchpad/ (full listing, saved to tool-results/bpkhdnd1u.txt; confirmed presence and sizes of results.txt, verdicts.txt, summaries.txt, problems.txt, plan.txt, merged.json, final.json, rows.js, allshapes.png, and lib/ subdirectory contents)"
+  - "date -u (current timestamp for this handoff)"

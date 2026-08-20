@@ -1,0 +1,257 @@
+timestamp: "2026-08-18T16:54:48Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:manual"
+session_id: "ff036fd7-705d-49a8-b24b-771e9cb47513"
+estimated_tokens: 213295
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "summary-written"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "manual" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  Continue from where you left off.
+
+assistant_tail: |
+  The preview is open in Chrome. This is option 16, built to your confirmed spec.
+  
+  - The lines have the earlier bold thickness and glow back.
+  - Each fruit has one or two lines. The blueberry and watermelon got two. The apple and pineapple got one.
+  - Every fruit's lines sit in their own spots.
+  - All lines stay in the lower body now. The first tries put lines across the eyes. That looked like a mistake, so I aimed them under the face.
+  
+  `★ Insight ─────────────────────────────────────`
+  Random-looking art still needs guard rails. The line spots come from each fruit's rank number, so they vary. But a no-go zone protects the face. Vary the where, protect the what — that is the rule here.
+  `─────────────────────────────────────────────────`
+  
+  If this look works, say yes. I'll make 16 the default, rebuild, and install it on your phone. If a spot or count bothers you, name the fruit and I'll adjust it.
+  
+  ---
+  
+  No response requested.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "acos-deficiency-fixes-2026-06-04"
+  uncommitted_file_count: 165
+  recent_commits: |
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+    9367960 feat(oracle): a missing goal asks instead of refusing
+    ee8be86 feat(oracle): a real AI at the permission door — four settings, one ever on
+    7f11ce2 feat(xl-update): Phase 3b — read-only email sweep across both work mailboxes
+    71ca4a1 feat(investigate): /investigate — the inward twin of /research, on the riff engine
+
+uncommitted_files:
+  - "M .claude/scripts/eternity-protocol-core.sh"
+  - "M .claude/scripts/git-manager/ids.json"
+  - "M .claude/scripts/html-to-pdf.js"
+  - "M .claude/scripts/oracle-evaluate.py"
+  - "M .claude/skills/acos-eternity-protocol/SKILL.md"
+  - "M .claude/skills/acos-resume-prompt/SKILL.md"
+  - "M .claude/skills/investigate/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-3/r3-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-02.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-04.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-06.svg\""
+  - "D \"Logo Builder/brandsync/symbol/candidates/round-4/r4-09.svg\""
+  - "?? .claude/scripts/handoff-enrich.ts"
+  - "?? .claude/scripts/precompact-handoff.ts"
+  - "?? .claude/scripts/tests/test_oracle_hard_blocks.py"
+  - "?? .claude/skills/investigate/templates/researcher-charter.md"
+  - "?? .claude/skills/research/"
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-3/\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-02.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-04.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-06.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/rejected/round-4/r4-09.svg\""
+  - "?? memory/decisions/2026-08-10-communication-tracker-privilege-policy.md"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/ff036fd7-705d-49a8-b24b-771e9cb47513.jsonl"
+  transcript_lines_parsed: 444
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me walk the conversation chronologically.
+  
+  **Session context:** This is a post-compaction resume of session ff036fd7-705d-49a8-b24b-771e9cb47513 (eternity-protocol auto-resume, 2026-08-18). Shell cwd is "/Users/zee/Documents/Vibe Coding/ACOS 3.0" but ALL work is in "/Users/zee/Documents/Vibe Coding/FruitSync" (FOLDER TRAP — separate repo, absolute paths required). Prior work: fiery-suffocation fix (213/213 tests), L level-skip cheat, side-by-side dev APK pipeline, burned-look variant 6.
+  
+  **Post-compact turn:** SessionStart hook asked for ONE enrichment edit to `memory/handoffs/2026-08-18-autocompact-handoff-4.yaml` (append judgement fields, set enrichment_status to "deepened") — done in one Edit. I verified on disk: `FruitArt.BurnedVariant = 6` at FruitArt.cs:530 and dev APK `build/FruitSync-devtest-side.apk` dated Aug 18 01:59 (installed on phone P21297001145). Reported to user with what to test.
+  
+  **User: "The option number 6 that you gave me, does it look like what I want? Do any of them look burned?"** I Read both playcheck PNGs and gave an honest verdict: variant 6 matches the spec (fiery face, texture kept) but does NOT read as burned; variants 0-5 read burned but kill texture. Offered a middle path.
+  
+  **User: "no, it needs to look burned. Also, what is the point of the top and bottom rows? they don't have any numbers."** Plus mid-turn message: "show me a few burned version with the teeth and the eyes intact." I explained the unnumbered rows were fiery/angry reference rows (a layout mistake — all future strips numbered every row). Built variants 7 (char body 0.55 lerp to (0.13,0.10,0.09)), 8 (char 0.45 + glowing cracks), 9 (char 0.55 + underglow), all with DrawFieryFace (changed face dispatch to `BurnedVariant >= 6`). Added GenerateFaceLineup → burned-face-lineup.png. Rendered, QA'd, opened in Chrome.
+  
+  **User: "Create a few versions of 8 with less amber lines, there should be traces of amber but not too much."** Extended DrawCracks with `count`, `startT`, `dim` params (defaults preserve variants 1/8 exactly); angle picks: count≥5 → {0,1,2,3,4}, count 3 → {0,2,4}, count 2 → {0,3}, count 1 → {1}. Variants: 10 (count 2), 11 (count 3, startT 0.5, dim 0.85), 12 (count 3, dim 0.45). All keep 8's exact body (charAmt condition `(BurnedVariant == 8 || BurnedVariant >= 10) ? 0.45f : 0.55f`). Catalog refactor: RenderNumberedLineup(variants, outPath) helper; DrawRowBadge upgraded for two-digit numbers (dot 14, bx 12, per-digit offset 3*dot+6); font digits 7/8/9 added. Rendered burned-ember-lineup.png (rows 8/10/11/12), opened in Chrome.
+  
+  **User: "The lines should be very thin and barely visible and positions vary from fruit to fruit"** Added `widthMul` (thins strokes; skips halo when widthMul < 0.75) and `seed` (rot = seed * 2.400f golden-angle spin; phase = seed * 1.7f jitter shift) to DrawCracks. Call site now `DrawBurnedVariantOverlay(px, size, c, r, tier)` — tier is the seed; variants 1-12 render exactly as before (seed unused). Variants 13 (count 3, dim 0.40, widthMul 0.45, seeded), 14 (same + startT 0.5), 15 (count 5, dim 0.55, widthMul 0.35, seeded). Rendered burned-thin-lineup.png, opened in Chrome. Caveat given: hairlines may vanish at phone size.
+  
+  **User: "no, don't like the newer version. Maybe the thickness of the amber lines were alright before. Do this, use one or two amber lines on each fruit, but the position of the amber lines should be different from fruit to fruit. /restate"** — /restate = Confirmation Gate: restate and wait. I restated 5 points (rollback hairline; original thickness/glow of rows 8-12; one or two lines; positions vary per fruit; count itself varies per fruit — flagged as my reading; numbered preview before phone install). Eden-selfcheck Stop hook FAILED the restatement (23% sentences over 12-word cap); rewrote once at Level 4.
+  
+  **User: "yes"** — confirmed. Built variant 16: first attempt `count: 1 + (seed % 2)` with seeded rotation — render showed cracks across the blueberry's EYES (reads as a mistake with only 1-2 cracks). Fix attempt 1: startT 0.35 — still hugged eyes (horizontal seeded angles land at eye band). Fix attempt 2: added `float[] anglesOverride = null` param to DrawCracks (bypasses angle table AND seed spin; loop rewritten from foreach over pick to for over strokes); case 16 now aims cracks into the lower arc:
+  ```csharp
+  case 16:
+  {
+      int n = 1 + (seed % 2);
+      var aims = new float[n];
+      for (int j = 0; j < n; j++)
+          aims[j] = Mathf.Deg2Rad * (210f + (seed * 47) % 55 + j * 70f);
+      DrawCracks(px, size, c, r, glowing: true, startT: 0.35f, seed: seed, anglesOverride: aims);
+      break;
+  }
+  ```
+  Third render clean: blueberry 2 cracks, apple 1, pineapple 1, watermelon 2, all lower-body, faces clear. Opened burned-sparse-lineup.png in Chrome, offered to set 16 + rebuild + install on "yes".
+  
+  **User (LATEST, UNANSWERED): "I still don't like them for some reason. Can you improve the look of the amber lines and position them more artistically?"** — variant 16 as rendered is rejected on aesthetics; the ask is now open-ended artistic improvement of the amber lines (look + placement). No restate was requested this time.
+  
+  Standing constraints to preserve verbatim: FruitSync is PERSONAL (github.com/ZiaulKarim-hub/FruitSync) — never push to okoateam; never use bare `git push`. Eden Protocol Level 4 active (≤12-word sentences, gloss all terms, no trailing appendix; tool-call narration measured too). Confirmation Gate for interpretive work; user's /restate flow used once.
+  
+  Workflow pattern established: edit FruitArt.cs → `bash unity-compile-check.sh` from build/dotnet → Unity batch `-executeMethod FruitSync.Unity.EditorTools.BurnedVariantCatalog.<Method>` → Read PNG for QA → `open -a "Google Chrome" <png>`. Unity licensing errors in logs are noise when exit=0.
+  
+  Nothing committed anywhere; all work uncommitted on FruitSync main. BurnedVariant default still 6.
+  </analysis>
+  
+  <summary>
+  1. Primary Request and Intent:
+     The session iterates on the BURNED-fruit look in the FruitSync Unity game (art review loop with the user picking from rendered, numbered candidate strips). Chronological requests this segment:
+     - "The option number 6 that you gave me, does it look like what I want? Do any of them look burned?" — wanted my honest visual judgment.
+     - "no, it needs to look burned. Also, what is the point of the top and bottom rows? they don't have any numbers." — burned must actually read as burned; unnumbered reference rows confused, so every future strip row must be numbered.
+     - "show me a few burned version with the teeth and the eyes intact." — keep the fiery face (fangs + eyes) on all burned candidates.
+     - "Create a few versions of 8 with less amber lines, there should be traces of amber but not too much."
+     - "The lines should be very thin and barely visible and positions vary from fruit to fruit"
+     - "no, don't like the newer version. Maybe the thickness of the amber lines were alright before. Do this, use one or two amber lines on each fruit, but the position of the amber lines should be different from fruit to fruit. /restate" — I restated; user confirmed "yes". Confirmed spec: original thickness/glow, one OR two cracks, count and position vary per fruit, numbered preview before any phone install.
+     - LATEST (UNANSWERED): "I still don't like them for some reason. Can you improve the look of the amber lines and position them more artistically?" — variant 16's render rejected on aesthetics; open-ended ask to make the amber lines more beautiful and better placed.
+     Standing intent: once a look is picked, set it as default, rebuild via BuildAndroid.BuildDevApkSideBySide, `adb install -r`, relaunch on phone P21297001145.
+  
+  2. Key Technical Concepts:
+     - FOLDER TRAP: shell cwd is "/Users/zee/Documents/Vibe Coding/ACOS 3.0" but ALL work is in "/Users/zee/Documents/Vibe Coding/FruitSync" (separate repo; absolute paths).
+     - FruitSync is PERSONAL (github.com/ZiaulKarim-hub/FruitSync) — must NEVER be pushed to okoateam; never use bare `git push`.
+     - FruitArt is pure procedural sprite painting; sprite cache does NOT key on BurnedVariant → ClearCache() needed on change (catalog handles it).
+     - Burned body pipeline: molten fiery base (lerp 0.72 → (1,0.28,0.02), sat*1.15, val+0.20) → variant branch: 6 = angry recipe (black 0.20 + (0.55,0.12,0.10) 0.18); 7-16 = char lerp to (0.13,0.10,0.09) at charAmt `(BurnedVariant == 8 || BurnedVariant >= 10) ? 0.45f : 0.55f`; 0-5 = 0.80 crush (texture-killing, rejected).
+     - Face dispatch: `if (burned && BurnedVariant >= 6)` → DrawFieryFace (teeth/eyes); X-eye DrawBurnedFace only for 0-5.
+     - DrawCracks parameterization: count/startT/dim/widthMul/seed/anglesOverride; defaults reproduce variants 1/8 exactly; halo skipped when widthMul < 0.75; seed spin rot = seed*2.400f (golden angle), jitter phase = seed*1.7f; anglesOverride bypasses table AND spin.
+     - Seed = tier, passed via `DrawBurnedVariantOverlay(px, size, c, r, tier)`; only variants 13-16 consume it (earlier variants render exactly as reviewed).
+     - Face no-go zone learned: with 1-2 cracks, a crack across an eye reads as a mistake; case 16 aims cracks into lower arc 210°-335° (texture +y is up; eyes at +0.16r, mouth at -0.30r; startT 0.35 starts at ~0.407r clearing the mouth).
+     - Review workflow: edit → `bash unity-compile-check.sh` (from build/dotnet, ~1-2s) → Unity batch render → Read PNG for self-QA → `open -a "Google Chrome"` for the user. Unity batch: `"/Applications/Unity/Hub/Editor/6000.4.10f1/Unity.app/Contents/MacOS/Unity" -batchmode -quit -projectPath "/Users/zee/Documents/Vibe Coding/FruitSync" -executeMethod FruitSync.Unity.EditorTools.BurnedVariantCatalog.<Method> -logFile <log>`. Licensing handshake errors in the log are noise when exit=0 and the PNG is written.
+     - Eden Protocol Level 4 active (≤12-word sentences, gloss every term inline, no trailing appendix; eden-selfcheck.py Stop hook rewrites once; tool-call narration is also measured). Confirmation Gate: /restate → restate + wait for "yes".
+     - Eternity protocol/handoff enrichment: post-compact session appends judgement fields to the autocompact handoff and sets enrichment_status "deepened".
+  
+  3. Files and Code Sections:
+     All FruitSync paths under `/Users/zee/Documents/Vibe Coding/FruitSync/`. NOTHING committed — entire tree dirty on FruitSync main.
+     - `Assets/Scripts/Unity/FruitArt.cs` — the sprite painter; all variant work lives here.
+       - `public static int BurnedVariant = 6;` (line ~530) — still the default; pending user pick. Comment block documents rounds: 0-5 charcoal/ash (rejected), 6 user's vision, 7-9 round two, 10-12 round three, 13-15 round four (rejected), 16 round five.
+       - Fill branch: variant 6 keeps angry recipe; `else if (BurnedVariant >= 7)` → `float charAmt = (BurnedVariant == 8 || BurnedVariant >= 10) ? 0.45f : 0.55f; fill = Color.Lerp(fill, new Color(0.13f, 0.10f, 0.09f), charAmt);`
+       - Face dispatch: `if (burned && BurnedVariant >= 6)` → `DrawFieryFace(px, size, c, r, FieryFaceOf(faceName), burnedYShift)`.
+       - Overlay call site: `if (burned) DrawBurnedVariantOverlay(px, size, c, r, tier);`
+       - `DrawBurnedVariantOverlay(Color[] px, int size, float c, float r, int seed)` switch: case 8 full cracks; 9 underglow; 10 `count: 2`; 11 `count: 3, startT: 0.5f, dim: 0.85f`; 12 `count: 3, dim: 0.45f`; 13 `count: 3, dim: 0.40f, widthMul: 0.45f, seed`; 14 adds `startT: 0.5f`; 15 `count: 5, dim: 0.55f, widthMul: 0.35f, seed`; case 16 (current focus):
+         ```csharp
+         case 16:
+         {
+             int n = 1 + (seed % 2);
+             var aims = new float[n];
+             for (int j = 0; j < n; j++)
+                 aims[j] = Mathf.Deg2Rad * (210f + (seed * 47) % 55 + j * 70f);
+             DrawCracks(px, size, c, r, glowing: true, startT: 0.35f, seed: seed, anglesOverride: aims);
+             break;
+         }
+         ```
+       - `DrawCracks` signature now:
+         ```csharp
+         private static void DrawCracks(Color[] px, int size, float c, float r, bool glowing,
+                                        int count = 5, float startT = 0f, float dim = 1f,
+                                        float widthMul = 1f, int seed = 0,
+                                        float[] anglesOverride = null)
+         ```
+         Internals: `float rot = seed * 2.400f; float phase = seed * 1.7f;` halo alpha `0.55f * dim`; angle picks `count >= 5 ? {0,1,2,3,4} : count == 3 ? {0,2,4} : count == 2 ? {0,3} : {1}`; loop `int strokes = anglesOverride?.Length ?? pick.Length; for (int idx...) { int k = anglesOverride != null ? idx : pick[idx]; float ang = anglesOverride != null ? anglesOverride[idx] : angles[k] + rot; ... }`; segments drawn only when `t >= startT` (prev always advances); glowing stroke: halo `r * 0.050f * widthMul` only `if (widthMul >= 0.75f)`, hot core `r * 0.022f * widthMul`, hot alpha `0.95f * dim`→`0.90f * dim`; base angles `{ 0.55f, 1.75f, 2.60f, 4.10f, 5.35f }`, steps 14, jitter `0.38f * Mathf.Sin(t * 9.7f + k * 5.3f + phase)`, radius `lerp(0.12, 0.94, t)`.
+     - `Assets/Editor/BurnedVariantCatalog.cs` — TEMP review tool (marked DELETE when pick is made).
+       - `RenderNumberedLineup(int[] variants, string outPath)` shared helper (canvas: cell 256, pad 24, gutter 120, bg (0.93,0.87,0.70); tiers {1, 6, 8, 11} = Blueberry/Apple/Pineapple/Watermelon; sets FruitArt.BurnedVariant per row + ClearCache; restores in finally).
+       - Menu methods: GenerateFaceLineup → {6,7,8,9} → playcheck/burned-face-lineup.png; GenerateEmberLineup → {8,10,11,12} → playcheck/burned-ember-lineup.png; GenerateThinLineup → {13,14,15} → playcheck/burned-thin-lineup.png; GenerateSparseLineup → {16} → playcheck/burned-sparse-lineup.png.
+       - DrawRowBadge upgraded for multi-digit numbers: `string digits = Mathf.Max(0, digit).ToString(); int dot = digits.Length > 1 ? 14 : 16; int bx = digits.Length > 1 ? 12 : 24;` per-digit x offset `bx + d * (3 * dot + 6)`; 3x5 dot font extended with digits 7 `{"111","001","001","010","010"}`, 8, 9.
+     - `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-18-autocompact-handoff-4.yaml` — enriched post-compact: enrichment_status "deepened" + current_work/completed_this_session/decisions_made/blockers/candidate_learnings/context_for_next_session (one Edit, done).
+     - `build/FruitSync-devtest-side.apk` — Aug 18 01:59, the variant-6 build currently installed on phone P21297001145 (package com.ziaulkarim.fruitsync.dev). NOT yet rebuilt with any newer variant.
+     - Rendered previews (all opened in Chrome for the user): playcheck/burned-vision.png (rows fiery/6/angry — the unnumbered-rows complaint), burned-variants.png (0-5), burned-face-lineup.png, burned-ember-lineup.png, burned-thin-lineup.png, burned-sparse-lineup.png (three renders; final one clean).
+  
+  4. Errors and fixes:
+     - Variant 16 first render: cracks ran straight across the blueberry's eyes (and near watermelon's eye) — with only 1-2 cracks this reads as a mistake. Fix 1: `startT: 0.35f` — INSUFFICIENT, seeded horizontal angles still landed at eye height. Fix 2: added `anglesOverride` to DrawCracks and aimed cracks into the lower arc (210°-335°, seed-slid, j*70° spread) — third render clean.
+     - Eden-selfcheck Stop hook failed the /restate reply (23% of sentences over the 12-word cap) — rewrote once at Level 4. Cumulative lesson: keep every sentence ≤12 words, gloss all terms; tool-call narration is also measured.
+     - Unnumbered reference rows in burned-vision.png confused the user ("what is the point of the top and bottom rows?") — acknowledged as my layout miss; all subsequent strips number every row.
+     - User rejections as course corrections: variant 6 "not burned"; hairline 13-15 rejected ("don't like the newer version"); thickness must be the earlier bold glow; latest — even the clean 16 render rejected: "improve the look of the amber lines and position them more artistically."
+     - Unity batch logs always show licensing handshake errors ("Failed to handshake to channel: LicenseClient-zee") — noise; renders succeed with exit=0.
+  
+  5. Problem Solving:
+     - Honest art critique delivered: 6 reads "extra angry," not burned; char/ash IS the visual language of burned but erases texture; resolved via mid-char bodies (0.45/0.55 vs the rejected 0.80) that let patterns ghost through.
+     - Per-fruit variation without flicker: seed = tier feeds golden-angle rotation + jitter phase; deterministic per fruit, stable frame to frame; earlier variants pinned byte-identical by leaving their code paths seedless.
+     - Face-safety rule discovered and encoded: sparse cracks must avoid the face band (case 16 comment documents the two failed attempts).
+     - Iterative review loop kept fast: compile check ~1s; Unity batch render ~1 min; self-QA via Read before showing the user.
+  
+  6. All user messages:
+     - "The option number 6 that you gave me, does it look like what I want? Do any of them look burned?"
+     - "no, it needs to look burned. Also, what is the point of the top and bottom rows? they don't have any numbers."
+     - (mid-turn) "show me a few burned version with the teeth and the eyes intact."
+     - "Create a few versions of 8 with less amber lines, there should be traces of amber but not too much."
+     - "The lines should be very thin and barely visible and positions vary from fruit to fruit"
+     - "no, don't like the newer version. Maybe the thickness of the amber lines were alright before. Do this, use one or two amber lines on each fruit, but the position of the amber lines should be different from fruit to fruit. /restate"
+     - "yes" (confirming my 5-point restatement, including my reading that the count itself varies per fruit)
+     - "I still don't like them for some reason. Can you improve the look of the amber lines and position them more artistically?" (LATEST — unanswered)
+  
+  7. Pending Tasks:
+     - ACTIVE: redesign variant 16's amber lines to be more artistic (look + placement) — user's latest request; render a numbered preview, open in Chrome, get pick.
+     - After a pick: set FruitArt.BurnedVariant to the winner, rebuild via BuildAndroid.BuildDevApkSideBySide, `adb install -r build/FruitSync-devtest-side.apk`, relaunch (`adb shell monkey -p com.ziaulkarim.fruitsync.dev -c android.intent.category.LAUNCHER 1`).
+     - Collect user's on-phone verdict on the suffocation fix feel, L cheat, Level Guide panel (variant-6 build from Aug 18 01:59 is what's installed).
+     - Arabic level_next_4 second paragraph unrendered (ShapeBlock wrap test, root-caused, NOT fixed) — user to rule dig-deeper vs ship.
+     - Autopilot stale .compact-fired-* markers fix awaits user go-ahead; left-side cushion issue needs user repro.
+     - Commit the entire uncommitted FruitSync tree (PERSONAL repo ONLY; never okoateam; never bare `git push`).
+     - Eventually: collapse BurnedVariant to the winner and DELETE BurnedVariantCatalog.cs (its own header says so).
+  
+  8. Current Work:
+     Immediately before this summary: I had rendered and shown variant 16 (one/two original-thickness glowing cracks, seeded count and position, aimed into the lower arc 210°-335° to keep faces clear) via playcheck/burned-sparse-lineup.png, and offered to set it + rebuild + install on "yes". The user replied: "I still don't like them for some reason. Can you improve the look of the amber lines and position them more artistically?" — so variant 16's current rendering is rejected on aesthetics and the open task is an artistic redesign of the crack lines themselves (shape/glow quality) and their placement. No restate was requested for this message. The current DrawCracks draws cracks as 14 jittered line segments (sine-jag), halo + hot core strokes; candidate artistic directions not yet implemented: smoother curved fissures (fewer, longer arcs), tapered width (thick at rim → thin tip), following the sphere's contour, gentle branching, or placement composed around (not just below) the face.
+  
+  9. Optional Next Step:
+     Design 2-3 new "artistic" crack treatments as variants 17+ (e.g., a single elegant tapered fissure that follows the body's curve; a branched lightning-style crack with a soft gradient glow; a crescent seam hugging the lower rim), render them as a numbered strip via a new BurnedVariantCatalog menu method, self-QA with Read, then `open -a "Google Chrome"` for the user to pick. This is directly the user's latest words: "Can you improve the look of the amber lines and position them more artistically?" — building on where I left off: "If a spot or count bothers you, name the fruit and I'll adjust it" → superseded by their broader aesthetic rejection, so the next render must change the line ART, not just spots/counts.
+  </summary>

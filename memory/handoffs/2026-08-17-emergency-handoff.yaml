@@ -1,0 +1,133 @@
+timestamp: "2026-08-17T17:05:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 0
+
+session_summary: |
+  This ACOS 3.0-hosted session's real work is entirely inside a SEPARATE local
+  repo, /Users/zee/Documents/Vibe Coding/R2P (project_r2p_epic_001), which has
+  NO git remote configured at all — nothing here is ever pushed. The session
+  is running EPIC-001's close: a first-ever whole-codebase mutation gate
+  finished (RUN_EXIT=0, 8h44m), a broken gate-reading instrument was fixed
+  (commit 7f1d3b4), all six previously-sub-70 files were shown to clear both
+  the standard AND killed-only mutation-score bars on that gate (68297fd), a
+  ratification packet was assembled as EPIC-001's single front door for the
+  human gate (1413aca), a prior "these are barrels" claim about nine 0.00-score
+  files was corrected on the record (f7713f2), and a timeout-calibration
+  experiment on benchmark-alpha.ts (8968b00) revealed that most of that file's
+  "timeout" mutants were survivors hiding behind too short a clock, not slow
+  real catches. Fourteen rulings are queued for Zee (the human gate role,
+  previously called "Ben" in the PRD text) and he had started walking through
+  decision 1 of 14 in plain chat when the eternity-protocol context-limit
+  handoff fired.
+
+current_work:
+  slice_id: "unknown — no single slice; work is at EPIC-001 close-packet level"
+  story_id: "STORY-001-008 pair 24 (DEV/QA-001-008-03) is the one open dev/QA pair; all others (16-23) are through their cycle awaiting seal"
+  epic_id: "EPIC-001"
+  status: "blocked — 14 rulings await Zee; nothing may be sealed/closed/approved by an agent (AP-07)"
+
+completed_this_session:
+  - "Fixed the mutation-gate reading instrument (tools/read-mutation-gate.ts, commit 7f1d3b4): the prior parser keyed files by BASENAME, silently collapsing three index.ts and two result.ts files into one row, which made pre-registered check G0-4 unanswerable. New instrument rebuilds each file's path from clear-text tree indentation, recomputes both bars from raw counts, and exits non-zero if its own recomputation disagrees with Stryker's printed score."
+  - "Read the whole-codebase gate re-run against PREREG-GATE-001 (commit 68297fd) — the run at HEAD 0380537, log GATE-RERUN-latest.log (4,807,904 bytes / 63,825 lines). All six previously sub-70 files now clear BOTH bars, no rounding: design-manifest.ts 68.83->99.69/99.69, figures.ts 43.52->96.76/96.76, statement-break-lifecycle.ts 63.64->88.49/88.20, export-parity.ts 69.33->85.13/84.39, sleeve-conservation.ts 68.86->83.03/81.05, risk-performance-view.ts 64.65->82.55/82.10. Narrowest margin 12.10 above the bar. FAIRNESS-AUDIT-001 confirmed zero of five forbidden score levers were used (no Stryker disable, no excludedMutations, no ignoreStatic, globs unchanged, zero .skip/.todo across 111 test files, no test file deleted)."
+  - "Assembled RATIFICATION-PACKET-EPIC-001.yaml (commit 1413aca) as the single front door for the human gate: 14 rulings (2 tier-1: MG21-R1, MG21-R2; 4 review items REV-DM-1/REV-SLEEVE-1/REV-SLEEVE-2/REV-RPV-2; 4 statement-break items SBL-D1..D4; 3 gate-level MG16-R1/MG17-R1/MG20-R1; 1 F-02), 12 ADRs to ratify (index only), and 5 disclosures (DISC-1..5)."
+  - "Corrected the record (commit f7713f2, OBS-MG21 / MG21-R2): the nine files reading 0.00/0.00 with all NO-COVERAGE were previously mischaracterized as empty re-export barrels. They are NOT barrels — each holds one real, uncovered working function. Two do money math (residualExposure, simulateFill). Two are gates (isApprovalActive, isMaterialBreak). None has a test."
+  - "Ran the calibrated-timeout experiment on benchmark-alpha.ts (commit 8968b00, OBS-MG22): raised Stryker's timeoutMS from 5000 to 120000, single-file re-run, RUN_EXIT=1 (aggregate below break:70). Of 269 original timeout mutants, 228 resolved when given 24x the time: only 19 became killed, 209 became survived. Standard score fell 81.53->67.54 and CROSSED the bar (was passing, now failing); killed-only score rose only 63.52->64.79 and stayed failing throughout. This is evidence that the killed-only bar was the accurate measurement all along and the standard score was inflated by an under-calibrated clock — but it settles nothing about MG21-R1 itself, which remains reserved to Zee (AP-07)."
+  - "Verified no stryker process is currently live (pgrep -f stryker returns nothing) and the working tree carries zero live '// @ts-nocheck' pragmas under packages/ — the only string hits for that pragma are in comments/constants describing the instrumentation pattern, in dist/ build output, in stale agent worktrees under .claude/worktrees/, and in planning/evidence tool-script copies, none of which affect the real source tree."
+
+files_modified:
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/DECISIONS-FOR-BEN.yaml"
+    changes: "+73 lines — latest addendum recording rulings raised while the gate ran"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/GATE-READING-001-THE-RERUN-RESULT.yaml"
+    changes: "new file, 197 lines — the gate re-run reading against PREREG-GATE-001"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/OBS-MG21-THE-READING-INSTRUMENT-WAS-BROKEN-IN-FOUR-WAYS.yaml"
+    changes: "new file, 263 lines — documents the basename-collision parser bug and its fix"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/OBS-MG22-THE-TIMEOUTS-WERE-SURVIVORS-IN-DISGUISE.yaml"
+    changes: "new file, 130 lines — the calibrated-timeout finding on benchmark-alpha.ts, owner Zee"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/RATIFICATION-PACKET-EPIC-001.yaml"
+    changes: "new file, 285 lines — the single front door for Zee's 14 rulings + 12 ADRs + 5 disclosures"
+  - path: "tools/read-mutation-gate.ts"
+    changes: "new file, 367 lines — the fixed gate-reading instrument, path-aware not basename-keyed"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-RERUN-latest.log"
+    changes: "new file, 52,787 lines — the whole-codebase mutation gate re-run log used for the 68297fd reading"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/testruns/TESTRUN-20260815T161117Z-19-benchmark-alpha-RAISED-TIMEOUT.log"
+    changes: "new file, 4,735 lines — the raised-timeout single-file run backing OBS-MG22"
+  - path: "planning/evidence/EVB-EPIC-001/close-packet/testruns/BENCH-ALPHA-RAISED-latest.log"
+    changes: "UNTRACKED symlink to the above log; not yet git-added"
+
+decisions_made:
+  - "None ratified this session — AP-07 forbids any agent from deciding. Zee had begun deciding MG21-R1 (options A/B/C on whether the killed-only bar binds) in plain-text chat but had not yet answered when this handoff fired."
+
+candidate_learnings:
+  - "R2P (/Users/zee/Documents/Vibe Coding/R2P) is a LOCAL-ONLY repo with no git remote configured at all — never attempt to push it, and a bare 'origin' check will find nothing (evidence: `git status`/`git log` succeed with no remote-tracking output; project_r2p_epic_001 memory note confirms this is intentional)."
+  - "In this project's PRD (docs/PRD_v0.4.txt §18.3), 'Ben is the human gate' names a ROLE, not a person — Zee has instructed that going forward he is that role and wants to be called Zee, not Ben, in conversation, even though prior close-packet records that already say 'owner: Ben' are left untouched and are additive-only, never edited (evidence: OBS-MG22's naming_note field, and the transcript's last human prompt)."
+  - "A Stryker mutation-testing 'timeout' verdict is not proof of a genuinely non-terminating mutant — on benchmark-alpha.ts, raising timeoutMS 24x (5000->120000) revealed 209 of 269 timeouts were actually survivors that merely needed more wall-clock time, while only 19 were real kills. The standard mutation score is vulnerable to this and can cross a pass/fail bar purely from clock miscalibration; the killed-only score (which does not count timeouts as detections) is comparatively stable under the same change. Worth checking on any Stryker-scored codebase where a file's score is timeout-heavy and sits near a bar (evidence: OBS-MG22-THE-TIMEOUTS-WERE-SURVIVORS-IN-DISGUISE.yaml, commit 8968b00)."
+  - "This project's mutation-gate reading tooling had a basename-keying bug that silently merged distinct files sharing a generic name (three index.ts, two result.ts) into one scored row — a good general lesson for any tool that indexes source files by filename alone instead of full relative path (evidence: tools/read-mutation-gate.ts fix, commit 7f1d3b4)."
+  - "macOS has no timeout/gtimeout binary (already a standing MEMORY.md fact, reconfirmed as a live constraint in this session's carried-forward notes) and this repo's own path contains a space ('R2P' is fine but its sibling 'ACOS 3.0' cwd is not), so any script invoked across these two repos must quote paths."
+
+blockers:
+  - "14 rulings in planning/evidence/EVB-EPIC-001/close-packet/RATIFICATION-PACKET-EPIC-001.yaml await Zee. Two are tier-1 and gate the rest: MG21-R1 (does the killed-only mutation-score bar bind, or is it diagnostic-only?) and MG21-R2 (are the nine files reading 0.00/0.00 — including money-math functions residualExposure and simulateFill, and gate functions isApprovalActive and isMaterialBreak — genuinely untested code that must be fixed, or out-of-scope barrels? f7713f2 already established they are NOT empty barrels)."
+  - "Zee explicitly asked to be walked through the 14 rulings ONE AT A TIME in plain chat (not via AskUserQuestion — OBS-AP1 records that autopilot auto-answers AskUserQuestion by picking '(Recommended)', which would forge a human ruling). He was mid-way through MG21-R1 when the handoff fired and has not yet answered."
+  - "Pair 24 (DEV/QA-001-008-03) is the one open dev/QA cycle: QA pass 3 returned BLOCK on finding F07 (severity high, disposition pending_human_review, owner Zee/'Ben'); revision 4 is committed (20f6d06) and was, as of the last recorded state, still UNREVIEWED by a pass 4."
+  - "packages/app is a placeholder only (packages/app/index.ts, 777 bytes) whose own isPresentationAppScaffolded() returns false — there is no user-facing app yet. EPIC-002 and EPIC-003 are both status: proposed and explicitly NOT approved (AP-07: no agent may charter an epic)."
+
+next_actions:
+  - "Resume walking Zee through the 14 rulings one at a time, starting exactly where he left off: MG21-R1 (options A/B/C on whether PREREG-GATE-001 DR-2's killed-only bar binds). Present it as plain reply text, not AskUserQuestion."
+  - "Once MG21-R1 and MG21-R2 are answered, work through the remaining 12 rulings (REV-DM-1, REV-SLEEVE-1, REV-SLEEVE-2, REV-RPV-2, SBL-D1..D4, MG16-R1, MG17-R1, MG20-R1, F-02) in the ratification packet, same one-at-a-time protocol."
+  - "Re-run trigger-grammar.ts, contingent-plan-engine.ts and time/contracts/result.ts with the same raised timeout used on benchmark-alpha.ts (120000ms), to check whether the same standard-score inflation OBS-MG22 found there also affects them — this needs no ruling and is explicitly named as the obvious next experiment in OBS-MG22."
+  - "Once a naming-collision ruling is available (three exported names — Availability, DeclaredPolicyRecord, IRRATIONAL_DERIVATION — collide across the performance package's two siblings, TS2308), land the three deferred barrel-export one-liners named in task 15 of the session's TODO snapshot: packages/core/ledger/index.ts, packages/core/performance/index.ts. Land each only after its pair's review closes, as its own commit, and re-run that pair's suite by path afterward."
+  - "Consider `git add` for the untracked planning/evidence/EVB-EPIC-001/close-packet/testruns/BENCH-ALPHA-RAISED-latest.log symlink so the OBS-MG22 evidence trail is fully committed (scoped add only, read the staged list before writing the commit message — standing constraint)."
+  - "Do not start fix work on the four killed-only-shortfall files (time/result.ts, contingent-plan-engine.ts, trigger-grammar.ts, benchmark-alpha.ts) until MG21-R1 is answered — starting early would be an agent ratcheting the bar on Zee's behalf (AP-07)."
+
+context_for_next_session: |
+  All real work lives in /Users/zee/Documents/Vibe Coding/R2P (project_r2p_epic_001
+  in memory), a separate local-only git repo with no remote — this ACOS 3.0
+  session is only the host; the handoff file itself is written to THIS repo's
+  memory/handoffs/ (matching the pattern of every prior R2P-work handoff in this
+  session, e.g. 2026-08-16-emergency-handoff.yaml, 2026-08-17-autocompact-handoff.yaml)
+  because that is where the eternity-protocol resume mechanism looks, keyed to
+  this session's cwd. R2P's own HEAD is 8968b00 on branch main, clean except one
+  untracked symlink. No mutation-gate process is running (pgrep -f stryker
+  returns nothing) and the tree carries no live @ts-nocheck pragmas — any
+  handoff or memory note from before ~2026-08-17 warning that a gate run is
+  "still live" or that files carry stray @ts-nocheck is now STALE and should
+  not be repeated.
+
+  The shape of the remaining work is entirely gate-review, not code-writing: a
+  first-ever whole-codebase mutation-testing run finally completed after
+  months of blockers, a broken reading instrument that was silently merging
+  same-named files was fixed and re-read, all six previously-failing files now
+  clear both the lenient ("standard", timeouts count as kills) and strict
+  ("killed-only") mutation-score bars, and a single ratification packet
+  (RATIFICATION-PACKET-EPIC-001.yaml) was built as the one place Zee needs to
+  read to close EPIC-001. The freshest and most consequential new finding
+  (OBS-MG22, commit 8968b00) is a caution against trusting the lenient score:
+  on one file, calibrating the mutation-kill timeout upward turned a passing
+  81.53 into a failing 67.54, while the strict killed-only score barely moved
+  — meaning the strict bar was quietly the more honest number all along. That
+  is evidence for treating the strict bar as binding, but it is explicitly
+  NOT a ruling; only Zee can decide MG21-R1, and every downstream fix-loop
+  scope (six files if the lenient bar controls, ten if the strict bar binds)
+  depends on his answer. He had just started answering it, in plain chat, when
+  this session's context ran out. The single most useful thing the next
+  session can do is pick that conversation up exactly where it stopped —
+  present MG21-R1 as plain text (never AskUserQuestion, which autopilot would
+  auto-answer and thereby forge a human ruling — OBS-AP1) — then proceed
+  through the other 13 rulings the same way, one at a time, as he asked.
+
+reconstruction_sources:
+  - "TRANSCRIPT_PATH=/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (tail ~200KB read: TodoWrite snapshot of tasks 12-27, Zee's last prompt asking to be renamed and walked through blockers one at a time, and the final assistant turn summarizing commits 8968b00/f7713f2 and handing off)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.git (git status --short, git log --oneline -20, git branch --show-current, git diff --stat HEAD~5..HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/ (directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/RATIFICATION-PACKET-EPIC-001.yaml (head + ruling id grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/OBS-MG22-THE-TIMEOUTS-WERE-SURVIVORS-IN-DISGUISE.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/epics/EPIC-001.yaml, EPIC-002.yaml, EPIC-003.yaml (status fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ (ls -lt, most recent ADR-012.yaml)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/state/ (ls -la)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/packages/app/ (ls -la, grep for isPresentationAppScaffolded)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/docs/PRD_v0.4.txt §18.3 (Ben/human-gate role text)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.claude/worktrees/ (ls -la — three stale per-agent worktrees present)"
+  - "grep for live '// @ts-nocheck' pragmas scoped to packages/ vs repo-wide string hits (dist/, .claude/worktrees/, planning/evidence tool copies, test-file comments)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (ls -lt, read most recent autocompact-handoff.yaml header to confirm handoff-location convention for R2P-scoped work)"

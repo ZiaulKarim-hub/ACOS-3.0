@@ -1,0 +1,169 @@
+timestamp: "2026-08-10T16:33:07Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 522456
+
+session_summary: |
+  This is an Eternity Protocol session working the R2P project at
+  "/Users/zee/Documents/Vibe Coding/R2P" (a LOCAL-ONLY git repo on branch
+  main — NEVER push). The orchestrator drives an adversarial DEV/QA/holdout/
+  mutation-gate cycle per pair of slices, sealing each pair only after QA
+  PASS + a holdout custodian run + a mutation-gate clear. Pairs 1-12 of 24
+  are SEALED (last seal: pair-12, DEV/QA-001-004-03, commit 9bb2fc0,
+  2026-08-10T12:53:54Z). Pair 13 (DEV/QA-001-005-01, an order state machine
+  and idempotency module) is mid-cycle: feat 17e3806 -> QA BLOCK 7ac0e27
+  (11 findings F01-F11) -> revision 2 619882b (also authored ADR-012, a
+  proposed decision record on actor-based transition authority) -> QA
+  re-verification #1 30fe9da (BLOCK LIFTED -> PASS, 4 new non-blocking
+  findings F12-F15) -> holdout run 1 df663c3 (8/9, one MEDIUM finding F01
+  on a fresh-client-order-id resend bypass). The holdout run itself survived
+  two independent interruptions this session — a false-alarm pack-integrity
+  abort caused by a manifest header copy-paste error (root-caused and fixed
+  via HASHING.md erratum commit 5c6254d) and a 600s stream-watchdog process
+  kill mid-run — both recovered via SendMessage resume plus disk-state
+  forensics, with zero cases spent early either time. A DEV revision-3 agent
+  (background Task a53491da44cf96e70, model opus, fresh context) was
+  dispatched at 2026-08-10T16:28:55Z to answer holdout F01 plus QA
+  F12/F13/F14/F15 together; it was still running, unreported, when this
+  session hit its context ceiling (522,456 tokens) and triggered this
+  emergency handoff. This handoff-agent itself is the session's second
+  concurrently pending background agent (aa90905eabe6cda8e).
+
+current_work:
+  slice_id: "DEV-001-005-01 / QA-001-005-01"
+  story_id: "STORY-001-005"
+  epic_id: "EPIC-001"
+  status: "in_progress"
+
+completed_this_session:
+  - "R2P pairs 1-12 of 24 confirmed SEALED on disk via git log (pair-9 0b018b2, pair-10 9118305, pair-11 ab1165e, pair-12 9bb2fc0 at 2026-08-10T12:53:54Z)."
+  - "Pair 13 QA re-verification #1 completed: BLOCK LIFTED -> PASS on revision 2 (619882b), commit 30fe9da — 28/28 predicted test flips justified, 21 fresh attack cases matched on first execution, 4 new non-blocking findings F12 (MEDIUM, rollback ignores the actor rule) / F13 (LOW) / F14 (LOW) / F15 (LOW, one-way pre-execution guard)."
+  - "Holdout HLD-001-005-01-v1 run-1 false-alarm abort diagnosed and resolved WITHOUT re-provisioning: the -005 manifests' in-manifest hashing-method comment is a copy-paste error from the -004 family; the true method (plain tar, per planning/holdouts/HASHING.md STORY-001-005 section) was re-verified twice and reproduces the published private_pack_sha256 exactly. Committed as commit 5c6254d (docs erratum + incident record, queued for human ratification at epic close per AP-07)."
+  - "Holdout custodian resumed after a 600s stream-watchdog kill (the one allowed run was still unspent — only the harness file existed on disk, no run log) and completed HLD-001-005-01-v1 run 1: 8/9, commit df663c3. One MEDIUM finding, F01 (INV-005): a duplicate/uncertain-state resend is blocked only by ORIGINAL order id; re-proposing the same economic order under a caller-minted FRESH client order id is accepted, producing two live orders for one intent."
+  - "Dispatched DEV-001-005-01 revision 3 (background Task a53491da44cf96e70, model opus) at 2026-08-10T16:28:55Z to respond to holdout F01 plus QA F12/F13/F14/F15 in one pass; expected commit message: \"fix(core): DEV-001-005-01 revision 3 — respond to holdout HLD-001-005-01-v1-F01 + QA F12/F13/F14/F15\". Still in flight (unreported) when this handoff was triggered."
+
+files_modified:
+  - path: "R2P: planning/holdouts/HASHING.md"
+    changes: "Added an ERRATUM + incident record section under STORY-001-005 documenting the -004/-005 hashing-method copy-paste error, the corrected tar method with reproduced hashes, and the run-1 custodian's correct abort. Committed 5c6254d."
+  - path: "R2P: planning/evidence/EVB-HLD-001-005-01-v1/ (new bundle)"
+    changes: "holdout-run1-harness.ts, holdout-run1-20260810T162323Z.log, manifest.yaml, qa-evidence-20260810T162323Z.log, qa-parity-20260810T162323Z.log — the pair-13 holdout run-1 evidence bundle. Committed in df663c3."
+  - path: "R2P: planning/decisions/ADR-012.yaml"
+    changes: "New proposed decision record (status: proposed, decision: null — ratification deferred to human owner at epic close per AP-07): every OrderStateAdjacencyRow should declare its actor (platform / platform_release / venue) and authority should follow the actor, addressing QA-001-005-01 F01/F03/F04/F05 as one root cause. Authored as part of DEV-001-005-01 revision 2 (commit 619882b)."
+  - path: "R2P: planning/slices/qa/QA-001-005-01.yaml"
+    changes: "v2 -> v3: appended reverification_1 block (verdict PASS, 4 new findings F12-F15, fresh-attack results, ADR-012 attack results). Currently 107,700 bytes."
+  - path: "R2P: planning/slices/dev/DEV-001-005-01.yaml"
+    changes: "status: implemented (revision 2, commit 619882b) as of last read; NOT yet updated for revision 3, which is still in flight. Currently 103,684 bytes."
+  - path: "ACOS 3.0: memory/handoffs/2026-08-10-emergency-handoff-3.yaml (this file)"
+    changes: "Created by this handoff agent."
+
+decisions_made:
+  - "ADR-012 (R2P, proposed 2026-08-10, status: proposed, NOT ratified): unifies QA-001-005-01 findings F01/F03/F04/F05 under one root cause — the v1 order-state model let any caller move an order on evidence that caller does not have, because reachability was computed as an undifferentiated transitive closure. Proposed fix: every adjacency row declares an actor (platform / platform_release / venue) and authority follows the actor. Ratification reserved for the human owner (Zee/Ben) at epic close per AP-07 — do not treat as final."
+  - "HASHING.md erratum (R2P, commit 5c6254d, 2026-08-10): STORY-001-005's holdout pack hashing method is the plain-tar method (matching STORY-001-003), NOT the concat method its own manifest header comment claims (that comment is a STORY-001-004 copy-paste error). This is a correction of record, not a re-provisioning — the sealed manifests themselves are unedited. Also queued for human ratification at epic close."
+
+candidate_learnings:
+  - "R2P holdout pack integrity hashing is PER-STORY-FAMILY, recorded centrally in planning/holdouts/HASHING.md, and the in-manifest header comment claiming a method is NOT authoritative and can be wrong — STORY-001-001 uses bsdtar with dir-prefixed member names, STORY-001-002 is documented UNRESOLVED, STORY-001-003 and STORY-001-005 use plain `COPYFILE_DISABLE=1 tar cf - cases.yaml expected.json README.md | shasum -a 256`, STORY-001-004 uses `cat cases.yaml README.md | shasum -a 256`. Any future holdout custodian brief must pull the method from HASHING.md, never from a sibling manifest's header comment or a prior story's precedent. (evidence: R2P planning/holdouts/HASHING.md STORY-001-005 erratum section, commit 5c6254d)"
+  - "The async background-Task custodian/reviewer pattern used in this orchestration (SendMessage to resume a stalled/killed agent by id, after checking disk state) survived two distinct failure modes cleanly this session: a correct-but-false-alarm abort from bad provisioning data, and an outright process kill from a 600s stream watchdog. Both recovered without re-spending the holdout's one-shot run, because the harness writes everything to disk BEFORE the single run executes — a crash before the run costs nothing, a crash after it still leaves the log on disk. This ordering discipline (write-then-run-once-then-record, never the reverse) is the reason recovery was safe. (evidence: R2P commits 5c6254d and df663c3; transcript 2026-08-10T15:36-16:28)"
+  - "This session hit its context ceiling at 522,456 tokens with 2 background Tasks still pending (the DEV revision-3 agent a53491da44cf96e70 and this handoff-agent itself) — the eternity-protocol pre-flight check (bash .claude/scripts/... in ACOS 3.0) reported 'PRE-FLIGHT OK' and proceeded to fire the handoff/reset cycle even with an in-flight subordinate agent; the next session must explicitly re-check whether that agent's work landed (git log for the expected revision-3 commit) rather than assuming it either completed or is still reachable via SendMessage. (evidence: transcript 2026-08-10T16:29:35-16:30:11)"
+
+blockers:
+  - "DEV-001-005-01 revision 3's outcome is UNKNOWN. As of this handoff, R2P git HEAD is still df663c3 (holdout run-1 evidence) and the working tree is CLEAN (git status --short returned nothing) — meaning background Task a53491da44cf96e70 (dispatched 2026-08-10T16:28:55Z) has made no committed AND no uncommitted changes yet. It may still be reading context, may have crashed with zero disk footprint (as happened once already this cycle with the holdout custodian), or may be unreachable from a fresh session (it was launched under this session's own Task/agent context, referenced by internal agentId a53491da44cf96e70, transcript at ~/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/subagents/agent-a53491da44cf96e70.jsonl — a NEW session after /clear may not be able to resume it by id and might need to re-dispatch fresh)."
+  - "ADR-012 and the HASHING.md erratum are both status: proposed / unratified — do not present either as final; both are queued for the human owner (Zee/Ben) at epic close per AP-07."
+
+next_actions:
+  - "First: check R2P git log for a commit matching \"fix(core): DEV-001-005-01 revision 3 — respond to holdout HLD-001-005-01-v1-F01 + QA F12/F13/F14/F15\". If present, proceed directly to QA re-verification #2 (fresh independent context, neither pass-1 nor pass-2 QA, neither DEV agent)."
+  - "If revision 3 has NOT landed: check whether Task a53491da44cf96e70 is still running/reachable (it may not be, across a session boundary). If unreachable or crashed, re-dispatch a fresh DEV-001-005-01 revision-3 agent per the same brief: read planning/evidence/EVB-HLD-001-005-01-v1/manifest.yaml (the ONLY permitted holdout source — holdouts_viewed must stay false, do not read qa-private/), planning/slices/qa/QA-001-005-01.yaml reverification_1 block (F12 MEDIUM, F13/F14/F15 LOW), planning/decisions/ADR-012.yaml (the actor rule F12 says is missing its rollback half), planning/slices/dev/DEV-001-005-01.yaml history (JC-01..JC-14, OBS-01..OBS-16), and packages/core/orders/order-state-machine.ts at HEAD (sha256 58667407da50a0faa00818862f399644d11c4550c4540888719b6276198d39f9 as of 619882b/30fe9da/df663c3 — re-verify unchanged before use)."
+  - "After revision 3 commits: QA re-verification #2, then holdout run 2 (same HLD-001-005-01-v1 pack, second and final allowed run), then the mutation gate on order-state-machine.ts (per-file >= 70, aggregate; use the DETACHED nohup+sentinel+Monitor pattern established in earlier pairs — the mutation-gate and holdout runs in this project have repeatedly hit tool-harness/stream timeouts on long runs, so detached execution is load-bearing, not optional)."
+  - "After the mutation gate clears: seal pair 13 (EVB-PAIR-001-005-01 manifest + EVB-HLD-001-005-01-v1 manifest, four pre-seal gates exit 0, human ratification of the pair + ADR-012 + all finding dispositions reserved for epic close per AP-07 — do not self-ratify)."
+  - "Before dispatching custodians for HLD-001-005-02-v1 or HLD-001-005-03-v1 (pairs 14-15, story STORY-001-005's remaining slices), pull the hashing method from planning/holdouts/HASHING.md directly rather than trusting those manifests' own header comments, which carry the same STORY-001-004 copy-paste error already found and fixed for -01."
+  - "After pair 13 (and 14-15) seal: stories STORY-001-006, STORY-001-007, STORY-001-008 (pairs 16-24) are still untouched — their DEV/QA slice yaml files are ~2-3KB placeholders only, no feat commits yet."
+
+context_for_next_session: |
+  Everything in this project lives under "/Users/zee/Documents/Vibe Coding/R2P"
+  — a completely separate, LOCAL-ONLY git repo from this ACOS 3.0 repo (this
+  handoff file lives in ACOS 3.0's memory/handoffs/, but do not confuse the
+  two repos' git states; R2P must never be pushed anywhere). The orchestration
+  pattern is: a DEV agent implements a slice (TDD), an independent QA agent
+  adversarially reviews it (BLOCK or PASS with findings), DEV revises to
+  answer findings, QA re-verifies fresh, an independent holdout custodian runs
+  a sealed, one-shot-only hidden test pack against the surviving candidate,
+  and only after ALL of that plus a mutation-gate score (per-file >= 70 on the
+  changed production file) clears does the orchestrator seal the pair. Human
+  ratification of every pair, every ADR, and every finding disposition is
+  explicitly deferred to epic close (referenced throughout as "AP-07") — no
+  agent in this project, including the orchestrator, approves or closes
+  anything itself.
+
+  Pair 13's specific state: the core defect chain this pair worked through is
+  about WHO is allowed to move an order and on WHAT evidence — a cancel
+  REQUEST is not a venue's answer, and a broker REPORT is not the firm's own
+  decision, but the v1 state model conflated both into one undifferentiated
+  reachability graph. ADR-012 (proposed, unratified) fixes this by tagging
+  every adjacency row with an actor. Findings still open going into revision 3
+  are: holdout F01 (a fresh-client-order-id resend bypasses the uncertain-
+  state guard because the guard checks order identity, not economic intent —
+  fairness-noted as possibly out of this slice's declared scope, see the
+  three-part fairness_note in EVB-HLD-001-005-01-v1/manifest.yaml lines
+  ~436-458), QA F12 (MEDIUM — recovery_rollback ignores the actor rule
+  entirely and can walk held/approved/canceled_pending backwards across a
+  platform-authored row, reaching an edge ADR-012's own alternatives_considered
+  says was deliberately not taken), and F13/F14/F15 (LOW — one wording
+  over-claim, two wrong `why` rationales in DEV's own confined-failure
+  pre-derivation, and a one-directional pre-execution guard). None of the four
+  block the holdout's own verdict; F12 is flagged as the one a further
+  revision would most usefully answer since it is a published rule wider than
+  its implementation and lands squarely on ADR-012's subject.
+
+  The single biggest thing the next session needs to resolve FIRST is simply
+  whether the in-flight DEV revision-3 agent (Task a53491da44cf96e70) actually
+  finished. Check `git -C "/Users/zee/Documents/Vibe Coding/R2P" log --oneline
+  -5` for a commit starting "fix(core): DEV-001-005-01 revision 3" before
+  doing anything else — if it's there, move straight to QA re-verification #2;
+  if not, treat the agent as lost and re-dispatch fresh from the brief
+  reconstructed above (the same READ FIRST list: the holdout manifest, the QA
+  reverification_1 block, ADR-012, and the DEV slice's own history). Do not
+  read qa-private/ directly under any circumstances — the holdout blindness
+  rule (holdouts_viewed stays false for DEV/QA agents) is load-bearing across
+  this whole project and was enforced strictly all session.
+
+  One operational pattern worth carrying forward: this session survived two
+  real infrastructure failures (a stream-watchdog kill and a false-alarm
+  integrity abort) purely by checking disk state before deciding how to
+  resume, then using SendMessage to resume the SAME background agent by id
+  rather than starting over — because the holdout's one-shot-run rule means a
+  fresh restart would either waste the only allowed run or require
+  re-provisioning a whole new pack. If similar interruptions happen again in
+  the next session, check the evidence bundle directory for a partial harness/
+  log before assuming the run needs to restart.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (this session's own transcript — tail ~200 lines read directly, plus an earlier ~200KB tail slice)"
+  - "git -C \"/Users/zee/Documents/Vibe Coding/R2P\" log --oneline -40 and -5 (recheck)"
+  - "git -C \"/Users/zee/Documents/Vibe Coding/R2P\" status --short"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/ (directory listing, mtimes)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/ (directory listing, mtimes)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/holdouts/ (directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/ (directory listing, all EVB-* bundles)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-HLD-001-005-01-v1/ (directory listing + manifest.yaml F01 finding, lines 399-458)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-005-01/ (directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ (directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ADR-012.yaml (first ~80 lines)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/ (top-level structure via find; planning/stories/ and planning/epics/ listings)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-005-01.yaml (status line, grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-005-01.yaml (F12-F15 sections, grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/.acos/ (directory listing)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/81621d8a-41ca-4aab-b9ca-aeffb42f629f/tasks/ (listing only, to confirm both background agents' output-symlink existence — contents not read)"
+
+# ── ADDENDUM (orchestrator, appended at fire time before /clear) ──────────
+addendum_2026_08_10_fire3:
+  written_at_utc: "post-handoff, pre-clear (this fire)"
+  fact: >-
+    The in-flight DEV revision-3 agent (background task a53491da44cf96e70,
+    flagged above as the critical open question) is now CONFIRMED DEAD: its
+    600s stream-watchdog failure notification arrived after this handoff was
+    written. Its only output was "I'll start by reading the required context
+    files" — zero work done. R2P HEAD remains df663c3, working tree clean.
+    Resolution for the next session: RE-DISPATCH revision 3 fresh (full brief
+    reconstructed in the pending-resume prompt for this session). A late
+    task-notification for the dead agent, if one arrives, is noise.

@@ -1,0 +1,146 @@
+timestamp: "2026-08-10T07:17:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 0
+
+session_summary: |
+  This session's real work is NOT in the ACOS 3.0 repo (cwd) — it is the R2P
+  project at /Users/zee/Documents/Vibe Coding/R2P, a LOCAL-ONLY git repo
+  (never push) building EPIC-001 of PRD_v0.4.txt via 24 adversarial DEV/QA
+  pairs. Session d72f5b72 is running under autopilot (goal: complete R2P per
+  the PRD, max_iterations 1000, activated 2026-08-09T08:04:29Z). Pair 10
+  (DEV/QA-001-004-01) was sealed this session at commit 9118305. Pair 11
+  (DEV/QA-001-004-02) is now mid-cycle: build -> QA BLOCK -> rev2 -> QA PASS
+  -> holdout run 1 (6/9) -> rev3 (proposes ADR-010) -> QA reverify-2 PASS
+  SUSTAINED -> holdout run 2 (8/9, one new LOW finding F04) -> mutation gate
+  run 1 scored the changed file 69.57, just under the required 70 per-file
+  bar (PRD Section 16.7) even though the whole-project aggregate passed at
+  80.92. Following the pair-7/pair-10 precedent, the orchestrator dispatched
+  a fresh-context TESTS-ONLY strengthening subagent (revision 4) to close the
+  gap with additional test cases only, zero production changes. That
+  subagent was still in flight (no new commit on R2P's HEAD, still 84389f6)
+  when this session hit its context ceiling (521,306 tokens measured
+  pre-flight) and fired the cmux Eternity Protocol save-then-reset cycle,
+  which is what spawned this handoff write.
+
+current_work:
+  slice_id: "SLICE-001-004-02"
+  story_id: "STORY-001-004"
+  epic_id: "EPIC-001"
+  status: "in_progress"
+
+completed_this_session:
+  - "Sealed pair 10 (DEV/QA-001-004-01) at commit 9118305: QA reverify-2 PASS SUSTAINED (7cfdff7, zero flips measured first, F07-F10 all LOW non-blocking), QA tooling amendment (93ebae0, nothing weakened), holdout run 2 9/9 (F01/H008 and F02/H009 RESOLVED, 86e41cb), mutation gate feasible-target.ts 86.84 / aggregate 84.55 (552c9e4, first scored run, no tests-only rev needed). All 4 gates exit 0 against sealed state (2284/2284 tests, check, qa:parity 24/24, qa:evidence 20). Human ratification of pair + ADR-009 + all finding dispositions reserved for epic close (AP-07 — no self-approval)."
+  - "Advanced pair 11 (DEV/QA-001-004-02) through: DEV baseline a29dcca -> QA-001-004-02 BLOCK 5806d48 (F01 HIGH price_band silently revived past its own band by turnover/liquidity, F02 HIGH Pattern-A trim engine starvation, F03 MEDIUM cash-reserve budget staleness, F04 LOW liquidity unit mislabel, F05 LOW property sweep coverage gap) -> DEV rev2 dd750c4 -> QA reverify-1 PASS ae74174 (BLOCK lifted; new F06 recorded) -> holdout run 1 5126daf: 6/9 on rev2 candidate dd750c4, findings F01/F02 (anti-suppression-at-exact-boundary, H003/H005, HIGH) and F03 (single-name/ADV composition-order divergence, H008, HIGH), disposition pending_human_review owner Ben."
+  - "DEV rev3 e7c88e0 responded to holdout run-1's three findings: fixed F01/F02 in production via an early-equality check in both trim engines, and fixed F03 by narrowing the declared exposure/eligibility-outranks-trade-size precedence to a same-zero-reference sub-case (authored ADR-010, status proposed, decision null — ratification reserved for epic close, AP-07)."
+  - "QA-001-004-02 re-verification #2 (868e75b): PASS SUSTAINED on revision 3 (e7c88e0); recorded new finding F07."
+  - "Holdout run 2 (84389f6) on rev3 candidate e7c88e0: 8/9. F01 RESOLVED (record H003: outcome reduced, limitMinor 5000000, observedMinor 5000000). F03 RESOLVED (record H008: 500 shares / $40,000.00 / weight 0.04, liquidity_participation limitMinor 500 -> observedMinor 625 -> 500). F02 PARTIAL: all 3 required records exact, plus an unpredicted true 4th record (net_exposure 10000000/10000000, net exactly at its bound by exact integer arithmetic — the new rev3 tie-rule correctly firing on a case the test pack's own answer key never anticipated) -> new finding F04 (LOW, non-blocking; the QA custodian characterized it as 'arguably a pack-oracle completeness gap rather than a candidate defect' — i.e. the answer key may be the thing that's incomplete, not the code). All four dispositions (F01-F04) pending_human_review, owner Ben. Orchestrator ruling: no revision 4 to chase a false 9/9 — suppressing a true record would reintroduce the exact anti-suppression bug class just fixed; F04 carries to the epic-close ratification packet. QA custodian integrity note: its single allowed holdout run completed BEFORE the orchestrator's message arrived; it did not re-run to chase a better score; pack hashes verified twice (pre/post)."
+  - "Launched the PRD Section 16.7 mutation gate for pair 11 (first launch failed on a zsh glob quirk — 'no matches found: stryker-setup-*.js' aborted a cleanup step and killed the whole command; fixed via find -delete). Relaunched detached (nohup-style, GATE_EXIT_CODE sentinel, watched via the Monitor tool rather than a blocking Bash call — pair 10's lesson was that the Bash tool's own timeout killed a non-detached mutation-gate run). Log: planning/evidence/EVB-PAIR-001-004-02/testruns/TESTRUN-20260810T062717Z-61-mutation-gate-run1-full.log (19,537 lines, currently UNTRACKED/uncommitted in R2P). Result after 39 min 11 sec: aggregate 80.92 (passes), but the changed file packages/core/portfolio/hard-constraints.ts scored 69.57 — 0.43 points BELOW the required 70 per-file bar. Breakdown on that file: 2438 mutants total, 1419 killed, 277 timeout, 376 survived, 366 no-coverage (0 errors); score on covered code alone was 81.85."
+  - "Dispatched a fresh-context TESTS-ONLY strengthening subagent (DEV-001-004-02 revision 4, pair-7 precedent) via Task/Agent at 2026-08-10T07:07:47Z. Its brief: kill 60-120 more mutants (target score ~72-75 for a comfortable margin, since 11 more kills is the bare 70.02% minimum and Stryker has run-to-run variance); its biggest lever is the 366 no-coverage mutants (code paths no test executes at all); source its targets from the gate log's per-mutant file:line:column listings, clustered by region; append-only new test cases in ONLY its own two files (tests/unit/portfolio-hard-constraints.test.ts, tests/property/portfolio-hard-constraints.property.test.ts); zero production changes anywhere in packages/** (sha256 attestation required pre/post, production hash at hand-off time is d1b567a60cc0e5b85627b31b7a5feffa512067b557e66e085fa472c9e1fabdb0); never touch QA's files; never run the full 40-minute mutation gate itself (that stays the orchestrator's action) — it may run targeted vitest and the full suite only. This subagent had NOT yet committed (R2P HEAD still 84389f6, no new files beyond the untracked gate log) when this handoff was written, roughly 10 minutes after being dispatched — it should be treated as still in flight or possibly finished-but-unreported."
+  - "Ran the acos-handoff-agent (this write) as the save side of an Eternity Protocol save-then-reset cycle: context was measured at 521,306 tokens pre-flight; cmux surface F354478B-743B-472C-AFF8-69DF9820031B; session d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf."
+
+files_modified:
+  - path: "packages/core/portfolio/hard-constraints.ts (R2P repo)"
+    changes: "Modified across DEV revisions 2 and 3 this session (dd750c4, e7c88e0) to fix QA-001-004-02's BLOCK findings and holdout run-1's F01/F02/F03. Production byte-identical since e7c88e0/84389f6; sha256 d1b567a60cc0e5b85627b31b7a5feffa512067b557e66e085fa472c9e1fabdb0 as of hand-off. The in-flight revision-4 subagent is under strict instruction to leave this file byte-unchanged (tests-only strengthening)."
+  - path: "planning/decisions/ADR-010.yaml (R2P repo)"
+    changes: "New this session (authored during DEV rev3, e7c88e0). Narrows the declared exposure/eligibility-outranks-trade-size precedence to a same-zero-reference sub-case so single-name and liquidity/ADV bounds compose to their tightest joint bound for a brand-new position. status: proposed, decision: null — ratification reserved for the human owner (Ben) at epic close."
+  - path: "planning/slices/dev/DEV-001-004-02.yaml (R2P repo)"
+    changes: "Contains revision_2 and revision_3 blocks (self_approval: none on both; AP-07 — no agent self-approves). Does NOT yet contain a revision_4 block — that gets written when the in-flight strengthening subagent finishes."
+  - path: "planning/evidence/EVB-PAIR-001-004-02/testruns/TESTRUN-20260810T062717Z-61-mutation-gate-run1-full.log (R2P repo)"
+    changes: "New, untracked, 19,537 lines / ~1.7MB. Full Stryker mutation-gate run-1 log for pair 11, including the complete per-mutant survivor and no-coverage listing for hard-constraints.ts that the revision-4 subagent is meant to mine for target clusters. Not yet committed as of hand-off."
+  - path: "tests/unit/portfolio-hard-constraints.test.ts and tests/property/portfolio-hard-constraints.property.test.ts (R2P repo)"
+    changes: "Target files for the in-flight revision-4 tests-only strengthening subagent (append-only). State at hand-off time unverified by this handoff agent — no new commit exists yet to confirm what, if anything, was added."
+
+decisions_made:
+  - "R2P orchestrator ruling (this session, no file record beyond the transcript): no revision 4 will be used to chase a perfect 9/9 on holdout run 2 — the one PARTIAL miss (F02, now closed as new finding F04) is a TRUE record the fix correctly produced on a case the test pack's own frozen answer key never anticipated; suppressing it to match the old key would reintroduce the exact anti-suppression defect class pair 11 exists to fix. F04 is carried to the epic-close human ratification packet rather than resolved by an agent."
+  - "ADR-010 (planning/decisions/ADR-010.yaml, R2P repo): proposed by DEV during revision 3; decision left null pending human ratification at epic close (AP-07 — no agent self-approves ADRs)."
+
+candidate_learnings:
+  - "The R2P repo's local zsh throws 'no matches found: <glob>' and ABORTS the entire compound command (not just the failing clause) when a Stryker mutation-gate cleanup step's glob (e.g. stryker-setup-*.js) matches nothing — the fix used this session was to swap that cleanup step for `find ... -delete`, which does not error on zero matches (evidence: transcript text describing the pair-11 gate's first failed launch, corroborated by the successful detached relaunch producing TESTRUN-20260810T062717Z-61)."
+  - "In this R2P/Claude Code environment, a foreground Bash tool call has its own timeout that can kill a long-running mutation-gate process before it finishes, independent of the process's own runtime — the working pattern established across pair 10 and pair 11 is to launch the gate detached (nohup-style with a GATE_EXIT_CODE sentinel written to the log) and watch it via the Monitor tool rather than a blocking Bash call (evidence: pair-11 dispatch prompt to this session's DEV-001-004-02 revision-4 subagent explicitly cites 'pair 10's lesson was that the Bash tool's own timeout killed a non-detached run')."
+  - "R2P's PRD Section 16.7 mutation-gate bar is evaluated PER CHANGED FILE, not just on the aggregate score — a file can miss its own 70% bar (as hard-constraints.ts did at 69.57) even while the whole-project aggregate clears comfortably (80.92 here), and the established remedy (pair 7 and now pair 11 precedent) is a fresh-context, TESTS-ONLY strengthening subagent that must leave production code byte-identical (sha256-attested) and append only to the owning DEV's own test files."
+  - "A sealed/frozen test-pack answer key used for R2P's holdout verification can itself be incomplete: this session's pair-11 holdout run 2 saw the fixed code correctly publish a true 4th record (net exposure landing exactly at its bound) that the pack's own answer key never anticipated — the QA custodian and orchestrator both treated this as a candidate 'pack-oracle completeness gap' rather than assuming the code was wrong, and deferred the call to a human rather than either suppressing the true record or auto-resolving it (evidence: this session's own final assistant turn discussing holdout run 2 / finding F04)."
+
+blockers:
+  - "Pair 11 cannot be sealed until the mutation gate clears BOTH the per-file bar (hard-constraints.ts >= 70, currently 69.57) and the aggregate bar (already passing at 80.92). This is gated on the in-flight revision-4 tests-only strengthening subagent finishing, followed by an orchestrator-run full mutation-gate re-run (~25-45 minutes expected, launched DETACHED per the Monitor pattern above — do not use a blocking Bash call)."
+  - "The in-flight revision-4 subagent's outcome is UNKNOWN to this handoff — as of hand-off time R2P's git HEAD was still 84389f6 (no revision-4 commit), and no DEV-001-004-02.yaml revision_4 block existed yet. It may still be running, may have finished without yet reporting back to the parent session, or may have failed silently. The next session MUST check for a new commit / revision_4 block before assuming anything about its state."
+  - "Four findings remain pending_human_review with owner Ben across pair 11: F01-F04 from holdout run 2 dispositions, plus ADR-010 itself — all deferred to the EPIC-001 close ratification packet per AP-07 (no agent self-approves)."
+
+next_actions:
+  - "Check R2P repo state first: `cd '/Users/zee/Documents/Vibe Coding/R2P' && git log --oneline -5` and `git status --short`. If a new commit exists beyond 84389f6, read planning/slices/dev/DEV-001-004-02.yaml's revision_4 block and its final report to learn what the strengthening subagent did and whether it verified successfully (new-case count, full-suite green, production sha256 unchanged)."
+  - "If the revision-4 subagent has NOT committed and is not running, re-dispatch it (or resume/retry) using the same brief: mine planning/evidence/EVB-PAIR-001-004-02/testruns/TESTRUN-20260810T062717Z-61-mutation-gate-run1-full.log for hard-constraints.ts's 376 survived + 366 no-coverage mutants, append tests targeting the densest no-coverage clusters first, zero production changes, target killing 60-120 more mutants."
+  - "Once revision 4 (or an equivalent fix) is committed, re-run the PRD Section 16.7 mutation gate for hard-constraints.ts DETACHED (nohup + GATE_EXIT_CODE sentinel + Monitor tool, per the pattern established this session — never a blocking Bash timeout) and confirm the per-file score clears 70."
+  - "On a clearing gate: record the evidence (new TESTRUN log + yaml sidecar, EVB-PAIR-001-004-02 manifest bump), then seal pair 11 (DEV/QA-001-004-02) — this closes the second of Story 004's three pairs. Carry F01-F04, F07, and ADR-010 forward to the EPIC-001 close ratification packet; do not self-approve or self-rule on any of them (AP-07)."
+  - "After pair 11 seals, continue EPIC-001 per the autopilot goal (.acos/state/autopilot-loop-state-d72f5b72-*.json in the ACOS 3.0 repo): Story 004 has one more pair remaining (of three total), then continue through the rest of EPIC-001's 24 DEV/QA pairs toward EVB-STORY bundles, the 4-reviewer swarm review, EVB-EPIC-001, and the epic close packet, per docs/PRD_v0.4.txt in the R2P repo."
+  - "Remember: R2P is LOCAL-ONLY — never git push in that repo."
+
+context_for_next_session: |
+  The active project is R2P (/Users/zee/Documents/Vibe Coding/R2P), a
+  LOCAL-ONLY repo (never push) implementing PRD_v0.4.txt under an
+  adversarial DEV/QA-pair methodology with a strict no-self-approval rule
+  (AP-07): every DEV and QA agent records status and evidence but never
+  seals, approves, or rules on a finding — only the orchestrator (this
+  session's top-level Claude instance) seals pairs, and only the human
+  owner (Ben, or Zee) ratifies ADRs and finding dispositions at epic close.
+  EPIC-001 has 24 planned DEV/QA pairs across 8 stories; pair 10
+  (Story 004's first pair) sealed this session at commit 9118305; pair 11
+  (Story 004's second pair, DEV/QA-001-004-02) is deep into its adversarial
+  cycle and stalled ONE step short of sealing: the mutation-gate re-run
+  after a tests-only strengthening fix. The cycle so far, in order, is DEV
+  baseline (a29dcca) -> QA BLOCK (5806d48) -> DEV rev2 (dd750c4) -> QA
+  reverify-1 PASS (ae74174) -> holdout run 1 6/9 (5126daf) -> DEV rev3
+  (e7c88e0, proposes ADR-010) -> QA reverify-2 PASS SUSTAINED (868e75b) ->
+  holdout run 2 8/9 (84389f6, orchestrator ruled no revision 4 needed for
+  the holdout itself) -> mutation gate run 1: aggregate 80.92 PASS but
+  hard-constraints.ts 69.57 FAIL against the 70 per-file bar -> a
+  fresh-context TESTS-ONLY strengthening subagent (revision 4) dispatched at
+  2026-08-10T07:07:47Z to close the 0.43-point gap by adding test coverage
+  (target: kill 60-120 more mutants, focused on 366 currently-uncovered
+  mutants) with zero production changes, append-only to its own two test
+  files. As of this hand-off, that subagent's outcome is UNVERIFIED — R2P's
+  git HEAD was still 84389f6 and no revision_4 block existed in
+  planning/slices/dev/DEV-001-004-02.yaml. The very first action for the
+  next session should be checking whether that subagent has committed
+  (`git log --oneline -5` in R2P) before deciding whether to wait, retry, or
+  proceed to the gate re-run. The gate re-run itself must be launched
+  DETACHED (nohup-style with a GATE_EXIT_CODE sentinel in the log, watched
+  via the Monitor tool) — this session already lost one gate run this way
+  in pair 10 to the Bash tool's own foreground timeout, and repeated it
+  successfully in pair 11 by relaunching detached after a zsh glob-abort
+  false start. Four findings (F01-F04, all on pair 11) plus ADR-009 (pair
+  10) and ADR-010 (pair 11) are queued pending_human_review, owner Ben, for
+  the EPIC-001 close ratification packet — nothing here should be
+  auto-resolved by an agent. Session d72f5b72 is autopilot-active
+  (.acos/state/autopilot-*-d72f5b72-*.{json,} in the ACOS 3.0 repo) with a
+  goal file at R2P's docs/PRD_v0.4.txt and max_iterations 1000; this
+  hand-off was itself triggered by that session's own Eternity Protocol
+  save-then-reset cycle at 521,306 measured context tokens, cmux surface
+  F354478B-743B-472C-AFF8-69DF9820031B. Full commit-message detail for
+  every step above (exact holdout figures, exact QA finding text, mutant
+  counts) is preserved verbatim in the R2P git log (`git log --oneline -25`
+  from HEAD 84389f6) and in planning/slices/dev/DEV-001-004-02.yaml,
+  planning/slices/qa/QA-001-004-02.yaml, and
+  planning/holdouts/manifests/HLD-001-004-02-v1.yaml — read those before
+  re-deriving anything from memory.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (this session's own transcript, tail ~200KB / persisted tool-results file, lines 1-105 read in full)"
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf/tool-results/bl7a179ix.txt (persisted overflow of the transcript tail read)"
+  - "git -C '/Users/zee/Documents/Vibe Coding/R2P' status --short"
+  - "git -C '/Users/zee/Documents/Vibe Coding/R2P' log --oneline -25"
+  - "git -C '/Users/zee/Documents/Vibe Coding/R2P' branch --show-current"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-004-02/ (directory listing + testruns/ directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-004-02.yaml (grep for revision headers and self_approval lines)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/SLICE-001-004-02.yaml (status field)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/stories/STORY-001-004.yaml (status field)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/epics/EPIC-001.yaml (header/scope section)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ADR-010.yaml (title/status/decision fields)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ (directory listing, mtimes)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-loop-state-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.json"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-active-d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/ (directory listing)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0 git status --short / git log --oneline -10 (confirmed this session's work is NOT in this repo)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/ (directory listing, confirmed no conflicting handoff for this session existed before this write; the 2026-08-09-emergency-handoff-5.yaml found there belongs to a DIFFERENT concurrent session, b26287de-..., working on Logo Forge — not this session's work, excluded from this handoff)"
+  - "ps aux (confirmed parent Claude process PID 27313, --session-id 81621d8a-41ca-4aab-b9ca-aeffb42f629f, the cmux-attributed process tied to this session's transcript, still running at hand-off time; no separate stryker/mutation process visible)"

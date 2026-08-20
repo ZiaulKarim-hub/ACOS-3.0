@@ -1,0 +1,170 @@
+timestamp: "2026-08-11T19:00:30Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 522594
+
+session_summary: |
+  R2P EPIC-001 (local-only repo at /Users/zee/Documents/Vibe Coding/R2P — NEVER
+  push, confirmed zero git remotes via `git remote -v`) is mid-cycle on the
+  last 9 of 24 DEV/QA slice pairs. This handoff fires because the parent
+  session hit the eternity-protocol token threshold (522,594 tokens) while
+  three adversarial QA agents were reviewing three just-frozen DEV candidates
+  concurrently. CORRECTED STATE (verified against disk at 2026-08-11T19:00Z,
+  after this agent's first pass and after a coordinator correction): TWO of
+  the three QA agents (pairs 22 and 16) have now written complete BLOCK
+  verdicts to disk. The third (pair 19) has finished all its validation gates
+  (lint, typecheck, scope-attestation, re-hash) and produced a standalone
+  finding-demonstration script, but has NOT yet written its three-way
+  reconciliation or verdict into its YAML slice file. NONE of this session's
+  work — not the 3 frozen DEV commits' worth of QA follow-on, not any of the
+  three QA slice/manifest updates — is committed. HEAD is still 4d4c58a. The
+  single most important instruction for the next session: do NOT re-dispatch
+  any of these three QA reviewers. Their work is real, extensive, and on disk;
+  re-running them would duplicate or destroy it.
+
+current_work:
+  epic_id: "EPIC-001"
+  epic_status: "active"
+  story_id: "STORY-001-006 / STORY-001-007 / STORY-001-008 (all three status: ready — unaffected by pair-level work)"
+  slice_id: "DEV/QA-001-006-01 (pair 16), DEV/QA-001-007-01 (pair 19), DEV/QA-001-008-01 (pair 22)"
+  status: "in_progress — 15/24 pairs sealed; 3 new pairs frozen at commit 4d4c58a (HEAD); QA-001-008-01 verdict BLOCK (complete); QA-001-006-01 verdict BLOCK (complete); QA-001-007-01 verdict NOT yet written (all gates green, verdict/reconciliation writeback still pending)"
+
+completed_this_session:
+  - "15 of 24 DEV/QA pairs sealed. Pair 15 (DEV/QA-001-005-03, contingent trigger/cooldown/expiry) sealed at commit 081571a, closing STORY-001-005 (three pairs: 001-005-01/02/03)."
+  - "5 of 8 EVB-STORY bundles collected at dcf94e3 and sealed at 976cef3 (commit message, read directly from `git log`: \"seal(story): EVB-STORY-001-001..005 sealed 2026-08-11T17:34:42Z — evidence fixed, no story advanced, 3 of 5 record 'without tuning' as NOT MET\"). EVB-STORY-001-001, -003, -004 record the definition-of-done clause \"holdout passed without tuning\" as NOT MET / NOT ESTABLISHED; EVB-STORY-001-002 and -005 record it MET. No story's `status` field was advanced by this seal — STORY-001-006/007/008 all confirmed directly at `status: ready`; the seal commit message itself states \"no story advanced\" for all eight."
+  - "Three new DEV pairs built via TDD and frozen as separate commits, in this order: bc523e1 (DEV-001-006-01, cash/position booking, packages/core/ledger/event-booking.ts), d9bc775 (DEV-001-007-01, gross/net return hierarchy, packages/core/performance/return-hierarchy.ts, 2586 lines / sha256 9a9b3400...f437f27), 4d4c58a (DEV-001-008-01, run/compare workflow, packages/core/operator/run-compare-workflow.ts, 1874 lines / sha256 2c316fa3...bf432d). HEAD is currently 4d4c58a. Full repo suite at freeze: 4185 passed across 88 files, exit 0 (per the DEV agents' own reports, not independently re-run by this handoff agent)."
+  - "QA-001-008-01 (pair 22, run/compare workflow) — COMPLETE, verdict BLOCK, scoped narrowly to sealing the pair, not a rejection of the implementation. Two blocking findings: F03 (high) — two runs each carrying two error-level log entries produce exactly one disclosure and a statusText ending \"1 disclosure(s), all shown\", so four errors go unmentioned on the ordinary path; F01 (medium) — worstQualityState on an unrecognized state returns \"accepted\" (indexOf returns -1, never >0, so the unknown is discarded and index 0 survives), producing a null value badged figure_accepted — a false clean bill. Six more findings at lower severity (F02 computeDelta throws RangeError on non-integer input; F04 checksums absent from the comparison view; F05 identifier-normalization gaps; F06 inert `?? 0`; F07 DEV undercounted its own logs; F08 an unfalsifiable deployment claim listed as an economic invariant). QA independently re-hashed all four DEV artifacts and confirmed DEV's claimed hashes match, and independently verified and agreed with DEV's package-location reasoning (packages/core/operator/ rather than packages/app/, per the mutation gate's allowlist), adding the precision note that the exclusion is by omission from an allowlist, not an explicit negation glob. Disk: planning/slices/qa/QA-001-008-01.yaml has `verdict:` (line 372) and `public_findings:` (line 263) fully populated; planning/evidence/EVB-PAIR-001-008-01/manifest.yaml is v1->v2 (modified in git status); bundle now holds 11 files."
+  - "QA-001-006-01 (pair 16, cash/position booking) — COMPLETE as of the final check in this handoff (it was still in flight on this agent's first pass minutes earlier; verified again on disk after a coordinator correction). Verdict: BLOCK, pass 1, blocking_findings: [F01] ONLY. planning/slices/qa/QA-001-006-01.yaml (now 861 lines) records: F01 — two trades with individual deltas near 1e24 (both within the module's own declared MAX_ABS_QUANTITY / MAX_UNIT_PRICE_MINOR bounds) are ACCEPTED, all six conservation checks report PASS, and the published aggregates are exact — but the module's own per-event audit-trail deltas are NOT safe integers, and summing them does not equal published cash (a residual of 77,926,400 minor units at a declared tolerance of ZERO), even though the module's own header doctrine claims a figure too large for exact float64 publication is refused, not approximated. The verdict's own `scope_of_block` text is explicit that the CORE derivation is otherwise correct (hand-computed against an independent reference implementation, both prohibited behaviours structurally blocked, JC-04/JC-08/JC-12 hold, all 7 PRD LED-002 outputs real, generation-rate floors genuinely build-failing) — F01 alone blocks. Five more findings filed as `not_blocking_but_must_be_answered` (F02 exported policy tables mutable/returned by reference, so a caller mutation contaminates every later call and can silently substitute LIFO while the module still declares 'average'; F03 the commuting flag ignores reference-by-reversal; F04 an odd-lot corporate-action refusal is per-LOT not per-position, so two 5-unit lots refuse the whole account even though the same ten units as one lot splits cleanly; F05 — DEV's own OWN disclosed workaround for F04 (book a cash-in-lieu or adjustment event first) was directly tested and REFUTED, see testruns/TESTRUN-20260811T185459Z-17-QA-obs03-workaround-refuted.log: neither remedy DEV named rescues the split in either direction, only a real priced economic trade closes the odd lot, which a corporate action should never require, and DEV's disclosure is judged to UNDERSTATE its own defect; F06 a second, unflagged tautological conservation check beyond DEV's own self-flagged OBS-11). Six more findings filed as `disclosures_requiring_a_ruling` (F07-F12, including the replay checksum omitting event-disposition counts and the reversal identity breaking exactly at MAX_LEDGER_EVENTS). `holdout_status: NOT RUN by this reviewer`; qa_private_opened: false; committed: false; pushed: false. planning/evidence/EVB-PAIR-001-006-01/manifest.yaml is v1->v2 (modified in git status, version-line comment confirms QA-001-006-01 pass-1 record appended additively); bundle now holds 20 files."
+  - "QA-001-007-01 (pair 19, gross/net return hierarchy) — NOT YET COMPLETE. All validation gates are green (latest log, TESTRUN-20260811T185841Z-13-QA-lint-typecheck-and-scope.log: biome exit 0, tsc exit 0 repo-wide, zero git writes, DEV-owned file hashes unchanged since freeze, zero python3 invocations, qa-private/ never opened). A standalone finding-demonstration script was written at planning/evidence/EVB-PAIR-001-007-01/qa-finding-demonstrations.ts (run via `pnpm exec tsx`, reads the module's public entry point only, asserts nothing, prints reproductions of findings F01-F05). Its 2185-line adversarial test file (tests/unit/qa-001-007-01.adversarial.test.ts) contains three labelled defect-pin findings (search \"QA-DEFECT-F0\"): F01a/F01b — an ordinary 30-day series, or a series with strictly-positive exact variance, can publish a NaN or a false-zero volatility/Sharpe (*Approx fields) while still reporting available:true beside a correct exact variance (confirms the module's own blind-derivation prediction BD-13); F02 — a series whose own inputs do not reconcile (a 1,000-minor-unit residual between one day's close and the next day's open, zero external flow) is still admitted and publishes a time-weighted return of exactly 0.00% as if it reconciled; F03 — capacity is not monotone: adding a second, non-binding instrument with an astronomically large but irrelevant ceiling destroys the whole capacity record even though the binding (minimum) ceiling from the first instrument alone was perfectly publishable (confirms blind-derivation prediction BD-11). BUT planning/slices/qa/QA-001-007-01.yaml is STILL only 160 lines with `three_way_reconciliation: []`, `public_findings: []`, and `verdict: null` (confirmed directly, lines 153-155) — the reconciliation and verdict writeback has not happened, and its EVB-PAIR-001-007-01/manifest.yaml is NOT in `git status` (still v1, unmodified), even though the bundle directory itself already holds 16 files (5 QA testrun logs numbered 09-13, plus the demonstration script)."
+
+files_modified:
+  - path: "planning/slices/qa/QA-001-006-01.yaml"
+    changes: "COMPLETE: 861 lines. Full blind-derivation (P01-P10), three-way reconciliation, public_findings, verdict BLOCK (blocking: F01 only; 5 must-answer F02-F06; 6 disclosures F07-F12), qa_attestation, qa_files_written, qa_test_inventory. Modified in git status."
+  - path: "planning/slices/qa/QA-001-007-01.yaml"
+    changes: "STILL 160 lines. Blind-derivation Section A fully written (20 predictions BD-01 through BD-20). three_way_reconciliation: [], public_findings: [], verdict: null — all still empty as of this handoff. Modified in git status (grown from its DEV-authored v1, but Section B not yet filled)."
+  - path: "planning/slices/qa/QA-001-008-01.yaml"
+    changes: "COMPLETE: full three-way reconciliation, 8 public_findings (F01-F08), verdict BLOCK with explicit scope, all pending_human_review with owner Ben, self_approved: false."
+  - path: "planning/evidence/EVB-PAIR-001-006-01/manifest.yaml"
+    changes: "v1->v2, additive, QA-001-006-01 pass-1 record appended at the foot; version-line comment confirms nothing else changed. Modified in git status. Bundle: 20 files total."
+  - path: "planning/evidence/EVB-PAIR-001-007-01/manifest.yaml"
+    changes: "STILL v1 (version line reads 'version: 1 # created by the DEV-001-007-01 implementation agent'). NOT modified in git status. Bundle directory already holds 16 files (QA testrun logs + demo script), but the manifest itself has not been updated to append a QA section."
+  - path: "planning/evidence/EVB-PAIR-001-008-01/manifest.yaml"
+    changes: "v1->v2, additive (1 line deleted — the old version line — 125 lines added). Modified in git status. Bundle: 11 files total."
+  - path: "tests/unit/qa-001-006-01.adversarial.test.ts"
+    changes: "New file, 52 test cases (24 defect pins, 5 golden differential, 9 negative boundary, 4 property corpus, 6 state/disposition, 4 controls), untracked in git."
+  - path: "tests/unit/qa-001-007-01.adversarial.test.ts"
+    changes: "New file, 2185 lines, 15 QA-* describe blocks (QA-A through QA-O) plus 3 QA-DEFECT-F0[1-3] describe blocks, untracked in git."
+  - path: "tests/unit/qa-001-008-01.adversarial.test.ts"
+    changes: "New file, 1023 lines, 34 test cases (12 failing by design, 22 holding), untracked in git."
+  - path: "planning/evidence/EVB-PAIR-001-006-01/testruns/"
+    changes: "8 new QA testrun logs (numbered 11-18), untracked. Log 17 documents the OBS-03 workaround refutation in full (baseline + 4 remedy attempts, all refused, plus the one unnamed remedy that does work: a real sell)."
+  - path: "planning/evidence/EVB-PAIR-001-007-01/testruns/"
+    changes: "5 new QA testrun logs (numbered 09-13), untracked. Log 13 (lint-typecheck-and-scope) is the newest and shows all gates green, but is NOT the same thing as a written verdict."
+  - path: "planning/evidence/EVB-PAIR-001-007-01/qa-finding-demonstrations.ts"
+    changes: "New standalone TypeScript script, untracked, reproduces findings F01-F05 outside vitest via `pnpm exec tsx`; reads the module's public entry point only, writes nothing, asserts nothing."
+  - path: "planning/evidence/EVB-PAIR-001-008-01/testruns/"
+    changes: "3 new QA testrun logs (numbered 07-09), untracked, each with an explicit EXIT_CODE line."
+
+decisions_made: []
+
+candidate_learnings:
+  - "In this R2P orchestration pattern, an adversarial QA agent's finished, finding-rich adversarial *.test.ts file can exist on disk WELL before its formal verdict is written back to the QA-*.yaml slice record or the EVB-PAIR manifest — the two artifact classes can be badly out of sync mid-flight, sometimes by many minutes and multiple additional testrun logs. Do not infer a QA agent's completion state from the test file alone; check the YAML `verdict:` field, the manifest's git-status modification state, and the manifest's own `version:` line together (evidence: pair 19/QA-001-007-01 had a complete, 3-finding test file, 5 testrun logs including a green final lint/typecheck/scope gate, and a standalone finding-demonstration script — yet its YAML verdict was still `null` and its manifest was still unmodified v1)."
+  - "State on a fast-moving concurrent multi-agent orchestration can change materially within the ~10-15 minutes it takes to gather and write a single handoff document — this handoff itself had to be corrected mid-write when a QA agent (pair 16) finished and wrote its verdict between this agent's first disk read and its second. Re-verify `git status` immediately before finalizing any handoff for a session with live background agents, not just once at the start."
+  - "R2P has zero git remotes configured (`git remote -v` returns nothing) — this is the mechanical enforcement, not just a stated rule, of the local-only constraint."
+
+blockers:
+  - "QA-001-007-01's verdict is the only one of the three still unresolved. All its validation gates are green and a finding-demonstration script exists, so it is very likely near-finished, but pair 19 cannot be sealed and no DEV revision can start on it until its three-way reconciliation and verdict are written to planning/slices/qa/QA-001-007-01.yaml and its manifest is bumped v1->v2."
+  - "Pairs 16 and 22 both have BLOCK verdicts on disk and need a DEV revision cycle (fix -> re-verify QA -> holdout -> mutation gate >=70 per-file) before they can be sealed, following the same multi-round pattern already seen in pair 15's history (three DEV/QA rounds before its eventual seal at 081571a)."
+  - "Do NOT re-dispatch fresh adversarial QA passes on any of pairs 16, 19, or 22 — their existing work (test files, findings, and for 16/22 their full verdicts) is real, extensive, and would be duplicated or destroyed by a fresh dispatch."
+
+next_actions:
+  - "First: re-check `git status --short`, and grep `^verdict:` in all three QA-*.yaml files, to confirm the state described here still holds (or has moved further — QA-001-007-01 may have finished by the time the next session starts)."
+  - "If QA-001-007-01's verdict is still `null`: this is NOT a job for a fresh QA dispatch. The test file, the finding-demonstration script, and 5 testrun logs with all-green gates already exist. What's missing is specifically the three-way reconciliation and verdict block in the YAML (mirror the structure already used and completed in QA-001-006-01.yaml and QA-001-008-01.yaml) and the EVB-PAIR-001-007-01/manifest.yaml v1->v2 append. Given three named defect-pin findings already exist (F01a/b NaN/false-zero volatility-Sharpe, F02 non-reconciling series still publishes a return, F03 capacity non-monotonicity) this pair is very likely to also verdict BLOCK, but do not assume — read the actual reconciliation once it exists."
+  - "Once all three of pairs 16/19/22 have recorded verdicts (expected: three BLOCKs): each needs a DEV revision cycle (fix -> re-verify QA -> holdout -> mutation gate >=70 per-file) before sealing."
+  - "After pairs 16/19/22 are sealed: build DEV-001-006-02/03, DEV-001-007-02/03, DEV-001-008-02/03 (6 more pairs, all currently `status: draft`, confirmed directly), then EVB-STORY-001-006/007/008, then the 4-reviewer SWARM review, then EVB-EPIC-001, then the ratification/close packet for Zee."
+  - "The three-of-five 'holdout passed without tuning' NOT MET finding across the already-sealed story bundles (EVB-STORY-001-001, -003, -004) remains the single most important open item for that ratification packet and has not been touched by anything in this session — it still needs to be carried into the close packet."
+
+context_for_next_session: |
+  This session executed R2P EPIC-001's adversarial DEV/QA pipeline at
+  /Users/zee/Documents/Vibe Coding/R2P, a git repo with NO remotes configured
+  (confirmed directly — never push here). It sealed pair 15 (closing
+  STORY-001-005), sealed 5 of 8 EVB-STORY bundles (with the important caveat,
+  visible right in the seal commit message, that 3 of those 5 record "holdout
+  passed without tuning" as NOT MET and that no STORY status field was
+  advanced), then built three new DEV pairs via TDD (bc523e1, d9bc775,
+  4d4c58a for pairs 16/19/22 respectively; HEAD is currently 4d4c58a) and
+  dispatched three independent adversarial QA agents against them
+  concurrently. The session hit the eternity-protocol token threshold
+  (522,594 tokens) mid-review and fired this handoff. BY THE TIME THIS
+  HANDOFF WAS FINALIZED (verified twice, roughly 10 minutes apart, with a
+  material state change in between): QA-001-008-01 (pair 22) and QA-001-006-01
+  (pair 16) both hold complete, disk-recorded BLOCK verdicts — pair 22 on a
+  status line falsely claiming "all shown" while errors go undisclosed plus
+  an unrecognized quality-state value badging a missing figure as accepted;
+  pair 16 on a single blocking finding, an unexplained residual between
+  per-event audit-trail deltas and published cash at a declared zero
+  tolerance, arising from extreme-but-input-legal magnitudes that escape the
+  module's own safe-integer publication gate — plus a confirmed-refuted
+  disclosed workaround and 11 further non-blocking findings/disclosures.
+  QA-001-007-01 (pair 19) is the one still open: every validation gate is
+  green, a standalone finding-demonstration script exists, and three
+  defect-pin findings are already written into its adversarial test file
+  (a false-zero/NaN volatility-Sharpe publication bug, a non-reconciling
+  series still publishing a return as if it reconciled, and a
+  capacity-record monotonicity break) — but the formal three-way
+  reconciliation and verdict block in its YAML slice file, and its manifest's
+  v1->v2 bump, have not yet been written. THE MOST IMPORTANT INSTRUCTION for
+  the next session: do not re-dispatch fresh adversarial QA on any of pairs
+  16, 19, or 22 — all three already carry substantial, valid, on-disk work,
+  and two of the three already carry complete verdicts. What pair 19 needs is
+  a WRITEBACK, not a re-review. Nothing from this cycle is committed; HEAD is
+  still 4d4c58a, and all the QA-produced changes sit as modified/untracked
+  files in the working tree. Standing rules that must carry forward exactly
+  as stated: never push (no remotes exist anyway); AP-06, never weaken a
+  test/invariant/tolerance; AP-07, no agent approves/seals/closes/ratifies
+  anything — every finding stays pending_human_review with owner Ben, and the
+  orchestrator (the main session, not any sub-agent) is the only thing that
+  commits or seals; TypeScript only, zero Python in R2P (disclose an accident
+  honestly, never round to zero); qa-private/ is custodian-only and confirmed
+  untouched this session (directory mtime predates this cycle); macOS has no
+  timeout/gtimeout; zsh aborts on unmatched globs, use find; scoped git adds
+  only, never `git add -A`/`git add .`. Operational lessons worth carrying
+  forward: agents stall at narration boundaries constantly and must be
+  resumed with an exact numbered remainder checklist plus "continue in ONE
+  pass" rather than trusted at their last narration; a 600s stream-idle
+  watchdog kills silent agents; concurrent agents must never touch git (the
+  orchestrator commits, and that commit is QA's freeze point); background
+  bash is capped at 600s (use the Monitor tool for long-running mutation-gate
+  watchers instead); `vitest -t` is a regex and a non-matching pattern
+  silently reports "N skipped" while exiting 0; a test that reads its own
+  module's source text aborts the mutation gate, which rewrites source in
+  place; and — new this cycle — a QA agent's own testrun log can assert a
+  scope attestation that has not yet actually happened on disk (or, as seen
+  here, disk can catch up moments later), so verify `git status` fresh
+  immediately before acting on any agent's self-report of what it wrote.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (tail -c 200000; this session's own transcript, read first per protocol)"
+  - "/Users/zee/Documents/Vibe Coding/R2P (git status --short, checked twice ~10 min apart; git log --oneline -30; git remote -v; git diff --stat HEAD~5..HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-006-01.yaml (checked twice: incomplete on first read, verdict BLOCK confirmed on second read)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-007-01.yaml (checked twice, still verdict: null both times)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/qa/QA-001-008-01.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-006-01/manifest.yaml (version-line grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-007-01/manifest.yaml (version-line grep, confirmed still v1)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-008-01/manifest.yaml (version-line grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-006-01/testruns/TESTRUN-20260811T185459Z-17-QA-obs03-workaround-refuted.log"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-007-01/testruns/TESTRUN-20260811T185841Z-13-QA-lint-typecheck-and-scope.log"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-PAIR-001-007-01/qa-finding-demonstrations.ts"
+  - "/Users/zee/Documents/Vibe Coding/R2P/tests/unit/qa-001-006-01.adversarial.test.ts"
+  - "/Users/zee/Documents/Vibe Coding/R2P/tests/unit/qa-001-007-01.adversarial.test.ts"
+  - "Bundle file counts via `find <dir> -type f | wc -l`: EVB-PAIR-001-006-01 = 20, EVB-PAIR-001-007-01 = 16, EVB-PAIR-001-008-01 = 11"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/stories/STORY-001-006.yaml, STORY-001-007.yaml, STORY-001-008.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/epics/EPIC-001.yaml"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/slices/dev/DEV-001-006-02.yaml, DEV-001-006-03.yaml, DEV-001-007-02.yaml, DEV-001-007-03.yaml, DEV-001-008-02.yaml, DEV-001-008-03.yaml (status: draft, confirmed unbuilt)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/qa-private/ (ls -la, confirmed untouched — mtime Aug 6, predates this cycle)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/decisions/ (ADR-001 through ADR-012, none created today)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/ (autopilot-active-d72f5b72-*, confirms session still active)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/2026-08-11-emergency-handoff.yaml (earlier same-session handoff from 08:10 UTC today, checked for session_id continuity only, not used as a primary source)"
+  - "Coordinator (parent-session) correction message received mid-task, itself verified against disk rather than trusted at face value — its file counts (20/16/11) and its claim that QA-001-006-01 had moved to a written verdict were both confirmed independently before being incorporated"

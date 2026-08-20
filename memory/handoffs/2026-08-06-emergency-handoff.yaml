@@ -1,0 +1,287 @@
+timestamp: "2026-08-06T00:46:05-06:00"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "unknown"
+estimated_tokens: 0
+
+session_summary: |
+  ABSOLUTE-PATHS CAVEAT (read this first): this handoff is filed under ACOS 3.0's
+  memory/handoffs/ because the Eternity Protocol requires that path, but NONE of the
+  work described here happened in ACOS 3.0. This tab's shell cwd is stuck at
+  "/Users/zee/Documents/Vibe Coding/ACOS 3.0" (it could not be changed after this tab
+  adopted the FruitSync project via the Resurrection Protocol). Every file, git
+  command, and test run below lives under the SEPARATE repo
+  "/Users/zee/Documents/Vibe Coding/FruitSync" (a Unity 6 C# fruit-merge game, git
+  remote origin = https://github.com/ZiaulKarim-hub/FruitSync.git — PERSONAL account,
+  must never be pushed to okoateam). The next session must `cd` into FruitSync (or use
+  absolute paths) before doing anything — do not assume ACOS 3.0's tree is relevant.
+
+  This session worked an 11-item user change list against FruitSync, tracked
+  internally as 12 numbered tasks (per autopilot's own goal string, recovered from
+  .acos/state/autopilot-loop-state.json under ACOS 3.0 — see below). 10 of 12 are
+  complete. The .NET Core test mirror grew from 107 to a verified 201 passing tests
+  (re-run live during this handoff: `Passed! - Failed: 0, Passed: 201, Skipped: 0,
+  Total: 201`, exit code confirmed 0). Task 10 (per-level instructions/tutorial) is
+  partially done — the pure-C# LevelGuide.cs is written and tested, but the Loc.cs
+  string entries and the HUD panel that displays them are not. Task 12's runId debug
+  readout and in-editor blast-radius preview are not started. All FruitSync changes
+  are uncommitted in the working tree; nothing was committed this session.
+
+current_work:
+  slice_id: "unknown — no ACOS planning/ slice found for this work; the FruitSync
+    repo has its own planning/ and .acos/ dirs but they date to an earlier
+    (preeng-unix/Resurrection Protocol) initiative, not this session's task list"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+
+completed_this_session:
+  - "Central tuning config: Assets/Scripts/Core/Config/Tuning.cs (new, 21417 bytes,
+    last modified Aug 5 21:07) + Assets/Scripts/Unity/TuningLoader.cs (new, 5522
+    bytes) — loads an editable override file at persistentDataPath/fruitsync-tuning.txt."
+  - "Fixed the fruit-circle 'sticky-angry' mood bug in
+    Assets/Scripts/Unity/GameController.cs, method UpdateEvolutionMood."
+  - "Investigated the reported left-side cushion issue: no code-level physics bug
+    found (physics logic is mood-blind); user's working theory is it's a visual
+    effect of the darker angry rim sprite, unconfirmed — needs a repro to close out."
+  - "Tool drops cut to one third of previous rate."
+  - "Merge coins halved: Assets/Scripts/Core/Economy/CoinCurve.cs scale changed
+    3/4 -> 3/8, with a one-step ceiling."
+  - "Added Mood.Burned = 3 with the full graduation chain: happy->angry (IRON cup),
+    angry->fiery (BRONZE), fiery->burned (SILVER), burned->NUCLEAR (GOLD + eternal).
+    Matches the 5-level scheme documented in the new LevelGuide.cs doc comment
+    (1 happy/IRON, 2 angry/BRONZE, 3 fiery/SILVER, 4 burned/GOLD, 5 endless/unwinnable
+    by design)."
+  - "Fiery climbs no longer blast; BurnedBlast now reaches double the previous
+    radius; burned-tier rewards pay 10x the fiery-tier reward."
+  - "New burned sprite (charcoal, matte, X eyes) in
+    Assets/Scripts/Unity/FruitArt.cs (+84 lines) — the sprite-cache array was
+    resized from the Mood enum instead of a hardcoded literal of 3, which would
+    have index-out-of-range crashed once Burned=3 was added."
+  - "New FierySuffocation rule: Assets/Scripts/Core/Fruit/FierySuffocation.cs (new,
+    5310 bytes) with 15 tests in
+    build/dotnet/FruitSync.Core.Tests/FierySuffocationTests.cs (new). Wired into
+    Assets/Scripts/Unity/GameController.cs via ProcessSuffocation, gated on the
+    _burnedUnlocked flag."
+  - "New SellDesk: Assets/Scripts/Core/Economy/SellDesk.cs (new, 4582 bytes) —
+    brick=10, bomb=50, anvil=100, nuke=1000 coins — plus a money-loop guard test
+    in build/dotnet/FruitSync.Core.Tests/SellDeskTests.cs (new)."
+  - "One-save-slot-per-game enforcement: SaveSlots.SlotHoldingRun (new, in
+    Assets/Scripts/Unity/SaveSystem.cs, +25 lines) + HudView.ShowSaveRefused
+    (Assets/Scripts/Unity/HudView.cs, +125 lines) to warn which slot already
+    owns the run."
+  - "StatsStore.Record (Assets/Scripts/Unity/StatsSystem.cs, +81 lines) now keeps
+    the HIGHEST score per runId via a new recordedRunScores ledger, replacing the
+    old first-write-wins behavior."
+  - "Burned-phase drop mix retuned: happy 0%, angry 60% (bell curve sizes 1-6),
+    fiery 40% (sizes 1-4); endless phase set to 25% each mood. New
+    EndlessToolDropMultiplier = 0.10, stacking on top of the earlier one-third
+    cut."
+  - "Test suite: build/dotnet/FruitSync.Core.Tests/EconomyTests.cs (+26/-diff),
+    MergeResolverTests.cs (+94/-diff), plus new TuningTests.cs — 107 -> 201
+    passing, re-verified live in this handoff session (exit code 0)."
+
+files_modified:
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Economy/CoinCurve.cs"
+    changes: "merge-coin scale 3/4 -> 3/8 with one-step ceiling (13 lines changed)"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/Fruit.cs"
+    changes: "small change supporting the new Mood.Burned tier (9 lines)"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/MergeResolver.cs"
+    changes: "burned-tier merge/graduation logic, largest Core diff (91 lines)"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Scoring/ScoreCurve.cs"
+    changes: "burned-tier reward scaling, 10x fiery (18 lines)"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/BootstrapScene.cs"
+    changes: "small hookup, 6 lines added — NOT compile-verified (Unity tree, see limits)"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/FruitArt.cs"
+    changes: "new burned sprite + cache resize from enum instead of hardcoded 3
+      (84 lines) — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/FruitView.cs"
+    changes: "20 lines, supports burned visuals — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/GameController.cs"
+    changes: "largest file touched (364 lines): sticky-angry fix in
+      UpdateEvolutionMood, ProcessSuffocation wiring, burn-chain graduation,
+      blast-radius changes — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/HudView.cs"
+    changes: "125 lines: ShowSaveRefused, sell-desk UI (sell button positions
+      placed by arithmetic, NOT visually checked) — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/Loc.cs"
+    changes: "21 lines added so far; the bulk of task 10's localization keys
+      (level_title_N / level_about_N / level_next_N / level_anim_N /
+      help_tool_* / help_power_*) are NOT yet added — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/SaveSystem.cs"
+    changes: "25 lines: SaveSlots.SlotHoldingRun — NOT compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/StatsSystem.cs"
+    changes: "81 lines: StatsStore.Record highest-score-per-runId ledger — NOT
+      compile-verified"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/EconomyTests.cs"
+    changes: "updated for new coin/reward curves"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/MergeResolverTests.cs"
+    changes: "94 lines: burned-tier merge/graduation coverage"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Config/Tuning.cs"
+    changes: "NEW FILE — central tuning config, all magic numbers moved here"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/TuningLoader.cs"
+    changes: "NEW FILE — loads override file at persistentDataPath/fruitsync-tuning.txt"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Economy/SellDesk.cs"
+    changes: "NEW FILE — brick/bomb/anvil/nuke sell pricing"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/FierySuffocation.cs"
+    changes: "NEW FILE — fiery-to-burned suffocation rule"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Lifecycle/LevelGuide.cs"
+    changes: "NEW FILE (component C-083, most recently modified: Aug 6 00:42) —
+      5-level guide data (happy/IRON, angry/BRONZE, fiery/SILVER, burned/GOLD,
+      endless/unwinnable), key lookup, completeness tests; returns localization
+      KEYS only, wording still needs to land in Loc.cs"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/FierySuffocationTests.cs"
+    changes: "NEW FILE — 15 tests"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/SellDeskTests.cs"
+    changes: "NEW FILE — money-loop guard test"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/TuningTests.cs"
+    changes: "NEW FILE"
+  - path: "/Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet/FruitSync.Core.Tests/LevelGuideTests.cs"
+    changes: "NEW FILE — 5-level completeness tests for LevelGuide.cs"
+
+decisions_made:
+  - "No memory/decisions/ entries were filed today in either ACOS 3.0 or FruitSync
+    (both directories checked, most recent entries predate this session). The
+    11-item change list and 12-task tracking appear to have lived only in-session
+    (recovered here from autopilot's saved goal string, not from a decision
+    record) — nothing on disk formally records the task breakdown besides that
+    goal string and the code/test diffs themselves."
+  - "Level 5 (endless) is deliberately unwinnable by design — direct user quote
+    captured in the LevelGuide.cs doc comment (2026-08-05): 'the level after 4
+    is designed for failure, however longer you can survive, the more point you
+    can make and that is the goal of that level.'"
+
+blockers:
+  - "OPEN BUG, NOT FIXED: autopilot never actually runs for this work. Confirmed
+    live: /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-loop-state.json
+    shows activated_at 2026-08-06T03:43:48Z, max_iterations 150, iteration_count
+    still 0 as of this handoff (~3 hours after activation) — it captured the full
+    12-task goal string but never advanced. Root cause: autopilot-stop-handler.py
+    subordinates to the Eternity Protocol whenever ANY
+    .compact-fired-* / .clear-requested-* marker exists under
+    ~/Library/Application Support/acos-token-monitor/state/. Confirmed 10 stale
+    .compact-fired-* marker files present, oldest dated Jun 15 (files
+    .compact-fired-75411cc4-2c5e-4a97-b9bf-4de27f7dec3f,
+    .compact-fired-aec0b2ab-0324-4a73-9ff0-df92897f70af,
+    .compact-fired-c3733399-2874-49ca-87b4-aa8caf44a6a2). The specific one that
+    blocks THIS session is .compact-fired-2f929ed1-d898-4a1f-ab1e-a389f906999a
+    (dated Aug 5 21:04), which belongs to a different session. Suggested fix
+    (NOT applied — needs the user's decision): move the foreign markers into the
+    existing consumed/ folder at
+    ~/Library/Application Support/acos-token-monitor/state/consumed/ (confirmed
+    to already exist and hold ~336 prior entries, so this is the established
+    pattern, not a new mechanism)."
+  - "Left-side cushion visual issue: investigated but not resolved. No physics
+    bug found in code (physics logic is mood-blind). Leading theory is a visual
+    illusion caused by the darker angry rim sprite, but this is UNCONFIRMED —
+    needs a reproduction from the user before it can be called done or not-a-bug."
+  - "Unity-tree compile risk: the .NET Core test mirror
+    (build/dotnet/FruitSync.Core.Tests) only compiles
+    Assets/Scripts/Core/**. Every edit under Assets/Scripts/Unity/** this
+    session — GameController.cs, HudView.cs, StatsSystem.cs, Loc.cs,
+    SaveSystem.cs, FruitView.cs, FruitArt.cs, BootstrapScene.cs,
+    TuningLoader.cs — is UNVERIFIED by the 201-test run. Unity itself must be
+    opened to confirm these compile and run. The sell-button positions added to
+    HudView.cs were placed by arithmetic, not checked visually."
+  - "dotnet is not on PATH in this environment; every test invocation needs
+    DOTNET_ROOT=$HOME/.dotnet and PATH=$HOME/.dotnet:$PATH set first, run from
+    /Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet."
+
+next_actions:
+  - "Finish task 10 (per-level instructions): add the Loc.cs entries for every
+    level_title_N / level_about_N / level_next_N / level_anim_N / help_tool_* /
+    help_power_* key that LevelGuide.cs (Assets/Scripts/Core/Lifecycle/LevelGuide.cs)
+    already looks up, then build the HUD panel in
+    Assets/Scripts/Unity/HudView.cs that actually displays them with the short
+    per-level animation. LevelGuide.cs and its tests are done; this is pure
+    wiring + copywriting + a small animation."
+  - "Finish task 12's two remaining items: a runId debug readout (surface the
+    current runId somewhere visible/debuggable) and an in-editor blast-radius
+    preview (visualize BurnedBlast's doubled reach while editing, likely a Gizmo
+    or scene-view overlay)."
+  - "Open Unity and confirm every Assets/Scripts/Unity/** file touched this
+    session actually compiles — this has never been checked; the .NET mirror
+    only covers Core."
+  - "Get a repro from the user for the left-side cushion visual issue before
+    treating it as resolved or as confirmed cosmetic."
+  - "Decide what to do about the stale autopilot-blocking .compact-fired-*
+    markers (move to consumed/, per the suggested fix above) — this is a
+    process fix, independent of the FruitSync code work, but it explains why
+    autopilot logged zero iterations despite being activated with the full
+    12-task goal."
+  - "Nothing has been committed. Once tasks 10 and 12 are finished and Unity
+    compilation is confirmed, this is a large uncommitted change set (14
+    modified + 8 new files) that will need a commit — remember FruitSync is
+    PERSONAL (github.com/ZiaulKarim-hub/FruitSync), never push to okoateam."
+
+context_for_next_session: |
+  READ THE ABSOLUTE-PATHS CAVEAT AT THE TOP OF session_summary FIRST. This ACOS
+  3.0 tab's shell cwd cannot be changed and is misleading — every real file lives
+  under /Users/zee/Documents/Vibe Coding/FruitSync, a separate git repo (Unity 6
+  C# fruit-merge game, personal GitHub account only).
+
+  The session worked an 11-item user change list (tracked internally as 12 tasks
+  — the exact goal text is preserved verbatim in
+  /Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-loop-state.json,
+  which is worth reading directly since it is the only surviving record of the
+  original task breakdown; no planning/ or memory/decisions/ artifact captures
+  it). Ten tasks are done and re-verified live in this handoff: the .NET Core
+  test mirror (build/dotnet/FruitSync.Core.Tests) passes 201/201 with exit code
+  0, up from a starting 107. The two outstanding tasks are both about
+  Unity/UI-facing plumbing rather than game-rule logic: (10) per-level
+  instructions/tutorial — the pure-data half (LevelGuide.cs, component C-083,
+  5 levels: happy/IRON, angry/BRONZE, fiery/SILVER, burned/GOLD, endless/
+  designed-to-lose) is written and tested, but the Loc.cs strings it looks up
+  and the HUD panel that renders them do not exist yet; and (12b/12c) a runId
+  debug readout and an in-editor blast-radius preview, neither started.
+
+  The single biggest risk for the next session is that the .NET test mirror
+  ONLY covers Assets/Scripts/Core — none of the nine Assets/Scripts/Unity/**
+  files touched this session (GameController.cs most heavily, at +364/-diff
+  lines) have been compile-verified. Opening Unity to confirm the project still
+  builds should be an early priority, before adding more Unity-side code on top
+  of an unverified base. The HudView.cs sell-button layout was positioned by
+  arithmetic and has not been visually confirmed either.
+
+  Separately, there is a live infrastructure bug (not FruitSync code, but it
+  explains why work stalled/needed a manual continuation rather than autopilot
+  driving it): autopilot-stop-handler.py refuses to advance whenever ANY
+  .compact-fired-*/.clear-requested-* marker exists anywhere under
+  ~/Library/Application Support/acos-token-monitor/state/, regardless of which
+  session created it. Ten such stale markers exist (oldest from Jun 15), and one
+  from a different session (2f929ed1..., Aug 5 21:04) is the one currently
+  blocking this project's autopilot loop, which is otherwise correctly holding
+  the full 12-task goal at iteration_count: 0 since activation at
+  2026-08-06T03:43:48Z. This was surfaced but not fixed pending the user's
+  go-ahead to move the foreign markers into the existing consumed/ folder.
+
+  Nothing in FruitSync has been committed. When ready to commit, remember the
+  standing rule: FruitSync only has one remote, the personal account
+  (https://github.com/ZiaulKarim-hub/FruitSync.git) — it must never reach
+  okoateam.
+
+reconstruction_sources:
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.git (git status --short, git log
+    --oneline -20, git branch --show-current)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/.git (git status --short, git log
+    --oneline -20, git branch --show-current, git diff --stat, git remote -v)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Economy/SellDesk.cs (ls -la, size/mtime)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Fruit/FierySuffocation.cs (ls -la, size/mtime)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Lifecycle/LevelGuide.cs (read in full header/doc-comment)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Unity/TuningLoader.cs (ls -la, size/mtime)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/Assets/Scripts/Core/Config/Tuning.cs (ls -la, size/mtime)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/ (repo root listing: ls -la, confirmed own .acos/, memory/, planning/ dirs)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/memory/handoffs/ (ls -lt — all entries predate this session, none from this task list)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/memory/decisions/ (ls -lt — empty)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/.acos/evidence/ (ls -lt — no entries for this session)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/.acos/state/ (ls -la — no autopilot state file found here; agent-lifecycle.log, oracle-audit.log present but not autopilot-related for this session)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/planning/ (find — only preeng-unix/001-fruit-merge Resurrection Protocol artifacts, unrelated to this session's task list)"
+  - "/Users/zee/Documents/Vibe Coding/FruitSync/CLAUDE.md (read in full)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-loop-state.json (read in full — source of the verbatim 12-task goal string and iteration_count: 0 confirmation)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/autopilot-active (read in full — matches loop-state.json)"
+  - "/Users/zee/Documents/Vibe Coding/ACOS 3.0/.acos/state/agent-lifecycle.log (grepped for AUTOPILOT_ETERNITY_SUBORDINATE — no matches found; not able to corroborate that specific log line, relying on user-reported description)"
+  - "~/Library/Application Support/acos-token-monitor/state/ (ls -la — confirmed 10 stale .compact-fired-* markers, oldest Jun 15, including the Aug 5 21:04 .compact-fired-2f929ed1-d898-4a1f-ab1e-a389f906999a marker described as the blocking one)"
+  - "~/Library/Application Support/acos-token-monitor/state/consumed/ (ls -la — confirmed this destination folder already exists with ~336 entries)"
+  - "Live re-run: cd /Users/zee/Documents/Vibe Coding/FruitSync/build/dotnet && DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$PATH dotnet test FruitSync.Core.Tests/FruitSync.Core.Tests.csproj — confirmed 'Passed! - Failed: 0, Passed: 201, Skipped: 0, Total: 201' and exit code 0 via a separate run"
+  - "Task prompt itself (user-supplied session context in the handoff-agent invocation) — primary source for the narrative of what was done; every claim in it was cross-checked against the file evidence above where possible"

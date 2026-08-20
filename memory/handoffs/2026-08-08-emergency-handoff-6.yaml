@@ -1,0 +1,185 @@
+timestamp: "2026-08-09T00:47:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "71335b10-16c8-46e7-b5c8-3c16e0d0a5e4"
+estimated_tokens: 0
+
+session_summary: |
+  ACTIVE WORK IS NOT IN THE ACOS 3.0 REPO. This session grew the ACOS Logo
+  Forge shape library, a SEPARATE personal repo at ~/.claude/skills (app at
+  ~/.claude/skills/acos-logo-forge/app/), branch main, remote `personal` only
+  (git@github.com-personal:ZiaulKarim-hub/claude-skills-personal.git). It is
+  driven by a native Claude Code `/goal` (a session-scoped Stop hook, not a
+  slice/story/epic). Batches 39 through 47 were completed this session, each
+  run through all eight goal steps end to end. The library grew from roughly
+  1,200 to 1,635 total shapes (264 base + 1,371 authored) against a floor of
+  2,764 total (2,500+ authored) and a stretch target of 3,200+; shortfall to
+  floor is 1,129 shapes. The eternity-protocol Stop hook fired this session
+  (785,423 context tokens, well past the 400,000 threshold) after the goal
+  condition was evaluated and reported not-yet-satisfied, and spawned this
+  handoff agent. Nothing was committed or pushed in the Logo Forge repo this
+  session — goal step 8 explicitly forbids it.
+
+current_work:
+  slice_id: "not applicable — this is not planning-hierarchy work"
+  story_id: "not applicable"
+  epic_id: "not applicable"
+  status: "in_progress"
+
+completed_this_session:
+  - "Batch 39: 7 of 13 drawn shapes shipped (screening dip began here — see decisions_made)."
+  - "Batch 40: 3 of 7 shipped. Confirmed as a SCREENING failure, not exhaustion: four shapes were lost to look-alikes found only by a form-first probe (e.g. `banjo` killed against Kitchen/frying pan, an unrelated family)."
+  - "Batch 41: 5 of 5 shipped."
+  - "Batch 42: 4 of 5 shipped."
+  - "Batch 43: 3 of 4 shipped."
+  - "Batch 44: 6 of 6 shipped."
+  - "Batch 45: 6 of 6 shipped."
+  - "Batch 46: 4 of 4 shipped."
+  - "Batch 47: 4 of 5 shipped (`film strip`, `gramophone`, `scalloped square`, `rotary phone`). Cut `trapezoid frame`, `heptagon frame`, `cross frame` — not on a name collision, but because shape-audit.ts already flags `rectangle ~ round corner` at 98.8% and a third polygon-frame outline would be another near-twin. This is recorded as 'the limit of the unfinished-set method': a declared set (here, `Frames`, 26 records all named 'X frame') can be internally unfinished and still correctly be left unfinished."
+  - "Verified batch 47's suite run: shapes-src/batch47.ts mtime 18:39, suites.log (8 EXIT lines, all 0) and suites3.log (3 EXIT lines, all 0) both mtime 18:43 — both log mtimes newer than shapes.json (18:39), satisfying the freshness check. shape-audit47.log: 1,635 shapes, 17 categories, 85 sub-categories, 0 FAILURE(S), 3 pre-existing WARNING(S) for a human to judge (rectangle~round corner 98.8%, round corner~round top 98.8%, zoom in~zoom out 99.0% — none new this session)."
+  - "Never touched Zee's live server on port 8815 (confirmed still running as PID 43272 at handoff time, untouched); all batch/suite work ran against disposable workspaces on 8816/8817/8819."
+  - "Refined and validated the screening pipeline across batches 39-47 (see reconstruction notes below) and the 'unfinished-set' discovery method, both carried forward as the most valuable output of the session."
+
+files_modified:
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/batch39.ts through batch47.ts"
+    changes: "NEW, UNTRACKED ON PURPOSE (goal step 8 forbids commit/push this session). Each batchNN.ts authors that batch's shapes from kit.ts primitives, per shapes-src/AUTHORING.md."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes.json"
+    changes: "MODIFIED (tracked, uncommitted). Rebuilt by build-shapes.ts after every batch; now holds 1,635 shapes (264 base + 1,371 authored), 17 categories, 85 sub-categories. Last build 2026-08-08 18:39 local."
+  - path: "~/.claude/skills/acos-logo-forge/app/shapes-src/AUTHORING.md"
+    changes: "MODIFIED (tracked, uncommitted) — the batch/audit/suite procedure this session followed exactly; read this file first before batch 48."
+  - path: "~/.claude/skills/acos-create-skill/SKILL.md, ~/.claude/skills/acos-okoa-works/SKILL.md, ~/.claude/skills/acos-okoa-works/references/*, ~/.claude/skills/acos-resume-prompt/SKILL.md"
+    changes: "MODIFIED (tracked, uncommitted) in the ~/.claude/skills repo. NOT verified as this session's own edits — acos-resume-prompt/SKILL.md in particular is documented in a DIFFERENT concurrent session's own handoff (memory/handoffs/2026-08-08-emergency-handoff-5.yaml, session_id 26c28ec4-...) as that session's work. Do not attribute these to the Logo Forge batch work without checking."
+  - path: "~/.claude/skills/acos-communication-tracker/, ~/.claude/skills/acos-deal-summary/, ~/.claude/skills/acos-payoff-letter/"
+    changes: "UNTRACKED, not this session's work. Never stage these."
+
+decisions_made:
+  - "No memory/decisions/ ADR was written for this work — it lives entirely under the /goal Stop-hook workflow, not the planning hierarchy, and nothing dated today exists in memory/decisions/ (confirmed by directory listing)."
+  - "Screening pipeline, now validated as the standard procedure for every future batch, in order: (a) full-string exact-duplicate test against every existing shape name; (b) word-wise look-alike grep over BOTH names and keywords — this now out-earns the exact-name test alone, having caught e.g. `spatula` as a keyword on Hand tools/putty knife, `plough` on Rural/tractor, `keg` on Containers/barrel, `swallowtail` on Ribbons/forked banner, `turret`/`moat` on Landmarks/castle and drawbridge; (c) a FORM probe organized by SILHOUETTE rather than by subject category — batch 40 lost four shapes because each was checked only against its own family and killed by an unrelated one (`banjo` against Kitchen/frying pan); (d) for pure geometric figures, BUILD FIRST and let shape-audit.ts compare pixels, since vocabulary probes miss same-form-different-word records (`astroid` came back 98.7% alike to Stars and bursts/twinkle)."
+  - "The UNFINISHED-SET method is the strongest candidate-discovery lead found this session: dump a sub-category in full and ask what the library started but never finished. It produced zero exact duplicates on two separate uses. It found the missing logic gates (nor, xnor), zodiac signs (virgo, sagittarius, capricorn), a missing planet (mercury), currency symbols (dollar, pound), a missing card suit (club), weather fronts (occluded, stationary), music notation (natural, crotchet rest, segno), and organs (lungs, bone)."
+  - "The unfinished-set method's LIMIT was also found this session: a declared set can be unfinished and still correctly be DONE. Three would-be polygon-frame shapes (trapezoid, heptagon, cross) were cut in batch 47 as audit-flagged near-twins, since every polygon frame is a thin polygon outline and the audit already flags rectangle~round-corner at 98.8%."
+  - "Families now recorded CLOSED (dumped in full, complete, no further candidates): Technology/Electronics (38 records), Flowchart/Process (18), Transport/Air and space (23), Technology/Power (18). Also effectively closed: the vessel family (amphora/samovar/jar/bottle/wine glass), the brass family (trumpet/french horn/saxophone), the bridge family (bridge/drawbridge/suspension/railway)."
+
+blockers:
+  - "Large shortfall remains: library is at 1,635 total shapes against a 2,764-total floor (2,500+ authored) — 1,129 shapes short of the floor, before even reaching the 3,200+ stretch target. This is expected, ongoing work, not a stall."
+  - "Batches 39-40 showed a real yield dip (7/13 then 3/7) traced to a screening gap (subject-based rather than form-based look-alike checks); the form-first probe fix (screening pipeline step c above) already resolved it by batch 41 (5/5) — flagging in case the dip recurs and needs re-diagnosing."
+  - "The session's own scratchpad (/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/71335b10-16c8-46e7-b5c8-3c16e0d0a5e4/scratchpad) holding run-suites.sh, run-three.sh, batch-sheet.ts, suites.log, suites3.log, shape-audit4*.log, and the b39-b47 contact-sheet PNGs is SESSION-SCOPED and will very likely not exist for the next session. Those runner scripts must be recreated from shapes-src/AUTHORING.md if missing — do not assume they persist."
+  - "The native /goal condition text is STATIC for the whole session (it does not auto-update as the shape count grows) — the copy on disk in the scratchpad (goal_original.txt / goal_injected.txt) still reads 'Now at 1,200 shapes: 264 base + 936 authored,' which is stale relative to the current 1,635/1,371. This is expected Claude Code behavior (the Stop hook evaluates the static goal text against live state each turn), not a bug, but the next session should re-set /goal with a corrected shape count if it re-types the goal by hand (see next_actions)."
+  - "~/.claude/skills also has several modified/untracked files this session did not verify as its own (acos-resume-prompt/SKILL.md, acos-create-skill/SKILL.md, acos-okoa-works/*) — a DIFFERENT concurrent session (26c28ec4-..., see memory/handoffs/2026-08-08-emergency-handoff-5.yaml) claims acos-resume-prompt/SKILL.md as its own uncommitted work. Do not sweep these into any future Logo Forge commit."
+
+next_actions:
+  - "Start batch 48 at goal step 1 (NAME-CHECK BEFORE DRAWING), following shapes-src/AUTHORING.md exactly — read it first, since it may have been touched by other sessions since this one ran."
+  - "Re-create the scratchpad runner scripts (run-suites.sh, run-three.sh, batch-sheet.ts) from AUTHORING.md if the prior session's scratchpad no longer exists — do not assume /private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/71335b10-16c8-46e7-b5c8-3c16e0d0a5e4/scratchpad is still present."
+  - "Because /clear deletes the active /goal (activeGoal:void 0, verified this session from the installed Claude Code 2.1.220 binary), the goal must be RE-TYPED BY HAND with a slash command in the new session — injected additionalContext text is NOT parsed as a slash command. Reproduce the goal condition VERBATIM (see context_for_next_session below for the full text captured from this session's scratchpad, goal_original.txt/goal_injected.txt), updating the shape-count line to the CURRENT figures (1,635 total: 264 base + 1,371 authored) rather than the stale '1,200 shapes / 936 authored' on disk."
+  - "Apply the validated screening pipeline (exact-name -> word-wise name+keyword grep -> silhouette-organized form probe -> build-first-and-audit for pure geometric figures) and the unfinished-set discovery method from the first candidate search onward in batch 48, rather than rediscovering them."
+  - "Continue treating the closed families (Technology/Electronics, Flowchart/Process, Transport/Air and space, Technology/Power, plus the vessel/brass/bridge sub-families) as exhausted — do not re-probe them for batch 48 candidates."
+  - "Keep obeying the operational constraints: never touch port 8815 (Zee's live server, PID 43272 at last check) without lsof first; use 8816 for fill/ribbon/shapes/forge/explode/shapelib/button + audit.ts + shape-audit.ts, 8819 for symbols, 8817 for gallery + reject (gallery/reject also need an ABSOLUTE workspace path as argv[2]); judge every suite by EXIT CODE, never the printed tally, requiring 8 '--- EXIT' lines in suites.log and 3 in suites3.log with both mtimes newer than shapes.json; remember ARCBAND(cx,cy,ro,ri,0,360) draws nothing, FRAME() needs e:1, RING()/C()/E() wind anticlockwise and cancel against clockwise neighbours, mirrored polygons need reversed point order, solids under e:1 must touch not overlap, and build-shapes.ts sorts output so the contact sheet must take names from the batch SOURCE file, not the sorted shapes.json; prefer cutting a shape to forcing it through; stop and report if one shape fails three redraws or a batch loses more than a third of its candidates to duplicates."
+  - "Do not stage or commit acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/, or the other-session files under blockers above."
+
+context_for_next_session: |
+  This handoff was reconstructed primarily from the invoking session's OWN
+  transcript (SESSION_ID 71335b10-16c8-46e7-b5c8-3c16e0d0a5e4, read via the
+  supplied TRANSCRIPT_PATH, 1,228 lines total, tail parsed into a condensed
+  narrative — the primary source, per the 2026-08-08 handoff-agent scoping
+  fix). Every scoping fact supplied by the invoking session was independently
+  verified against disk and matched exactly: HEAD in ~/.claude/skills is
+  ed753e66ddfc, one commit ahead of 900a7b6 via 'fix(acos-handoff): pass
+  invoking session's transcript to handoff-agent' — confirmed via `git -C
+  ~/.claude/skills diff --stat HEAD~1..HEAD` to touch ONLY acos-handoff/
+  SKILL.md, and confirmed via a DIFFERENT concurrent session's own handoff
+  (memory/handoffs/2026-08-08-emergency-handoff-5.yaml, session_id
+  26c28ec4-d9cc-435c-b8d7-ef50eddd33e9) to be THAT session's work, not this
+  one's. shapes.json currently holds exactly 1,635 records (python3 json
+  count, matching shape-audit47.log's '1,635 shapes'). batch16.ts through
+  batch47.ts are confirmed untracked in `git -C ~/.claude/skills status
+  --short`, alongside acos-communication-tracker/, acos-deal-summary/, and
+  acos-payoff-letter/ as untracked, and acos-create-skill/SKILL.md and
+  acos-okoa-works/* as modified-but-dirty — matching the invoking session's
+  claims precisely. The live server on port 8815 was confirmed still running
+  under PID 43272 and untouched. This session's scratchpad
+  (/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/
+  71335b10-16c8-46e7-b5c8-3c16e0d0a5e4/scratchpad) was directly inspected and
+  confirmed to hold run-suites.sh, run-three.sh, batch-sheet.ts, suites.log
+  (8 EXIT-0 lines), suites3.log (3 EXIT-0 lines), shape-audit39.log through
+  shape-audit47.log, and per-batch contact-sheet PNGs (b39.png through
+  b47-fix.png) — all consistent with the batch-by-batch narrative above.
+
+  The verbatim native /goal condition text, captured from this session's
+  scratchpad files goal_original.txt and goal_injected.txt (both identical,
+  confirming the goal text is static across the whole session rather than
+  re-issued per batch), reads exactly as follows — the next session should
+  retype this via `/goal`, updating only the shape-count line to current
+  figures (currently stale at "1,200 shapes: 264 base + 936 authored"; should
+  read "1,635 shapes: 264 base + 1,371 authored" or whatever the count is at
+  resume time):
+
+    Grow the ACOS Logo Forge shape library. Repo ~/.claude/skills, branch main.
+    App ~/.claude/skills/acos-logo-forge/app. NOT the ACOS 3.0 repo, NOT OKOA work.
+
+    Now at 1,200 shapes: 264 base + 936 authored. Floor 2,500 authored (2,764 total).
+    Target 3,200+ total. Every shape authored from scratch. No third-party icon sets.
+    No variants of a shape already in the library.
+
+    Weight toward objects, technology, tools, buildings, transport, food, diagram
+    shapes, and chess pieces. Animals and nature stay stylised, capped at 300.
+
+    Batches of roughly 40. Follow shapes-src/AUTHORING.md exactly; read it first.
+
+    Per batch:
+    1. NAME-CHECK BEFORE DRAWING. Dump existing names for every category the batch
+       touches; grep each candidate against the whole library. Batch 15 lost 14 of 41
+       shapes to pictures already owned. Do this before drawing, not after rendering.
+    2. Author shapes-src/batchNN.ts from kit.ts primitives.
+    3. bun build-shapes.ts. Check the per-batch count against what you intended.
+    4. bun shape-audit.ts against a live server on 8816. 0 failures required.
+    5. RENDER THE BATCH AND LOOK AT IT. Take names from the batch SOURCE — the build
+       sorts, so the last N records are not the batch you wrote. Judge each shape
+       against its own name AND against what it could be mistaken for.
+    6. Redraw or cut whatever failed step 5, cause written beside it. A redraw is done
+       only when the NEW render has been looked at. Prefer cutting to forcing.
+    7. All ten suites exit 0 — exit code, never the printed tally — plus audit.ts
+       0 findings. Ports and arguments are in AUTHORING.md.
+    8. STOP THERE. Do not commit. Do not push. Report the batch and wait.
+
+    Never touch the live server on 8815 — run lsof first.
+    Record what you did not fix rather than shipping it quietly as fine.
+    Stop and report if one shape fails three redraws, or if a batch loses more than a
+    third of its shapes to duplicates.
+
+    Two words in there. A batch is one round of about 40 new shapes. lsof is the
+    command that lists which program is using a port.
+
+  Next unit of work is batch 48, starting at goal step 1. The single most
+  valuable thing to carry forward is the accumulated screening method (see
+  decisions_made above) and the unfinished-set discovery technique, since
+  both were hard-won across the yield dip at batches 39-40 and its fix.
+  Yield history this session, for calibration: batch 36 shipped 20/20 (prior
+  session), 37 shipped 17/20 (prior session), 38 shipped 13/18 (prior
+  session), 39 shipped 7/13, 40 shipped 3/7, 41 shipped 5/5, 42 shipped 4/5,
+  43 shipped 3/4, 44 shipped 6/6, 45 shipped 6/6, 46 shipped 4/4, 47 shipped
+  4/5. Treat the 39-40 dip as a screening lesson already absorbed, not a
+  warning that yield will keep dropping.
+
+  This repo (ACOS 3.0) itself has significant unrelated uncommitted state
+  from OTHER concurrent sessions (autopilot scripts, git-manager/ids.json,
+  html-to-pdf.js, Logo Builder/brandsync/commands.jsonl, and a large stack of
+  prior-session handoff files under memory/handoffs/) — none of it belongs to
+  this session's Logo Forge work and none of it should be swept into any
+  future commit related to this handoff.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/71335b10-16c8-46e7-b5c8-3c16e0d0a5e4.jsonl (this session's own transcript, 1,228 lines, tail -c 400000 parsed into a condensed narrative — PRIMARY source)"
+  - "git -C \"/Users/zee/Documents/Vibe Coding/ACOS 3.0\" status --short and git log --oneline -10 (confirms ACOS 3.0 repo activity is unrelated to this session's Logo Forge work)"
+  - "git -C ~/.claude/skills status --short (confirms batch16.ts-batch47.ts untracked, acos-communication-tracker/, acos-deal-summary/, acos-payoff-letter/ untracked, acos-create-skill/SKILL.md and acos-okoa-works/* modified-dirty)"
+  - "git -C ~/.claude/skills rev-parse HEAD, log --oneline -10, remote -v (confirms HEAD ed753e66ddfc, remote personal-only, and the commit sequence matching batches 08-15 plus the 2026-08-08 handoff-agent fix)"
+  - "git -C ~/.claude/skills diff --stat HEAD~1..HEAD (confirms ed753e6 touches only acos-handoff/SKILL.md)"
+  - "python3 json load of ~/.claude/skills/acos-logo-forge/app/shapes.json (confirms 1,635 shape records)"
+  - "/private/tmp/claude-501/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/71335b10-16c8-46e7-b5c8-3c16e0d0a5e4/scratchpad/ directory listing and contents (run-suites.sh, run-three.sh, goal_original.txt, goal_injected.txt, resume_goal.txt, suites.log, suites3.log, shape-audit39.log through shape-audit47.log, b39-b47 PNGs)"
+  - "scratchpad/goal_original.txt and scratchpad/goal_injected.txt (verbatim /goal condition text, identical copies)"
+  - "scratchpad/run-suites.sh and scratchpad/run-three.sh (full contents, confirms port assignments 8816/8817/8819 and the exit-code-only judging rule)"
+  - "grep -c '--- EXIT' on scratchpad/suites.log (8) and scratchpad/suites3.log (3), plus grep for any non-zero exit — none found"
+  - "tail of scratchpad/shape-audit47.log (1,635 shapes, 17 categories, 85 sub-categories, 0 FAILURE(S), 3 pre-existing WARNING(S))"
+  - "ls -la on shapes-src/batch40.ts through batch47.ts and shapes-src/AUTHORING.md, and shapes.json (mtime cross-check against suites.log/suites3.log)"
+  - "lsof -nP -iTCP:8815 -sTCP:LISTEN (confirms live server PID 43272 still running, untouched)"
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ in the ACOS 3.0 repo (confirms no planning-hierarchy or evidence/decision artifacts for this session's work, as expected for a /goal-driven side repo)"
+  - "ls -lt memory/handoffs/*.yaml memory/handoffs/*.md in the ACOS 3.0 repo (found and read memory/handoffs/2026-08-08-emergency-handoff-5.yaml in full — a DIFFERENT concurrent session, session_id 26c28ec4-d9cc-435c-b8d7-ef50eddd33e9, confirmed to own the ed753e6 commit and unrelated ~/.claude/skills SKILL.md edits; used to avoid attributing that session's work to this one)"

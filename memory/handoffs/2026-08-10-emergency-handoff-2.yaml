@@ -1,0 +1,178 @@
+timestamp: "2026-08-10T02:04:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "a802499f-8b18-4cc3-9145-330e6824be91"
+estimated_tokens: 531820
+
+session_summary: |
+  This session hardened the /acos-research-riffs skill (a TypeScript/Bun
+  conversational research engine with citation guardrails, at
+  .claude/skills/acos-research-riffs/, also symlinked globally to
+  ~/.claude/skills/acos-research-riffs) through three full adversarial
+  review-and-fix cycles, then built a "deep-drill" chat-native drill-down
+  mode for it. Work spanned three review reports (REVIEW-2026-07-25.md,
+  REVIEW-2026-07-27.md, REVIEW-2026-08-09-FINAL.md), a recency-policy design
+  doc, a deep-drill design doc, and roughly a dozen fix/build workflow runs
+  using background multi-agent Workflow() orchestration. The final adversarial
+  review returned a HOLD verdict (two empirically-confirmed HIGH-severity
+  trust-chain defects), a targeted fix pass closed 16 of 18 must-fix items,
+  the session hand-fixed the remaining 2 (a claims.ts conflict-cap gap and a
+  report.ts crash it had introduced), and an independent adversarial
+  re-verification moved the verdict to SHIP-WITH-NOTES. The test suite grew
+  from 154 to 528 passing checks across the session. All work was committed
+  (fa16762) and pushed to both origin (okoateam) and personal (ZiaulKarim-hub)
+  remotes, which were confirmed in sync at fa16762. The session then invoked
+  the eternity-protocol handoff itself at 531,820 context tokens, which is
+  the direct cause of this handoff document.
+
+current_work:
+  slice_id: "not applicable — ad hoc skill-hardening tracked via planning/acos-research-riffs/ARCHITECTURE.md, not the Vision/Epic/Story/Slice hierarchy"
+  story_id: "not applicable"
+  epic_id: "not applicable"
+  status: "completed_this_cycle — SHIP-WITH-NOTES verdict reached, committed, and pushed; 30 lower-priority 'improvement' items from REVIEW-2026-07-27.md remain deliberately deferred (not started)"
+
+completed_this_session:
+  - "Fixed a real auto-run bug in the live research 'committee room' page: the LIVE code path never marked a seat's turn as taken (spoken[n]=true), so clicking Auto-run re-called the first seat forever instead of rotating. Patched identically in three files because scripts/room/room.html is GENERATED from the Investment Committee skill's meeting_template.html/meeting.html: .claude/skills/acos-research-riffs/scripts/room/room.html, .claude/skills/acos-investment-committee/scripts/committee-room/meeting.html, .claude/skills/acos-investment-committee/scripts/committee-room/meeting_template.html. Verified live: seat 1 spoke at 02:42:52Z, seat 2 at 02:44:44Z (real rotation)."
+  - "Ran a 29-agent line-by-line review (workflow wf_9460331c-b65) of the whole 6,858-line, 27-file skill -> REVIEW-2026-07-25.md: 122 verified findings (30 must-fix / 50 improvements / 25 polish)."
+  - "Ran a file-owner fix pass (workflow wf_fa07f4c8-340, 11 fixers + 1 test agent) applying all of REVIEW-2026-07-25.md; grew the test suite 154 -> 320 passing; hand-wired two cross-file seams the parallel fixers missed (conflicts surfaced in CLI output; panel-add warnings)."
+  - "Made /acos-research-riffs a global skill via symlink: ~/.claude/skills/acos-research-riffs -> .claude/skills/acos-research-riffs/ (matches the existing house pattern of ~20 other symlinked skills)."
+  - "Wrote planning/acos-research-riffs/RECENCY-DESIGN-PROPOSAL.md (suggest-only design doc): splits 'confidence' into who-says-it vs how-many-corroborate, adds a primary-new label with 60-day decay for brand-new claims, and a mandatory 90-day recency sweep for fast-moving dimensions — so thin literature on new releases reads as 'young', not 'false'."
+  - "Ran a second 31-agent review (workflow wf_c8bf0b6d-a90, resumed once after a subscription session-limit interruption) -> REVIEW-2026-07-27.md: 135 verified findings (36 must-fix / 69 improvements), including a fix-audit that caught 5 half-landed round-1 fixes and 2 round-1 regressions."
+  - "Ran fix pass 2 (workflow wf_f04c1b91-8ff, 10 owners + test agent, 8 pre-defined cross-file contracts) implementing all 36 must-fix + 69 improvements from REVIEW-2026-07-27.md, plus the recency policy as CONTRACT-7 (primary-new label, fast_moving dimension gating, newer-primary-outranks-count on versioned conflicts). Test suite grew 320 -> 442."
+  - "Designed and built the 'deep-drill' chat-native mode (planning/acos-research-riffs/DEEP-DRILL-DESIGN.md; workflow wf_29bf9e6c-6fc): riff ask --thread/--depth, riff thread <id>, a 3-rung depth ladder (L0 dossier answer / L1 fresh sweep / L2 primary-verification) implemented as orchestrator protocol on top of new engine fields. Test suite grew 442 -> 480. Live-verified with a real threaded ask against the OKOA voice-agent research session."
+  - "Ran a third, final adversarial review (workflow wf_0d1680e7-0cc, resumed once after another session-limit interruption; 13 reader groups + fix-audit + skeptic verify) -> REVIEW-2026-08-09-FINAL.md. Verdict: HOLD, 18 must-fix / 30 improvements, driven by two HIGH claims.ts defects: (1) claims.ts:174 negation guard used count%2 parity, so a double-negative refutation ('X is not available and Y is not supported') read as zero negations and was dropped as a duplicate, merging its refuting source into the false claim it refuted — the exact founding failure the tool exists to prevent, reintroduced; (2) claims.ts:796 scoped conflict detection to only the top answering hit, so a recorded dispute between two lower supporting hits could deliver 'verified' with no warning."
+  - "Ran fix pass 3 (workflow wf_d84cc584-a69, 6 owners + test + adversarial audit) targeting the 18 must-fix items. Fixed 16/18, grew suite 480 -> 522, but left M2 (the conflict-scoping HIGH) PARTIAL and introduced 1 new HIGH regression: report.ts's flat() helper called .replace() on agent-authored fields that could be non-string (e.g. an array dimension), crashing the whole report build."
+  - "Hand-fixed both remaining items directly (not delegated): report.ts flat() now coerces via String(s ?? \"\") before .replace(); claims.ts ingest sites (~458, ~627) now guard typeof raw.dimension === \"string\"; the M2 conflict-cap gate changed from requiring BOTH disputants answer-relevant (>=0.6 similarity) to EITHER disputant relevant, after empirically discovering the naive 'judge over the full strong set' fix false-capped legitimate unrelated claims (verse/meter pricing test cases)."
+  - "Ran a residual-verify workflow (wf_e2e109ee-b2d) that added regression tests (528 total), independently re-probed both fixes adversarially (including reverting the report.ts fix to prove it was load-bearing — it crashed again), and confirmed reachable_leak:false for both. The one remaining edge case (a conflict where the answer is <0.6 similar to BOTH disputants) was proven to be a deliberate design boundary, not a defect. Verdict moved HOLD -> SHIP-WITH-NOTES."
+  - "Committed the full fix-pass-3 delta as 12 files (fa16762) on branch acos-deficiency-fixes-2026-06-04, scoped narrowly (never git add -A), verified staged content matched the intended fixes via grep before committing, then pushed to both origin (okoateam/ACOS-3.0) and personal (ZiaulKarim-hub/ACOS-3.0) remotes. Discovered and fixed a pre-existing drift: origin was behind at d5f352a while personal was at 82188f0 — pushing to both brought them into sync at fa16762."
+  - "Updated planning/acos-research-riffs/ARCHITECTURE.md with as-built notes 18-23 documenting the full arc (room-page generation trap, auto-run rotation fix, two review+fix cycles, recency policy, deep-drill mode, the HOLD->SHIP-WITH-NOTES cycle)."
+  - "Updated project memory: /Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_acos_research_riffs.md and its MEMORY.md index line, reflecting the hardened state (480+ tests at time of write, now 528) and the global symlink."
+
+files_modified:
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/claims.ts"
+    changes: "Core claim-trust engine: number-and-negation-aware dedup (replaced count%2 negation parity with an exact negationCount() match), best-match (not first-match) merge, conflicts_with stamps preserved across ingest, cross-strong-hit conflict detection with an either-disputant-relevant (>=0.6 similarity) gate, source-tier validation, primary-new/60-day recency label machinery, deep-drill QuestionRecord stamps, non-string dimension guards at ingest. +308/-~ lines across the session's three fix passes."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/report.ts"
+    changes: "flat() helper now coerces via String(s ?? \"\") before .replace() so a non-string agent-authored field (array/number/object) cannot crash buildBundle(); Section 2 panel/charter text fencing; id-continuity and live-delivered-figure eval checks."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/coverage.ts"
+    changes: "fast_moving dimension flag + recency-probe gating (CONTRACT-7 of the recency policy); duplicate-dimension rejection."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/ledger.ts"
+    changes: "primary-new confidence label added to CONFIDENCES; optional thread/depth fields on LedgerEntry for deep-drill mode."
+  - path: ".claude/skills/acos-research-riffs/scripts/lib/tree.ts"
+    changes: "minor robustness fixes from the review cycles (unknown-id handling in insert())."
+  - path: ".claude/skills/acos-research-riffs/scripts/riff.ts"
+    changes: "21-command CLI dispatcher (now ~1013+ lines): --recency probe flag wired through to recordProbe, fast_moving allowlisted in checkDimension, --thread/--depth flags on ask, pid-identity-checked beacon trust and room-reuse kill path (never trusts a bare kill(pid,0)), conflicts/warnings surfaced in claims add / panel add CLI output."
+  - path: ".claude/skills/acos-research-riffs/scripts/riff-live.ts"
+    changes: "warm-pool live-responder daemon: pid-signed room-live.status beacon (state + pid=<pid>, unlinked before spawn), single append-fd diagnostic log with run-delimiters (fixed a two-writer log corruption bug)."
+  - path: ".claude/skills/acos-research-riffs/scripts/test-riff.ts"
+    changes: "Grew from 820 lines / 154 checks to 528 checks across the session, including a 'regression 2026-08-09' block (M1-M8) specifically worded so pre-fix code would fail each assertion, plus asymmetric-relevance M2 boundary tests and a report-crash regression test."
+  - path: ".claude/skills/acos-research-riffs/templates/compiler-charter.md"
+    changes: "recency-policy language added to the report compiler's charter."
+  - path: ".claude/skills/acos-research-riffs/templates/researcher-charter.md"
+    changes: "recency-sweep instruction added to the researcher's charter."
+  - path: ".claude/skills/acos-investment-committee/scripts/committee-room/meeting.html"
+    changes: "Same auto-run rotation fix as the riff room page (this is the source page the riff room is generated from)."
+  - path: ".claude/skills/acos-investment-committee/scripts/committee-room/meeting_template.html"
+    changes: "Same auto-run rotation fix applied to the true template (what build_meeting.py fills) so the fix survives future regenerations."
+  - path: "planning/acos-research-riffs/ARCHITECTURE.md"
+    changes: "As-built notes 18 through 23 appended, documenting the room-generation trap, the auto-run fix, both review+fix cycles, the recency policy, deep-drill mode, and the HOLD->SHIP-WITH-NOTES final cycle."
+  - path: "planning/acos-research-riffs/REVIEW-2026-07-25.md"
+    changes: "New file — 684 lines, first line-by-line review report (122 findings)."
+  - path: "planning/acos-research-riffs/REVIEW-2026-07-27.md"
+    changes: "New file — 731 lines, second review report (135 findings, fix-audit of round 1)."
+  - path: "planning/acos-research-riffs/REVIEW-2026-08-09-FINAL.md"
+    changes: "New file — 347 lines, third/final review report; verdict HOLD at time of writing, 18 must-fix / 30 improvements; committed to git as part of fa16762."
+  - path: "planning/acos-research-riffs/RECENCY-DESIGN-PROPOSAL.md"
+    changes: "New file — suggest-only design doc for recency-aware evidence policy; implemented in fix pass 2 as CONTRACT-7."
+  - path: "planning/acos-research-riffs/DEEP-DRILL-DESIGN.md"
+    changes: "New file — confirmed-scope design doc for the chat-native deep-drill mode; implemented in workflow wf_29bf9e6c-6fc."
+  - path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/project_acos_research_riffs.md"
+    changes: "Description and body updated to reflect the hardened, globally-symlinked state of the skill (this is outside the ACOS 3.0 git repo, in the Claude Code project-memory directory, so it is NOT part of the fa16762 commit)."
+
+decisions_made:
+  - "No memory/decisions/ file was written this session (none found dated today); the closest analog is the confirmed-scope design docs (RECENCY-DESIGN-PROPOSAL.md, DEEP-DRILL-DESIGN.md) which record user-confirmed intent per the /restate protocol."
+  - "User explicitly confirmed (via /restate flow) the deep-drill chat mode scope before it was built: chat-native as the default register, browser room remains an optional viewer, deliver-then-deepen timing, generic drill-down pattern usable in any domain."
+  - "User directed: 'Implement all the fixes first and then do what i asked you to do with the improvements you recommended' — this set the execution order (fix pass 2 -> deep-drill build) that the session followed."
+  - "The session set and held a hard rule during fix pass 3: the ship verdict must stay HOLD if either HIGH item (M1 negation, M2 conflict-scoping) was not fully fixed — this rule is what correctly kept the verdict at HOLD when 16/18 landed but 2 did not, rather than declaring victory early."
+
+candidate_learnings:
+  - "In this repo, .claude/skills/acos-research-riffs/scripts/room/room.html is a GENERATED file (regenerated from .claude/skills/acos-investment-committee/scripts/committee-room/meeting_template.html via build_meeting.py) — any bugfix to that page must be applied to the template AND the IC's own generated meeting.html AND the riff copy, or the next regeneration silently reverts the riff fix. Three-file parity is intentional except at exactly six documented label-only lines (recorded in ARCHITECTURE.md note 21). (evidence: this session found and fixed a real bug this way, and documented the allowlist after nearly missing it during the 'Did you fix all the issues?' audit.)"
+  - "A 'fix pass' that itself introduces a regression, or half-lands a fix, is a repeat pattern in this codebase's history, not a one-off: round 2's audit found 5 half-landed + 2 regressed items from round 1, and round 3's targeted fix pass itself introduced a new HIGH crash while fixing something else. Every fix pass in this skill's workflow now needs its own independent fix-audit re-review; self-grading a fix pass is not sufficient. (evidence: REVIEW-2026-07-27.md fix-audit findings, and the report.ts crash discovered during fix pass 3's own re-verification.)"
+  - "The Workflow() background-agent tool used in this session can hit the Claude subscription's session limit mid-run (observed twice: 'You've hit your session limit · resets 7pm/2:10am (America/Denver)'), but supports resuming via {scriptPath, resumeFromRunId} — already-completed agents replay from cache at no cost, only the dead ones re-run. This is a normal, expected interruption mode for large multi-agent workflows on this account, not an error to work around differently. (evidence: two separate mid-session interruptions and successful resumes in this session's transcript.)"
+  - "The eternity-protocol pre-flight in this repo reads context size from $STATE/.last-total-<session_id> (a token-watcher-maintained file under ~/Library/Application Support/acos-token-monitor/state/), not from any git or transcript inspection, and compares it against a near-empty floor of 20000 tokens / 100 transcript lines to avoid misfiring on a just-cleared session. (evidence: this session's own pre-flight bash output showing MEASURE: 531820 context tokens; near_empty=0.)"
+  - "This repo is actively worked on by multiple concurrent Claude Code sessions/windows sharing the same working tree: at handoff time, git status --short showed uncommitted modifications to eternity-protocol-core.sh, git-manager/ids.json, html-to-pdf.js, acos-eternity-protocol/SKILL.md, acos-resume-prompt/SKILL.md, and Logo Builder/brandsync/commands.jsonl, plus dozens of untracked memory/handoffs/*.yaml files for OTHER projects (OKOA-Works, Skill-Workshop, Resurrection-Protocol) — NONE of which this research-riffs session touched. Any handoff-agent or resurrection tooling reading repo-wide git/file state must not attribute these to a single session without a transcript to confirm. (evidence: git status --short output at handoff time, cross-checked against this session's transcript which never touched those paths.)"
+
+blockers: []
+
+next_actions:
+  - "Decide whether to start the 30 deferred 'improvement' (non-blocking) items from REVIEW-2026-07-27.md — the user was asked this exact question ('start the 30 smaller improvements?') at the end of this session and had not yet answered when the eternity-protocol fired."
+  - "If continuing research-riffs work: the two live daemons (riff-server.ts pid 43625, riff-live.ts pid 43626, both bun, session 2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa) were still running and verified alive at handoff time — check they are still alive before assuming a fresh restart is needed; they were last relaunched on the fix-pass-2/3 code and confirmed at commit fa16762."
+  - "Verify current git status before further work: as of handoff time HEAD (local, origin, personal) all matched fa16762, so all research-riffs work is safely backed up in two places. Do NOT assume the currently-uncommitted files (eternity-protocol-core.sh, git-manager/ids.json, html-to-pdf.js, two SKILL.md files, Logo Builder/brandsync/commands.jsonl) belong to this thread of work — they were not touched by this session and likely belong to a different concurrent session; investigate before committing or reverting them."
+  - "No SKILL.md changes were made to acos-research-riffs itself this session despite an earlier stated intent ('read the whole skill line by line and suggest improvements') to also review SKILL.md/doc drift — the 30 deferred improvement items from REVIEW-2026-07-27.md may include doc-drift items worth checking before assuming SKILL.md is current."
+
+context_for_next_session: |
+  This handoff was produced with a HIGH-confidence reconstruction: the invoking
+  session's own transcript (a802499f-8b18-4cc3-9145-330e6824be91.jsonl, ~1344
+  lines) was read in full via a condensed extraction, and every claim above
+  traces directly to that transcript plus live-verified git/process state — not
+  to repo-wide heuristics. This session's entire arc was one long, self-contained
+  piece of work: hardening /acos-research-riffs (a conversational deep-research
+  skill with citation/evidence guardrails) through three adversarial
+  review-fix-reverify cycles, ending in a verified SHIP-WITH-NOTES verdict,
+  committed and pushed to both git remotes. The very last user message before
+  this handoff fired was "commit push", which the session completed
+  successfully (commit fa16762, both origin and personal remotes confirmed at
+  fa16762) — so there is no unsaved code risk. The eternity-protocol then fired
+  automatically at ~532k context tokens and is what produced this document.
+
+  The single most important thing for the next session to know: the research-riffs
+  skill went through a real, hard-won reliability arc (HOLD -> targeted fixes ->
+  independently re-verified SHIP-WITH-NOTES), and the pattern that kept recurring
+  was fixes that looked complete but weren't — round 1's fixes had 5 half-landed +
+  2 regressed items caught by round 2's audit, and round 3's own targeted fix pass
+  introduced a new crash while trying to fix something else. The session's own
+  stated lesson, worth repeating to whoever picks this up: never grade your own
+  fix pass; always hand it to an independent adversarial check, and where possible
+  prove a fix is load-bearing by reverting it and watching it fail again (which is
+  exactly how the report.ts crash fix was validated this session).
+
+  There is unstarted, scoped-and-ready work waiting: 30 "improvement" (non-blocking,
+  polish-tier) items from planning/acos-research-riffs/REVIEW-2026-07-27.md were
+  deliberately deferred all session in favor of the must-fix items, and the user
+  was asked at the very end whether to start them — that question was never
+  answered before the handoff fired, so it is the natural first thing to raise
+  with the user next session.
+
+  Two live background daemons from this session's own live-testing were still
+  running at handoff time (bun riff-server.ts pid 43625, bun riff-live.ts pid
+  43626, both bound to session
+  "2026-07-24-which-self-hostable-model-or-model-stack-should-ship-as-okoa"
+  under .acos/riffs/) — these were last exercised against the fix-pass-3 code
+  and are not stale from the reviewer's perspective, but their liveness should
+  be re-checked (`ps aux | grep riff-`) before assuming they still reflect
+  current code, since git and disk state can move without these long-running
+  daemons being restarted.
+
+  One caution for whoever reads git status next: at handoff time there were
+  several uncommitted changes and dozens of untracked memory/handoffs/*.yaml
+  files in the working tree that this session's transcript never touched
+  (eternity-protocol-core.sh, git-manager/ids.json, html-to-pdf.js, two
+  SKILL.md files under acos-eternity-protocol and acos-resume-prompt, and a
+  Logo Builder file, plus handoff files for OKOA-Works / Skill-Workshop /
+  Resurrection-Protocol projects). This strongly suggests other concurrent
+  Claude Code sessions are active in the same shared working tree right now.
+  Do not assume those files are part of this research-riffs work, and do not
+  commit or revert them without separately confirming which session they
+  belong to.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/a802499f-8b18-4cc3-9145-330e6824be91.jsonl (this session's own transcript, ~1344 lines, read in full via a condensed jq/python extraction to /private/tmp/claude-501/.../scratchpad/transcript-summary.txt, then read across ~9 chunked passes)"
+  - "git status --short (working tree, at handoff time)"
+  - "git log --oneline -20"
+  - "git diff --stat HEAD~5..HEAD"
+  - "git log -1 for HEAD, origin/acos-deficiency-fixes-2026-06-04, personal/acos-deficiency-fixes-2026-06-04 (confirmed all three at fa16762)"
+  - "ps aux | grep riff- (confirmed riff-server.ts pid 43625 and riff-live.ts pid 43626 still running)"
+  - "planning/acos-research-riffs/ (directory listing + mtimes: ARCHITECTURE.md, REVIEW-2026-08-09-FINAL.md, DEEP-DRILL-DESIGN.md, REVIEW-2026-07-27.md, RECENCY-DESIGN-PROPOSAL.md, REVIEW-2026-07-25.md)"
+  - ".acos/evidence/ directory listing (no entries from this session's work; most recent is 2026-08-02, unrelated)"
+  - "memory/decisions/ directory listing (no entries dated to this session)"
+  - ".acos/state/ directory listing (confirmed autopilot state files and agent-lifecycle.log, none specific to this session's research-riffs work)"

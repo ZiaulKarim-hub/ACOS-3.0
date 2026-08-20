@@ -1,0 +1,144 @@
+timestamp: "2026-08-09T00:49:00Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "b8dea5d0-168f-4743-ada5-5d1e07bbc928"
+estimated_tokens: 0
+
+session_summary: |
+  This session resumed via the Eternity Protocol, verified the prior handoff's claims
+  against real disk state, then did two rounds of infrastructure work on ACOS's own
+  Eternity Protocol / handoff machinery, followed by a keep-awake and idle-loop
+  investigation. Round 1: committed and pushed 5 pending autopilot/eternity files
+  (commit bf8cfda) and gave the previously-unversioned token-monitor daemon folder
+  its own git repo (commit f49a1f0, local only, not pushed anywhere). Round 2: the
+  user reported a recurring "wrong session's handoff got loaded" bug had NOT actually
+  been fixed despite two earlier fix attempts; a deep investigation found the real
+  root cause (session-id/handoff-selection logic duplicated across ~4 files, only
+  some of which had been patched), built two new shared scripts as the single source
+  of truth, wired them into all four files, tested three ways, and committed+pushed
+  as 14343bd. Round 3: investigated why `/goal` doesn't survive `/clear` in the
+  eternity loop, found and fixed a bug in the daemon-side script
+  eternity-cmux-inpane.sh (outside this git repo, in the token-monitor bin/ folder) —
+  this fix is applied and syntax-checked but NOT yet committed even to the
+  brand-new local daemon repo. A sub-agent investigation into a separate "resume was
+  late" question came back with an incorrect, sweeping claim ("the active resume
+  mechanism doesn't exist") that the user correctly pushed back on; the assistant
+  re-investigated directly and found the real (correct, working) mechanism, vindicating
+  the user. The session ended mid-way through two open threads (system-wide
+  sleep-disable command, and a token-count cmux sidebar display that isn't showing)
+  when the 400k-token Eternity Protocol auto-clear fired and spawned this handoff.
+
+current_work:
+  slice_id: "unknown"
+  story_id: "unknown"
+  epic_id: "unknown"
+  status: "in_progress"
+  note: >
+    Not tied to a planning-hierarchy slice/story/epic — this was direct infrastructure
+    work on ACOS's own Claude Code tooling (Eternity Protocol, handoff system,
+    token-monitor daemon), done at the user's direct request rather than through
+    /acos-plan.
+
+completed_this_session:
+  - "Verified the incoming Eternity Protocol handoff against real git state before acting (HEAD 930b552, branch acos-deficiency-fixes-2026-06-04, 49 pending files) — confirmed accurate, nothing lost."
+  - "Initialized a git repo for the previously-unversioned daemon script folder ~/Library/Application Support/acos-token-monitor/bin/ (commit f49a1f0, 15 files, local only)."
+  - "Committed and pushed 5 pending autopilot/eternity session-scoping fix files to personal remote as bf8cfda (.claude/scripts/_autopilot_eternity.py, autopilot-activate.py, autopilot-context-injector.py, autopilot-stop-handler.py, .claude/skills/acos-resume-prompt/SKILL.md)."
+  - "Investigated the recurring mis-scoped-handoff bug end to end (grep across .claude/scripts + .claude/skills, git log per file, read eternity-protocol-core.sh in full, read handoff-agent.md Step 2.0, read acos-handoff/SKILL.md); found the session-id/handoff-selection logic was copy-pasted into ~4 separate places, only 2 of which the 2026-07-06 and earlier fixes had touched."
+  - "Built .claude/scripts/resolve-session-id.sh — single source of truth for 'which session am I', preferring $CLAUDE_CODE_SESSION_ID, falling back to newest-transcript heuristics only when that env var is unset."
+  - "Built .claude/scripts/resolve-session-handoff.sh — given a session id, returns the matching handoff file path in memory/handoffs/ by grepping session_id:, not just newest-mtime."
+  - "Tested both new scripts directly in the live session (6 test cases including the real historical collision between handoff-5/session 26c28ec4 and handoff-6/session 71335b10) — all passed, including a symlink-invocation test matching how the daemon actually calls the core script."
+  - "Wired the two shared scripts into: .claude/scripts/eternity-protocol-core.sh (session resolve + handoff select), .claude/skills/acos-eternity-protocol/SKILL.md (Steps 0, 1, 4, 5 — four separately-duplicated shell blocks), .claude/skills/acos-continue/SKILL.md (Steps 0 and 1), .claude/skills/acos-resume-prompt/SKILL.md (Step 1 and Step 2.5)."
+  - "Verified all edits: bash -n syntax checks on eternity-protocol-core.sh, extracted-and-syntax-checked every fenced bash block in the three SKILL.md files, and a variable-consistency scan confirming no leftover references to removed variables (one false-positive on a pre-existing, untouched GOAL_CONDITION block, confirmed via git diff as not part of this change)."
+  - "Committed 6 files as 14343bd 'fix(eternity-protocol): resolve session-id/handoff selection through one shared script, not 10 copies' (242 insertions, 168 deletions) and pushed to the personal remote."
+  - "Diagnosed the '/goal command does not survive /clear' bug: root cause is in the daemon script eternity-cmux-inpane.sh's Priority 1.4 goal-rearm logic — a flat 30-minute staleness cutoff discarded a saved goal regardless of whether a newer pause had actually happened, plus a stale surface-keyed goal file could be copied forward incorrectly."
+  - "Edited eternity-cmux-inpane.sh (in the daemon bin/ folder, outside the ACOS-3.0 git repo) to fix both issues: only expire a saved goal once a genuinely newer pause has occurred on the same window, and stop propagating a stale surface-keyed goal-rearm file when there is no new goal to stage. Syntax-checked (bash -n passed) and read back end to end."
+  - "Investigated (initially via a mis-firing sub-agent, then personally, after the user correctly disputed the sub-agent's finding) why a resume prompt appeared to inject late; found the correct mechanism: eternity-cmux-resume-inpane.sh is wired into SessionStart and runs automatically, hands-free — the sub-agent's claim that no active injection mechanism exists was wrong."
+  - "Confirmed via macOS pmset sleep/wake logs that the Mac did NOT sleep during the user's reported multi-hour idle gap, ruling out sleep as the cause of the stall; confirmed instead that Claude Code has no autonomous 'keep thinking between turns' mode — a turn only runs in response to a new user message."
+  - "Confirmed (via process inspection + WebSearch) that plain 'caffeinate' does not survive a closed laptop lid, but 'sudo pmset -a disablesleep 1' does; proposed building this as the fix and was awaiting user go-ahead when the session ended."
+
+files_modified:
+  - path: ".claude/scripts/_autopilot_eternity.py"
+    changes: "Session-scoping fix, committed in bf8cfda (already on personal remote)."
+  - path: ".claude/scripts/autopilot-activate.py"
+    changes: "Session-scoping fix, committed in bf8cfda (already on personal remote)."
+  - path: ".claude/scripts/autopilot-context-injector.py"
+    changes: "Session-scoping fix, committed in bf8cfda (already on personal remote)."
+  - path: ".claude/scripts/autopilot-stop-handler.py"
+    changes: "Session-scoping fix, committed in bf8cfda (already on personal remote)."
+  - path: ".claude/scripts/resolve-session-id.sh"
+    changes: "NEW FILE — single source of truth for resolving the current session id. Committed in 14343bd."
+  - path: ".claude/scripts/resolve-session-handoff.sh"
+    changes: "NEW FILE — single source of truth for resolving a session id to its matching handoff file. Committed in 14343bd."
+  - path: ".claude/scripts/eternity-protocol-core.sh"
+    changes: "Replaced inline session-id/handoff-selection logic with calls to the two new shared scripts. Committed in 14343bd."
+  - path: ".claude/skills/acos-eternity-protocol/SKILL.md"
+    changes: "Steps 0, 1, 4, 5 rewritten to use the shared resolvers instead of four independent, drifted re-derivations. Committed in 14343bd."
+  - path: ".claude/skills/acos-continue/SKILL.md"
+    changes: "Steps 0 and 1 rewritten to use the shared resolvers. Committed in 14343bd."
+  - path: ".claude/skills/acos-resume-prompt/SKILL.md"
+    changes: "Step 1 and Step 2.5 rewritten to use the shared resolvers. Committed in 14343bd. (Note: bf8cfda in round 1 also touched this file for a separate, earlier fix — both changes are in the working history.)"
+  - path: "~/Library/Application Support/acos-token-monitor/bin/ (whole folder)"
+    changes: "Initialized as a new local git repo (commit f49a1f0, 15 files). Was previously completely unversioned. NOT pushed to any remote — local only so far."
+  - path: "~/Library/Application Support/acos-token-monitor/bin/eternity-cmux-inpane.sh"
+    changes: "UNCOMMITTED as of session end (confirmed via git status: ' M eternity-cmux-inpane.sh' in that folder's new repo). Fixed the /goal-survives-/clear staleness bug (Priority 1.4 goal-rearm logic) — replaced a flat 30-minute expiry with an expiry gated on a genuinely newer pause, and stopped forwarding a stale surface-keyed goal file when there's no new goal. Syntax-checked but not yet committed anywhere."
+
+decisions_made:
+  - "No memory/decisions/ entry was written this session (most recent decision file on disk is 2026-07-05-eternity-protocol-nonfiring-audit.md, from a prior session) — the fixes were applied directly rather than recorded as a formal ADR."
+  - "Confirmed and reused the existing standing rule from reference_claude_code_session_id_authoritative.md: $CLAUDE_CODE_SESSION_ID is authoritative for 'which session is this', not newest-transcript-in-folder heuristics — this became the design basis for resolve-session-id.sh."
+
+blockers:
+  - "The /goal daemon fix (eternity-cmux-inpane.sh) is edited and syntax-checked but UNCOMMITTED in its own new git repo — if that folder is touched by an unrelated process or reverted, this fix would be lost silently (there is no remote backup for it at all yet)."
+  - "The user's go-ahead on building 'sudo pmset -a disablesleep 1' as a system-wide sleep-disable fix was pending at session end — not yet built."
+  - "The cmux sidebar token-count status pill still isn't visible in any window; the investigation ('the code is there, it's wired in the right way...') was cut off mid-explanation by the Eternity Protocol auto-clear, so the actual remaining defect was never identified."
+  - "The daemon repo at ~/Library/Application Support/acos-token-monitor/bin/ has zero remote backup (local-only git, commit f49a1f0) — unlike ACOS-3.0 itself, a disk failure would lose all history there."
+
+next_actions:
+  - "Commit the pending eternity-cmux-inpane.sh fix in the daemon's local repo (~/Library/Application Support/acos-token-monitor/bin/) before doing anything else there — it is currently uncommitted, unbacked-up work."
+  - "Decide whether to add a remote to the new token-monitor daemon repo (currently commit f49a1f0 only, local, no remote) — Zee has not been asked yet."
+  - "Resume the token-count cmux sidebar status pill investigation — last known state: code exists in token-watcher.py (_update_cmux_status, function starting near line 1009), described as 'wired in correctly', but still not visibly showing in any window; root cause not yet found."
+  - "Get explicit user go-ahead, then build the system-wide sleep-disable fix (sudo pmset -a disablesleep 1) that survives a closed laptop lid, since plain caffeinate does not."
+  - "Verify the /goal daemon fix under a real /clear cycle (once committed) to confirm the goal-rearm logic now correctly survives the boundary case it was built for."
+  - "Consider whether the sub-agent ('fork' subagent_type) investigation failure — confidently reporting a mechanism 'doesn't exist' when it does — warrants a memory/feedback note, since the user had to catch and correct it manually."
+
+context_for_next_session: |
+  This was pure ACOS-infrastructure work on the Eternity Protocol / handoff system
+  itself, at the user's direct request — not planning-hierarchy work, so there is no
+  slice/story/epic to resume against. Two commits already landed and are pushed to
+  the personal GitHub remote on branch acos-deficiency-fixes-2026-06-04: bf8cfda
+  (session-scoping fixes to autopilot files) and 14343bd (the shared
+  resolve-session-id.sh / resolve-session-handoff.sh scripts, wired into
+  eternity-protocol-core.sh and three SKILL.md files, fixing a bug where a
+  concurrent session's handoff could get loaded instead of the invoking session's
+  own — this exact class of bug is why this handoff agent's own protocol now insists
+  on reading the invoking session's transcript first). The one loose end from that
+  work: the daemon-side companion fix (eternity-cmux-inpane.sh's /goal-survives-
+  /clear logic) lives in a SEPARATE repo outside ACOS-3.0
+  (~/Library/Application Support/acos-token-monitor/bin/, git-initialized THIS
+  session for the first time) and is still uncommitted there — pick that up first.
+  Two open user questions were mid-answer when the session ended: (1) whether to
+  build a stronger sleep-disable command (sudo pmset -a disablesleep 1) so the
+  Eternity Protocol can survive a closed laptop lid — the user was asked for
+  go-ahead but the session ended before getting it — and (2) why the cmux sidebar
+  token-count display isn't showing for any window, which was still being actively
+  diagnosed. Also worth knowing: mid-session, a spawned sub-agent (fork subagent_type,
+  task "Investigate late resume-prompt injection") returned a confidently wrong
+  finding ("the active resume mechanism doesn't exist"), which the user correctly
+  called out ("What you said about resume note is BS, double check it") — a direct,
+  manual re-investigation then found the real, working mechanism
+  (eternity-cmux-resume-inpane.sh, a SessionStart hook). This is a live example of
+  exactly the kind of overconfident-but-wrong sub-agent finding this handoff agent's
+  own protocol is designed to guard against by preferring the primary transcript over
+  secondary heuristics.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/b8dea5d0-168f-4743-ada5-5d1e07bbc928.jsonl (this session's own transcript, 838 lines — primary source for this entire handoff)"
+  - "git status --short (ACOS-3.0 repo)"
+  - "git log --oneline -20 (ACOS-3.0 repo)"
+  - "git log --oneline -5 -- .claude/scripts/eternity-protocol-core.sh .claude/scripts/resolve-session-id.sh .claude/scripts/resolve-session-handoff.sh"
+  - "git diff --stat HEAD~5..HEAD (ACOS-3.0 repo)"
+  - "git log --oneline -10 and git status --short in ~/Library/Application Support/acos-token-monitor/bin/ (confirmed f49a1f0 initial commit + uncommitted eternity-cmux-inpane.sh)"
+  - "ls -la .claude/scripts/resolve-session-id.sh .claude/scripts/resolve-session-handoff.sh (confirmed both new files exist on disk, executable)"
+  - "ls -la ~/Library/Application Support/acos-token-monitor/state/.eternity-arming-b8dea5d0-168f-4743-ada5-5d1e07bbc928 (confirms freeze-early arming fired for this session before the handoff)"
+  - "ls -lt planning/, .acos/evidence/, memory/decisions/, .acos/state/ (checked — no planning-hierarchy artifacts touched this session)"
+  - "ls -t memory/handoffs/*.yaml *.md (confirmed this is the first handoff written today, 2026-08-09)"

@@ -1,0 +1,174 @@
+timestamp: "2026-08-12T18:46:03Z"
+status: "active"
+type: "emergency-manual"
+trigger: "acos-handoff-agent"
+session_id: "d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf"
+estimated_tokens: 0
+
+session_summary: |
+  This session's real work was NOT in the ACOS 3.0 repo (its own transcript home)
+  but in a DIFFERENT, sibling repo: /Users/zee/Documents/Vibe Coding/R2P. It ran
+  EPIC-001's mutation-testing close-out: diagnosed six modules that were failing a
+  per-file mutation-kill bar of 70, wrote five new contract-driven test files
+  (deliberately without seeing the surviving-mutant lists, to catch wrong
+  documentation/comments rather than just uncaught mutants), had them reviewed by
+  four independent walled reviewers (six reviews, four PASS), fixed what the
+  reviews found, and then re-armed a full whole-codebase mutation gate re-run
+  (Stryker, pid 5918) because the six per-file passes were single-file runs, not
+  the required whole-codebase gate reading. 23 commits were made, none pushed
+  (R2P is local-only). The session explicitly refused to declare anything sealed
+  or complete — AP-07 in this project reserves all approval/seal/close/ratify
+  authority to a human named Ben, and the session repeatedly told the Stop-hook
+  continuation loop "I cannot declare the work final. That part is yours by
+  design, not by accident." The session ended by spawning this handoff agent
+  as part of an eternity-protocol pre-clear cycle.
+
+current_work:
+  slice_id: "multiple — pairs 16-24 (STORY-001-006 through 001-008) in EPIC-001"
+  story_id: "STORY-001-006 / 001-007 / 001-008"
+  epic_id: "EPIC-001"
+  status: "blocked"
+  note: >-
+    Blocked on (a) a long-running whole-codebase mutation gate re-run that has
+    not finished, and (b) 28 human rulings that no agent may make (AP-07). This
+    is NOT the ACOS 3.0 repo's own planning hierarchy — R2P has its own
+    planning/ directory with epics/stories/slices; ACOS 3.0's own planning/
+    artifacts are unrelated to this session's actual work.
+
+completed_this_session:
+  - "Diagnosed 6 modules failing the per-file mutation bar of 70 (R2P: DIAG-MG9, DIAG-MG12, OBS-MG8). Sharpest finding: design-manifest.ts had 7 exported functions and NO test file at all."
+  - "Wrote 5 new contract-driven test files for those modules, written blind (without the surviving-mutant list) so authors would test the declared CONTRACT, not just chase mutants. Produced OBS-MG13 + ADDENDUM-1: 34 module-level findings the mutation report itself could never have surfaced (wrong comments, unproducible enum members, missing validation, etc.)."
+  - "Ran 4 independent walled reviews of the new test files (qa-reviews/, 13 files: 5 sealed pre-reads + pass-1/pass-2 reports). Pass 1: 1 PASS, 2 BLOCK, 2 INCONCLUSIVE. After builder fixes: 4 PASS, 1 INCONCLUSIVE, 1 review still in progress (export-parity.ts) at time of the last check."
+  - "Measured all 6 fixed modules post-fix single-file: all 6 now clear 70 on killed-mutants-alone (FIXLOOP-002-ALL-SIX-POSTFIX-RESULTS.yaml). Caveat explicitly recorded: single-file runs, not gate readings."
+  - "Built tools/mutation-gate-rerun.ts — a checked procedure for the gate re-run (refuses to start if any agent is live, tree is uncommitted, instrumentation is left over, or --force is passed — there is no --force)."
+  - "Caught and self-corrected 4 of its own errors mid-session (recorded in READ-THIS-FIRST-SESSION-2026-08-12.yaml 'errors_made_and_caught'): a numeric-literal grep miss (TypeScript numeric separators), an unchecked builder line-count relay (22 vs 26), a wrong file-size-based fix ordering, and a false-alarm @ts-nocheck grep hit."
+  - "Wrote up 28 pending human rulings in DECISIONS-FOR-BEN.yaml (12 body + ADDENDUM-1's 16), ordered by blast radius not severity, plus a reading-order document READ-THIS-FIRST-SESSION-2026-08-12.yaml."
+  - "Armed the whole-codebase Stryker mutation gate re-run at HEAD 0380537 (started 2026-08-12T11:17:55, pid 5918, detached) and two independent background watcher jobs to detect its finish or crash."
+  - "Made 23 local commits in R2P (git log confirms fe91cf5 back through 9df8e64 and earlier); none pushed — R2P is local-only, standing rule."
+
+files_modified:
+  - path: "R2P: 5 new contract-driven test files (exact filenames not individually confirmed by this handoff — see OBS-MG13/FIXLOOP-002 for the list)"
+    changes: "New tests covering 6 previously-under-tested/untested modules, incl. design-manifest.ts (had zero prior tests)."
+  - path: "R2P: tools/mutation-gate-rerun.ts"
+    changes: "New tool — checked/guarded procedure to re-run the whole-codebase mutation gate; refuses unsafe conditions, no --force escape hatch."
+  - path: "R2P: planning/evidence/EVB-EPIC-001/close-packet/*.yaml (31 records, 13 review reports as of this session)"
+    changes: "New/updated evidence records — OBS-MG2 through OBS-MG16, DIAG-MG9, DIAG-MG12, FIXLOOP-001/002, DECISIONS-FOR-BEN.yaml (+ADDENDUM-1), SEAL-GATE-MATRIX.yaml, READ-THIS-FIRST-SESSION-2026-08-12.yaml, SWARM-001-DESIGN.yaml, etc."
+  - path: "ACOS 3.0 (this repo): NOT touched by this session's real work"
+    changes: >-
+      git status in ACOS 3.0 shows unrelated modifications (eternity-protocol
+      scripts/SKILL.md, Logo Builder brandsync files, git-manager/ids.json,
+      html-to-pdf.js) and many untracked memory/handoffs/*.yaml files. These are
+      NOT attributable to this session with confidence — this session's own
+      transcript shows its actual work was almost entirely conducted with
+      cwd=/Users/zee/Documents/Vibe Coding/R2P. Per the handoff-agent's own
+      protocol warning, ACOS 3.0's repo-wide git status may reflect sibling/
+      concurrent sessions working in this same shared repo. Do not treat it as
+      this session's own dirty work.
+
+decisions_made:
+  - "No decisions were RATIFIED — AP-07 forbids any agent from approving/sealing/closing/ratifying. All 28 items in DECISIONS-FOR-BEN.yaml remain status: proposed, owner: Ben."
+  - "Session declined to choose between the P0-invariant-audit's 4 offered readings (R-A through R-D) for the unevaluable P0 gate (F-02) — left for Ben."
+  - "Session declined to choose between the 3 costed options in VERIFY-GATE-BLOCKER.yaml (OBS-VG1: pnpm run verify vs 3 digest-recorded files) — explicitly noted an agent recommending its own green gate would not be neutral."
+
+candidate_learnings:
+  - "This repo (ACOS 3.0) can host a live Claude Code session whose actual working directory and real work are in a completely different sibling repo (R2P) for the entire session — the transcript stays keyed to ACOS 3.0 because that was the session's cwd at start, even though nearly every Bash tool_use in it carries cwd=/Users/zee/Documents/Vibe Coding/R2P. Any handoff/resurrection tooling that infers 'current work' from ACOS 3.0's own git status alone will completely miss this. (evidence: this transcript's own per-message cwd fields, and the R2P git log/log file confirming the work.)"
+  - "R2P uses Stryker with inPlace: true for its mutation gate — while that process is alive, git status in R2P is meaningless (hundreds of source files get `// @ts-nocheck` prepended and are restored on completion), and running tsc/vitest/biome/pnpm-run-check during the run produces a FALSE PASS rather than an error, because the instrumentation silences real type errors. (evidence: user-supplied critical context in this handoff-agent's invocation prompt, corroborated by live process list showing pid 5918 running `npx stryker run` with stryker.config.mjs `inPlace: true` referenced repeatedly across DECISIONS-FOR-BEN.yaml and OBS-MG* records.)"
+  - "R2P's AP-07 house rule: no agent may approve, seal, close, or ratify any planning/evidence record in this project; every such record is written with `owner: Ben` and `self_approved: false`, and silence is explicitly defined as not approval. This is a durable project convention, not a one-off instruction. (evidence: consistent across READ-THIS-FIRST-SESSION-2026-08-12.yaml, DECISIONS-FOR-BEN.yaml, SEAL-GATE-MATRIX.yaml.)"
+  - "Grepping a long numeric literal by its bare digit string can miss a TypeScript file that writes it with `_` numeric separators (e.g. 9_007_199_254_740_991 vs 9007199254740991) — a builder in R2P caught this against the session's own false claim. (evidence: READ-THIS-FIRST-SESSION-2026-08-12.yaml 'errors_made_and_caught' first entry.)"
+
+blockers:
+  - "R2P whole-codebase mutation gate (Stryker, pid 5918) is still running as of this handoff: 8919/30486 mutants tested, 902 survived, 336 timed out, elapsed ~1h28m, Stryker's own (currently unreliable, extrapolated-from-1%) ETA reads ~80h remaining. Two background watcher shell jobs are armed in the ORIGINATING session only (not durable across a context clear) — a 30s-interval poll for 900 iterations (~7.5h) and a 60s-interval poll for 780 iterations (~13h) — both watching for a `RUN_EXIT=` line in planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-RERUN-latest.log and both distinguishing a real finish from a crash (stryker process vanishing with no RUN_EXIT line). IMPORTANT: at the current ~1% pace the run may plausibly outlast BOTH watcher windows — the next session should not assume 'watcher window elapsed' means 'run crashed.'"
+  - "28 human rulings pending in R2P's planning/evidence/EVB-EPIC-001/close-packet/DECISIONS-FOR-BEN.yaml (12 in the body + 16 in ADDENDUM-1), all owner: Ben, none of which any agent may resolve. Three of the highest-blast-radius: OBS-MG1 (can source-scanning tests coexist with in-place mutation testing), OBS-VG1 (pnpm run verify cannot pass without reformatting 3 digest-recorded files), F-02 (zero P0-designated invariants exist anywhere in the project despite PRD 16.7 requiring them; 43 slice files cite 16.7 and none contain the words 'P0 invariant')."
+  - "Pair 20 (slice 001-007-02) is blocked purely on a decision, not on work — F-06 (bootstrap resampling not implemented) and F-03 (homoglyph gap needing the UTS #39 table) are both scope calls no revision can close. Its holdout pack is correctly kept UNSPENT."
+  - "SWARM-001-v1 cannot convene: all 5 preconditions unmet (candidate not frozen, evidence bundle not sealed, DEV/QA parity unverified, holdouts unspent, gate still running)."
+  - "export-parity.ts has had no completed independent review; its reviewer's pre-read is sealed (hash 240c1aaa...) but the report was still in progress as of the last write to READ-THIS-FIRST-SESSION-2026-08-12.yaml."
+  - "presentation-export-parity-contracts.test.ts has an open item flagged by the invoking session: two comment claims with no backing assertions — a single builder was to be sent to answer this once the gate work allows."
+
+next_actions:
+  - "Do NOT run tsc, vitest, biome, or pnpm run check in R2P, and do not edit any file there, until the Stryker gate (pid 5918, or whatever PID it becomes after any restart) has finished and restored instrumented files — check for a `RUN_EXIT=` line in planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-RERUN-latest.log first."
+  - "When the gate lands: (a) FIRST check whether packages/core/allocation/index.ts and packages/core/portfolio/index.ts moved off a 0.00 mutation score — this single reading settles both whether their new tests were collected and a 10-test discrepancy recorded in OBS-MG14 ADDENDUM-1; (b) run `bun tools/mutation-gate-rerun.ts --report <log>` and read the PER-FILE table against the bar of 70 (NOT the run's aggregate exit code — `break: 70` applies to the AGGREGATE, not each file); (c) diff per-file mutant counts against the committed baseline testruns/GATE-PREFIX-BASELINE-PARSED-from-full-run.json to explain a currently-unexplained +73 mutant delta; (d) re-measure the full test suite, which nothing has measured since today's changes; (e) send one builder to close the open BLOCK on tests/unit/presentation-export-parity-contracts.test.ts (two comment claims, no assertions backing them)."
+  - "Read R2P's planning/evidence/EVB-EPIC-001/close-packet/READ-THIS-FIRST-SESSION-2026-08-12.yaml first, then DECISIONS-FOR-BEN.yaml (body + ADDENDUM-1), then SEAL-GATE-MATRIX.yaml (per-pair status of pairs 16-24) before doing anything else in R2P."
+  - "Do not push R2P to any remote — it is local-only by standing rule, 23 unpushed commits as of this session."
+  - "Do not treat ACOS 3.0's own git status as reflecting this session's work; if ACOS 3.0-specific work is actually wanted next, it will need to be freshly scoped since this session did essentially none of it."
+  - "Nothing in R2P's close packet may be marked sealed/approved/closed/ratified by any agent (AP-07) — surface the 28 pending items to Ben/Zee for rulings rather than attempting to resolve or default them."
+
+context_for_next_session: |
+  The invoking session (d72f5b72-...) was conducting an EPIC-001 mutation-testing
+  close-out in a SEPARATE repo, /Users/zee/Documents/Vibe Coding/R2P, even though
+  its transcript is filed under this repo (ACOS 3.0) because that was its cwd at
+  session start. Nearly every substantive tool call in the transcript carries
+  cwd=".../R2P". Treat R2P, not ACOS 3.0, as the project whose state actually
+  matters for continuing this work.
+
+  R2P's mutation-testing gate (Stryker, inPlace: true) is a WHOLE-CODEBASE
+  destructive-in-place instrumentation run: it live-rewrites source files across
+  packages/core and packages/adapters (prepending `// @ts-nocheck`), plus
+  tools/mutation-gate-rerun.ts, vitest.config.ts, and stryker.config.mjs, and
+  restores them on completion. As of this handoff it is still running (pid 5918,
+  started 2026-08-12T11:17:55 at R2P HEAD 0380537, currently at 8919/30486
+  mutants tested = ~29%, 902 survived, 336 timed out; Stryker's own displayed ETA
+  of ~80h is an early-run extrapolation and should not be trusted literally, but
+  the pace so far suggests the run could genuinely still be going well past both
+  the 7.5h and 13h background-watcher windows that were armed inside the
+  ORIGINATING session — those watcher jobs do not survive a context clear/new
+  session, so a fresh session must re-check the log directly rather than assume
+  a watcher is still covering it). Until RUN_EXIT= appears in
+  planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-RERUN-latest.log,
+  do not run tsc/vitest/biome/pnpm run check in R2P and do not edit any file
+  there — instrumentation would make a type check silently report a false pass,
+  and an edit now could be lost or corrupt Stryker's restore.
+
+  Substantively, the session finished a full diagnose -> fix -> test -> review
+  cycle on 6 modules that were failing a per-file mutation-kill bar of 70
+  (design-manifest.ts, and others enumerated in FIXLOOP-002-ALL-SIX-POSTFIX-
+  RESULTS.yaml), writing 5 new contract-driven test files deliberately without
+  seeing the mutation tool's surviving-mutant list (so authors would test the
+  DECLARED CONTRACT rather than just chase individual mutants — this method
+  surfaced 34 module-level defects across false comments, an unreachable enum
+  member in a closed 28-member vocabulary, a missing sign check, and a
+  deepFreeze-mutates-caller's-object bug, none of which the mutation report
+  itself could have found). All 6 modules now individually clear the bar
+  (single-file runs only — NOT yet a gate reading). Four of six new test files
+  passed independent walled review; one review is/was still in progress on
+  export-parity.ts. The session then built and armed a guarded gate-rerun tool
+  (tools/mutation-gate-rerun.ts, no --force escape hatch) because the earlier
+  per-file passes cannot substitute for the required ONE whole-codebase gate
+  reading per PRD §16.7's 4-gate seal requirement (QA PASS, holdout spent,
+  mutation gate CLEAR, full suite green — see SEAL-GATE-MATRIX.yaml for the
+  per-pair 16-24 status of each of those four).
+
+  The project's AP-07 rule is load-bearing and was honored strictly all session:
+  no agent may approve, seal, close, or ratify anything. All evidence records
+  read `owner: Ben`, `self_approved: false`. 28 rulings await a human (12 in
+  DECISIONS-FOR-BEN.yaml's body, 16 in its ADDENDUM-1, ordered by blast radius
+  not severity) — the three highest-blast-radius are OBS-MG1 (can
+  source-scanning tests coexist with Stryker's in-place mutation rewriting),
+  OBS-VG1 (pnpm run verify cannot pass without reformatting 3 digest-pinned
+  files — a genuine conflict between two of the project's own rules, no
+  recommendation offered deliberately), and F-02 (the whole project has zero
+  P0-designated invariants despite PRD 16.7 requiring a P0 gate; the audit
+  offers 4 possible readings, R-A through R-D, for a human to choose between).
+  Pair 20 is uniquely blocked on pure scope decisions (F-06/F-03), not work, and
+  its holdout pack is correctly being kept unspent pending that ruling.
+
+  R2P is local-only by standing project rule: 23 commits were made this session
+  (fe91cf5 back through at least 9df8e64), none pushed, and none should be
+  pushed without being told to. When the gate finishes, follow the 5-step
+  landing sequence recorded above (allocation/portfolio 0.00 check first, then
+  per-file table vs 70, then baseline delta of +73 mutants, then full-suite
+  remeasure, then the presentation-export-parity-contracts.test.ts BLOCK) before
+  reporting anything to Ben/Zee as ready for rulings.
+
+reconstruction_sources:
+  - "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/d72f5b72-b88e-4c3c-be62-9fa7e54f0fbf.jsonl (this session's own transcript, tail + targeted grep/jq extraction — primary source)"
+  - "Critical context block supplied directly in this handoff-agent's own invocation prompt by the parent session (points 1-8), cross-verified against transcript and disk rather than taken on faith alone"
+  - "/Users/zee/Documents/Vibe Coding/R2P (git log --oneline -25, git rev-parse HEAD)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-RERUN-latest.log (tail, RUN_EXIT grep)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/READ-THIS-FIRST-SESSION-2026-08-12.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/DECISIONS-FOR-BEN.yaml (full read)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/SEAL-GATE-MATRIX.yaml (partial read, first 80 lines)"
+  - "ps -p 5918 and pgrep -fl stryker (live process verification, R2P)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/tests/unit/presentation-export-parity-contracts.test.ts (existence + grep confirmation)"
+  - "/Users/zee/Documents/Vibe Coding/R2P/planning/evidence/EVB-EPIC-001/close-packet/testruns/GATE-PREFIX-BASELINE-PARSED-from-full-run.json (existence check only)"
+  - "git status --short and git log --oneline -10 in /Users/zee/Documents/Vibe Coding/ACOS 3.0 (this repo — confirmed its own working tree changes are NOT attributable to this session)"
+  - "ls -lt memory/handoffs/*.yaml in ACOS 3.0 (prior handoff inventory, incl. 2026-08-12-emergency-handoff-2.yaml and -3.yaml which this same session had already read/produced earlier in its own lifecycle per Stop-hook transcript evidence)"
