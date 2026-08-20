@@ -4,7 +4,16 @@
 # Interface:
 #   close-project.sh --intent-file <path> --session-id <sid>
 #                    [--roundtrip-result <path>] [--learnings-file <path>]
-#                    [--auto-close] [--dry-run]
+#                    [--park-to <uuid>] [--auto-close] [--dry-run]
+#
+# --park-to <uuid> is the DESTINATION PICKER (Zee's brief, 2026-08-18). Without
+# it a close parks the tab's work onto the tab's own row, which is all a close
+# could ever do. With it, the reentry note, the registry last_close and the
+# captured learnings all land on the NAMED row instead — so a scratch tab whose
+# work turned out to belong to "Skill Workshop" can be filed there rather than
+# leaving a stray project behind. The tab's own row is then retired (step 7b),
+# which is the half that needs guards: it is refused outright if that row holds
+# knowledge facts, a prior close, or another live window.
 #
 # --learnings-file is the KB-A capture loop (user brief 2026-08-04). It takes a
 # JSON array of candidate learnings the SESSION composed — the Kind-1/Kind-2
@@ -30,6 +39,7 @@ CLOSE_INTENT_FILE=""
 CLOSE_SESSION_ID=""
 CLOSE_ROUNDTRIP=""
 CLOSE_LEARNINGS=""
+CLOSE_PARK_TO=""
 CLOSE_AUTO=0
 CLOSE_DRY=0
 while [ $# -gt 0 ]; do
@@ -38,12 +48,13 @@ while [ $# -gt 0 ]; do
     --session-id)       CLOSE_SESSION_ID="${2:-}";  shift 2 ;;
     --roundtrip-result) CLOSE_ROUNDTRIP="${2:-}";   shift 2 ;;
     --learnings-file)   CLOSE_LEARNINGS="${2:-}";   shift 2 ;;
+    --park-to)          CLOSE_PARK_TO="${2:-}";     shift 2 ;;
     --auto-close)       CLOSE_AUTO=1; shift ;;
     --dry-run)          CLOSE_DRY=1;  shift ;;
     *) echo "NOT SAFE — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-export CLOSE_INTENT_FILE CLOSE_SESSION_ID CLOSE_ROUNDTRIP CLOSE_LEARNINGS CLOSE_AUTO CLOSE_DRY
+export CLOSE_INTENT_FILE CLOSE_SESSION_ID CLOSE_ROUNDTRIP CLOSE_LEARNINGS CLOSE_AUTO CLOSE_DRY CLOSE_PARK_TO
 CLOSE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export CLOSE_LIB_DIR
 
@@ -85,6 +96,10 @@ INTENT = os.environ.get("CLOSE_INTENT_FILE", "")
 SID = os.environ.get("CLOSE_SESSION_ID", "")
 ROUNDTRIP = os.environ.get("CLOSE_ROUNDTRIP", "")
 LEARNINGS = os.environ.get("CLOSE_LEARNINGS", "")
+# --park-to <uuid>: park THIS tab's work onto a DIFFERENT project's row (Zee's
+# destination-picker brief, 2026-08-18). The tab's own row becomes the ORPHAN and
+# is retired afterwards, under the guards in step 7b. Empty = today's behaviour.
+PARK_TO = os.environ.get("CLOSE_PARK_TO", "").strip()
 AUTO = os.environ.get("CLOSE_AUTO", "0") == "1"
 DRY = os.environ.get("CLOSE_DRY", "0") == "1"
 ROOT = os.path.abspath(os.environ.get("RESURRECTION_PROJECT_ROOT") or os.getcwd())
@@ -697,6 +712,33 @@ def main():
             elif not os.path.exists(pid_path):
                 os.makedirs(os.path.dirname(pid_path), exist_ok=True)
                 write_file(pid_path, project_uuid + "\n")
+    # ---- destination picker (2026-08-18, Zee's brief) ----------------------
+    # Everything above resolved the row THIS TAB belongs to. --park-to says the
+    # work belongs somewhere else, so the tab's row becomes the ORPHAN and the
+    # named row becomes the destination. project_uuid is the single variable the
+    # rest of this close writes through — the reentry owner marker, the registry
+    # last_close, and knowledge_lib.write_learnings all read it — so redirecting
+    # it here moves all three together, with no second code path to keep in sync.
+    orphan_uuid = None
+    if PARK_TO:
+        try:
+            target = registry_lib.load_row(PARK_TO, home=REG_HOME)
+        except (ValueError, json.JSONDecodeError):
+            target = None
+        if target is None:
+            refuse("--park-to %s names no registry row" % PARK_TO)
+        if target["status"] == "tombstoned":
+            refuse("--park-to %s is tombstoned — parking into a hidden row would put "
+                   "this work out of reach too" % PARK_TO)
+        if PARK_TO != project_uuid:
+            orphan_uuid = project_uuid
+            project_uuid = PARK_TO
+            emit("step 6b PARK-TO %s (%r) — this tab's work files onto that row; "
+                 "its own row %s becomes the orphan"
+                 % (PARK_TO, target["name"], orphan_uuid))
+        else:
+            emit("step 6b PARK-TO names this tab's own row — closing normally, nothing orphaned")
+
     # D14 — closing ONE window does not park the project. The row stays active
     # while any other window is open, and parks only when the LAST one closes.
     # Parking early would put a project Zee is still working in back on the
@@ -733,6 +775,61 @@ def main():
         refuse("registry read-back failed: row missing, status is not %r, or last_close.sha256 "
                "does not match the on-disk handoff" % close_status)
     emit("step 7  registry row %s status=%s last_close.sha256 MATCH (read back)" % (project_uuid, back["status"]))
+    # ---- step 7b: retire the orphan row (2026-08-18, Zee's ruling) ---------
+    # "If a tab is not parked to any old line ... retire it." A scratch tab that
+    # files its work elsewhere leaves an empty row behind, and the book fills up
+    # with them. Retiring is the half that is awkward to undo, so it is GUARDED:
+    # anything that looks like real history refuses the retire and says why. This
+    # is the same lesson the FruitSync merge taught the same day — row a156b1b8
+    # looked disposable and held 14 facts, so retiring it first would have put
+    # half a project's memory out of normal reach.
+    #
+    # A tombstone HIDES the row and keeps the file on disk; nothing here deletes.
+    if orphan_uuid:
+        orphan = registry_lib.load_row(orphan_uuid, home=REG_HOME)
+        blockers = []
+        if orphan is None:
+            blockers.append("its row is already gone")
+        elif orphan["status"] == "tombstoned":
+            blockers.append("it is already retired")
+        else:
+            if orphan.get("last_close"):
+                blockers.append("it holds a previous close from %s"
+                                % (orphan["last_close"].get("at") or "an earlier session"))
+            try:
+                import knowledge_lib as _kl
+                n_facts = len(_kl.load_facts(orphan_uuid, REG_HOME))
+                if n_facts:
+                    blockers.append("it holds %d knowledge fact%s"
+                                    % (n_facts, "" if n_facts == 1 else "s"))
+            except Exception as exc:  # noqa: BLE001 — unreadable store = refuse, never retire blind
+                blockers.append("its knowledge store could not be read (%s)" % type(exc).__name__)
+            try:
+                import windows_lib as _wl
+                still = _wl.other_windows(orphan_uuid, ws_id, live_ws_ids, home=REG_HOME)
+                if still:
+                    blockers.append("%d other window%s still open on it"
+                                    % (len(still), "" if len(still) == 1 else "s"))
+            except Exception:  # noqa: BLE001 — unknown liveness is a blocker, not a green light
+                blockers.append("its live-window count could not be read")
+        if blockers:
+            emit("step 7b orphan %s NOT retired — %s" % (orphan_uuid, "; ".join(blockers)))
+            emit("        it stays in the book on purpose. Merge what it holds first "
+                 "(merge-knowledge.py --from %s --into %s), then retire it yourself."
+                 % (orphan_uuid, project_uuid))
+        else:
+            registry_lib.tombstone_row(orphan_uuid, home=REG_HOME)
+            back_o = registry_lib.load_row(orphan_uuid, home=REG_HOME)
+            if back_o is None or back_o["status"] != "tombstoned":
+                emit("step 7b orphan %s retire NOT VERIFIED — it is still in the book"
+                     % orphan_uuid)
+            else:
+                emit("step 7b orphan %s retired (hidden in ARCHIVED; the row file is NOT deleted)"
+                     % orphan_uuid)
+                registry_lib.audit_append(
+                    {"event": "orphan-retired-on-park", "project_uuid": orphan_uuid,
+                     "parked_to": project_uuid, "session_id": SID}, home=REG_HOME)
+
     if other_windows_open:
         emit("        D14: %d other window%s still open on this project — row stays ACTIVE; "
              "it parks when the LAST window closes"

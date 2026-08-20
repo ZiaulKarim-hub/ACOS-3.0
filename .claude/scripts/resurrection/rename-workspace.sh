@@ -33,6 +33,20 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$RW_NAME" ] || { echo "REFUSED — --name <project name> is required"; exit 2; }
+
+# Trim surrounding whitespace AT THE DOOR (2026-08-18). cmux stores custom_title
+# byte-for-byte, so a leading/trailing space in --name becomes a permanently
+# odd-looking sidebar entry, and the verify step below used to compare a
+# STRIPPED read-back against an UNSTRIPPED wanted value — an asymmetry that
+# reported a mismatch on a rename that had done exactly what it was told.
+# Trimming here kills the whole class at the source; the verify is now
+# symmetric as well (belt and braces). A trim is ANNOUNCED, never silent.
+RW_NAME_RAW="$RW_NAME"
+RW_NAME="$(printf '%s' "$RW_NAME" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+if [ "$RW_NAME" != "$RW_NAME_RAW" ]; then
+  echo "NOTE — trimmed surrounding whitespace from --name: $(printf '%q' "$RW_NAME_RAW") -> $(printf '%q' "$RW_NAME")"
+fi
+[ -n "$RW_NAME" ] || { echo "REFUSED — --name was only whitespace"; exit 2; }
 [ -n "$RW_WS" ] || RW_WS="${CMUX_WORKSPACE_ID:-}"
 [ -n "$RW_WS" ] || { echo "SKIP — no target workspace (no --workspace and \$CMUX_WORKSPACE_ID unset); tab not renamed"; exit 0; }
 
@@ -57,7 +71,9 @@ except Exception as exc:  # noqa: BLE001 — verify is best-effort, never fatal
 for w in data.get("workspaces", []):
     if (w.get("id") or "").casefold() == ws.casefold():
         ct = (w.get("custom_title") or "").strip()
-        if w.get("has_custom_title") and ct == want:
+        # Compare TRIMMED to TRIMMED. Stripping only one side made this test
+        # asymmetric and produced a false mismatch report (2026-08-18 fix).
+        if w.get("has_custom_title") and ct == want.strip():
             print("RENAMED — tab %s sidebar name is now %r (verified)" % (ws, ct))
         else:
             print("RENAMED — issued for %r but read back custom_title=%r has_custom_title=%s"

@@ -1,33 +1,42 @@
 ---
 name: acos-resurrect
-description: The Resurrection Protocol menu — renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, routes the user's pick (project already open elsewhere → launch-project.sh FOCUS; otherwise adopt-project.sh ADOPTS the pick into the CURRENT tab and the reentry is read inline — a pick never strands the user in another tab), and runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
+description: The Resurrection Protocol menu — renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # ACOS Resurrect — the menu over the book (Resurrection Protocol proper)
 
-Resurrect = see every project honestly, pick one, land in it with its reentry in
-front of you — **in the tab you typed the command in**. ALL computation lives in
+Resurrect = see every project honestly, pick one or several, and land each in a
+window of its own, in its own folder, already working. ALL computation lives in
 the scripts: `.claude/scripts/resurrection/resurrect-view.py` (the book —
 computed fresh, read-only, BROKEN rows shown),
-`.claude/scripts/resurrection/adopt-project.sh` (ADOPT-IN-PLACE, SPINE 2 — the
-default route: this tab BECOMES the picked project), and
-`.claude/scripts/resurrection/launch-project.sh` (focus-or-launch, SPINE 1 —
-used only to JUMP to a project that is already open in another tab). Status
-transitions go through `.claude/scripts/resurrection/registry_lib.py` ONLY. This
-skill routes and relays; it computes nothing and decorates nothing.
+`.claude/scripts/resurrection/open-picks.sh` (the pick LIST — resolves every
+token against a fresh book, all-or-nothing, then opens each row),
+`.claude/scripts/resurrection/launch-project.sh` (one window: create in
+`--cwd <root>`, launch `claude --dangerously-skip-permissions`, verify delivery),
+and `.claude/scripts/resurrection/adopt-project.sh` (ADOPT-IN-PLACE — now the
+opt-in `adopt <n>` verb, not the default route). Status transitions go through
+`.claude/scripts/resurrection/registry_lib.py` ONLY. This skill routes and
+relays; it computes nothing and decorates nothing.
 
-**Adopt-in-place, and its one physical limit** (user decision 2026-07-26): a
-pick must land HERE, not in some other tab the user then has to hunt for. But a
-cmux workspace's FOLDER cannot be changed after the workspace is created
-(`--cwd` exists only on `workspace create`; there is no re-point verb), and a
-Claude session's cwd is fixed at launch. So adoption re-binds IDENTITY — sidebar
-name, the durable `[key:<uuid>]` tag, and the registry row — never the tab's
-shell folder. When the picked root differs from the tab's folder,
-`adopt-project.sh` prints a `FOLDER CAVEAT` naming the root every file operation
-must use; relay it verbatim and then USE absolute paths under that root. Never
-paper over it, and never claim the directory changed.
+**Why a pick opens its own window** (Zee's Rules 1-4, 2026-08-19). A cmux
+workspace's FOLDER cannot be changed after the workspace is created (`--cwd`
+exists only on `workspace create`; there is no re-point verb), and a Claude
+session's cwd is fixed at launch. Adoption can only re-bind IDENTITY — sidebar
+name, the durable `[key:<uuid>]` tag, the registry row — never the tab's shell
+folder. So a pick creates a window in the right folder instead of re-labelling
+one in the wrong folder:
+
+- **Rule 1** — a pick may be a LIST: `2, 5, 7, 9` opens all four.
+- **Rule 2** (2026-08-18) — every pick lands in the project's OWN folder.
+- **Rule 3** — re-opening a row that is already open gives it ANOTHER window on
+  the same project. Never a question, never a jump. `--focus-existing` is how
+  the user asks to jump instead.
+- **Rule 4** — every opened window runs `claude --dangerously-skip-permissions`.
+  Delivery is still PROVEN: the shell prints the reentry note between BEGIN/END
+  markers before exec'ing claude, and read-screen looks for the marker
+  (MEASURED 2026-08-19 — Claude Code renders inline, so the markers survive).
 
 This skill is GLOBAL (installed in `~/.claude/skills/`), but the scripts live
 ONCE — in the ACOS 3.0 install. Every block resolves `RESDIR` to this project's
@@ -57,14 +66,18 @@ matches the live workspace — relay verbatim, never "fix" silently) and
 `UNMATCHED WORKSPACES` (live cmux workspaces matching no row — candidates the
 user may add via the `add` verb below).
 
-On EVERY pick the tab is auto-renamed to the picked project's name (user
-request 2026-07-20), so the sidebar name always matches the row you landed in:
-`adopt-project.sh` renames THIS tab (Step 4) and `launch-project.sh` renames the
-tab it focuses (Step 3, in its `finalize()`). Both are fail-open — a rename miss
-is cosmetic, never a gate. The rename is identity-safe because every named row
-already stores `workspace_name == name`, and because adoption writes the
-`[key:<uuid>]` tag alongside it — the tag is what keeps an adopted tab bound to
-its real row when the tab's folder is not the project's root.
+On EVERY pick the window is named for the project (user request 2026-07-20), so
+the sidebar name always matches the row you landed in. Since Rule 3 makes several
+windows on one project normal, the name is the project name PLUS a distinguisher:
+`--label <text>` gives `<project> <text>`, and with no label the second and later
+windows are AUTO-NUMBERED (`To Do Tree 2`) and the script says the number was
+auto-assigned (D12). `launch-project.sh` names the window it creates and leaves a
+focused window's existing name alone when that name already starts with the
+project's; `adopt-project.sh` renames THIS tab under the `adopt <n>` verb. All are
+fail-open — a rename miss is cosmetic, never a gate. The rename is identity-safe
+because every named row already stores `workspace_name == name`, and because the
+`[key:<uuid>]` tag is written alongside it — the tag is what keeps a window bound
+to its real row when names repeat.
 `rename-workspace.sh` still exists for a bare cosmetic rename, but a PICK never
 uses it alone: a rename without the tag would leave the tab claiming a project
 it is not bound to.
@@ -82,15 +95,25 @@ it is not bound to.
   only (red/amber only) and you add NOTHING to them.
 - Workspace actions belong to the SCRIPTS. This skill NEVER calls
   `cmux workspace create` / `select` / `close` / `rename` / `set-description`
-  directly — the only routes are `adopt-project.sh` (re-bind THIS tab) and
-  `launch-project.sh` (focus a tab that is already open). SPINE 1 (one project,
-  one tab — focus, never a second workspace) and SPINE 2 (a pick lands in the
-  tab it was typed in) live in those scripts, not here.
-- **Adoption never CREATES a tab.** The old different-root behaviour — spawn a
-  new workspace and leave the user behind in the tab they typed in — is a defect
-  (2026-07-26). `launch-project.sh` is now called ONLY when the book shows the
-  picked project already live in another workspace; its create path is not a
-  route this skill takes.
+  directly — the only routes are `open-picks.sh` (every pick, one or many),
+  `launch-project.sh` (the single-window primitive it calls), and
+  `adopt-project.sh` (only for the opt-in `adopt <n>` verb).
+- **A pick lands in the project's OWN folder, in its own window** (Rules 1-4,
+  2026-08-19; Rule 2 dates from 2026-08-18). Earlier rules made adoption the
+  default route, which left projects running from the wrong folder permanently —
+  how tab workspace:20 came to run FruitSync from `ACOS 3.0`, and how the
+  Research to Portfolio session minted a row called `FruitSync (duplicate)`
+  rooted at ACOS 3.0 on 2026-08-18. `adopt-project.sh` still exits 5 with
+  `CROSS-ROOT` rather than adopting across roots; the escape hatch
+  `--allow-cross-root` exists and is never the default. The user is always told
+  which sidebar name to look at, so nobody is stranded.
+- **All-or-nothing on a list.** `open-picks.sh` resolves every token against a
+  FRESH book before it opens anything. One unknown number or ambiguous name and
+  NOTHING opens. Never open the resolvable subset — half a list is worse than a
+  refusal, because the user then has to work out which windows exist.
+- **Never claim a delivery the script did not verify.** exit 3 means the marker
+  was not seen; quote the line. A `TRUST GATE DETECTED` line means claude is
+  sitting on the folder-trust prompt and has NOT received the reentry.
 - **The outgoing project is checked before it is released.** `adopt-project.sh`
   exits 3 with `OUTGOING NOT-CLOSED` when the tab's current project has no
   `last_close` record. Relay that verbatim and STOP — offer `/acos-safe-close`
@@ -150,134 +173,122 @@ the menu. `book.json` is for YOUR machine reading of `project_uuid`/`root`/
 computation); it is never shown as the book and never reused in a later
 invocation. `exit != 0` → relay the output verbatim and STOP.
 
-## Step 2 — The pick
+## Step 2 — The pick (ONE row, or a LIST)
 
 Non-ARCHIVED projects (tiers OPEN NOW / RECENT / COLD / NO HANDOFF) are the
 pickable set. ARCHIVED rows stay visible in the book but are not offered as
-options; the user may still name one explicitly by free text (the launcher
-accepts a `completed` row — that is the loop — and REFUSES a `tombstoned` one;
-relay its refusal).
+options; the user may still name one explicitly by free text (a `completed` row
+opens — that is the loop — and a `tombstoned` one is REFUSED; relay the refusal).
+
+**A pick may be a LIST** (Zee's Rule 1, 2026-08-19). `2, 5, 7, 9` means open all
+four. Say so when you ask. Repeats are legal and meaningful: `5, 5` opens two
+windows on row 5 (Rule 3).
 
 - **<= 4 pickable projects:** AskUserQuestion with ONE option per project.
   Option label = the project name. Option description must be SELF-CONTAINED:
-  tier, age, dirty count, and the row's `next_action` verbatim — the user
-  decides from the description alone. Mention in the question text that the
-  loop verbs `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, and `curate` are also
-  accepted as a typed reply.
-- **> 4 pickable projects:** ask for a free-text pick — by name, or by the
-  printed NUMBER next to the row. The renderer prints an explicit pick number
-  (the left gutter) on every pickable row and carries the same integer as
-  `pick_number` in `book.json`; ARCHIVED rows have no number. The verbs
-  `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, and `curate` are accepted here too.
+  tier, age, dirty count, and the row's `next_action` verbatim. Say in the
+  question text that a typed list (`2, 5`) and the loop verbs
+  `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, `curate`,
+  and `adopt <n>` are also accepted as a free-text reply.
+- **> 4 pickable projects:** ask for a free-text pick — one number, several
+  numbers, or a name. The renderer prints the pick number in the left gutter and
+  carries the same integer as `pick_number` in `book.json`; ARCHIVED rows have no
+  number. The same verbs are accepted here.
 
-When the book's `UNMATCHED WORKSPACES` section is non-empty, say so in the
-question text and offer `add <workspace name>` as an accepted reply — that is
-the user's door for adding a live-but-unregistered workspace to the book (the
-`add` verb in Step 5). Never add one on your own initiative.
+Numbers are per-render. The book is recomputed every invocation and rows move
+between tiers, so a number from an EARLIER render is not the same row now. Never
+resolve a pick against a stale render — `open-picks.sh` re-renders the book
+itself for exactly this reason, and prints each resolved name and root before it
+opens anything.
 
-Resolve the pick against `book.json`: a NUMERIC reply → the project whose
-`pick_number` equals it EXACTLY (never re-count the printed rows yourself — the
-renderer already assigned the number the user sees). A NAME reply → casefolded
-name match. Ambiguous → list the exact candidates and ask again. NEVER guess
-between two plausible rows.
+When the book's `UNMATCHED WORKSPACES` section is non-empty, say so and offer
+`add <workspace name>` (Step 5). Never add one on your own initiative.
 
-## Step 3 — Already open elsewhere? ASK, then jump or open a second window
+## Step 3 — Open the pick (the ONLY route)
 
-The ONLY thing that routes a pick away from this tab is the pick already being
-live somewhere else. Read the picked row's `live.workspaces` from `book.json`
-(the fresh render from Step 1). If it is non-empty AND none of those workspace
-ids equals `$CMUX_WORKSPACE_ID`, the project is open in another tab.
-
-**ASK ZEE WHICH — do not choose for him (user decision D11, 2026-08-04).** The
-one-project-one-tab guard STAYS the default; what changed is that he gets the
-choice instead of being forced. Put it as an AskUserQuestion with both options
-described in full:
-
-- **Focus that window** — continue the work where it already is. This is the
-  default and the safe answer. Run the launcher block below.
-- **Open a second window on the same project** — several windows on ONE project
-  is a supported mode (D9). Both share one registry row, one book entry with a
-  live-window count (D10), and one knowledge store (D13). Go to Step 4 and add
-  `--additional-window`, plus `--label <name>` so the new tab is
-  "<project> <label>" and the two are tellable apart in the sidebar (D12).
-  Without a label the script numbers it and says so.
-
-Only after he answers "focus" do you run this:
+Every pick — one or many — goes through `open-picks.sh`. It resolves the whole
+list against a FRESH book first and opens NOTHING if any token is unresolvable,
+then runs `launch-project.sh` once per row. Each row lands in a NEW window, in
+that project's own folder, running `claude --dangerously-skip-permissions`.
 
 ```bash
-ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/launch-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
-bash "$RESDIR/launch-project.sh" --project "<project_uuid>" > "$SCRATCH/launch-out.txt" 2>&1; RC=$?
-cat "$SCRATCH/launch-out.txt"; echo "exit=$RC"
+ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/open-picks.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+bash "$RESDIR/open-picks.sh" --picks "<the user's picks verbatim>" > "$SCRATCH/open-out.txt" 2>&1; RC=$?
+cat "$SCRATCH/open-out.txt"; echo "exit=$RC"
 ```
 
-Relay the `cat` output whole and unmodified inside one fenced block. The
-launcher owns focus (SPINE 1), the parked->active flip, the durable
-`[key:<uuid>]` tag, the tab rename, and the audit event — repeat none of it here.
+Relay the `cat` output whole and unmodified inside one fenced block. The scripts
+own every decision and every write: list resolution, the all-or-nothing refusal,
+window creation with `--cwd <root>`, the claude launch, the delivery marker
+check, the sidebar name, the `parked/completed -> active` flip, the durable
+`[key:<uuid>]` tag, and the audit event. Repeat none of it, and never perform
+any step the script declined to.
 
-- `REFUSED — ...` anywhere → that line is the outcome; STOP, no workaround.
-- exit 3 / `DELIVERY NOT-VERIFIED` / `TRUST GATE DETECTED` → quote it loudly;
-  never claim delivery the script did not verify.
-- exit 0 → the focused workspace is where the user continues; this
-  conversation's job for that pick is done. Tell them WHICH tab to look at, by
-  its sidebar name.
+Read the exit code, then act:
 
-If `live.workspaces` is empty — or its only entry IS this tab — do NOT run the
-launcher. Go to Step 4. Running it here would create a second workspace and
-strand the user, which is the defect this routing exists to prevent.
+- **exit 0** → every pick opened and every delivery was verified. Tell the user
+  which sidebar names to look at, by name. Those windows are where the work
+  continues; this conversation's job for those picks is done.
+- **exit 3** → at least one row opened but its delivery was NOT verified. Quote
+  the `DELIVERY NOT-VERIFIED` line and the `TRUST GATE DETECTED` line if present.
+  Never claim a delivery the script did not verify.
+- **exit 2 / `REFUSED — ...`** → nothing opened at all. Relay it verbatim, ask
+  for a corrected list, and STOP. Do not open the resolvable subset "to save a
+  step" — all-or-nothing is the contract.
 
-## Step 4 — Adopt the pick into THIS tab (the default route)
+Three flags exist, and NONE of them is ever your own initiative:
+
+- `--focus-existing` — jump to a window already open on that project instead of
+  making another. Use ONLY when the user asks to go to the existing one.
+- `--label <text>` — name the new window `<project> <text>` (D12). Offer it when
+  a second window on one project is being opened for a distinct piece of work;
+  without it the script auto-numbers and says so.
+- `--dry-run` — resolve and print the decisions, open nothing. Use it when the
+  user wants to see what a list would do before it does it.
+
+## Step 4 — `adopt <n>` (opt-in only, when THIS tab should become the project)
+
+Rule 3 made a new window the default, so adoption is now something the user asks
+for by name: `adopt 7` means "make THIS tab project 7". It still cannot cross
+roots — a tab's folder is fixed at creation — so it works only when the picked
+row's root IS this tab's folder.
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/adopt-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
-# Add --additional-window --label "<name>" ONLY when Zee chose a second window
-# in Step 3. Never on your own initiative — the guard is the default (D11).
 bash "$RESDIR/adopt-project.sh" --project "<project_uuid>" > "$SCRATCH/adopt-out.txt" 2>&1; RC=$?
 cat "$SCRATCH/adopt-out.txt"; echo "exit=$RC"
 ```
 
 Relay the `cat` output whole and unmodified inside one fenced block. The script
-owns every gate and every write: the already-open refusal, the outgoing-close
-check, the outgoing `active -> parked` release, the sidebar rename, the
-`[key:<uuid>]` tag round-trip, the picked row's `parked/completed -> active`
-flip, the reentry resolution, and the audit event. Repeat none of it, and
-NEVER perform any of those steps yourself if the script declined to.
+owns every gate and every write: the outgoing-close check, the outgoing
+`active -> parked` release, the sidebar rename, the `[key:<uuid>]` tag
+round-trip, the picked row's status flip, the reentry resolution, and the audit
+event.
 
-The receipt now also carries four blocks that are part of the pick — read them,
-do not summarise them away:
+The receipt carries four blocks that are part of the pick — read them, do not
+summarise them away: **`owned reentry notes`** (every UNREAD note owned by THIS
+project — read every one, and a line saying `HEURISTIC` was matched by name, not
+proof), **`knowledge:`** (the index plus "learned since you were last here" —
+offer the `strike` verb), **`STALE`** (stored facts that no longer match the
+disk — nothing is auto-corrected; ask before rewriting any), and **`OTHER
+WINDOWS ON THIS PROJECT`** (what other live windows are doing).
 
-- **`owned reentry notes`** — every UNREAD note belonging to THIS project, not
-  just the newest in the folder (MW-A). When more than one is unread, several
-  windows left work behind: **read every UNREAD path**, not only the first.
-  Each note states how it was matched; a line saying `HEURISTIC` was matched by
-  name, not proof, so treat it as the weaker claim it says it is.
-- **`knowledge:`** — the index plus "learned since you were last here" (KB-B).
-  Offer Zee the strike: any line he disagrees with can be struck by name, and
-  striking hides it without deleting it.
-- **`STALE`** — stored facts that no longer match the disk (KB-C). Nothing is
-  auto-corrected. Say which ones drifted and ask before rewriting any of them.
-- **`OTHER WINDOWS ON THIS PROJECT`** — what the other live windows are doing
-  (MW-C). Read it before starting, so two windows do not do the same work.
-
-Read the exit code, then act:
-
-- **exit 0** → adoption done. This tab IS the picked project now. Read the
-  `reentry:` path the script printed, using the Read tool, tell the user you are
-  continuing from it, and pick up its next step IN THIS CONVERSATION.
-  If the script printed a `FOLDER CAVEAT`, relay it and treat the printed
-  `working root:` as the project's root for every file operation from here on —
-  absolute paths only. Do not claim the working directory changed; it did not.
+- **exit 0** → this tab IS the picked project now. Read the printed `reentry:`
+  path with the Read tool, say you are continuing from it, and pick up its next
+  step IN THIS CONVERSATION.
 - **exit 3 / `OUTGOING NOT-CLOSED`** → STOP. The project currently in this tab
-  has no close record and adopting would release it with unsaved reentry state.
+  has no close record, and adopting would release it with unsaved reentry state.
   Relay the line, then offer exactly two options: run `/acos-safe-close` on that
   project first, or pick that project instead. Never override the gate.
-- **exit 4 / `ALREADY OPEN`** → the picked project is live in another workspace.
-  Relay the refusal, then ASK Zee which he wants (D11, Step 3): focus that
-  window, or open a second one here with `--additional-window --label <name>`.
-  Never pick for him, and never re-run with `--additional-window` unless he
-  said so in this conversation.
+- **exit 4 / `ALREADY OPEN`** → the row is live in another workspace. Under
+  Rule 3 the answer is a new window, so route it through Step 3 instead.
+- **exit 5 / `CROSS-ROOT`** → the row's root is not this tab's folder. Relay the
+  block and route it through Step 3, which opens it in its own folder. Do NOT
+  re-run with `--allow-cross-root` unless the user asked for adopt-in-place in
+  this conversation.
 - **`REFUSED — ...` (exit 1/2)** → that line is the outcome; STOP, no workaround.
   A `SET-BUT-DEAD` refusal means cmux restarted under this session: the tab this
-  process thinks it is in no longer exists, and nothing can be adopted into it.
+  process thinks it is in no longer exists.
 
 ## Step 5 — Loop verbs
 
@@ -423,6 +434,25 @@ When the user says "curate": walk the seed curation list ONE row at a time.
    initiation — using the tombstone block above.
 4. After the walk, re-render the book (Step 1) so the user sees the result
    fresh.
+
+### conflicts (Zee's Rule 3 — the system tells you, and names the fix)
+
+Run the scanner whenever a pick behaves oddly, and after any adopt that printed
+a warning. It is READ-ONLY and repairs nothing:
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/conflict-scan.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+python3 "$RES_DIR/conflict-scan.py"
+```
+
+It names five classes and the fix for each: `BLEED` (two projects claiming one
+cmux surface), `NAME-CLASH` (two live rows with one name), `ROOT-GONE`,
+`ROOT-UNREACHABLE` (a tab bound to a row it can never sit in), and
+`SESSION-SHARED` (one session recorded as the hint of two rows). Several windows
+on ONE project is NOT a conflict and the scanner stays silent about it.
+
+Relay its output verbatim. Never act on a finding without the user's ruling —
+each fix line is addressed to them, not to you.
 
 ## Relay discipline
 

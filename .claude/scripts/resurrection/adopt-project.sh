@@ -46,6 +46,7 @@ set -u
 AP_PROJECT=""
 AP_DRY=0
 AP_EXTRA=0
+AP_CROSS=0
 AP_LABEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -55,13 +56,14 @@ while [ $# -gt 0 ]; do
     # answer to the question the skill asks when a pick is already open —
     # "focus that window, or open another?" — and is never taken on its own.
     --additional-window) AP_EXTRA=1; shift ;;
+    --allow-cross-root) AP_CROSS=1; shift ;;
     # D12: window names derive from the project name — "OKOA works *label*".
     # The stem is always the project, so the row identity is never in doubt.
     --label) AP_LABEL="${2:-}"; shift 2 ;;
     *) echo "REFUSED — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-export AP_PROJECT AP_DRY AP_EXTRA AP_LABEL
+export AP_PROJECT AP_DRY AP_EXTRA AP_LABEL AP_CROSS
 AP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export AP_LIB_DIR
 
@@ -99,6 +101,7 @@ CMUX_BIN = "/Applications/cmux.app/Contents/Resources/bin/cmux"
 PROJECT = os.environ.get("AP_PROJECT", "")
 DRY = os.environ.get("AP_DRY", "0") == "1"
 EXTRA_WINDOW = os.environ.get("AP_EXTRA", "0") == "1"
+ALLOW_CROSS_ROOT = os.environ.get("AP_CROSS", "0") == "1"
 LABEL = (os.environ.get("AP_LABEL") or "").strip()
 LIB_DIR = os.environ.get("AP_LIB_DIR", "")
 REG_HOME = os.environ.get("ACOS_REGISTRY_HOME") or None
@@ -448,6 +451,40 @@ def main():
                "(cmux restarted under this process); cannot adopt into a tab that is gone" % ws_id)
     print("this tab: %s custom_title=%r cwd=%s"
           % (ws_id, ws_custom_title(me), me.get("current_directory")))
+
+    # ---- gate 0: CROSS-ROOT (2026-08-18, Zee's Rule 2) ---------------------
+    # "Any project that is outside ACOS 3.0 ... the project should still run
+    # from its own directory."
+    #
+    # Adoption re-binds IDENTITY only; a cmux tab's folder is fixed at creation
+    # and there is no re-point verb. So adopting a differently-rooted project
+    # into this tab produced a tab permanently sitting in the wrong folder,
+    # warned about by a FOLDER CAVEAT nobody could act on. That is how tab
+    # workspace:20 came to run FruitSync from "ACOS 3.0", and how the Research
+    # to Portfolio session came to mint a row called 'FruitSync (duplicate)'
+    # rooted at ACOS 3.0 on 2026-08-18.
+    #
+    # A folder cannot be changed — but a window can be CREATED in the right
+    # folder. launch-project.sh already does exactly that (`workspace create
+    # --cwd <root>`, join back by the durable [key:<uuid>] tag, verify
+    # delivery), so this gate ROUTES there rather than duplicating it.
+    #
+    # --allow-cross-root restores the old adopt-in-place behaviour for the
+    # cases where it is genuinely wanted; it is never the default.
+    tab_cwd_now = me.get("current_directory") or ""
+    cross_root = bool(tab_cwd_now) and \
+        os.path.realpath(tab_cwd_now).casefold() != row["root_casefold"]
+    if cross_root and not ALLOW_CROSS_ROOT:
+        print("CROSS-ROOT — %r is rooted at %r but this tab's folder is %r."
+              % (row["name"], root, tab_cwd_now))
+        print("  A cmux tab's folder is fixed when the tab is created; there is no "
+              "re-point verb, so adopting here would leave this project running "
+              "from the wrong folder for good.")
+        print("  route: open it in its own folder instead —")
+        print("    bash launch-project.sh --project %s" % PROJECT)
+        print("  override (rarely right): re-run this command with --allow-cross-root "
+              "to adopt in place anyway and accept the FOLDER CAVEAT.")
+        return 5
 
     # ---- gate 1: ALREADY-OPEN elsewhere ------------------------------------
     # D11: the guard STAYS the default — a bare adopt of an already-open project

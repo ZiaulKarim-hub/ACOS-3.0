@@ -332,6 +332,28 @@ def main():
         fields["status"] = "active"
         revived_from = prior["status"]
     row = registry_lib.upsert_row(fields, home=home)
+
+    # ─── session -> project binding (2026-08-18, Zee's Rule 1) ────────────
+    # Many projects share the ACOS 3.0 folder on purpose. Every consumer that
+    # scoped by FOLDER therefore treated them as one project, and the resume
+    # chain's last-resort pick then chose by mtime — which is how FruitSync's
+    # handoff was served to the Research to Portfolio pane on 2026-08-18.
+    # A folder cannot tell those projects apart; only the project_uuid can.
+    # So record it per SESSION, where the resume hook can read it back.
+    # Fail-open by construction: enrollment must never block a session, so a
+    # write failure is noted and swallowed.
+    if session_id:
+        try:
+            _state = os.path.join(os.path.expanduser("~"), "Library",
+                                  "Application Support", "acos-token-monitor", "state")
+            os.makedirs(_state, exist_ok=True)
+            _sid = str(session_id)
+            if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", _sid):
+                _atomic_replace(os.path.join(_state, "project-" + _sid),
+                                (project_uuid + "\n").encode("utf-8"))
+        except BaseException as exc:  # noqa: BLE001 — never block SessionStart
+            _note("project-binding write skipped: %s: %s" % (type(exc).__name__, exc))
+
     if revived_from:
         registry_lib.audit_append(
             {"event": "revived-by-session", "project_uuid": project_uuid,

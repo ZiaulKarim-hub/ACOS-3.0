@@ -215,10 +215,65 @@ never become a thing that runs code at every resurrect.
 If the session learned nothing durable, skip the file. An empty capture is an
 honest outcome; an invented one poisons the store.
 
+## Step 2c — Choose the DESTINATION (Zee's brief, 2026-08-18)
+
+A close used to have exactly one destination: the row this tab is bound to. That
+is wrong for a scratch tab — you open one for something unrelated, and only later
+realise the work belongs with an existing project. Without a choice, the work is
+filed under a stray row and the real project never learns it happened.
+
+So the close now ASKS, using the same book the resurrect menu prints:
+
+```bash
+python3 "$RESDIR/resurrect-view.py" --color never > "$SCRATCH/close-book.txt" 2>&1; RC=$?
+python3 "$RESDIR/resurrect-view.py" --json      > "$SCRATCH/close-book.json" 2>/dev/null
+cat "$SCRATCH/close-book.txt"; echo "exit=$RC"
+```
+
+Show the `cat` output whole and unmodified in ONE fenced block — same relay rule as
+`/acos-resurrect`. Then ask, in plain text, for a typed reply:
+
+> Park this tab's work where? Type the NUMBER of a project above, or `0` for a new
+> project of its own.
+
+`0` is used for "new project" because the renderer never assigns it, so it cannot
+collide with a real row. Resolve a numeric reply against `close-book.json`'s
+`pick_number` EXACTLY — never re-count the printed rows yourself. Ambiguous or
+out-of-range → say so and ask again; NEVER guess between two rows.
+
+Build the flag ONCE, as an ARRAY, and reuse it in every later invocation:
+
+```bash
+# Choice 0 (new project) -> leave the array EMPTY; that is today's behaviour.
+PARK_ARGS=()
+# A number 1..N was picked -> set it, using the uuid from close-book.json:
+PARK_ARGS=(--park-to "<project_uuid of the picked row>")
+```
+
+An ARRAY, not a string. This file already records why: the interactive shell is
+zsh, and zsh does not word-split an unquoted string variable, so `$LEARN_ARG`
+once arrived as ONE glued argument and the close refused it. `"${PARK_ARGS[@]}"`
+is a different mechanism — it expands to zero or two separate words in bash AND
+zsh — so it is safe where the string was not.
+
+**Ask with a plain typed reply, NOT `AskUserQuestion`.** Autopilot answers that tool
+by itself, and an auto-answered destination would file real work onto a project Zee
+never chose — the failure this step exists to prevent, arriving by a different door.
+
+**What a destination pick does.** The reentry note, the registry `last_close`, and
+the captured learnings all land on the PICKED row instead of this tab's own row.
+This tab's row then becomes the ORPHAN and `close-project.sh` step 7b retires it —
+but only when it is genuinely empty. A row holding knowledge facts, an earlier
+close, or another live window REFUSES the retire and prints why, naming
+`merge-knowledge.py` as the thing to run first. Relay that refusal; never work
+around it. Retiring means `tombstone`: the row is hidden in ARCHIVED and the row
+file is never deleted.
+
 ## Step 3 — Dry-run gate (writes nothing, including step 0)
 
 ```bash
-bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" --dry-run
+bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
+  "${PARK_ARGS[@]}" --dry-run
 ```
 
 `NOT SAFE` here means the intent file is invalid (usually `next_action`): fix the
@@ -229,6 +284,7 @@ any other refusal at any step → relay it verbatim and STOP.
 
 ```bash
 bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
+  "${PARK_ARGS[@]}" \
   > "$SCRATCH/close-receipt-gen.txt" 2>&1; RC=$?
 echo "exit=$RC"; grep -n -A 1 "^step 2" "$SCRATCH/close-receipt-gen.txt"
 ```
@@ -284,10 +340,12 @@ if [ -f "$SCRATCH/safe-close-learnings.json" ]; then
   bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
     --roundtrip-result "$SCRATCH/roundtrip-result.txt" \
     --learnings-file "$SCRATCH/safe-close-learnings.json" \
+    "${PARK_ARGS[@]}" \
     > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
 else
   bash "$CLOSE" --intent-file "$SCRATCH/safe-close-intent.txt" --session-id "$SID" \
     --roundtrip-result "$SCRATCH/roundtrip-result.txt" \
+    "${PARK_ARGS[@]}" \
     > "$SCRATCH/close-receipt-final.txt" 2>&1; RC=$?
 fi
 cat "$SCRATCH/close-receipt-final.txt"; echo "exit=$RC"

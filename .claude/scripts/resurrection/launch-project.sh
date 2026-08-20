@@ -1,22 +1,30 @@
 #!/bin/bash
-# launch-project.sh — focus-or-launch, SPINE 1 (ACOS Resurrection Protocol).
+# launch-project.sh — open-a-window (ACOS Resurrection Protocol).
 #
 # Interface:
 #   launch-project.sh --project <uuid> [--dry-run] [--command-override <cmd>]
+#                     [--focus-existing] [--label <text>]
 # Env overrides (tests only):
 #   ACOS_REGISTRY_HOME        registry home override (never the real ~ in tests)
 #   RESURRECTION_SKIP_CMUX=1  no cmux calls at all (sandbox: decision print only)
 #
-# SPINE 1: focus, never a second workspace. cmux does NO dedup — a routing bug
-# here creates a 5th ACOS 3.0 workspace. If the project is open ANYWHERE, we
-# FOCUS its workspace and stop; we only CREATE when no workspace matches.
+# ROUTING (Zee's Rule 3, 2026-08-19 — SUPERSEDES the old SPINE 1 focus rule):
+# an open ALWAYS creates its own window, even when the project is already open
+# somewhere. A repeat open is a new tab on the same project, never a question
+# and never a jump. The old behaviour is still available on demand as
+# --focus-existing. Every window on one project shares one registry row, one
+# knowledge store and one book entry; sidebar names are kept distinct by
+# --label, or auto-numbered when no label is given (D12).
 #
 # Delivery contract: the prompt route is argv (--command), never cmux send /
 # surface.send_text (they shred multi-line prompts at every \n). The default
-# --command is NON-claude (DR-1 defers the real claude launch): a cat of the
-# reentry file wrapped in BEGIN/END marker lines so read-screen can verify
-# delivery. --command-override substitutes DR-1's real invocation later; the
-# {REENTRY} placeholder is replaced with the shell-quoted reentry PATH.
+# --command IS the real claude launch (Zee's Rule 4, 2026-08-19): the shell
+# prints the reentry file wrapped in BEGIN/END marker lines, then execs
+# `claude --dangerously-skip-permissions` with a prompt naming the reentry
+# PATH. MEASURED 2026-08-19: Claude Code renders inline (no alternate screen),
+# so the markers survive in scrollback and read-screen still proves delivery.
+# --command-override still replaces the whole command; its {REENTRY}
+# placeholder is replaced with the shell-quoted reentry PATH.
 #
 # Security guardrail: NO registry-derived string ever enters --command — only
 # the reentry file PATH (resolved from the filesystem at open time; the
@@ -29,15 +37,19 @@ set -u
 LP_PROJECT=""
 LP_DRY=0
 LP_OVERRIDE=""
+LP_FOCUS=0
+LP_LABEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --project)          LP_PROJECT="${2:-}"; shift 2 ;;
     --dry-run)          LP_DRY=1; shift ;;
     --command-override) LP_OVERRIDE="${2:-}"; shift 2 ;;
+    --focus-existing)   LP_FOCUS=1; shift ;;
+    --label)            LP_LABEL="${2:-}"; shift 2 ;;
     *) echo "REFUSED — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-export LP_PROJECT LP_DRY LP_OVERRIDE
+export LP_PROJECT LP_DRY LP_OVERRIDE LP_FOCUS LP_LABEL
 LP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export LP_LIB_DIR
 
@@ -73,15 +85,20 @@ import uuid as uuid_mod
 CMUX_BIN = "/Applications/cmux.app/Contents/Resources/bin/cmux"
 TRUST_GATE_TEXT = "Quick safety check"
 MARKER_STEM = "RESURRECTION-DELIVERY-"  # split in echo args so the typed command never shows the full marker
+CLAUDE_BIN = "claude"           # resolved from the login shell's PATH inside the new window
+CLAUDE_FLAGS = "--dangerously-skip-permissions"  # Zee's Rule 4, 2026-08-19
 
 PROJECT = os.environ.get("LP_PROJECT", "")
 DRY = os.environ.get("LP_DRY", "0") == "1"
 OVERRIDE = os.environ.get("LP_OVERRIDE", "")
+FOCUS_EXISTING = os.environ.get("LP_FOCUS", "0") == "1"
+LABEL = (os.environ.get("LP_LABEL") or "").strip()
 LIB_DIR = os.environ.get("LP_LIB_DIR", "")
 REG_HOME = os.environ.get("ACOS_REGISTRY_HOME") or None
 SKIP_CMUX = os.environ.get("RESURRECTION_SKIP_CMUX") == "1"
 
 sys.path.insert(0, LIB_DIR)
+import bundles_lib
 import registry_lib
 
 
@@ -111,30 +128,21 @@ def list_workspaces():
 
 
 def resolve_reentry(root, row):
-    """Newest .reentry.md under <root>/memory/handoffs/closed/, resolved NOW.
+    """The newest UNREAD .reentry.md OWNED BY THIS ROW, resolved NOW.
 
-    Returns (path_or_None, source_note). The registry-recorded reentry_path is
-    only a fallback when the scan finds nothing — and we SAY so."""
-    closed_dir = os.path.join(root, "memory", "handoffs", "closed")
-    candidates = []
-    for dirpath, _dirnames, filenames in os.walk(closed_dir):
-        for fn in filenames:
-            if fn.endswith(".reentry.md"):
-                p = os.path.join(dirpath, fn)
-                try:
-                    candidates.append((os.stat(p).st_mtime, p))
-                except OSError:
-                    pass
-    if candidates:
-        candidates.sort()
-        newest = candidates[-1][1]
-        return newest, "scan of closed/ at open time (newest of %d candidate%s by mtime)" % (
-            len(candidates), "" if len(candidates) == 1 else "s")
-    recorded = (row.get("last_close") or {}).get("reentry_path")
-    if recorded and os.path.isfile(recorded):
-        return recorded, ("FALLBACK: scan of %s found NO .reentry.md — using the registry-recorded "
-                          "reentry_path (may be stale; the scan is the truth source)" % closed_dir)
-    return None, "no .reentry.md found by scan and no usable registry-recorded reentry_path"
+    Returns (path_or_None, source_note, notes).
+
+    FIXED 2026-08-19. This used to take the newest .reentry.md anywhere under
+    <root>/memory/handoffs/closed/, with no ownership check at all. One folder
+    hosts many projects — ACOS 3.0 alone holds 72 close bundles — so opening
+    'OKOA Works' handed back the newest bundle in the folder, which was
+    'Research to Portfolio'. Passive before (the window only cat'd it); under
+    Rule 4 the window now RESUMES from that note, so a mis-owned note would
+    set claude working on the wrong project. bundles_lib.resolve_reentry is
+    the ownership-filtered resolver adopt-project.sh already uses: the
+    .project-uuid marker first, the registry's own recorded path second, a
+    slug-name match last and only when that name is not shared."""
+    return bundles_lib.resolve_reentry(root, row, home=REG_HOME)
 
 
 def workspace_matches(workspaces, row, key_tag):
@@ -180,17 +188,61 @@ def pick_most_recent(matches):
 
 
 def build_command(reentry):
-    """Default NON-claude delivery command (DR-1 substitutes claude later).
+    """Default delivery command — the REAL claude launch (Zee's Rule 4).
+
+    2026-08-19. Every open now runs `claude --dangerously-skip-permissions`
+    in the project's own folder; the old default dropped the window into a
+    bare interactive shell and started no session at all.
+
+    The RECEIPT survives the change (option (a), Zee's ruling 2026-08-19).
+    The BEGIN/END markers and the cat are printed by the SHELL, before claude
+    is exec'd. MEASURED in a sandboxed workspace on 2026-08-19: Claude Code
+    renders inline (no alternate screen buffer), so those lines stay in
+    scrollback and read-screen still proves the note arrived.
 
     Only the shell-quoted reentry PATH and generated literals enter the
-    command. The marker is split across echo args so the full marker string
-    never appears in the typed command line — read-screen can only match it
-    in actual OUTPUT."""
+    command — never registry-derived text. The marker is split across echo
+    args so the full marker string never appears in the typed command line;
+    read-screen can only match it in actual OUTPUT."""
     nonce = uuid_mod.uuid4().hex[:12]
     begin = MARKER_STEM + "BEGIN-" + nonce
-    cmd = ("echo '%s''BEGIN-%s'; cat %s; echo '%s''END-%s'; exec /bin/zsh -i"
-           % (MARKER_STEM, nonce, shlex.quote(reentry), MARKER_STEM, nonce))
+    prompt = ("Resume this project. Read the reentry note at %s first, follow its "
+              "'Read first' order, then continue from its NEXT ACTION." % reentry)
+    cmd = ("echo '%s''BEGIN-%s'; cat %s; echo '%s''END-%s'; exec %s %s %s"
+           % (MARKER_STEM, nonce, shlex.quote(reentry), MARKER_STEM, nonce,
+              CLAUDE_BIN, CLAUDE_FLAGS, shlex.quote(prompt)))
     return cmd, begin
+
+
+def window_name_for(project_name, label, taken_names):
+    """This window's sidebar name (D12, mirrored from adopt-project.sh).
+
+    The project name is ALWAYS the stem, with the label appended, so the row a
+    window belongs to is never in doubt. With no label, the stem is NUMBERED
+    rather than left to collide — two tabs both reading "To Do Tree" would be
+    indistinguishable in the sidebar, which is exactly what Rule 3 makes
+    common. A number is a weak label, so the caller SAYS it was auto-assigned.
+    """
+    if label:
+        return "%s %s" % (project_name, label)
+    taken = {str(t).casefold() for t in taken_names if t}
+    if project_name.casefold() not in taken:
+        return project_name
+    n = 2
+    while ("%s %d" % (project_name, n)).casefold() in taken:
+        n += 1
+    return "%s %d" % (project_name, n)
+
+
+def live_sidebar_names(workspaces):
+    """Human-set sidebar names currently in use (dynamic titles excluded)."""
+    out = set()
+    for w in workspaces:
+        if w.get("has_custom_title"):
+            t = (w.get("custom_title") or "").strip()
+            if t:
+                out.add(t)
+    return out
 
 
 def read_screen(ws_id):
@@ -203,7 +255,7 @@ def read_screen(ws_id):
     return out.stdout
 
 
-def finalize(project_uuid, root, mode, ws_id, desc, delivered, trust_gate):
+def finalize(project_uuid, root, mode, ws_id, desc, delivered, trust_gate, window_name=None):
     """Step 6 — only after a successful focus-or-launch: activate the row,
     write the durable [key:<uuid>] description tag, append the audit event."""
     row = registry_lib.upsert_row(
@@ -228,11 +280,14 @@ def finalize(project_uuid, root, mode, ws_id, desc, delivered, trust_gate):
             print("description tag round-trip: %s" % ("OK — %r on workspace %s" % (key_tag, ws_id)
                                                       if tag_ok else "FAILED — tag not read back"))
 
-        # Auto-rename the tab to the project name (Fix 2, user request
-        # 2026-07-20) — covers BOTH focus and create (finalize runs on both).
-        # Named rows already store workspace_name == name, so custom_title=name
-        # keeps tab and row in agreement (no NAME DRIFT). Non-fatal by design.
-        proj_name = back["name"]
+        # Auto-rename the tab (Fix 2, user request 2026-07-20) — covers BOTH
+        # focus and create (finalize runs on both). Named rows already store
+        # workspace_name == name, so custom_title=name keeps tab and row in
+        # agreement (no NAME DRIFT). Since Rule 3 (2026-08-19) several windows
+        # can share one project, so the caller passes THIS window's name —
+        # renaming a second window back to the bare project name would undo
+        # the very distinction D12 exists to create. Non-fatal by design.
+        proj_name = window_name or back["name"]
         rn = cmux(["workspace-action", "--action", "rename",
                    "--workspace", ws_id, "--title", proj_name])
         if rn.returncode != 0:
@@ -243,7 +298,7 @@ def finalize(project_uuid, root, mode, ws_id, desc, delivered, trust_gate):
     registry_lib.audit_append(
         {"event": "launch", "project_uuid": project_uuid, "mode": mode,
          "workspace_id": ws_id, "delivered": delivered, "trust_gate": trust_gate,
-         "description_tag_ok": tag_ok}, home=REG_HOME)
+         "description_tag_ok": tag_ok, "window_name": window_name}, home=REG_HOME)
     print("audit: launch event appended (mode=%s workspace=%s)" % (mode, ws_id))
 
 
@@ -277,9 +332,16 @@ def main():
     key_tag = "[key:%s]" % PROJECT
 
     # ---- reentry re-resolution AT OPEN TIME (needed by create + dry-run) ---
-    reentry, reentry_note = resolve_reentry(root, row)
+    reentry, reentry_note, reentry_notes = resolve_reentry(root, row)
     print("reentry: %s" % (reentry or "(none)"))
     print("reentry source: %s" % reentry_note)
+    unread = [n for n in reentry_notes if not n["consumed"]]
+    if len(unread) > 1:
+        print("owned reentry notes: %d unread of %d owned — MORE THAN ONE window left work "
+              "behind; the newest is delivered, the rest are listed here and none is hidden:"
+              % (len(unread), len(reentry_notes)))
+        for n in unread:
+            print("  UNREAD %s  (%s)" % (n["path"], n["evidence"]))
 
     # ---- step 3: focus-or-launch decision ----------------------------------
     if SKIP_CMUX:
@@ -295,22 +357,23 @@ def main():
     workspaces = list_workspaces()
     matches = workspace_matches(workspaces, row, key_tag)
 
-    if matches:
+    if matches and FOCUS_EXISTING:
         w, why = pick_most_recent(matches)
         ws_id = w.get("id")
         if DRY:
             print("DRY RUN — decision: FOCUS existing workspace %s (matched by %s; %d match%s "
-                  "of %d workspaces). No cmux mutation, no registry write."
+                  "of %d workspaces; --focus-existing given). No cmux mutation, no registry write."
                   % (ws_id, why, len(matches), "" if len(matches) == 1 else "es", len(workspaces)))
             return 0
         out = cmux(["workspace", "select", ws_id])
         if out.returncode != 0:
             refuse("workspace select %s failed rc=%d stderr=%s"
                    % (ws_id, out.returncode, out.stderr.strip()[:300]))
-        print("focused existing workspace %s — no second workspace created" % ws_id)
+        print("focused existing workspace %s — no second workspace created "
+              "(--focus-existing)" % ws_id)
         if len(matches) > 1:
-            print("NOTE: %d workspaces match this project (duplicate pile-up) — focused the most "
-                  "recently active; the others were left untouched: %s"
+            print("NOTE: %d workspaces match this project — focused the most recently active; "
+                  "the others were left untouched: %s"
                   % (len(matches), ", ".join(m[0].get("id", "?") for m in matches if m[0].get("id") != ws_id)))
         print("matched by: %s" % why)
         # Trust-gate check on the focused screen too — report, never assume.
@@ -319,10 +382,24 @@ def main():
         if trust:
             print("TRUST GATE DETECTED on focused workspace ('%s') — the session is waiting on "
                   "the safety prompt; nothing is delivered past it" % TRUST_GATE_TEXT)
-        finalize(PROJECT, root, "focus", ws_id, desc, None, trust)
+        # A focused window keeps the sidebar name it already carries when that
+        # name is this project's (possibly labelled) name — Rule 3 makes second
+        # windows normal, and renaming one back to the bare stem erases D12.
+        cur = (w.get("custom_title") or "").strip() if w.get("has_custom_title") else ""
+        keep = cur if cur.casefold().startswith(name.casefold()) else None
+        finalize(PROJECT, root, "focus", ws_id, desc, None, trust, keep)
         return 0
 
-    # ---- step 4: CREATE (no workspace matches anywhere) --------------------
+    if matches:
+        print("ALREADY OPEN in %d workspace%s — opening an ADDITIONAL window on the SAME "
+              "project (Zee's Rule 3, 2026-08-19: a repeat open is a new tab, never a "
+              "question and never a jump)."
+              % (len(matches), "" if len(matches) == 1 else "s"))
+        for w, why in matches:
+            print("  already open: %s (matched by %s)" % (w.get("id"), why))
+        print("  to jump to one of those instead, re-run with --focus-existing.")
+
+    # ---- step 4: CREATE the window ----------------------------------------
     if OVERRIDE:
         if "{REENTRY}" in OVERRIDE:
             if not reentry:
@@ -340,17 +417,32 @@ def main():
             refuse("nothing to deliver: %s — close the project first (close-project.sh writes "
                    "closed/<slug>/<slug>.reentry.md) or pass --command-override" % reentry_note)
         command, needle = build_command(reentry)
-        print("command: default non-claude delivery (cat reentry wrapped in BEGIN/END markers; "
-              "DR-1 substitutes the real claude invocation via --command-override)")
+        print("command: default claude delivery — reentry cat wrapped in BEGIN/END markers, "
+              "then `%s %s` with a prompt naming the reentry path"
+              % (CLAUDE_BIN, CLAUDE_FLAGS))
+
+    # Sidebar name for THIS window. Several windows on one project is normal
+    # under Rule 3, so a name already in use is numbered rather than repeated.
+    taken = live_sidebar_names(workspaces)
+    win_name = window_name_for(name, LABEL, taken)
+    if win_name != name:
+        print("window name: %r (%s)"
+              % (win_name, "from --label" if LABEL
+                 else "AUTO-NUMBERED — %r is already a live sidebar name; pass --label <text> "
+                      "for a meaningful one (D12)" % name))
 
     if DRY:
         print("DRY RUN — decision: CREATE workspace --name %r --description %r --cwd %r "
               "--command <%d chars%s>. No cmux mutation, no registry write."
-              % (name, desc, root, len(command), "; marker " + needle if needle else ""))
+              % (win_name, desc, root, len(command), "; marker " + needle if needle else ""))
         return 0
 
     count_before = len(workspaces)
-    out = cmux(["workspace", "create", "--name", name, "--description", desc,
+    # Which workspaces ALREADY carry this key tag. Under Rule 3 the tag is no
+    # longer unique, so the join-back below must find the one that is NEW —
+    # taking the last tagged workspace would happily return a sibling window.
+    tagged_before = {w.get("id") for w in workspaces if key_tag in (w.get("description") or "")}
+    out = cmux(["workspace", "create", "--name", win_name, "--description", desc,
                 "--cwd", root, "--command", command], timeout=30)
     if out.returncode != 0:
         refuse("workspace create failed rc=%d stderr=%s" % (out.returncode, out.stderr.strip()[:300]))
@@ -361,7 +453,8 @@ def main():
     for _ in range(5):
         time.sleep(1)
         listed = list_workspaces()
-        tagged = [w for w in listed if key_tag in (w.get("description") or "")]
+        tagged = [w for w in listed
+                  if key_tag in (w.get("description") or "") and w.get("id") not in tagged_before]
         if tagged:
             ws_id = tagged[-1].get("id")
             break
@@ -394,15 +487,15 @@ def main():
     if needle is None:
         print("DELIVERY NOT-VERIFIED — --command-override provides no marker contract; "
               "verify delivery yourself (loud by design, never assumed)")
-        finalize(PROJECT, root, "create", ws_id, desc, False, trust)
+        finalize(PROJECT, root, "create", ws_id, desc, False, trust, win_name)
         return 3
     if delivered:
         print("DELIVERED — reentry content verified on screen via BEGIN marker")
-        finalize(PROJECT, root, "create", ws_id, desc, True, trust)
+        finalize(PROJECT, root, "create", ws_id, desc, True, trust, win_name)
         return 0
     print("DELIVERY NOT-VERIFIED — marker %r absent after 2 read-screen attempts%s"
           % (needle, "; trust gate present (likely cause)" if trust else ""))
-    finalize(PROJECT, root, "create", ws_id, desc, False, trust)
+    finalize(PROJECT, root, "create", ws_id, desc, False, trust, win_name)
     return 3
 
 
