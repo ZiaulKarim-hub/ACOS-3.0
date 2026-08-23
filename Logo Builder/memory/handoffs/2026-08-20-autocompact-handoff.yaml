@@ -1,0 +1,446 @@
+timestamp: "2026-08-20T21:10:42Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "540734f5-8c12-458b-8670-7d5d30569ec7"
+estimated_tokens: 500473
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for.
+
+assistant_tail: |
+  Only three were removed, and all three were proxy buttons whose real targets moved to Insert. Now the harder question — is everything **reachable**.
+  
+  ---
+  
+  He is right — 11 relocated buttons kept their old emoji instead of drawn icons. And I found a worse one: I made "group everything" unreachable.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 8
+  recent_commits: |
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+
+uncommitted_files:
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0-Logo-Builder/540734f5-8c12-458b-8670-7d5d30569ec7.jsonl"
+  transcript_lines_parsed: 2141
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Turn 1 (user):** "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/closed/2026-08-18-Logo-Builder-close-2/2026-08-18-Logo-Builder-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  
+  I read the reentry note, then handoff.yaml, then checked git and the 8815 server. Findings: zero drift. Skill repo `~/.claude/skills` HEAD = `fac4572`, pushed to `personal` remote (`git@github.com-personal:ZiaulKarim-hub/claude-skills-personal.git`). Server PID 6404 on 8815, HTTP 200. No `planning/` or `memory/decisions/` in the project. NEXT ACTION was "Hand-test each Logo Forge button in the 8815 editor; reload the tab first". I applied the Confirmation Gate and asked A/B/C (Zee clicks / I drive Chrome / re-run button-test first).
+  
+  **Turn 2 (user):** `/acos-logo-forge` skill invocation. I re-attached the skill: verified brandsync workspace, read `avoid.json` (17 rejections, 12 patterns, all current), `status.json` = `{"generating": false}`, `commands.jsonl` 59 lines, last command a stale `design` from 2026-08-11 token `dz-msp192mo-aph2f` with empty `design/`. Armed a persistent Monitor on `brandsync/commands.jsonl` (task bj5r1l7xj) with a jq compact filter.
+  
+  **Turn 3 (monitor event, NOT user):** `CMD pick | logo=r8-06 | round=8 | kind=` at 2026-08-20T12:41:35-0600. I inspected r8-06 (lockup with mark/wordmark/c-arrows), noted the butt-cap arrow observation.
+  
+  **Turn 4 (user):** "Dragging mouse pointer on canvas should allow selection of multiple shapes to be moved together or rotated and stuff. /restate"
+  
+  I invoked the `restate` skill, investigated editor.html thoroughly, and produced a full restatement. Key findings: `editor.html:2323` empty-canvas branch never sets `drag`; zero hits for marquee/rubber/lasso; `let marked = new Set()` at line 1307; move/rotate/flip/dup/delete all single-layer via `selLayer()`/`needLayer()`.
+  
+  **Turn 5 (user):** "yes" — approved defaults, no upgrades.
+  
+  I built drag-select/multi-move/set-rotate. Added helpers (`MARQ_MIN=3`, `markedLayers`, `pruneMarked`, `actSet`, `setBox`, `setCenter`, `rotateSetBy`, `flipSet`), the ≥2 rule, marquee in stage pointerdown, `marqueeClick`/`marqueeApply`, `multimove`/`setrot` in onMove, guides in drawOverlay, onUp handling. Found and fixed a real bug: the set label in `sync()` was overwritten by `l.name` three lines later — fixed with a `setLabel` variable. Tests: shapes-test 28→42, all 11 suites green, 563 assertions.
+  
+  **Turn 6 (user, mid-turn):** "group now groups everything in the canvas, I should have the option to group selected shapes only in addition to that. Also, on the right side bar there are some options, I would prefer all of them to have icons in the top toolbar organized by right menu and right tool group. suggest how that can be done best or if there are any blockers."
+  
+  **Turn 7 (user, mid-turn):** "There should be a way to increase the canvas size too."
+  
+  I answered: Group subset ALREADY existed (`const subset = marked.size >= 2`) — the marquee unlocked it; added a live tooltip. Gave the sidebar→ribbon suggestion with piles and blockers. Scoped canvas size as Option A/B.
+  
+  **Turn 8 (user):** "go with option A / The canvas should have small gridlines to ensure the spcings created from manual movement is precise. Is there any other way to do that?"
+  
+  Built canvas resize (Canvas ▾ tile, `applyCanvas`, `resizeCanvas`, `setCanvasSize`, `fitCanvasToArt`, `CANVAS_MIN`=1e-3, `CANVAS_MAX`=1e6). Answered the gridlines question honestly: gridlines alone are decoration, snap is the feature; ranked 5 options; found the arrow-nudge precision bug (`const st = (e.shiftKey ? 10 : 1) * k() * 2;` = 2 screen px, drifts with window size). 578 assertions.
+  
+  **Turn 9 (user):** "Do smart guides. add an icon for distribute in the home menu for easy access, put them along with shapes and symbols in a new column."
+  
+  Built smart guides (`SNAP_PX=6`, `smartGuides`, `guides`, `boxLines`, `snapMove`, `clearGuides`), spacing column (Dist H, Dist V, Guides toggle), `smartguides` icon. Fixed the overflow well spill with `flex-wrap:wrap` (measured 834px in 786px box, 48px over, one button at 829 vs 800px window). Fixed two test races. 594 assertions, all 11 suites green.
+  
+  **Turn 10 (user):** "There are a lot of actions that take place in the right side bar, like group, split, transform, geometry, undo, redo, reset this logo, export, output, flip, layer grup, finish group. I feel all of them should be icons instead of being in the right hand side. A lot of them should go to the home menu, there are a lot of icons in the home menu right now some of which can go to other menus, I still haven't decided. Suggest tool groups and menus and give me an outline as to how I can best organize all the tools in a sensible way."
+  
+  I did a full empirical inventory (Home 8 groups/61 buttons, Insert 2 own, Draw 0 own, rail 26 with a shape selected) and proposed the 6-tab outline.
+  
+  **Turn 11 (user):** "I like your plan, have all five tabs plus two contextual. Do it."
+  
+  I built the whole restructure. Many edits. Errors found and fixed: `escXML` TDZ crash (moved to top), group nesting in host divs (`replaceWith` not `appendChild`), `#canvasB` deleted with `#canvasGroup` (re-declared on File), `showGroup` ghost row (deleted), test updates across suites.
+  
+  **Turn 12 (Stop hook rewrite):** Eden self-check failed; I rewrote the reply at Level 3.
+  
+  **Turn 13 (user, most recent):** "I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for."
+  
+  I ran a static before/after diff (from `git show fac4572:acos-logo-forge/app/editor.html` → /tmp/editor-old.html): 139 controls before, 148 after; only 3 gone (`homePicB`, `homeShapesB`, `homeTextB` — all proxies), 12 new. Then ran a live enumeration which produced the full tab/group map AND, critically, a list of **16 buttons with no drawn icon**. This is the direct answer to Zee's question — Group/Split ARE on the Shape contextual tab, but they and 14 others render with emoji/text rather than drawn icons because `TOOL_ICONS` doesn't cover them.
+  
+  That last result is where the conversation stops. The 16 no-icon buttons are unfixed.
+  
+  Key state to preserve: test counts, what's green vs not, ribbon-test incomplete, 4 suites not re-run, nothing committed to git, live server PID 6404 untouched, a test server may still be running on 8816 with /tmp/forge-ws.
+  
+  Let me also preserve the standing constraints from CLAUDE.md that governed decisions: push defaults to PERSONAL account, never bare `git push`, TypeScript/Rust over Python.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  The session began as a **project resume** and evolved into a sustained feature-and-refactor sequence on the ACOS Logo Forge editor (`~/.claude/skills/acos-logo-forge/app/editor.html`).
+  
+  Requests, in order:
+  
+  1. **Resume the project** — read the reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/closed/2026-08-18-Logo-Builder-close-2/2026-08-18-Logo-Builder-close-2.reentry.md`, follow its "Read first" order, continue from its NEXT ACTION ("Hand-test each Logo Forge button in the 8815 editor; reload the tab first").
+  2. **`/acos-logo-forge`** — re-attach the skill (which requires a live watcher on `commands.jsonl`).
+  3. **Drag-select multi-shape editing** — "Dragging mouse pointer on canvas should allow selection of multiple shapes to be moved together or rotated and stuff." Requested with `/restate`; Zee then answered "yes" to the restatement (defaults accepted, no upgrades).
+  4. **Group subset + sidebar-to-ribbon suggestion** — "group now groups everything in the canvas, I should have the option to group selected shapes only in addition to that. Also, on the right side bar there are some options, I would prefer all of them to have icons in the top toolbar organized by right menu and right tool group. suggest how that can be done best or if there are any blockers."
+  5. **Canvas size** — "There should be a way to increase the canvas size too." Zee chose **Option A** (art keeps its size and gains room around it; art stays centred).
+  6. **Precision spacing** — "The canvas should have small gridlines to ensure the spcings created from manual movement is precise. Is there any other way to do that?" After the options were laid out, Zee chose **smart guides over a grid**.
+  7. **Distribute icons** — "add an icon for distribute in the home menu for easy access, put them along with shapes and symbols in a new column."
+  8. **Full ribbon reorganisation** — Zee asked for a suggested tool-group/menu outline, then approved it: "I like your plan, have all five tabs plus two contextual. Do it."
+  9. **Most recent, still unanswered:** "I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for."
+  
+  ## 2. Key Technical Concepts
+  
+  - **Logo Forge architecture** — Python stdlib server (`server.py`) + browser workshop; three forges (combined lockup `""`, `symbol`, `wordmark`); `commands.jsonl` as the browser→Claude bridge (the browser cannot summon Claude; a live session must watch the file or Designer/Smooth/Fan-out appear dead after a 90s warning).
+  - **PowerPoint-style ribbon** — tabs (`.ribtab` / `.ribbody`), groups (`.rgroup`, `min-height:112.3px`, tab body 123.3px), `RIBBON_HOMES` relocation map (MOVES original button nodes at boot so ids/handlers/shortcuts/test selectors survive), "relocate, don't duplicate", cross-tab PROXY pattern, `mirrorGroup()`/`syncMirrors()` with `-d`/`-i` id suffixes, `fitRibbon()` overflow parking into `.ribwell` behind a caret.
+  - **Editor document model** — `doc.layers` with `{x, y, sx, sy, rot, flipH, flipV, opacity, mode, visible, measured, cx0, cy0, bx0, by0, bx1, by1}`; `doc.viewBox`; `localToDoc`/`docToLocal`/`corners`/`center`/`k()`; `marked = new Set()` multi-selection; undo via whole-doc JSON snapshots (`serialize()`/`restore()`, 40 steps).
+  - **Test discipline** — 11 puppeteer suites on ports 8816/8817/8819; five are NOT idempotent and need a fresh workspace copy; **always check the exit code, not just the printed tally**; pixel-paired geometry assertions; `audit.ts` must print 0 findings.
+  - **Autosave debounce** — `persistLocal()` writes to localStorage on a **700ms debounce**, key `acos-logo-forge:<kind>:<id>` (or `acos-logo-forge:<id>` for the combined forge); `acos-logo-forge:clip` is the shared clipboard key.
+  
+  ## 3. Files and Code Sections
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/app/editor.html` (362,120 → 403,380 bytes)
+  The single file that holds the whole editor. All feature work landed here.
+  
+  **Drag-select / set-editing helpers** (inserted after `pushOut`, before `pos`):
+  ```js
+  const MARQ_MIN = 3;      // screen px of travel before a press becomes a marquee
+  function markedLayers() { return doc.layers.filter(l => marked.has(l.id)); }
+  function pruneMarked() { for (const id of [...marked]) if (!doc.layers.some(l => l.id === id)) marked.delete(id); return marked.size; }
+  function actSet(what) { ... }        // marked set, else selLayer(), else spoken toast
+  function setBox(set) { ... }         // upright doc-space box from every layer's real corners
+  function setCenter(set) { ... }
+  function rotateSetBy(set, dr, c) {   // each piece spins AND its centre orbits c
+    const cs = Math.cos(dr), sn = Math.sin(dr);
+    for (const l of set) {
+      const dx = l.x - c.x, dy = l.y - c.y;
+      l.x = c.x + dx * cs - dy * sn;
+      l.y = c.y + dx * sn + dy * cs;
+      l.rot = (l.rot || 0) + dr;
+    }
+  }
+  function flipSet(set, axis) { ... }  // flipH inverts, centre reflects, rot NEGATES
+  ```
+  **THE ≥2 RULE** (documented in-code and in SKILL.md): a set command takes the set path only when two or more pieces are marked; at 0 or 1 the original single-layer code runs byte-for-byte. This is why 10 existing suites passed unedited.
+  
+  **Smart guides:**
+  ```js
+  const SNAP_PX = 6;              // screen px of tolerance, scaled into doc units
+  let smartGuides = true;
+  let guides = [];                // {axis, at, from, to}, doc space, this drag only
+  function boxLines(b) { return { x: [b.x0, (b.x0+b.x1)/2, b.x1], y: [b.y0, (b.y0+b.y1)/2, b.y1] }; }
+  function snapMove(box0, dx, dy, movingIds, suppress) { ... }   // PURE; two axes snap independently
+  function clearGuides() { if (guides.length) { guides = []; drawOverlay(); } }
+  ```
+  Targets = every other visible measured layer **plus the board itself**. Movers are excluded. `⌥`/altKey suppresses. Guide lines drawn `stroke="#e0409a"` dashed.
+  
+  **Canvas size:**
+  ```js
+  const CANVAS_MIN = 1e-3, CANVAS_MAX = 1e6;
+  function applyCanvas(w, h, note) { ... }   // grow viewBox about its OWN CENTRE, touch no layer
+  function resizeCanvas(mult) { ... }
+  function setCanvasSize(w, h) { ... }
+  function fitCanvasToArt(padPct) { ... }
+  function buildCanvasMenu() { ... }         // +10/+25/+50%/Double, −10/−25%, Fit (8%), exact W×H
+  ```
+  
+  **Contextual tabs:**
+  ```js
+  function ctxTabOn(name, on) { ... }   // hidden tab that was active hands over to Home
+  function syncContextTabs() {
+    const l = selLayer();
+    const shapeOn = !!l || marked.size > 0;
+    const textOn = !!(l && l.kind === 'text');
+    const a = ctxTabOn('shape', shapeOn);
+    const b7 = ctxTabOn('text', textOn);
+    if (a || b7) fitRibbon();
+  }
+  ```
+  Called from `sync()`.
+  
+  **Whole-group relocation** (added beside `RIBBON_HOMES`):
+  ```js
+  const GROUP_HOMES = {
+    '#drawPaintHost': '#paintGroup',   // Drawing: Home -> Draw
+    '#textTabHost':   '#textGroup',    // Text: 20 buttons + 2 boxes off Home
+  };
+  for (const [host, sel] of Object.entries(GROUP_HOMES)) {
+    const box = $(host), g = $(sel);
+    if (box && g) box.replaceWith(g);   // replaceWith, NOT appendChild
+  }
+  ```
+  
+  **Tab strip now:**
+  ```html
+  <div class="ribtabs">
+    <button class="ribtab on" data-tab="home">Home</button>
+    <button class="ribtab" data-tab="insert">Insert</button>
+    <button class="ribtab" data-tab="draw">Draw</button>
+    <button class="ribtab" data-tab="file">File</button>
+    <button class="ribtab ctx" data-tab="shape" hidden>Shape</button>
+    <button class="ribtab ctx" data-tab="text" hidden>Text</button>
+  </div>
+  ```
+  
+  **New icons added to `IC`:** `save`, `export`, `download`, `reset`, `preview`, `canvas`, `smartguides`.
+  
+  **Overflow well now wraps:**
+  ```css
+  .rmenu.ribwell.on{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;padding:5px;
+    max-width:calc(100vw - 12px);overflow-x:auto;}
+  ```
+  
+  **Retired:** `#showGroup` (deleted), `#canvasGroup` (deleted, `#canvasB` re-declared on File), both `mirrorGroup()` registrations (functions kept, unregistered), `#homePicB`/`#homeShapesB`/`#homeTextB` proxies.
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/app/shapes-test.ts` (28 → 58 assertions)
+  Added drag-select, canvas-size and smart-guide blocks. Added the race-fixing helper:
+  ```ts
+  const freshDoc = async (q: string) => {
+    await new Promise(r => setTimeout(r, 900));   // wait out the 700ms autosave debounce
+    await p.evaluate(() => {
+      for (const key of Object.keys(localStorage))
+        if (key.startsWith('acos-logo-forge:') && !key.endsWith(':clip')) localStorage.removeItem(key);
+    });
+    await p.goto(`${BASE}/editor.html?${q}`, { waitUntil: 'networkidle2' });
+    await new Promise(r => setTimeout(r, 1400));
+  };
+  const R301 = 'logo=r3-01&file=r3-01&round=3&forge=symbol';
+  ```
+  Also added tab-aware `tapTab`/`tap` helpers (same pattern in `fill-test.ts` and `forge-test.ts`).
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/app/ribbon-test.ts` (253 → 295, currently **incomplete**)
+  Updated: tab list assertion (six tabs, `'Home,Insert,Draw,File,Shape,Text'`), the location table, Canvas tile block, spacing-column block, parked-groups keyed on `left`+`top` instead of `left` alone, the Home group inventory. **Still aborts partway** with `TypeError: Cannot read properties of null (reading 'children')` right after "the Dropper is NOT duplicated onto the same tab" — an assertion querying a deleted group. Also failing: "every Logo Forge tool sits in ONE group — drawEditGroup n=4" (the probe measures on Home via `await tab('home')` but the six tools are on Draw now).
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/app/button-test.ts` (37 → 42)
+  `#homeShapesB` → `#shapesB`; `tap('#undoB')`/`tap('#redoB')` → `tap('#qUndo')`/`tap('#qRedo')`.
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/app/shapelib-test.ts` (25 → 26)
+  Split the bundled guard; size cap raised 400000 → 460000 with rationale (shapes.json is 636,641 bytes, symbols.json 1,109,795).
+  
+  ### `/Users/zee/.claude/skills/acos-logo-forge/SKILL.md`
+  Documented drag-select, the ≥2 rule, `actSet()`, canvas size, smart guides, the spacing column, the well-wrap fix, both test races. Test roster updated to 594 assertions (`ribbon-test` 295, `shapes-test` 58) — **now stale again** after the six-tab work.
+  
+  ## 4. Errors and Fixes
+  
+  1. **Set label overwritten** (real product bug, caught by my own test) — `sync()` wrote `${marked.size} pieces selected` to `#selName`, then `if (l) { $('#selName').textContent = l.name; }` overwrote it. Fixed with a `const setLabel` variable used in both places.
+  2. **`escXML` TDZ crash** — `const escXML` was declared ~4,200 lines below its first use in `sync()`. Worked only because nothing called `sync()` until the script finished. The contextual-tab work reached `sync()` earlier → `"Cannot access 'escXML' before initialization"`. Fixed by moving the declaration to the top of the script.
+  3. **Groups nested one level too deep** — `GROUP_HOMES` used `appendChild` into placeholder `<div>`s; `fitRibbon()` walks `:scope > .rgroup`, so the groups rendered but could never be parked. Fixed with `box.replaceWith(g)`.
+  4. **`#canvasB` orphaned** — deleting `#canvasGroup` deleted the button inside it; `RIBBON_HOMES` then had nothing to move and `$('#canvasB').onclick` threw on null. Fixed by declaring `#canvasB` directly in `#fileBoardRow`.
+  5. **Ghost second row** — an emptied, CSS-hidden `#showGroup` still reported a zero-height box at top 0, and `ribbon-test` counts distinct tops to detect wrapping. Deleted the group (matches this file's own convention for retired groups).
+  6. **Overflow well spill** — the fourth column widened `#drawingGroup`; at 800px parked groups measured 834px in a 786px box, 48px over, one button ending at 829 against an 800px window, reachable only by scrolling a container with no visible scrollbar. Fixed with `flex-wrap:wrap`.
+  7. **Two test races** — `shapes-test` reopened `r3-01` "fresh" while earlier blocks left it grouped to 3 then 1 layers, and the 700ms autosave debounce decided which state came back. Three assertions flipped run to run. Fixed with `freshDoc()` (wait 900ms, clear localStorage, then goto).
+  8. **Test-side coincidence bug** — my first "a mover is never its own target" test compared guide values against the mover's own edges and failed because this artwork genuinely shares centre lines. Rewritten to hide the other layers and make the same call twice, differing only in `movingIds`.
+  9. **`toFixed(4)` broke a tolerance** — π/2 rounded to 1.5708 is 3.7e-6 off, failing a 1e-6 check. Removed the rounding.
+  10. **Mirror assertion on a retired mirror** — `#smartGuideB-i` no longer exists; `.classList` on null crashed shapes-test. Dropped the mirror half of the assertion.
+  11. **Non-idempotent suite reused a workspace** — several confusing failures traced to reusing `/tmp/forge-ws` instead of recreating it, exactly as the suite headers require.
+  
+  ## 5. Problem Solving
+  
+  - Established that Group-subset already worked (`const subset = marked.size >= 2`) and that drag-select was the missing way to reach it; added a live tooltip so the button says which mode it is in.
+  - Diagnosed that Home was overloaded because Insert (2 own buttons) and Draw (0 own buttons) were mostly mirrors — the reframe that drove the six-tab plan.
+  - Identified the arrow-key nudge precision defect: `const st = (e.shiftKey ? 10 : 1) * k() * 2;` where `k()` is `doc.viewBox[2] / stage.clientWidth`, making the step 2 screen pixels and therefore window-size dependent. **Reported, not fixed.**
+  - Explained why a grid is wrong for logos: each logo's viewBox is arbitrary (72.05 × 84.85 for one symbol, 142.86 × 199.55 for another), so one grid step means a different visible distance per document.
+  
+  ## 6. All User Messages
+  
+  1. "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/closed/2026-08-18-Logo-Builder-close-2/2026-08-18-Logo-Builder-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  2. `/acos-logo-forge` (slash-command invocation with the full skill body).
+  3. "Dragging mouse pointer on canvas should allow selection of multiple shapes to be moved together or rotated and stuff. /restate"
+  4. "yes"
+  5. "group now groups everything in the canvas, I should have the option to group selected shapes only in addition to that. \nAlso, on the right side bar there are some options, I would prefer all of them to have icons in the top toolbar organized by right menu and right tool group. suggest how that can be done best or if there are any blockers."
+  6. "There should be a way to increase the canvas size too."
+  7. "go with option A\nThe canvas should have small gridlines to ensure the spcings created from manual movement is precise. Is there any other way to do that?"
+  8. "Do smart guides. add an icon for distribute in the home menu for easy access, put them along with shapes and symbols in a new column."
+  9. "There are a lot of actions that take place in the right side bar, like group, split, transform, geometry, undo, redo, reset this logo, export, output, flip, layer grup, finish group. I feel all of them should be icons instead of being in the right hand side. A lot of them should go to the home menu, there are a lot of icons in the home menu right now some of which can go to other menus, I still haven't decided. \nSuggest tool groups and menus and give me an outline as to how I can best organize all the tools in a sensible way."
+  10. "I like your plan, have all five tabs plus two contextual. Do it."
+  11. **(most recent, unanswered)** "I think you still have a number of icons missing, where is group \\ split?? Double check that every single option and icons are accounted for."
+  
+  **Standing constraints in force (from `/Users/zee/CLAUDE.md`, verbatim intent):**
+  - Push destination defaults to **PERSONAL** (`ZiaulKarim-hub`); `okoateam` only when Zee names it in the current conversation. **Never use a bare `git push`** — always name the remote explicitly.
+  - New code defaults to **TypeScript or Rust**, not Python (existing Python may be patched).
+  - Confirmation Gate: restate and confirm before interpretive/multi-step work.
+  
+  **Project-specific constraint carried from the handoff:** the 8815 server is PID 6404, launched 2026-08-18 — it IS the live production server and must never be "cleaned up" as a leftover test process. Logs: `~/Library/Logs/logo-forge-8815.log`.
+  
+  ## 7. Pending Tasks
+  
+  - **Answer the current question:** where Group/Split are, and a full account of every option and icon.
+  - **Fix the 16 buttons with no drawn icon** (see Current Work).
+  - **Finish `ribbon-test`** — it aborts partway; ~295 assertions, many still describing the old three-tab layout.
+  - **Re-run four suites not touched since the six-tab change:** `gallery-test`, `reject-test`, `designer-test`, `symbols-test`.
+  - **Update SKILL.md** for the six-tab restructure (test roster counts and the tab/group documentation are stale).
+  - **Open, unanswered by Zee:** he said "all five tabs plus two contextual" but the approved outline is **four** permanent tabs (Home, Insert, Draw, File) plus two contextual (Shape, Text). I flagged this and asked which fifth permanent tab he meant, if any.
+  - **Not committed to git.** Nothing from this entire session has been committed or pushed.
+  - **Deliberately not done unless asked:** the 19 dead clickables and 44/130 zero-size elements from the older audit; the arrow-nudge precision fix.
+  
+  ## 8. Current Work
+  
+  Answering: *"I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for."*
+  
+  I ran two audits.
+  
+  **Static before/after diff** — `git show fac4572:acos-logo-forge/app/editor.html > /tmp/editor-old.html`, then compared every declared `<button|input|select|textarea|a>` id in the markup:
+  - **139 controls before, 148 after.**
+  - **Gone (3):** `homePicB`, `homeShapesB`, `homeTextB` — all three were *proxy* buttons on Home whose real targets (`insPicB`, `shapesB`, `insTextB`) now sit on Insert. No command was lost.
+  - **New (12):** `distHB`, `smartGuideB`, `distVB`, `selectToolB`, `insReuseB`, `canvasB`, `ordFrontB`, `ordUpB`, `ordDownB`, `ordBackB`, `rot90RB`, `rot90LB`.
+  
+  **Live enumeration** (fresh `/tmp/forge-ws`, server on 8816, a shape selected so the contextual tabs are live) produced the full map — and **Group/Split are present**, on the Shape tab:
+  
+  ```
+  INSERT   Media           insPicB · symbolsB · insTextB
+           Illustrations   toolRect · toolEllipse · shapesB
+           Reuse           insReuseB
+  DRAW     Drawing         toolSelect · toolPencil · toolEraser · toolLine · brush · penPencil · penMarker · penCallig · penHigh
+           Edit shapes     toolCut · toolCutter · toolFill · toolPoly · toolCopy · toolNodes
+           Finish          smoothB
+  FILE     Board           canvasB · guideB · bgB · ghostB
+           Save & export   saveB · exportB · expName · pngSize
+           Download        dlPng · dlAll
+           Reset           resetDoc
+  SHAPE    Group           groupB · splitB
+           Order           ordFrontB · ordUpB · ordDownB · ordBackB
+           Transform       rot90RB · rot90LB · flipH · flipV · sizePctN · opacity
+           Reset           resetT · resetGeo
+  TEXT     Text            txtFamily · txtSize · txtBold · txtItalic · txtUnderline · txtTrackB · txtColorB · txtHiB · txtDirB · txtVAlignB · txtAlignB · textMoreB · txtAlignL · txtAlignC · txtAlignR · txtAlignJ · txtClearFmt · txtStrike · txtSup · txtSub · txtCaseB · txtLineSpB
+  
+  ATTIC (hidden on purpose): [ "undoB", "redoB" ]
+  ```
+  
+  **The audit found a real defect that confirms Zee's instinct — 16 buttons render with NO drawn icon:**
+  ```
+  file/Save & export/saveB, file/Save & export/exportB, file/Download/dlPng, file/Download/dlAll,
+  file/Reset/resetDoc, shape/Group/groupB, shape/Group/splitB, shape/Transform/flipH,
+  shape/Transform/flipV, shape/Reset/resetT, shape/Reset/resetGeo, text/Text/txtBold,
+  text/Text/txtItalic, text/Text/txtUnderline, text/Text/textMoreB, text/Text/txtStrike
+  ```
+  Cause: these were `.act ghost` right-rail buttons carrying emoji/text labels (💾 ⤓ ⬇︎ ⟲ ⧉ ⑃ ⇋ ⇵). `TOOL_ICONS` — the map that swaps a relocated button's pictograph for a drawn 18px mark — covers only `#toolSelect`, `#toolPencil`, `#toolEraser`, `#toolLine`, `#toolRect`, `#toolEllipse`, `#toolCut`, `#toolCutter`, `#toolFill`, `#toolPoly`, `#toolCopy`, `#toolNodes`, `#shapesB`, `#guideB`, `#bgB`, `#ghostB`, `#smoothB`. The `save`, `export`, `download`, `reset` icons were added to `IC` but never wired into `TOOL_ICONS`; `group`, `ungroup`, `flipH`, `flipV` already existed in `IC` and are likewise unwired. The four Text buttons (`txtBold`, `txtItalic`, `txtUnderline`, `textMoreB`, `txtStrike`) use plain letters by design and may be acceptable as-is — that needs a judgement call, not an assumption.
+  
+  **Verified-good state at this point:** no page errors; no dead ribbon buttons (`onclick` present on all); every tab exactly 123.3px; Home on a single row; contextual reveal and the deselect-to-Home fallback both work; right rail down from 26 visible controls to 1 (the keyboard-shortcuts `<details>`).
+  
+  **Suites green, `exit=0`:** `shapes-test` 58/58 · `button-test` 42/42 · `fill-test` 27/27 · `shapelib-test` 26/26 · `explode-test` 12/12 · `forge-test` 19/19 · `audit.ts` 0 findings.
+  
+  **Environment:** live server PID 6404 on 8815 untouched and already serving the new build; a test server was left running on 8816 against `/tmp/forge-ws` and needs cleanup.
+  
+  ## 9. Optional Next Step
+  
+  Wire the 16 icon-less buttons into `TOOL_ICONS` (`saveB`→`save`, `exportB`→`export`, `dlPng`/`dlAll`→`download`, `resetDoc`/`resetT`/`resetGeo`→`reset`, `groupB`→`group`, `splitB`→`ungroup`, `flipH`→`flipH`, `flipV`→`flipV`), decide with Zee whether the five Text buttons should keep their letter marks, then report the complete accounting he asked for — including that Group and Split are on the **Shape** tab, which stays hidden until something is selected.
+  
+  This follows directly from his most recent message: *"I think you still have a number of icons missing, where is group \\ split?? Double check that every single option and icons are accounted for."* — and from the audit result that ended the last turn: `BUTTONS WITH NO DRAWN ICON: [ "file/Save & export/saveB", "file/Save & export/exportB", "file/Download/dlPng", "file/Download/dlAll", "file/Reset/resetDoc", "shape/Group/groupB", "shape/Group/splitB", "shape/Transform/flipH", "shape/Transform/flipV", "shape/Reset/resetT", "shape/Reset/resetGeo", "text/Text/txtBold", "text/Text/txtItalic", "text/Text/txtUnderline", "text/Text/textMoreB", "text/Text/txtStrike" ]`
+  
+  </summary>
+
+current_work: |
+  Answering Zee's "where is group \ split?? Double check that every single option
+  and icon is accounted for." Full inventory done; two real defects found and
+  fixed in editor.html — 11 relocated buttons wore emoji instead of drawn icons,
+  and hiding the Shape tab behind a selection had made "Group everything on the
+  board" unreachable. Now re-verifying live and re-running the suites.
+completed_this_session: |
+  Drag-select multi-shape editing (marquee, the >=2 rule, actSet/setBox/rotateSetBy/flipSet).
+  Canvas resize, Option A: art keeps its size, the board grows around it, art stays centred.
+  Smart guides (SNAP_PX 6, edges+centres, board included, Alt suppresses) chosen over a grid.
+  Distribute icons in a new spacing column beside Shapes and Symbols.
+  Six-tab ribbon: Home, Insert, Draw, File + contextual Shape, Text. Right rail 26 -> 1.
+  Suites green at exit 0: shapes 58, button 42, fill 27, shapelib 26, explode 12, forge 19, audit 0.
+decisions_made: |
+  "Option A" for canvas growth - art keeps its size and gains room around it.
+  Smart guides instead of gridlines, after both were laid out.
+  "I like your plan, have all five tabs plus two contextual. Do it." - approved the
+  ribbon reorganisation. He said five permanent, the approved outline names four
+  (Home/Insert/Draw/File); flagged and still unanswered.
+  Drag-select restatement accepted as written, no upgrades taken.
+blockers: |
+  Nothing is blocked. One question outstanding and non-blocking: which fifth
+  permanent tab he meant, if any - four are built.
+candidate_learnings: |
+  An emoji relocated onto a ribbon reads as a missing icon. Same lesson the
+  clear-space button taught when it rendered as an empty box: an emoji is
+  somebody else's typeface, so it never matches drawn 18px marks beside it.
+  Making a tab contextual can silently amputate a command. Shape hid behind the
+  selection, and Group-with-nothing-selected - which groups the whole board - had
+  no door left. Ask what a command does when NOTHING is selected before gating
+  its tab on a selection.
+  Two neighbouring buttons must not share one icon (dlPng/dlAll, resetT/resetGeo).
+context_for_next_session: |
+  Everything lives in one file: ~/.claude/skills/acos-logo-forge/app/editor.html.
+  Nothing this session is committed. Live server PID 6404 on 8815 is PRODUCTION -
+  never kill it as a stray. Test servers use 8816/8817/8819 against a FRESH copy
+  of the workspace; five suites are not idempotent. Always check the exit code,
+  the printed tally lies when a suite throws mid-run.
+  Still open: finish ribbon-test (it aborts on an assertion querying a deleted
+  group, and one probe measures drawEditGroup on Home when those six tools moved
+  to Draw); re-run gallery/reject/designer/symbols suites; refresh SKILL.md for
+  six tabs. Known, reported, not fixed: arrow-key nudge is window-size dependent
+  because the step is 2 screen px via k().

@@ -1,0 +1,396 @@
+timestamp: "2026-08-22T21:01:52Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "540734f5-8c12-458b-8670-7d5d30569ec7"
+estimated_tokens: 501002
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  I like your six, do it
+
+assistant_tail: |
+  Two failures. One is my test premise, the other is real ambiguity when shapes overlap. Fixing the test to measure something unambiguous.
+  
+  ---
+  
+  The suite's blocks were leaking state into each other. Giving each one a fresh document, which is the discipline this file already has.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 21
+  recent_commits: |
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+
+uncommitted_files:
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "?? \"Logo Builder/brandsync/candidates/round-11/\""
+  - "?? \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06.json\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "?? \"Logo Builder/brandsync/symbol/candidates/round-8/\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-20-autocompact-handoff.yaml\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-21-autocompact-handoff.yaml\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/2026-08-22-autocompact-handoff.yaml"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0-Logo-Builder/540734f5-8c12-458b-8670-7d5d30569ec7.jsonl"
+  transcript_lines_parsed: 966
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Pre-compaction context (from the provided summary):** A long-running session building the ACOS Logo Forge editor. Prior completed work: recategorize (move), Save as, 128 Quick Styles, 97 tool help popups, and the 3D + Special Fill effect menus. That summary listed the state at the point of compaction.
+  
+  **Turn 1 (my continuation after compaction):** I ran the remaining test suites. `shapelib-test` failed on a size cap (473382 bytes vs 460000). I did the SessionStart-requested handoff enrichment edit, raised the cap to 560000 with an honest comment after verifying no data URIs and longest line 467 chars, then ran gallery/reject/recat which initially failed with ERR_CONNECTION_REFUSED because those suites do not start their own server. Started servers manually on 8817. All green. Cleaned up. Discovered the live 8815 server needed NO restart (started 02:11:58, after server.py's 01:20:53 mtime). Added a SKILL.md entry.
+  
+  **User message 2:** "rename 3d to '  3D Styles'" + move gradient fills from Fill to Special Fill → Gradient Fill + "Each special fill sub cagtegory should at least have 8 different fill options." + `/restate`.
+  
+  I ran the restate skill: investigated first (read editor.html, counted FX_FILL groups, found GRADIENT_PRESETS with 8 entries, found FX_FILL Gradient Fill had 5, found all 12 groups under 8, discovered the two paths differ — applyFill vs applyEffect one-at-a-time). Produced the restatement with assumptions/missing/upgrades and asked "Did I understand this correctly?"
+  
+  **User message 3:** "yes"
+  
+  I then built it:
+  - Renamed 3D → "3D Styles" in 4 places (button label, title attr, fxMenu heading, HELP entry)
+  - Taught `applyGradient` radial support + skip `[data-fx]` nodes
+  - Replaced FX_FILL entirely (99 styles, ≥8 per group, 12 groups)
+  - Routed Gradient Fill through applyFill via a `paint` key probe
+  - Added `flattenFill()` and a "No gradient" button
+  - Removed the gradient grid, GRADIENT_PRESETS, and the .gradgrid/.gcell CSS
+  - Fixed a 6-field HELP entry I accidentally created (audited all 99 → 101 entries, all 5 fields)
+  - Rewrote fx-test (39→42 assertions)
+  - Visual pass: found Frosted Glass near-twins, Chrome≈Silver, Speckle invisible (baseFrequency 4.5 finer than a pixel) → fixed
+  - Found via real artwork that Neon then another style left the logo invisible → added `l.fxPaint` restore, added to serialize()
+  - Found bevel washed navy → THREE attempts: fixed 0.80 constant, then computed `flatSpecular()` per elevation, then finally realized feComponentTransfer un-premultiplies so feFuncR/G/B get (1,1,1) — the fix is feFuncA
+  - All suites green
+  
+  **User message 4:** "Number of 3d styles is pretty low. Are these all that are available out there? also, the qualliity looks a bit off, how to change that?"
+  
+  I verified in code (`feDiffuseLighting` only in a comment, 1 distant light, blur-derived bevel profile), answered with PowerPoint's four dials, named three causes, proposed a 5-step engine rebuild, and asked whether to proceed. **This question was never answered.**
+  
+  **User message 5:** `/acos-safe-close` — I ran preflight (SID=540734f5-8c12-458b-8670-7d5d30569ec7), wrote the intent core, gathered 4 candidate learnings, wrote 14 learnings (12 machine, 2 ruling), printed the resurrection book, and asked for a park number. **Never answered.** Nothing was written to the project by the close.
+  
+  **User message 6:** `/acos-logo-forge` — I checked the workspace, read avoid.json, opened Chrome, started watchers.
+  
+  **Notification:** `CMD pick | logo=r11-01 | round=11`. I noted it and did not touch the document.
+  
+  **Notifications:** both my Bash watchers killed. I verified the original Monitor (pids 42373/42375, up 1d 7h 27m) is still alive and nothing was missed (66 lines, all 7 commands delivered).
+  
+  **User message 7:** "Illustrations group buttons, React and elipse has no way to turn them off, clicking again doesn't work."
+  
+  I reproduced it AND found Escape didn't release either. First fix made all five toggle — button-test caught 5 pencil failures, which I correctly read as a real design signal (Pen/Eraser are stay-in tools). Narrowed to CLICK_OFF_TOOLS = rect/ellipse/line, ESC_TOOLS = all five. button-test 46→61, all suites green.
+  
+  **User message 8:** "The spacing tool group can have a few more tools. dist H & Dist V can be one tool. Also add three more tools to make the total number 6. This are some of the spacing tools chat gpt suggested. Which one's do you think would be most useful for my use case? Identify top 5. In cases where multiple options can be put inside one icon, treat them as one option."
+  
+  The list didn't arrive. I said so, investigated the code, gave my top 5.
+  
+  **User message 9:** Pasted the full ChatGPT list, asked for top 10 merged.
+  
+  I ranked 10, flagged that a third of the list needs containers (which don't exist here), a slice already exists, and grid items were already decided against. Recommended six tiles: Arrange · Align · Distribute · Gap · Match size · Guides.
+  
+  **User message 10:** "I like your six, do it"
+  
+  Currently building. Done so far: 4 new icons (alignMenu, distribute, gap, matchsize) plus gapWider/gapTighter/gapNone; `spaceSet`, `keyLayer`, `boxOf`, `bLo`, `bHi`, `alignKey`; rewrote `alignLayers` to use real EDGES via setBox (found the existing align moved ANCHORS, a real defect); `gapEven`, `gapAxis`, `curGap`, `setGap`, `gapStep`, `nudgeGap`, `ownW`, `ownH`, `matchSize`; four menu builders + wiring; ribbon markup as 2 columns of 3; HELP entries swapped (distHB/distVB out, alignB/distB/gapB/matchB in — 101 entries all 5 fields). Verified live: group renders, height 112/tab 123, all menus open, no page errors. Maths verified: align left → 3 edges exactly equal; equal gaps → exactly equal; gap 40 → exactly 40/40; match width → 65.97→28.03. Visual pass found Increase/Decrease icons identical and the BOARD row was a fake command → both fixed and re-shot.
+  
+  Now writing permanent tests in shapes-test.ts. Multiple test-harness issues fixed: name collisions (sg, al, ge...), wait/ev helpers don't exist in that suite, Promise.all racing concurrent row clicks, `file=r11-01.svg` 404s (must be `file=r11-01`), `#layerList .lrow` needs the right URL. Latest run: 73/74, one failure — "Equal gaps leaves the SAME space between each pair of edges — 5 vs 30".
+  
+  That last failure is the current state. It appeared after I isolated blocks with freshDoc. The skew step (`w.selLayer().x += 25`) takes no snapshot, and the measurement sorts by x0 which can reorder. Need to diagnose whether it's the product or the test.
+  
+  Let me be careful to keep the user's exact words and the standing constraints.
+  </analysis>
+  
+  <summary>
+  1. **Primary Request and Intent**
+  
+     A continuing session on the ACOS Logo Forge editor. In the user's own words, in order:
+  
+     a. **"rename 3d to ' 3D Styles'"** / **"Inside 'fill' there are some gradient fills too, but now that we have Special Fill, the gradient fills are not needed there and move all those gradient fills to Special Fill -> Gradient Fill"** / **"Each special fill sub cagtegory should at least have 8 different fill options."** — delivered with `/restate` first; the user answered **"yes"**. DONE and verified.
+  
+     b. **"Number of 3d styles is pretty low. Are these all that are available out there? also, the qualliity looks a bit off, how to change that?"** — I answered and proposed a 5-step engine rebuild. **The user never said go. Still open.**
+  
+     c. `/acos-safe-close` — reached the park-destination question and **stopped, unanswered**. The close wrote NOTHING to the project.
+  
+     d. `/acos-logo-forge` — workshop reopened, bridge watched.
+  
+     e. **"Illustrations group buttons, React and elipse has no way to turn them off, clicking again doesn't work."** — DONE and verified.
+  
+     f. **"The spacing tool group can have a few more tools. dist H & Dist V can be one tool. Also add three more tools to make the total number 6. This are some of the spacing tools chat gpt suggested. Which one's do you think would be most useful for my use case? Identify top 5. In cases where multiple options can be put inside one icon, treat them as one option."** then a pasted ChatGPT list and **"rank top 10 along with the one's you already suggested"**, then **"I like your six, do it"** — CURRENT WORK.
+  
+     **Standing constraints in force (verbatim intent, `/Users/zee/CLAUDE.md`):** push destination defaults to **PERSONAL** (`ZiaulKarim-hub`), no asking; `okoateam` only when Zee names it in the current conversation; **never use a bare `git push`** — always name the remote. New code defaults to **TypeScript or Rust**, not Python (existing Python may be patched — `server.py` falls under this exception). Confirmation Gate: restate and confirm before interpretive/multi-step work.
+  
+     **Project constraint:** the server on port **8815** serving `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/brandsync` is PRODUCTION and must never be killed as a stray test process. Logs: `~/Library/Logs/logo-forge-8815.log`.
+  
+  2. **Key Technical Concepts**
+     - Logo Forge: Python stdlib `server.py` + browser workshop; three forges (lockup `""`, `symbol`, `wordmark`); `commands.jsonl` browser→Claude bridge; `avoid.json` rejection gate.
+     - PowerPoint-style ribbon: `.rgroup` min-height **112.3px**, tab body **123.3px**, max **3 rows** per column; `RIBBON_HOMES` relocation; `mirrorGroup()` exists but **no mirrorGroup call is currently invoked**, so `#distHB-i`-style mirrors do not exist.
+     - **`doc`, `undoStack`, `marked`, `HELP`, `FX_3D`, `FX_FILL` are script-scoped — NOT on window.** Only top-level `function` declarations are reachable from `page.evaluate` (`selLayer`, `sync`, `draw`, `undo`, `setBox`, `alignLayers`, `gapEven`, `setGap`, `matchSize`, `exportSVGText`, `reidGradients`, `fxTile`, `stylePalette`, `detectKind`).
+     - `setBox([l])` returns a layer's TRUE document box (scale + rotation applied) via `corners()` → `localToDoc`.
+     - `snapshot()` pushes the CURRENT state AFTER mutation; `serialize()` keeps an **explicit key list** — a new per-layer key must be added there or it is lost on undo/autosave/reload.
+     - `HELP` entries must hold **exactly 5 fields**; a 6th is silently dropped and shifts the "When:" line.
+     - Test discipline: several suites are NOT idempotent — recreate the workspace from brandsync first; **always judge on the exit code, not the printed tally**. `gallery-test`/`reject-test` take the workspace as `process.argv[2]` and use port **8817** with `/tmp/rej-ws`; `recat-test` uses **8817** with `/tmp/forge-ws`; the rest use **8816** with `/tmp/forge-ws`. **gallery/reject/recat do NOT start their own server** — launch `python3 server.py <ws> 8817` first.
+     - Editor URL param: `file=r11-01` (NO `.svg`) — `file=r11-01.svg` 404s and the layer list comes back empty.
+     - `Bun.resolveSync('puppeteer', '/Users/zee/Documents/Vibe Coding/ACOS 3.0')`.
+     - Eden Protocol Level 3 register enforced on every user-facing reply by a Stop hook.
+  
+  3. **Files and Code Sections**
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/editor.html`** — the single file holding the editor. Now **~493,355+ bytes**.
+  
+     - **3D rename (4 places):** button label `3D Styles ▾`, `title="3D Styles — bevel, emboss…"`, `fxMenu('effect3dB', 'effect3dMenu', '3D Styles', FX_3D);`, `effect3dB: ['3D Styles', ''…`.
+     - **`applyGradient` gained radial + a data-fx guard:**
+       ```js
+       const def = spec.type === 'radial'
+         ? `<radialGradient id="${id}" cx="${spec.cx ?? 38}%" cy="${spec.cy ?? 34}%" ` +
+           `r="${spec.r ?? 72}%">${stops}</radialGradient>`
+         : `<linearGradient id="${id}" x1="${p(-Math.cos(a))}" …>${stops}</linearGradient>`;
+       …
+       for (const n of paintTargets(root)) {
+         if (n.closest('[data-fx]')) continue;
+         setPaint(n, 'fill', `url(#${id})`);
+       }
+       ```
+     - **FX_FILL replaced** — 99 styles + None across 12 groups in Zee's order: Soft Fill 8, Gradient Fill 10, Glass 8, Frosted Glass 8, Drop Shadow 8, Soft Shadow 8, Inner Shadow 8, Glow 8, Neon 8, Metallic 8, Pattern Fill 9, Texture Fill 8. Helpers `gradFill`, `radDef`, `radFill`, `SHADOW`; `innerShadowBody` gained a `col = '#000000'` param.
+     - **Gradient routed to the FILL engine** in `fxMenu`'s `run`:
+       ```js
+       const probe = make ? (make('lfg' + l.id, { c: fxBase(l), u: fxUnit(l) }) || {}) : {};
+       if (probe.paint) { applyFill(l, probe.paint, { quiet: true }); toast(`${title} — ${label}`); return; }
+       ```
+       Group meta carries a clear label: `['Gradient Fill', [...], 'No gradient']`, plus `flattenFill(l)` which removes `#lfg<id>` and returns the stop nearest 50%.
+     - **Bevel fix (third attempt, the one that works):**
+       ```js
+       const flatSpecular = (elev, exponent, k) => {
+         const a = 225 * Math.PI / 180, e = elev * Math.PI / 180;
+         const lx = Math.cos(a) * Math.cos(e), ly = Math.sin(a) * Math.cos(e), lz = Math.sin(e);
+         const hz = lz + 1, m = Math.hypot(lx, ly, hz);
+         return k * Math.pow(hz / m, exponent);
+       };
+       const bevelBody = (u, depth, elev) => {
+         const K = 0.85, EXP = 18, SLOPE = 2.4;
+         const off = (SLOPE * flatSpecular(elev, EXP, K)).toFixed(3);
+         const cut = `<feFuncA type="linear" slope="${SLOPE}" intercept="-${off}"/>`;
+         …
+       ```
+       Measured flat values: **0.494 at elevation 62, 0.098 at 35** (so one constant could never fit four bevels).
+     - **`l.fxPaint` — one style at a time now includes the paint:** `paintAttr(n, prop)` reads style-then-attribute; `applyEffect` restores per SHAPE after `stripFx`, stashes before overwriting; `fxPaint: l.fxPaint || null` added to `serialize()`; `applyFill` and `applyOutline` each clear it with `l.fxPaint = null;`.
+     - **Tool toggle:**
+       ```js
+       const ESC_TOOLS = ['rect', 'ellipse', 'line', 'pencil', 'eraser'];
+       const CLICK_OFF_TOOLS = ['rect', 'ellipse', 'line'];
+       const pickTool = n => () =>
+         setTool(tool === n && CLICK_OFF_TOOLS.includes(n) ? 'select' : n);
+       ```
+       Wired on `#toolEraser`, `#toolLine`, `#toolRect`, `#toolEllipse`. `brushClick` stays a plain `setTool('pencil')`. Escape ladder gained, before the deselect branch:
+       `else if (ESC_TOOLS.includes(tool)) { setTool('select'); toast('Back to Select'); }`
+     - **Spacing group (current work):** new icons `alignMenu`, `distribute`, `gap`, `matchsize`, `gapWider`, `gapTighter`, `gapNone`. New functions:
+       ```js
+       function spaceSet(min, what) { … }        // marked set, else selLayer, else speak
+       function keyLayer(set) { … }              // first ⌘-clicked
+       const boxOf = l => setBox([l]);
+       const bLo = (b, ax) => ax === 'h' ? b.x0 : b.y0;
+       const bHi = (b, ax) => ax === 'h' ? b.x1 : b.y1;
+       let alignKey = false;                     // "hold the first shape still"
+       function alignLayers(how) { … }           // REWRITTEN on real EDGES
+       function gapEven(axis) { … }              // equal EDGE gaps, first+last held
+       function gapAxis(set) { … }               // wider span wins
+       function curGap(set, axis) { … }          // average neighbour gap (also the readout)
+       function setGap(axis, gap) { … }          // exact number, first shape anchors
+       const gapStep = () => Math.max(0.5, (doc.viewBox[2] || 100) / 100);
+       function nudgeGap(sign) { … }
+       const ownW = l => Math.abs(l.bx1 - l.bx0) * Math.abs(l.sx || 1);
+       const ownH = l => Math.abs(l.by1 - l.by0) * Math.abs(l.sy || 1);
+       function matchSize(mode) { … }            // scales sx/sy to the key layer
+       ```
+       Menus `buildAlignMenu()` (id `alignMenu2`), `buildDistMenu()` (`distMenu`), `buildGapMenu()` (`gapMenu`, with a live `#gapNum` input pre-filled from `curGap`), `buildMatchMenu()` (`matchMenu`); wired to `#alignB`, `#distB`, `#gapB`, `#matchB`.
+       Ribbon markup rebuilt as two columns of three: col1 `arrangeB`, `alignB`, `distB`; col2 `gapB`, `matchB`, `smartGuideB`. `distHB`/`distVB` fully removed (0 refs).
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/shapelib-test.ts`** — cap raised `460000 → 560000` with the reasoning written in (no data URI in the file, longest line 467 chars; shapes.json is 636,641 bytes and symbols.json 1,109,795).
+  
+     **`fx-test.ts`** — rewritten, 42/42. Picks styles **by title**, not index (48 new styles shifted every index).
+  
+     **`button-test.ts`** — 46 → **61/61**. New blocks: `CLICK_OFF` (3 tools) turn off on second click; `ESC_OFF` (5 tools) released by Escape; `#toolPencil`/`#toolEraser` must NOT toggle off; 5 draft tools (`#toolCut`, `#toolCutter`, `#toolFill`, `#toolPoly`, `#toolCopy`) must NOT toggle off.
+  
+     **`shapes-test.ts`** — being extended now with a spacing block (prefixed locals `spGrp`, `spRows`, `spBoxAt`, `spMark`, `spBoxes`, `SP_THREE`, `spAl`, `spGe`, `spGap`, `spBefore`, `spAfter`, `spG1`, `spG2`, `spS1`, `spS2`, `spSkew`, `spAllW`, `spPairA`, `spPairB`, `spSpread`). This suite has **no `wait` or `ev` helper** — it uses `p.evaluate` and `new Promise(r => setTimeout(r, N))`, and `freshDoc(R301)` where `R301 = 'logo=r3-01&file=r3-01&round=3&forge=symbol'`.
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/SKILL.md`** — the 3D/Special Fill bullet rewritten in full (rename, the gradient move, ≥8 floor, fxPaint, the three-attempt bevel story, the three honest limits).
+  
+     **`/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/2026-08-21-autocompact-handoff.yaml`** — depth-pass fields appended, `enrichment_status: "deepened"`.
+  
+  4. **Errors and fixes**
+     - **`shapelib-test` size cap** — 473,382 > 460,000. Verified it was hand-written code (no `data:` URI, longest line 467) before raising to 560,000.
+     - **gallery/reject/recat exited 1 with no tally** — `net::ERR_CONNECTION_REFUSED at 8817`. They do not start their own server; started one manually.
+     - **Live 8815 restart assumed necessary** — it was not. `server.py` mtime 01:20:53, process started 02:11:58; the page is read from disk per request.
+     - **A 6-field `fillMenuB` HELP entry** — would have pushed the real "when" line off the end. Merged back to 5 and audited all entries with a string-aware parser.
+     - **Frosted Glass / Chrome / Speckle looked alike** — pushed tint, direction and rim apart; Chrome given harder bands; Speckle's `baseFrequency` **4.5 → 1.2 → 0.25** because frequency is not scaled by the layer and a cell finer than a pixel renders flat.
+     - **Neon then any style left the logo invisible, and None did not restore it** — added `l.fxPaint`.
+     - **Bevel washed navy to pale blue — THREE attempts.** Fixed 0.80; then computed per elevation; both wrong because `feComponentTransfer` un-premultiplies and `feSpecularLighting`'s colour is white everywhere. **`feFuncA` is the channel that carries the strength.**
+     - **First tool-toggle fix broke 5 pencil tests.** I read this correctly as a real design signal, not a stale test: the Pen and Eraser are stay-in tools. Narrowed click-off to rect/ellipse/line; Escape covers all five; pinned with a test asserting Pen/Eraser must NOT click off.
+     - **`grow`/`shrink` icons draw a literal "A"** (they are the font-size steppers) — replaced with `gapWider`/`gapTighter`/`gapNone`.
+     - **Increase/Decrease spacing icons looked identical at 16px** — bars moved apart vs together, arrows out vs in.
+     - **"One shape alone aligns to the BOARD" was a menu row that only toasted** — converted to a plain hint `<div>`.
+     - **Existing `alignLayers` aligned ANCHOR points, not edges** — a real pre-existing defect found while surfacing Align; rewritten on `setBox` deltas.
+     - **Test-harness errors (mine, not the product):** `w.marked` unreachable (script-scoped) → drive marking with `MouseEvent({metaKey:true})`; `Promise.all` racing concurrent row clicks → made sequential; `file=r11-01.svg` 404 → use `file=r11-01`; `sg`/`al`/`ge`/`grp` name collisions in shapes-test → prefixed with `sp`; `wait`/`ev` do not exist in shapes-test → replaced; blocks leaking state through undo depth → each now starts with `freshDoc(R301)`.
+  
+  5. **Problem Solving**
+  
+     Solved and verified: the 3D rename, the gradient move (with the gradient-plus-shadow pairing preserved), ≥8 per group, the paint-restore, the bevel alpha fix, the tool toggle, and the six-tile Spacing group's maths. The recurring lesson applied throughout: **render and look** — counting and DOM assertions passed while the picture was wrong five separate times this session (round-11 spirals earlier, Quick Styles column 10, the washed bevel, the near-twin Frosted tiles, the twin spacing icons).
+  
+     Verified spacing maths on real artwork (r11-01): Align Left → three left edges all exactly 1092.03; Equal gaps → both gaps exactly −14.02; Gap 40 → both exactly 40; Match width → path-7 65.97 → 28.03 with sx 1 → 0.4249, path-8 unchanged. On r3-01: `setGap('h',40)` in isolation gives 40/40.
+  
+  6. **All user messages**
+     - "rename 3d to \" 3D Styles\"\nInside \"fill\" there are some gradient fills too, but now that we have Special Fill, the gradient fills are not needed there and move all those gradient fills to Special Fill -> Gradient Fill\nEach special fill sub cagtegory should at least have 8 different fill options. \n/restate"
+     - "yes"
+     - "Number of 3d styles is pretty low. Are these all that are available out there? also, the qualliity looks a bit off, how to change that?"
+     - `/acos-safe-close` (slash command)
+     - `/acos-logo-forge` (slash command)
+     - "Illustrations group buttons, React and elipse has no way to turn them off, clicking again doesn't work."
+     - "The spacing tool group can have a few more tools. dist H & Dist V can be one tool. Also add three more tools to make the total number 6. This are some of the spacing tools chat gpt suggested. Which one's do you think would be most useful for my use case? Identify top 5. In cases where multiple options can be put inside one icon, treat them as one option."
+     - "Here is the chat list, rank top 10 along with the one's you already suggested:" + the full ChatGPT spacing/alignment table
+     - "I like your six, do it"
+  
+  7. **Pending Tasks**
+     - **Finish the six-tile Spacing group** — one failing assertion left in `shapes-test.ts`.
+     - **Update `ribbon-test.ts`** — its spacing block (lines ~700–730) still expects `['#distHB', '#distVB', '#smartGuideB']` inside `#drawingGroup` as a fourth column, and checks `-i` mirrors that no longer exist. It was already stale before this change and still aborts partway.
+     - **SKILL.md entry for the six-tile Spacing group** — not written yet.
+     - **Unanswered: the 3D engine rebuild** — 5 steps proposed, no answer.
+     - **Unanswered: `/acos-safe-close` park destination** — a number 1..56 or `0`. The close wrote nothing.
+     - **Unanswered from earlier: "I need to see each card with the animation"** and **which FIFTH permanent tab was meant** (the ribbon has four permanent — Home, Insert, Draw, File — plus two contextual).
+     - Nothing in this entire session is committed to git.
+  
+  8. **Current Work**
+  
+     Building the six tiles the user approved with **"I like your six, do it"**: **Arrange ▾ · Align ▾ · Distribute ▾ · Gap ▾ · Match size ▾ · Guides**.
+  
+     The editor code is complete and visually verified: the group renders as two columns of three, group height 112px, tab height 123px, all six iconed and wired, all four menus open with the right headings, no page errors. The four commands' maths is verified correct on real artwork.
+  
+     I was writing the permanent regression tests in `shapes-test.ts`. Last run:
+  
+     ```
+     shapes-test exit=1 73/74 passed
+     FAIL  Equal gaps leaves the SAME space between each pair of edges  — 5 vs 30
+     ```
+  
+     That block lays three shapes out with `setGap('h', 30)`, then knocks the middle one out of line with `w.selLayer().x += 25; w.draw(); w.sync();` (deliberately taking **no snapshot**), then runs `gapEven('h')` and asserts the two edge gaps match. It currently reports 5 vs 30 — which is the skewed state, i.e. `gapEven` appears not to have moved anything, most likely because the `spMark(SP_THREE)` before it did not take after the direct DOM manipulation and re-render.
+  
+  9. **Optional Next Step**
+  
+     Diagnose the single remaining `shapes-test` failure — "Equal gaps leaves the SAME space between each pair of edges — 5 vs 30" — by checking whether `spMark(SP_THREE)` actually re-marked the rows after the skew step re-rendered the layer list (print the toast from `gapEven` and the marked-row count, the same way `/tmp/dg.ts` proved `setGap` works in isolation on r3-01 with "gaps: 40 40"). Then finish the sweep — `button-test`, `fill-test`, `fx-test`, `forge-test`, `explode-test`, `shapelib-test`, `audit.ts` — update the stale spacing block in `ribbon-test.ts`, add the SKILL.md entry for the six tiles, kill the 8816 test server and remove `/tmp/forge-ws`, and confirm the live 8815 server serves the new build.
+  
+     When reporting, re-surface the outstanding questions: the 3D engine rebuild, the `/acos-safe-close` park number, the card animation, and the fifth permanent tab.
+  </summary>
+
+# ---- depth pass (appended after auto-compact, 2026-08-22) ----
+current_work: |
+  Six-tile Spacing group in the Logo Forge ribbon (Arrange / Align / Distribute /
+  Gap / Match size / Guides). Editor code done and visually verified; regression
+  tests in shapes-test.ts now 74/74 exit 0. Remaining: the stale spacing block in
+  ribbon-test.ts, the SKILL.md entry, and the full suite sweep.
+completed_this_session: |
+  - 3D menu renamed "3D Styles"; gradient fills moved out of Fill into
+    Special Fill > Gradient Fill; every Special Fill group now has >= 8 options
+    (99 styles across 12 groups). fx-test 42/42.
+  - Bevel washing colour out FIXED on the third attempt: feFuncA carries the
+    strength, not feSpecularLighting's colour (which is white everywhere).
+  - l.fxPaint added so one style at a time no longer leaves the logo invisible,
+    and None restores the original paint. Added to serialize().
+  - Rect / Ellipse / Line now turn OFF on a second click; Escape releases all
+    five draw tools. Pen and Eraser deliberately stay in. button-test 61/61.
+  - Six-tile Spacing group built; alignLayers REWRITTEN on real edges (it had
+    been aligning anchor points — a pre-existing defect). shapes-test 74/74.
+decisions_made: |
+  - "I like your six" — Arrange, Align, Distribute, Gap, Match size, Guides.
+    Dist H and Dist V collapse into one Distribute tile.
+  - Every Special Fill sub-category needs at least 8 options.
+  - Rect/Ellipse/Line toggle off; the Pen and Eraser must NOT (5 failing pencil
+    tests were a real design signal, not stale assertions).
+blockers: |
+  - Nothing is blocked. Four questions are OUTSTANDING, not blocking:
+    the 3D engine rebuild (5 steps proposed, never answered); the
+    /acos-safe-close park destination (a number 1..56 or 0 — that close wrote
+    NOTHING); "I need to see each card with the animation"; and which FIFTH
+    permanent tab was meant (the ribbon has four permanent + two contextual).
+candidate_learnings: |
+  - claim: In the Logo Forge editor a meta-click on a layer row TOGGLES its
+    mark, and the marked set SURVIVES a plain click. A test helper that clicks
+    each wanted row is therefore an inversion, not an assignment, and silently
+    unmarks everything on its second call.
+    evidence: editor.html row.onclick, the metaKey branch; shapes-test spMark
+  - claim: SVG feSpecularLighting renders white everywhere, and
+    feComponentTransfer un-premultiplies, so a bevel's strength must be carried
+    on feFuncA. Two earlier fixes (a fixed constant, then a per-elevation
+    constant) both washed the artwork pale.
+    evidence: measured flat specular 0.494 at elevation 62, 0.098 at 35
+  - claim: gallery-test / reject-test / recat-test do NOT start their own
+    server and need python3 server.py <ws> 8817 running first; the rest use 8816.
+    evidence: ERR_CONNECTION_REFUSED at 8817 with no tally printed
+context_for_next_session: |
+  Port 8815 serving Logo Builder/brandsync is PRODUCTION — never kill it as a
+  stray. Tests use 8816 (and 8817 for gallery/reject/recat) with /tmp/forge-ws.
+  Judge every suite on the EXIT CODE, not the printed tally. doc, undoStack,
+  marked, HELP, FX_3D and FX_FILL are script-scoped, not on window — only
+  top-level function declarations are reachable from page.evaluate. Editor URL
+  wants file=r11-01 with NO .svg. Nothing in this session is committed to git.

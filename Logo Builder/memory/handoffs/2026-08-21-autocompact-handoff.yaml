@@ -1,0 +1,437 @@
+timestamp: "2026-08-21T08:39:36Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "540734f5-8c12-458b-8670-7d5d30569ec7"
+estimated_tokens: 499954
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  [Image: original 2400x760, displayed at 2000x633. Multiply coordinates by 1.20 to map to original image.]
+
+assistant_tail: |
+  That is a real 3D Raised effect now. Two things to tune: it lightens the brand colour more than it should, and the mark shows blocky pixels from an oversized filter buffer.
+  
+  ---
+  
+  Much better, and the blockiness is largely gone. Some faint mosaic remains on the mark — that is Chrome's own filter buffer resolution, not something the markup controls. Now the full sweep.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 17
+  recent_commits: |
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+
+uncommitted_files:
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "?? \"Logo Builder/brandsync/candidates/round-11/\""
+  - "?? \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06.json\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "?? \"Logo Builder/brandsync/symbol/candidates/round-8/\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-20-autocompact-handoff.yaml\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0-Logo-Builder/540734f5-8c12-458b-8670-7d5d30569ec7.jsonl"
+  transcript_lines_parsed: 961
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through the conversation chronologically.
+  
+  **Session start (post-compaction):** The session resumed from a summary. The prior context: a long-running project on the ACOS Logo Forge editor (`~/.claude/skills/acos-logo-forge/app/editor.html`), which had just gone through a six-tab ribbon restructure. The immediate pending task was answering Zee's question: "I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for."
+  
+  **Turn 1 (my continuation):** I applied a fix adding icons to `TOOL_ICONS` and widening the Shape tab reveal. Then a SessionStart hook asked me to enrich `memory/handoffs/2026-08-20-autocompact-handoff.yaml` — I did that with `current_work`, `completed_this_session`, `decisions_made`, `blockers`, `candidate_learnings`, `context_for_next_session` and set `enrichment_status: "deepened"`.
+  
+  Then I ran a live audit that found:
+  - 97 controls total across the ribbon
+  - Group/Split ARE on the Shape tab
+  - Fixed: 11 relocated buttons wore emoji instead of drawn icons
+  - Fixed: Shape tab hidden when nothing selected made "group everything" unreachable
+  - Fixed: `resetDoc`/`resetT` shared an icon
+  - Fixed: `shapeXformGroup` was the only 3-row group → made Shape tab 128.8px vs 123.3px; split into Transform + Size groups
+  
+  Then an Eden Protocol Stop hook rejected my reply for register violations; I rewrote at Level 3.
+  
+  **Turn 2:** A Monitor event arrived — `CMD fanout | kind= | logo=r8-06e1 | round=8 | dir=more unexpected, bolder`. I served the fan-out:
+  - Read `avoid.json` (hard gate)
+  - Read the source `r8-06e1.svg` — a hand-edit: S made of two opposed bowls in a rounded square
+  - Read `brief.json` — BrandSync, colours #163E5C navy / #12A0A6 teal
+  - Wrote 10 lockups to `candidates/round-11/` via `/tmp/gen-r11.ts`
+  - **Rendered a contact sheet and looked at it** — 5 of 10 were broken spirals (wrong SVG arc large-arc/sweep flags)
+  - Rebuilt those 5 using the working formula (`M72 30 A16 16 0 1 0 50 50` + `M50 50 A16 16 0 1 1 28 70`)
+  - r11-04 still failed → rebuilt again as "S caught mid-join"
+  - I redrew the `c-arrows` glyph and BROKE it (collided with the "n") → reverted byte-for-byte from r8-06
+  - Shared-outline check passed; flipped `status.json` to `{"generating": false}`
+  
+  **Turn 3:** User: "There needs to be a way to recategorize logos, for example, r8-06e1 is clearly a symbol but not is categorized as wordmark..." — I investigated, found r8-06e1 was in the LOCKUP tree (not wordmark), diagnosed `/api/publish-edit` files edits in the source's tree. I gave a full restatement per the Confirmation Gate and asked "Did I understand this correctly?"
+  
+  **Turn 4:** A `pick` command arrived (not an answer). I noted it and warned that saving would re-file it wrongly.
+  
+  **Turn 5:** User replied: **"move"** — the decision: recategorize MOVES the file, no copy left behind.
+  
+  I built:
+  - `/api/recategorize` in `server.py` (existing Python, allowed under exception 1)
+  - `⇄` button + `openMove`/`doMove` in `index.html`
+  - `saveKindS` category picker in `editor.html`
+  - `detectKind()` — first tried group ids (WRONG: editor explodes candidates on open), then measured aspect ratios across 251 candidates and used ratio ≤ 1.6 → symbol
+  - `recat-test.ts` 40/40, later 55/55, later 63/63
+  - Moved r8-06e1 for real; restarted live server (PID 6404 → 16995)
+  
+  **Turn 6:** User: "There needs to be a save as button to save a copy." I built `saveCopyB`, generalised the suffix rule from literal `e1` to `e<N>` (fixing a latent `e2e1` duplicate bug), renamed the category label from "Save as" to "Category". Two tests failed — both test-side coupling caused by my real move of r8-06e1. Restarted live server (PID 1011). Found a pre-existing 27.4px Save button / 375px group — verified it was NOT my regression, did not fix.
+  
+  **Turn 7:** A `recategorize` command arrived — Zee moved r8-06e1 BACK to lockup. That exposed three defects I'd introduced:
+  1. `(moved from the … forge)` stamps stacked forever → strip before appending
+  2. Emptied round left a bare heading → skip empty rounds in listing (not delete)
+  3. The category warning never appeared on the very card it existed for — checked once at boot, but saved projects load after boot; and it spoke via a toast that "Project restored" overwrote. Fixed with a persistent `⚠` mark beside the Category box, re-checked from `sync()`.
+  Restarted live server (PID 79329).
+  
+  **Turn 8:** User: "add more options for quick styles, have at least a 100 quick style options." I built 128 (8 classics + 10 recipes × 12 colours). Found and fixed: white shaded toward white gave 4 invisible tiles + 1 duplicate; a hex-list exclusion rule missed `#000000` → replaced with `usableBase()` testing recipes against the colour, plus `nearlySame()` with `SAME_COLOR_TOL = 12`; deduped across classics; unified two builders into one; added a hairline ring so white "paper edge" shows. Restarted live server (PID 20250).
+  
+  **Turn 9:** User: "I need to see each card with the animation" — I investigated (only animation is the `sp` spinner in a full-screen `#busy` overlay), restated my reading (ten placeholder cards each with their own spinner), named the catch (my generator writes all 10 files at once), listed alternate readings, and asked. **Still unanswered.**
+  
+  **Turn 10:** User: "For each tool add small popup that shows up when mouse pointer is on top of that tool..." I dumped all 97 tools + titles, wrote a `HELP` map with 97 entries (name, shortcut, what, how, when), built `#toolTip` with a 380ms delay, moved native `title` to `data-tip`. Discovered screenshots hide the popup (capture fires scroll → `hideTip`). Added 2 tests → button-test 46/46. Restarted live server (PID 9329).
+  
+  **Turn 11 (most recent user message):** "For shape style tool group, add two more icons. One for a 3d shape style... Two for a specil fill..." with an explicit list of 12 special-fill categories.
+  
+  I built:
+  - Widened `reidGradients` regex to `/lf[gep]\d+/g` preserving prefix
+  - Two buttons `#effect3dB`, `#fxFillB` + `cube` and `sparkle` icons
+  - `FX_3D` (4 categories, 17 styles) and `FX_FILL` (12 categories, 51 styles)
+  - Filter builders: `FILT`, `bevelBody`, `embossBody`, `glowBody`, `innerShadowBody`, `textureBody`, `grad`, `PAT`
+  - `applyEffect(l, make, label)`, `stripFx`, `fxTile`, `fxMenu`
+  - HELP entries for the two new buttons
+  - Screenshotted both menus — Embossed tiles looked identical → rebuilt emboss as light/dark crescents with `dir`; extrude previews were clipped → scaled preview step
+  - `fx-test.ts` — first version failed because `FX_3D`/`doc`/`undoStack` are script-scoped not on window; rewrote against reachable doors (`selLayer()`, menu DOM, keyboard undo); then failed because undo drops selection → added `selectFirst()`. Final 22/22.
+  - Rendered the exported SVG and found the bevel washed navy to grey (flat-surface specular) → added `feComponentTransfer` cut; still grey because `fxUnit()` used board width (1243/100 = 12.4) → rewrote to measure the LAYER's box (`min(bw,bh)/20`); also I'd been testing index 7 (Soft emboss) not 3D Raised
+  - Softened specular (surfaceScale ×1.35, specularConstant 0.85, cut slope 2.4 intercept −0.80) and trimmed filter pads → blockiness largely gone
+  
+  Last tool run: `fx-test.ts 22/22 · button-test 46/46 · fill-test 27/27 · shapes-test 58/58`, all exit 0.
+  
+  Not yet done for this feature: forge/explode/shapelib/gallery/reject/recat/audit sweep, live-server restart, SKILL.md documentation.
+  
+  Security/standing constraints to preserve: push defaults to PERSONAL (`ZiaulKarim-hub`), never bare `git push`, `okoateam` only when named; TypeScript/Rust over Python for new code (Python allowed when patching existing Python); Confirmation Gate; the 8815 server is production and must never be treated as a stray.
+  </analysis>
+  
+  <summary>
+  1. **Primary Request and Intent**
+  
+     This is a sustained feature sequence on the ACOS Logo Forge editor. In order:
+  
+     a. **(carried in from before compaction)** "I think you still have a number of icons missing, where is group \ split?? Double check that every single option and icons are accounted for." — answered and fixed.
+  
+     b. **Fan-out command via the browser bridge** (`CMD fanout | kind= | logo=r8-06e1 | round=8 | dir=more unexpected, bolder`) — served: 10 new lockups written to `candidates/round-11/`.
+  
+     c. **"There needs to be a way to recategorize logos, for example, r8-06e1 is clearly a symbol but not is categorized as wordmark. We need a way to change that and decide whcih category a logo falls in when saving."** — built. Zee's one-word decision: **"move"** (the file moves; no copy left behind).
+  
+     d. **"There needs to be a save as button to save a copy."** — built.
+  
+     e. **"add more options for quick styles, have at least a 100 quick style options."** — built (128).
+  
+     f. **"I need to see each card with the animation"** — investigated and restated; **STILL UNANSWERED by the user**.
+  
+     g. **MOST RECENT (in the user's own words):** "For each tool add small popup that shows up when mouse pointer is on top of that tool. The popup should say what this tools is, and how and when it is used." — built (97 entries).
+  
+     h. **CURRENT:** "For shape style tool group, add two more icons. One for a 3d shape style, that should show many different categories of 3d shape options and 3d shape styles in each option (see powerpoint or other design softwares to get idea). Some examples include but not limited to: Beveled — raised/beveled edges; Embossed — pressed or raised surface effect; 3D Raised — dimensional shape with depth; 3D Extruded — visible extrusion extending behind shape. Two for a specil fill, the special fill will have within it option to add special fills and they are: Soft Fill; Gradient Fill; Glass; Frosted Glass; Drop Shadow; Soft Shadow; Inner Shadow; Glow; Neon; Metallic; Pattern Fill; Texture Fill."
+  
+     **Standing constraints in force (verbatim intent, from `/Users/zee/CLAUDE.md`):** push destination defaults to **PERSONAL** (`ZiaulKarim-hub`), no asking; `okoateam` only when Zee names it in the current conversation; **never use a bare `git push`** — always name the remote. New code defaults to **TypeScript or Rust**, not Python (existing Python may be patched — `server.py` edits fall under this exception). Confirmation Gate: restate and confirm before interpretive/multi-step work.
+  
+     **Project constraint:** the server on port 8815 serving `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/brandsync` is PRODUCTION and must never be killed as a stray test process. Logs: `~/Library/Logs/logo-forge-8815.log`.
+  
+  2. **Key Technical Concepts**
+     - Logo Forge: Python stdlib `server.py` + browser workshop; three forges (combined lockup `""`, `symbol`, `wordmark`); `commands.jsonl` browser→Claude bridge; `avoid.json` rejection gate.
+     - PowerPoint-style ribbon: six tabs (Home, Insert, Draw, File + contextual Shape, Text); `.ribbody#tab-<name>`, `.rgroup`, `.rrow`, `.rgl` labels; `RIBBON_HOMES` relocation map; `TOOL_ICONS`; `fitRibbon()` overflow well.
+     - Every tab body must measure exactly **123.3px**; every `.rgroup` **112.3px min-height**; a third `.rrow` adds a flex gap and breaks this.
+     - Editor document model: `doc.layers` with `{x,y,sx,sy,rot,flipH,flipV,opacity,mode,visible,measured,cx0,cy0,bx0,by0,bx1,by1}`; `doc.viewBox`.
+     - **`doc`, `undoStack`, `HELP`, `FX_3D`, `FX_FILL` are script-scoped `const` — NOT on `window`.** Only top-level `function` declarations (`sync`, `selLayer`, `detectKind`, `exportSVGText`, `reidGradients`, `fxTile`, `allQuickStyles`, `stylePalette`) are reachable from `page.evaluate`.
+     - The editor **explodes a candidate into separate shapes on open** — layer names become `path-8`, `rect-1`; the `<g id="mark">`/`<g id="wordmark">` grouping is gone by then.
+     - Per-layer `<defs>` with ids keyed to the layer (`lfg` gradients, `lfe` effects/filters, `lfp` patterns); SVG ids are global so duplicates must be re-id'd.
+     - Test discipline: several suites are NOT idempotent — recreate `/tmp/forge-ws` from `brandsync` first; **always check the exit code, not the printed tally**; `gallery-test.ts` and `reject-test.ts` take the workspace path as `process.argv[2]` and use port **8817** with `/tmp/rej-ws`; most others use **8816** with `/tmp/forge-ws`; `recat-test.ts` uses **8817** with `/tmp/forge-ws`.
+     - `Bun.resolveSync('puppeteer', '/Users/zee/Documents/Vibe Coding/ACOS 3.0')` — puppeteer resolves from the repo root, not the app dir.
+     - Eden Protocol Level 3 register enforced on every user-facing reply by a Stop hook.
+  
+  3. **Files and Code Sections**
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/editor.html`** — the single file holding the whole editor. All editor work landed here.
+  
+     - **Icon/reveal fixes (turn 1):** added `resetGeo`, `downloadData`, `resetDoc`, `saveCopy`, `cube`, `sparkle` to `IC`; wired 11 relocated buttons into `TOOL_ICONS` (`#saveB`→save, `#exportB`→export, `#dlPng`→download, `#dlAll`→downloadData, `#resetDoc`→resetDoc, `#resetT`→reset, `#resetGeo`→resetGeo, `#groupB`→group, `#splitB`→ungroup, `#flipH`→flipH, `#flipV`→flipV). Widened the Shape tab reveal:
+       ```js
+       const shapeOn = !!l || marked.size > 0 || doc.layers.some(x => x.visible);
+       ```
+     - **Split `Size` out of `Transform`** in `#tab-shape` so no group has three rows.
+     - **Category picker** declared in `#fileNameRow` (settings row, keeps the group two rows):
+       ```html
+       <label ...>Category
+       <select id="saveKindS" title="Which shelf this logo belongs on...">
+         <option value="">Lockup</option><option value="symbol">Symbol</option>
+         <option value="wordmark">Wordmark</option></select>
+       <span id="kindWarn" hidden style="color:#b5473a;font-weight:700;cursor:help">⚠</span></label>
+       ```
+     - **`detectKind()`** — measured signal, not group ids:
+       ```js
+       const SYMBOL_MAX_RATIO = 1.6;
+       function detectKind() {
+         const vb = doc.viewBox;
+         if (!vb || !vb[2] || !vb[3]) return null;
+         return (vb[2] / vb[3]) <= SYMBOL_MAX_RATIO ? 'symbol' : null;
+       }
+       ```
+       Data across 251 candidates: symbol n=104 median 1.00 p90 1.28; wordmark n=47 min 3.27; lockup n=100 p10 1.61 median 3.71. `r8-06e1` ratio = 1.0.
+     - **`refreshKindWarn()`** — persistent mark, re-checked from `sync()` (a saved project loads AFTER boot; a toast was overwritten by "Project restored"). `kindWarned` flag makes the toast fire once.
+     - **`#saveCopyB` "Save as"** in `#fileSaveRow`; `save(asCopy)` with `asCopy = asCopy === true` guard; wired as `$('#saveB').onclick = () => save(false); $('#saveCopyB').onclick = () => save(true);`; a copy navigates the editor to the new card after 900ms.
+     - **Quick Styles → 128:** `QUICK_STYLES` (8 classics) + `STYLE_RECIPES` (10) × `stylePalette()` (12 colours). Key guards:
+       ```js
+       const SAME_COLOR_TOL = 12;
+       function nearlySame(a, b2) { /* per-channel within 12 of 255 */ }
+       function usableBase(c) {
+         return STYLE_RECIPES.every(([, make]) => {
+           const [fill, line] = make(c);
+           const f = String(fill).toLowerCase(), o = String(line.color).toLowerCase();
+           if (f === 'none' && o === 'none') return false;
+           if (f === 'none' || o === 'none') return true;
+           return !nearlySame(f, o);
+         });
+       }
+       ```
+       `allQuickStyles()` is the single builder the menu renders from, deduped by `fill|line.color|line.width`. Tiles carry `box-shadow:0 0 0 1px rgba(0,0,0,.20)` so a white "paper edge" shows on the cream menu.
+     - **Tool help popups:** `HELP` map with 97 entries `id: [name, shortcut, what, how, when]`; `#toolTip` element; 380ms delay; native `title` moved to `data-tip` on first hover; hides on pointerdown/scroll/Escape/leave.
+     - **3D + Special Fill (current work):**
+       ```js
+       function reidGradients(markup, newId) {
+         const map = new Map();
+         return String(markup).replace(/lf[gep]\d+/g, tok => {
+           if (!map.has(tok))
+             map.set(tok, tok.slice(0, 3) + newId + (map.size ? 'x' + map.size : ''));
+           return map.get(tok);
+         });
+       }
+       ```
+       ```js
+       function fxUnit(l) {
+         const bw = l && l.bx1 != null ? Math.abs(l.bx1 - l.bx0) : 0;
+         const bh = l && l.by1 != null ? Math.abs(l.by1 - l.by0) : 0;
+         const m = Math.min(bw || Infinity, bh || Infinity);
+         if (!isFinite(m) || m <= 0) return Math.max(0.4, (doc.viewBox[2] || 100) / 100);
+         return Math.max(0.25, m / 20);
+       }
+       ```
+       `bevelBody` now subtracts the flat-surface specular constant:
+       ```js
+       const cut = `<feFuncR type="linear" slope="2.4" intercept="-0.80"/>` + /* G, B same */;
+       ...surfaceScale="${(depth * 1.35).toFixed(2)}" specularConstant="0.85"
+       ...<feComponentTransfer in="sp0" result="sp">${cut}</feComponentTransfer>
+       ```
+       `embossBody(u, depth, dir)` draws light and dark crescents via `feComposite operator="out"` of SourceAlpha against an offset blur; `dir` flips raised/pressed.
+       `applyEffect(l, make, label)` — one effect per layer, replaces rather than stacks; `stripFx` removes `filter`, defs whose id starts `lfe<layerId>`, and `[data-fx]` extrusion copies. Extrusion is real cloned geometry inserted before the paint targets.
+       `fxTile(make, label, seed)` renders a live preview; extrude previews are scaled with `const pu = Math.min(u, 15 / (n * Math.max(dx, dy, 0.35)));` so long extrudes fit the 70×54 tile.
+       `fxMenu('effect3dB','effect3dMenu','3D Effects',FX_3D)` and `fxMenu('fxFillB','fxFillMenu','Special Fill',FX_FILL)`.
+       Menu contents verified live: 3D = 17 styles + None across Beveled/Embossed/3D Raised/3D Extruded; Special Fill = 51 styles + None across all 12 groups Zee listed, in his order.
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/server.py`** (existing Python — patched under the language-rule exception)
+     - New `/api/recategorize`: moves the SVG between `kcand(src_k)/round-N/` and `kcand(dst_k)/round-N/`, **preserving id and round number**, creating the destination round folder; collision takes `-m2`, `-m3`; carries the meta note across and stamps `(moved from the <x> forge)` after stripping any earlier stamp; moves `projects/<id>.json`; appends a `recategorize` command to `commands.jsonl`.
+     - `/api/publish-edit` generalised from a literal `e1` to `e<N>`:
+       ```python
+       base = re.sub(r"(e\d+)+$", "", src)
+       tail = re.findall(r"e\d+", src[len(base):])
+       if data.get("copy"):
+           n = 1
+           while os.path.isfile(os.path.join(rdir, "%se%d.svg" % (base, n))): n += 1
+           did = "%se%d" % (base, n)
+       else:
+           did = base + (tail[-1] if tail else "e1")
+       ```
+     - `/api/candidates` now skips rounds with no logos (`if logos: rounds.append(...)`) — folder is skipped, never deleted.
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/index.html`**
+     - `⇄` button (`data-act="move"`) on every card; `FORGE_NAMES`, `openMove(card, lg, round)`, `doMove(lg, round, to, label)` posting to `/api/recategorize`.
+  
+     **Test files**
+     - `recat-test.ts` (new, 63/63 exit 0) — move, note travel, project follows, `-m2` collision, refusals, bridge command, gallery `⇄`, editor picker, the `⚠` mark, Save-a-copy numbering, the `e2e1` trap. Uses `CMD0 = recats().length` baseline so it is not coupled to workspace history.
+     - `fx-test.ts` (new, 22/22 exit 0) — both buttons wired + iconed, the four 3D categories, all twelve fill groups in order, no two tiles identical, filter id keyed to layer, one-undo restore, replace-not-stack, extrude adds/removes `data-fx`, re-id gives fresh ids and keeps the prefix, export carries defs.
+     - `button-test.ts` 46/46 — added Quick Styles ≥100/distinct/visible/on-screen, a generated tile setting fill+outline in one undo step, help-entry coverage both directions, and hover popup behaviour.
+     - `forge-test.ts` — now picks a source that is not already an edit (`!/e\d+$/.test(l.id)`).
+     - `shapes-test.ts` — regex widened to `/r\d+-\d+(e\d+)?:/`.
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/SKILL.md`** — documented the `recategorize` bridge command, Save vs Save as, Quick Styles, and the tool help popups (including the note that a puppeteer screenshot hides the popup).
+  
+     **`brandsync/candidates/round-11/`** — 10 new lockups `r11-01`…`r11-10` + `meta.json`.
+  
+  4. **Errors and fixes**
+     - **Group-everything unreachable** — I gated the Shape tab on the selection; Group with nothing selected groups the whole board. Fixed by revealing Shape whenever any layer is visible.
+     - **11 relocated buttons wore emoji** (💾 ⤓ ⬇︎ ⟲ ⧉ ⑃ ⇋ ⇵) — wired into `TOOL_ICONS`.
+     - **Shape tab 5.5px taller** — `shapeXformGroup` was the only three-row group; split off `Size`.
+     - **Fan-out: 5 of 10 marks were spirals** — wrong arc large-arc/sweep flags. Caught only by rendering a contact sheet and looking.
+     - **I redrew the `c-arrows` glyph and broke it** — collided with the "n". Reverted byte-for-byte; round 8's note already said "corrected arrows".
+     - **Detection premise wrong** — I planned to read `<g id="mark">`/`<g id="wordmark">`; the editor explodes candidates on open so those names are gone. Replaced with a measured aspect-ratio signal.
+     - **Category warning silent on the very card it was for** — checked once at boot, but a saved project loads after `finishBoot()`; and the toast was overwritten by "Project restored". Delaying 1400ms did not help. Fixed with a persistent `⚠` mark re-checked from `sync()`.
+     - **`e2e1` latent duplicate** — the old `re.sub(r"(e1)+$", ...)` could not see an `e2`; fixed before the copy button could create one.
+     - **Two test failures after moving r8-06e1** — both test-side coupling, not product bugs: `forge-test` grabbed the newest symbol card which had become an already-edited `r8-06e1`; `shapes-test` regex disallowed an `e1` in a source id.
+     - **Provenance stamps stacked** — `(moved from the lockup forge) (moved from the symbol forge)`; strip before appending; cleaned the live note by hand.
+     - **Emptied round left a bare heading** — skip empty rounds in `/api/candidates`; folder NOT deleted.
+     - **Quick Styles: 4 invisible tiles + 1 duplicate from `#ffffff`** — first fix was a two-hex exclusion list, which missed `#000000` within the hour. Replaced with `usableBase()` testing the recipes against the colour, plus `nearlySame()` tolerance 12.
+     - **Quick Styles column 10 looked like a repeat** — a white "paper edge" drew nothing on cream; added a hairline ring to every tile.
+     - **Two builders for one list** — the menu and `allQuickStyles()` built independently; unified.
+     - **Screenshots hide the tool popup** — capture fires a scroll event and the popup correctly hides on scroll. Proven directly: `before shot: block`, `after shot: none`. Assert on `style.display`/`textContent`, never a screenshot.
+     - **`fx-test` used `w.FX_3D` / `w.doc` / `w.undoStack`** — all script-scoped. Rewrote against the menu DOM, `selLayer()`, and a real keyboard undo. Then failed again because undo drops the selection → added `selectFirst()` before every action.
+     - **Embossed tiles looked identical** — `feDiffuseLighting` + multiply gave four near-identical dark squares. Rebuilt as explicit light/dark crescents with a `dir` flip.
+     - **Extrude previews clipped** — long extrudes ran off the tile; preview step scaled to fit.
+     - **Bevel washed navy to grey** — a distant light on a flat surface returns a constant highlight, lifting the whole face. Added `feComponentTransfer` to subtract it. Still grey because **`fxUnit()` used board width** (1243/100 = 12.4, so a "soft" blur was 22 units on ~20-unit strokes) — rewrote to measure the layer's own box. I had also been testing menu index 7 (Soft emboss), not 3D Raised (index 10).
+     - **Blocky pixels on the mark** — oversized filter buffers; softened specular (surfaceScale ×1.35, constant 0.85) and trimmed pads (bevel 25→18/14/22/26, raised 60/70/80/90→34/40/48/58). Largely gone; a faint mosaic remains, which is Chrome's own filter buffer resolution.
+  
+  5. **Problem Solving**
+     Solved: icon coverage and the Group reachability regression; a genuinely varied round-11 fan-out; recategorize with id/round preservation and collision safety; Save-a-copy with a generalised suffix rule; 128 Quick Styles with no invisible or duplicate tiles; 97 written tool-help entries; 3D and Special Fill effect systems that survive undo, replace-not-stack, re-id on duplicate, and export.
+     Recurring lesson applied throughout: **render and look** — counting and DOM assertions passed while the picture was wrong three separate times (round-11 spirals, Quick Styles column 10, the grey bevel).
+  
+  6. **All user messages**
+     - "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/closed/2026-08-18-Logo-Builder-close-2/2026-08-18-Logo-Builder-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION." *(pre-compaction)*
+     - "There needs to be a way to recategorize logos, for example, r8-06e1 is clearly a symbol but not is categorized as wordmark. We need a way to change that and decide whcih category a logo falls in when saving."
+     - "move"
+     - "There needs to be a save as button to save a copy."
+     - "add more options for quick styles, have at least a 100 quick style options."
+     - "I need to see each card with the animation"
+     - "For each tool add small popup that shows up when mouse pointer is on top of that tool. The popup should say what this tools is, and how and when it is used."
+     - "For shape style tool group, add two more icons. \nOne for a 3d shape style, that should show many different categories of 3d shape options and 3d shape styles in each option (see powerpoint or other design softwares to get idea)\nSome examples include but not limited to:\nBeveled — raised/beveled edges\nEmbossed — pressed or raised surface effect\n3D Raised — dimensional shape with depth\n3D Extruded — visible extrusion extending behind shape\nTwo for a specil fill, the special fill will have within it option to add special fills and they are\nSoft Fill — light/tinted fill with subtle border\nGradient Fill — linear or radial color gradient\nGlass — translucent fill with blur/glassmorphism effect\nFrosted Glass — stronger blur with soft border/highlight\nDrop Shadow — shape with offset shadow\nSoft Shadow — diffused shadow around the shape\nInner Shadow — shadow appears inside the edges\nGlow — soft glow around the shape\nNeon — bright outline with luminous glow\nMetallic — reflective silver/gold/metal-like surface\nPattern Fill — dots, stripes, grids, crosshatch, etc.\nTexture Fill — paper, grain, fabric, stone, wood, etc."
+  
+     Two Stop-hook rewrite demands also occurred (Eden Level 3 register); those are system-generated, not user messages.
+  
+  7. **Pending Tasks**
+     - **Unanswered question — card animation:** whether "each card with the animation" means ten placeholder cards each with their own spinner, filling in as drawings land. Named catch: my generator writes all 10 files in one go, so they would fill almost together unless I also change how batches are written.
+     - **Unanswered question — the fifth tab:** Zee said "all five tabs plus two contextual"; the built outline has **four** permanent tabs (Home, Insert, Draw, File).
+     - **`ribbon-test.ts` rewrite** — still aborts partway; it queries a deleted group and one probe measures the Draw tools on Home.
+     - Nothing in this entire session has been committed to git.
+  
+  8. **Current Work**
+  
+     Building the two new Shape style tools. The build is complete and visually verified; I was midway through the final regression sweep.
+  
+     Verified working: `#effect3dB` (3D ▾, `cube` icon) and `#fxFillB` (Special Fill ▾, `sparkle` icon) in Home ▸ Shape style. 3D offers **Beveled, Embossed, 3D Raised, 3D Extruded** (17 styles + None). Special Fill offers all **twelve** groups in Zee's order (51 styles + None). Both menus scroll and fit on screen. Screenshots confirmed every tile in every group renders distinctly, including all 7 patterns and 6 textures.
+  
+     Last command run and its output:
+     ```
+     fx-test.ts exit=0 22/22 passed
+     button-test.ts exit=0 46/46 passed
+     fill-test.ts exit=0 27/27 passed
+     shapes-test.ts exit=0 58/58 passed
+     ```
+  
+     Not yet done for this feature: `forge-test`, `explode-test`, `shapelib-test`, `gallery-test`, `reject-test`, `recat-test`, `audit.ts`; killing the 8816/8817 test servers and removing `/tmp/forge-ws` + `/tmp/rej-ws`; restarting the live 8815 server (last PID **9329**) so it serves the new build; and adding a SKILL.md entry for the 3D and Special Fill effects — including the honest limits already written into the code: **glass cannot blur what is behind it** (no backdrop filter in a standalone SVG), **effects fight the 24-32px minimum-size floor**, and **a filtered logo is no longer one flat colour**, which fights one-colour print.
+  
+  9. **Optional Next Step**
+  
+     Finish the sweep and ship: run `forge-test.ts`, `explode-test.ts`, `shapelib-test.ts`, `gallery-test.ts /tmp/rej-ws`, `reject-test.ts /tmp/rej-ws`, `recat-test.ts`, and `audit.ts`; clean up the test servers and workspaces; restart the live 8815 server against `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/brandsync`; add the SKILL.md entry; then report — including the three stated limits and the remaining faint mosaic on the mark, which is Chrome's filter buffer resolution rather than something the markup controls.
+  
+     This follows directly from the most recent user request — "For shape style tool group, add two more icons... One for a 3d shape style... Two for a specil fill" — and from where the last tool run left off: `fx-test.ts exit=0 22/22 passed · button-test.ts exit=0 46/46 passed · fill-test.ts exit=0 27/27 passed · shapes-test.ts exit=0 58/58 passed`.
+  
+     When reporting, also re-surface the two questions still outstanding: the card animation ("I need to see each card with the animation") and which fifth permanent tab was meant.
+  </summary>
+
+# --- depth pass (appended 2026-08-21) ---
+current_work: |
+  Shipping the two new Shape-style tools Zee asked for: a 3D effects menu
+  (#effect3dB) and a Special Fill menu (#fxFillB), both in Home > Shape style.
+  Build and visual verification are done; I am finishing the regression sweep,
+  restarting the live 8815 server, and writing the SKILL.md entry.
+completed_this_session: |
+  - Recategorize (move, not copy) across the three forges: gallery button,
+    editor category picker, /api/recategorize, id + round preserved, -m2
+    collision, project file follows, bridge command. recat-test 63/63.
+  - "Save as" copy button; /api/publish-edit generalised from e1 to e<N>.
+  - Quick Styles raised to 128, no invisible and no duplicate tiles.
+  - Tool help popups: 97 written entries, hover-delayed, dismiss on scroll/Esc.
+  - 3D (17 styles + None over Beveled/Embossed/3D Raised/3D Extruded) and
+    Special Fill (51 styles + None over all 12 groups Zee named, in his order).
+  - Suites green: fx 22/22, button 46/46, fill 27/27, shapes 58/58,
+    forge 19/19, explode 12/12, audit 0 findings.
+decisions_made: |
+  - "move" — recategorizing MOVES the file; no copy is left on the old shelf.
+  - Quick Styles must number at least 100.
+  - Every tool needs a hover popup saying what it is and how/when it is used.
+  - The 3D and Special Fill menus must be grouped by category, PowerPoint-style.
+blockers: |
+  - Two questions to Zee are still unanswered and are NOT being guessed at:
+    (1) "I need to see each card with the animation" — most likely ten
+        placeholder cards each with its own spinner, filling in as art lands;
+        the catch is that the generator writes all ten files at once.
+    (2) which FIFTH permanent tab was meant — the built ribbon has four
+        (Home, Insert, Draw, File) plus two contextual (Shape, Text).
+  - ribbon-test.ts still aborts partway: it queries a group that was split up
+    and one probe measures the Draw tools while sitting on Home.
+candidate_learnings: |
+  - Counting and DOM assertions pass while the picture is wrong. Three times
+    this session (round-11 spirals, Quick Styles column 10, the grey bevel)
+    only rendering and LOOKING caught it.
+  - A puppeteer screenshot fires a scroll event, so it hides any popup that
+    correctly dismisses on scroll. Assert on style.display, never on a shot.
+  - doc / undoStack / HELP / FX_3D / FX_FILL are script-scoped consts, not on
+    window; page.evaluate can only reach top-level function declarations.
+  - SVG filter units must be measured from the LAYER's own box, not the board
+    width, or a "soft" blur becomes 22 units on a 20-unit stroke.
+context_for_next_session: |
+  Nothing this session is committed to git yet. The live server on 8815 serves
+  Logo Builder/brandsync and is PRODUCTION — never kill it as a stray test
+  process; logs at ~/Library/Logs/logo-forge-8815.log. Test servers use 8816
+  (/tmp/forge-ws) and 8817 (gallery/reject on /tmp/rej-ws, recat on
+  /tmp/forge-ws); several suites are NOT idempotent, so recreate the workspace
+  from brandsync first, and always judge on the exit code, not the tally.
