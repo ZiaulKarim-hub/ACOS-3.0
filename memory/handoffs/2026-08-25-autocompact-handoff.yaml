@@ -1,0 +1,450 @@
+timestamp: "2026-08-25T06:46:46Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "63163779-ed73-4f5a-945b-183faf32fec1"
+estimated_tokens: 498421
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  did you recreate the workbook? you may have to update again.
+
+assistant_tail: |
+  Let me check the file's actual state on disk rather than assume.
+  
+  ---
+  
+  Important — your work is **not** lost. Backing it up right now before anything else.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 72
+  recent_commits: |
+    da6306d chore(logo-builder): brandsync round 11, the r8-06 edit + forge move, and three handoffs
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+
+uncommitted_files:
+  - "M .claude/scripts/resurrection/close-project.sh"
+  - "M .claude/scripts/resurrection/conflict-scan.py"
+  - "M .claude/scripts/resurrection/enroll-project.sh"
+  - "M .claude/scripts/resurrection/manage-ordinals.py"
+  - "M .claude/scripts/resurrection/open-picks.sh"
+  - "M .claude/scripts/resurrection/ordinal_lib.py"
+  - "M .claude/scripts/resurrection/registry_lib.py"
+  - "M .claude/scripts/resurrection/resurrect-view.py"
+  - "M .claude/scripts/tests/test_resurrection_ordinals.py"
+  - "M .claude/skills/acos-resurrect/SKILL.md"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "M \"Logo Builder/brandsync/symbol/candidates/round-8/meta.json\""
+  - "?? .claude/scripts/resurrection/close-targets.py"
+  - "?? .claude/scripts/resurrection/plan-ordinals.py"
+  - "?? .claude/scripts/resurrection/stamp-bundle-owners.py"
+  - "?? .claude/scripts/tests/test-close-park-to-new.sh"
+  - "?? .claude/scripts/tests/test_resurrection_bundles.py"
+  - "?? .claude/scripts/tests/test_resurrection_enroll.py"
+  - "?? .claude/scripts/tests/test_resurrection_picks.py"
+  - "?? .claude/scripts/tests/test_resurrection_plan.py"
+  - "?? .claude/settings.local.json.bak-verbosity-20260823-125948"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/63163779-ed73-4f5a-945b-183faf32fec1.jsonl"
+  transcript_lines_parsed: 1814
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Session start**: The user asked me to resume a project by reading a reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/2026-08-21-Skill-Workshop-close-2.reentry.md`, follow its "Read first" order, and continue from its NEXT ACTION.
+  
+  I read the reentry note, the handoff.yaml dossier, checked git drift, and read `planning/resurrection-fix/BRIEF.md` (407 lines). The NEXT ACTION was "Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1". I did extensive cmux probing (version 0.64.19), discovered `cmux rpc surface.list` exists (not in the brief), and presented a restatement asking for approval.
+  
+  **Pivot**: The user did NOT approve the tab route. Instead they gave 4 new asks:
+  1. Number projects themselves
+  2. `/acos-resurrect 20` opens row 20 directly
+  3. Choose: open in current window or new workspace
+  4. `/acos-safe-close 20` parks at row 20; short menu when no number
+  
+  Then `/restate`. I restated. User said "No, restate ask 4 again." I restated ask 4 with three readings. User clarified: "when I say /acos-resurrect 20, the work with number 20 is resurrected. Similarly when I say /acos-safe-close 20, the work is parked at work with number 20."
+  
+  Then a series of rulings:
+  - "here" for opening in current tab
+  - print `parking to:` and wait for a yes
+  - I built all four asks
+  
+  Then further rulings that changed earlier decisions:
+  - "A freed number can be assigned, change that rule" — reversed the never-reuse rule
+  - Asked what a scratch tab was, said intention was "just to create a new row in an empty number" → I built `--park-to-new`
+  - Asked about "active no handoff" rows → I analysed 29 rows
+  - Asked what tombstoned is
+  - "Why do we have this delete vs purge, why not delete freeing the number and the row?"
+  - Ruled: delete → trash, frees number, facts stay, handoffs archived; restore → old number if free else available; purge → empties trash, facts stay
+  - "when a project is deelted, treat it as /acos-complete"
+  - CRITICAL FEEDBACK: "I am more interested about solution than to limitations. Unless you say something is impossible to do, you must suggest solutions not just say this and that are the problems, the problems must come with potential solutions. Am I making sense?"
+  - "Make it a standing rule" → I saved it to memory
+  - Bulk spreadsheet request → I built plan-ordinals.py
+  - Duplicates + green colour rule (NOT yet built)
+  - "if I put zero for a row, that row project should be deleted" → built
+  - R2P worktree rows question → I investigated
+  - "delete any such worktree, add the guard and then recreate the excel file again. Ignore the numbers I put in now. I will put them again."
+  - "did you recreate the workbook? you may have to update again."
+  
+  **Final state**: I checked the file and discovered the user's 50 filled cells are STILL on disk (56 rows, alphabetically sorted, timestamp 2026-08-25 00:45:24). My 54-row export was overwritten by their Excel save. I backed it up to `acos-row-numbers.BACKUP-20260825-004619.xlsx` and analysed their plan: 50 filled, 6 blank, 3 marked 0 (delete), 8 numbers shared by multiple rows (merge pairs).
+  
+  Errors I made and fixed:
+  1. `--reuse-retired` gate — had to remove after rule reversal
+  2. ordinal_lib selftest failures after changing next_ordinal
+  3. Test signature breakage when build_plan returned 4 values
+  4. Proof check bug: `bundles_lib.OWNER_MARKER in evidence` matched the HEURISTIC string which contains ".project-uuid"
+  5. Shadowed `dst` variable making the delete receipt print a bundle path where the row's destination belongs
+  6. Heredoc delimiter collision (`PY` inside a `PY` heredoc)
+  7. Test path comparison mixing /var and /private/var
+  8. Fixture ledger not seeded so next_ordinal answered 1
+  9. A near-miss: ran manage-ordinals.py without `--home` against the REAL registry — caught only by the name-confirmation guard
+  
+  Key security/safety constraints stated by the user or in project files that must persist:
+  - Never write daemon state dir `~/Library/Application Support/acos-token-monitor/state/`
+  - Never touch `pending-resume-*.txt` / `RESCUED-resume-*.txt`
+  - Never modify or invoke `/acos-complete`
+  - Never pass `--no-cmux` to delete from a skill
+  - Never bare `git push` — always name the remote
+  - Push defaults to PERSONAL (`ZiaulKarim-hub`) unless `okoateam` is named
+  - purge must NOT erase knowledge facts
+  
+  Let me make sure I capture the exact numbers: 119 bundles → 91 stamped, 28 unstamped → 26 stamped by me → 117 stamped, 2 left. Registry went 56 rows → 54 rows after deleting rows 54/55. Test counts: 224 across 9 suites plus 2 shell suites.
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  **Initial (superseded):** Resume the Skill Workshop project from its reentry note and continue from NEXT ACTION: "Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1". The user never approved this; it remains **not started**.
+  
+  **Actual work — four asks (all built):**
+  1. Number projects manually — verbs existed in `manage-ordinals.py` but no skill named the file
+  2. `/acos-resurrect 20` opens row 20 with no menu; full book only when no number typed
+  3. Choose where a row opens — user chose the word **`here`** for "this tab"
+  4. `/acos-safe-close 20` parks at row 20; with no number a SHORT menu (likely rows / create new row / show whole book)
+  
+  **Subsequent rulings (all built):**
+  - **"A freed number can be assigned, change that rule"** — reversed the never-reuse rule; `next_ordinal` now returns the LOWEST FREE number
+  - **"create a new row in an empty number"** — nothing replaced → built `--park-to-new`
+  - **delete/restore/purge semantics:** "delete moves the row to trash, frees the number but the facts and knowledges stays and the handoffs are archieved. restore brings back with old number if free but if not free bring back with a number that is available. Purge empties the trash for good." Plus: **"No, purge should not erase knowledge facts."**
+  - **"when a project is deelted, treat it as /acos-complete"** — archive the row's handoffs
+  - **Bulk renumbering via spreadsheet** — user fills a column, script applies it
+  - **`0` in the new_number column deletes that row**
+  - **Delete worktree rows + add a guard + recreate the Excel file**
+  
+  **Standing feedback rule (saved to memory):** *"I am more interested about solution than to limitations. Unless you say something is impossible to do, you must suggest solutions not just say this and that are the problems, the problems must come with potential solutions."* User then said: **"Make it a standing rule, every problem described must come with a solution unless it is impossible to solve."**
+  
+  **NOT YET BUILT — the duplicate/green-colour rule:** *"Found a lot of duplicates, I will put in the same number for the duplicates, in case they have different names, go with the name for which I mark the number with green color."* I verified openpyxl can read cell fill colours (tested 4 shades), analysed the duplicate pairs, and asked 3 questions (delete vs tombstone for the loser; does green pick the folder too; should green be required on every merge). **The user never answered these and I never built merge support.**
+  
+  ## 2. Key Technical Concepts
+  
+  - **ACOS Resurrection Protocol** — registry of projects ("rows") in `~/.acos/registry.d/`, rendered as a "book"
+  - **pick_ordinal** — permanent per-row number (replaced a per-render counter on 2026-08-19)
+  - **Ordinal ledger** — `~/.acos/registry.d/ordinal-ledger.jsonl`, append-only, records issue/retire/restore/swap/renumber
+  - **cmux 0.64.19** — workspace (sidebar entry) vs surface (tab) vs pane; `CMUX_TAB_ID` == `CMUX_WORKSPACE_ID`, `CMUX_SURFACE_ID` == `CMUX_PANEL_ID`
+  - **Close bundles** — `<root>/memory/handoffs/closed/<slug>/`, owned via `.project-uuid` marker file
+  - **Session handoffs** — loose files in `memory/handoffs/`, archived by `/acos-complete` into `memory/handoffs/archive/`
+  - **Git worktrees** — copies of a repo that inherit `CLAUDE.md` and `memory/handoffs`, so they passed the enroll marker gate
+  - **Eden Protocol** — Level 3 plain-language filter on all chat replies
+  
+  ## 3. Files and Code Sections
+  
+  ### Created
+  
+  **`.claude/scripts/resurrection/close-targets.py`** — the short close menu (ask 4)
+  - `--resolve <n>` prints `parking to: <name> @ <folder>`; `--json` gives the uuid
+  - Ranks candidates: KEY-TAG → SAME-ROOT → RECENT (filler, labelled weak), capped at `MAX_LIKELY = 3`
+  - Menu choice 2 became `new <name>`:
+  ```python
+      nxt = next_number()
+      print("2. `new <name>` — CREATE A NEW ROW for this work%s"
+            % ("" if nxt is None else ", which takes number %d" % nxt))
+  ```
+  
+  **`.claude/scripts/resurrection/plan-ordinals.py`** — bulk renumber from a spreadsheet
+  - `export` writes `~/Documents/OKOA/acos-row-numbers.xlsx` (falls back to CSV if openpyxl missing)
+  - Columns: `name, current_number, new_number, status, tier, root, project_uuid`
+  - `apply --file <path>` — dry run by default, `--apply` performs
+  - Stale-plan guard: every `current_number` must still match disk
+  - Two-pass move (park above everything, then place) so swaps work
+  - Breadcrumb `registry.d/.ordinal-plan-in-progress.json` while writes are in flight
+  - `0` handling:
+  ```python
+          if want == 0:
+              # Zee, 2026-08-25: 0 in this column means DELETE this row's project.
+              deletes.append({"row": row, "uuid": uuid, "name": row["name"],
+                              "from": stated, "line": i})
+              continue
+  ```
+  - Deletes run BEFORE moves; `check_deletable()` refuses the whole sheet on a live window or an unproven bundle
+  
+  **`.claude/scripts/resurrection/stamp-bundle-owners.py`** — writes `.project-uuid` markers
+  - Two rungs: (1) name match, sole claimant; (2) **sole row at this folder** (rescues shared names at different folders)
+  - Only creates markers; never edits/moves/deletes a bundle; never overwrites
+  
+  **Test files created:** `test_resurrection_picks.py` (26), `test_resurrection_plan.py` (33), `test_resurrection_bundles.py` (17), `test_resurrection_enroll.py` (10), `test-close-park-to-new.sh` (5 cases A–E)
+  
+  ### Modified
+  
+  **`.claude/scripts/resurrection/open-picks.sh`** — added `--here`, `--include-archived`, and the STATUS pre-check (brief item 4). `--here` routes to `adopt-project.sh`, takes exactly one pick, refuses alongside `--focus-existing`.
+  
+  **`.claude/scripts/resurrection/ordinal_lib.py`** — reversed the reuse rule:
+  ```python
+  def held_ordinals(home=None):
+      """Every ordinal a LIVE row holds right now. A deleted row holds nothing.
+      CHANGED 2026-08-24 on Zee's ruling — "delete moves the row to trash, frees
+      the number"...
+      """
+      return set(live_holders(home).keys())
+  
+  def next_ordinal(home=None, events=None):
+      """The ordinal an automatically-created row takes: the LOWEST FREE number."""
+      held = held_ordinals(home)
+      n = 1
+      while n in held:
+          n += 1
+      return n
+  ```
+  
+  **`.claude/scripts/resurrection/manage-ordinals.py`** — rewrote delete/restore/purge; removed the `--reuse-retired` gate (flag still accepted, does nothing); added `deleted_bundles_manifest()`, `archived_closed_dir()`, `owned_bundles()`, `_stamp_completed()`, `registry_lib_read_manifest()`
+  
+  **`.claude/scripts/resurrection/close-project.sh`** — added `--park-to-new <name>`; never orphans, never retires; repoints `.acos/project-id` when the tab owned no row
+  
+  **`.claude/scripts/resurrection/resurrect-view.py`** — footer: `numbers are permanent — say `numbers` to list them, `number <n> to <m>` to move one, `swap <a> <b>` to exchange two`
+  
+  **`.claude/scripts/resurrection/enroll-project.sh`** — WORKTREE GATE, runs before the marker gate:
+  ```python
+  _WORKTREE_SEGMENTS = (
+      os.path.join(".claude", "worktrees"),
+      os.path.join(".git", "worktrees"),
+  )
+  
+  def _is_worktree_path(root):
+      parts = [p.casefold() for p in os.path.abspath(root).split(os.sep) if p]
+      for i, part in enumerate(parts):
+          if part != "worktrees":
+              continue
+          if i + 1 < len(parts):
+              return True
+      return False
+  ```
+  
+  **`.claude/skills/acos-resurrect/SKILL.md`** — added Step 0a (typed number fast path), `### numbers`, `### delete / restore / purge`, `### renumber in BULK`
+  
+  **`.claude/skills/acos-safe-close/SKILL.md`** — rewrote Step 2c into Routes A (number+confirm), B (short menu), C (`all`), D (`new <name>`)
+  
+  **Memory:** `/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/memory/feedback_problems_must_come_with_solutions.md` + MEMORY.md index line
+  
+  ## 4. Errors and Fixes
+  
+  1. **Proof check matched a substring of the heuristic message.** `bundles_lib.OWNER_MARKER in evidence` returned True for `"slug name match (HEURISTIC — bundle predates .project-uuid)"`, so every GUESS was archived. Caught by `test_a_guessed_bundle_is_left_alone`. Fixed by reading the marker file directly: `is_proven = os.path.exists(os.path.join(bundle, bundles_lib.OWNER_MARKER))`
+  
+  2. **Shadowed `dst` variable.** The bundle loop reassigned `dst`, which held the row's trash path, so the receipt printed a bundle path on the "row moved to" line. Renamed to `bdst`; added regression test `test_the_receipt_names_the_rows_real_destination`.
+  
+  3. **Wrong claim about `.resume.md`.** Receipt said files "were NOT moved" — they DO travel with their bundle; they are never *relabelled*. Corrected.
+  
+  4. **Near-miss on the real registry.** Ran `manage-ordinals.py delete 1 --confirm-name Demo` expecting a fixture, but that script reads only `--home`, never `ACOS_REGISTRY_HOME`. It resolved row 1 = "ACOS" in the REAL registry and was stopped only by the name-confirmation guard.
+  
+  5. **Heredoc delimiter collision** — Python text containing `PY` terminated a `<<'PY'` heredoc early, corrupting `test-close-park-to-new.sh`. Rewrote with `PYPATCH_EOF`.
+  
+  6. **Test path comparison** — row stores abspath (`/var/...`), test compared realpath (`/private/var/...`). Normalised both sides.
+  
+  7. **Fixture ledger not seeded** — `next_ordinal` reads the LEDGER, and fixtures writing rows directly bypassed `upsert_row`'s `issue` event. Added `ordinal_lib.append_event("issue", ...)` to the fixture.
+  
+  8. **Tests asserting reversed rules** — 4 in `test_resurrection_ordinals.py` (reuse), 4 more (delete/restore/purge), 11 signature errors + 2 zero-rule failures in `test_resurrection_plan.py`. All rewritten with the new rule named in the docstring.
+  
+  **User feedback that changed my behaviour:**
+  - "No, restate ask 4 again" — my restatement had settled an ambiguity that wasn't settled
+  - "It is great see, it depends on midset, once you started seeing it from a solution mindset, you came up with a solution."
+  - Eden self-check failures (3 rewrites) for sentences over the 15-word cap and an ungnlossed backticked identifier
+  
+  ## 5. Problem Solving
+  
+  **Bundle ownership, measured then solved.** 119 close bundles: 91 stamped, 28 not. Of the 28: 24 resolved to exactly one row; 1 ambiguous (`2026-07-18-ACOS-3.0-close`, two rows both named `ACOS 3.0`); 3 unclaimed. Adding rung 2 (sole row at this folder) rescued 2 more. **Stamped 26 → now 117 stamped, 1 ambiguous + 1 unclaimed**, both resolvable after the user's merges.
+  
+  **R2P worktree rows.** User was correct that they parked to R2P. Rows 54/55 had NO `last_close`, 0 facts, 0 windows, 0 bundles of their own; R2P's own bundles DO mention `tab-a-ledger`/`tab-b-contracts`. Audit showed both rows created by `upsert` at 2026-08-19T20:43:52 and 20:43:58 — the SessionStart enroll hook. Deleted both rows (numbers 54, 55 now free; registry 56 → 54 rows). **The 5 worktree FOLDERS were left untouched** — I deleted rows only and said so explicitly.
+  
+  **The 29 "active + NO HANDOFF" rows.** Explained: `active` is set automatically by the enroll hook; `NO HANDOFF` means no close note. Group A = 18 rows swept in on the 2026-07-18 seed (real folders, all git repos, rows hold nothing); Group B = 6 duplicates; Group C = 2 worktrees. Row 27 (`ACOS 3.0`) is the only one of the 29 holding anything: **16 knowledge facts**.
+  
+  ## 6. All User Messages
+  
+  1. "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/2026-08-21-Skill-Workshop-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  2. "I have used the resurrect and the safe close protocol, I think following are some improvements I want. 1. I want to number different projects myself... 2. When resurrecting I should be able to resurrect a row just by giving a number after /acos-resurrect 20 (like this), if I don't give a number, only then the whole menu shows up. 3. When resurrecting, user should be able to decide whether to open the row in the current window or open a new workspace. 4. When safe closing, I don't need to see the whole menu all the time, if I give a number afetr /acos-safe-close like /acos-safe-close 20, the window should close at that number, if the number is not given, calude should give the most likely opitons for close along with an option in case it should be a new row. In case i want to see the whole menu, there should be an option for that too. Meaning the option should show: 1. Likely rows where the tab can be closed, 2. Create a new row, 3. Show the whole menu. /restate"
+  3. "No, restate ask 4 again."
+  4. "no, when I say /acos-resurrect 20, the work with number 20 is resurrected. Similarly when I say /acos-safe-close 20, the work is parked at work with number 20."
+  5. "1. Yeah, let's use "here" to indicate the tab needs to open here. When you say 3 questions, what are other two?"
+  6. "yes, print it and wait for a yes"
+  7. "On the limit, what is a scratch tab? the intention was not to replace anything, just to crate a new row in an empty number."
+  8. "A freed number can be assigned, change that rule."
+  9. "Now, I know verbs exists for changing and switching row numbers, but I want to do it with your help so that I can do it in bulk and in a easy way. Does it makes sense?"
+  10. "Do this, create a excel or csv file with the row names and current numbers, in a next column that is empty, i will put in which number I want a row to have and you can then use that file to update the book. does it make sense?"
+  11. "Found a lot of duplicates, I will put in the same number for the duplicates, in case they have different names, go with the name for which I mark the number with green color. Does it make sense?"
+  12. "What are these active no handoff rows? are they valuable? What do I do with those?"
+  13. "what is tombstoned?"
+  14. "Why do we have this delete vs purge, why not delete freeing the number and the row?"
+  15. "Yes, do this, delete moves the row to trash, frees the number but the facts and knowledges stays and the handoffs are archieved. restore brings back with old number if free but if not free bring back with a number that is available. Purge empties the trash for good. how does this sound?"
+  16. "No, purge should not erase knowledge facts. The close bundles also contain handoffs right? For a project those handoffs should also be archieved if that project is deleted. I am more interested about solution than to limitations. Unless you say something is impossible to do, you must suggest solutions not just say this and that are the problems, the problems must come with potential solutions. Am I making sense?"
+  17. "when a project is deelted, treat it as /acos-complete"
+  18. "It is great see, it depends on midset, once you started seeing it from a solution mindset, you came up with a solution. Make it a standing rule, every problem described must come with a solution unless it is impossible to solve. Do as you recommended."
+  19. "Now that I am trying to use the excel file you created earlier, if I put zero for a row, that row project should be deleted. I still ahven't completed that excel file, I will do soon. do you understand what I mean?"
+  20. "I clearly remember parking R2P tab-a ledger and R2P tab-b contracts to R2P, I don't understand why are they sepearate rows?"
+  21. "I am guessing there are other worktrees like that. delete any such worktree, add the guard and then recreate the excel file again. Ignore the numbers I put in now. I will put them again."
+  22. **"did you recreate the workbook? you may have to update again."** ← most recent, still being answered
+  
+  ## 7. Pending Tasks
+  
+  1. **Answer the most recent question** — yes I re-exported, but the user's Excel save overwrote it; their 50 filled cells survived
+  2. **Merge support (green colour rule)** — same number on two rows = merge; green marks the survivor. Three questions I asked were never answered: delete vs tombstone for the losing row; does green pick the folder too; should green be required on every merge
+  3. **Brief items 2, 3, 6, 1** (tab route, delivery proof, shared "already open" predicate, naming) — never started; the user redirected before approving
+  4. **Commit** — offered several times, never approved. 15+ files changed/created, all uncommitted on branch `resurrection-static-ordinals-2026-08-19`
+  
+  ## 8. Current Work
+  
+  Answering **"did you recreate the workbook? you may have to update again."**
+  
+  I checked `/Users/zee/Documents/OKOA/acos-row-numbers.xlsx` and found it is **NOT** my 54-row blank export. On disk right now:
+  - **56 rows**, modified `2026-08-25 00:45:24`, 13464 bytes
+  - **50 `new_number` cells filled** — the user's own work
+  - Sorted **alphabetically** (they re-sorted in Excel); my export sorts by current_number
+  - No Excel lock file for this workbook
+  
+  So my export ran, then Excel wrote the user's version back over it. Their work survived.
+  
+  **I backed it up first:** `/Users/zee/Documents/OKOA/acos-row-numbers.BACKUP-20260825-004619.xlsx`
+  
+  Their plan, analysed:
+  - 50 filled, 6 blank
+  - **3 marked `0` (delete):** `#21 Find payments made to XL`, `#48 Personal Login Test`, `#38 Research and Ideation`
+  - **8 numbers given to more than one row (merge pairs):**
+    - `4` ← Logo Builder, Logo Builder
+    - `5` ← To Do Tree, To Do Tree, ToDoTree
+    - `6` ← FruitSync, FruitSync, FruitSync (duplicate)
+    - `9` ← Website Research, Website-builder
+    - `12` ← OKOA Website, website-design-okoa
+    - `13` ← R2P, R2P tab-a ledger, R2P tab-b contracts, Research to Portfolio, Research to Portfolio
+    - `23` ← ACOS 3.0, ACOS 3.0
+    - `26` ← Backup okoa-loan-intake-system, Clone-okoa-loan-intake-system, okoa-loan-intake-system
+  
+  Note the file still contains rows for `R2P tab-a ledger` and `R2P tab-b contracts` (numbers 54/55), which I have since **deleted from the registry** — so applying this file as-is would fail the stale-plan guard.
+  
+  **Verified state:** registry has 54 rows; numbers 54 and 55 free; 0 worktree rows remain; worktree guard live and tested; 117 of 119 bundles stamped. Tests: **224 across 9 Python suites, all exit 0**, plus `test-close-park-to.sh` and `test-close-park-to-new.sh` both exit 0.
+  
+  ## 9. Optional Next Step
+  
+  Report to the user that their 50 filled cells survived and are backed up, and **offer to merge their existing numbers into a fresh 54-row export** rather than making them redo the work — they said *"Ignore the numbers I put in now. I will put them again"* only when they believed the numbers were lost.
+  
+  That report must also flag two blockers in their current plan:
+  - The file still lists `R2P tab-a ledger` and `R2P tab-b contracts`, whose rows are now deleted, so the stale-plan guard would refuse the sheet
+  - 8 numbers are shared by 2+ rows, which today refuses with *"two rows are given number %d"* — **merge support is not built**, and the three questions about the green-colour rule are still unanswered:
+  
+  > "**1. What happens to the losing row?** I would `delete` it... **2. Does green pick the folder too?**... **3. Should green be required on every merge, not just on different names?**"
+  
+  </summary>
+
+current_work: |
+  Answering "did you recreate the workbook?". I re-exported it, but Zee's own
+  Excel save landed on top of mine — his 50 filled new_number cells are what is
+  on disk now, backed up to acos-row-numbers.BACKUP-20260825-004619.xlsx.
+  Next: carry his numbers into a fresh 54-row export so he does not redo them.
+
+completed_this_session: |
+  - Reuse rule reversed: a freed number is handed out again (lowest free wins).
+  - delete / restore / purge rebuilt on Zee's semantics; delete also archives the
+    row's handoffs, the way /acos-complete does. Purge never touches knowledge.
+  - --park-to-new <name> on close-project.sh: park to a brand-new row.
+  - plan-ordinals.py: export a sheet, fill a column, apply it. 0 means delete.
+  - stamp-bundle-owners.py: 117 of 119 close bundles now carry .project-uuid.
+  - Worktree gate in enroll-project.sh; the two R2P worktree rows deleted.
+  - 224 Python checks across 9 suites, all exit 0, plus two shell suites.
+
+decisions_made: |
+  - "A freed number can be assigned" — the never-reuse rule is gone.
+  - Delete frees the number, keeps the facts, archives the handoffs. Purge
+    empties the trash but never erases knowledge.
+  - A deleted project is treated as /acos-complete.
+  - 0 in the new_number column deletes that row.
+  - The two R2P worktree rows were never real projects — delete them, and guard
+    against enrolling a worktree again.
+  - STANDING: every problem I describe must come with a solution, unless it is
+    genuinely impossible. Saved to memory.
+
+blockers: |
+  - Merge is not built. Zee gave the same number to 2+ rows in 8 places, and
+    apply refuses that today. His green-colour rule (green marks the surviving
+    name) has three unanswered questions: what happens to the losing row, does
+    green pick the folder too, and is green required on every merge.
+  - His sheet still lists the two deleted R2P worktree rows, so the stale-plan
+    guard would refuse it as written.
+  - MEASURED 2026-08-25: the workbook on disk has NO coloured cells at all, so
+    the green marks either were never applied or did not survive the save.
+
+candidate_learnings: |
+  - Excel writes the whole file, so an export and a human edit race each other.
+    Carry the human's column forward on re-export instead of blanking it.
+  - manage-ordinals.py reads --home only; it ignores ACOS_REGISTRY_HOME, so a
+    test run can hit the real registry. Only the name guard stopped one.
+  - A substring test against a message string is not a proof check. Read the
+    marker file.
+
+context_for_next_session: |
+  Registry holds 54 rows. Numbers 54 and 55 are free. Zee's filled sheet is at
+  ~/Documents/OKOA/acos-row-numbers.xlsx with a timestamped backup beside it.
+  Nothing is committed yet — 15+ changed files sit on branch
+  resurrection-static-ordinals-2026-08-19.

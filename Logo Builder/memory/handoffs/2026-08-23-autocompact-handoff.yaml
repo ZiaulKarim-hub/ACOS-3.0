@@ -1,0 +1,432 @@
+timestamp: "2026-08-23T17:03:06Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "540734f5-8c12-458b-8670-7d5d30569ec7"
+estimated_tokens: 499046
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  [Image: original 3000x358, displayed at 2000x239. Multiply coordinates by 1.50 to map to original image.]
+
+assistant_tail: |
+  Move verified, and I've looked at the card rather than trusting the numbers.
+  
+  ## The move is clean
+  
+  This card has now crossed shelves **three** times, not two:
+  
+  | When | From | To |
+  |---|---|---|
+  | 2026-08-20 23:11:56 | lockup | symbol |
+  | 2026-08-21 01:20:08 | symbol | lockup |
+  | 2026-08-23 10:24:17 | lockup | symbol |
+  
+  Three moves, and the note reads **"saved edit of r8-06 (moved from the lockup forge)"** — the "moved from" stamp appears exactly **once**. That matters because a stamp that piles up would grow a clause per move and turn the note into a travel log. The old copy is gone from the lockup shelf and its meta file no longer claims it, so this was a real move, not a copy. The saved project file followed it across.
+  
+  ## What it looks like
+  
+  A B-and-S monogram — teal over navy, inside a rounded-square outline. Square frame, no lettering, no wordmark group inside. Its width-to-height ratio is **1.00**, and across this workspace's 251 candidates a symbol's median is 1.00 while a wordmark never drops below 3.27. So the shelf now matches the shape.
+  
+  **One honest observation, since it's your live card.** It holds together down to about 32px. At **24px** and **16px** the two letterf […]
+  
+  ---
+  
+  The move is verified. I also looked at the card, not just its numbers.
+  
+  ## The move is clean
+  
+  This card has crossed shelves **three** times, not two:
+  
+  | When | From | To |
+  |---|---|---|
+  | 2026-08-20 23:11:56 | lockup | symbol |
+  | 2026-08-21 01:20:08 | symbol | lockup |
+  | 2026-08-23 10:24:17 | lockup | symbol |
+  
+  Three moves. Yet the note reads **"saved edit of r8-06 (moved from the lockup forge)"**. The "moved from" stamp appears exactly **once**.
+  
+  That matters. A stamp that piled up would add a clause per move. The note would slowly turn into a travel log.
+  
+  The old copy is gone from the lockup shelf. Its meta file no longer claims it either. So this was a real move, not a copy. The saved project file followed it across.
+  
+  ## What it looks like
+  
+  A B-and-S monogram. Teal over navy, inside a rounded-square outline. Square frame, no lettering, no wordmark group inside.
+  
+  Its width-to-height ratio is **1.00**. Across this workspace's 251 candidates, a symbol's median is 1.00. A wordmark never drops below 3.27. So the shelf now matches the shape.
+  
+  **One honest note, since this is your live card.** It holds together down to about 32px. At **24px** and **16px** the two letterforms start clos […]
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 22
+  recent_commits: |
+    da6306d chore(logo-builder): brandsync round 11, the r8-06 edit + forge move, and three handoffs
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+
+uncommitted_files:
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "M \"Logo Builder/brandsync/symbol/candidates/round-8/meta.json\""
+  - "?? \"Logo Builder/brandsync/symbol/candidates/round-8/r8-06e1.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/projects/r8-06e1.json\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/.harvested/2026-08-22-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/2026-08-22-autocompact-handoff.yaml"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/"
+  - "?? memory/handoffs/closed/2026-08-23-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-23-OKOA-Works-close/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0-Logo-Builder/540734f5-8c12-458b-8670-7d5d30569ec7.jsonl"
+  transcript_lines_parsed: 683
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically. This is a continuation session on the ACOS Logo Forge editor, which lives in a global Claude Code skill at `~/.claude/skills/acos-logo-forge/`.
+  
+  **Session start (post-compaction):** I resumed mid-task, diagnosing a single failing assertion in `shapes-test.ts` — "Equal gaps leaves the SAME space between each pair of edges — 5 vs 30". I wrote a diagnostic script `/tmp/dg2.ts` which revealed `marked again: 0` and the toast "⌘-click 3 or more shapes to space them evenly". Reading `editor.html:2494` showed the metaKey branch TOGGLES marks and `marked` survives plain clicks. So my `spMark` helper was an inversion, not an assignment. Fixed it to read each row's live `.marked` class and toggle only mismatches. shapes-test → 74/74, exit 0.
+  
+  **Handoff bookkeeping:** A SessionStart hook asked me to append depth-pass fields to `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/memory/handoffs/2026-08-22-autocompact-handoff.yaml` and set `enrichment_status: "deepened"`. Done in one Python edit.
+  
+  **ribbon-test repair (large, unrequested-but-necessary scope):** The stale spacing block needed updating. But `ribbon-test.ts` had been ABORTING at check 53 of 311 for weeks. I repaired it iteratively — each fix revealed the next abort:
+  1. Replaced the stale spacing-column block (asserted `#distHB`/`#distVB` as a 4th column in `#drawingGroup` with `-i` mirrors) with a six-tile `#spacingGroup` block.
+  2. "Shape and Text start hidden" — product was RIGHT (`syncContextTabs` shows Shape whenever there is ART, documented reason: ⧉ Group with nothing selected groups the whole board). Test was stale.
+  3. "every Logo Forge tool sits in ONE group — drawEditGroup n=4" — `#editRow` is the Selection group (4 buttons), not the six edit tools. Split into two assertions.
+  4. `#showRow` null → aborted. Show group DELETED 2026-08-20, tiles split to File ▸ Board and Draw ▸ Finish. Replaced block.
+  5. Home inventory assertion listed 8 groups; live is `['(clipboard)','drawingGroup','spacingGroup','editGroup','designGroup']`, and `#drawingGroup` is captioned "Shape style" (not "Shapes & Symbols").
+  6. `p.click('#textMoreB')` on a hidden contextual tab → threw. Reach it via Insert ▸ Text.
+  7. `forge.rows === 3 && forge.cols === 3` for nine buttons → now 3×2 for four.
+  8. `#showRow` again for Smooth border check → repointed at Draw-tab neighbours, excluding `.on`.
+  9. Well block used `#guideB` at 800px → measured parking: 800→designGroup, 700→editGroup+designGroup, 560→+spacingGroup. Switched to `#selectAllB` at 700px.
+  10. Canvas block asserted Home ▸ `#canvasGroup`; live is File ▸ `fileBoardGroup` — the file contradicted its own relocation table.
+  11. Drawing 2x2 measured from Home (display:none → 1x1) → `tab('draw')`.
+  12. Whole mirror section (`-d`/`-i`) dead → replaced with "mirrors are gone" assertions + kept the `[`/`]` keyboard path.
+  13. Insert groups: Media/Illustrations/Reuse, Illustrations holds toolRect/toolEllipse/shapesB.
+  14. Fill menu no longer has Gradient (moved to Special Fill this session) → assert absence + presence of `#fxFillB`.
+  15. `#homeTextB-i` gone → `#insTextB`.
+  16. Font checks stood on Home; Text is a contextual tab → `tab('text')`.
+  Result: **311/311, exit 0.**
+  
+  **Full sweep:** Discovered the argv[2] contract differs per suite. button/forge/shapelib take a BASE URL; shapes/fill/fx/explode take a workspace path (8816); gallery/reject/designer take a workspace path + server on 8817; recat hardcodes `/tmp/forge-ws` + 8817; symbols needs 8819. Also found gallery-test leaves `status.json` at `{"generating": true}`, and `#busy` is a fullscreen `position:fixed; inset:0; z-index:20` overlay that eats every later click — so reject-test needs a FRESH workspace. Fixed symbols-test (`#drawingGroup #symbolsB` → Insert ▸ Media, plus a tab switch). Final: 14 suites, 751 checks, all exit 0, audit 0 findings.
+  
+  **"Match size" rename:** User interrupted with "Change the name 'match size' to something else with one word." I chose **Match** (id `#matchB` and icon `matchsize` unchanged, following the `#drawingGroup` precedent). Updated editor.html (4 places), shapes-test, ribbon-test. Rendered and confirmed: 112.3 group / 123.3 tab, no wrapping.
+  
+  **Git commit push:** User said "Git commit push". Standing rule: PERSONAL default, never bare `git push`.
+  - `~/.claude/skills` → commit `a87bbc7`, 13 files, 4,885 insertions / 452 deletions → `git push personal main` → `fac4572..a87bbc7`.
+  - `ACOS 3.0` → commit `da6306d`, 20 files, 1,410 insertions / 14 deletions, scoped to `Logo Builder/` only → `git push personal resurrection-static-ordinals-2026-08-19` → new branch, carried 103 commits ahead of personal/main. Left alone: 4 symlinked skill dirs (investigate, research, acos-resume-prompt, security-review-ultimate → point into ACOS 3.0), and everything outside `Logo Builder/`. Branch had changed under me from `acos-deficiency-fixes-2026-06-04` to `resurrection-static-ordinals-2026-08-19`.
+  
+  **3D engine rebuild:** User: "now do the 3d engine rebuild. do visual verification of each 3d effect before including them in the menu. Also, for the selection tool group, I need total 6 tools. Suggest which six tools they should be, include the existing one's in consideration."
+  
+  I built a bench in the scratchpad (`fx3d/prims.js`, `bench.ts`, `ext-bench.ts`, rounds 1–5, `final.ts`, `verify.ts`). Baseline sheet of the OLD 17 styles showed four defects. New primitive is `feMorphology erode` → uniform rim band. Five candidates CUT after rendering (chisel soft 0.05, side-lit dome elev 35, soft/tight gloss, Floating pad, Cut out sh). Hairline cap `bandCap`/`fxBand` at 0.36 × thinnest stroke — measured 4.68 ceiling vs 4.50 wanted on r3-01, so thick art untouched. Extrudes: finer steps + `scale` vanishing point about the layer's own centre.
+  
+  Ported to editor.html: primitives inserted before `glowBody`; FX_3D replaced (2802 → 5231 chars); `ctx` gained `rmax: fxBand(l)`; fxTile got `rmax = Infinity`; applyEffect extrude branch got `scale` using `bx/by` layer centre; preview tile got per-direction budget `room(dx,17,17)`/`room(dy,13,9)` and scale.
+  
+  Live verification harness traps: tiles are `<button title="Group — Style">` not `.mrow`; `l.markup` needs the whole `#stage` because filters live in document `<defs>`; r3-01 explodes into 4 layers so all must be styled. Final live sheet: all 40 landed, no page errors.
+  
+  fx-test updated: 5 groups `Beveled,Pressed,Domed,3D Raised,3D Extruded`, ≥8 per group, 40 total → 44/44.
+  
+  **Selection group suggestion:** I recommended keeping Select, Select all, Duplicate, Delete and adding **Select similar ▾** and **Lock ▾**, with Invert selection as runner-up.
+  
+  **"build those two":** Built both.
+  - Lock: `pointer-events="none"` on the rendered `g.layer`; `locked` added to `serialize()` key list; `lockSet(on, all)`, `lockedCount()`, `buildLockMenu()`; selectAllShapes and marqueeApply skip locked.
+  - Select similar: `simKey` {fill, stroke, width, kind}, `selectSimilar(by, label)` refusing empty keys out loud, `buildSimilarMenu()`.
+  - Icons `lock`, `unlock`, `similar` added; `weight` (not `lineweight`) used for outline weight row.
+  - HELP entries for `similarB` and `lockB`, exactly 5 fields each.
+  - Ribbon tiles added, then REORDERED by job: `selectToolB,selectAllB,similarB,ribDup,ribDel,lockB`.
+  - **Regression I caused and the guard caught:** `Select<br>similar ▾` put two two-line tiles in column one → group 112.3 → 114.3, tab 123.3 → 125.3 at 1400/1500/1680. Fixed by labelling it `Similar ▾`, one line.
+  - shapes-test → 90/90; ribbon-test needed its `#editRow` count updated 4 → 6 → 311/311.
+  
+  **`/acos-logo-forge` invoked:** Reopened the workshop. Server 8815 alive (pid 9329), status `{"generating": false}`, forges: lockup 11 rounds/103 files, symbol 5 rounds/102 files, wordmark 1 round/46 files. Read `avoid.json`: 12 patterns, 17 rejections all live, only 1 tagged ("too busy"). Opened Chrome, attached `tail -f` watcher (background id berq29amn).
+  
+  **Two bridge commands arrived:**
+  1. `recategorize` kind=symbol logo=r8-06e1 round=8 at 2026-08-23T10:24:17-0600
+  2. `pick` kind=symbol logo=r8-06e1 round=8 at 2026-08-23T10:24:24-0600
+  
+  Verified: three recategorize moves total (2026-08-20T23:11:56 lockup→symbol; 2026-08-21T01:20:08 symbol→lockup; 2026-08-23T10:24:17 lockup→symbol). Note = "saved edit of r8-06 (moved from the lockup forge)" — "(moved from" appears exactly 1 time. Gone from `candidates/round-8`, lockup meta no longer claims it, project followed to `symbol/projects/r8-06e1.json`. viewBox ratio 1.00, no wordmark group, 0 `<text>` tags, 19 top-level `<g>`, 3382 bytes. Rendered the size waterfall: B/S monogram, teal over navy, rounded-square outline; holds to ~32px, counters close at 24px and 16px.
+  
+  The Stop hook then fired requesting a rewrite, and now a summary is requested instead. I must produce analysis + summary only, no tools.
+  
+  Let me make sure I capture the standing constraints verbatim and separate verified-done from proposed.
+  </analysis>
+  
+  <summary>
+  
+  1. **Primary Request and Intent**
+  
+     Continuing work on the ACOS Logo Forge editor (global skill at `~/.claude/skills/acos-logo-forge/`). The user's requests, in order, in their own words:
+  
+     a. **"Change the name 'match size' to soemthign else with one word."** — DONE (chose **Match**).
+  
+     b. **"Git commit push"** — DONE (both repos, to PERSONAL).
+  
+     c. **"now do the 3d engine rebuild. do visual verification of each 3d effect before including them in the menu.\nAlso, for the selection tool group, I need total 6 tools. Suggest which six tools they should be, include the existing one's in consideration."** — 3D rebuild DONE and verified; six-tool suggestion delivered.
+  
+     d. **"build those two"** (Select similar ▾ and Lock ▾) — DONE and verified.
+  
+     e. **`/acos-logo-forge`** — workshop reopened, bridge watcher attached, two commands handled.
+  
+     **Standing constraints in force (verbatim intent, `/Users/zee/CLAUDE.md`):**
+     - Push destination defaults to **PERSONAL** (`ZiaulKarim-hub`), **do not ask**. `okoateam` ONLY when Zee names it in the current conversation.
+     - **"Never use a bare `git push`."** Always name the remote explicitly.
+     - `ACOS 3.0` has BOTH remotes and `origin` is the **work** account — a bare push would send personal work to work silently.
+     - New code defaults to **TypeScript or Rust**, not Python; existing Python (`server.py`) may be patched under exception #1.
+     - Confirmation Gate: restate and confirm before interpretive/multi-step work.
+  
+     **Project constraint:** the server on port **8815** serving `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Logo Builder/brandsync` is PRODUCTION (pid 9329) and must never be killed as a stray test process.
+  
+  2. **Key Technical Concepts**
+     - PowerPoint-style ribbon: `.rgroup` min-height **112.3px**, tab body **123.3px**, max **3 rows** per column. Every `.rgroup` stretches to the tallest, so one two-line label raises the WHOLE ribbon.
+     - `RIBBON_HOMES` relocates original buttons at boot ("relocate, don't duplicate"). **Both mirrors retired 2026-08-20** — `mirrorGroup()`/`syncMirrors()` kept but never invoked; no `-d`/`-i` node exists.
+     - Live ribbon (2026-08-23): Home = Clipboard · Shape style (`#drawingGroup`) · Spacing (`#spacingGroup`) · Selection (`#editGroup`) · Designer; Insert = Media · Illustrations · Reuse; Draw = `paintGroup` · `drawEditGroup` · `drawFinishGroup`; File = Board (`fileBoardGroup`, holds `#canvasB`) · Save & export · Download · Reset; plus contextual Shape and Text tabs.
+     - `syncContextTabs()`: `shapeOn = !!l || marked.size > 0 || doc.layers.some(x => x.visible)` — Shape shows whenever there is ART, so ⧉ Group-with-nothing-selected stays reachable. `textOn = !!(l && l.kind === 'text')`.
+     - **⌘-click on a layer row TOGGLES its mark, and `marked` SURVIVES a plain click.** A helper that clicks each wanted row is an inversion.
+     - `serialize()` keeps an **explicit key list** — a new per-layer key must be added or it is lost on undo/autosave/reload.
+     - `HELP` entries must hold **exactly 5 fields**; a 6th is silently dropped.
+     - `doc`, `undoStack`, `marked`, `HELP`, `FX_3D`, `FX_FILL` are script-scoped, NOT on window. Only top-level `function` declarations reach `page.evaluate`.
+     - Editor URL param: `file=r11-01` (NO `.svg`).
+     - `Bun.resolveSync('puppeteer', '/Users/zee/Documents/Vibe Coding/ACOS 3.0')`.
+     - Eden Protocol Level 3 register enforced on every user-facing reply by a Stop hook.
+  
+  3. **Files and Code Sections**
+  
+     **`/Users/zee/.claude/skills/acos-logo-forge/app/editor.html`** — the whole editor, one file, now **~524,624+ bytes** (shapelib-test cap is 560,000).
+  
+     - **New 3D primitives** inserted before `glowBody`:
+       ```js
+       const rimBevel = (u, { r = 0.7, o = 0.5, hi = 0.85, sh = 0.5, soft = 0.55,
+                              rmax = Infinity } = {}) => {
+         const band = Math.min(u * r, rmax), lift = Math.min(u * o, rmax * 0.72);
+         const R = band.toFixed(2), O = lift.toFixed(2), BL = (band * soft).toFixed(2);
+         return `<feMorphology in="SourceAlpha" operator="erode" radius="${R}" result="core"/>
+          <feComposite in="SourceAlpha" in2="core" operator="out" result="rim"/>
+          ... <feFlood flood-color="#ffffff" flood-opacity="${hi}" .../>
+              <feFlood flood-color="#000000" flood-opacity="${sh}" .../>
+          <feComposite in="stack" in2="SourceAlpha" operator="in"/>`;
+       };
+       const rimPress = (u, opt = {}) => { const { hi = 0.85, sh = 0.5 } = opt;
+         return rimBevel(u, { ...opt, hi: sh, sh: hi }); };
+       const domeBody = (u, { r=1.6, sc=2.2, k=1.15, elev=55, az=225 } = {}) => …feDiffuseLighting + feBlend mode="multiply"…
+       const glossBody = (u, { r=1.4, sc=2.4, k=1.1, sk=0.30, exp=40, elev=62 } = {}) => …
+       const cutBody   = (u, { r=1.0, o=0.75, sh=0.75, soft=0.6, rmax=Infinity } = {}) => …
+       const drop3 = (u, dy, sd, op) => `<feDropShadow …/>`;
+       const padFor = (u, dy, sd, base = 60) => Math.ceil(base + (u * dy + 3 * u * sd) / 0.6);
+       function fxBand(l) {
+         const ws = [...String((l && l.markup) || '').matchAll(/stroke-width\s*=\s*"([\d.]+)"/g)]
+           .map(m => parseFloat(m[1])).filter(v => v > 0);
+         return ws.length ? Math.min(...ws) * 0.36 : Infinity;
+       }
+       ```
+     - **FX_3D replaced** (2802 → 5231 chars): 40 styles, 5 groups of 8 — `Beveled`, `Pressed`, `Domed`, `3D Raised`, `3D Extruded`. Helpers `R3/P3/D3/G3/C3` and `LIFT(body, dy, sd, op)` which computes `padFor(x.u, dy, sd)`.
+     - **Context gained rmax:** `const ctx = { c: fxBase(l), u: fxUnit(l), rmax: fxBand(l) };` and the gradient probe in `fxMenu`'s `run`. `fxTile` uses `rmax = Infinity` (plain rect, no stroke).
+     - **Extrude branch gained `scale`**, scaled about the layer's own centre `bx = (l.bx0+l.bx1)/2, by = (l.by0+l.by1)/2`. Preview tile got a per-direction budget: `const room = (d, pos, neg) => Math.abs(d) < 1e-6 ? Infinity : (d > 0 ? pos : neg) / (n * Math.abs(d)); const pu = Math.min(u, room(dx, 17, 17), room(dy, 13, 9));`
+     - **Lock:** `g.layer` emitter gained `(l.locked ? 'pointer-events="none" ' : '')`; `locked: !!l.locked,` added to `serialize()`; `lockSet(on, all)`, `lockedCount()`, `buildLockMenu()`; `selectAllShapes` and `marqueeApply` skip `l.locked`.
+     - **Select similar:** `simKey = { fill, stroke, width, kind }` (kind read from markup regex `/<\s*([a-zA-Z]+)/`), `selectSimilar(by, label)` refusing empty/`none`/`0` keys with a toast, `buildSimilarMenu()` (menu id `similarMenu`, rows Fill colour / Outline colour / Outline weight / Shape type).
+     - **Icons added:** `lock`, `unlock`, `similar`. Row uses existing `weight` icon (there is no `lineweight`).
+     - **HELP entries** `similarB` and `lockB`, exactly 5 fields each.
+     - **Ribbon tiles**, final order: `selectToolB,selectAllB,similarB,ribDup,ribDel,lockB`. Label is `Similar ▾` (one line).
+     - **Match rename:** `Match ▾` label, `title="Match — …"`, `head('Match')`, HELP `matchB: ['Match', '', …]`.
+  
+     **`shapes-test.ts`** — 74 → **90 checks**. Idempotent `spMark`:
+     ```ts
+     const spMark = async (ns: number[]) => {
+       await p.evaluate((want: number[]) => {
+         const rows = () => document.querySelectorAll('#layerList .lrow');
+         for (let i = 0; i < rows().length; i++) {
+           const on = rows()[i].classList.contains('marked');
+           if (on !== want.includes(i))
+             (rows()[i] as HTMLElement).dispatchEvent(
+               new MouseEvent('click', { metaKey: true, bubbles: true }));
+         }
+       }, ns);
+     };
+     ```
+     Plus a `sl`-prefixed block for Select similar + Lock (group shape/order/height, menu rows, 2-piece outline match, empty-key refusal, `pointer-events="none"`, click-through via `elementFromPoint`, Select-all skips locked, undo clears, undo→redo round trip).
+  
+     **`ribbon-test.ts`** — restored from aborting at check 53 to **311/311**. Many blocks rewritten with the reason recorded in comments.
+  
+     **`fx-test.ts`** — 42 → **44**. Asserts 5 groups `Beveled,Pressed,Domed,3D Raised,3D Extruded`, ≥8 per group, 40 total.
+  
+     **`symbols-test.ts`** — `#drawingGroup #symbolsB` → Insert ▸ Media + a tab switch before `p.click('#symbolsB')`.
+  
+     **`SKILL.md`** — added: six-tile Spacing entry, "HOW TO ACTUALLY RUN THE SUITE" table, "THE 3D ENGINE, REBUILT" (with the 5-candidate cut table), "THE SELECTION GROUP — SIX TILES".
+  
+     **Memory:** `project_acos_logo_forge_powerpoint_ui.md` rewritten (mirrors retired, ribbon layout, suite-running rules, aborting-suite lesson, ⌘-click toggle); `MEMORY.md` index line updated.
+  
+     **Scratchpad bench:** `…/scratchpad/fx3d/{prims.js,new-prims.js,bench.ts,ext-bench.ts,round1..5.ts,final.ts,verify.ts}` plus PNG contact sheets.
+  
+  4. **Errors and fixes**
+     - **"5 vs 30"** — `spMark` was an inversion (⌘-click toggles). Fixed by reading `.marked` and toggling only mismatches.
+     - **ribbon-test aborting at 53/311** — 16 separate stale assertions/aborts, each traced to a real ribbon reorganisation. Every failure was TEST drift; the product was right each time. One case: the file's own relocation table said `['#canvasB','tab-file']` while a later block asserted Canvas was on Home.
+     - **argv[2] means different things per suite** — passing a workspace where a URL was wanted produced `Cannot navigate to invalid URL`; pointing designer-test at a different workspace than 8817 served made it read a stale `combine` line and report a false product failure.
+     - **`ERR_CONNECTION_REFUSED at 8817`** — gallery/reject/recat/designer do not start their own server.
+     - **reject-test `.rejbox` null** — gallery-test left `status.json` at `{"generating": true}`; `#busy` is a fullscreen overlay eating clicks. Fresh workspace fixed it.
+     - **Baseline 3D defects (4):** pale fill blew to white; highlight was a cloud not an edge; emboss swallowed artwork; no dark side.
+     - **5 candidates cut after rendering:** chisel at `soft 0.05` (torn white paper); side-lit dome at elevation 35 (grey mush); soft/tight gloss at `sk 0.45`/`0.20` (blew pale fill white); Floating at default region (grey RECTANGLE — shadow reached 18 + 3×12 = 54 units past a 60-unit shape = 90%, region was 60%); Cut out at bevel's shadow (invisible).
+     - **Hairline destruction** — Wide bevel erased a 4-unit ring. Fixed with `fxBand`/`rmax`; verified inert on thick art (ceiling **4.68** vs **4.50** wanted).
+     - **Live-verification harness traps (3):** `.mrow` doesn't exist in the fx menu (pick by `title`); `l.markup` alone renders empty (filters live in document `<defs>` — capture `#stage`); r3-01 explodes into 4 layers so all must be styled.
+     - **My own 2px ribbon regression** — `Select<br>similar ▾` raised group 112.3 → 114.3 and tab 123.3 → 125.3 at 1400/1500/1680. Caught by the height guard, fixed by `Similar ▾`.
+  
+  5. **Problem Solving**
+  
+     Everything claimed below was verified by running it. Final state: **8 editor suites green** — `ribbon` 311/311, `shapes` 90/90, `button` 61/61, `fx` 44/44, `fill` 27/27, `shapelib` 26/26, `forge` 19/19, `explode` 12/12, plus `audit.ts` 0 findings, every one exit code 0. Earlier in the session all 14 suites ran green (751 checks) before the 3D and Selection work; the 5 gallery/server suites were NOT re-run after those changes, and I said so.
+  
+     Recurring lesson applied throughout: **render and look**. Counting and DOM assertions passed while the picture was wrong repeatedly (washed bevels, grey box, invisible cut-out, forty "unstyled" logos, twin icons).
+  
+  6. **All user messages**
+     - "now do the 3d engine rebuild. do visual verification of each 3d effect before including them in the menu.\nAlso, for the selection tool group, I need total 6 tools. Suggest which six tools they should be, include the existing one's in consideration."
+     - "build those two"
+     - "Change the name \"match size\" to soemthign else with one word." *(delivered as: "Change the name \"match size\" to soemthign else with one word.")*
+     - "Git commit push"
+     - `/acos-logo-forge` (slash command, full skill body)
+     - Mid-turn terminal junk `<64;56;36M` — mouse-tracking escape noise, not a message; ignored.
+  
+  7. **Pending Tasks**
+     - Nothing since commit `a87bbc7` / `da6306d` is committed. That includes the entire 3D rebuild, both Selection tools, all test updates and both SKILL.md sections.
+     - Outstanding questions never answered: the `/acos-safe-close` park destination (a number 1..56 or `0` — that close wrote NOTHING); "I need to see each card with the animation"; which FIFTH permanent tab was meant (the ribbon has four permanent — Home, Insert, Draw, File — plus two contextual).
+     - Runner-up tool I proposed and did NOT build: **Invert selection**.
+  
+  8. **Current Work**
+  
+     The workshop is open and I am the attached session. Server 8815 alive (pid 9329), `status.json` = `{"generating": false}`. Forges: lockup 11 rounds/103 files, symbol 5 rounds/102 files, wordmark 1 round/46 files. `avoid.json` read: 12 patterns, **17 rejections, all live, 0 restored**, only 1 tagged ("too busy"). Chrome opened at `http://127.0.0.1:8815/`. Background watcher `tail -f` on `commands.jsonl`, task id **berq29amn**.
+  
+     Two bridge commands arrived seven seconds apart:
+     - `recategorize` kind=symbol logo=r8-06e1 round=8 at `2026-08-23T10:24:17-0600`
+     - `pick` kind=symbol logo=r8-06e1 round=8 at `2026-08-23T10:24:24-0600`
+  
+     Verified the move (server had already performed it; per SKILL.md my job is only the bookkeeping half):
+     - **Three** recategorize moves for this card: `2026-08-20T23:11:56` lockup→symbol; `2026-08-21T01:20:08` symbol→lockup; `2026-08-23T10:24:17` lockup→symbol. `was` == `logo` every time (no collision suffix).
+     - Note is `saved edit of r8-06 (moved from the lockup forge)` — `"(moved from"` appears exactly **1** time despite three moves, so the stamp-stripping holds on a round trip.
+     - Gone from `candidates/round-8`; lockup meta no longer claims it; project followed to `symbol/projects/r8-06e1.json`; art at `symbol/candidates/round-8/r8-06e1.svg`.
+     - Artwork: viewBox `139.44698626776983 6.904118872485817 316.47951607953695 316.4794815683213`, ratio **1.00** (symbol median 1.00, p90 1.28; wordmark never below 3.27), no wordmark group, **0** `<text>` tags, 19 top-level `<g>`, 3382 bytes.
+     - Rendered a size waterfall at 220/96/64/48/32/24/16 px: a B/S monogram, teal over navy, inside a rounded-square outline. It holds together to about **32px**; at **24px** and **16px** the counters close up — a design signal about the drawing, not a rendering fault.
+  
+     Consequence recorded for future work: **`r8-06e1` is a SYMBOL now**, so any later `fanout`/`merge`/`combine` naming it must read it from `symbol/candidates/round-8/` and return **10 symbols** (mark only, no lettering, tight viewBox). The `pick` means the user is editing it — per SKILL.md I do not touch their open document uninvited.
+  
+  9. **Optional Next Step**
+  
+     Wait on the bridge. The user's live action was `pick` — opening `r8-06e1` in the editor — and the skill is explicit: *"the user entered the editor with that candidate. Note it; offer editing help in chat but do NOT touch their editor document uninvited."* That is done.
+  
+     Nothing further should start without a new command or a message. When the next command lands (Add 10, Fan out, Merge, Combine, Reject, Smooth, Designer), handle it under the rules already loaded — `avoid.json` first, the `kind` rules, the 2-close / 4-reinterpreted / 4-departures spread, the shared-outline check, and `status.json` flipped back to `{"generating": false}` for add/fanout/merge/combine but never touched for smooth or design.
+  
+     When next reporting, re-surface the unanswered items: the `/acos-safe-close` park number (1..56 or `0`), the card animation, the fifth permanent tab, and that nothing since `a87bbc7` / `da6306d` is committed.
+  
+  </summary>
+
+# ── Depth pass, written by the resumed session (2026-08-23) ──────────────────
+current_work: |
+  The Logo Forge workshop is open and this session is the attached one. Server
+  8815 alive (pid 9329), status.json {"generating": false}. Two bridge commands
+  handled (recategorize + pick, both r8-06e1 → symbol forge). Waiting on the
+  bridge for the next command. The tail -f watcher (task berq29amn) was killed
+  by the compaction and must be re-attached.
+
+completed_this_session: |
+  - 3D engine rebuilt: FX_3D 17 → 40 styles in 5 groups (Beveled, Pressed,
+    Domed, 3D Raised, 3D Extruded), every one rendered and looked at before
+    inclusion; 5 candidates cut on sight. Hairline guard fxBand/rmax added.
+  - Selection group taken to six tiles: selectToolB, selectAllB, similarB,
+    ribDup, ribDel, lockB. Select similar and Lock both built and verified.
+  - "Match size" renamed to "Match" (one word, as asked).
+  - ribbon-test.ts repaired from aborting at check 53 to 311/311 — 16 stale
+    assertions, every one test drift, product right each time.
+  - 8 editor suites green: ribbon 311, shapes 90, button 61, fx 44, fill 27,
+    shapelib 26, forge 19, explode 12; audit 0 findings; all exit 0.
+  - Committed and pushed to PERSONAL: skills a87bbc7, ACOS 3.0 da6306d.
+  - r8-06e1 forge move verified end to end (art, meta, project, note stamp).
+
+decisions_made: |
+  - "Match" chosen as the one-word replacement for "Match size" (user asked for
+    one word; id #matchB and icon name left alone).
+  - Six selection tools = the four existing plus Select similar and Lock. User
+    said "build those two", which also rejected the runner-up, Invert selection.
+  - Visual verification is a gate, not a report: the user asked for it before
+    inclusion, so 5 rendered-and-rejected candidates never reached the menu.
+
+blockers: |
+  - Nothing technically stuck. Three questions are unanswered and only the user
+    can settle them: the /acos-safe-close park destination (a number 1..56 or 0
+    — that close wrote NOTHING); "I need to see each card with the animation";
+    and which FIFTH permanent tab was meant (the ribbon has four permanent —
+    Home, Insert, Draw, File — plus two contextual).
+
+candidate_learnings:
+  - claim: "ribbon-test.ts aborted at check 53 of 311 for weeks; every one of the 16 failures was stale TEST drift, never a product defect."
+    evidence: "16 consecutive repairs, each traced to a real ribbon reorganisation (Show group deleted, mirrors retired, Canvas moved to File)."
+  - claim: "A suite that ABORTS mid-run still prints a passing-looking tally for the checks it reached — read the exit code, not the count."
+    evidence: "ribbon-test printed 53 passes while dead."
+  - claim: "DOM assertions pass while the picture is wrong; every visual feature needs a render-and-look pass."
+    evidence: "washed bevels, a grey rectangle, an invisible cut-out and forty 'unstyled' logos all passed their counts."
+  - claim: "One two-line ribbon label raises the WHOLE ribbon, because every .rgroup stretches to the tallest."
+    evidence: "'Select<br>similar' pushed group 112.3 → 114.3 and tab 123.3 → 125.3 at three widths; fixed by labelling it 'Similar'."
+
+context_for_next_session: |
+  Nothing since a87bbc7 (skills) and da6306d (ACOS 3.0) is committed. The
+  workspace branch is resurrection-static-ordinals-2026-08-19, and it changed
+  under the session mid-work — check the branch before any push. Push goes to
+  PERSONAL, never bare. Server 8815 is PRODUCTION: never kill it as a stray.
+  r8-06e1 now lives in the SYMBOL forge, so any fanout/merge/combine naming it
+  reads symbol/candidates/round-8/ and must return 10 symbols, mark only.

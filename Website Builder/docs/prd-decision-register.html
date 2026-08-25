@@ -1,0 +1,982 @@
+<title>Website Builder Decision Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  /* Light — drafting paper */
+  --paper:        #EDF0F3;
+  --surface:      #F7F9FA;
+  --surface-2:    #E3E8ED;
+  --rule:         #C3CDD6;
+  --rule-soft:    #D8E0E7;
+  --text:         #16202B;
+  --text-2:       #4A5A69;
+  --text-3:       #6E7F8E;
+
+  --structure:    #1B3A5C;   /* prussian — headings, rules, the grid */
+  --open:         #B23F26;   /* stamp vermilion — needs your ruling */
+  --open-bg:      #FBEDE9;
+  --settled:      #17604F;   /* locked, do not reopen */
+  --settled-bg:   #E4F0EC;
+  --cut:          #5C6B7A;   /* deliberately excluded */
+  --cut-bg:       #E5EAEF;
+  --new:          #6B4E9B;   /* your two new asks */
+  --new-bg:       #EFEAF7;
+
+  --maxw: 74rem;
+  --col:  60rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #0E141B;
+    --surface:    #151D26;
+    --surface-2:  #1D2833;
+    --rule:       #2E3D4B;
+    --rule-soft:  #222E39;
+    --text:       #DFE7EE;
+    --text-2:     #9FB0BE;
+    --text-3:     #7D8E9C;
+
+    --structure:  #8FB4D9;
+    --open:       #E88062;
+    --open-bg:    #2A1912;
+    --settled:    #5FBFA5;
+    --settled-bg: #0F2620;
+    --cut:        #93A3B1;
+    --cut-bg:     #1A232C;
+    --new:        #B296E0;
+    --new-bg:     #1E1730;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:      #0E141B;
+  --surface:    #151D26;
+  --surface-2:  #1D2833;
+  --rule:       #2E3D4B;
+  --rule-soft:  #222E39;
+  --text:       #DFE7EE;
+  --text-2:     #9FB0BE;
+  --text-3:     #7D8E9C;
+
+  --structure:  #8FB4D9;
+  --open:       #E88062;
+  --open-bg:    #2A1912;
+  --settled:    #5FBFA5;
+  --settled-bg: #0F2620;
+  --cut:        #93A3B1;
+  --cut-bg:     #1A232C;
+  --new:        #B296E0;
+  --new-bg:     #1E1730;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 1.75rem 6rem;
+}
+
+/* ── Masthead ─────────────────────────────────────── */
+
+.masthead {
+  border-bottom: 2px solid var(--structure);
+  padding: 3.25rem 0 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -.022em;
+  text-wrap: balance;
+  margin: 0 0 .85rem;
+  color: var(--text);
+}
+.standfirst {
+  font-size: 1.14rem;
+  color: var(--text-2);
+  max-width: 46rem;
+  margin: 0 0 1.75rem;
+}
+
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.tally > div {
+  flex: 1 1 8.5rem;
+  padding: .85rem 1rem .95rem;
+  border-right: 1px solid var(--rule-soft);
+}
+.tally > div:last-child { border-right: 0; }
+.tally .n {
+  font-family: "Archivo", sans-serif;
+  font-weight: 700;
+  font-size: 1.65rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  margin-bottom: .3rem;
+}
+.tally .k {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.tally .settled .n { color: var(--settled); }
+.tally .open .n    { color: var(--open); }
+.tally .cut .n     { color: var(--cut); }
+.tally .new .n     { color: var(--new); }
+
+/* ── Layout ───────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  gap: 3rem;
+  align-items: start;
+}
+@media (max-width: 61rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  nav.toc { position: static; margin-bottom: 2.5rem; }
+}
+
+nav.toc {
+  position: sticky;
+  top: 1.5rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .74rem;
+  line-height: 1.55;
+  border-left: 2px solid var(--rule);
+  padding-left: 1rem;
+}
+nav.toc a {
+  display: block;
+  color: var(--text-2);
+  text-decoration: none;
+  padding: .3rem 0;
+  border-bottom: 1px solid transparent;
+}
+nav.toc a:hover,
+nav.toc a:focus-visible {
+  color: var(--open);
+  border-bottom-color: var(--open);
+  outline: none;
+}
+nav.toc .grp {
+  color: var(--text-3);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: .64rem;
+  margin: 1.1rem 0 .35rem;
+}
+nav.toc .grp:first-child { margin-top: 0; }
+
+main { max-width: var(--col); min-width: 0; }
+
+/* ── Section headings ─────────────────────────────── */
+
+section { margin-bottom: 4rem; scroll-margin-top: 1.5rem; }
+
+h2 {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 1.62rem;
+  letter-spacing: -.014em;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: 0 0 .35rem;
+  color: var(--structure);
+  padding-bottom: .55rem;
+  border-bottom: 1px solid var(--rule);
+}
+h2 .num {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: .08em;
+  display: block;
+  margin-bottom: .4rem;
+}
+.lede {
+  color: var(--text-2);
+  margin: 1rem 0 1.6rem;
+  max-width: 44rem;
+}
+
+h3 {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -.005em;
+  margin: 2.2rem 0 .6rem;
+  color: var(--text);
+}
+
+p { margin: 0 0 1rem; max-width: 44rem; }
+p:last-child { margin-bottom: 0; }
+
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+code, .mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .87em;
+  background: var(--surface-2);
+  padding: .08em .34em;
+  border-radius: 2px;
+}
+
+/* ── Status chips ─────────────────────────────────── */
+
+.chip {
+  display: inline-block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .64rem;
+  font-weight: 600;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  padding: .22em .6em .26em;
+  border-radius: 2px;
+  vertical-align: .12em;
+  white-space: nowrap;
+}
+.chip.settled { background: var(--settled-bg); color: var(--settled); }
+.chip.open    { background: var(--open-bg);    color: var(--open); }
+.chip.cut     { background: var(--cut-bg);     color: var(--cut); }
+.chip.new     { background: var(--new-bg);     color: var(--new); }
+
+/* ── Decision cards ───────────────────────────────── */
+
+.card {
+  border: 1px solid var(--rule-soft);
+  border-left: 3px solid var(--rule);
+  background: var(--surface);
+  border-radius: 2px;
+  padding: 1.2rem 1.4rem 1.3rem;
+  margin-bottom: 1rem;
+}
+.card.is-settled { border-left-color: var(--settled); }
+.card.is-open    { border-left-color: var(--open); }
+.card.is-cut     { border-left-color: var(--cut); }
+.card.is-new     { border-left-color: var(--new); }
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .6rem;
+  margin-bottom: .55rem;
+}
+.card-id {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--structure);
+  letter-spacing: .02em;
+}
+.card-title {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 1.02rem;
+  line-height: 1.3;
+  flex: 1 1 18rem;
+  min-width: 0;
+  color: var(--text);
+}
+.card p { font-size: .955rem; margin-bottom: .7rem; }
+.card p:last-child { margin-bottom: 0; }
+
+.src {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .7rem;
+  color: var(--text-3);
+  letter-spacing: .03em;
+  margin-top: .7rem;
+  padding-top: .55rem;
+  border-top: 1px dotted var(--rule);
+}
+
+.rec {
+  background: var(--surface-2);
+  border-radius: 2px;
+  padding: .6rem .8rem;
+  font-size: .9rem;
+  margin: .7rem 0 0;
+}
+.rec .lbl {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .64rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  display: block;
+  margin-bottom: .2rem;
+}
+
+ul.opts {
+  list-style: none;
+  margin: .5rem 0 0;
+  padding: 0;
+  font-size: .93rem;
+}
+ul.opts li {
+  padding: .28rem 0 .28rem 1.5rem;
+  position: relative;
+}
+ul.opts li::before {
+  content: attr(data-k);
+  position: absolute;
+  left: 0;
+  top: .28rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+ul.plain { margin: .4rem 0 1rem; padding-left: 1.15rem; }
+ul.plain li { margin-bottom: .38rem; max-width: 43rem; }
+
+/* ── Tables ───────────────────────────────────────── */
+
+.tablewrap { overflow-x: auto; margin: 0 0 1.4rem; border: 1px solid var(--rule-soft); border-radius: 2px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .9rem;
+  background: var(--surface);
+}
+th, td {
+  text-align: left;
+  padding: .6rem .85rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+th {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; font-family: "IBM Plex Mono", monospace; font-size: .84rem; }
+td.step { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--structure); white-space: nowrap; }
+
+/* ── Callout ──────────────────────────────────────── */
+
+.callout {
+  border: 1px solid var(--open);
+  border-left-width: 3px;
+  background: var(--open-bg);
+  border-radius: 2px;
+  padding: 1.1rem 1.3rem;
+  margin: 0 0 1.6rem;
+}
+.callout .lbl {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--open);
+  display: block;
+  margin-bottom: .45rem;
+}
+.callout p { font-size: .95rem; }
+
+footer {
+  margin-top: 4rem;
+  padding-top: 1.4rem;
+  border-top: 2px solid var(--structure);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  color: var(--text-3);
+  line-height: 1.7;
+}
+
+a { color: var(--open); }
+a:focus-visible { outline: 2px solid var(--open); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">ACOS · Website Builder · <span class="mono">/acos-website-forge</span></p>
+  <h1>Website Builder Decision Register</h1>
+  <p class="standfirst">Everything the 99,380-word product requirements document has already decided, everything it deliberately left for you, and what each open item blocks. Compiled 2026-08-20 from <span class="mono">prd/website-builder-prd.md</span>, <span class="mono">DECISIONS.md</span>, <span class="mono">memory/decisions/</span> and <span class="mono">prd/OPEN-ITEMS.md</span>.</p>
+
+  <div class="tally">
+    <div class="settled"><span class="n">6</span><span class="k">Locked</span></div>
+    <div class="open"><span class="n">4</span><span class="k">Sign-off rows</span></div>
+    <div class="open"><span class="n">15</span><span class="k">Open decisions</span></div>
+    <div class="cut"><span class="n">51</span><span class="k">Deferred items</span></div>
+    <div class="new"><span class="n">1</span><span class="k">New ask open</span></div>
+  </div>
+</header>
+
+<div class="layout">
+
+<nav class="toc" aria-label="Contents">
+  <div class="grp">Orientation</div>
+  <a href="#state">State of play</a>
+  <a href="#product">The product</a>
+  <div class="grp">Settled</div>
+  <a href="#locked">Locked decisions</a>
+  <a href="#nongoals">Non-goals</a>
+  <div class="grp">Open</div>
+  <a href="#signoff">Sign-off rows</a>
+  <a href="#decisions">The 15 decisions</a>
+  <div class="grp">Decided for you</div>
+  <a href="#lenses">Lens rulings</a>
+  <a href="#excluded">Deliberately cut</a>
+  <div class="grp">New</div>
+  <a href="#newasks">Your two new asks</a>
+  <div class="grp">Health</div>
+  <a href="#defects">Known defects</a>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="state">
+  <h2><span class="num">00</span>State of play</h2>
+
+  <p>The document is finished and audited. Nothing is being written. The project is stopped on <strong>rulings only</strong> — a set of questions the PRD deliberately refused to answer on your behalf, because answering them would have meant inventing a preference you never expressed.</p>
+
+  <p>Section 18 states the gate plainly: <em>"Nothing in v1 may be built until the sign-off column below is resolved."</em> Six rows carry that mark. Two were settled on 2026-07-26. Four are not.</p>
+
+  <div class="callout">
+    <span class="lbl">Recording defect — fix pending</span>
+    <p>Decision 1 was settled on 2026-07-26 as <strong>option B: v1 must ship gridlines and full constraint dragging</strong>. That ruling was written into <span class="mono">DECISIONS.md</span> only. It never reached the PRD. Section 18 still reads <em>"No canvas drag. No gridlines, no snapping, no free-position, no zoom/pan"</em> and still marks rows 4(a) and 4(b) as awaiting your signature. Anyone signing §18 as written today would be signing the opposite of the July ruling. Queued to be corrected in the same pass as the four outstanding sign-offs.</p>
+  </div>
+
+  <p>Beyond the rulings there is a build plan already generated and parsed: <strong>78 slice skeletons</strong> in <span class="mono">planning/slices/</span>, produced through the <span class="mono">/acos-preeng-classic</span> pipeline, which reported <em>"78 task file(s), all required artifacts present, no QA rejections."</em> Those slices carry the preeng ids <span class="mono">S01</span>–<span class="mono">S78</span> verbatim, deliberately, so no second numbering scheme is added to a project that already has id collisions.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="product">
+  <h2><span class="num">01</span>The product, in eight steps</h2>
+  <p class="lede">A Claude Code skill that turns a conversation into a distinctive, hand-adjustable website. You are the aesthetic judge at every step. There is no AI critic scoring screenshots in a loop — that architecture was explicitly replaced.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Step</th><th>What happens</th><th>Who does it</th></tr></thead>
+    <tbody>
+      <tr><td class="step">0</td><td>Warm start — reuse a prior design system or site if one exists, plus asset-library detection</td><td>skill</td></tr>
+      <tr><td class="step">1</td><td>Interview: purpose, audience, positioning, taste, accessibility, performance, constraints. 78-question bank, three tiers, ~35–45 answered</td><td>skill</td></tr>
+      <tr><td class="step">2</td><td>Write a prompt that produces the whole design system — typography, colour, motion, artwork, components</td><td>skill</td></tr>
+      <tr><td class="step">3</td><td>Paste that prompt into claude.ai on the web, generate, hand-carry the result back</td><td><strong>you, by hand</strong></td></tr>
+      <tr><td class="step">4</td><td>Interview again to select components, then build the site as a live editable design surface</td><td>both</td></tr>
+      <tr><td class="step">5</td><td>If nothing looks good: more variants, a scoped section regeneration, or a brand-new system prompt</td><td>you</td></tr>
+      <tr><td class="step">6</td><td>Add custom components the standard system does not cover — charts, calculators, maps</td><td>you</td></tr>
+      <tr><td class="step">7</td><td>LOCK — toolbars and gridlines gone, clean static site, no editor code shipped, reversible</td><td>skill</td></tr>
+      <tr><td class="step">8</td><td>Publish, plus a licence-and-evidence bundle listing every font and asset</td><td>skill</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>Step 3 is the pipeline's weak point and the PRD says so.</strong> The manual hand-carry is named as the single biggest threat to the tool being used more than twice. A zero-paste alternative — Local Regeneration Mode — ships in v1 alongside it, as a first-class path rather than a fallback of last resort.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="locked">
+  <h2><span class="num">02</span>Locked decisions</h2>
+  <p class="lede">Five decisions you made in conversation. Each is recorded as settled and marked <em>do not reopen</em> — a later session may implement them but may not re-litigate them. You can of course overturn any of them; nobody else can.</p>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">D1</span>
+      <span class="card-title">Coherent design directions, not independent per-item picks</span>
+      <span class="chip settled">Settled 2026-07-25</span>
+    </div>
+    <p>About <strong>10 complete, internally consistent design directions</strong>, each covering the identity-carrying items — font pairing, colour scheme, button, cursor, background, ribbon, hero animation. <strong>20 artworks</strong>, tagged by which directions they suit. Within your chosen direction, 10 variants of each swappable component, generated on demand rather than all upfront. <strong>Derived values — spacing, radius, shadow scales — are computed from the direction, never picked independently.</strong></p>
+    <p><strong>Why.</strong> Applied literally, "10 variants of each item" meant roughly 800 artifacts through a manual paste boundary. Worse, independent picks clash: button variant 3, ribbon variant 7 and cursor variant 9 need not belong to the same visual world. Your 10 and your 20 are preserved — they arrive as coherent sets rather than a pile.</p>
+    <p><strong>Rejected:</strong> literal independent per-item variants. Rejected on coherence and volume grounds, not because the instinct was wrong — 10 options per identity item is the right amount of choice; the fix was to bundle them.</p>
+    <p class="src">memory/decisions/D1-design-directions-not-independent-picks.md · §7, §8</p>
+  </div>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">D2</span>
+      <span class="card-title">Constraint-based dragging, with a free-position escape hatch</span>
+      <span class="chip settled">Settled 2026-07-25</span>
+    </div>
+    <p>Every component is <strong>pinned or anchored</strong> — left, centre, stretch, relative to a parent or to the element above — so layout reflows on smaller screens. An explicit per-component <strong>free-position escape hatch</strong> exists for cases that need it. <strong>Gridlines are what components snap to</strong>: the layout substrate, not decoration that gets hidden later.</p>
+    <p><strong>Why.</strong> Free x/y dragging fights responsive layout. A site must work at 390px and 1440px. If a headline is dragged 40px left on the large screen, nothing in the brief says what happens on the phone. The alternative — arranging the page separately per screen size — is roughly three times the work.</p>
+    <p><strong>Live risk R47:</strong> there is no way to validate a constraint drag model without building one. Its day-to-day usability is unvalidated at first ship, and the stated mitigation is explicitly marked partial.</p>
+    <p class="src">memory/decisions/D2-constraint-based-dragging.md · §11</p>
+  </div>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">D3</span>
+      <span class="card-title">LOCK exports clean code; it does not hide a toolbar</span>
+      <span class="chip settled">Settled 2026-07-25</span>
+    </div>
+    <p>LOCK <strong>exports</strong>. It produces a clean static site with <strong>no editor runtime shipped to visitors</strong>, while the editable project stays beside it so design mode can be re-entered. Five purity gates. Re-render, not copy-strip — the clean build is generated afresh rather than produced by deleting things.</p>
+    <p><strong>Why.</strong> Read naively, "removed" could mean <em>hidden</em>. If LOCK only hid the editor, the finished site would still ship the entire editing engine to every visitor — slow, and it makes "the site as a visitor sees it" a lie.</p>
+    <p><strong>Unresolved proof.</strong> Purity was specified as two-build byte-equality. No source consulted established that Astro/Vite builds are byte-reproducible across two installs. A Phase-0 spike is required, with a normalised-comparison fallback that explicitly weakens D3's proof. See decision 5.</p>
+    <p class="src">memory/decisions/D3-lock-exports-clean-code.md · §12.5, §12.8</p>
+  </div>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">D4</span>
+      <span class="card-title">Motion is a design-system item, living in draggable art containers</span>
+      <span class="chip settled">Settled 2026-07-26</span>
+    </div>
+    <p>Animation is <strong>an ordinary design-system item with variants</strong> — same generate-then-pick flow as fonts, buttons and cursors. Animated pieces live in <strong>the same draggable containers as artwork</strong>; the editor manipulates an animated container exactly as it manipulates a JPEG. Motion is <strong>not</strong> a separate parallel subsystem.</p>
+    <p>Every container carries a <strong>reduced-motion variant reference</strong> — an art-directed alternative, not a switch that turns motion off — and a <strong>pause affordance reference</strong>, so an unpausable marquee is structurally unbuildable.</p>
+    <p><strong>Rejected:</strong> a separate motion verification channel (filmstrip capture, interaction-manifest walking) as a parallel v1 subsystem. Deferred rather than adopted.</p>
+    <p><strong>Carried caveat:</strong> motion remains the weakest thing to verify and the strongest thing award juries reward. Folding it into the system does not solve that.</p>
+    <p class="src">memory/decisions/D4-motion-is-a-system-item-in-draggable-containers.md · §9</p>
+  </div>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">Item 1</span>
+      <span class="card-title">v1 ships gridlines and full constraint dragging</span>
+      <span class="chip settled">Settled 2026-07-26</span>
+    </div>
+    <p>You chose <strong>option B</strong> — pull the canvas into v1 — against a recommendation of option C (split v1a / v1b). v1 must ship gridlines (step 4a) and full constraint dragging (step 4b). This makes D2 active in the first shipping version and gives LOCK's "gridlines disappear" moment real content.</p>
+    <p><strong>Accepted cost:</strong> editor scope roughly doubles — §18's estimate of <strong>~16–24 days</strong>, or <strong>~25–35 days</strong> against the revised baseline. Both figures are tagged as inference, not measurement.</p>
+    <p><strong>Follow-on owed:</strong> §18's timeline, its v1 scope-in list and §13's gate budgets all need re-baselining against this choice. None of that has been done. Decision 2's "pairs with option C" note is now moot.</p>
+    <p class="src">DECISIONS.md item 1 · §18</p>
+  </div>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">D5</span>
+      <span class="card-title">Layers are a real document tier, and editing one never disturbs the layers below</span>
+      <span class="chip settled">Settled 2026-08-20</span>
+    </div>
+    <p>Offered an authoring-order rule or a structural split, you chose the <strong>structural split</strong>, and set the governing requirement with it: work on separate layers <em>without changing the bottom layer or layers</em>.</p>
+    <p><strong>The layout contract goes from four levels to five.</strong> A layer is a depth axis, not a containment one, so it does not append as a fifth level — it splits the old level 2. Page is a vertical list of sections plus at most one optional page backdrop layer. <strong>Section is an ordered stack of layers.</strong> Layer is the real CSS Grid, and every layer in a section shares that section's track definition without exception. Block is integer grid placement on exactly one layer. Inside a block is flow only.</p>
+    <p><strong>Sections own the stacks; the page backdrop carries no content.</strong> This is derived, not preferred: level 1 is reorder-only, so page-wide content layers would let a section reorder slide its blocks out from under the artwork they were composed against. The page backdrop exists for one continuous wash behind the whole page, and is art and motion only.</p>
+    <p><strong>Isolation is enforced structurally, not by convention.</strong> Exactly one layer is active; the others render but are inert. Underneath that, <strong>layer-scoped writes</strong>: every op the editor emits carries a <code>layerId</code>, and an op whose target node's <code>layerId</code> differs is <em>rejected</em>, not applied. That turns "without changing the bottom layers" into an assertable invariant over the op log rather than a promise.</p>
+    <p><strong>It closes an existing trap.</strong> §7.5 warns that a transformed art container silently swallows every dropdown inside it — the user sees "the menu is behind the picture" with no visible cause. A stack of independently animatable layers would make that worse, so overlay-class content (dropdown 200, overlay 300, modal 400, popover, skipLink) now renders into a page-level overlay root <em>outside</em> the layer stack. The trap becomes impossible rather than lint-detectable.</p>
+    <p><strong>Your build-order request survives as a consequence.</strong> Step 4 gains a layer-ordered build: a section's bottom layer is composed and approved before work moves up. You get the ordering and the structure, not one instead of the other.</p>
+    <p><strong>Rejected:</strong> the authoring-order-only reading; page-owned layer stacks carrying blocks; and a layer-count cap — the cost that matters is GPU and main-thread load from placed instances, which §9.5's <code>costClass</code> validator already caps where it occurs.</p>
+    <p class="src">memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md · 11 PRD sections owed edits</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="nongoals">
+  <h2><span class="num">03</span>Non-goals</h2>
+  <p class="lede">Six things the product will not do. These are settled scope boundaries, listed because reversing one is a decision only you can make.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>#</th><th>Not doing</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td class="n">NG1</td><td>AI aesthetic judging of any kind</td><td>Replaced by you, per the product brief</td></tr>
+      <tr><td class="n">NG2</td><td>Multi-user real-time collaboration</td><td>Single-user product. The comment schema is collaboration-ready, but there is no second writer in v1–v3</td></tr>
+      <tr><td class="n">NG3</td><td>A CMS or backend</td><td>Static output. Forms use a third-party endpoint or a mailto fallback</td></tr>
+      <tr><td class="n">NG4</td><td>Application-shell UI — dashboards, auth, settings, data tables at scale</td><td>62 inventory items are app-shell / commerce / exotic-chart, gated behind the site-type answer and deferred to v3. The 62 figure is tagged as approximate until a §7/§8 audit re-confirms it</td></tr>
+      <tr><td class="n">NG5</td><td>Raster image generation inside the pipeline</td><td>Structurally impossible on the claude.ai leg — it cannot produce bitmap images</td></tr>
+      <tr><td class="n">NG6</td><td>Rewriting existing Python ACOS tooling</td><td>Read-only reference. New code is TypeScript per the standing language rule</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Also stated as boundaries in §1: this is <strong>not Webflow</strong> (the pixel canvas is the last thing built, not the first), <strong>not a template picker</strong> (directions are generated per project), <strong>not a claim of WCAG certification</strong> (automated tooling tops out around 57% of real issues, so the evidence bundle says "passed N automated gates," never "AA compliant"), and <strong>not award-winning by construction</strong> (award juries recognise assembled output; the one lever that raises the ceiling is the custom code block).</p>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="signoff">
+  <h2><span class="num">04</span>The four sign-off rows</h2>
+  <p class="lede">Section 18's deviations table. Each row is a place where v1 as drafted does <em>less</em> than the eight-step brief promised. §18 calls these deviations from a settled brief, not sequencing details, and blocks all v1 work until they are resolved.</p>
+
+  <div class="card is-open">
+    <div class="card-head">
+      <span class="card-id">4(c)</span>
+      <span class="card-title">Inline text formatting is v2</span>
+      <span class="chip open">Needs your ruling</span>
+    </div>
+    <p><strong>What v1 gives you.</strong> Click any heading, eyebrow, button, nav item, label or stat number and type. The mechanism is <code>contenteditable="plaintext-only"</code> — a browser mode that allows in-place editing but refuses all formatting and strips pasted markup. It covers about 90% of a marketing page's text nodes.</p>
+    <p><strong>What it does not give you.</strong> Inside a paragraph of body copy: no bold, no italic, no list, and <strong>no link on a phrase</strong>. The real editor for that — TipTap / ProseMirror, MIT-licensed, restricted to bold, italic, link, list, blockquote with no font, colour or size controls — is v2.</p>
+    <p><strong>The consequence.</strong> The gap lands on exactly two components: <em>Rich text / prose body</em> and <em>Legal / policy body</em>. A privacy policy with no clickable links, and body copy that cannot link anywhere, is a hole a user hits on day one.</p>
+    <p><strong>Cost honesty.</strong> "Just add links" is not cheap. <code>plaintext-only</code> refuses markup by design, so a link means installing the real editor anyway. You would be buying the whole rich-text block and choosing to show fewer buttons on it.</p>
+    <ul class="opts">
+      <li data-k="A">Accept. No inline formatting or links in v1 body copy.</li>
+      <li data-k="B">Pull the rich-text block into v1, restricted mark set, long-form prose blocks only.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>B.</strong> A body-copy system that cannot hold one link is not finished. The cost is not in §18's day estimate, so this grows the schedule again on top of Decision 1.</div>
+    <p class="src">§18 deviations table row 4(c) · §10.3 tier 1 / tier 2 · §20.1</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head">
+      <span class="card-id">4(d)</span>
+      <span class="card-title">No cross-direction component swaps</span>
+      <span class="chip open">Needs your ruling</span>
+    </div>
+    <p><strong>What v1 gives you.</strong> The component bar swaps between 10 variants of a component — 12 for hero, CTA band, card, badge, feature grid and pricing — all inside the one direction you chose.</p>
+    <p><strong>What it does not give you.</strong> "Show me direction 3's version of this card." Impossible in v1, because <strong>only one direction is ever generated in full</strong>. The other directions exist only as short Stage-A capsules for the tournament.</p>
+    <p><strong>Cost of fixing it.</strong> A second full direction means running the entire hand-carry again — Step 3, the pipeline's slowest and most fragile leg, the one named as the biggest threat to repeat use.</p>
+    <p><strong>Note.</strong> §14.3 already designs the v2 behaviour in detail — a side-by-side "fitted to your direction" versus "kept as designed (adds 6 off-system values)" choice, a visible coherence-debt ledger, and a soft cap at ≈3 transplants that offers to flip the whole site to the other direction. The design exists; only the second generated direction is missing.</p>
+    <ul class="opts">
+      <li data-k="A">Accept. One direction in v1, no cross-direction swaps.</li>
+      <li data-k="B">Generate two full directions in v1.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>A, strongly.</strong> Beyond the cost, cross-direction swapping arguably fights D1's own logic: if a direction is a coherent whole, pulling one card out of a different one breaks the thing D1 exists to protect.</div>
+    <p class="src">§18 deviations table row 4(d) · §14.3 · D1</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head">
+      <span class="card-id">4(f)</span>
+      <span class="card-title">Editor tooling: zoom/pan, rulers, multi-select</span>
+      <span class="chip open">Needs your ruling · re-scoped</span>
+    </div>
+    <p><strong>This row is stale and must be rewritten before it is signed.</strong> It currently reads <em>"no canvas, no zoom/pan, no rulers, no multi-select."</em> Decision 1 already put the canvas, gridlines and full constraint dragging into v1, so the "no canvas" half is dead text.</p>
+    <p><strong>What is genuinely still deferred:</strong> zoom and pan (moving and magnifying the canvas view), rulers and guides, and multi-select with align/distribute (selecting several elements and lining them up evenly).</p>
+    <p><strong>Why this is now live rather than a formality.</strong> Deferring these was reasonable when v1 had no canvas. Now it does. Dragging elements one at a time on a fixed 1280-pixel canvas you cannot zoom, inside a browser panel, is unpleasant work — and R47 was written about exactly this class of risk: that v1 ships without ever testing whether the drag model is pleasant to use.</p>
+    <ul class="opts">
+      <li data-k="A">Accept all three deferrals — zoom/pan, rulers and multi-select all go to v2.</li>
+      <li data-k="B">Zoom/pan and multi-select with align/distribute into v1; rulers and guides stay v2.</li>
+      <li data-k="C">All three into v1.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>B.</strong> Zoom/pan and multi-select are what a canvas <em>requires</em>. Rulers are the one of the three that gridlines genuinely substitute for.</div>
+    <p class="src">§18 deviations table row 4(f) · §18 scope-cut list · §17-R47</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head">
+      <span class="card-id">6</span>
+      <span class="card-title">Charts are partial — and, as written, unreachable</span>
+      <span class="chip open">Needs your ruling · entangled</span>
+    </div>
+    <p><strong>What v1 gives you.</strong> Charts drawn as build-time SVG — shapes and lines, not pixels, generated before the page ships — limited to <strong>4 mark types</strong> (a mark type is the shape a chart draws with: bar, line, dot, area) from a fixed whitelist. The full 12-mark chart kit and the custom code block are v2. Exotic and interactive charts are v3. No scatter plot, no heatmap, nothing a visitor can hover.</p>
+    <p><strong>The tangle.</strong> §18's scope cut also removes "custom-component insertion" <em>entirely</em> — and placing a component the direction does not already include is precisely what that phrase means. Read literally, v1 ships charts <strong>nobody can place on a page and nobody can feed numbers into</strong>. Charts are also your own named example for Step 6.</p>
+    <p><strong>§10.3's proposed fix, which itself needs signing:</strong> two narrow v1 rows — a minimal custom-component insertion registry, and a minimal chart-data field (paste a table of numbers, wired straight to the chart's data prop; no formulas, no multi-sheet, no cell formatting). §10.3 states its own fallback plainly: <em>if you decline these, charts must be moved out of v1 altogether</em>, because a chart nobody can populate is not a real feature.</p>
+    <ul class="opts">
+      <li data-k="A">Sign off row 6 as PARTIAL <em>and</em> approve §10.3's two exception rows.</li>
+      <li data-k="B">Decline the two rows, and move charts out of v1 entirely.</li>
+      <li data-k="C">Pull the full 12-mark chart kit into v1.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>A.</strong> The cheapest of the three, and the only one that leaves v1 with a working version of a capability you named yourself.</div>
+    <p class="src">§18 deviations table row 6 · §10.3 sign-off note · §14.6</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="decisions">
+  <h2><span class="num">05</span>The fifteen open decisions</h2>
+  <p class="lede">From <span class="mono">DECISIONS.md</span>, ordered by how much downstream work each blocks. Item 1 is settled and appears above. Each carries a recommendation — an opinion, not a finding.</p>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">2</span><span class="card-title">v1 component set — 87 items / 674 variants, or cut back?</span><span class="chip open">Most load-bearing</span></div>
+    <p>The full inventory is <strong>216 rows / 1228 variants</strong>. The v1 cut is <strong>87 pickable items / 674 variants</strong> — 70 items / 553 variants from §8.3 plus 17 items / 121 variants from §9's motion and art containers. §18's phasing and §13's render budget were built on <strong>"~50 items / ~430 variants"</strong>: a <strong>~74% increase in items and ~57% in variants</strong>.</p>
+    <p><strong>The old number was never real.</strong> §8.4 records that the ~50/~430 list was hand-written, drifted from the table it claimed to summarise, and its stated totals were below what its own named entries summed to. It missed four components the table already marked v1: Dropdown / flyout menu (7), Radio group (8), Toggle switch (8), Platform CTA badge registry (5).</p>
+    <p><strong>Evidence the document already runs on 674:</strong> §8.3's render arithmetic computes <strong>1,348 renders</strong> (674 v1 variants × 2) and <strong>2,784 comparisons</strong> straight from it. The literal string "430" appears nowhere in §13 or §18 — §8 asserts those sections were sized against it, so re-baselining means re-deriving their day and budget figures, which carry an inference tag already.</p>
+    <p><strong>A mitigation that does not apply.</strong> §8 notes that "sixty-two items are app-shell, commerce, or exotic-chart and generate only when the interview's site-type answer requires them." That reads like interview-gating shrinks the v1 set. It does not — §17-R35 places those 62 in <strong>v3</strong>. They were never inside the 87.</p>
+    <ul class="opts">
+      <li data-k="1">Accept 87/674 and re-baseline §18's phase sizing and §13's budget.</li>
+      <li data-k="2">Demote specific rows to v2, each with a stated reason in the Priority cell. <strong>Radio group and Toggle switch are named non-demotable</strong> — cutting them ships a form system with no radio buttons and no toggles.</li>
+      <li data-k="3">Split v1 into v1a / v1b.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>1.</strong> §8.4 is now generated automatically from the Priority column, so 87 is simply what the PRD says v1 <em>is</em>; demoting means hand-editing Priority cells against a schedule model that does not yet exist. Option 3 also sits badly with Decision 1, where you rejected the split shape.
+    <br><br><strong>Caveat that should not be softened:</strong> Decision 1 already roughly doubled editor scope. Accepting 87/674 on top means §18's timeline needs rebuilding, not patching. If demotion appeals, the fat is not in the four missed components (Dropdown/flyout 7 + Platform CTA badge registry 5 = 2 items / 12 variants) — it is in Media (5 items / 76 variants, of which Icon set 20, Decorative spot-graphic set 20 and Pattern/texture library 20 are three rows) and in §9's motion/art (17 items / 121 variants).</div>
+    <p class="src">§8.8-X3 · §8.4 · §17-R35</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">3</span><span class="card-title">"20 artworks" — 20 pieces total, or 20 per style family?</span><span class="chip open">Open</span></div>
+    <p>§7 currently adopts the 20-total reading as the v1 hand-carry quota, and flags it against the FruitSync exemplar — <strong>231 sprites</strong> — as a deviation requiring sign-off.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>20 total for v1, per direction.</strong> 231 is not reachable through a manual paste boundary. But say plainly that a game-style site needs a different artwork path — which is what decision 13 is about.</div>
+    <p class="src">§7-O31 · §17-O15</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">4</span><span class="card-title">Multi-page in v1, or a single page?</span><span class="chip open">Also gates build start</span></div>
+    <p>§17.4-O10 and §18's v1 scope list contradict each other — the scope list already promises "multi-page manager, global regions, per-page SEO fields." §18 costed three branches and declined to choose. <strong>§18's exit conditions name this as a third build-start precondition</strong>, alongside the sign-off rows.</p>
+    <ul class="opts">
+      <li data-k="A">Single page. No multi-page manager, no global regions as shared partials. <strong>8–12 days.</strong></li>
+      <li data-k="B">Multi-page in v1 — page tree, global regions as real partials, change-once-changes-everywhere. <strong>16–24 days</strong>, tagged inference, not measurement. Forces §17-O11 to be answered in v1 too.</li>
+      <li data-k="A+">Single page, but <code>layout.json</code> carries a <code>pages[]</code> array of length 1 and every operation is page-scoped from day one. <strong>8–12 days + ~0.5 day.</strong> Makes Branch B a later feature addition rather than a data migration.</li>
+    </ul>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Branch A+</strong> if you do not want to decide now — it is §18's own recommendation for that case, and it costs about half a day. <strong>Branch B</strong> if you are confident the first real site is multi-page: global regions (edit the navigation once, everywhere follows) is what makes a multi-page site maintainable, and retrofitting it is worse than building it in.</div>
+    <p class="src">§17.4-O10 · §18 cross-cutting decisions</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">5</span><span class="card-title">Build byte-reproducibility — is D3's proof achievable?</span><span class="chip open">Most likely to quietly become untrue</span></div>
+    <p><strong>No source consulted established that Astro/Vite builds are byte-reproducible across two installs.</strong> §12.8 only constrains our own generator's determinism. The PRD requires a Phase-0 spike, states explicit reproducibility preconditions, and documents a normalised-comparison fallback flagged as weakening D3's proof.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Run the Phase-0 spike before committing to two-build byte-equality.</strong> If it fails, accept normalised comparison and say so in the PRD rather than claiming a guarantee the toolchain cannot give.</div>
+    <p class="src">§12.8 · §12-O33 · success criterion S4</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">6</span><span class="card-title">Does sibling-anchored free-positioning ship at all?</span><span class="chip open">Unprototyped</span></div>
+    <p>§11.4 rule 1 originally allowed anchoring to "parent edge, sibling, or grid cell." The subgrid-promotion compile strategy behind sibling anchoring is <strong>unprototyped</strong>, with "no known mitigation beyond the idea stated."</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Parent and grid-cell anchoring only in v1; sibling anchoring behind the prototype.</strong> Sibling anchors are where constraint systems usually break, and this one has never been built.</div>
+    <p class="src">§11.4 rule 1 · OPEN-ITEMS A[11]</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">7</span><span class="card-title">Step 5 regeneration — silent apply, or reviewed?</span><span class="chip open">Open</span></div>
+    <p>v1 makes applying a brand-new direction a <strong>reviewed</strong> operation: a per-node flag, LOCK blocked until acknowledged, bulk-acknowledge available. The PRD flags that your Step 5 may have assumed a new direction simply <em>applies</em>.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Keep the review, keep bulk-acknowledge.</strong> Silently restyling every node after hours of manual placement is the kind of surprise that makes people stop trusting a tool.</div>
+    <p class="src">§12.16</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">8</span><span class="card-title">Is there a wide/xl breakpoint override tier in v1?</span><span class="chip open">Open</span></div>
+    <p>Currently no. §10.1's "full" preview shows base rules and carries no overrides. Adding one would introduce <strong>the only upward override</strong> in an otherwise desktop-down cascade.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>No xl tier in v1.</strong> One exception to a cascade direction costs more in confusion than it buys in layout control.</div>
+    <p class="src">§12-O32 · §11.3</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">9</span><span class="card-title">Should 1440 be a fifth live-switcher option?</span><span class="chip open">Open</span></div>
+    <p>Related to decision 8 but separate: this is about <em>previewing</em>, not overriding.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Yes, as preview-only.</strong> 1440 is the reference desktop width the capture profile already uses. Previewing it without allowing overrides is cheap and keeps decision 8 intact.</div>
+    <p class="src">§10.1</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">10</span><span class="card-title">How many typefaces seed the font catalogue?</span><span class="chip open">Open</span></div>
+    <p>An OFL-licensed shortlist — the SIL Open Font License permits embedding and redistribution. The PRD would not invent a count.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>24–32 families, curated by role.</strong> Enough for ~10 directions to differ genuinely; small enough to audit every licence by hand once. A starting number to revise after the first real run, not a fixed answer.</div>
+    <p class="src">§6 · <span class="mono">font-catalog.json</span></p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">11</span><span class="card-title">Motion-concurrency caps — carry over, or benchmark?</span><span class="chip open">Open</span></div>
+    <p>The cap numbers — max 1 WebGL slot, max 1 particle layer, max 2 autoplay video loops, max 2–3 pinned sequences — come from prior research, <strong>not benchmarked against this product's own render stack</strong>.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Ship the carried-over caps as provisional, benchmark during v1.</strong> They are labelled provisional in two places already; the honest fix is measurement, not a new guess.</div>
+    <p class="src">§13.4 gate 4a · §13.11 · §9.5</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">12</span><span class="card-title">Who authors the variant axis schema?</span><span class="chip open">Unbudgeted</span></div>
+    <p>Three candidates were costed. The PRD's inference is <strong>hand-authored in the skill</strong>, for determinism — but that is an <strong>unbudgeted effort line</strong> §18's timeline does not carry. The axis schema is what makes the component bar's "label the differing axis" caption and its filter chips possible at all.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Hand-authored, and add the effort line to §18.</strong> Determinism matters more here than authoring convenience, but the schedule must admit the cost.</div>
+    <p class="src">§8.6 · O33 · risk R46</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">13</span><span class="card-title">Raster artwork when the project has no asset library</span><span class="chip open">No known mitigation</span></div>
+    <p>Lane A (code-drawn, token-referencing SVG / CSS / canvas) and Lane B (asset-library ingestion) are in for v1. Lane C (external raster generators — Midjourney, FLUX, Recraft) is <strong>out</strong>, with a runbook shipped at <span class="mono">docs/lane-c-raster-runbook.md</span>. The residual case — a project with no asset library whose direction genuinely needs photographic or painterly raster — has <strong>no solution that preserves the paste-only path</strong>.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Accept it as a per-project limitation and say so at interview time.</strong> If the interview reveals a raster-dependent direction, the skill should warn before generating a design system it cannot fully deliver — better than discovering it at step 4.</div>
+    <p class="src">§18-O32 · §7.9 · §17-O7</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">14</span><span class="card-title">Confirm the reconstruction of §7 categories K and M</span><span class="chip open">Needs your eyes</span></div>
+    <p>The original contents of Category K (internationalisation, locale and content shape) and Category M (sound and sensory identity) were <strong>unrecoverable</strong> after a truncation bug. §7.14 and §7.15 are labelled <strong>a reconstruction, not a recovery</strong>. Everything else in the PRD is original or audited; these two are the only rebuilt passages.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Read those two subsections and confirm or correct.</strong></div>
+    <p class="src">§7.14 · §7.15 · O35</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">15</span><span class="card-title">How is success criterion S9 measured?</span><span class="chip open">No known mitigation</span></div>
+    <p>S9 is a retention proxy — is the tool used more than twice? But <strong>NG3 says the product has no backend</strong>, and no section specifies any usage tracking.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Measure it from local session files, not telemetry.</strong> Count sessions recorded against the same ACOS project inside a 90-day window. No backend needed, no data leaves the machine.</div>
+    <p class="src">§2.3 S9 · G8</p>
+  </div>
+
+  <div class="card is-open">
+    <div class="card-head"><span class="card-id">16</span><span class="card-title">Should the interview ask about the audience's access needs?</span><span class="chip open">Open</span></div>
+    <p>Whether Step 1 should ask about a project's <em>tertiary</em> audience — the people who will actually visit the site — and whether their known access needs should tighten §13's gate thresholds for that project. The PRD proposes no mechanism and did not invent one.</p>
+    <div class="rec"><span class="lbl">Recommendation</span><strong>Ask the question, but do not let the answer <em>loosen</em> any gate.</strong> Learning that an audience skews older or uses screen readers should be able to raise a threshold, never lower one. Accessibility floors should not be negotiable per project.</div>
+    <p class="src">§3.2</p>
+  </div>
+
+  <p style="margin-top:1.6rem"><strong>Plus 51 further deferred items</strong> recorded in <span class="mono">prd/OPEN-ITEMS.md</span> section B — unmeasured numbers, unsourced inferences, and edits that belong to a section other than the one that found them. Those need work, not a decision from you.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="lenses">
+  <h2><span class="num">06</span>Decided for you by the research lenses</h2>
+  <p class="lede">Fourteen places where the twelve research lenses disagreed with each other and the PRD picked a winner. These are live decisions made on your behalf — reversible, and worth a skim in case one of them is wrong for you.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>#</th><th>The disagreement</th><th>What was chosen</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Direction count — 6 or 10</td><td><strong>10 generated, 6 surfaced by default</strong> in a tournament, 7–10 on "see more." The tournament format (3 → pick → 3 → pick → head-to-head) is the real mitigation, not the count</td></tr>
+      <tr><td class="n">2</td><td>Does 10 variants cause choice overload?</td><td><strong>No, when four moderators are engineered away</strong> — render in-slot at real scale, sort by structural distance, pre-select the canonical variant, make not-choosing free. The "indistinguishable at 200×120px" rule is retained</td></tr>
+      <tr><td class="n">3</td><td>State tokens — Carbon's ~60 named, or Material 3's 4 opacities</td><td><strong>Material 3's 4 state-layer opacities</strong>, plus a 22-item coverage checklist. Equivalent coverage at ~7% of the generation cost</td></tr>
+      <tr><td class="n">4</td><td>Motion duration steps — 16 or 6</td><td><strong>Carbon's 6, scaled by expressiveness:</strong> fast01 70ms, fast02 110, moderate01 150, moderate02 240, slow01 400, slow02 700</td></tr>
+      <tr><td class="n">5</td><td>Hero variant count — 12 or 10</td><td><strong>12</strong> for hero, CTA band, card, badge, feature grid and pricing; 10 for everything else Tier-A</td></tr>
+      <tr><td class="n">6</td><td>Monospace typefaces — 5 or one per direction</td><td><strong>5.</strong> Mono occupies a small, low-identity surface; directions map many-to-one</td></tr>
+      <tr><td class="n">7</td><td>Breakpoint authoring — four viewports, or derive</td><td><strong>Author at 1280, auto-derive 768 and 390, override only where preflight complains</strong> — in v1. Full per-breakpoint authoring is v2</td></tr>
+      <tr><td class="n">8</td><td>Should the anti-slop lint be a hard gate?</td><td><strong>Split by layer:</strong> hard gate upstream on the generated design-system JSON; advisory downstream at the human-edit layer</td></tr>
+      <tr><td class="n">9</td><td>Cumulative Layout Shift target — 0.1 or 0.05</td><td><strong>0.1 is the pass bar; 0.05 is an internal stretch target.</strong> The stricter number should not become a failing gate</td></tr>
+      <tr><td class="n">10</td><td>A layers / navigator panel?</td><td><strong>Mandatory, v1, with its own effort line.</strong> Your Step-4 list omitted it; three lenses independently said clicking on canvas provably cannot reach every node</td></tr>
+      <tr><td class="n">11</td><td>Editor server — one process or two</td><td><strong>Spike both.</strong> Two-origin is what Onlook, Stackbit and Tina converged on; single-origin collapses the CORS and postMessage surface to zero</td></tr>
+      <tr><td class="n">12</td><td>Is the claude.ai hand-carry mandatory?</td><td><strong>Both ship in v1.</strong> Hand-carry is the default because you asked for it; Local Regeneration Mode is first-class because the hand-carry is the biggest threat to repeat use</td></tr>
+      <tr><td class="n">13</td><td>Effort estimate for the canvas</td><td><strong>30–60 days adopted as inference</strong>, anchored on Webflow / Framer / Editor X being multi-year multi-team products</td></tr>
+      <tr><td class="n">14</td><td>Artwork — 20 individual pieces or 20 style sets</td><td><strong>Sets</strong> for icons, illustrations, spot graphics and patterns; <strong>individual pieces</strong> for background scenes and hero artwork. Flagged as O15 because 20 individual hero illustrations might be exactly what you meant — see decision 3</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="excluded">
+  <h2><span class="num">07</span>Deliberately cut</h2>
+  <p class="lede">Things a lens proposed and the PRD refused, each with the reason. Listed so you can overturn one if the reason does not hold for you. These are the ones with the most product consequence — §20.1 carries the full list of 29.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Cut</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>A vision-model aesthetic judge loop</strong></td><td>You replace the judge by product definition. Porting it re-imports the rejected architecture</td></tr>
+      <tr><td><strong>Building inside GrapesJS / Craft.js / Plasmic / Builder.io / Puck</strong></td><td>Five distinct sufficient reasons. Puck is closest and still fails on grid placement, breakpoint cascade, and React-versus-Astro</td></tr>
+      <tr><td><strong>Ten "signature moment" variants</strong></td><td>Treating the identity-carrying choice as a catalogue pick is the root homogenisation mechanism. 2–3 bespoke concepts instead, and a lint flags a second one</td></tr>
+      <tr><td><strong>HTML→JSON round-tripping</strong></td><td>The canonical WYSIWYG failure — Dreamweaver, FrontPage, Muse. Worse here, because Claude also writes the source: the next read sees reformatted markup it did not write</td></tr>
+      <tr><td><strong>Two independent layouts (the Squarespace Fluid Engine model)</strong></td><td>A documented overlap epidemic. Desktop-down cascade with sparse overrides instead</td></tr>
+      <tr><td><strong>Absolute positioning as the free-position implementation</strong></td><td>Collapses parents and bakes in the authoring viewport. Anchored-offset instead</td></tr>
+      <tr><td><strong>DOM wrappers for hit-testing</strong></td><td>Removing them at LOCK silently shifts layout via <code>&gt;</code>, <code>:first-child</code> and <code>gap</code>. Zero DOM injection instead</td></tr>
+      <tr><td><strong>Interactive / client-library charts in v1</strong></td><td>A charting runtime is real client JavaScript on a static page and may undermine the performance gate</td></tr>
+      <tr><td><strong>Deriving reduced-motion by zeroing duration at build time</strong></td><td>Produces a broken-looking experience. Art-directed siblings authored at generation time instead</td></tr>
+      <tr><td><strong>A JavaScript router for page transitions</strong></td><td>Breaks the back button. CSS <code>::view-transition</code> degrading to instant navigation instead</td></tr>
+      <tr><td><strong>Loading a Lottie or Rive runtime for a hover effect</strong></td><td>CSS/GSAP covers micro-interactions at zero runtime cost</td></tr>
+      <tr><td><strong><code>ScrollSmoother</code></strong></td><td>Restructures the DOM. Lenis wraps native scroll so accessibility survives</td></tr>
+      <tr><td><strong>The File System Access API as the persistence path</strong></td><td>Chromium-only; Safari has no directory picker and Mozilla published a "harmful" position</td></tr>
+      <tr><td><strong>CRDTs (Yjs, Automerge, Loro)</strong></td><td>One human, one sequential agent. Concurrent multi-writer merge buys nothing and costs an opaque binary document git cannot diff</td></tr>
+      <tr><td><strong>A 10-up direction grid</strong></td><td>Thumbnail grids systematically favour loud, high-contrast directions over subtle editorial ones. Replaced by the tournament</td></tr>
+      <tr><td><strong>Rust</strong></td><td>Nothing here is performance-critical or needs a single binary; the standing language rule's own guidance says TypeScript</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="newasks">
+  <h2><span class="num">08</span>Your two new asks</h2>
+  <p class="lede">The first is now settled as <strong>D5</strong> and appears under Locked decisions. The second is still open. Neither was in the PRD before this week, so both carry edits the document has not yet received.</p>
+
+  <div class="card is-settled">
+    <div class="card-head">
+      <span class="card-id">NEW-1</span>
+      <span class="card-title">Layers — settled as D5, edits owed to 11 sections</span>
+      <span class="chip settled">Ruled 2026-08-20</span>
+    </div>
+    <p>The decision is recorded. What has <em>not</em> happened is the PRD patch. These edits are owed, and are being held for a single pass alongside the outstanding sign-off rulings so §18 is not rewritten twice.</p>
+    <div class="tablewrap" style="margin-top:.9rem">
+      <table>
+        <thead><tr><th>Section</th><th>Edit owed</th></tr></thead>
+        <tbody>
+          <tr><td class="n">§11.1</td><td>Four-level contract becomes five. Level 2 splits into Section-owns-stack and Layer-is-the-grid</td></tr>
+          <tr><td class="n">§11.2</td><td>"The grid overlay must BE the grid" now reads <code>getComputedStyle</code> on the <strong>active layer</strong>, not the section</td></tr>
+          <tr><td class="n">§11.4</td><td>Free-position escape hatch scoped to the active layer; cross-layer anchoring stated as out of v1</td></tr>
+          <tr><td class="n">§12.1</td><td>Two-tier truth unchanged in shape; the scene graph gains the layer tier</td></tr>
+          <tr><td class="n">§12.3</td><td>The layout node gains <code>layerId</code>; the section node gains <code>layers[]</code></td></tr>
+          <tr><td class="n">§12.9</td><td>Layer-scoped-writes validity rule added to op application</td></tr>
+          <tr><td class="n">§7.5</td><td><code>layout.stacking-context-rules</code> gains the overlay-root rule; the existing trap note is strengthened, not replaced</td></tr>
+          <tr><td class="n">§9.2</td><td><code>Decorative background layer</code> re-homed as a bottom-layer default rather than a placed component. Variant counts and priorities unchanged</td></tr>
+          <tr><td class="n">§4 Step 4</td><td>Layer-ordered build: a section's bottom layer composed and approved first</td></tr>
+          <tr><td class="n">§18</td><td>New unbudgeted effort line; the <strong>LOCK also strips</strong> list gains layer editor-state</td></tr>
+          <tr><td class="n">§13</td><td>A LOCK gate asserting no layer editor-state survives into <code>dist/published/**</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Effort.</strong> Structurally this is the same shape as the multi-page manager — a new tier in the document model, a new editor panel, new LOCK strip rules, a new gate. §18 costs that shape at <strong>16–24 days [I]</strong> for Branch B. Treat layers as a comparable line <em>until measured</em>: this is an inference from structural similarity, not an estimate of this work. It stacks on top of decision 1's already-accepted ~16–24 days, or ~25–35 days against the revised baseline, both themselves tagged inference.</p>
+    <p><strong>Three follow-ups D5 spawned, none of them assumed:</strong> whether the page backdrop scrolls with the page or stays fixed (both are legitimate and look completely different — parallax is the case that needs the answer); whether cross-layer anchoring ships in v2, which should be answered together with decision 6 on sibling anchoring since they share a compile strategy; and whether the layer panel extends the navigator tree, already mandatory in v1 with its own effort line, or becomes a second panel.</p>
+    <p class="src">memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md</p>
+  </div>
+
+  <div class="card is-new">
+    <div class="card-head">
+      <span class="card-id">NEW-2</span>
+      <span class="card-title">An engine that generates animations in a customizable way</span>
+      <span class="chip new">Extends D4 — needs a ruling</span>
+    </div>
+
+    <h3 style="margin-top:.4rem">What exists today</h3>
+    <p>The motion model is <strong>pick-from-a-catalogue</strong>, with two composable axes. §9.1.1 defines them:</p>
+    <ul class="plain">
+      <li><code>variant</code> — the container's structural build and skin, drawn from §9.2's per-kind count.</li>
+      <li><code>props.motion</code> — the choreography, a token shaped <code>&lt;kind&gt;.&lt;slug&gt;@&lt;version&gt;</code> drawn from §9.3's animation kinds. Combined with <code>trigger</code> (a closed list: <code>page-load</code>, <code>viewport-enter</code>, <code>viewport-scrub</code>, <code>pointerenter</code>, <code>click</code>, <code>always</code>) it decides what plays and when.</li>
+    </ul>
+    <p>The component bar shows these as two tabs — Style and Motion — never as one flattened cross-product list, because an 8-structural × 47-eligible-motion container would be a 376-row list.</p>
+    <p><strong>The parameters you would want to turn already exist — as derived values, not knobs.</strong> §7.7 lists them all: <code>motion.duration-scale</code>, <code>motion.easing-set</code>, <code>motion.transition-presets</code>, <code>motion.stagger-policy</code>, <code>motion.distance-tokens</code>. Every one is marked <strong>derived</strong>, meaning computed from the chosen direction. <code>motion.distance-tokens</code> is explicitly "bound to the spacing scale, never arbitrary translateY values."</p>
+    <p><strong>And a deterministic generator already exists.</strong> §14.1 specifies <code>variants.ts</code> — reads the direction's tokens, emits parameterised component markup, no model call, instant. It also supplies "more like this": 5 deterministic neighbours of a variant you already approved.</p>
+
+    <h3>The conflict your ask creates</h3>
+    <p>This is the part that needs your decision rather than my judgement. <strong>D1's rule is that derived values are computed from the direction and never picked independently</strong>, and goal G3 states the design system is "coherent by construction" for exactly that reason. §7.7 extends that rule into motion by design — the note on <code>motion.distance-tokens</code> says so in as many words.</p>
+    <p>Exposing duration, easing, distance and stagger as knobs you turn is precisely the thing D1 forbids for every other derived value. It is not impossible — it is a deliberate exception, and it needs to be recorded as one rather than slipped in.</p>
+    <p>There is also a smaller tension with <strong>D4's "motion is not a separate parallel subsystem."</strong> A parameter engine with its own authoring surface is arguably that subsystem. Whether it counts as one is a judgement call about wording, and yours to make.</p>
+
+    <h3>The question I need answered</h3>
+    <p>Three shapes, increasing in cost and in distance from D1:</p>
+    <ul class="opts">
+      <li data-k="a">A <strong>bounded knob set</strong> — the direction still computes the defaults, and you nudge within a range it allows. D1 survives, because the direction still owns the ceiling and floor.</li>
+      <li data-k="b">A <strong>free parameter surface</strong> — duration, easing curve, distance, delay, stagger, all directly editable. Fastest to feel powerful, and a stated exception to D1.</li>
+      <li data-k="c">A <strong>compositional engine</strong> — you build an animation from primitives (what moves, from where, on what trigger, in what order) rather than tuning a preset. The biggest build, and the only one that genuinely deserves the word "engine."</li>
+    </ul>
+    <p class="src">Touches D1 · D4 · §7.7 · §9.1.1 · §9.3 · §14.1</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="defects">
+  <h2><span class="num">09</span>Known defects in the document</h2>
+  <p class="lede">Recorded in <span class="mono">planning/preeng/.../analysis-report.md</span> as 13 new defects, D-01 to D-21. These are bookkeeping faults in the PRD itself, not product decisions — but they will bite whoever implements from it, so they are listed here rather than buried.</p>
+
+  <ul class="plain">
+    <li><strong>The A91+ id collision is three-way.</strong> §7 uses A91–A97, §12.17 uses A91–A101, and §18 uses A91–A101. Three different meanings for the same ids.</li>
+    <li><strong><code>plan.md</code> cites A102 and A112, which no section defines.</strong></li>
+    <li><strong>O31 and O32 each carry four different meanings</strong> across sections.</li>
+    <li><strong>The demo-id contradiction is four-for-four</strong> — <code>plan.md</code> §3.2 disagrees with <code>stories.json</code> for all four demos.</li>
+    <li><strong>MoSCoW prioritisation is flat:</strong> 77 MUST, 1 COULD, no SHOULD, no WON'T. Exactly one trade-back lever exists if the schedule slips.</li>
+    <li><strong>74 of the 78 slice files carry <code>&#35; TODO: confirm</code></strong> on dependency <code>what_it_provides</code> — 120 entries. This is deliberate: the task files say A depends on B, but not what A needs from it.</li>
+    <li><strong>A trap worth remembering:</strong> FR ids are defined in <code>spec.md</code>, not <code>plan.md</code>. <code>plan.md</code> cites only 4 of 188. Checking coverage against <code>plan.md</code> produces a false 184-orphan alarm.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Compiled 2026-08-20 for Zee · Sources: <span class="mono">prd/website-builder-prd.md</span> (99,380 words, 4,225 lines, 20 sections) · <span class="mono">DECISIONS.md</span> · <span class="mono">memory/decisions/D1–D4</span> · <span class="mono">prd/OPEN-ITEMS.md</span> · <span class="mono">INDEX.md</span> · <span class="mono">memory/handoffs/closed/2026-08-18-Website-builder-close-2/</span></p>
+  <p>Recommendations in this register are opinions, not findings. Figures tagged as inference in the source stay tagged here. Where the PRD hedged, this register hedges.</p>
+</footer>
+
+</main>
+</div>
+</div>

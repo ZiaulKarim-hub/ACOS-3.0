@@ -1,0 +1,355 @@
+timestamp: "2026-08-22T03:20:02Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "8b5f5e91-2dbe-4fdd-b535-16d40a5d8a84"
+estimated_tokens: 499700
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  This doesn't sound client facing: Secured by real property,
+  without exception
+  look at okoacapital.com for something that can be used instead.
+
+assistant_tail: |
+  Their own site has a real tagline. Let me pull the other pages too.
+  
+  ---
+  
+  Their site has a real tagline. Let me use it.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 20
+  recent_commits: |
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+    66b7b71 fix(riffs): a half-installed charter overlay throws instead of aiming panel seats at the web
+
+uncommitted_files:
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "?? \"Logo Builder/brandsync/candidates/round-11/\""
+  - "?? \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06.json\""
+  - "?? \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "?? \"Logo Builder/brandsync/symbol/candidates/round-8/\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-20-autocompact-handoff.yaml\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-21-autocompact-handoff.yaml\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-OKOA-Works-close/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/"
+  - "?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/8b5f5e91-2dbe-4fdd-b535-16d40a5d8a84.jsonl"
+  transcript_lines_parsed: 306
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Message 1 (user):** Resume the project, read the reentry note at a specific path, follow its "Read first" order, continue from NEXT ACTION.
+  
+  My actions: Read `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/2026-08-21-OKOA-Works-close-2.reentry.md`, then `handoff.yaml`, then git status/log. Confirmed no drift (branch `resurrection-static-ordinals-2026-08-19`, head `8c998ec0ffca047332b26fb8911f343b0484883b`, dirty 20 vs recorded 19 — the extra being the close folder itself). Found the "Over 3,000 opportunities reviewed" claim still in `/Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus V003.html` at byte offset 1482197. Asked Zee for his yes on Option A (drop the clause).
+  
+  **Message 2 (user):** "That work is done. I need you to use the fund prospectus and creaate a two page about OKOA (what is okoa, what we do etc. without the fund rasising part of course). Show me 10 versions and I will tell you what to do next."
+  
+  My actions: Extracted prospectus text with a bun/TypeScript script, extracted all base64 images to `_assets/`, created logo SVGs in 4 colors, built 10 two-page HTML versions in `/Users/zee/Documents/OKOA/OKOA_About/`, built PDFs with puppeteer, built a local contact sheet `index.html`, opened in Chrome. Audited for fundraising language — clean.
+  
+  **Message 3 (user):** "Add a cover page to all 10. 06 looks like it has a good cover page, the picture can be the one used in the fund doc, or you can experiment. Do this."
+  
+  My actions: Found topographic backgrounds in OKOA's Dropbox brand assets, wrote `covers.ts` generating 10 distinct covers (each with own imagery/type), injected into all 10. Fixed logo position leak in V01, added `.cveil2` bottom scrim to all, fixed crops.
+  
+  **Message 4 (user):** "Maybe just use 01 cover for all of them."
+  
+  My actions: Rewrote `covers.ts` to strip existing covers and inject one uniform V01 cover into all 10. Verified all 10 cover blocks hash identically (`7d91a2457febee50`).
+  
+  **Message 5 (user):** "copy all of them in a about us folder in /documents/okoa"
+  
+  My actions: Created `/Users/zee/Documents/OKOA/About Us/` with 10 PDFs named `OKOA About Us NN - Name.pdf`, plus `_thumbs/` and an `index.html`. Verified byte-identical via shasum.
+  
+  **Message 6 (user):** "The 'recent closing' they are not very recent, word it in a different way, somehting that says like they are examples or higlights."
+  
+  My actions: Changed V05 "Recent closings." → "Selected transactions.", V04 "Three we closed." → "Three examples.", V02/V07 "Representative Transactions" → "Selected Transactions", V09 "These three transactions" → "Three selected transactions", V01 photo captions → "Example collateral · …". Added year ranges to V05's spec lines (which had durations but no dates). Updated all deal notes to say "not a complete list of the book, and not ordered by date."
+  
+  **Message 7 (user):** "the 06 now looks like it has two cover pages."
+  
+  My actions: Rebuilt V06 page 1 as a split spread (photo left 4.55in, content right). Moved underwriting facts onto that page as a list. Rewrote page 2's second paragraph. Checked 08 and 10 for the same clash. Also fixed an unsourced claim I'd written in V03 ("A meaningful share of the book is repeat business").
+  
+  **Message 8 (user):** "Is there a way to add the map in all of them?"
+  
+  My actions: Added `_assets/img-04.png` (the US map) to all 9 versions lacking it. Went through multiple rounds of overflow. Wrote `measure.ts` to measure exact pixel overflow per page. Fixed 5 overflowing pages by exact amounts. Result: "no overflow in any version."
+  
+  **Message 9 (user):** "this sounds stupid 'We lend against things you can stand on.'"
+  
+  My actions: Replaced V03's headline with "Secured by real property, without exception." and the deck under it. Flagged V05 and V06 headlines as sharing the same register.
+  
+  **Message 10 (user, most recent):** "This doesn't sound client facing: Secured by real property, without exception — look at okoacapital.com for something that can be used instead."
+  
+  My actions: Loaded WebFetch, fetched okoacapital.com twice. Got the complete site transcription. The site's hero tagline is **"Flexible capital. Fixed principles."** with subheading "Custom-designed credit solutions that help you reach your business goals." Section heading "Capital to build on". I have NOT yet made any edit based on this — the summary request arrived right after the fetch.
+  
+  Important discovery from the website fetch that I have not yet reported to the user: the live site positions OKOA much more broadly than the prospectus does — three Areas of Focus (Real Estate $1-20M, Small to Medium Enterprise $1-10M, Special Situations $1-10M), "over 500 million deployed in just over three years" (vs. prospectus $750M cumulative), Waldorf Astoria Park City $30 Million Investment, and different team role descriptions. This is a real scope/consistency issue worth flagging.
+  
+  Note: the site says "over 500 million deployed in just over three years" while our documents say $750M cumulative — these are different vintages, not necessarily contradictory, but worth flagging.
+  
+  Also relevant: memory notes a "Tapestry-not-Waldorf trap" for ASCENT — the site lists "Waldorf Astoria Park City - $30 Million Investment" which may relate to that known trap. I should not import that claim.
+  
+  Let me make sure I capture all the standing constraints and verified state accurately.
+  </analysis>
+  
+  <summary>
+  
+  1. **Primary Request and Intent:**
+  
+     The conversation began as a project resume, then pivoted to a document-building task that has run through nine rounds of iteration.
+  
+     - **Initial (completed/superseded):** Resume the ACOS 3.0 project by reading the reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/2026-08-21-OKOA-Works-close-2.reentry.md`, follow its "Read first" order, and continue from its NEXT ACTION (getting Zee's yes to drop the unsourced "Over 3,000 opportunities reviewed" claim on prospectus page 4). Zee then said **"That work is done."** — closing it without a ruling.
+     - **Main task:** Use the fund prospectus to create a **two-page "About OKOA"** document (what is OKOA, what we do) **with the fundraising part removed**. Show **10 versions**.
+     - Add a **cover page to all 10**, modelled on version 06's cover; picture may be the fund doc's own or experimental.
+     - Then: **use 01's cover for all of them** (uniform).
+     - Copy all ten into an **"About Us" folder in /Documents/OKOA**.
+     - Reword "Recent closings" so the deals read as **examples or highlights**, not as recent.
+     - Fix version 06 now looking like it has **two cover pages**.
+     - Add **the map to all of them**.
+     - Replace version 03's headline "We lend against things you can stand on." — it "sounds stupid".
+     - **Most recent, still unanswered:** "This doesn't sound client facing: Secured by real property, without exception. look at okoacapital.com for something that can be used instead."
+  
+  2. **Key Technical Concepts:**
+     - Self-contained HTML → PDF pipeline via **puppeteer** (`preferCSSPageSize: true`, `margin: 0`, `printBackground: true`) — puppeteer otherwise forces a 1.25in bottom margin
+     - **bun** (v1.3.9) + TypeScript for all scripting (per the standing TS/Rust-over-Python rule)
+     - `@page { size: 11in 8.5in }` landscape / `8.5in 11in` portrait; `.page { overflow: hidden }` — which silently crops overflow
+     - `pdftoppm -png -r <dpi>` for visual QA rasterisation; `pdftotext` for content audits; `pdfinfo` for page counts
+     - `shasum -a 256` to prove copies are byte-identical
+     - `mix-blend-mode: multiply` to blend the cream-backed map artwork into light page backgrounds
+     - `object-fit: cover` + `object-position` for cropping one photo into differently-shaped page boxes
+     - Prospectus design system: IBM Plex Sans / IBM Plex Mono / Cormorant Garamond; sage `#465D53`, coral `#FF795E`, coral-40 `#FF9885`, navy `#104473`, ink `#161616`, warm `#F7F3EE`
+  
+  3. **Files and Code Sections:**
+  
+     **Source of truth (read-only):**
+     - `/Users/zee/Documents/OKOA/OKOA_Prospectus/OKOA_Prospectus V003.html` — 7,330,045 bytes, 20 pages, mtime Aug 19 17:31. The PDF `OKOA_Prospectus_Final.pdf` (Aug 19 17:32) is built from it. Contains the still-unresolved page-4 subhead at byte offset 1482197: `<em style="color:#FF9885;">Over 3,000</em> opportunities reviewed &middot; <em style="color:#FF9885;">200+</em> loans funded &middot; <em style="color:#FF9885;">zero</em> credit losses to date`
+  
+     **Build folder — `/Users/zee/Documents/OKOA/OKOA_About/`:**
+     - `v01-standard-landscape.html` … `v10-glance-portrait.html` — the ten versions, each fully self-contained (core CSS inlined), 3 pages each
+     - `_assets/` — `img-01/02/03.png` (team headshots 288×288), `img-04.png` (US map, 2617×1178), `img-05.jpg` (Utah townhomes), `img-06.jpg` (Hawaii estate), `img-07.png` (English Hotel), `bg-08.jpg` (towers — the fund doc's cover photo, now the shared cover), `bg-09.jpg` (Wasatch), `bg-10.jpg` (pool house), `topo-coral.png` / `topo-teal.png` (from `Okoa Marketing/Brand Assets/Design Assets/Gradient-Topographic-Maps/PNG/`, downscaled to 3000px), `logo-white/ink/coral/sage.svg`
+     - `build.ts` — renders every `vNN-*.html` to a same-named PDF; accepts a filename filter arg
+     - `measure.ts` — **the key QA tool**; opens each file headless and reports per-page pixel overflow, since `overflow:hidden` hides it in the PDF. Currently reports `no overflow in any version`
+     - `_index.ts` / `index.html` / `_thumbs/` — the local contact sheet generator and output
+     - `covers.ts` — now generates ONE uniform cover (V01's) and strips/re-injects it into all ten; idempotent
+     - `inline.ts`, `_core.css` — bakes shared CSS into each file (already applied; now a no-op)
+  
+     **Deliverable folder — `/Users/zee/Documents/OKOA/About Us/`:**
+     ```
+     OKOA About Us 01 - The Standard.pdf          (3 pages)
+     OKOA About Us 02 - The Fact Sheet.pdf        (3 pages)
+     OKOA About Us 03 - The Narrative.pdf         (3 pages)
+     OKOA About Us 04 - For Borrowers.pdf         (3 pages)
+     OKOA About Us 05 - Broker and Referral.pdf   (3 pages)
+     OKOA About Us 06 - The Editorial.pdf         (3 pages)
+     OKOA About Us 07 - The Swiss Grid.pdf        (3 pages)
+     OKOA About Us 08 - Five Years.pdf            (3 pages)
+     OKOA About Us 09 - Three Loans.pdf           (3 pages)
+     OKOA About Us 10 - At A Glance.pdf           (3 pages)
+     index.html + _thumbs/
+     ```
+     All ten verified byte-identical to their build-folder sources.
+  
+     **The uniform cover (identical in all ten, hash `7d91a2457febee50`):**
+     - Image `_assets/bg-08.jpg`, `object-position:center 42%`
+     - Veil `linear-gradient(135deg,rgba(22,22,22,.95) 0%,rgba(22,22,22,.78) 55%,rgba(16,68,115,.72) 100%)` plus a bottom `.cveil2` scrim
+     - Kicker "Okoa Capital · Est. 2021"; eyebrow "Firm Overview · Private Credit · Q2 2026"; title `OKOA <em>Capital</em>` (Cormorant 76px)
+     - Stat strip: 2021 / $750M / 200+ / 0
+     - Footnote carrying the as-of and non-guarantee caveats
+  
+     **The map caption — identical in all ten:**
+     > Shaded states and territories are where OKOA has done business since inception. **Active loans today** sit in Utah, Nevada, Arizona, California, Texas, North Carolina, Hawaii, Florida, and Puerto Rico — primary concentration Utah.
+  
+     **V03's current (rejected) headline block:**
+     ```html
+     <h1>Secured by <em>real property</em>, without exception.</h1>
+     <div class="deck">Five years of secured real estate credit, originated and serviced from Park City, Utah.</div>
+     ```
+  
+  4. **Errors and fixes:**
+  
+     - **`grep -n -F "3,000 opportunities"` returned nothing** even though the claim exists — HTML tags sit between the words (`</em> opportunities`). Fixed by grepping short fixed strings and dumping byte-offset context with `dd`.
+     - **`ugrep` complexity/repeat errors** on regexes like `.{0,70}word.{0,70}` and `.cols\{[^}]*}` — switched to `grep -F` and `sed -n` ranges.
+     - **Logo misalignment on V01's cover** — V01's own `.logo{position:absolute}` overrode the cover's flex header. Fixed with `.cover-page .logo{position:static}`.
+     - **Low-contrast cover fine print** over bright photo areas — added a second bottom scrim `.cveil2` (56% height gradient) to every cover.
+     - **V06 double-cover** (user-reported) — V06's page 1 was built from the same recipe as the cover (full-bleed photo, veil, big Cormorant line, hairline stat strip). Rebuilt as a split spread instead of removing the photo.
+     - **Repeated page overflow when adding the map.** I iterated by eye and shrank sizes by guess, which was slow and left two pages still cut. Fixed by writing `measure.ts`, which reported exact overflows: v04 page 2 +16px, v05 page 2 +11px, v07 page 2 +14px, v08 page 3 +44px, v09 page 3 +61px. Fixed each by that exact amount; a residual v08 +13px then +3px was cleared. Final state: `no overflow in any version`.
+     - **`no-op edit in v09-casestudy-landscape.html`** — a patch's `find` string assumed `.cols{margin-top:22px` but an earlier patch had already changed it to `14px`. The patch script throws before `Bun.write`, so the file was left untouched; I re-read the actual CSS and rewrote the patch against current values.
+     - **Unsourced claim I authored in V03**: "A meaningful share of the book is repeat business" — the prospectus never quantifies repeat business. Replaced with "OKOA keeps a standing preference for borrowers with a demonstrated performance history, and repeat borrowers are where underwriting edge actually accumulates."
+     - **V05 showed durations with no dates** under a heading claiming "Recent closings", while the English Hotel paid off November 2022. Added year ranges (2024–2026, 2024–2025, 2021–2022) alongside the reworded heading.
+  
+     **Explicit user corrections:**
+     - "Maybe just use 01 cover for all of them" — reversed my ten-distinct-covers decision.
+     - "the 06 now looks like it has two cover pages" — I had flagged this risk but shipped it anyway.
+     - "this sounds stupid 'We lend against things you can stand on.'"
+     - "This doesn't sound client facing: Secured by real property, without exception" — my replacement was also rejected.
+  
+  5. **Problem Solving:**
+  
+     **Content honesty rules applied throughout (all verified by grep/pdftotext sweeps):**
+     - Zero fundraising language in any of the ten: no fund size, minimum, preferred return, management fee, carried interest, evergreen structure, Reg D / 506, accredited investor, subscription steps, waterfall, redemption, lockup, Class A, or LP-level return figures (19.2% / 22.8%).
+     - The unsourced "Over 3,000 opportunities reviewed" claim appears in none of the ten.
+     - "22 states & territories" is never asserted — OKOA's own location CSVs support 16, and the prospectus body names 9 active-loan states. The map is shown with a caption that states **no count**.
+     - Every version carries "as of April 30, 2026" and the "stated to date … not a guarantee of future outcomes" caveat.
+     - Every deal block says "not a complete list of the book, and not ordered by date."
+     - No IRR figures appear in any version.
+  
+     **Website research (just completed, not yet acted on).** `okoacapital.com` is a single page. Verbatim language available:
+     - Hero: **"Flexible capital. Fixed principles."** / subheading "Custom-designed credit solutions that help you reach your business goals."
+     - Section headings: "Capital to build on", "Creative funding that finds a way", "Areas of Focus", "Our Partners", "A team of problem solvers", "See where we can go together"
+     - "Real Estate Developers, Company Founders and Business Operators: With over 500 million deployed in just over three years, OKOA puts your business on solid footing with $1-20 million in financing tailored to your situation."
+     - Areas of Focus: Real Estate ($1-20 million; Bridge Loans, Preferred Equity, Note Purchases), Small to Medium Enterprise ($1-10 million), Special Situations ($1-10 million)
+     - Team roles differ from the prospectus: Jason Meyer "Investment selection, due diligence and capital formation"; Ty Corbridge "Origination, underwriting, real estate"; Brad Heitmann "Origination, portfolio management & analytics"
+     - Footer address matches: 1441 West Ute Blvd #130, Park City, UT 84098; "OKOA CAPITAL LLC © 2021"
+  
+     **Unreported consistency issue found in that fetch:** the live site positions OKOA far more broadly than the prospectus does (three Areas of Focus including SME and Special Situations, "industry agnostic", investments beyond real estate), and states "over 500 million deployed in just over three years" against our documents' $750M cumulative. The site also lists "Waldorf Astoria Park City - $30 Million Investment", which touches a known ASCENT naming trap in project memory. None of this has been imported into the documents.
+  
+  6. **All user messages:**
+     - "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/2026-08-21-OKOA-Works-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+     - "That work is done. I need you to use the fund prospectus and creaate a two page about OKOA (what is okoa, what we do etc. without the fund rasising part of course). Show me 10 versions and I will tell you what to do next."
+     - "Add a cover page to all 10. 06 looks like it has a good cover page, the picture can be the one used in the fund doc, or you can experiment. Do this."
+     - "Maybe just use 01 cover for all of them."
+     - "copy all of them in a about us folder in /documents/okoa"
+     - "The \"recent closing\" they are not very recent, word it in a different way, somehting that says like they are examples or higlights."
+     - "the 06 now looks like it has two cover pages."
+     - "Is there a way to add the map in all of them?"
+     - "this sounds stupid \"We lend against things you can stand on.\""
+     - "This doesn't sound client facing: Secured by real property, without exception look at okoacapital.com for something that can be used instead."
+  
+  7. **Pending Tasks:**
+     - **Immediate:** Replace V03's headline with client-facing language sourced from okoacapital.com, then rebuild, re-measure, regenerate the contact sheet, and re-copy to **About Us**.
+     - **Awaiting Zee's ruling (offered, not started):** rewrite V05's "A balance-sheet lender who answers the phone." and V06's "We know the market because we live in it." to match the new register.
+     - **Standing open items, unchanged:** put the version name back in the cover's top-right corner (currently all read "Okoa Capital · Est. 2021"); switch page numbers from "01 / 02" and "02 / 02" to 1/3, 2/3, 3/3; decide whether to build a corrected map shading only what the location data supports; decide which email belongs on a non-fundraising piece (five versions show `jason@okoacapital.com`, five show only phone/web/office); decide whether version 05's tropical pool-house cover photo should be swapped.
+     - **The overriding open question:** "Which version do you want me to take further?" — never answered.
+  
+  8. **Current Work:**
+  
+     I had just fetched `okoacapital.com` twice via WebFetch and received the complete verbatim page transcription. **No edit has been made yet** in response to the user's most recent message.
+  
+     The user's exact words: *"This doesn't sound client facing: Secured by real property, without exception look at okoacapital.com for something that can be used instead."*
+  
+     The obvious candidate from the site is its own hero tagline, **"Flexible capital. Fixed principles."**, with "Capital to build on" as a second option and "Custom-designed credit solutions that help you reach your business goals." available as the deck. These are OKOA's own client-facing brand lines rather than anything I would invent.
+  
+     The line to replace sits in `/Users/zee/Documents/OKOA/OKOA_About/v03-narrative-portrait.html`:
+     ```html
+     <h1>Secured by <em>real property</em>, without exception.</h1>
+     <div class="deck">Five years of secured real estate credit, originated and serviced from Park City, Utah.</div>
+     ```
+  
+     Everything else is finished and verified: all ten are 3-page PDFs with the uniform cover, the map, and no page overflow; all ten are copied to `/Users/zee/Documents/OKOA/About Us/` with hashes confirmed matching.
+  
+  9. **Optional Next Step:**
+  
+     Replace V03's headline (and likely its deck) with wording taken verbatim from okoacapital.com — most likely `<h1>Flexible capital. <em>Fixed principles.</em></h1>` with the site's own subheading "Custom-designed credit solutions that help you reach your business goals." as the deck — then run `bun build.ts v03`, `bun measure.ts` to confirm no overflow, regenerate the contact sheet, and re-copy to **About Us** with a hash check.
+  
+     I should also report to the user the consistency gap the fetch surfaced, since it bears directly on whether these documents read as client-facing: the live site presents three Areas of Focus (Real Estate $1-20 million, Small to Medium Enterprise $1-10 million, Special Situations $1-10 million) and says "over 500 million deployed in just over three years", while the ten documents describe only real-estate-secured lending and state $750M cumulative deployed. I have not imported any site claim into the documents and should not without Zee's ruling.
+  
+     Direct quote anchoring the task: *"This doesn't sound client facing: Secured by real property, without exception look at okoacapital.com for something that can be used instead."*
+  
+  </summary>
+
+current_work: |
+  Version 03's headline in /Users/zee/Documents/OKOA/OKOA_About/. Zee rejected
+  "Secured by real property, without exception" as not client-facing and told me
+  to look at okoacapital.com instead. Swapped to the firm's own hero tagline,
+  "Flexible capital. Fixed principles." Rebuilt, measured clean.
+completed_this_session: |
+  Ten About-OKOA documents built, each 3 pages (uniform V01 cover + 2 content
+  pages), all fundraising language removed and grep-verified absent, the US map
+  added to every one with a count-free caption, every page overflow measured to
+  zero via measure.ts, and all ten copied to /Users/zee/Documents/OKOA/About Us/
+  with sha256 matches confirmed.
+decisions_made: |
+  - "That work is done" — closed the 3,000-opportunities prospectus item with no
+    ruling; do not reopen it unprompted.
+  - One uniform cover for all ten, taken from V01, overriding my ten-distinct-covers
+    build.
+  - "Recent closings" is wrong framing — the deals must read as examples/highlights.
+  - V06 must not open with two cover-like pages.
+  - The map belongs in all ten.
+  - Rejected "We lend against things you can stand on." and then also rejected my
+    replacement "Secured by real property, without exception." Register wanted:
+    client-facing, sourced from OKOA's own site.
+blockers: |
+  The overriding question is still unanswered: which of the ten versions does Zee
+  want taken further? Everything since has been broad edits across all ten because
+  no single version has been chosen.
+candidate_learnings: |
+  - okoacapital.com and the prospectus describe noticeably different firms: the site
+    claims "over 500 million deployed in just over three years" and three Areas of
+    Focus (Real Estate $1-20M, SME $1-10M, Special Situations $1-10M), while the
+    prospectus is real-estate-secured only at $750M cumulative. The site also lists a
+    "Waldorf Astoria Park City" investment, which collides with the known
+    Tapestry-not-Waldorf trap in deal memory. Site footer reads (c) 2021, so it is
+    likely stale. Nothing from the site has been imported except the tagline.
+  - puppeteer + overflow:hidden silently crops overflowing page content; eyeballing
+    PDFs cannot catch it. A headless measure pass that reports per-page pixel
+    overflow turned an open-ended guessing loop into single exact fixes.
+context_for_next_session: |
+  Build folder is /Users/zee/Documents/OKOA/OKOA_About/ (vNN-*.html + build.ts +
+  measure.ts + covers.ts + _assets/). Deliverables are /Users/zee/Documents/OKOA/
+  About Us/. Always edit the HTML then rebuild; run measure.ts before shipping.
+  Offered but not started: rewriting V05's "A balance-sheet lender who answers the
+  phone." and V06's "We know the market because we live in it." to the same register.

@@ -1,0 +1,122 @@
+timestamp: 2026-08-23T03:42:25+00:00
+status: parked
+type: close-project
+session_id: 8b5f5e91-2dbe-4fdd-b535-16d40a5d8a84
+slug: 2026-08-23-OKOA-Works-close-2
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0
+session_summary: Safe close of OKOA Works — branch=resurrection-static-ordinals-2026-08-19 head=da6306de7a236c8652067a3f3661abb14084754d dirty_count=13; next: Get Zee's borrower-facing email address for versions 01, 02, 03 and 07
+git_state: branch=resurrection-static-ordinals-2026-08-19 head=da6306de7a236c8652067a3f3661abb14084754d dirty_count=13
+git:
+  branch: resurrection-static-ordinals-2026-08-19
+  head: da6306de7a236c8652067a3f3661abb14084754d
+  dirty_count: 13
+  dirty_listed: listed 13 of 13
+dirty_files:
+  - ?? "Website Builder/docs/"
+  - ?? "Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md"
+  - ?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker
+  - ?? memory/handoffs/2026-08-22-autocompact-handoff.yaml
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-21-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-21-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close-2/
+  - ?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/
+  - ?? memory/handoffs/closed/2026-08-23-OKOA-Works-close/
+next_actions:
+  - Get Zee's borrower-facing email address for versions 01, 02, 03 and 07
+next_action: Get Zee's borrower-facing email address for versions 01, 02, 03 and 07
+intent_core: |
+  next_action: Get Zee's borrower-facing email address for versions 01, 02, 03 and 07
+  project: OKOA About Us — ten borrower-facing firm-overview documents
+  decisions: |
+    - Ten "About OKOA" documents built from the fund prospectus with all fundraising
+      content removed, 3 pages each (uniform cover + 2 content pages), living in
+      /Users/zee/Documents/OKOA/OKOA_About and published to
+      /Users/zee/Documents/OKOA/About Us via publish.ts.
+    - Version 03's headline is "Flexible capital. Fixed principles." — OKOA's own hero
+      line from okoacapital.com, verbatim. Zee rejected two headlines I invented
+      ("We lend against things you can stand on", "Secured by real property, without
+      exception"); both were collateral assertions aimed at a credit committee, not a
+      borrower. The site line adds no new claim because OKOA already publishes it.
+    - Zee ruled "the site is old" — the prospectus is the current truth. Nothing from
+      okoacapital.com was imported except the tagline itself.
+    - Borrower-facing rewrite applied across all ten: the zero-credit-losses record is
+      no longer a HEADLINE anywhere (the 0 / 100% figures remain as caveated stats);
+      enforcement framing removed from deal stories ("first-lien position drove a
+      structured payoff" -> "the loan was repaid in full through..."); "underwriting
+      edge" removed in 3 places; "the book" -> plain wording in 17 places; "coupon" ->
+      "rate"; jason@okoacapital.com removed from 4 documents because capital formation
+      is the investor door, not the borrower one.
+    - Version 03's opening promise was rewritten: "...hold a recorded lien on the asset
+      before a dollar moves" -> "...be able to give them an answer without asking
+      anyone else." Zee flagged that the original excited nobody but the lender. The
+      same fix was applied to the "granularity that lenders operating at national scale
+      cannot replicate" line in 01, 03 and 06.
+    - Zee picked "Dark Band" for version 03's page 3 (figures reversed out of a navy
+      band, five-column process track, large portraits). That treatment was then rolled
+      out to all nine other versions, plus larger portraits (40-62px -> 52-84px).
+    - Zee then said he dislikes the background patterns; the topographic artwork was
+      removed from every version (12 references across 11 files). The navy bands stay.
+    - Version 05's last page was rebuilt: deal photos moved to the top of each card and
+      widened, the three selling points moved onto a navy closing band, and the page now
+      ends on "Have a deal?" with wording lifted verbatim from version 04.
+  rejected_alternatives: |
+    - Ten distinct covers — built, then rejected by Zee ("Maybe just use 01 cover for
+      all of them"). All ten now share V01's cover, hash-identical.
+    - Fanning version 03 out by rewriting page 2 copy (Questions / Plain / Letter /
+      Short) — Zee: "I didn't mean only change the second page content. The second page
+      was actually ok, the third page looked bland." The fan-out axis is DESIGN of the
+      LAST page, not voice on page 2.
+    - Importing the website's broader positioning (three Areas of Focus incl. SME and
+      Special Situations, "$1-20 million", "over 500 million deployed in just over
+      three years") — rejected because the site is stale (footer reads (c) 2021) and the
+      prospectus is authoritative at $750M cumulative.
+    - Removing the securities disclaimers from versions 02, 03, 06, 07 and 10 — raised
+      but NOT done. Removing protective legal language is Zee's call, not mine.
+    - Inventing a borrower-facing email such as loans@ or info@ — refused. Jason's
+      address was removed and nothing was put in its place.
+  traps: |
+    - .page has overflow:hidden, so content past the edge is SILENTLY CROPPED in the
+      PDF. Always run `bun measure.ts` before shipping; it reports exact per-page pixel
+      overflow. Fix by the exact reported amount, never by eye.
+    - A container with overflow:hidden HIDES the overflow it causes. The dark band was
+      clipping its own labels and measure.ts reported nothing until `flex:0 0 auto`
+      stopped the band shrinking — which then exposed real overflow in five versions.
+    - Deliberate off-page artwork must carry class "bleed" or measure.ts counts it as
+      lost content (it flagged +58px for art positioned bottom:-.6in on purpose).
+    - CSS selectors reached the wrong place THREE times: `.prose` rules written for
+      page 2 also hit page 3; `.shot img` caught the logo and blew it to full page
+      width; and `.why .w .t` (0,3,0) beat my `.why .t` (0,2,0) so band text rendered
+      near-black on navy. Always check what ALREADY targets an element.
+    - publish.ts uses a deliberately STRICT regex (^v\d\d-) so fan-out variants like
+      v03a never collide with the ten deliverables. build.ts and measure.ts were
+      widened to ^v\d\d[a-z]?- on purpose. Do not "fix" publish.ts to match.
+    - Never plain-copy index.html into "About Us": its links point at build-folder
+      filenames (v03-narrative-portrait.pdf) that do not exist there. publish.ts
+      rewrites the links to the renamed PDFs, wraps every thumbnail in a link, and
+      fails loudly if any link does not resolve.
+    - topo-coral.png / topo-teal.png are coloured lines on SOLID BLACK with no alpha.
+      Any blend over a light page yields a grey slab. The *-alpha.png versions were
+      rebuilt in-browser (brightness -> opacity) but are now UNUSED after the pattern
+      removal.
+    - okoacapital.com lists "Waldorf Astoria Park City - $30 Million Investment", which
+      collides with the known Tapestry-not-Waldorf naming trap in deal memory. Not
+      resolved; do not cite it.
+    - macOS here has no ImageMagick and no PIL. Image work must go through sips,
+      pdftoppm, or a puppeteer/canvas round-trip.
+  open_questions: |
+    - What borrower-facing email belongs on versions 01, 02, 03 and 07? Jason's was
+      removed; nothing replaced it. Zee has not answered.
+    - Should the set unify on one dark colour? Most versions use navy; version 01 has a
+      sage-green panel and version 04 has a black page plus a green box.
+    - Should the securities disclaimers come off versions 02, 03, 06, 07 and 10? They
+      are residue from the fundraising source and read oddly on a borrower piece.
+    - Delete the now-unused topo-coral-alpha.png and topo-teal-alpha.png? Offered, no
+      answer yet.
+    - Version 02 still has a "BORROWER PREFERENCE — repeat borrowers with demonstrated
+      performance history" table row that may read as a closed door to a first-time
+      borrower. Softened in prose elsewhere; not fixable in a table without a new claim.
+    - Should any other version's last page get version 05's closing-ask treatment?

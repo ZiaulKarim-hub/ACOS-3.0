@@ -1,0 +1,432 @@
+timestamp: "2026-08-24T21:45:02Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "75061da5-a435-4bd6-8c6b-b23d8ef4df32"
+estimated_tokens: 496599
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "deepened"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  I found a lot of preliminary notices for mechanics liens and unpaid construction loans, but I don't know if they relate to the plats we are lending against. The plats we are lending against are A, B, F, can you check the percel numbers for these construction notices and figure out if any of them applies to A, B or F plats.
+  Here is the construction preliminary notices file:
+  '/Users/zee/Documents/OKOA/Title Review/Construction Primary Notices Search.docx'
+
+assistant_tail: |
+  The search itself is the finding. Let me check exactly what was covered.
+  
+  ---
+  
+  Now I have the full picture. Let me pull the complete detail on the three notices.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 33
+  recent_commits: |
+    da6306d chore(logo-builder): brandsync round 11, the r8-06 edit + forge move, and three handoffs
+    8c998ec feat(resurrection): delete, restore, purge, swap, renumber and compact — all human-only
+    624842f feat(resurrection): a pick number is assigned once and never moves on its own
+    eb7a146 chore(snapshot): capture the rest of the working tree before the resurrection fix
+    f30d745 feat(resurrection): Rules 3 and 4 — a repeat open is another window, and every window runs claude
+
+uncommitted_files:
+  - "M .claude/scripts/resurrection/open-picks.sh"
+  - "M .claude/scripts/resurrection/resurrect-view.py"
+  - "M .claude/skills/acos-resurrect/SKILL.md"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M \"Logo Builder/brandsync/candidates/round-8/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-8/r8-06e1.svg\""
+  - "M \"Logo Builder/brandsync/commands.jsonl\""
+  - "D \"Logo Builder/brandsync/projects/r8-06e1.json\""
+  - "M \"Logo Builder/brandsync/symbol/candidates/round-8/meta.json\""
+  - "?? .claude/scripts/resurrection/close-targets.py"
+  - "?? .claude/scripts/tests/test_resurrection_picks.py"
+  - "?? .claude/settings.local.json.bak-verbosity-20260823-125948"
+  - "?? \"Logo Builder/brandsync/symbol/candidates/round-8/r8-06e1.svg\""
+  - "?? \"Logo Builder/brandsync/symbol/projects/r8-06e1.json\""
+  - "?? \"Logo Builder/memory/handoffs/.harvested/\""
+  - "?? \"Logo Builder/memory/handoffs/2026-08-23-autocompact-handoff.yaml\""
+  - "?? \"Logo Builder/memory/handoffs/closed/2026-08-23-Logo-Builder-close-2/\""
+  - "?? \"Logo Builder/memory/handoffs/closed/2026-08-23-Logo-Builder-close/\""
+  - "?? \"Website Builder/docs/\""
+  - "?? \"Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md\""
+  - "?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/.harvested/2026-08-22-autocompact-handoff.yaml.marker"
+  - "?? memory/handoffs/2026-08-22-autocompact-handoff.yaml"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/"
+  - "?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/"
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0/75061da5-a435-4bd6-8c6b-b23d8ef4df32.jsonl"
+  transcript_lines_parsed: 541
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Message 1 (user):** Resume a project by reading a reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-23-OKOA-Works-close-2/2026-08-23-OKOA-Works-close-2.reentry.md`, follow its "Read first" order, then continue from NEXT ACTION.
+  
+  I read the reentry note, the handoff.yaml dossier, checked git drift (HEAD unchanged at da6306d, dirty count 13→27, all drift from other projects), and inspected the OKOA About Us documents. The NEXT ACTION was "Get Zee's borrower-facing email address for versions 01, 02, 03 and 07". I researched grounded options (found info@okoacapital.com is verifiably real via Rubin document production email headers). I attempted an AskUserQuestion — **the user REJECTED the tool call** and interrupted.
+  
+  **Message 2 (user):** "I will come back to this. I have a new work for you. I need to review a title for a loan. What am I looking for in the title report? I have never done this before. Can you give me a checklist for OKOA?"
+  
+  I investigated: found `title-sleuth` skill (for researching title from public records — NOT for reviewing a commitment you were handed), the `legal-analyst` agent's A1/A2 framework, `project_okoa_lending_lien_philosophy` memory (OKOA is a secured lender, NOT first-lien-only; lien position is deal-by-deal per Jason 2026-06-08), the OKOA brand tokens from `_core.css` and the `acos-document-design-brad` skill, and a real ALTA commitment in OKOA's files (Rubin/Casa Grande) for worked examples.
+  
+  I built `/Users/zee/Documents/OKOA/Title Review/OKOA-Title-Review-Checklist.html` + `build.ts` → 9-page PDF. Hit two issues: measurement artifact (footer in margin) and a real 121px overflow on the endorsements table page. Fixed by excluding `.chrome` from measurement (via `el.closest(".chrome")`) and splitting Step 05 into lien position + endorsements pages.
+  
+  **Message 3 (user):** Pasted another chat's correction on my "sales document for an insurance contract" framing, plus that chat's own detailed title-review guidance. Ended: "Create a ms word checklist the I can edit."
+  
+  The correction was right — I'd blurred three things: title search/report (information), title commitment (conditional promise / insurance binder), title policy (the contract). Also the limit: the title company tells you what it found, what must be cleared, what it will/won't insure — it does NOT tell you whether an exception is an acceptable investment risk.
+  
+  I built `make-docx.py` → 16-page `.docx` (v2.0), folding in the other chat's material (buying vs lending, six questions, construction liens/Utah relate-back, development agreements, water rights, ROFR/ROFO, 2026 ALTA/NSPS effective February 23, 2026, Red/Yellow/Green triage). Hit two silent python-docx traps: (1) Word ignores per-cell widths without `w:tblLayout type="fixed"` + rewritten `w:tblGrid` — fixed with `fix_layout()`; (2) Word MERGES adjacent paragraphs sharing identical borders so stacked write-in lines collapse to one — fixed with `write_lines()` using table rows. Also corrected the PDF framing and bumped it to v1.1.
+  
+  **Message 4 (user):** "I don't like the checklist you created. I should be a easy to use checklist where the question I am looking for would be shown and after that a yes no unsure with checkboxes that I can check off. Below there should be an option to add note. if it is a question that needs writing things, that would give a blank box for writing. /resate"
+  
+  `/restate` (typo for /restate) — I invoked the skill, investigated the actual artifact (71 `item()` calls, all statements not questions, one "done" box, no notes), and produced a structured restatement with GOAL / SHAPE / ASSUMPTIONS / MISSING (4 items with defaults) / UPGRADES (4, including real clickable Word checkboxes flagged as untested), ending "Did I understand this correctly?"
+  
+  **Message 5 (user):** "yes, and use the real clickable Word checkboxes / Add the one page front teaching material to appendix / For writing boxes use defaults."
+  
+  I prototyped the checkbox content control (`w:sdt` + `w14:checkbox`, checkedState 2612 / uncheckedState 2610, font MS Gothic). Verified `w14` is already in python-docx's default template nsmap. Tried AppleScript to verify in Word — two syntax failures.
+  
+  **Mid-turn user message:** "the checkboxes worked, I check them." — user verified in Word himself.
+  
+  I built `make-worksheet.py` → v3.0, 22 pages, 73 questions, 257 clickable checkboxes, Notes cells that grow, writing boxes, teaching material moved to Appendix A at the back. Two layout fixes: STOP tag orphaning (moved tag after the number) and hanging indent on wrapped questions. Moved v2.0 to `_superseded/`.
+  
+  **Message 6 (user):** "I think if this was an excel file it would be better."
+  
+  I built `extract-questions.py` (AST-parses `make-worksheet.py`'s `q()` calls → `questions.json`, so Word and Excel share one source) and `make-xlsx.py` → 5-tab workbook. Fixed a malformed `COUNTIFS({D},"STOP","<>")` formula (missing the F range). Verified formulas by filling test answers and converting via `soffice --headless --convert-to csv` (forces recalculation). Added print setup — 33 pages → 7.
+  
+  **Message 7 (user):** Fill the checklist against a real title report at `/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Harris - Zermatt Resort Bridge`, checklist copied into `/OKOA/'Zermatt Title Review'`, read line by line, double-check each entry, create a separate reference file with specific references and how I reached each conclusion, super easy for a beginner.
+  
+  I read the deal index, the 43-page ALTA commitment (Fidelity, Order No. FTUT2603870-DW, Commitment Date July 20, 2026), the credit memo, the Guimont payoff letter, and the operating agreement. Built `answers.py` (all 73 with verbatim citations), `fill-worksheet.py`, `make-reference.py` → HTML. Result: 39 No, 12 Unsure, 9 Yes, 8 write-ins, 5 N/A; 15 STOP answered No.
+  
+  **Message 8 (user, most recent):** Found preliminary notices for mechanics liens and unpaid construction loans, doesn't know if they relate to the plats being lent against (A, B, F). Asked me to check the parcel numbers and figure out if any apply to Plat A, B or F. File: `/Users/zee/Documents/OKOA/Title Review/Construction Primary Notices Search.docx`
+  
+  I parsed the docx (5 tables, 77 rows, only 3 unique notices), built an APN→Parcel mapping from the commitment's own tax exception block (202 of 205 APNs labelled), and cross-referenced. Found: all three notices land on Plat B (Parcel 13) only. CRITICALLY: the search criteria covered only 6 of 205 parcel numbers — 4 Plat A, 2 Plat B, **ZERO Plat F**. So "no notices on Plat F" is untested, not a finding. This is the Orientation Move 1 case — the user's question carries a wrong premise (that the search covered the property).
+  
+  I had just produced the final union-per-notice APN listing when the summary was requested. I have NOT yet delivered an answer or built a deliverable for this last request.
+  
+  Key details to preserve: exact file paths, the three notice entry numbers and dates, the coverage percentages, the Guimont same-day filing coincidence (12144585 filed 09/30/2025, same day Entry 564844 was recorded), and all the standing user preferences/decisions.
+  
+  Let me also note security/standing constraints from CLAUDE.md and memory that appeared: never bare `git push`, personal-by-default GitHub routing, deliverables to ~/Documents/OKOA, no markdown deliverables, TypeScript/Rust over Python except Excel/Word libraries.
+  </analysis>
+  
+  <summary>
+  1. **Primary Request and Intent:**
+  
+     The conversation moved through several distinct requests:
+  
+     a. **Resume a parked project** — read `/Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-23-OKOA-Works-close-2/2026-08-23-OKOA-Works-close-2.reentry.md`, follow its Read-first order, continue from NEXT ACTION ("Get Zee's borrower-facing email address for versions 01, 02, 03 and 07"). **User interrupted and parked this** — "I will come back to this."
+  
+     b. **Teach title review + build a checklist** — "I need to review a title for a loan. What am I looking for in the title report? I have never done this before. Can you give me a checklist for OKOA?"
+  
+     c. **Correct the framing + build an editable MS Word checklist** — user relayed another chat's correction of my "sales document" framing and its own detailed guidance, then: "Create a ms word checklist the I can edit."
+  
+     d. **Restructure into a true worksheet** — every row a question, Yes/No/Unsure checkboxes, notes area, blank writing box where the answer needs writing. Then via `/restate` confirmation: use real clickable Word checkboxes, move the front teaching material to an appendix, use defaults for writing boxes.
+  
+     e. **Convert to Excel** — "I think if this was an excel file it would be better."
+  
+     f. **Fill the checklist against a live deal** — read the Zermatt title report and relevant documents line by line, double-check each entry, and create a separate reference file with specific references and how each conclusion was reached, "super easy to read for a beginner so that I can use it to learn how to do title reviews in future."
+  
+     g. **(MOST RECENT, UNANSWERED)** — "I found a lot of preliminary notices for mechanics liens and unpaid construction loans, but I don't know if they relate to the plats we are lending against. The plats we are lending against are A, B, F, can you check the percel numbers for these construction notices and figure out if any of them applies to A, B or F plats." File: `/Users/zee/Documents/OKOA/Title Review/Construction Primary Notices Search.docx`
+  
+  2. **Key Technical Concepts:**
+     - ALTA 2021 / 2016 Commitment for Title Insurance structure: Notice, Commitment to Issue Policy, Commitment Conditions, Schedule A, Exhibit A (legal description), Schedule B Part I (Requirements), Schedule B Part II (Exceptions), countersignature
+     - The corrected three-way distinction: title search/report (information from public records) vs title commitment (conditional promise to issue, like an insurance binder — "the title insurance company's proposed terms for insuring OKOA's lien position") vs title insurance policy (the contract itself)
+     - OKOA house rule: secured real estate lender, **NOT first-lien-only**; lien position is a deal-by-deal decision (per Jason, 2026-06-08)
+     - ALTA endorsement series: 9/9.3, 3/3.1/3.2, 17/17.1, 18/18.1, 22/22.1, 25/25.1, 8.1, 32/33, 14, 6/6.2, 11, 12, 4/5, 13.1
+     - Utah specifics: construction lien relate-back to first preliminary notice via the State Construction Registry (SCR); trust-deed reconveyance; property taxes as a statutory lien
+     - 2026 ALTA/NSPS Land Title Survey standards, effective February 23, 2026
+     - Closing Protection Letter (CPL) / Insured Closing Letter
+     - python-docx raw WordprocessingML injection: `w:sdt` + `w14:checkbox` content controls; `w:tblLayout`/`w:tblGrid` for fixed table widths
+     - openpyxl: DataValidation dropdowns, FormulaRule conditional formatting, COUNTIF/COUNTIFS, autofilter, freeze panes, print setup (`fitToPage`, `print_area`, `print_title_rows`)
+     - AST parsing (Python `ast` module) to extract question data from a generator script so two deliverables share one source of wording
+     - puppeteer HTML→PDF with `preferCSSPageSize`, plus a custom per-page overflow measurement script
+  
+  3. **Files and Code Sections:**
+  
+     **`/Users/zee/Documents/OKOA/Title Review/OKOA-Title-Review-Checklist.html`** (v1.1, 9 pages) — original OKOA-branded PDF checklist. Framing was corrected mid-conversation:
+     ```
+     "So read a commitment as <b>the title insurance company's proposed terms for insuring OKOA's lien
+     position</b>: based on our search, we are willing to insure this title, subject to these
+     Requirements and these Exceptions."
+     + added: "The limit worth remembering. The title company's job is not to tell you whether an
+     exception is a good or bad investment risk..."
+     ```
+  
+     **`/Users/zee/Documents/OKOA/Title Review/build.ts`** — puppeteer renderer + overflow measurer. Key fix:
+     ```ts
+     if (el.closest(".bleed") || el.closest(".chrome")) return;
+     ```
+     (Excludes footer descendants — `.chrome` itself wasn't enough because its `<span>` children still measured 19px over.)
+  
+     **`/Users/zee/Documents/OKOA/Title Review/_superseded/make-docx.py`** — v2.0 Word checklist (16 pages, 117 checkbox characters). **Superseded and moved** after user rejected it.
+  
+     **`/Users/zee/Documents/OKOA/Title Review/make-worksheet.py`** — v3.0 Word worksheet (22 pages, 73 questions, 257 clickable checkboxes). Core functions:
+     ```python
+     def checkbox(p, label, *, size=11, label_size=9.5, bold_label=False, color=INK):
+         """Real Word checkbox content control (Word 2010+). Clickable — verified in Word."""
+         sdt = OxmlElement("w:sdt")
+         pr = OxmlElement("w:sdtPr")
+         i = OxmlElement("w:id"); i.set(qn("w:val"), str(next(_ids))); pr.append(i)
+         cb = OxmlElement("w14:checkbox")
+         ck = OxmlElement("w14:checked");        ck.set(qn("w14:val"), "0"); cb.append(ck)
+         cs = OxmlElement("w14:checkedState")
+         cs.set(qn("w14:val"), "2612"); cs.set(qn("w14:font"), "MS Gothic"); cb.append(cs)
+         us = OxmlElement("w14:uncheckedState")
+         us.set(qn("w14:val"), "2610"); us.set(qn("w14:font"), "MS Gothic"); cb.append(us)
+         ...
+     ```
+     ```python
+     def fix_layout(t, widths):
+         """Word IGNORES per-cell widths without a fixed layout + rewritten grid."""
+     ```
+     ```python
+     def q(doc, question, why, *, kind="yn", tag=None, lines=3, box_height=1.0,
+           notes=True, note_label="Notes"):
+         """kind="yn" → Yes/No/Unsure clickable checkboxes (YES is always good)
+            kind="short" → `lines` write-in rules (default 3)
+            kind="box"   → one bordered box, `box_height` inches tall (default 1.0)"""
+     ```
+     Layout fix applied (tag rides after the number so it cannot orphan; hanging indent):
+     ```python
+     p.paragraph_format.left_indent = Inches(0.32)
+     p.paragraph_format.first_line_indent = Inches(-0.32)
+     ```
+  
+     **`/Users/zee/Documents/OKOA/Title Review/extract-questions.py`** — AST-parses `make-worksheet.py` for every `q()` call → `questions.json`. Output: 73 questions, kinds `{'yn': 65, 'short': 3, 'box': 5}`, flags `{STOP: 26, ASK: 7, OKOA LESSON: 1}`, none missing.
+  
+     **`/Users/zee/Documents/OKOA/Title Review/make-xlsx.py`** — v3.1 Excel, 5 tabs (Summary, Checklist, Endorsements, Triage, Appendix). Fixed formula:
+     ```python
+     # was malformed: COUNTIFS({D},"STOP","<>")  — missing the F range
+     f'=IF(COUNTIFS({D},"STOP",{F},"No")+COUNTIF({D},"STOP")-COUNTIFS({D},"STOP",{F},"<>")>0,'
+     ```
+     Print setup added (33 pages → 7):
+     ```python
+     def printable(ws, *, landscape=True, area=None, title_rows=None):
+         ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+         ws.page_setup.fitToWidth = 1; ws.page_setup.fitToHeight = 0
+     ```
+  
+     **`/Users/zee/Documents/OKOA/Zermatt Title Review/answers.py`** — all 73 answers with verbatim citations. Signature:
+     ```python
+     def a(n, answer, notes, sources, why):
+         A[n] = {"answer": answer, "notes": notes, "sources": sources, "why": why}
+     ```
+     Result: 39 No, 12 Unsure, 9 Yes, 8 write-ins (None), 5 N/A.
+  
+     **`/Users/zee/Documents/OKOA/Zermatt Title Review/fill-worksheet.py`** and **`make-reference.py`** — fill the workbook and build the beginner HTML reference (73 cards: What I found / The exact words I read / How I got there).
+  
+     **Deliverables created and verified:**
+     - `/Users/zee/Documents/OKOA/Title Review/OKOA Title Review Checklist.pdf` (v1.1, 9 pp)
+     - `/Users/zee/Documents/OKOA/Title Review/OKOA Title Review Worksheet.docx` (v3.0, 22 pp)
+     - `/Users/zee/Documents/OKOA/Title Review/OKOA Title Review Worksheet.xlsx` (v3.1, 5 tabs)
+     - `/Users/zee/Documents/OKOA/Zermatt Title Review/OKOA Title Review Worksheet.xlsx` (filled) + `.BLANK-BACKUP.xlsx`
+     - `/Users/zee/Documents/OKOA/Zermatt Title Review/Zermatt Title Review - How Each Answer Was Reached.html`
+  
+  4. **Errors and fixes:**
+  
+     - **AskUserQuestion rejected by the user** on the About Us email question. Fix: parked that work entirely; the user said "I will come back to this."
+     - **Framing error — "a sales document for an insurance contract."** The user relayed another chat's correction. I agreed it was loose, corrected both the Word and PDF files, and bumped the PDF to v1.1. This was a genuine substantive correction from the user, not a nitpick.
+     - **121px silent overflow** on the PDF endorsements page (`.page` has `overflow:hidden`, so content is cropped without warning). Fixed by splitting Step 05 into two pages and renumbering downstream steps.
+     - **Footer measured as 19px overflow** — measurement artifact. Fixed by skipping `.chrome` descendants via `el.closest(".chrome")`.
+     - **Word ignored per-cell table widths** — columns rendered at arbitrary widths. Fixed with `fix_layout()` setting `w:tblLayout type="fixed"` plus a rewritten `w:tblGrid`.
+     - **Stacked write-in lines collapsed to a single rule** — Word merges adjacent paragraphs sharing identical borders. Fixed with `write_lines()` using one-column table rows instead.
+     - **User rejected the whole v2.0 design**: "I don't like the checklist you created." Fix: rebuilt as a question-per-row worksheet with Yes/No/Unsure + notes + writing boxes; moved v2.0 to `_superseded/`.
+     - **STOP tag orphaned onto its own line** and wrapped questions lost indent. Fixed by moving the tag directly after the number and adding a hanging indent.
+     - **AppleScript verification of Word checkboxes failed twice** (`-1708` "doesn't understand the save as message", then `-2741` syntax error). Resolved not by me — **the user verified directly**: "the checkboxes worked, I check them."
+     - **Malformed `COUNTIFS`** in the Excel "ready to fund?" formula (missing the second range). Fixed and verified by test-filling answers and recalculating via LibreOffice CSV export.
+     - **Excel printed across 33 pages.** Fixed with print setup → 7 pages.
+  
+  5. **Problem Solving:**
+  
+     **Zermatt title review findings (complete, verified against source):**
+     - Commitment: Fidelity National Title Insurance Company, Order No. **FTUT2603870-DW**, Commitment Date **July 20, 2026 at 08:00 AM**, 2021 ALTA form, 43 pages, countersigned by Blake Gillis
+     - **OKOA is not insured** — Schedule A's ALTA Loan Policy 2021 line has a blank Proposed Insured and $0.00; the string "OKOA" appears **zero** times in 43 pages (verified by grep)
+     - **First position deferred to ~Aug 2028** — the Guimont payoff letter owes a Full Reconveyance only "Upon receipt of the Payoff Amount", and that defined term includes a **$5,000,000 Deferred Cash Payment** due on the second anniversary of closing. The trap is in a *defined term*, not the promise sentence.
+     - **Three deeds of trust, $47,160,000.00 recorded face** (deal file assumes $29,550,000): $19,100,000.00 Guimont (Entry 552097, Bk 1493, Pg 1895, rec. 11/4/2024, Parcel 11 excl. Unit 137); $5,510,000.00 to **eight** beneficiaries led by JENSON REAL ESTATE, LLC at 38.748% plus a Mecham assignment of 4.5372% (Entry 560701, Bk 1519, Pg 91, rec. 6/17/2025); $22,550,000.00 Guimont (Entry 564844, Bk 1530, Pg 547, rec. 9/30/2025, Parcel 13)
+     - **$445,285.25 delinquent property tax** principal, 243 entries — 2012: $1,549.04; 2024: $176,846.87; 2025: $266,889.34 — plus interest, penalty and costs; largest single entry $58,355.73
+     - **Second seller: KRAW, LLC** holds Parcel 12 (14 units); a third entity **"Zermott Resort, LLC"** appears only in Schedule B-I Requirement 10
+     - **The Villas (Plats C, D, E) are carved out and never added back** — "first lien across the entire asset" is unachievable as ordered
+     - No survey, no endorsements (Schedule A 2(b) blank), CPL is a "Sample Only" specimen with a $10,000,000.00 aggregate cap
+     - Judgment search covered only Wasatch Springs / Kraw / Alpenhaus — **not** guarantors Harris and Christensen
+     - Guimont payoff offer **expires August 28, 2026**
+  
+     **Collateral structure (Exhibit A):** Parcel 1 = a portion of Plat A LESS AND EXCEPTING nine carve-outs (Parcels 2–10); Parcels 14 and 15 read "(Intentionally deleted)". Parcels 11 and 12 add back named Plat F units; Parcel 13 adds 68 Plat B units.
+  
+     **Construction notices analysis (COMPLETE but NOT yet reported to the user):**
+  
+     APN→Parcel mapping derived from the commitment's own Schedule B-II exception 8 tax block (each entry labelled "(Affects a portion of Parcel 1)" etc.) — 202 of 205 APNs labelled; unlabelled: `00-0020-9173`, `00-0020-9194`, `00-0020-9223`:
+     - **Parcel 1 = Plat A**: 10 APNs, `00-0020-3205` .. `00-0020-3214`
+     - **Parcel 13 = Plat B**: 68 APNs, `00-0020-4075` .. `00-0020-4142`
+     - **Parcel 11 = Plat F**: 109 APNs, `00-0020-9150` .. `00-0020-9307`
+     - **Parcel 12 = Plat F Amended (KRAW, LLC)**: 15 APNs, interleaved in the 9150–9231 range
+  
+     The docx has 5 tables / 77 rows but only **3 unique notices**:
+     | Entry | Type | Filed | Distinct APNs | Parcel |
+     |---|---|---|---|---|
+     | 11944289 | preliminary | 07/08/2025 | 5 | all Parcel 13 = **Plat B** |
+     | 12144585 | **construction loan** | 09/30/2025 | 57 | all Parcel 13 = **Plat B** |
+     | 12658145 | preliminary | 06/01/2026 | 5 | all Parcel 13 = **Plat B** |
+  
+     - 11944289 and 12658145: Contractor "Forced Aire Heating & Air conditioning" / "Forced Air Heating & Airconditioning", Contracted By "Justin Wallis- Wallitecture Architecture", Owner "The Zermatt Resort", Filer "Step Peak Design Services LLC", address 784 West Resort Drive, Midway, UT 84049
+     - 12144585: Owner "Wasatch Springs Management Holdings, LLC", Filer **"Guimont Capital LLC, a Delaware limited liability company"**, description "Units A000- A005, A007, A009, A011, A013, A015, A017, A100-A117, (see comments for desc. cont)" — **filed 09/30/2025, the same day Entry 564844 ($22,550,000 Plat B deed of trust) was recorded**
+  
+     **THE CRITICAL CAVEAT — the search coverage:** search criteria were County = Wasatch County, Filing Date From 08/29/2024 To 08/24/2026, and Tax Parcel ID(s) = only **six** parcels: `00-0020-3211, 00-0020-3212, 00-0020-3213, 00-0020-3214, 00-0020-4075, 00-0020-4076`.
+     | Plat | APNs in Exhibit A | searched | coverage |
+     |---|---|---|---|
+     | Plat A | 10 | 4 | 40.0% |
+     | Plat B | 68 | 2 | 2.9% |
+     | **Plat F** | **109** | **0** | **0.0%** |
+     | **Plat F Amended (KRAW)** | **15** | **0** | **0.0%** |
+     | TOTAL | 202 | 6 | 3.0% |
+  
+     So "no notices on Plat F" is an **untested question, not a finding** — and Plat F is the largest block (109 units) carrying the $19,100,000 Guimont deed of trust. The user's question carries a wrong premise (that the search covered the property), which must be corrected before answering.
+  
+  6. **All user messages:**
+     - "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/memory/handoffs/closed/2026-08-23-OKOA-Works-close-2/2026-08-23-OKOA-Works-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+     - "[Request interrupted by user for tool use] I will come back to this. I have a new work for you. I need to review a title for a loan. What am I looking for in the title report? I have never done this before. Can you give me a checklist for OKOA?"
+     - "This is what chat thinks about what you said about it being a sales document for an insurance contract: [long correction distinguishing title search/report vs title commitment vs title insurance policy; 'I would not think of the title commitment primarily as a "sales document"... The title insurance company's proposed terms for insuring OKOA's ownership or lien position... the title company's job is not necessarily to tell you whether every exception is a good or bad investment risk'] This is what chat thinks I should look for. [long 20-point guidance: Schedule A vesting, property/legal description, existing deeds of trust, lien priority, construction/mechanics liens with Utah relate-back, tax liens, judgments, Schedule B-I, Schedule B-II, easements, access, CCRs, development agreements, mineral rights, water rights, leases, ROFR/options, survey matters, encroachments, the gap; plus six-question framework and Red/Yellow/Green lists] Create a ms word checklist the I can edit."
+     - "I don't like the checklist you created. I should be a easy to use checklist where the question I am looking for would be shown and after that a yes no unsure with checkboxes that I can check off. Below there should be an option to add note. if it is a question that needs writing things, that would give a blank box for writing. /resate"
+     - "yes, and use the real clickable Word checkboxes / Add the one page front teaching material to appendix / For writing boxes use defaults."
+     - (mid-turn) "the checkboxes worked, I check them."
+     - "I think if this was an excel file it would be better."
+     - "There is a title report inside this folder: '/Users/zee/Library/CloudStorage/Dropbox-OkoaCapital/Okoa Loans - 1. In Process/Harris - Zermatt Resort Bridge' and I have copied the checklist inside /OKOA/'Zermatt Title Review' can you fill up the checklist by reading the title report and relevent docuemnts line by line. Double check each entry and create a separte file with specific reference and how you reached the conclusion for the answer. Make the reference file super easy to read for a beginner so that I can use it to learn how to do title reviews in future."
+     - "I found a lot of preliminary notices for mechanics liens and unpaid construction loans, but I don't know if they relate to the plats we are lending against. The plats we are lending against are A, B, F, can you check the percel numbers for these construction notices and figure out if any of them applies to A, B or F plats. Here is the construction preliminary notices file: '/Users/zee/Documents/OKOA/Title Review/Construction Primary Notices Search.docx'"
+  
+     **Standing constraints from CLAUDE.md / memory that remain in force:**
+     - **Never use a bare `git push`** — always name the remote explicitly (`git push personal <branch>` or `git push origin <branch>`). A PreToolUse guard (`~/.claude/hooks/github-repo-guard.ts`) denies bare pushes outright.
+     - **GitHub default is PERSONAL (`ZiaulKarim-hub`), do not ask.** `okoateam` only when Zee names it in the current conversation. Check `gh api user --jq '.login'` before any `gh repo create` — the active account drifts. ACOS 3.0 has BOTH remotes and `origin` is the **work** one.
+     - **Deliverables save to `~/Documents/OKOA`** unless told otherwise.
+     - **Never produce .md deliverables** — PDF/HTML/DOCX/XLSX only.
+     - **TypeScript/Rust over Python** for new code; Python allowed only for genuine exceptions (Excel/Word/PDF libraries explicitly named as acceptable).
+     - **Confirmation Gate** — restate and confirm before interpretive/multi-step work.
+     - Eden Protocol Level 3 register applies to top-level chat replies only, never to generated file contents.
+  
+  7. **Pending Tasks:**
+     - **Answer the construction-notices question** (analysis complete, nothing reported yet) — including correcting the premise that the search covered the property.
+     - **Parked:** the OKOA About Us borrower-facing email decision for versions 01, 02, 03 and 07 ("I will come back to this"). Related open questions from that handoff: securities disclaimers on versions 02/03/06/07/10, unifying the dark colour, deleting unused `topo-*-alpha.png`, version 02's "BORROWER PREFERENCE" table row, and whether other versions get version 05's closing-ask treatment.
+  
+  8. **Current Work:**
+  
+     I had just completed the cross-reference of `/Users/zee/Documents/OKOA/Title Review/Construction Primary Notices Search.docx` against the Zermatt commitment's parcel numbers. The final command produced the definitive per-notice APN union:
+  
+     ```
+     ENTRY 11944289 — 5 distinct APNs, all Parcel 13
+        00-0020-4077, 00-0020-4082, 00-0020-4086, 00-0020-4097, 00-0020-4103
+  
+     ENTRY 12144585 — 57 distinct APNs, all Parcel 13
+        00-0020-4075 ... 00-0020-4142 (57 listed)
+  
+     ENTRY 12658145 — 5 distinct APNs, all Parcel 13
+        00-0020-4076, 00-0020-4077, 00-0020-4082, 00-0020-4097, 00-0020-4103
+     ```
+  
+     Working data is cached at `/tmp/notices.json`, `/tmp/apn_parcel.json`, `/tmp/notice_union.json`, and `/tmp/zermatt.txt` (the `pdftotext -layout` extraction of the commitment).
+  
+     The answer to report: **all three notices land on Plat B (Parcel 13) and only Plat B — none on Plat A, none on Plat F. BUT the search covered only 6 of 205 parcel numbers and ZERO Plat F parcels, so Plat F is untested rather than clean.** Plus the timing point: Guimont's own construction-loan notice 12144585 was filed 09/30/2025, the same day its $22,550,000 Plat B deed of trust (Entry 564844) was recorded; and the earlier Forced Aire preliminary notice 11944289 (07/08/2025) predates that deed of trust. The most recent preliminary notice 12658145 was filed 06/01/2026, seven weeks before the commitment date.
+  
+     Nothing has been written to disk for this request and no answer has been given to the user yet.
+  
+  9. **Optional Next Step:**
+  
+     Report the construction-notices answer to the user, leading with the premise correction (the search covered 3.0% of the parcels and 0% of Plat F), then the three notices and their plat allocation, then the Guimont same-day-filing timing point. The user's request was: *"can you check the percel numbers for these construction notices and figure out if any of them applies to A, B or F plats."* Since the finding materially changes Q28 of the Zermatt worksheet ("Is the record clear of preliminary notices?" — currently answered Unsure), I should ask whether to update `answers.py` and regenerate the filled workbook and reference file, rather than assuming that scope.
+  </summary>
+
+current_work: |
+  Zermatt title review. Cross-referenced the State Construction Registry notices
+  (Construction Primary Notices Search.docx) against the commitment's parcel numbers
+  to answer whether any notice touches Plats A, B or F. Analysis done; building the
+  HTML report + a re-search parcel list for Zee.
+
+completed_this_session: |
+  - OKOA Title Review Checklist PDF v1.1 (9 pp) — framing corrected away from "sales document".
+  - OKOA Title Review Worksheet.docx v3.0 — 73 questions, 257 real clickable Word checkboxes.
+    Zee verified the checkboxes work in Word himself.
+  - OKOA Title Review Worksheet.xlsx v3.1 — 5 tabs, dropdowns, conditional formatting,
+    COUNTIFS roll-up, print setup (33 pp -> 7).
+  - Zermatt copy of the workbook FILLED (73/73) + beginner reference HTML explaining
+    how every answer was reached.
+  - Construction-notices cross-reference: 3 unique notices, all on Parcel 13 / Plat B.
+
+decisions_made: |
+  - Zee REJECTED the v2.0 Word checklist outright ("I don't like the checklist you created").
+    He wanted a worksheet: one question per row, Yes/No/Unsure checkboxes, notes area,
+    blank writing box where the answer needs writing. That reshaped the whole deliverable.
+  - Real clickable Word checkboxes, not typed characters. Teaching material moved to an appendix.
+  - Excel is the preferred form over Word for the checklist.
+  - The reference file must be written for a beginner so he can learn title review from it.
+  - The OKOA "About Us" borrower-email question is PARKED ("I will come back to this").
+
+blockers: |
+  (none) — the construction-notices answer is ready to deliver.
+
+candidate_learnings: |
+  - Word IGNORES per-cell table widths unless w:tblLayout is "fixed" AND w:tblGrid is rewritten.
+  - Word merges adjacent paragraphs that share identical borders, so stacked write-in rules
+    collapse into one line; use one-column table rows instead.
+  - A .page with overflow:hidden crops PDF content SILENTLY — measure every page, and skip
+    footer descendants (.chrome children) or they read as a false 19px overflow.
+  - Deriving a parcel-number -> plat map from the commitment's own Schedule B-II labels is
+    far more defensible than inferring it from number ranges or a county site.
+  - An SCR search is only as good as the parcel list it was run against. This one covered
+    6 of 202 parcels and zero Plat F. "No hits" there is an untested question, not a finding.
+
+context_for_next_session: |
+  Zermatt (Harris — Zermatt Resort Bridge) is a $7.5M senior bridge request against
+  Zermatt Resort, Midway UT. The big findings already in the filled workbook: OKOA is not
+  named as insured anywhere in the 43-page commitment; first position is deferred to ~Aug 2028
+  by a $5,000,000 Deferred Cash Payment buried in the Guimont payoff letter's DEFINED TERM;
+  $47,160,000 of recorded deed-of-trust face vs the $29,550,000 the deal file assumes;
+  $445,285.25 of delinquent property tax; a second seller (KRAW, LLC) nobody named.
+  The construction-notices work adds: Guimont filed a CONSTRUCTION LOAN notice on Plat B
+  on 09/30/2025 — the same day its $22,550,000 Plat B deed of trust recorded.
+  Next natural step is to fold that into answers.py (Q27/Q28/Q33/Q22) and regenerate,
+  but only if Zee wants that scope.

@@ -1,0 +1,118 @@
+timestamp: 2026-08-21T07:53:03+00:00
+status: parked
+type: close-project
+session_id: 801895da-baf6-410c-a6b4-148e9d607577
+slug: 2026-08-21-Skill-Workshop-close-2
+project_root: /Users/zee/Documents/Vibe Coding/ACOS 3.0
+session_summary: Safe close of Skill Workshop — branch=resurrection-static-ordinals-2026-08-19 head=8c998ec0ffca047332b26fb8911f343b0484883b dirty_count=16; next: Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1
+git_state: branch=resurrection-static-ordinals-2026-08-19 head=8c998ec0ffca047332b26fb8911f343b0484883b dirty_count=16
+git:
+  branch: resurrection-static-ordinals-2026-08-19
+  head: 8c998ec0ffca047332b26fb8911f343b0484883b
+  dirty_count: 16
+  dirty_listed: listed 16 of 16
+dirty_files:
+  -  M "Logo Builder/brandsync/candidates/round-8/meta.json"
+  -  M "Logo Builder/brandsync/commands.jsonl"
+  - ?? "Logo Builder/brandsync/candidates/round-11/"
+  - ?? "Logo Builder/brandsync/candidates/round-8/r8-06e1.svg"
+  - ?? "Logo Builder/brandsync/projects/r8-06.json"
+  - ?? "Logo Builder/brandsync/projects/r8-06e1.json"
+  - ?? "Logo Builder/brandsync/symbol/candidates/round-8/"
+  - ?? "Logo Builder/memory/handoffs/2026-08-20-autocompact-handoff.yaml"
+  - ?? "Website Builder/docs/"
+  - ?? "Website Builder/memory/decisions/D5-layers-are-a-real-tier-with-isolated-editing.md"
+  - ?? memory/handoffs/.harvested/2026-08-19-autocompact-handoff.yaml.marker
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-2/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-3/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close-4/
+  - ?? memory/handoffs/closed/2026-08-20-OKOA-Works-close/
+  - ?? memory/handoffs/closed/2026-08-21-Skill-Workshop-close/
+next_actions:
+  - Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1
+next_action: Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1
+intent_core: |
+  next_action: Build item 2 tab route (new-surface + respawn-pane), then items 3, 6, 1
+  project: Skill Workshop
+  decisions: |
+    - ITEM 2 IS IN SCOPE (Zee, 2026-08-20). I proposed SKIPPING it and shipping item 1's
+      naming fix alone, which is the brief's own fallback. Zee said yes to building it.
+      His model: first open of a row = a new WORKSPACE; a repeat open = a SURFACE (tab)
+      inside that same workspace. Today the code prints "a repeat open is a new tab"
+      (launch-project.sh:393-397) and then runs `cmux workspace create` (:445-446),
+      which makes a whole second workspace. Message and mechanism disagree.
+    - ITEM 1's NAMING FIX REVERSED. My first recommendation was to rename tab ->
+      "workspace" in all three places. That would have made the words match the BROKEN
+      behaviour and quietly blessed something Zee never asked for. New rule: say
+      "workspace" only where a workspace really is made (the first open); keep "tab"
+      where a tab is meant. Fix the words AFTER the behaviour, not before.
+    - NEW STANDING REQUIREMENT (Zee, 2026-08-20): the surface/tab word interchange must
+      never cause unintended behaviour later. Guard planned: one glossary file; the word
+      "tab" never becomes a variable name (only workspace_id / pane_id / surface_id);
+      never read CMUX_TAB_ID; a startup check that refuses if CMUX_WORKSPACE_ID ==
+      CMUX_SURFACE_ID; every cmux call names its target explicitly, never a default; and
+      a test that FAILS the build on a bare --tab or a CMUX_TAB_ID read in this folder.
+    - Item 0 committed as TWO commits, not one: the 12 resurrection files carrying the
+      Rule 3 / Rule 4 provenance (f30d745), then the other 184 entries as a snapshot
+      (eb7a146). Burying the provenance under 152 handoff files would defeat writing it.
+    - pick_ordinal is minted inside registry_lib.upsert_row when existing is None, NOT
+      at each call site as the brief suggested. Every creation path is then covered by
+      construction instead of by memory.
+    - The ledger append happens AFTER the row write. A crash between the two leaves a
+      row holding an unrecorded number, which conflict-scan can see; the reverse would
+      burn an ordinal on a row that never existed and is undetectable.
+    - set_pick_ordinal() is a separate deliberate function, kept OUT of upsert_row, so an
+      ordinal cannot ride along on the writes that happen at every close and verify.
+    - EVERY row is numbered now, ARCHIVED included, and `pickable` is a separate flag.
+      An unnumbered row cannot be named by restore / renumber / purge at all.
+  rejected_alternatives: |
+    - Skipping item 2. Rejected by Zee on 2026-08-20 after I recommended it. It IS his
+      Rule 3 as he understands it, so skipping means never getting that behaviour.
+    - Renaming "tab" to "workspace" everywhere (my own earlier recommendation, and the
+      brief's). Rejected once the mechanism turned out to be the wrong half.
+    - One single commit for item 0. Rejected: the Rule 3 / Rule 4 message is the point.
+    - Minting the ordinal in load_row for pre-backfill rows. Rejected outright — minting
+      on READ hands out a number every time a book is drawn, which is exactly the
+      per-render counter this ruling replaced.
+    - The book-token staleness gate. Superseded by item 7 and explicitly not built.
+    - Keeping --no-cmux as a reason-string return. Rejected after it proved to be a bug.
+  traps: |
+    - CMUX_TAB_ID and CMUX_SURFACE_ID hold DIFFERENT values. MEASURED live 2026-08-20 in
+      workspace "Skill Workshop": CMUX_TAB_ID = 721DD59A-BD50-4588-8C4F-FC66A221716D =
+      the WORKSPACE uuid (it equals CMUX_WORKSPACE_ID); CMUX_SURFACE_ID =
+      A74228EF-1F50-4976-AF59-20D858079B53 = the SURFACE uuid (equals CMUX_PANEL_ID).
+      Yet `cmux new-surface --help` says "Create a new surface (tab) in a pane", and
+      tab-action / rename-tab / move-tab-to-new-workspace all accept BOTH --tab and
+      --surface. Reading the wrong one targets the wrong object and still exits 0.
+      One sample, one terminal, this machine. Strong signal, not a law.
+    - `cmux new-surface` DOES take --working-directory <path>. It is MISSING from the
+      top-level `cmux --help` summary and only appears in `cmux new-surface --help`.
+      The brief's route (b) is therefore viable; do not conclude otherwise from the
+      short help.
+    - `cmux respawn-pane [--surface] [--command <cmd>]` exists — `cmux --help` line 149.
+    - A "skip" that returns a reason string reads as an error to any caller that treats
+      reason-present as failure. That was a real bug: --no-cmux was meant to BYPASS the
+      open-window check and instead made every delete refuse.
+    - bool is an int subclass in Python. True passes a naive isinstance(x, int) and would
+      land as ordinal 1. _validate_row rejects it explicitly.
+    - conflict-scan.py's scan() takes a `home` override but still reads LIVE cmux and the
+      real token-monitor state dir, so it cannot be fully isolated in a fixture. Tests
+      filter findings by type instead of asserting on the whole list.
+    - manage-ordinals.py must hoist `--home` ahead of the verb (_normalise does this).
+      argparse only sees a top-level option BEFORE the subcommand.
+    - The registry had 55 rows, not the 53 the brief states. Two were enrolled at
+      2026-08-19T20:43, after the brief was written.
+  open_questions: |
+    - The two R2P worktree rows, numbers 54 and 55 — "R2P tab-a ledger" and "R2P tab-b
+      contracts", rooted in R2P/.claude/worktrees/. Delete them or keep them? Put to Zee
+      on 2026-08-20, NOT answered. `delete` is now the verb for it.
+    - Does `rename-tab` with no target rename the WORKSPACE or the SURFACE? That single
+      answer settles which meaning wins at runtime. Identified, deliberately NOT tested
+      on live windows — a wrong rename could confuse the resume binding.
+    - Items 2, 3, 6 and 1 (stage 3) and items 4, 9, 10 (stage 4) are NOT started.
+    - Should a SINGLE pick adopt into the current tab, or always open its own window?
+      Carried from the previous close. Still unanswered. Current build: its own window.
+    - Do the ACOS Oracle PreToolUse hooks still fire under
+      --dangerously-skip-permissions? Carried from the previous close. Still unverified.
+    - The R2P registry consolidation onto row 048824ec is still planned and NOT run. It
+      was superseded mid-conversation by the resurrection-fix brief.
