@@ -3,6 +3,10 @@
 #
 # Reads the SessionStart hook JSON ({session_id, cwd, ...}) on stdin and, when
 # cwd is a real project root (marker gate), enrolls it in the durable registry:
+#   * WORKTREE GATE (2026-08-25): a cwd inside a `worktrees` directory is
+#     never enrolled. A git worktree copies CLAUDE.md and memory/handoffs, so
+#     it passes the marker gate below for the wrong reason and mints a row for
+#     what is really a throwaway working copy. See _is_worktree_path.
 #   * marker gate: <root>/.acos/ OR <root>/CLAUDE.md OR <root>/memory/handoffs/
 #     (root = cwd itself; v1 never walks up, never scans the filesystem)
 #   * identity is SIDEBAR-NAME FIRST: a cmux session in a workspace with a
@@ -37,6 +41,35 @@ import uuid
 
 def _note(msg):
     sys.stderr.write("[enroll-project] %s\n" % msg)
+
+
+# Path segments that mean "this is a working copy, not the project itself".
+# `.claude/worktrees` is what Claude Code's own agent isolation creates;
+# `.git/worktrees` is git's administrative directory. A bare `worktrees`
+# segment is included because a repo may keep them anywhere it likes.
+_WORKTREE_SEGMENTS = (
+    os.path.join(".claude", "worktrees"),
+    os.path.join(".git", "worktrees"),
+)
+
+
+def _is_worktree_path(root):
+    """True when `root` sits inside a worktree directory.
+
+    Segment-aware on purpose: a plain substring test would also match a real
+    project honestly named e.g. `/Users/zee/worktrees-explained`, and refusing
+    to enrol that would be a silent loss. Compared casefolded because macOS
+    filesystems are case-insensitive by default.
+    """
+    parts = [p.casefold() for p in os.path.abspath(root).split(os.sep) if p]
+    for i, part in enumerate(parts):
+        if part != "worktrees":
+            continue
+        # `<something>/worktrees/<name>` — there must be a level BELOW it, or
+        # the path is the container itself and not a worktree.
+        if i + 1 < len(parts):
+            return True
+    return False
 
 
 def _atomic_create_once(path, data):
@@ -214,6 +247,25 @@ def main():
         _note("no usable cwd in hook payload — skipping enrollment")
         return 0
     root = os.path.abspath(cwd)
+
+    # WORKTREE GATE (Zee, 2026-08-25) — runs BEFORE the marker gate, because a
+    # worktree passes that gate for the wrong reason.
+    #
+    # A git worktree is a second working copy of the same repository, used to
+    # run parallel work. It COPIES the repo's tracked files, so it inherits
+    # CLAUDE.md and memory/handoffs — exactly the two markers below. Every
+    # worktree therefore looked like a brand-new project and got its own row.
+    # MEASURED: rows 54 and 55, "R2P tab-a ledger" and "R2P tab-b contracts",
+    # were minted 6 seconds apart on 2026-08-19T20:43 by two sessions opening
+    # in R2P/.claude/worktrees/. Neither ever held a close, a fact or a window;
+    # the real work was parked to the R2P row, exactly as Zee remembered. Three
+    # more worktrees were sitting in that same folder waiting to do it again.
+    #
+    # A worktree is a throwaway copy, not a project. Its work belongs to the
+    # repository it was cut from, and that repository already has a row.
+    if _is_worktree_path(root):
+        _note("worktree path — NOT enrolled: %s" % root)
+        return 0
 
     # Marker gate — root is cwd itself; no walk-up, no filesystem scan (v1).
     if not (os.path.isdir(os.path.join(root, ".acos"))

@@ -2,9 +2,12 @@
 """manage-ordinals.py — the row-management verbs (Zee's request, 2026-08-19).
 
   status              what every number is, what is retired, what is free
-  delete <n>          soft delete — the row moves to deleted/, nothing unlinks
-  restore <uuid>      bring a deleted row back with its original number
-  purge <uuid>        true unlink, from deleted/ only. Irreversible.
+  delete <n>          row moves to the trash, its number is FREED, its close
+                      bundles are archived, its knowledge facts stay
+  restore <uuid>      bring a deleted row back — its original number if still
+                      free, otherwise the lowest free one; bundles come back too
+  purge <uuid>        unlink the row from the trash. Irreversible for the ROW.
+                      Knowledge facts and archived bundles are NOT erased.
   swap <a> <b>        two rows exchange numbers
   renumber <n> <m>    one row moves to a different number
   compact             close every gap, 1..N. LOUD, opt-in, never automatic.
@@ -21,6 +24,23 @@ anyone who can read the book. `delete` is for the other case — a row that
 should not be in the book at all (a mis-enrolment, a stray worktree row) —
 and it still does not unlink anything. Only `purge` unlinks, only from
 deleted/, and only when a human types the name a second time.
+
+WHAT A DELETE DOES AND DOES NOT MOVE (Zee's rulings, 2026-08-24). He asked why
+delete and purge both existed if delete did not actually free anything. Answer:
+the two-step is a trash can, and it earns its keep for the row's CONTENTS, not
+for its number — a row carries knowledge facts and close history that git does
+not back up. So the contents keep an undo window, and the number does not:
+
+  the NUMBER      freed the instant the row is deleted, so the book goes clean
+                  at once. `restore` takes it back only if still free.
+  CLOSE BUNDLES   archived — "treat it as /acos-complete" (his words). Each
+                  handoff inside is stamped `status: completed` and the bundle
+                  moves to memory/handoffs/archive/closed/. `.resume.md` files
+                  never move; the eternity protocol needs them in place. Only
+                  bundles PROVEN by the .project-uuid marker are moved; a guess
+                  is reported and left alone.
+  KNOWLEDGE FACTS never touched, by delete OR purge. Nothing else on this
+                  machine backs them up.
 
 CONFIRMATION IS ACTIVE, NOT PASSIVE — you must type the project's NAME, not
 `y`, not Enter. Evidence: Akhawe & Felt, USENIX Security 2013 (>25M
@@ -46,10 +66,16 @@ check is what stops a row being deleted out from under a live window, and an
 assistant is exactly the caller that cannot know whether a window is open. The
 receipt prints the skip in full whenever it is used.
 
-THE ORDINAL LEDGER is the source of truth for "ever issued" (ordinal_lib.py).
-A number freed by delete or renumber is retired, never auto-reissued. Manual
-assignment MAY reuse a retired number — `renumber` warns, names what held it
-and when, and requires an extra confirmation. Automatic assignment never may.
+THE ORDINAL LEDGER records every issue, retire, restore, swap and renumber
+(ordinal_lib.py). It is the answer to "what has number 7 ever been".
+
+REUSE RULE, REVERSED 2026-08-24 — Zee: "A freed number can be assigned, change
+that rule." A freed number used to be retired forever and never auto-reissued.
+Now automatic assignment takes the LOWEST FREE number, and `renumber` onto a
+previously-held number needs no extra flag. `renumber` still PRINTS what that
+number used to hold and when, because the fact is worth knowing; it just no
+longer blocks. A row sitting in deleted/ still HOLDS its number, so `restore`
+keeps working — only `purge` truly frees one.
 
 Python, not TypeScript, by the standing exception: it calls registry_lib,
 ordinal_lib and windows_lib writers directly, so the schema gate, the
@@ -91,6 +117,101 @@ def deleted_dir(home=None):
 
 def deleted_row_path(project_uuid, home=None):
     return os.path.join(deleted_dir(home), "%s.json" % project_uuid)
+
+
+def deleted_bundles_manifest(project_uuid, home=None):
+    """Where a delete records which close bundles it archived, so restore can
+    put every one of them back. Lives beside the deleted row, in the trash."""
+    return os.path.join(deleted_dir(home), "%s.bundles.json" % project_uuid)
+
+
+def archived_closed_dir(root):
+    """Where a deleted row's close bundles go (Zee, 2026-08-24: "treat it as
+    /acos-complete"). That skill archives SESSION handoffs from
+    memory/handoffs/ into memory/handoffs/archive/. A row's own history is a
+    different set — the CLOSE BUNDLES under memory/handoffs/closed/ — so they
+    land in a `closed` subfolder of the same archive. Two kinds of history,
+    one archive, never mixed together in one directory."""
+    return os.path.join(root, "memory", "handoffs", "archive", "closed")
+
+
+def owned_bundles(row, home=None):
+    """(proven, guessed) close-bundle dirs for this row.
+
+    PROVEN means the bundle carries a `.project-uuid` marker naming this row.
+    GUESSED is anything bundles_lib matched some weaker way. Only PROVEN ones
+    are ever archived: moving a bundle is moving a project's history, and a
+    resemblance is not a reason to move it. stamp-bundle-owners.py is the tool
+    that converts a guess into proof — it stamped 26 bundles on 2026-08-24.
+    """
+    import bundles_lib
+    root = row["root"]
+    cdir = os.path.join(root, "memory", "handoffs", "closed")
+    proven, guessed = [], []
+    if not os.path.isdir(cdir):
+        return proven, guessed
+    shared = bundles_lib.ambiguous_names(home)
+    for name in sorted(os.listdir(cdir)):
+        bundle = os.path.join(cdir, name)
+        if not os.path.isdir(bundle):
+            continue
+        owns, evidence = bundles_lib.bundle_owner(bundle, row, shared)
+        if not owns:
+            continue
+        # Proof is the MARKER FILE, checked directly — never a substring of the
+        # evidence prose. Caught by test_a_guessed_bundle_is_left_alone: the
+        # HEURISTIC message is "slug name match (HEURISTIC — bundle predates
+        # .project-uuid)", which contains the marker's own name, so a substring
+        # test called every guess proven and archived it. Read the file.
+        is_proven = os.path.exists(os.path.join(bundle, bundles_lib.OWNER_MARKER))
+        (proven if is_proven else guessed).append((bundle, evidence))
+    return proven, guessed
+
+
+def _stamp_completed(bundle):
+    """Mark a bundle's handoff `status: completed`, the same stamp
+    /acos-complete writes. Fail-soft and REPORTED: the move is the archiving,
+    the stamp is the label on it, and an unwritable label must not abort a
+    delete half-way through moving files."""
+    notes = []
+    for name in sorted(os.listdir(bundle)):
+        if not (name.endswith(".yaml") or name.endswith(".md")):
+            continue
+        if name.endswith(".resume.md"):
+            continue          # the eternity protocol's; /acos-complete protects these too
+        path = os.path.join(bundle, name)
+        try:
+            with open(path, "r") as fh:
+                text = fh.read()
+        except OSError as exc:
+            notes.append("%s: unreadable (%s)" % (name, exc.__class__.__name__))
+            continue
+        if re.search(r"(?m)^status:\s*[\"']?completed", text):
+            continue
+        new, n = re.subn(r"(?m)^status:\s*.*$", "status: completed", text, count=1)
+        if n == 0:
+            continue          # no status field: nothing to relabel, and never invent one
+        try:
+            with open(path, "w") as fh:
+                fh.write(new)
+        except OSError as exc:
+            notes.append("%s: unwritable (%s)" % (name, exc.__class__.__name__))
+    return notes
+
+
+def registry_lib_read_manifest(project_uuid, home=None):
+    """The bundle moves a delete recorded, or [] — a missing or unreadable
+    manifest means "nothing to put back", never an abort. A restore that
+    refused over a manifest would strand the row itself in the trash."""
+    path = deleted_bundles_manifest(project_uuid, home)
+    try:
+        with open(path, "r") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return []
+    entries = data.get("bundles") if isinstance(data, dict) else None
+    return [e for e in (entries or [])
+            if isinstance(e, dict) and e.get("from") and e.get("to")]
 
 
 def deleted_windows_dir(project_uuid, home=None):
@@ -299,8 +420,8 @@ def v_status(args, home=None):
                   % (n, r["name"][:30], r["status"], r["project_uuid"], flag))
 
     if retired:
-        print("\nretired (%d) — never auto-reissued; `renumber` may reuse one "
-              "with an extra confirmation:" % len(retired))
+        print("\nretired (%d) — HISTORY, not a lock (rule reversed 2026-08-24). A "
+              "number here is free to be reissued unless a row still holds it:" % len(retired))
         for n, rec in sorted(retired.items()):
             print("  %4d  last held by %-24s  retired %s  (%s)"
                   % (n, rec["name"][:24], rec["at"][:19], rec["verb"]))
@@ -329,6 +450,9 @@ def v_delete(args, home=None):
     uuid = row["project_uuid"]
     ordinal = row.get("pick_ordinal")
 
+    proven, guessed = owned_bundles(row, home)
+    adir = archived_closed_dir(row["root"])
+
     if not args.apply:
         print("DRY RUN — nothing moved. Would delete:")
         print("  %r (%s), number %s" % (row["name"], uuid, ordinal))
@@ -336,7 +460,21 @@ def v_delete(args, home=None):
         wd = windows_lib.windows_dir(uuid, home)
         print("  windows  -> %s%s" % (deleted_windows_dir(uuid, home),
                                       "" if os.path.isdir(wd) else "   (none to move)"))
-        print("  ordinal %s would be RETIRED and never auto-reissued." % ordinal)
+        print("  close bundles -> %s" % adir)
+        if proven:
+            for bundle, _ev in proven:
+                print("      %s" % os.path.basename(bundle))
+        else:
+            print("      (none owned by this row)")
+        if guessed:
+            print("  NOT MOVED — ownership is a guess, not the %s marker:"
+                  % __import__("bundles_lib").OWNER_MARKER)
+            for bundle, ev in guessed:
+                print("      %-46s [%s]" % (os.path.basename(bundle)[:46], ev[:60]))
+            print("      Run stamp-bundle-owners.py to settle these, then delete.")
+        print("  knowledge store: LEFT IN PLACE (facts survive delete AND purge).")
+        print("  number %s becomes FREE immediately (Zee, 2026-08-24). `restore` takes it "
+              "back if still free, otherwise the lowest free number." % ordinal)
         print("\nRe-run with --apply to move it.")
         return 0
 
@@ -356,11 +494,34 @@ def v_delete(args, home=None):
         shutil.move(wsrc, wdst)
         moved_windows = wdst
 
+    # Archive this row's close bundles — Zee's "treat it as /acos-complete".
+    # Order matters: the row file is already in the trash, so a failure here
+    # leaves a deleted row whose bundles are partly moved. The manifest is
+    # written after EACH move, so restore can always undo exactly what landed.
+    moved_bundles, bundle_notes = [], []
+    if proven:
+        os.makedirs(adir, exist_ok=True)
+    for bundle, _ev in proven:
+        # NOT `dst` — that name already holds the ROW's trash path, and
+        # shadowing it made the receipt print a bundle path on the "row moved
+        # to" line. Caught by reading a real receipt on 2026-08-24.
+        bdst = os.path.join(adir, os.path.basename(bundle))
+        if os.path.exists(bdst):
+            bundle_notes.append("%s: already in the archive — LEFT IN PLACE"
+                                % os.path.basename(bundle))
+            continue
+        bundle_notes.extend(_stamp_completed(bundle))
+        shutil.move(bundle, bdst)
+        moved_bundles.append({"from": bundle, "to": bdst})
+        registry_lib.atomic_write_json(
+            deleted_bundles_manifest(uuid, home), {"bundles": moved_bundles})
+
     if ordinal is not None:
         ordinal_lib.append_event("retire", ordinal, uuid, row["name"], home, reason="delete")
     registry_lib.audit_append(
         {"event": "row_delete", "project_uuid": uuid, "name": row["name"],
-         "pick_ordinal": ordinal, "confirmation": route}, home)
+         "pick_ordinal": ordinal, "confirmation": route,
+         "bundles_archived": len(moved_bundles)}, home)
 
     kdir = os.path.join(registry_lib._home(home), ".acos", "knowledge", uuid)
     print("DELETED %r (%s)" % (row["name"], uuid))
@@ -370,13 +531,33 @@ def v_delete(args, home=None):
               "Nothing verified that no window was open on this row.")
     print("  row moved to     : %s" % dst)
     print("  windows moved to : %s" % (moved_windows or "(none existed)"))
+    if moved_bundles:
+        print("  close bundles    : %d archived to %s" % (len(moved_bundles), adir))
+        for b in moved_bundles:
+            print("      %s" % os.path.basename(b["to"]))
+        print("                     Each handoff inside is stamped `status: completed`, "
+              "the same stamp /acos-complete writes. A `.resume.md` sibling travels "
+              "with its own bundle but is never relabelled — /acos-complete protects "
+              "those by name and so does this.")
+    else:
+        print("  close bundles    : none owned by this row were archived")
+    if guessed:
+        print("  NOT ARCHIVED     : %d bundle(s) whose ownership is a guess, not the "
+              "%s marker. Moving a project's history on a resemblance is not something "
+              "this does." % (len(guessed), __import__("bundles_lib").OWNER_MARKER))
+        for bundle, ev in guessed:
+            print("      %-46s [%s]" % (os.path.basename(bundle)[:46], ev[:60]))
+        print("                     Run stamp-bundle-owners.py to settle them.")
+    for note in bundle_notes:
+        print("  NOTE             : %s" % note)
     print("  knowledge store  : LEFT IN PLACE at %s" % kdir)
-    print("                     It is addressed by project_uuid and survives "
-          "independently of the row.")
-    print("  number %s is RETIRED — never handed out automatically again."
+    print("                     Facts survive delete AND purge (Zee, 2026-08-24). "
+          "The store is addressed by project_uuid, independently of the row.")
+    print("  number %s is FREE now — a new project may take it. `restore` takes it back "
+          "if it is still free, otherwise the lowest free number."
           % (ordinal if ordinal is not None else "(none)"))
-    print("  Nothing was unlinked. `restore %s` brings it back; only `purge` "
-          "removes it for good." % uuid)
+    print("  Nothing was unlinked. `restore %s` brings back the row, its windows and "
+          "its archived bundles; only `purge` removes the row for good." % uuid)
     return 0
 
 
@@ -388,22 +569,38 @@ def v_restore(args, home=None):
     if registry_lib.load_row(uuid, home) is not None:
         raise Refused("a LIVE row already exists for %s — nothing to restore." % uuid)
 
+    # Zee's ruling 2026-08-24: "restore brings back with old number if free but
+    # if not free bring back with a number that is available." So a taken
+    # original is NOT a refusal any more — delete frees the number immediately,
+    # which makes losing it the normal case rather than an error. It still never
+    # DISPLACES the holder; the returning row takes the lowest free number and
+    # the receipt says which, and what took the old one.
     ordinal = row.get("pick_ordinal")
+    original = ordinal
+    taken_by = []
     if ordinal is not None:
-        holders = ordinal_lib.live_holders(home).get(ordinal) or []
-        if holders:
-            raise Refused(
-                "cannot restore %r: its original number %d is now held by %s.\n"
-                "  Refusing to displace a live row silently. Free the number "
-                "first — `renumber %d <free> --uuid %s --apply`, or `swap` — "
-                "then restore."
-                % (row["name"], ordinal,
-                   ", ".join("%r (%s)" % (h["name"], h["project_uuid"]) for h in holders),
-                   ordinal, holders[0]["project_uuid"]))
+        taken_by = ordinal_lib.live_holders(home).get(ordinal) or []
+        if taken_by:
+            ordinal = ordinal_lib.next_ordinal(home)
+    elif ordinal is None:
+        ordinal = ordinal_lib.next_ordinal(home)
+
+    def _why():
+        if not taken_by and original is not None:
+            return "its original number %d, still free" % original
+        if original is None:
+            return "number %d (it held none when deleted)" % ordinal
+        return ("number %d — its original %d is now held by %s"
+                % (ordinal, original,
+                   ", ".join("%r" % h["name"] for h in taken_by)))
 
     if not args.apply:
         print("DRY RUN — nothing moved. Would restore:")
-        print("  %r (%s) with its original number %s" % (row["name"], uuid, ordinal))
+        print("  %r (%s) with %s" % (row["name"], uuid, _why()))
+        man = registry_lib_read_manifest(uuid, home)
+        if man:
+            print("  and move %d archived close bundle(s) back to memory/handoffs/closed/"
+                  % len(man))
         print("\nRe-run with --apply.")
         return 0
 
@@ -416,15 +613,49 @@ def v_restore(args, home=None):
         shutil.move(wsrc, wdst)
         restored_windows = wdst
 
-    if ordinal is not None:
-        ordinal_lib.append_event("restore", ordinal, uuid, row["name"], home)
+    # The row file was written with its ORIGINAL number. If that number went to
+    # someone else, move the returning row onto the free one — after the file is
+    # back in place, so a failure leaves a restored row rather than a lost one.
+    if ordinal != original:
+        registry_lib.set_pick_ordinal(uuid, ordinal, home)
+
+    restored_bundles, bundle_notes = [], []
+    for entry in registry_lib_read_manifest(uuid, home):
+        src, dst = entry["to"], entry["from"]
+        if not os.path.isdir(src):
+            bundle_notes.append("%s: not in the archive any more — LEFT"
+                                % os.path.basename(src))
+            continue
+        if os.path.exists(dst):
+            bundle_notes.append("%s: already back in closed/ — LEFT"
+                                % os.path.basename(dst))
+            continue
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(src, dst)
+        restored_bundles.append(dst)
+    try:
+        os.unlink(deleted_bundles_manifest(uuid, home))
+    except OSError:
+        pass
+
+    ordinal_lib.append_event("restore", ordinal, uuid, row["name"], home,
+                             from_ordinal=original if ordinal != original else None)
     registry_lib.audit_append(
         {"event": "row_restore", "project_uuid": uuid, "name": row["name"],
-         "pick_ordinal": ordinal}, home)
+         "pick_ordinal": ordinal, "original_ordinal": original}, home)
 
     print("RESTORED %r (%s)" % (row["name"], uuid))
-    print("  number %s is back on the row and no longer retired." % ordinal)
+    print("  number: %s" % _why())
     print("  windows restored : %s" % (restored_windows or "(none were stored)"))
+    if restored_bundles:
+        print("  close bundles    : %d moved back to memory/handoffs/closed/"
+              % len(restored_bundles))
+        for b in restored_bundles:
+            print("      %s" % os.path.basename(b))
+        print("                     Their `status: completed` stamp is NOT reverted — "
+              "the close really did happen, and archiving was the only thing undone.")
+    for note in bundle_notes:
+        print("  NOTE             : %s" % note)
     return 0
 
 
@@ -443,13 +674,23 @@ def v_purge(args, home=None):
         home_note="\n  This is IRREVERSIBLE. The row file is unlinked. "
                   "`delete` is the recoverable verb; this one is not.")
 
+    man = registry_lib_read_manifest(uuid, home)
+    kdir = os.path.join(registry_lib._home(home), ".acos", "knowledge", uuid)
     if not args.apply:
         print("DRY RUN — nothing unlinked. Would PERMANENTLY remove:")
         print("  %s" % deleted_row_path(uuid, home))
         if os.path.isdir(deleted_windows_dir(uuid, home)):
             print("  %s" % deleted_windows_dir(uuid, home))
-        print("  This cannot be undone. Number %s stays retired either way."
-              % row.get("pick_ordinal"))
+        print("  This cannot be undone.")
+        print("  KEPT — knowledge facts at %s" % kdir)
+        print("         Zee's ruling 2026-08-24: purge does NOT erase knowledge facts. "
+              "Nothing else on this machine backs them up.")
+        if man:
+            print("  KEPT — %d archived close bundle(s) stay in memory/handoffs/archive/"
+                  "closed/. Purging the row does not erase the project's history; it "
+                  "only stops the row from coming back." % len(man))
+        print("  Number %s was already freed by `delete`, so purging changes nothing "
+              "about it." % row.get("pick_ordinal"))
         print("\nRe-run with --apply.")
         return 0
 
@@ -463,12 +704,13 @@ def v_purge(args, home=None):
 
     print("PURGED %r (%s) — unlinked, not recoverable." % (row["name"], uuid))
     print("  confirmation: %s" % route)
-    print("  number %s stays RETIRED in the ledger. The ledger is append-only, "
-          "so what the number used to mean is still answerable."
-          % row.get("pick_ordinal"))
-    kdir = os.path.join(registry_lib._home(home), ".acos", "knowledge", uuid)
-    if os.path.isdir(kdir):
-        print("  knowledge store still at %s — purging a ROW does not touch it." % kdir)
+    print("  KEPT — knowledge facts at %s (Zee's ruling 2026-08-24: purge never "
+          "erases them)." % kdir)
+    if man:
+        print("  KEPT — %d archived close bundle(s) remain in memory/handoffs/archive/"
+              "closed/, with the manifest naming where each came from." % len(man))
+    print("  the ledger keeps every event for number %s. It is append-only, so what "
+          "that number used to mean is still answerable." % row.get("pick_ordinal"))
     return 0
 
 
@@ -551,16 +793,17 @@ def v_renumber(args, home=None):
         rec = retired[m]
         reuse_note = ("%d previously held %r (%s) and was retired %s by a %s"
                       % (m, rec["name"], rec["project_uuid"], rec["at"][:19], rec["verb"]))
-        # Manual assignment MAY reuse a retired ordinal; automatic never may.
-        # The extra confirmation is what makes it a decision rather than a
-        # collision — anything referring to the old m now points at a new row.
-        if not args.reuse_retired:
-            raise Refused(
-                "number %d is RETIRED.\n  %s\n"
-                "  Reusing it means anything that still refers to %d — a note, "
-                "a screenshot, your memory — now points at a different project.\n"
-                "  If that is what you want, re-run with --reuse-retired."
-                % (m, reuse_note, m))
+        # REVERSED 2026-08-24 — Zee: "A freed number can be assigned, change
+        # that rule." Reuse used to REFUSE here unless --reuse-retired was
+        # passed. Auto-assignment now fills the lowest free number by itself
+        # (ordinal_lib.next_ordinal), so a hard gate on the manual verb would
+        # forbid by hand exactly what the machine does unasked.
+        #
+        # The WARNING stays, because the fact is still worth knowing: anything
+        # that still refers to m — a note, a screenshot, your memory — will now
+        # point at a different project. Telling is not the same as blocking.
+        print("NOTE — number %d was previously held: %s" % (m, reuse_note))
+        print("       Anything still referring to %d now points at this row instead." % m)
 
     if not args.apply:
         print("DRY RUN — nothing written. Would renumber:")
@@ -569,9 +812,18 @@ def v_renumber(args, home=None):
             print("  REUSING A RETIRED NUMBER: %s" % reuse_note)
         if n is not None:
             print("  %d would be RETIRED (vacated, not freed)." % n)
-        if m > ordinal_lib.max_ever_issued(home):
-            print("  High-water mark moves to %d, so the next new project takes %d."
-                  % (m, m + 1))
+        # NOT a high-water statement any more: a new row takes the LOWEST free
+        # number, so moving one row up does not decide what the next row gets.
+        _after = set(ordinal_lib.held_ordinals(home))
+        if n is not None:
+            _after.discard(n)
+        _after.add(m)
+        _next = 1
+        while _next in _after:
+            _next += 1
+        print("  %d would then be free, and the next new project would take %d."
+              % (n, _next) if n is not None else
+              "  The next new project would take %d." % _next)
         print("\nRe-run with --apply.")
         return 0
 
@@ -682,7 +934,7 @@ def build_parser():
     p.add_argument("to_ordinal", type=int, metavar="TO")
     p.add_argument("--uuid", default=None)
     p.add_argument("--reuse-retired", action="store_true",
-                   help="allow a retired number to be reused (manual only)")
+                   help="accepted and ignored — reuse needs no flag since 2026-08-24")
     p.add_argument("--apply", action="store_true")
     p.set_defaults(fn=v_renumber)
 

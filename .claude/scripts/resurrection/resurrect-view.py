@@ -496,10 +496,23 @@ def build_book(home, no_cmux, no_procs):
         for i, w in enumerate(workspaces) if i not in claims
     ]
 
-    projects.sort(key=lambda p: (TIER_ORDER.index(p["tier"]), p["ref_time"]), reverse=False)
-    # recency DESC inside each tier:
+    # Inside a tier, rows run in PICK-NUMBER order (Zee, 2026-08-25: "show each
+    # of the rows in chronological order in its category"). The page was already
+    # sorted by time — newest activity first — so what he was missing was his
+    # own numbering. He had just assigned every number by hand, and the numbers
+    # jumped around the page, which made a book he had ordered look unordered.
+    #
+    # Time has NOT been thrown away. The tier itself is the time signal: OPEN NOW
+    # / RECENT / COLD are cut by age, COLD at more than 30 days, and every line
+    # still prints its own age. So the page reads "how stale is this group" down
+    # the page, and "which project is this" inside a group.
+    #
+    # ref_time DESC stays as the tie-break beneath it, for rows carrying no pick
+    # number — an unnumbered row cannot be ordered by a number it does not have.
     projects.sort(key=lambda p: p["ref_time"], reverse=True)
-    projects.sort(key=lambda p: TIER_ORDER.index(p["tier"]))
+    projects.sort(key=lambda p: (TIER_ORDER.index(p["tier"]),
+                                 p.get("pick_ordinal") is None,
+                                 p.get("pick_ordinal") or 0))
 
     # Pick numbers: READ off the row, never counted (Zee's ruling, 2026-08-19).
     #
@@ -632,8 +645,9 @@ def render_human(book, use_color):
         # deleted or renumbered. Promising a dense range here would be a lie the
         # moment the first delete lands.
         highest = max(p["pick_number"] for p in numbered)
-        lines.append(c(DIM, "pick a project by its number · numbers are PERMANENT per project, "
-                            "so they do not run in order down the page and gaps are normal "
+        lines.append(c(DIM, "pick a project by its number · rows run in NUMBER order inside "
+                            "each group, and the group itself is the age signal · numbers are "
+                            "PERMANENT per project, so gaps are normal "
                             "(highest in use: %d)" % highest))
         lines.append(c(DIM, "ARCHIVED rows keep their number but cannot be opened"))
         if book.get("unnumbered_count"):
@@ -704,6 +718,15 @@ def render_human(book, use_color):
             book["broken_count"],
             len(book.get("unmatched_workspaces") or []),
         )
+    )
+    # Discoverability footer (Zee's ask 1, 2026-08-24). The number verbs lived
+    # only in manage-ordinals.py and were named by no skill and no render, so
+    # the only way in was already knowing the file path. A number is a label
+    # the user OWNS; a label you cannot change is not really yours. One line,
+    # facts only — it names verbs, it does not badge or judge any row.
+    lines.append(
+        "numbers are permanent — say `numbers` to list them, `number <n> to <m>` to move one, "
+        "`swap <a> <b>` to exchange two"
     )
     return "\n".join(lines)
 

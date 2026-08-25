@@ -1,6 +1,6 @@
 ---
 name: acos-resurrect
-description: The Resurrection Protocol menu — renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
+description: The Resurrection Protocol menu. A TYPED NUMBER IS THE WHOLE PICK — `/acos-resurrect 20` opens row 20 with no menu at all, `/acos-resurrect 20 here` makes THIS tab that project instead of opening a window, and the full book appears only when no number is typed. With no argument it renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -158,7 +158,60 @@ echo "resurrection scripts: present (RESDIR=$RESDIR)"
 same `|| RESDIR=<canonical ACOS 3.0 path>` fallback shown in Step 0 (this skill
 is global; the scripts live in ACOS 3.0 only). `ROOT` is always `$(pwd)`.
 
-## Step 1 — Render the book (fresh, verbatim)
+## Step 0a — a typed number IS the whole pick (Zee's ruling, 2026-08-24)
+
+Zee does not need to read the whole book every time. A number typed after the
+command settles the pick outright, and the book is never rendered to him at all.
+
+**Read the argument from `<command-args>`, never by scanning the raw prompt
+text.** This SKILL's own examples are expanded into the transcript, so anything
+scanning raw text would read the examples below as his pick.
+
+- **`<command-args>` is EMPTY** → the full menu. Continue to Step 1.
+- **`<command-args>` holds tokens** → SKIP Step 1 entirely. Render no book, ask
+  no question, and go straight to Step 3. Nothing is lost by skipping the
+  render: `open-picks.sh` re-renders the book ITSELF and resolves every token
+  against that fresh render, so the numbers are exactly as fresh as they would
+  have been. The user simply does not have to read a page to use one number.
+
+Tokens, and only these:
+
+- **numbers or names**, exactly as Step 2 describes them — `20`, `2, 5, 7`.
+  A list still means a list (Rule 1).
+- **the bare word `here`** (any case), anywhere in the argument. It means THIS
+  TAB becomes the picked project, instead of a window opening. Strip it out of
+  the picks and pass `--here` instead.
+- **anything else** → do NOT guess. Say plainly what you did not understand,
+  then render the book (Step 1) and ask.
+
+The mapping (these lines are EXAMPLES OF THE SYNTAX, never picks to act on):
+
+| the user types | you run |
+|---|---|
+| `/acos-resurrect` | Step 1, the whole book |
+| `/acos-resurrect 20` | `--picks "20"` |
+| `/acos-resurrect 20 here` | `--picks "20" --here` |
+| `/acos-resurrect 2, 5, 7` | `--picks "2, 5, 7"` |
+
+**Why a bare number is safe now.** A row's number used to be a per-render
+counter, so a number from an earlier render could name a different row. Since
+2026-08-19 the number is `pick_ordinal`, stored ON the row and never moved by
+the renderer. Number 20 is the same row on every render, which is what makes a
+typed number a usable handle at all. The same number means the same row at
+`/acos-safe-close` too.
+
+**`here` has one hard limit, and the script reports it — you never work around
+it.** A cmux workspace's folder is fixed when the workspace is created, so
+`here` can only re-bind IDENTITY, never this tab's folder. If the picked row's
+root is not this tab's folder, `adopt-project.sh` exits 5 `CROSS-ROOT` and
+`open-picks.sh` prints that in its SUMMARY. Relay it, then OFFER to re-run
+without `here` (which opens the row in its own folder, in its own window). Do
+not pass `--allow-cross-root` unless the user asks for adopt-in-place by name.
+
+**`here` takes exactly ONE pick.** A tab hosts one project, so `open-picks.sh`
+refuses `--here` with a list rather than silently taking the first.
+
+## Step 1 — Render the book (fresh, verbatim) — ONLY when no argument was typed
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/resurrect-view.py" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
@@ -195,11 +248,16 @@ windows on row 5 (Rule 3).
   carries the same integer as `pick_number` in `book.json`; ARCHIVED rows have no
   number. The same verbs are accepted here.
 
-Numbers are per-render. The book is recomputed every invocation and rows move
-between tiers, so a number from an EARLIER render is not the same row now. Never
-resolve a pick against a stale render — `open-picks.sh` re-renders the book
-itself for exactly this reason, and prints each resolved name and root before it
-opens anything.
+Numbers are PERMANENT (Zee's ruling 2026-08-19). A number is `pick_ordinal`,
+stored on the row itself; the renderer only copies it to `pick_number`. Rows
+still MOVE between tiers as they go live or park, so the gutter does not ascend
+down the page — but a row's number does not change when it moves. A number read
+off an older screen still resolves to the same row. That is what makes
+`/acos-resurrect 20` (Step 0a) a safe handle at all.
+
+`open-picks.sh` still re-renders the book itself before resolving, and still
+prints each resolved name and root before it opens anything. Freshness is now
+about a row's STATUS and TIER, not about which row owns a number.
 
 When the book's `UNMATCHED WORKSPACES` section is non-empty, say so and offer
 `add <workspace name>` (Step 5). Never add one on your own initiative.
@@ -213,6 +271,8 @@ that project's own folder, running `claude --dangerously-skip-permissions`.
 
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/open-picks.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+# Add --here ONLY when Step 0a found the word `here` in <command-args>, or the
+# user asked for this tab in words. Never on your own initiative.
 bash "$RESDIR/open-picks.sh" --picks "<the user's picks verbatim>" > "$SCRATCH/open-out.txt" 2>&1; RC=$?
 cat "$SCRATCH/open-out.txt"; echo "exit=$RC"
 ```
@@ -236,8 +296,16 @@ Read the exit code, then act:
   for a corrected list, and STOP. Do not open the resolvable subset "to save a
   step" — all-or-nothing is the contract.
 
-Three flags exist, and NONE of them is ever your own initiative:
+Five flags exist, and NONE of them is ever your own initiative:
 
+- `--here` — THIS TAB becomes the picked project; no window opens. Pass it when
+  Step 0a found the word `here`, or the user asked for this tab in words. It
+  routes to `adopt-project.sh` instead of `launch-project.sh`. It takes exactly
+  ONE pick and refuses a list, and it refuses alongside `--focus-existing`
+  (they mean opposite things). Read the SUMMARY line for its outcome:
+  `THIS TAB is now the project`, or a REFUSAL naming `OUTGOING NOT-CLOSED`,
+  `ALREADY OPEN`, or `CROSS-ROOT`. On `CROSS-ROOT`, relay it and OFFER to re-run
+  without `here` — never pass `--allow-cross-root` unasked.
 - `--focus-existing` — jump to a window already open on that project instead of
   making another. Use ONLY when the user asks to go to the existing one.
 - `--label <text>` — name the new window `<project> <text>` (D12). Offer it when
@@ -245,6 +313,12 @@ Three flags exist, and NONE of them is ever your own initiative:
   without it the script auto-numbers and says so.
 - `--dry-run` — resolve and print the decisions, open nothing. Use it when the
   user wants to see what a list would do before it does it.
+- `--include-archived` — allow a `completed` row to be reopened. Every row now
+  carries a permanent number, ARCHIVED ones included, so an archived row CAN be
+  named by number. `open-picks.sh` refuses one by default in its pre-check, so a
+  mistyped number can no longer quietly revive a finished project. Pass this
+  ONLY when the user is deliberately reopening a finished project — that is the
+  loop, and it is his call. A `tombstoned` row is refused with no opt-in at all.
 
 ## Step 4 — `adopt <n>` (opt-in only, when THIS tab should become the project)
 
@@ -291,6 +365,247 @@ WINDOWS ON THIS PROJECT`** (what other live windows are doing).
   process thinks it is in no longer exists.
 
 ## Step 5 — Loop verbs
+
+### numbers — see, set and swap the pick numbers yourself (Zee's ask, 2026-08-24)
+
+Zee sets his own numbers. The machinery already existed in
+`.claude/scripts/resurrection/manage-ordinals.py`, but NO skill mentioned that
+file, so there was no way in short of knowing the path. These are the plain
+words that reach it. Every one of them is **HUMAN-INITIATED ONLY** — never run
+one on your own initiative, never batch them, never "tidy up" with them.
+
+| the user says | you run |
+|---|---|
+| `numbers` | `manage-ordinals.py status` |
+| `number 44 to 7` / `renumber 44 to 7` | `manage-ordinals.py renumber 44 7` |
+| `swap 4 9` | `manage-ordinals.py swap 4 9` |
+| `compact` | `manage-ordinals.py compact` |
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/manage-ordinals.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+# WITHOUT --apply every verb is a DRY RUN that prints what it would do.
+# Show that output, get the user's yes, then re-run the SAME line with --apply.
+python3 "$RES_DIR/manage-ordinals.py" <verb> <args>
+```
+
+Relay the output verbatim, same as every other block here. What the script
+already handles, so you never re-implement or work around it:
+
+- **`renumber` refuses to displace a live row.** It names the holder and points
+  at `swap`. Relay that; do not pick a different number for him.
+- **A previously-held number can be reused, and needs no flag** (Zee's ruling
+  2026-08-24, reversing the earlier never-reuse rule). `renumber` still PRINTS
+  what that number used to hold and when — anything still referring to it now
+  points at a different row — but it no longer blocks. `--reuse-retired` is
+  still accepted and does nothing.
+- **`compact` needs `--confirm compact`, the word typed in full.** It renumbers
+  every row to 1..N and **invalidates every number he has memorised**. It is
+  opt-in for that reason. Say the cost out loud before running it, every time.
+- **A new row fills the lowest free number** (same 2026-08-24 ruling). Gaps
+  close on their own as projects are added, so `compact` is for tidying an
+  existing spread, not for reclaiming holes one at a time. A row sitting in
+  `deleted/` still HOLDS its number, so `restore` keeps working; only `purge`
+  truly frees one. `delete`, `restore` and `purge` also live in this script;
+  all are human-initiated and documented in its own header.
+- **The cost of reuse, so it is never a surprise.** A number is no longer unique
+  across time: 7 may be one project today and another after the first is purged.
+  The ledger still records every number's history, so `numbers` can still say
+  what 7 has been.
+
+### delete / restore / purge — what each one really moves (Zee, 2026-08-24)
+
+`finish` and `tombstone` only HIDE a row: it stays on disk, keeps its number
+forever, and sits under ARCHIVED. `delete` is the other case — a row that should
+not be in the book at all. Zee's rulings settled exactly what it moves:
+
+| | the NUMBER | close bundles | knowledge facts |
+|---|---|---|---|
+| `delete` | **freed at once** | archived | untouched |
+| `restore` | original if free, else the lowest free one | moved back | untouched |
+| `purge` | already free; nothing changes | **kept** in the archive | **untouched** |
+
+- **delete frees the number immediately.** He overruled the first cut, which
+  held the number so `restore` could always have it back. His reason: delete
+  must actually clear the book. That fits the reuse rule he set the same day.
+- **"Treat it as `/acos-complete`"** — his words for the handoffs. Each handoff
+  inside the row's close bundles is stamped `status: completed`, the same stamp
+  that skill writes, and the bundle moves to `memory/handoffs/archive/closed/`.
+  `.resume.md` files are never relabelled; the eternity protocol needs them.
+- **Only PROVEN ownership moves.** A bundle is proven by its `.project-uuid`
+  marker file — the file itself, never the wording of an evidence string. An
+  unproven bundle is REPORTED and left where it is. Moving a project's history
+  on a resemblance is the failure this exists to prevent: 22 rows share the
+  ACOS 3.0 folder. Run `stamp-bundle-owners.py` to convert guesses into proof.
+- **Knowledge facts survive both verbs.** Nothing else on this machine backs
+  them up. `purge` ends the row's undo window; it is not a content eraser.
+- **restore never displaces a live row.** If the original number was taken, the
+  returning row takes the lowest free one and the receipt says which, and who
+  holds the old one.
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/manage-ordinals.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+# Ownership first — a delete only archives what it can PROVE it owns.
+python3 "$RES_DIR/stamp-bundle-owners.py"            # dry run: what would be stamped
+python3 "$RES_DIR/stamp-bundle-owners.py" --apply
+# Then the row verbs. Without --apply each is a dry run.
+python3 "$RES_DIR/manage-ordinals.py" delete <n> --confirm-name "<exact name>" --apply
+python3 "$RES_DIR/manage-ordinals.py" restore <uuid> --apply
+python3 "$RES_DIR/manage-ordinals.py" purge <uuid> --confirm-name "<exact name>" --apply
+```
+
+**NEVER pass `--no-cmux` to `delete` from this skill.** It skips the open-window
+check, which is the guard that stops a row being deleted out from under a live
+window. An assistant is exactly the caller that cannot know whether one is open.
+
+`stamp-bundle-owners.py` leaves two kinds alone and says so: a bundle claimed by
+two rows at ONE folder, and a bundle no row claims. Both are duplicate-row cases
+— merge the rows, then re-run, and the survivor owns the bundle.
+
+### renumber in BULK, from a spreadsheet (Zee's ask, 2026-08-24)
+
+One verb at a time does not scale, and it cannot express a reshuffle at all: to
+swap 5 and 7 you must move one row onto a number the other still holds, and
+`renumber` refuses that. So Zee asked for a sheet. He fills one column; the
+script does the rest in a single planned pass.
+
+| the user says | you run |
+|---|---|
+| `numbers sheet` / "give me the file" | `plan-ordinals.py export` |
+| "I've filled it in" | `plan-ordinals.py apply --file <path>` |
+
+```bash
+ROOT="$(pwd)"; RES_DIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RES_DIR/plan-ordinals.py" ] || RES_DIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+# 1. write the sheet (default: ~/Documents/OKOA/acos-row-numbers.xlsx)
+python3 "$RES_DIR/plan-ordinals.py" export
+# 2. Zee fills the `new_number` column and saves. WAIT for him to say he has.
+# 3. dry run — prints the plan, writes nothing
+python3 "$RES_DIR/plan-ordinals.py" apply --file "<path>"
+# 4. only after he approves the printed plan
+python3 "$RES_DIR/plan-ordinals.py" apply --file "<path>" --apply
+# --survivor NUMBER=UUID names the surviving row of a merged number, and beats
+# a green fill. Repeat it once per number. Example, 2026-08-25:
+#   --survivor 26=cae643cb-6ad8-472e-9390-be40c1283578
+```
+
+The `new_number` column takes three kinds of value:
+
+| cell | meaning |
+|---|---|
+| blank | leave that row exactly where it is |
+| a number | move the row to that number |
+| `0` | **DELETE that row** (Zee, 2026-08-25) |
+| the SAME number typed on 2+ rows | **MERGE them into one row** (Zee, 2026-08-25) |
+
+`0` can carry that meaning because it is the one value no row can hold — the
+renderer never issues it. (`/acos-safe-close` also uses `0`, for "new project",
+but that is a different question asked in a different place; nothing reads both.)
+
+Relay every block verbatim. What the script owns, so you never re-implement it:
+
+- **A blank cell means LEAVE THAT ROW ALONE.** It never clears a number.
+- **`0` runs the real `delete` verb**, not a copy of it — so the number is
+  freed, the close bundles are archived, and the knowledge facts are kept,
+  exactly as they are for a single delete.
+- **Deletes run BEFORE the moves.** A delete frees a number, and another row in
+  the same sheet may be moving into it. Put `0` on row 5 and `5` on row 9, and
+  row 9 lands on 5. The other order would collide.
+- **A delete that cannot be safe refuses the WHOLE sheet, before anything is
+  written.** Two blockers: a window is open on that row, or it owns a close
+  bundle only by a guess. Per row the guess is a printed note; in a bulk run
+  nobody reads per-row notes, so it is promoted to a refusal naming
+  `stamp-bundle-owners.py` as the fix.
+- **If a delete fails, the moves are NOT attempted.** The receipt names which
+  row and its exit code, and tells you to re-export rather than re-run.
+- **The stale-plan guard.** Each line's `current_number` must still match the
+  row on disk. If anything renumbered, enrolled or closed since the export, the
+  sheet describes a book that is gone and the whole apply REFUSES. Re-export.
+  This is also what stops the same sheet being applied twice.
+- **`project_uuid` is the identity.** Names repeat on this machine, so a name
+  could never be the key. If he deletes that column, re-export rather than
+  guessing which row he meant.
+- **The same number TYPED on two or more rows is a MERGE, not a refusal**
+  (Zee, 2026-08-25: "Found a lot of duplicates, I will put in the same number
+  for the duplicates"). See the merge block below.
+- **A typed number landing on a row whose cell is BLANK is still refused.** A
+  blank cell was never typed, so it is a collision he did not ask for. The
+  refusal names both rows and the four ways out: give the blank row a number,
+  type the same number on it to merge them, mark it `0`, or pick another
+  number. Measured 2026-08-25: five of these in his own sheet, one of which
+  would have deleted the `zee` row.
+- **Still refused:** a negative, and a fraction. A fraction is refused rather
+  than rounded, because rounding would pick a row he never named.
+- **The move is two passes.** Every mover is parked above everything in use,
+  then placed. No intermediate state ever has two rows on one number.
+- **A partial write is reported, never retried.** There is no lock on the
+  registry. The script re-reads every row afterwards and, if anything did not
+  land, prints what and stops — pointing at `manage-ordinals.py status` and
+  `conflict-scan.py`. Do not re-run it to "fix" that; read the state first.
+- **`registry.d/.ordinal-plan-in-progress.json`** exists only while writes are
+  in flight. Finding one means a run died mid-rearrangement; it names exactly
+  what was moving. Relay it, do not delete it on your own initiative.
+- **XLSX needs openpyxl.** It is importable under `python3` (3.14.6) here but
+  NOT under `/usr/bin/python3` (3.9.6). The export falls back to CSV and says so
+  rather than failing at the last step. Excel opens either.
+- **Exporting NEVER blanks a column he has already filled.** An export rewrites
+  the whole file, and on 2026-08-25 that would have wiped 50 typed cells. The
+  fresh sheet now copies the earlier one's `new_number` column across, matching
+  by `project_uuid` (three rows are called FruitSync, so a name match would
+  shuffle them), and keeps a dated copy of the file it replaces. `--carry-from
+  PATH` reads a different sheet; `--blank` opts out. A typed number whose row no
+  longer exists is REPORTED by name, never dropped in silence.
+
+### merging duplicate rows (Zee, 2026-08-25)
+
+> "Found a lot of duplicates, I will put in the same number for the duplicates,
+> in case they have different names, go with the name for which I mark the
+> number with green color."
+
+The same number typed on two or more rows says those rows are **one project
+wearing several rows**. They are folded into one.
+
+**Which name survives**, in order — the first that applies wins:
+
+| rung | how |
+|---|---|
+| 1 | `--survivor NUMBER=UUID` on the apply command, when he names one out loud |
+| 2 | a **GREEN fill** on that row's `new_number` cell |
+| 3 | whichever row holds the most (facts + 3 × close bundles) |
+
+Rung 3 is reported as **WEAK** and listed separately above the dry run, because
+nothing was marked and the script chose. Never apply past a WEAK list without
+showing it to him first. Two green marks on one number, or a dead heat on rung
+3, **refuse the sheet** — guessing between two deliberate marks is worse than
+stopping.
+
+**What a merge moves, before the losing row is deleted:**
+
+- **knowledge facts** → through `merge-knowledge.py`, which de-duplicates by
+  content hash and carries the `struck` / `supersedes` edges, so the survivor
+  keeps the same view of what is still true.
+- **close bundles** → re-stamped to the survivor. Where the roots differ the
+  DIRECTORY moves too, because `owned_bundles()` only ever looks under a row's
+  own root; a re-stamp alone would leave the history unreachable. A name clash
+  at the destination gets a `--2` suffix, never an overwrite.
+- **window claims** → re-pointed, so a tab open on the losing row keeps working.
+- then the loser runs the real `delete` verb: number freed, remaining bundles
+  archived, facts kept.
+
+**Order matters.** Content moves FIRST. A bundle archived by the delete would
+then be handed over from inside an archive folder, where nothing looks for it.
+
+**Why absorb rather than just delete.** Delete already keeps a row's facts —
+they live in a store addressed by `project_uuid`, not by the row. But nothing
+would ever open that store again, because the row that named it is gone.
+Absorbing is what makes the kept facts reachable. Live case: the two Logo
+Builder rows hold 18 and 16 facts, both real.
+
+**A merge dissolves its own bundle ambiguity.** A bundle two same-named rows
+could both claim normally refuses everything — `bundle_owner` will not award
+one project another's history on a resemblance. But if EVERY row that could
+claim it is inside this merge group, the survivor owns it whichever way it
+went. That is how `2026-07-18-ACOS-3.0-close`, the last unresolved bundle on
+this machine, gets settled. A bundle some row OUTSIDE the group could claim
+stays doubtful and still refuses, naming `stamp-bundle-owners.py`.
 
 ### finish <project>
 

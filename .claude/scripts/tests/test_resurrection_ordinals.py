@@ -15,7 +15,9 @@ Every test runs against a FIXTURE registry under a throwaway home. Nothing
 here ever reads or writes the real ~/.acos.
 """
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -173,23 +175,27 @@ class OrdinalPersistenceTest(OrdinalTestBase):
             {"project_uuid": "uuid-new", "root": root, "workspace_name": "New"}, self.home)
         self.assertEqual(row["pick_ordinal"], 5)
 
-    def test_max_plus_one_counts_tombstoned_and_deleted_rows(self):
-        """The ledger, not the live rows, is what `max+1` reads.
+    def test_a_tombstoned_row_holds_its_number_but_a_deleted_one_does_not(self):
+        """Both hide a row; only one frees its number (Zee, 2026-08-24).
 
-        A deleted row is gone from registry.d/, so a live-row scan would hand
-        its number straight to the next project — which is the collision the
-        ledger exists to prevent."""
+        A TOMBSTONED row is still in registry.d/ — hidden in ARCHIVED, but on
+        disk and still holding 4. A DELETED row has left registry.d/ entirely,
+        so 3 is free at once. That asymmetry is the whole reason delete exists
+        alongside tombstone: delete actually clears the book."""
         self.seed(4)
         self.backfill_all()
         registry_lib.tombstone_row("uuid-delta", self.home)          # ordinal 4, hidden
-        self.run_verb(["delete", "3", "--confirm-name", "Charlie",   # ordinal 3, moved away
+        self.run_verb(["delete", "3", "--confirm-name", "Charlie",   # ordinal 3, freed
                        "--apply", "--no-cmux"])
         self.assertIsNone(registry_lib.load_row("uuid-charlie", self.home))
+        held = ordinal_lib.held_ordinals(self.home)
+        self.assertIn(4, held, "tombstoned rows still hold their number")
+        self.assertNotIn(3, held, "deleted rows do not")
         root = os.path.join(self.home, "roots", "New")
         os.makedirs(root, exist_ok=True)
         row = registry_lib.upsert_row(
             {"project_uuid": "uuid-new", "root": root, "workspace_name": "New"}, self.home)
-        self.assertEqual(row["pick_ordinal"], 5, "must not reuse 3 or 4")
+        self.assertEqual(row["pick_ordinal"], 3, "the freed number is the lowest free one")
 
     def test_an_ordinal_survives_park_active_park(self):
         """Status changes are the common case — they must never touch the
@@ -230,16 +236,23 @@ class OrdinalPersistenceTest(OrdinalTestBase):
 # ------------------------------------------------------------------ ledger ---
 
 class LedgerTest(OrdinalTestBase):
-    def test_a_retired_ordinal_is_never_auto_reissued(self):
+    def test_a_retire_event_alone_does_not_withhold_a_number(self):
+        """REVERSED 2026-08-24. A `retire` line is HISTORY now, not a lock. What
+        withholds 2 here is that a ROW still holds it — not the ledger entry."""
         self.seed(3)
         self.backfill_all()
         ordinal_lib.append_event("retire", 2, "uuid-bravo", "Bravo", self.home)
-        self.assertEqual(ordinal_lib.next_ordinal(self.home), 4)
         self.assertIn(2, ordinal_lib.retired_ordinals(self.home))
+        self.assertEqual(ordinal_lib.next_ordinal(self.home), 4, "1,2,3 are held by rows")
+        registry_lib.set_pick_ordinal("uuid-bravo", 9, self.home)
+        self.assertEqual(ordinal_lib.next_ordinal(self.home), 2,
+                         "once no row holds 2, the retire line does not stop it")
 
     def test_a_garbage_ledger_line_raises_rather_than_being_skipped(self):
-        """A skipped line would make a retired number look free — the exact
-        failure the ledger exists to prevent."""
+        """A silently skipped line would lose a number's history. Since
+        2026-08-24 that no longer changes which number gets issued next — the
+        rows decide that — but `numbers` would then misreport what a number has
+        been, and a quiet gap in an append-only log is its own defect."""
         self.seed(1)
         self.backfill_all()
         with open(ordinal_lib.ledger_path(self.home), "a") as fh:
@@ -318,12 +331,33 @@ class DeleteRestorePurgeTest(OrdinalTestBase):
             manage._assert_not_live(row, {}, "cmux could not be run", "delete")
         self.assertIn("could not run", str(ctx.exception))
 
-    def test_a_delete_retires_the_ordinal(self):
+    def test_a_delete_frees_the_number_immediately(self):
+        """Zee, 2026-08-24: "delete moves the row to trash, frees the number".
+
+        The ledger still RECORDS the retire — that history is unchanged — but
+        the number is takeable the moment the row leaves registry.d/."""
         self.seed(3)
         self.backfill_all()
         self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
-        self.assertIn(2, ordinal_lib.retired_ordinals(self.home))
-        self.assertEqual(ordinal_lib.next_ordinal(self.home), 4)
+        self.assertIn(2, ordinal_lib.retired_ordinals(self.home), "history recorded")
+        self.assertNotIn(2, ordinal_lib.held_ordinals(self.home), "but not held")
+        self.assertEqual(ordinal_lib.next_ordinal(self.home), 2)
+
+    def test_a_delete_leaves_the_knowledge_facts_alone(self):
+        """Facts survive delete AND purge. Nothing else backs them up."""
+        import knowledge_lib
+        self.seed(2)
+        self.backfill_all()
+        knowledge_lib.append_fact(
+            "uuid-bravo", {"kind": "machine", "subject": "traps",
+                           "claim": "a fact that must outlive the row",
+                           "evidence": {"type": "command", "value": "echo x"}},
+            home=self.home)
+        self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
+        self.assertEqual(len(knowledge_lib.load_facts("uuid-bravo", self.home)), 1)
+        self.run_verb(["purge", "uuid-bravo", "--confirm-name", "Bravo", "--apply"])
+        self.assertEqual(len(knowledge_lib.load_facts("uuid-bravo", self.home)), 1,
+                         "purge must not erase facts either")
 
     def test_restore_brings_the_row_and_its_number_back(self):
         self.seed(3)
@@ -335,16 +369,30 @@ class DeleteRestorePurgeTest(OrdinalTestBase):
         self.assertEqual(row["pick_ordinal"], 2)
         self.assertNotIn(2, ordinal_lib.retired_ordinals(self.home))
 
-    def test_restore_refuses_when_the_original_number_is_taken(self):
-        """Never silently displace a live row. Name the holder and stop."""
+    def test_restore_takes_a_free_number_when_its_original_is_taken(self):
+        """Zee, 2026-08-24: "if not free bring back with a number that is
+        available." It used to REFUSE. Refusing became wrong the moment delete
+        started freeing numbers — losing the original is now the normal case,
+        not an error. It still never displaces the holder."""
         self.seed(3)
         self.backfill_all()
         self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
-        # Charlie moves onto the freed 2 by deliberate, confirmed reuse.
-        self.run_verb(["renumber", "3", "2", "--reuse-retired", "--apply"])
+        self.run_verb(["renumber", "3", "2", "--apply"])       # Charlie takes the freed 2
         code = self.run_verb(["restore", "uuid-bravo", "--apply"])
-        self.assertEqual(code, 1)
-        self.assertIsNone(registry_lib.load_row("uuid-bravo", self.home))
+        self.assertEqual(code, 0)
+        back = registry_lib.load_row("uuid-bravo", self.home)
+        self.assertIsNotNone(back)
+        self.assertNotEqual(back["pick_ordinal"], 2, "must not displace Charlie")
+        self.assertEqual(registry_lib.load_row("uuid-charlie", self.home)["pick_ordinal"], 2)
+        holders = ordinal_lib.live_holders(self.home)
+        self.assertTrue(all(len(v) == 1 for v in holders.values()), "no clash")
+
+    def test_restore_keeps_the_original_number_when_it_is_still_free(self):
+        self.seed(3)
+        self.backfill_all()
+        self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
+        self.assertEqual(self.run_verb(["restore", "uuid-bravo", "--apply"]), 0)
+        self.assertEqual(registry_lib.load_row("uuid-bravo", self.home)["pick_ordinal"], 2)
 
     def test_purge_refuses_a_row_that_was_never_deleted(self):
         """An unlink always takes two separate human acts."""
@@ -354,14 +402,28 @@ class DeleteRestorePurgeTest(OrdinalTestBase):
         self.assertEqual(code, 1)
         self.assertTrue(os.path.exists(registry_lib.row_path("uuid-alpha", self.home)))
 
-    def test_purge_unlinks_only_from_deleted_and_keeps_the_ordinal_retired(self):
+    def test_purge_unlinks_the_row_and_changes_nothing_about_the_number(self):
+        """`delete` already freed it, so purge has no number work left to do.
+        Purge's job is to end the undo window, not to reclaim a number."""
         self.seed(2)
         self.backfill_all()
         self.run_verb(["delete", "1", "--confirm-name", "Alpha", "--apply", "--no-cmux"])
+        self.assertNotIn(1, ordinal_lib.held_ordinals(self.home), "delete freed it")
         code = self.run_verb(["purge", "uuid-alpha", "--confirm-name", "Alpha", "--apply"])
         self.assertEqual(code, 0)
         self.assertFalse(os.path.exists(manage.deleted_row_path("uuid-alpha", self.home)))
-        self.assertIn(1, ordinal_lib.retired_ordinals(self.home))
+        self.assertIn(1, ordinal_lib.retired_ordinals(self.home), "history survives")
+        self.assertNotIn(1, ordinal_lib.held_ordinals(self.home))
+        self.assertEqual(ordinal_lib.next_ordinal(self.home), 1)
+
+    def test_purge_refuses_a_row_that_was_never_deleted_twice_over(self):
+        """An unlink always takes two separate human acts, and purge is the
+        second. It never reaches a live row."""
+        self.seed(2)
+        self.backfill_all()
+        self.assertEqual(
+            self.run_verb(["purge", "uuid-alpha", "--confirm-name", "Alpha", "--apply"]), 1)
+        self.assertIsNotNone(registry_lib.load_row("uuid-alpha", self.home))
 
 
 class SwapTest(OrdinalTestBase):
@@ -444,27 +506,51 @@ class RenumberTest(OrdinalTestBase):
         self.assertEqual(self.run_verb(["renumber", "1", "2", "--apply"]), 1)
         self.assertEqual(registry_lib.load_row("uuid-alpha", self.home)["pick_ordinal"], 1)
 
-    def test_renumber_refuses_a_retired_target_without_the_extra_flag(self):
-        """Manual reuse is ALLOWED — but as a decision, not a collision."""
+    def test_renumber_onto_a_retired_target_needs_no_flag(self):
+        """REVERSED 2026-08-24 — Zee: "A freed number can be assigned, change
+        that rule." This used to REFUSE and demand --reuse-retired. It no longer
+        can: auto-assignment fills free numbers by itself, so a hard gate on the
+        manual verb would forbid by hand what the machine does unasked."""
         self.seed(3)
         self.backfill_all()
         self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
-        self.assertEqual(self.run_verb(["renumber", "1", "2", "--apply"]), 1)
-        self.assertEqual(self.run_verb(["renumber", "1", "2", "--reuse-retired", "--apply"]), 0)
+        self.assertEqual(self.run_verb(["renumber", "1", "2", "--apply"]), 0)
         self.assertEqual(registry_lib.load_row("uuid-alpha", self.home)["pick_ordinal"], 2)
 
-    def test_renumber_to_a_free_never_issued_number_moves_the_high_water_mark(self):
+    def test_renumber_still_says_what_the_number_used_to_hold(self):
+        """Telling is not blocking. The gate is gone; the fact is not."""
+        self.seed(3)
+        self.backfill_all()
+        self.run_verb(["delete", "2", "--confirm-name", "Bravo", "--apply", "--no-cmux"])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.run_verb(["renumber", "1", "2", "--apply"])
+        out = buf.getvalue()
+        self.assertIn("previously held", out)
+        self.assertIn("Bravo", out)
+
+    def test_the_flag_is_still_accepted_and_does_nothing(self):
+        """An old command line in a note must not start erroring."""
+        self.seed(3)
+        self.backfill_all()
+        self.assertEqual(self.run_verb(["renumber", "1", "40", "--reuse-retired", "--apply"]), 0)
+        self.assertEqual(registry_lib.load_row("uuid-alpha", self.home)["pick_ordinal"], 40)
+
+    def test_renumber_away_frees_the_vacated_number_for_the_next_new_row(self):
+        """The old name for this was `the_vacated_number_is_retired_not_freed`.
+        The ledger still RECORDS the retire — that history is unchanged — but it
+        no longer withholds the number."""
         self.seed(2)
         self.backfill_all()
         self.assertEqual(self.run_verb(["renumber", "1", "40", "--apply"]), 0)
         self.assertEqual(ordinal_lib.max_ever_issued(self.home), 40)
-        self.assertEqual(ordinal_lib.next_ordinal(self.home), 41)
-
-    def test_the_vacated_number_is_retired_not_freed(self):
-        self.seed(2)
-        self.backfill_all()
-        self.run_verb(["renumber", "1", "40", "--apply"])
-        self.assertIn(1, ordinal_lib.retired_ordinals(self.home))
+        self.assertIn(1, ordinal_lib.retired_ordinals(self.home), "ledger still records it")
+        self.assertEqual(ordinal_lib.next_ordinal(self.home), 1, "and it is takeable again")
+        root = os.path.join(self.home, "roots", "Next")
+        os.makedirs(root, exist_ok=True)
+        row = registry_lib.upsert_row(
+            {"project_uuid": "uuid-next", "root": root, "workspace_name": "Next"}, self.home)
+        self.assertEqual(row["pick_ordinal"], 1)
 
     def test_renumber_accepts_the_word_to(self):
         """`renumber 7 to 9` is how the brief writes it and how a human says

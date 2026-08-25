@@ -262,9 +262,12 @@ def upsert_row(fields, home=None):
         "pick_ordinal": existing["pick_ordinal"] if existing else None,
     }
 
-    # A genuinely NEW row mints max(ever issued) + 1 here rather than at each
-    # call site, so every creation path — enroll-project.sh, the `add` verb,
-    # anything added later — is covered by construction instead of by memory.
+    # A genuinely NEW row mints its number HERE rather than at each call site,
+    # so every creation path — enroll-project.sh, the `add` verb, anything added
+    # later — is covered by construction instead of by memory. Since 2026-08-24
+    # that number is the LOWEST FREE one, not max(ever issued) + 1 (Zee: "A
+    # freed number can be assigned, change that rule"); ordinal_lib owns the
+    # definition of free, and counts a row in deleted/ as still holding its.
     minted = None
     if existing is None:
         import ordinal_lib  # lazy: ordinal_lib imports this module at its top

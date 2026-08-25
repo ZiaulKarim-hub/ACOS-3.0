@@ -25,9 +25,12 @@ The five conflict classes Zee defined, in his own words plus the mechanism:
   SESSION-SHARED
                 one session id is the recorded hint of more than one row.
   ORDINAL-CLASH two live rows hold one pick_ordinal, so a typed number is
-                ambiguous. Added 2026-08-19 with the permanent-number ruling:
-                auto-assignment is `max(ever issued) + 1` with no lock, so two
-                simultaneous creations can take the same number.
+                ambiguous. Added 2026-08-19 with the permanent-number ruling.
+                Auto-assignment has no lock, so two simultaneous creations can
+                read the same free number and both take it. Since the reuse rule
+                reversed on 2026-08-24 that number is the LOWEST free one rather
+                than max+1, which does not change the race — only which number
+                the two racers collide on.
   ORDINAL-MISSING
                 a live row has no pick_ordinal, so no verb can name it — every
                 verb names a row by its number.

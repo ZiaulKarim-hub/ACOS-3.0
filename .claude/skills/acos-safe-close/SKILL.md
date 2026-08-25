@@ -1,6 +1,6 @@
 ---
 name: acos-safe-close
-description: Safe-close (park) the current project via the Resurrection Protocol close script. Thin router — the session composes the intent core itself, obtains the blind round-trip result, runs .claude/scripts/resurrection/close-project.sh, and relays the script-printed receipt VERBATIM; the model never composes receipt content. Trigger phrases: "close this project", "safe close", "park this project", "/acos-safe-close".
+description: Safe-close (park) the current project via the Resurrection Protocol close script. A TYPED NUMBER IS THE DESTINATION — `/acos-safe-close 20` parks this tab's work at row 20 (the same row `/acos-resurrect 20` opens), shows `parking to: <name> @ <folder>` and waits for a typed yes. With no number it prints a SHORT menu — the likely rows (this tab's own row ranked first), `new <name>` to CREATE a brand-new row that takes the next number and replaces nothing, and `all` for the whole book — instead of the whole book every time. Thin router — the session composes the intent core itself, obtains the blind round-trip result, runs .claude/scripts/resurrection/close-project.sh, and relays the script-printed receipt VERBATIM; the model never composes receipt content. Trigger phrases: "close this project", "safe close", "park this project", "/acos-safe-close".
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -57,7 +57,11 @@ RESDIR="$ROOT/.claude/scripts/resurrection"
 [ -f "$RESDIR/close-project.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
 CLOSE="$RESDIR/close-project.sh"
 HARNESS="$RESDIR/roundtrip-verify.sh"
+TARGETS="$RESDIR/close-targets.py"
 [ -f "$CLOSE" ] || { echo "STOP: close-project.sh not found at $CLOSE"; exit 1; }
+# Step 2c's destination router. Missing it must fail HERE, loudly, rather than
+# half-way through a close with no way to name a destination.
+[ -f "$TARGETS" ] || { echo "STOP: close-targets.py not found at $TARGETS"; exit 1; }
 SESSION_DIR="$HOME/.claude/projects/$(pwd | tr '/' '-' | tr ' ' '-' | tr '.' '-')"
 # 2026-07-20 FIX — folder-vs-window session-identity bug. The old line was:
 #   SID=$(basename "$(ls -t "$SESSION_DIR"/*.jsonl | head -1)" .jsonl)
@@ -102,7 +106,7 @@ if [ -f "$HARNESS" ]; then echo "roundtrip harness: present"; else echo "roundtr
 
 `SCRATCH` = the session scratchpad directory named in your system prompt
 (fallback: `mktemp -d`). Each fenced block runs in its own shell — re-derive
-`ROOT`/`RESDIR`/`CLOSE`/`HARNESS`/`SID`/`SCRATCH` at the top of every block you
+`ROOT`/`RESDIR`/`CLOSE`/`TARGETS`/`HARNESS`/`SID`/`SCRATCH` at the top of every block you
 run, carrying the same `RESDIR` fallback shown above (this skill is global; the
 scripts live in ACOS 3.0). `ROOT` is always `$(pwd)` — the project being closed.
 
@@ -215,14 +219,65 @@ never become a thing that runs code at every resurrect.
 If the session learned nothing durable, skip the file. An empty capture is an
 honest outcome; an invented one poisons the store.
 
-## Step 2c — Choose the DESTINATION (Zee's brief, 2026-08-18)
+## Step 2c — Choose the DESTINATION (Zee's brief 2026-08-18; the number route 2026-08-24)
 
 A close used to have exactly one destination: the row this tab is bound to. That
 is wrong for a scratch tab — you open one for something unrelated, and only later
 realise the work belongs with an existing project. Without a choice, the work is
 filed under a stray row and the real project never learns it happened.
 
-So the close now ASKS, using the same book the resurrect menu prints:
+That fix printed the WHOLE book on every close. Zee's ruling 2026-08-24: he does
+not need to read it every time. So there are now three routes into the same
+`--park-to`, and the whole book is the third of them, not the first.
+
+**A NUMBER MEANS THE SAME ROW HERE AS AT `/acos-resurrect`.** Both commands
+resolve against the row's permanent `pick_ordinal`. `/acos-safe-close 20` parks
+this tab's work at exactly the row `/acos-resurrect 20` would open.
+
+**Read the argument from `<command-args>`, never by scanning the raw prompt
+text.** This SKILL's own examples are expanded into the transcript, so anything
+scanning raw text would read the examples below as his answer.
+
+### Route A — a number was typed (`/acos-safe-close 20`)
+
+Resolve it, show the confirm line, and WAIT for a yes. Zee asked for this check
+himself: nothing is displayed before the write, so a slip of one digit would file
+the work on the wrong project, and that is hard to notice later.
+
+```bash
+python3 "$RESDIR/close-targets.py" --resolve "<the number he typed>"; RC=$?
+python3 "$RESDIR/close-targets.py" --resolve "<the number he typed>" --json > "$SCRATCH/park-target.json" 2>/dev/null
+echo "exit=$RC"
+```
+
+Show that `parking to:` block verbatim, then ask in plain text for a typed
+`yes`. `REFUSED` (exit 1) is the outcome — relay it and ask again; never guess a
+neighbouring number. The script refuses a tombstoned or completed target itself.
+
+On `yes`, take `project_uuid` from `park-target.json` and build the array below.
+On anything else, do not park — offer Route B.
+
+### Route B — no number was typed
+
+Print the SHORT menu. It ranks the likely rows by evidence about THIS tab, and
+carries the two standing choices:
+
+```bash
+python3 "$RESDIR/close-targets.py" > "$SCRATCH/close-menu.txt" 2>&1; RC=$?
+cat "$SCRATCH/close-menu.txt"; echo "exit=$RC"
+```
+
+Show the `cat` output whole and unmodified in ONE fenced block — same relay rule
+as `/acos-resurrect`. The script computes the ranking; you add nothing to it.
+Then take a typed reply:
+
+- **a number** → Route A's resolve + confirm, then park there. This tab's own
+  row is not a separate choice: when it exists, the menu ranks it FIRST under
+  choice 1, so filing onto it is just typing its number.
+- **`new <name>`** → create a brand-new row. See Route D.
+- **`all`** → Route C.
+
+### Route C — `all`, the whole book
 
 ```bash
 python3 "$RESDIR/resurrect-view.py" --color never > "$SCRATCH/close-book.txt" 2>&1; RC=$?
@@ -230,24 +285,56 @@ python3 "$RESDIR/resurrect-view.py" --json      > "$SCRATCH/close-book.json" 2>/
 cat "$SCRATCH/close-book.txt"; echo "exit=$RC"
 ```
 
-Show the `cat` output whole and unmodified in ONE fenced block — same relay rule as
-`/acos-resurrect`. Then ask, in plain text, for a typed reply:
+Show the `cat` output whole and unmodified in ONE fenced block. Then ask, in
+plain text, for a typed reply:
 
-> Park this tab's work where? Type the NUMBER of a project above, or `0` for a new
-> project of its own.
+> Park this tab's work where? Type the NUMBER of a project above, or
+> `new <name>` for a brand-new row of its own.
 
-`0` is used for "new project" because the renderer never assigns it, so it cannot
-collide with a real row. Resolve a numeric reply against `close-book.json`'s
+`new <name>` routes to Route D. Resolve a numeric reply against `close-book.json`'s
 `pick_number` EXACTLY — never re-count the printed rows yourself. Ambiguous or
 out-of-range → say so and ask again; NEVER guess between two rows.
 
-Build the flag ONCE, as an ARRAY, and reuse it in every later invocation:
+### Route D — `new <name>`, a brand-new row
+
+Zee's ruling 2026-08-24: *"the intention was not to replace anything, just to
+create a new row in an empty number."* So this MINTS. It never orphans, never
+retires, and never touches whatever row this tab already owns.
 
 ```bash
-# Choice 0 (new project) -> leave the array EMPTY; that is today's behaviour.
+PARK_ARGS=(--park-to-new "<the name he typed>")
+```
+
+The script does the rest and prints what it did:
+
+- The new row takes `next_ordinal` — the LOWEST number no row holds (Zee's
+  ruling 2026-08-24). It DOES fill a gap. A row waiting in `registry.d/deleted/`
+  still counts as holding its number, so this can never take a number `restore`
+  is going to want back; only `purge` truly frees one. Say the number the
+  receipt prints; do not predict one.
+- A name already used at this root is REFUSED, naming the row that holds it and
+  its number. Creating is not reusing. Relay the refusal and ask for another
+  name — never fall back to filing onto the existing row.
+- `--park-to` and `--park-to-new` together are REFUSED. Pass exactly one.
+- If this tab owned NO row, `.acos/project-id` is repointed at the new row, so
+  the folder's identity names something that exists. The receipt says so.
+
+If he asks for a new row without giving a name, ask for one. A row at this root
+needs its own sidebar name to be a separate row at all — an unnamed one would
+collide with the folder-level row this tab already resolves to.
+
+### Building the flag (all four routes end here)
+
+Build it ONCE, as an ARRAY, and reuse it in every later invocation:
+
+```bash
+# Nothing chosen (no argument, no menu answer) -> leave the array EMPTY. That is
+# today's behaviour: the close lands on the row this tab already resolves to.
 PARK_ARGS=()
-# A number 1..N was picked -> set it, using the uuid from close-book.json:
+# A number was picked and confirmed -> set it, using the uuid the resolve printed:
 PARK_ARGS=(--park-to "<project_uuid of the picked row>")
+# `new <name>` was chosen -> mint instead of resolve:
+PARK_ARGS=(--park-to-new "<the name he typed>")
 ```
 
 An ARRAY, not a string. This file already records why: the interactive shell is
@@ -259,6 +346,8 @@ zsh — so it is safe where the string was not.
 **Ask with a plain typed reply, NOT `AskUserQuestion`.** Autopilot answers that tool
 by itself, and an auto-answered destination would file real work onto a project Zee
 never chose — the failure this step exists to prevent, arriving by a different door.
+This holds for Route A's `yes` as much as for the menu itself: an auto-answered
+confirmation is not a confirmation.
 
 **What a destination pick does.** The reentry note, the registry `last_close`, and
 the captured learnings all land on the PICKED row instead of this tab's own row.
@@ -268,6 +357,12 @@ close, or another live window REFUSES the retire and prints why, naming
 `merge-knowledge.py` as the thing to run first. Relay that refusal; never work
 around it. Retiring means `tombstone`: the row is hidden in ARCHIVED and the row
 file is never deleted.
+
+**What `--park-to-new` does NOT do.** It does not orphan, retire, tombstone or
+rename anything. That is the one behavioural difference from `--park-to`, and it
+is deliberate: `--park-to` means "this work was really THAT project's", which
+makes the tab's own row a leftover worth retiring; `--park-to-new` means "this
+work is its own project now", which says nothing at all about the old row.
 
 ## Step 3 — Dry-run gate (writes nothing, including step 0)
 

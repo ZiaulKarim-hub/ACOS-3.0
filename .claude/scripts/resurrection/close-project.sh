@@ -4,7 +4,8 @@
 # Interface:
 #   close-project.sh --intent-file <path> --session-id <sid>
 #                    [--roundtrip-result <path>] [--learnings-file <path>]
-#                    [--park-to <uuid>] [--auto-close] [--dry-run]
+#                    [--park-to <uuid>] [--park-to-new <name>]
+#                    [--auto-close] [--dry-run]
 #
 # --park-to <uuid> is the DESTINATION PICKER (Zee's brief, 2026-08-18). Without
 # it a close parks the tab's work onto the tab's own row, which is all a close
@@ -14,6 +15,26 @@
 # leaving a stray project behind. The tab's own row is then retired (step 7b),
 # which is the half that needs guards: it is refused outright if that row holds
 # knowledge facts, a prior close, or another live window.
+#
+# --park-to-new <name> is the OTHER destination (Zee, 2026-08-24): not an
+# existing row, and not this tab's own row either — a BRAND-NEW row, minted at
+# this tab's root under <name>, taking the next number from the ordinal ledger.
+# It exists because option `0` in the close menu could only ever reuse the row
+# this tab already had, which is filing onto something, not creating anything.
+#
+# It NEVER orphans and NEVER retires. Zee's words, 2026-08-24: "the intention
+# was not to replace anything, just to create a new row in an empty number." So
+# whatever row this tab already owned is left exactly as it was; the new row
+# stands beside it. That is the one behavioural difference from --park-to, and
+# it is deliberate — --park-to means "this work was really THAT project's", so
+# the tab's own row is a leftover; --park-to-new means "this work is its own
+# project now", which says nothing at all about the old row.
+#
+# The number IS a gap-filler, as of Zee's ruling 2026-08-24 ("A freed number can
+# be assigned, change that rule"). next_ordinal returns the LOWEST number no row
+# holds. A row waiting in registry.d/deleted/ still counts as holding its
+# number, so `restore` keeps working; only `purge` truly frees one. This
+# reverses item 8 of the fix brief, which retired a freed number forever.
 #
 # --learnings-file is the KB-A capture loop (user brief 2026-08-04). It takes a
 # JSON array of candidate learnings the SESSION composed — the Kind-1/Kind-2
@@ -40,6 +61,7 @@ CLOSE_SESSION_ID=""
 CLOSE_ROUNDTRIP=""
 CLOSE_LEARNINGS=""
 CLOSE_PARK_TO=""
+CLOSE_PARK_NEW=""
 CLOSE_AUTO=0
 CLOSE_DRY=0
 while [ $# -gt 0 ]; do
@@ -49,12 +71,14 @@ while [ $# -gt 0 ]; do
     --roundtrip-result) CLOSE_ROUNDTRIP="${2:-}";   shift 2 ;;
     --learnings-file)   CLOSE_LEARNINGS="${2:-}";   shift 2 ;;
     --park-to)          CLOSE_PARK_TO="${2:-}";     shift 2 ;;
+    --park-to-new)      CLOSE_PARK_NEW="${2:-}";    shift 2 ;;
     --auto-close)       CLOSE_AUTO=1; shift ;;
     --dry-run)          CLOSE_DRY=1;  shift ;;
     *) echo "NOT SAFE — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 export CLOSE_INTENT_FILE CLOSE_SESSION_ID CLOSE_ROUNDTRIP CLOSE_LEARNINGS CLOSE_AUTO CLOSE_DRY CLOSE_PARK_TO
+export CLOSE_PARK_NEW
 CLOSE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export CLOSE_LIB_DIR
 
@@ -100,6 +124,9 @@ LEARNINGS = os.environ.get("CLOSE_LEARNINGS", "")
 # destination-picker brief, 2026-08-18). The tab's own row becomes the ORPHAN and
 # is retired afterwards, under the guards in step 7b. Empty = today's behaviour.
 PARK_TO = os.environ.get("CLOSE_PARK_TO", "").strip()
+# --park-to-new <name>: mint a BRAND-NEW row at this root and file the work
+# there. Never orphans the tab's existing row (see the header). Empty = off.
+PARK_NEW = os.environ.get("CLOSE_PARK_NEW", "").strip()
 AUTO = os.environ.get("CLOSE_AUTO", "0") == "1"
 DRY = os.environ.get("CLOSE_DRY", "0") == "1"
 ROOT = os.path.abspath(os.environ.get("RESURRECTION_PROJECT_ROOT") or os.getcwd())
@@ -486,6 +513,28 @@ def main():
     if bundle_collision_note:
         print(bundle_collision_note)
 
+    # --park-to and --park-to-new are two different destinations. Taking one
+    # silently would file the work somewhere the caller did not name.
+    if PARK_TO and PARK_NEW:
+        refuse("--park-to and --park-to-new name two different destinations "
+               "(an existing row vs a brand-new one) — pass exactly one")
+    # Validate --park-to-new HERE, read-only, so a bad name fails at the dry-run
+    # gate rather than after the handoff and reentry are already on disk.
+    if PARK_NEW:
+        sys.path.insert(0, os.environ.get("CLOSE_LIB_DIR", ""))
+        import registry_lib as _rl
+        if len(PARK_NEW) > 120:
+            refuse("--park-to-new name is %d characters; keep it under 120" % len(PARK_NEW))
+        _clash = _rl.find_row(ROOT, PARK_NEW, home=REG_HOME)
+        if _clash is not None:
+            refuse("--park-to-new %r already names a row at this root (%s, number %s, "
+                   "status %s). Creating is not the same as reusing: park to that row by "
+                   "its number, or choose a different name."
+                   % (PARK_NEW, _clash["project_uuid"], _clash["pick_ordinal"],
+                      _clash["status"]))
+        print("park-to-new: %r is free at this root — a NEW row will be minted, and "
+              "this tab's own row is left untouched" % PARK_NEW)
+
     # Step 10 semantics: --dry-run stops BEFORE any write, including step 0.
     if DRY:
         text, na = read_intent(INTENT)  # read-only; refuses on invalid next_action
@@ -738,6 +787,45 @@ def main():
                  % (PARK_TO, target["name"], orphan_uuid))
         else:
             emit("step 6b PARK-TO names this tab's own row — closing normally, nothing orphaned")
+    elif PARK_NEW:
+        # `enrolled_at_close` is True here ONLY when the resolution above found
+        # no row for this tab and had merely PENCILLED IN a uuid for one. Read
+        # it BEFORE the mint overwrites it — it is the difference between "this
+        # tab has a real row that must be left alone" and "this tab has none".
+        tab_had_no_row = enrolled_at_close
+        # Mint, do not resolve. upsert_row takes next_ordinal = max(ever
+        # issued) + 1 for a row it has never seen, so the number comes from the
+        # append-only ledger and no gap is silently refilled.
+        new_uuid = str(uuid.uuid4())
+        registry_lib.upsert_row(
+            {"project_uuid": new_uuid, "root": ROOT, "workspace_name": PARK_NEW,
+             "status": "active"}, home=REG_HOME)
+        minted = registry_lib.load_row(new_uuid, home=REG_HOME)
+        if minted is None:
+            refuse("--park-to-new %r: the new row did not read back after the write" % PARK_NEW)
+        enrolled_at_close = True
+        # NOT orphaned. Whatever row this tab already held keeps its number, its
+        # knowledge and its closes; the new row stands beside it, not over it.
+        prior_uuid = project_uuid
+        project_uuid = new_uuid
+        emit("step 6b PARK-TO-NEW %r — minted row %s as number %s; this tab's work files "
+             "onto it" % (PARK_NEW, new_uuid, minted["pick_ordinal"]))
+        if tab_had_no_row:
+            # The pencilled-in uuid never became a row, so .acos/project-id
+            # would name a project that does not exist — a pointer that resolves
+            # to nothing on every later close and enroll. The folder's identity
+            # is the row that actually exists. MEASURED before this fix: the
+            # file held a4dcacf4-... while the only row on disk was 12fda98d-...
+            if os.path.exists(pid_path) or not (ws_name or ws_tag):
+                os.makedirs(os.path.dirname(pid_path), exist_ok=True)
+                write_file(pid_path, project_uuid + "\n")
+                emit("        this tab owned no row, so .acos/project-id now names the new "
+                     "row (%s) instead of a uuid that was never written" % project_uuid)
+            emit("        nothing orphaned, nothing retired — this tab owned no row to leave "
+                 "alone")
+        else:
+            emit("        nothing orphaned, nothing retired — this tab's own row (%s) keeps "
+                 "its number, its knowledge and its closes" % prior_uuid)
 
     # D14 — closing ONE window does not park the project. The row stays active
     # while any other window is open, and parks only when the LAST one closes.

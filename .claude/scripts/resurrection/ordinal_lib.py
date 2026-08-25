@@ -11,24 +11,32 @@ different project.
 
 The ruling: a number is assigned ONCE to a row and never changes on its own.
 That lives in `pick_ordinal` on the row (registry_lib.ROW_KEYS). This file is
-the other half — the record of every ordinal ever issued, so a number freed by
-a delete or a renumber is NEVER handed back out automatically.
+the other half — the record of every ordinal ever issued, and to what.
 
   row.pick_ordinal   "what number does this row hold RIGHT NOW"
   this ledger        "what numbers have EVER been issued, and to what"
 
-Auto-assignment reads `max_ever_issued() + 1`. It never reads the live rows,
-because the live rows have forgotten every number a deleted project took with
-it. Precedent for the never-reuse rule: Atlassian documents that reusing Jira
-keys means "old issue links... will stop redirecting"; Linux's fix for
-recycled process ids was ESRCH — fail loudly rather than act on the wrong
-target (pidfd_send_signal(2)).
+REUSE RULE, REVERSED 2026-08-24 — Zee: "A freed number can be assigned, change
+that rule." It formerly read: a number freed by a delete or a renumber is NEVER
+handed back out automatically, and auto-assignment took `max_ever_issued() + 1`.
+That made every freed number a permanent hole in the gutter. Auto-assignment
+now takes the LOWEST FREE number instead (see next_ordinal / held_ordinals),
+and manual reuse via `renumber` no longer needs an extra flag.
 
-MANUAL assignment MAY reuse a retired ordinal — `renumber <n> to <m>` warns,
-names what previously held `m` and when, and requires explicit confirmation.
-Automatic assignment never may. That asymmetry is the whole point: a human
-who is told "7 used to be FruitSync, retired 2026-08-19" can decide; a
-counter cannot.
+The ledger did not lose its job. It still records every issue, retire, restore,
+swap and renumber, so `history_for(7)` still answers "what has 7 been". What
+changed is that `retired` is now INFORMATION, not a lock: the verbs still say
+what a number used to hold, and then let the human proceed.
+
+THE COST, on the record because the ruling accepted it rather than missed it: a
+number is no longer unique across time. Number 7 may be FruitSync today and a
+different project after FruitSync is purged, so a note or a screenshot naming
+"7" can age into pointing at something else. The rejected precedents, kept here
+so nobody re-derives them as new: Atlassian documents that reusing Jira keys
+means "old issue links... will stop redirecting"; Linux's fix for recycled
+process ids was ESRCH — fail loudly rather than act on the wrong target
+(pidfd_send_signal(2)). Zee weighed a gutter full of permanent holes against
+that and chose reuse.
 
 Python, not TypeScript, by the standing exception: this extends the existing
 registry_lib / knowledge_lib script family, shares their storage root, and
@@ -187,8 +195,11 @@ def _ordinals_in(rec):
 def max_ever_issued(home=None, events=None):
     """Highest ordinal that has EVER appeared in the ledger. 0 if empty.
 
-    Counts tombstoned AND deleted AND renumbered-away ordinals. That is the
-    point — a freed number must never come back automatically.
+    Counts tombstoned AND deleted AND renumbered-away ordinals.
+
+    NO LONGER the source of the next number (Zee's ruling 2026-08-24 — see
+    next_ordinal). Kept because it is still the honest answer to "how high have
+    these numbers ever gone", which the receipts and `status` report.
     """
     evs = read_events(home) if events is None else events
     high = 0
@@ -199,15 +210,47 @@ def max_ever_issued(home=None, events=None):
     return high
 
 
-def next_ordinal(home=None, events=None):
-    """The ordinal an automatically-created row takes: max ever issued + 1.
+def held_ordinals(home=None):
+    """Every ordinal a LIVE row holds right now. A deleted row holds nothing.
 
-    RACE, on the record: registry_lib documents no blocking lock and none
-    surviving SIGKILL, so two simultaneous creations can both read the same
-    max. Not prevented here. conflict-scan.py's ORDINAL-CLASH check is the
-    detector.
+    CHANGED 2026-08-24 on Zee's ruling — "delete moves the row to trash, frees
+    the number". The first cut of this counted deleted rows as still holding
+    their numbers, so `restore` could always have its original one back. He
+    overruled that: a deleted row should leave the book AND the gutter at once,
+    and `restore` takes the lowest free number when its original is gone.
+
+    That trade is consistent with the reuse rule he had already set — numbers
+    are not unique across time — and it is what makes `delete` actually clear
+    the book instead of leaving a silent hole behind every removed project.
     """
-    return max_ever_issued(home, events) + 1
+    return set(live_holders(home).keys())
+
+
+def next_ordinal(home=None, events=None):
+    """The ordinal an automatically-created row takes: the LOWEST FREE number.
+
+    CHANGED 2026-08-24 on Zee's ruling — "A freed number can be assigned, change
+    that rule." It used to be `max_ever_issued() + 1`, which retired a freed
+    number forever and left a hole in the gutter that nothing could ever close.
+
+    FREE means held by no row on disk, live or deleted — see held_ordinals().
+    0 is RESERVED and never issued (acos-safe-close uses 0 for "new project"),
+    so the search starts at 1.
+
+    `events` is accepted and IGNORED. It fed the old max-of-the-ledger reading;
+    the answer now comes from the rows, and the parameter is kept only so an
+    existing caller does not break on an unexpected keyword.
+
+    RACE, unchanged and still on the record: registry_lib documents no blocking
+    lock and none surviving SIGKILL, so two simultaneous creations can both read
+    the same free number. Not prevented here. conflict-scan.py's ORDINAL-CLASH
+    check is the detector.
+    """
+    held = held_ordinals(home)
+    n = 1
+    while n in held:
+        n += 1
+    return n
 
 
 def retired_ordinals(home=None, events=None):
@@ -290,11 +333,12 @@ def _selftest(home):
     append_event("issue", 1, "uuid-a", "Alpha", home)
     append_event("issue", 2, "uuid-b", "Beta", home)
     check("two issues -> max 2", max_ever_issued(home) == 2)
-    check("two issues -> next 3", next_ordinal(home) == 3)
+    # next_ordinal reads the ROWS, not the ledger (Zee's ruling 2026-08-24), so
+    # ledger events alone do not move it. Nothing holds a number here yet.
+    check("ledger events alone -> next still 1", next_ordinal(home) == 1)
 
     append_event("retire", 2, "uuid-b", "Beta", home, reason="delete")
     check("retire does not lower max", max_ever_issued(home) == 2)
-    check("retire keeps next at 3", next_ordinal(home) == 3)
     check("retired set has 2", set(retired_ordinals(home)) == {2})
 
     append_event("restore", 2, "uuid-b", "Beta", home)
@@ -303,7 +347,8 @@ def _selftest(home):
     append_event("renumber", 9, "uuid-a", "Alpha", home, from_ordinal=1)
     check("renumber raises max to 9", max_ever_issued(home) == 9)
     check("renumber retires the vacated 1", set(retired_ordinals(home)) == {1})
-    check("renumber moves next to 10", next_ordinal(home) == 10)
+    check("a retired number is no longer a lock — 1 stays takeable",
+          1 not in held_ordinals(home))
 
     append_event("swap", 2, "uuid-a", "Alpha", home, from_ordinal=9,
                  counterpart={"ordinal": 9, "project_uuid": "uuid-b",
@@ -314,6 +359,19 @@ def _selftest(home):
     hist = history_for(1, home)
     check("history_for(1) sees issue + renumber", len(hist) == 2)
     check("history_for(1) is oldest first", hist[0]["verb"] == "issue")
+
+    # The reuse rule reversed on 2026-08-24. Prove the NEW behaviour against
+    # real ROWS, and do it AFTER the history checks: minting a row appends its
+    # own `issue` event, which would change what history_for(1) is counting.
+    _r1, _r2 = os.path.join(home, "r1"), os.path.join(home, "r2")
+    os.makedirs(_r1, exist_ok=True)
+    os.makedirs(_r2, exist_ok=True)
+    registry_lib.upsert_row({"project_uuid": "row-one", "root": _r1}, home)
+    registry_lib.upsert_row({"project_uuid": "row-two", "root": _r2}, home)
+    check("two rows hold 1 and 2", held_ordinals(home) == {1, 2})
+    check("next free is 3", next_ordinal(home) == 3)
+    registry_lib.set_pick_ordinal("row-one", 8, home)
+    check("vacating 1 makes it free again", next_ordinal(home) == 1)
 
     # replay is pure: reading twice must not change anything
     check("read_events is stable", read_events(home) == read_events(home))
