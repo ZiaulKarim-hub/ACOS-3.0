@@ -1,6 +1,6 @@
 ---
 name: acos-resurrect
-description: The Resurrection Protocol menu. A TYPED NUMBER IS THE WHOLE PICK — `/acos-resurrect 20` opens row 20 with no menu at all, `/acos-resurrect 20 here` makes THIS tab that project instead of opening a window, and the full book appears only when no number is typed. With no argument it renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
+description: The Resurrection Protocol menu. A TYPED NUMBER IS THE WHOLE PICK — `/acos-resurrect 20` opens row 20 with no menu at all, `/acos-resurrect 20 here` makes THIS tab that project instead of opening a window, `/acos-resurrect 20 tab` opens it as a new TAB inside the workspace that project is already open in (opt-in; the default is still a whole new workspace), and the full book appears only when no number is typed. With no argument it renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Route words (here, tab, window, adopt) work both on the /acos-resurrect line AND as a reply to the rendered book — `20 here` typed as a reply used to be refused because `here` was read as a row name. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -178,9 +178,19 @@ Tokens, and only these:
 
 - **numbers or names**, exactly as Step 2 describes them — `20`, `2, 5, 7`.
   A list still means a list (Rule 1).
-- **the bare word `here`** (any case), anywhere in the argument. It means THIS
-  TAB becomes the picked project, instead of a window opening. Strip it out of
-  the picks and pass `--here` instead.
+- **a ROUTE WORD** (any case), anywhere in the argument — `here`, `tab`,
+  `window`, or `adopt`. It says WHERE the project opens:
+  - `here` / `adopt` — THIS TAB becomes the picked project; no window opens.
+  - `tab` — a NEW TAB inside the workspace that project is already open in,
+    instead of a second workspace. If it is open nowhere, the script falls back
+    to a workspace and says so.
+  - `window` / `workspace` — a new workspace. This is the default; the word
+    exists so the route can be said out loud, or a flag overridden.
+
+  You may strip the word and pass the matching flag, but you no longer have to:
+  since 2026-08-25 `open-picks.sh` reads route words out of `--picks` itself, so
+  passing the picks verbatim also works. Two different route words in one pick
+  is refused — relay it and ask which one.
 - **anything else** → do NOT guess. Say plainly what you did not understand,
   then render the book (Step 1) and ask.
 
@@ -191,6 +201,7 @@ The mapping (these lines are EXAMPLES OF THE SYNTAX, never picks to act on):
 | `/acos-resurrect` | Step 1, the whole book |
 | `/acos-resurrect 20` | `--picks "20"` |
 | `/acos-resurrect 20 here` | `--picks "20" --here` |
+| `/acos-resurrect 20 tab` | `--picks "20" --tab` |
 | `/acos-resurrect 2, 5, 7` | `--picks "2, 5, 7"` |
 
 **Why a bare number is safe now.** A row's number used to be a per-render
@@ -209,7 +220,17 @@ without `here` (which opens the row in its own folder, in its own window). Do
 not pass `--allow-cross-root` unless the user asks for adopt-in-place by name.
 
 **`here` takes exactly ONE pick.** A tab hosts one project, so `open-picks.sh`
-refuses `--here` with a list rather than silently taking the first.
+refuses `--here` with a list rather than silently taking the first. `tab` has no
+such limit — each pick tabs into its OWN project's workspace, so a list is fine.
+
+**A ROUTE WORD WORKS IN THE REPLY TOO, not only on the `/acos-resurrect` line**
+(fixed 2026-08-25). Before that fix the word was stripped HERE, in Step 0a, and
+nowhere else — so `20 here` typed as an answer to the rendered book split into
+two tokens, `here` was looked up as a ROW NAME, it matched none, and
+all-or-nothing then refused the whole reply including the valid `20`. The user
+saw `'here' matches no row name in this book` and had no way to tell that the
+word itself was the problem. `open-picks.sh` now owns the route words, so `here`
+and `tab` mean the same thing in both places. Pass the reply verbatim.
 
 ## Step 1 — Render the book (fresh, verbatim) — ONLY when no argument was typed
 
@@ -240,13 +261,15 @@ windows on row 5 (Rule 3).
 - **<= 4 pickable projects:** AskUserQuestion with ONE option per project.
   Option label = the project name. Option description must be SELF-CONTAINED:
   tier, age, dirty count, and the row's `next_action` verbatim. Say in the
-  question text that a typed list (`2, 5`) and the loop verbs
-  `finish <project>`, `tombstone <project>`, `strike <line>`, `merge`, `curate`,
-  and `adopt <n>` are also accepted as a free-text reply.
+  question text that a typed list (`2, 5`), a route word after the number
+  (`2 here` for this tab, `2 tab` for a tab in that project's own workspace),
+  and the loop verbs `finish <project>`, `tombstone <project>`, `strike <line>`,
+  `merge`, `curate` and `adopt <n>` are all accepted as a free-text reply.
 - **> 4 pickable projects:** ask for a free-text pick — one number, several
-  numbers, or a name. The renderer prints the pick number in the left gutter and
-  carries the same integer as `pick_number` in `book.json`; ARCHIVED rows have no
-  number. The same verbs are accepted here.
+  numbers, a name, or a number followed by a route word (`2 here`, `2 tab`).
+  The renderer prints the pick number in the left gutter and carries the same
+  integer as `pick_number` in `book.json`; ARCHIVED rows have no number. The
+  same verbs are accepted here.
 
 Numbers are PERMANENT (Zee's ruling 2026-08-19). A number is `pick_ordinal`,
 stored on the row itself; the renderer only copies it to `pick_number`. Rows
@@ -269,10 +292,19 @@ list against a FRESH book first and opens NOTHING if any token is unresolvable,
 then runs `launch-project.sh` once per row. Each row lands in a NEW window, in
 that project's own folder, running `claude --dangerously-skip-permissions`.
 
+A "window" is a cmux WORKSPACE by default. With the `tab` route word (or
+`--tab`) it is a TAB inside the workspace that project is already open in, so
+one project keeps one workspace however many windows it has. Same delivery
+contract either way: the prompt goes by argv, and the marker is read back — off
+the TAB's own screen when it is a tab, which is why the tab route passes
+`--surface` to `read-screen` and a workspace-level read would not do.
+
 ```bash
 ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/open-picks.sh" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
-# Add --here ONLY when Step 0a found the word `here` in <command-args>, or the
-# user asked for this tab in words. Never on your own initiative.
+# Route words in <command-args> may be passed through in --picks verbatim —
+# open-picks.sh reads them itself. Add --here / --tab explicitly ONLY when the
+# user asked for that route in words rather than typing the word. Never on your
+# own initiative.
 bash "$RESDIR/open-picks.sh" --picks "<the user's picks verbatim>" > "$SCRATCH/open-out.txt" 2>&1; RC=$?
 cat "$SCRATCH/open-out.txt"; echo "exit=$RC"
 ```
@@ -296,8 +328,17 @@ Read the exit code, then act:
   for a corrected list, and STOP. Do not open the resolvable subset "to save a
   step" — all-or-nothing is the contract.
 
-Five flags exist, and NONE of them is ever your own initiative:
+Six flags exist, and NONE of them is ever your own initiative:
 
+- `--tab` — the new window opens as a TAB inside the workspace that project is
+  ALREADY open in, instead of as a second workspace. Pass it when Step 0a found
+  the word `tab`, or the user asked for a tab in words. OPT-IN: without it a
+  repeat open still makes a second workspace, which is unchanged Rule 3
+  behaviour. It takes a LIST (unlike `here`) because each pick tabs into its own
+  project's workspace. A pick whose project is open NOWHERE falls back to the
+  workspace route and says so in its own output — relay that line, do not
+  present it as a failure. Read the SUMMARY for `opened a TAB + delivery
+  VERIFIED`. Refuses alongside `--focus-existing` and alongside `here`.
 - `--here` — THIS TAB becomes the picked project; no window opens. Pass it when
   Step 0a found the word `here`, or the user asked for this tab in words. It
   routes to `adopt-project.sh` instead of `launch-project.sh`. It takes exactly

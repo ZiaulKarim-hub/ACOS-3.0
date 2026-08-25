@@ -255,7 +255,7 @@ def window_label_of(window_name, project_name):
     return wn
 
 
-def print_other_windows(project_uuid, ws_id, live_ids):
+def print_other_windows(project_uuid, ws_id, live_ids, surface_id=None, live_surface_ids=None):
     """MW-C — the shared project brief.
 
     What the OTHER live windows on this project are doing, read before this one
@@ -272,11 +272,14 @@ def print_other_windows(project_uuid, ws_id, live_ids):
         print("other windows: manifest unavailable (%s) — pick continues" % exc)
         return []
     try:
-        reaped = windows_lib.reap_stale(project_uuid, live_ids, home=REG_HOME)
+        reaped = windows_lib.reap_stale(project_uuid, live_ids, home=REG_HOME,
+                                        live_surface_ids=live_surface_ids)
         if reaped:
             print("other windows: cleared %d claim%s whose window no longer exists"
                   % (len(reaped), "" if len(reaped) == 1 else "s"))
-        others = windows_lib.other_windows(project_uuid, ws_id, live_ids, home=REG_HOME)
+        others = windows_lib.other_windows(project_uuid, ws_id, live_ids, home=REG_HOME,
+                                           my_surface_id=surface_id,
+                                           live_surface_ids=live_surface_ids)
         if not others:
             print("other windows on this project: none — this is the only one open")
             return []
@@ -287,7 +290,9 @@ def print_other_windows(project_uuid, ws_id, live_ids):
         # MW-E, only when the switch is on. Off by default on purpose: a
         # warning that fires on partial data trains you to ignore warnings.
         if windows_lib.collision_warning_enabled(home=REG_HOME):
-            clashes = windows_lib.collisions(project_uuid, ws_id, live_ids, home=REG_HOME)
+            clashes = windows_lib.collisions(project_uuid, ws_id, live_ids, home=REG_HOME,
+                                             my_surface_id=surface_id,
+                                             live_surface_ids=live_surface_ids)
             if clashes:
                 print("  COLLISION WARNING — files another live window has also touched:")
                 for cl in clashes:
@@ -302,15 +307,20 @@ def print_other_windows(project_uuid, ws_id, live_ids):
         return []
 
 
-def claim_this_window(project_uuid, ws_id, label, session_id, next_action):
+def claim_this_window(project_uuid, ws_id, label, session_id, next_action, surface_id=None):
     """Register THIS window in the project's manifest, so the NEXT window can
     read it (MW-C). Seeded with the reentry's next action — a truthful default
-    that beats an empty 'not stated' on the very first read."""
+    that beats an empty 'not stated' on the very first read.
+
+    D15: when this tab is one of SEVERAL in its workspace, the claim is keyed
+    on the tab. Keying it on the workspace would make this adopt overwrite a
+    sibling tab's claim — its label, its session, and what it said it was
+    working on — which is precisely the state MW-C exists to preserve."""
     try:
         import windows_lib
         windows_lib.claim_window(project_uuid, ws_id, label=label,
                                  session_id=session_id, working_on=next_action,
-                                 home=REG_HOME)
+                                 home=REG_HOME, surface_id=surface_id)
         print("window manifest: this window registered as %r on this project"
               % (label or "(no label)"))
     except (ImportError, OSError, ValueError) as exc:
@@ -318,12 +328,13 @@ def claim_this_window(project_uuid, ws_id, label, session_id, next_action):
               "this one; the pick itself is unaffected" % (type(exc).__name__, exc))
 
 
-def release_window_claim(project_uuid, ws_id):
+def release_window_claim(project_uuid, ws_id, surface_id=None):
     """Drop this window's claim on the project it is leaving, so a released
     project does not keep reporting a window that moved on."""
     try:
         import windows_lib
-        if windows_lib.release_window(project_uuid, ws_id, home=REG_HOME):
+        if windows_lib.release_window(project_uuid, ws_id, home=REG_HOME,
+                                      surface_id=surface_id):
             print("window manifest: released this window's claim on the outgoing project")
     except (ImportError, OSError) as exc:
         print("window manifest: could not release the outgoing claim (%s)" % exc)
@@ -436,6 +447,10 @@ def main():
         return 0
 
     ws_id = os.environ.get("CMUX_WORKSPACE_ID")
+    # D15: which TAB this is, when the workspace holds more than one. Only used
+    # to key this window's own claim — identity, the cwd guard and the CROSS-ROOT
+    # rule are all workspace properties and are deliberately left alone.
+    my_sf_id = os.environ.get("CMUX_SURFACE_ID") or None
     if not ws_id:
         refuse("$CMUX_WORKSPACE_ID is unset — adopt-in-place needs a cmux tab to re-bind; "
                "this session is not running in one")
@@ -551,7 +566,21 @@ def main():
 
     # MW-C — the shared project brief, read BEFORE this window starts work.
     live_ws_ids = [w.get("id") for w in workspaces if w.get("id")]
-    print_other_windows(PROJECT, ws_id, live_ws_ids)
+    # D15 — the tabs of THIS workspace, so a sibling tab is reported as another
+    # window and a CLOSED sibling tab is reaped instead of reported forever.
+    # None on any failure, never []: an empty list would read every sibling as
+    # closed, which is the one mistake that silently loses MW-C's whole point.
+    live_sf_ids = None
+    try:
+        sout = subprocess.run([CMUX_BIN, "rpc", "surface.list",
+                               json.dumps({"workspace_id": ws_id})],
+                              capture_output=True, text=True, timeout=10)
+        if sout.returncode == 0:
+            live_sf_ids = [x.get("id") for x in json.loads(sout.stdout).get("surfaces", [])
+                           if x.get("id")]
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError):
+        live_sf_ids = None
+    print_other_windows(PROJECT, ws_id, live_ws_ids, my_sf_id, live_sf_ids)
 
     if DRY:
         print("DRY RUN — decision: rename tab %s -> %r, tag [key:%s], status %s -> active; "
@@ -628,10 +657,10 @@ def main():
     # MW-C — register THIS window so the next one can read it, and drop the
     # claim on the project this tab just left.
     if out_row is not None:
-        release_window_claim(out_row["project_uuid"], ws_id)
+        release_window_claim(out_row["project_uuid"], ws_id, my_sf_id)
     claim_this_window(PROJECT, ws_id, window_label_of(my_name, row["name"]),
                       os.environ.get("CLAUDE_CODE_SESSION_ID"),
-                      (row.get("last_close") or {}).get("next_action"))
+                      (row.get("last_close") or {}).get("next_action"), my_sf_id)
 
     stamped = mark_consumed(unread, PROJECT, ws_id)
     if stamped:

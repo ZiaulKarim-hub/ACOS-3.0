@@ -651,6 +651,13 @@ def main():
     # D14: the LIVE workspace ids, kept for step 7. Closing ONE window must not
     # park a project other windows are still working in.
     live_ws_ids = None
+    # D15 (2026-08-25): a window may be a TAB. Closing a tab leaves its
+    # workspace alive, so workspace liveness alone cannot tell a working
+    # sibling tab from a closed one — without the surface list, a closed tab
+    # reads as open forever and the row would never park. Both are read here
+    # and both are handed to windows_lib in step 7.
+    sf_id = None
+    live_sf_ids = None
     if SKIP_CMUX:
         emit("step 5  workspace validation SKIPPED (RESURRECTION_SKIP_CMUX=1) — sandbox mode")
         # Tests-only seam, same family as RESURRECTION_SKIP_CMUX / _PROJECT_ROOT:
@@ -663,6 +670,12 @@ def main():
             ws_id = os.environ.get("CMUX_WORKSPACE_ID") or (live_ws_ids[0] if live_ws_ids else None)
             emit("        sandbox liveness: %d fake workspace id%s, this one=%s"
                  % (len(live_ws_ids), "" if len(live_ws_ids) == 1 else "s", ws_id))
+        fake_sf = os.environ.get("RESURRECTION_FAKE_SURFACE_IDS", "")
+        if fake_sf:
+            live_sf_ids = [x.strip() for x in fake_sf.split(",") if x.strip()]
+            sf_id = os.environ.get("CMUX_SURFACE_ID") or (live_sf_ids[0] if live_sf_ids else None)
+            emit("        sandbox tab liveness: %d fake tab id%s, this one=%s"
+                 % (len(live_sf_ids), "" if len(live_sf_ids) == 1 else "s", sf_id))
     else:
         ws_id = os.environ.get("CMUX_WORKSPACE_ID", "")
         if not ws_id:
@@ -676,6 +689,20 @@ def main():
             refuse("workspace unvalidatable: workspace.list failed (%s: %s) — fail closed" % (type(exc).__name__, exc))
         ids = [w.get("id") for w in workspaces]
         live_ws_ids = [i for i in ids if i]
+        # The tabs of THIS workspace. Only this one is needed: a claim on
+        # another workspace is judged by that workspace's own liveness, and a
+        # tab of a DEAD workspace is dead whatever its surface list once said.
+        sf_id = os.environ.get("CMUX_SURFACE_ID") or None
+        try:
+            sout = subprocess.run([CMUX_BIN, "rpc", "surface.list",
+                                   json.dumps({"workspace_id": ws_id})],
+                                  capture_output=True, text=True, timeout=10)
+            if sout.returncode == 0:
+                live_sf_ids = [x.get("id") for x in json.loads(sout.stdout).get("surfaces", [])
+                               if x.get("id")]
+        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError):
+            live_sf_ids = None  # unreadable, NOT empty: an empty list would read
+            #                     every sibling tab as closed and park the row.
         if ws_id not in ids:
             refuse("workspace unvalidatable: CMUX_WORKSPACE_ID %s not in workspace.list "
                    "(listed %d of %d workspaces) — set-but-dead env; fail closed" % (ws_id, len(ids), len(ids)))
@@ -835,15 +862,22 @@ def main():
     other_windows_open = []
     try:
         import windows_lib
-        windows_lib.release_window(project_uuid, ws_id, home=REG_HOME)
+        # Release THIS window's own claim — the tab's if this is a tab, the
+        # workspace's otherwise. Releasing by workspace id from inside a tab
+        # would drop the sibling window's claim and leave this tab's behind,
+        # which is the exact inversion of what a close means.
+        windows_lib.release_window(project_uuid, ws_id, home=REG_HOME, surface_id=sf_id)
         # is_last_window, NOT a bare other_windows count: it is the one place
         # that answers UNKNOWN liveness conservatively (park, the pre-multi-
         # window behaviour) instead of leaving rows active forever whenever
         # cmux cannot be read.
-        if not windows_lib.is_last_window(project_uuid, ws_id, live_ws_ids, home=REG_HOME):
+        if not windows_lib.is_last_window(project_uuid, ws_id, live_ws_ids, home=REG_HOME,
+                                          my_surface_id=sf_id, live_surface_ids=live_sf_ids):
             close_status = "active"
             other_windows_open = windows_lib.other_windows(project_uuid, ws_id,
-                                                           live_ws_ids, home=REG_HOME)
+                                                           live_ws_ids, home=REG_HOME,
+                                                           my_surface_id=sf_id,
+                                                           live_surface_ids=live_sf_ids)
     except (ImportError, OSError, ValueError) as exc:
         emit("        WARN window manifest unreadable (%s) — parking as usual (D14 "
              "falls back to the pre-multi-window behaviour)" % exc)

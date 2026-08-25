@@ -511,6 +511,16 @@ sorted and written, and marking must never race ahead of that.
   re-dispatches), do not work around. The open tab is the warning.
 - `DEGRADED` banner in the receipt → quote it too; the reopener must read the reentry
   with extra care.
+- Receipt says the row stayed `active` and lists `still open:` windows → the project
+  did NOT park, and that is correct, not a failure. D14: closing ONE window never
+  parks a project another window is still working in. Name those windows to the user
+  so they know where the work continues. Since 2026-08-25 a window may be a cmux
+  WORKSPACE or a TAB inside one (see `/acos-resurrect`'s `tab` route); a tab is
+  printed with a `[tab]` marker, because "another window" and "another tab of the
+  window you are closing" are different things to someone deciding where to look.
+  Closing a tab leaves its workspace alive, so the script reads the workspace's tab
+  list as well — when that list cannot be read it says so and parks as it always did,
+  rather than guessing a sibling is still working.
 
 ### Step 7b — The verdict banner (MANDATORY, and it goes LAST)
 

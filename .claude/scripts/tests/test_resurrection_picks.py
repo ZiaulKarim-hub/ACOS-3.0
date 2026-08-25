@@ -162,7 +162,9 @@ class HereRouteTest(PickTestBase):
         self.mkrow("u-b", "Bravo", 2)
         out = self.picks("--picks", "1, 2", "--here", "--dry-run")
         self.assertEqual(out.returncode, 2, out.stdout)
-        self.assertIn("--here takes exactly ONE pick", out.stdout)
+        # The wording lost its dashes on 2026-08-25: the same refusal now covers
+        # the --here FLAG and the bare word `here` typed among the picks.
+        self.assertIn("`here` takes exactly ONE pick", out.stdout)
 
     def test_here_refuses_alongside_focus_existing(self):
         self.mkrow("u-a", "Alpha", 1)
