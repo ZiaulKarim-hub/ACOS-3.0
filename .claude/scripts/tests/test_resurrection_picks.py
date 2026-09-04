@@ -187,6 +187,46 @@ class HereRouteTest(PickTestBase):
         self.assertNotIn("ADOPT HERE", out.stdout)
 
 
+# ------------------------------------------ 2026-09-03: the account word
+
+
+class AccountWordTest(PickTestBase):
+    """`5 jason` / `5 personal` choose the Claude account the NEW window signs
+    in as. The word is read out of the picks (like a route word), echoed back
+    as typed, and refused alongside `here` (that tab's Claude already runs)."""
+
+    def test_account_word_is_read_and_echoed(self):
+        self.mkrow("u-a", "Alpha", 1)
+        out = self.picks("--picks", "1 jason", "--dry-run")
+        self.assertIn("account word 'jason' read from the picks", out.stdout)
+        self.assertIn("CLAUDE_ACCOUNT=jason", out.stdout)
+        self.assertIn("OPEN 1/1", out.stdout)  # the word did not become a row name
+
+    def test_account_word_is_case_insensitive_and_passes_to_launch(self):
+        self.mkrow("u-a", "Alpha", 1)
+        out = self.picks("--picks", "1 Personal", "--dry-run")
+        self.assertIn("account word 'Personal' read from the picks", out.stdout)
+        self.assertIn("signs in as personal", out.stdout)
+
+    def test_two_account_words_refuse(self):
+        self.mkrow("u-a", "Alpha", 1)
+        out = self.picks("--picks", "1 jason personal", "--dry-run")
+        self.assertEqual(out.returncode, 2, out.stdout)
+        self.assertIn("different accounts", out.stdout)
+
+    def test_account_word_alongside_here_refuses(self):
+        self.mkrow("u-a", "Alpha", 1)
+        out = self.picks("--picks", "1 here jason", "--dry-run")
+        self.assertEqual(out.returncode, 2, out.stdout)
+        self.assertIn("no account can be chosen", out.stdout)
+
+    def test_account_flag_rejects_unknown_value(self):
+        self.mkrow("u-a", "Alpha", 1)
+        out = self.picks("--picks", "1", "--account", "bogus", "--dry-run")
+        self.assertEqual(out.returncode, 2, out.stdout)
+        self.assertIn("jason or personal", out.stdout)
+
+
 # ----------------------------------------------- ask 4: close destination menu
 
 class CloseTargetsResolveTest(PickTestBase):

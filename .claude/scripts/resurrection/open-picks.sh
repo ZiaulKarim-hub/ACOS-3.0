@@ -73,6 +73,7 @@ OP_LABEL=""
 OP_HERE=0
 OP_TAB=0
 OP_ARCHIVED=0
+OP_ACCOUNT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --picks)            OP_PICKS="${2:-}"; shift 2 ;;
@@ -82,10 +83,11 @@ while [ $# -gt 0 ]; do
     --label)            OP_LABEL="${2:-}"; shift 2 ;;
     --here)             OP_HERE=1; shift ;;
     --include-archived) OP_ARCHIVED=1; shift ;;
+    --account)          OP_ACCOUNT="${2:-}"; shift 2 ;;
     *) echo "REFUSED — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-export OP_PICKS OP_DRY OP_FOCUS OP_LABEL OP_HERE OP_TAB OP_ARCHIVED
+export OP_PICKS OP_DRY OP_FOCUS OP_LABEL OP_HERE OP_TAB OP_ARCHIVED OP_ACCOUNT
 OP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export OP_LIB_DIR
 
@@ -104,6 +106,7 @@ LABEL = (os.environ.get("OP_LABEL") or "").strip()
 HERE = os.environ.get("OP_HERE", "0") == "1"
 TAB = os.environ.get("OP_TAB", "0") == "1"
 ARCHIVED_OK = os.environ.get("OP_ARCHIVED", "0") == "1"
+ACCOUNT_FLAG = (os.environ.get("OP_ACCOUNT") or "").strip().lower()
 LIB_DIR = os.environ.get("OP_LIB_DIR", "")
 
 VIEW = os.path.join(LIB_DIR, "resurrect-view.py")
@@ -148,6 +151,29 @@ ROUTE_WORDS = {
     "tab": "tab",
     "window": "window", "workspace": "window",
 }
+
+
+# An ACCOUNT WORD is not a row either (Zee, 2026-09-03). Typed among the picks
+# it says WHICH CLAUDE ACCOUNT the new window signs in as: `5 jason` opens row
+# 5 on Jason's account, `5 personal` on Zee's own. It becomes --account on
+# launch-project.sh, which sets CLAUDE_ACCOUNT for the account door — the
+# door's escape hatch, no meter check and no prompt. With no word the door
+# decides silently (Jason below 65% on both meters, else personal), which is
+# what `cc` does unattended.
+ACCOUNT_WORDS = {"jason": "jason", "personal": "personal"}
+
+
+def split_account_words(raw):
+    """(picks_without_account_words, account_or_empty, words_as_typed)."""
+    keep, accounts, typed = [], [], []
+    for t in tokens(raw):
+        a = ACCOUNT_WORDS.get(t.casefold())
+        if a is None:
+            keep.append(t)
+        elif a not in accounts:
+            accounts.append(a)
+            typed.append(t)
+    return " ".join(keep), accounts, typed
 
 
 def split_route_words(raw):
@@ -209,9 +235,25 @@ def main():
               % (typed[0], {"here": "THIS TAB becomes the project (--here)",
                              "tab": "a new TAB inside the project's own workspace (--tab)",
                              "window": "a new workspace (the default)"}[routes[0]]))
+    picks, accounts, acct_typed = split_account_words(picks)
+    if len(accounts) > 1:
+        refuse("the picks name %d different accounts at once (%s) — a window signs in as "
+               "ONE account, so pick one word and re-type it." % (len(accounts), ", ".join(acct_typed)))
+    if ACCOUNT_FLAG and ACCOUNT_FLAG not in ACCOUNT_WORDS:
+        refuse("--account must be jason or personal, got %r" % ACCOUNT_FLAG)
+    account = accounts[0] if accounts else ACCOUNT_FLAG
+    if accounts:
+        print("account word %r read from the picks -> the new window signs in as %s "
+              "(CLAUDE_ACCOUNT=%s for the account door; no meter check, no prompt)"
+              % (acct_typed[0], account, account))
     if not picks.strip():
         refuse("the picks were only a route word (%s) and named no project. Type the row "
                "number with it, e.g. `20 %s`." % (PICKS.strip(), typed[0] if typed else "here"))
+    if here and account:
+        refuse("`here` keeps THIS tab's already-running Claude, so no account can be chosen "
+               "for it — an account word (%s) only applies to a NEW window. Drop `here` to "
+               "open the project in a new window on that account, or drop the account word."
+               % account)
 
     if here and FOCUS:
         refuse("`here`/--here and --focus-existing mean opposite things (this tab becomes the "
@@ -301,6 +343,8 @@ def main():
             cmd.append("--tab")
         if LABEL:
             cmd += ["--label", LABEL]
+        if account and not here:
+            cmd += ["--account", account]
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
         sys.stdout.write(out.stdout)
         if out.stderr.strip():
@@ -316,12 +360,11 @@ def main():
         elif DRY and not here:
             verdict = "DRY RUN — REFUSED (exit %d)" % rc
         elif here:
-            # adopt-project.sh's own codes: 3 OUTGOING NOT-CLOSED, 4 ALREADY
-            # OPEN, 5 CROSS-ROOT. Each is a REFUSAL with a stated reason, never
-            # a silent fallback to opening a window — that choice is the user's.
+            # adopt-project.sh's own codes: 5 CROSS-ROOT — a physical limit and
+            # the ONE refusal left. Exit 3 (OUTGOING NOT-CLOSED) and exit 4
+            # (ALREADY OPEN) were RETIRED 2026-09-03 by Zee's ruling: `here`
+            # always lands here; an already-open project is listed, not refused.
             verdict = {0: "THIS TAB is now the project",
-                       3: "REFUSED — OUTGOING NOT-CLOSED (close this tab's project first)",
-                       4: "REFUSED — ALREADY OPEN in another window",
                        5: "REFUSED — CROSS-ROOT (that row's folder is not this tab's folder; "
                           "drop `here` to open it as its own window)"}.get(rc, "FAILED (exit %d)" % rc)
             # A dry --here that refuses used to print only "REFUSED (exit 5)",

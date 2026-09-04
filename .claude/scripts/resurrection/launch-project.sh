@@ -71,6 +71,7 @@ LP_OVERRIDE=""
 LP_FOCUS=0
 LP_TAB=0
 LP_LABEL=""
+LP_ACCOUNT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --project)          LP_PROJECT="${2:-}"; shift 2 ;;
@@ -79,15 +80,20 @@ while [ $# -gt 0 ]; do
     --focus-existing)   LP_FOCUS=1; shift ;;
     --tab)              LP_TAB=1; shift ;;
     --label)            LP_LABEL="${2:-}"; shift 2 ;;
+    --account)          LP_ACCOUNT="${2:-}"; shift 2 ;;
     *) echo "REFUSED — unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+case "$LP_ACCOUNT" in
+  ""|jason|personal) ;;
+  *) echo "REFUSED — --account must be jason or personal, got: $LP_ACCOUNT" >&2; exit 2 ;;
+esac
 if [ "$LP_FOCUS" = "1" ] && [ "$LP_TAB" = "1" ]; then
   echo "REFUSED — --focus-existing and --tab ask for opposite things: one JUMPS to the" >&2
   echo "window already open, the other OPENS A NEW TAB beside it. Pick one." >&2
   exit 2
 fi
-export LP_PROJECT LP_DRY LP_OVERRIDE LP_FOCUS LP_TAB LP_LABEL
+export LP_PROJECT LP_DRY LP_OVERRIDE LP_FOCUS LP_TAB LP_LABEL LP_ACCOUNT
 LP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export LP_LIB_DIR
 
@@ -125,6 +131,33 @@ TRUST_GATE_TEXT = "Quick safety check"
 MARKER_STEM = "RESURRECTION-DELIVERY-"  # split in echo args so the typed command never shows the full marker
 CLAUDE_BIN = "claude"           # resolved from the login shell's PATH inside the new window
 CLAUDE_FLAGS = "--dangerously-skip-permissions"  # Zee's Rule 4, 2026-08-19
+# THE ACCOUNT DOOR (2026-09-03). Every `claude` on this Mac is meant to land on
+# ~/.claude-account/bin/claude first, which picks Jason's account or Zee's own.
+# A bare `claude` in a cmux window NEVER got there: cmux's own shim sits at
+# PATH position 1 and its wrapper walks PATH for the real binary, finding
+# ~/.claude/local at position 2 — the door sits further down. So every window
+# this script opened ran on the personal account, and the
+# CLAUDE_ACCOUNT_NO_PROMPT=1 it set was read by nobody. Measured 2026-09-03:
+# all six resurrect-opened windows carried NO_PROMPT=1 and no CLAUDE_CONFIG_DIR.
+# `cc` works because it sets CMUX_CUSTOM_CLAUDE_PATH to the door, which the
+# wrapper honours BEFORE its PATH walk while still injecting cmux's hooks. The
+# launch command now does exactly that. It is fail-open: no door on disk means
+# the plain `claude`, exactly as before.
+DOOR = os.path.expanduser("~/.claude-account/bin/claude")
+DOOR_OK = os.path.isfile(DOOR) and os.access(DOOR, os.X_OK)
+# ...and the bare word `claude` is not enough even with that variable set
+# (measured 2026-09-03 on the first live test): under `zsh -lic` — the tab
+# route, and any respawn-pane — the login files re-order PATH so ~/.claude/local
+# is position 1 and cmux's shim falls to position 18. `claude` then IS the real
+# binary; cmux's wrapper never runs, so CMUX_CUSTOM_CLAUDE_PATH is never read,
+# and the window lands on the personal account with CLAUDE_ACCOUNT=jason
+# sitting uselessly in its env. So the launcher calls cmux's wrapper by its
+# ABSOLUTE path: it honours CMUX_CUSTOM_CLAUDE_PATH before any PATH walk, and
+# it still applies cmux's own session/hook injection. Fail-open: no wrapper on
+# disk means the bare word, exactly as before.
+CMUX_WRAPPER = "/Applications/cmux.app/Contents/Resources/bin/cmux-claude-wrapper"
+if DOOR_OK and os.path.isfile(CMUX_WRAPPER) and os.access(CMUX_WRAPPER, os.X_OK):
+    CLAUDE_BIN = CMUX_WRAPPER
 
 PROJECT = os.environ.get("LP_PROJECT", "")
 DRY = os.environ.get("LP_DRY", "0") == "1"
@@ -132,6 +165,11 @@ OVERRIDE = os.environ.get("LP_OVERRIDE", "")
 FOCUS_EXISTING = os.environ.get("LP_FOCUS", "0") == "1"
 TAB_ROUTE = os.environ.get("LP_TAB", "0") == "1"
 LABEL = (os.environ.get("LP_LABEL") or "").strip()
+# --account jason|personal (Zee, 2026-09-03): CLAUDE_ACCOUNT is the door's own
+# escape hatch — it skips the meter check AND the prompt, so the choice is his
+# and certain. Empty = the door decides silently (Jason below 65% on both
+# meters, else personal; meters unreadable -> personal, the door's fail-safe).
+ACCOUNT = (os.environ.get("LP_ACCOUNT") or "").strip().lower()
 LIB_DIR = os.environ.get("LP_LIB_DIR", "")
 REG_HOME = os.environ.get("ACOS_REGISTRY_HOME") or None
 SKIP_CMUX = os.environ.get("RESURRECTION_SKIP_CMUX") == "1"
@@ -247,10 +285,37 @@ def build_command(reentry):
     begin = MARKER_STEM + "BEGIN-" + nonce
     prompt = ("Resume this project. Read the reentry note at %s first, follow its "
               "'Read first' order, then continue from its NEXT ACTION." % reentry)
-    cmd = ("echo '%s''BEGIN-%s'; cat %s; echo '%s''END-%s'; exec %s %s %s"
+    # CLAUDE_ACCOUNT_NO_PROMPT=1 (2026-08-26): a resurrection window opens with
+    # nobody watching it, so the account door must DECIDE rather than ask —
+    # Jason below 65% on both meters, personal otherwise. Without this the door
+    # would sit on a prompt in an unattended pane.
+    # CMUX_CUSTOM_CLAUDE_PATH=<door> (2026-09-03): the one line that makes the
+    # door actually RUN in a cmux window — see the DOOR comment at the top.
+    # CLAUDE_ACCOUNT=<word> (2026-09-03): only when --account was given.
+    env_parts = ["CLAUDE_ACCOUNT_NO_PROMPT=1"]
+    if DOOR_OK:
+        env_parts.append("CMUX_CUSTOM_CLAUDE_PATH=" + shlex.quote(DOOR))
+    if ACCOUNT:
+        env_parts.append("CLAUDE_ACCOUNT=" + ACCOUNT)
+    cmd = ("echo '%s''BEGIN-%s'; cat %s; echo '%s''END-%s'; "
+           "exec env %s %s %s %s"
            % (MARKER_STEM, nonce, shlex.quote(reentry), MARKER_STEM, nonce,
-              CLAUDE_BIN, CLAUDE_FLAGS, shlex.quote(prompt)))
+              " ".join(env_parts), CLAUDE_BIN, CLAUDE_FLAGS, shlex.quote(prompt)))
     return cmd, begin
+
+
+def account_note():
+    """One printed line saying which account the new window will sign in as,
+    and why — so a wrong account is visible in the receipt, never a surprise."""
+    if not DOOR_OK:
+        return ("account: door MISSING at %s — plain `claude` (the signed-in personal "
+                "account); --account cannot apply" % DOOR)
+    via = "via %s -> door" % CLAUDE_BIN
+    if ACCOUNT:
+        return ("account: %s — CLAUDE_ACCOUNT=%s set for the door (no meter check, no prompt); %s"
+                % (ACCOUNT, ACCOUNT, via))
+    return ("account: door decides silently — Jason below 65%% on both meters, else "
+            "personal (meters unreadable -> personal); %s" % via)
 
 
 def window_name_for(project_name, label, taken_names):
@@ -626,6 +691,7 @@ def main():
         print("command: default claude delivery — reentry cat wrapped in BEGIN/END markers, "
               "then `%s %s` with a prompt naming the reentry path"
               % (CLAUDE_BIN, CLAUDE_FLAGS))
+        print(account_note())
 
     # Sidebar name for THIS window. Several windows on one project is normal
     # under Rule 3, so a name already in use is numbered rather than repeated.

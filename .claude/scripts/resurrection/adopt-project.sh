@@ -22,20 +22,28 @@
 # picked root differs from the tab's folder the receipt says so LOUDLY and names
 # the root all file work must use. That is a reported fact, not a silent fudge.
 #
-# The three gates, in order (each REFUSES rather than guessing):
-#   1. ALREADY-OPEN: if the picked project is live in some OTHER workspace,
-#      refuse with exit 4 — the caller jumps there instead. The guard STAYS the
-#      default (D11), but the refusal now NAMES the second option instead of
-#      pretending there is only one: --additional-window opens a SECOND window
-#      on the same project. Zee asked for the choice, not the removal of the
-#      guard, so the choice is his and this script never takes it unasked.
-#   2. OUTGOING-NOT-CLOSED: the project currently bound to this tab is released
-#      by adoption. If it was never closed through the protocol (last_close is
-#      null) we refuse with exit 3 rather than orphan unsaved reentry state.
-#      A properly-closed outgoing row is flipped active -> parked on release
-#      (undoing enroll-project.sh's revive-on-work, which re-actives a row the
-#      moment any session starts in its folder).
+# The gates (Zee's ruling 2026-09-03: `here` ALWAYS lands here — "when I adopt
+# a project in a window, I know what I am doing"):
+#   1. ALREADY-OPEN elsewhere: NOT a refusal. The other windows are LISTED and
+#      adoption proceeds — several windows on one project is normal (Rule 3),
+#      and the other window keeps its own context, so there was nothing to
+#      protect ("that window is good and can be saved, so what is the point of
+#      refusing here?"). --additional-window is still accepted and is a no-op.
+#      Before 2026-09-03 this refused with exit 4 unless the flag was given;
+#      that exit code is RETIRED.
+#   2. OUTGOING-NOT-CLOSED: REMOVED. The row this tab previously held is
+#      released active -> parked with NO close-record check (undoing
+#      enroll-project.sh's revive-on-work, which re-actives a row the moment
+#      any session starts in its folder). Zee, 2026-09-03: "the existing
+#      context will always be empty, so no need to save the existing window
+#      ever." Before, an outgoing row with last_close null refused with exit 3;
+#      that exit code is RETIRED. The check never looked at the tab anyway —
+#      it read a registry field — and a fresh nameless tab is always bound to
+#      a folder-level placeholder row, which nothing ever closes, so `here`
+#      from a fresh tab could never pass (16 folder-level rows, 0 with a close
+#      record, measured 2026-09-03).
 #   3. TOMBSTONED / MISSING / BROKEN root: refuse, exit 1.
+#   CROSS-ROOT (exit 5) is a physical limit, not a gate, and is unchanged.
 #
 # Registry writes go through registry_lib.py ONLY. Nothing here deletes a row.
 # The picked row's `root` is NEVER rewritten to the tab's cwd — that would
@@ -100,7 +108,8 @@ CMUX_BIN = "/Applications/cmux.app/Contents/Resources/bin/cmux"
 
 PROJECT = os.environ.get("AP_PROJECT", "")
 DRY = os.environ.get("AP_DRY", "0") == "1"
-EXTRA_WINDOW = os.environ.get("AP_EXTRA", "0") == "1"
+# --additional-window (AP_EXTRA) is still accepted for old callers but is a
+# no-op since 2026-09-03: an already-open project is listed, never refused.
 ALLOW_CROSS_ROOT = os.environ.get("AP_CROSS", "0") == "1"
 LABEL = (os.environ.get("AP_LABEL") or "").strip()
 LIB_DIR = os.environ.get("AP_LIB_DIR", "")
@@ -501,46 +510,37 @@ def main():
               "to adopt in place anyway and accept the FOLDER CAVEAT.")
         return 5
 
-    # ---- gate 1: ALREADY-OPEN elsewhere ------------------------------------
-    # D11: the guard STAYS the default — a bare adopt of an already-open project
-    # still refuses with exit 4, exactly as before. What changed is that the
-    # refusal now NAMES the second option instead of pretending there is only
-    # one. Zee asked for the choice, not the removal of the guard, so the choice
-    # is his: the skill asks, and --additional-window carries his answer back.
+    # ---- gate 1: ALREADY-OPEN elsewhere — LISTED, never refused ------------
+    # Zee, 2026-09-03: "If the project is open in another window, that window
+    # is good and can be saved, so what is the point of refusing here?" Several
+    # windows on one project is normal (Rule 3); they share one row, one
+    # knowledge store and one book entry (D9/D10). --additional-window is
+    # accepted for old callers and changes nothing. (Exit 4 is retired.)
     others = [w for w in workspaces
               if (w.get("id") or "").casefold() != ws_id.casefold() and binds_row(w, row)]
-    if others and not EXTRA_WINDOW:
-        o = others[0]
-        print("ALREADY OPEN — %r is open in workspace %s (%r)."
-              % (row["name"], o.get("id"), ws_custom_title(o) or o.get("title")))
-        print("  option 1 (default): jump to that window and continue there.")
-        print("  option 2: open a SECOND window on the same project — re-run with "
-              "--additional-window. Both windows share one row, one knowledge store, "
-              "and one book entry (D9/D10).")
-        print("ASK ZEE WHICH — do not choose for him.")
-        return 4
-    if others and EXTRA_WINDOW:
-        print("ADDITIONAL WINDOW — %d other window%s already open on %r; adopting anyway "
-              "because --additional-window was given (D11: Zee's choice, not a default)"
+    if others:
+        print("also open elsewhere — %d other window%s on %r; adopting here anyway (Rule 3)"
               % (len(others), "" if len(others) == 1 else "s", row["name"]))
         for o in others:
             print("  also open: %s (%r)" % (o.get("id"), ws_custom_title(o) or o.get("title")))
 
-    # ---- gate 2: OUTGOING project must have been closed properly ----------
+    # ---- outgoing row: released, never gated (Zee's ruling 2026-09-03) ------
+    # The row this tab previously held goes active -> parked below. There is
+    # NO close-record check: "the existing context will always be empty, so no
+    # need to save the existing window ever." The old check never looked at
+    # the tab's contents anyway — only at a registry field — and a fresh
+    # nameless tab is bound to a folder-level placeholder row, which nothing
+    # ever closes, so it made `here` impossible from any fresh tab (16
+    # folder-level rows, 0 with a close record, measured 2026-09-03). Exit 3
+    # is retired.
     out_row = outgoing_row(me)
     if out_row is not None and out_row["project_uuid"] == row["project_uuid"]:
         print("outgoing: none — this tab is ALREADY bound to %r (re-adopt is idempotent)" % row["name"])
         out_row = None
+    elif out_row is not None and out_row["status"] == "active":
+        print("outgoing: %r — releasing this tab (status: active -> parked)" % out_row["name"])
     elif out_row is not None:
-        lc = out_row["last_close"]
-        if not lc:
-            print("OUTGOING NOT-CLOSED — this tab currently holds %r (%s, status=%s) and it has NO "
-                  "close record (last_close is null). Adopting would release it with its reentry "
-                  "state unsaved. Run /acos-safe-close on it first, or pick it instead."
-                  % (out_row["name"], out_row["project_uuid"], out_row["status"]))
-            return 3
-        print("outgoing: %r closed at %s — releasing this tab (status: %s -> parked)"
-              % (out_row["name"], lc.get("at"), out_row["status"]))
+        print("outgoing: %r — status %s, nothing to release" % (out_row["name"], out_row["status"]))
     else:
         print("outgoing: none — this tab is bound to no live registry row")
 
