@@ -577,6 +577,106 @@ def _age_str(days):
     return "%dd" % int(days)
 
 
+# ---------------------------------------------------------------------------
+# The verb sheet (Zee's ask, 2026-09-04). The book listed the projects and
+# nothing else, so every verb this system has — route words, account words,
+# finish, curate, the number sheet — was reachable only by already knowing it.
+# Discoverability now rides on the RENDER, not on a skill remembering to
+# mention it: the short sheet is printed with every book, verbatim like the
+# rows, and `help` (--verbs) prints the full one. Facts only; it names verbs,
+# it never badges or judges a row.
+VERBS_SHORT = """WHAT YOU CAN DO — type a pick, or a verb
+  13              open row 13 in its own new window, in its own folder
+  2, 5, 7         open all three at once — one bad token and NOTHING opens
+  13 here         THIS window becomes row 13 (only if row 13's folder is this folder)
+  13 tab          a new tab inside the workspace row 13 is already open in
+  13 window       a new workspace — the default, so you rarely type it
+  13 jason        the new window signs in as Jason's Claude account
+  13 personal     ...as your own account (no word = the account door decides)
+say `help` for the rest — adopt, finish, tombstone, curate, strike, merge,
+the number sheet, delete/restore/purge, conflicts, dry run"""
+
+VERBS_FULL = """RESURRECT — EVERY VERB
+The book lists the projects. This lists what you can type at it.
+
+PICKING A PROJECT
+  13                  open row 13 in its own new window, in its own folder
+  2, 5, 7             open all three at once, each in its own window
+  13, 13              two windows on one project — repeats are legal
+  13 here             THIS window becomes row 13; no new window opens.
+                      Works only when row 13's folder IS this window's folder —
+                      a window's folder is fixed when it is created, so a
+                      different folder is refused as CROSS-ROOT.
+                      Takes exactly ONE pick, never a list.
+  13 tab              a new TAB inside the workspace row 13 is already open in.
+                      If it is open nowhere, this falls back to a new
+                      workspace and says so. A list is fine here.
+  13 window           a new workspace. This is the default; the word only
+                      lets you say it out loud.
+  13 jason            the new window signs in as Jason's Claude account
+  13 personal         ...as your own account
+                      With NO account word the account door decides silently:
+                      Jason when both his meters are below 65%, else personal;
+                      if the meters cannot be read, personal.
+                      An account word with `here` is refused — this window's
+                      Claude is already running and already signed in.
+  A LIST IS ALL-OR-NOTHING. One number or name that does not resolve and
+  nothing opens at all. Half a list is worse than a refusal, because then
+  you have to work out which windows exist.
+
+  Same words work on the command line, with no menu at all:
+    /acos-resurrect 13              opens row 13
+    /acos-resurrect 13 here         this window becomes row 13
+    /acos-resurrect 2, 5, 7 jason   all three, all on Jason's account
+
+TAKING THIS WINDOW
+  adopt 7             the same thing as `7 here` — THIS tab becomes project 7
+
+FINISHING AND HIDING
+  finish <project>    it is done. The row moves to ARCHIVED on the next
+                      render. The row file is never deleted, and a finished
+                      project can still be reopened later.
+  tombstone <project> hide it for good; the launcher then refuses to open it.
+                      Only ever run when you name the row yourself.
+  curate              walk the curation report one row at a time — keep or
+                      tombstone, your call on each
+
+THE NUMBERS (permanent per project)
+  numbers             list every number and the row that holds it
+  number 44 to 7      move one row to another number
+  swap 4 9            exchange two rows' numbers
+  compact             renumber every row 1..N. This INVALIDATES every number
+                      you have memorised, so it must be confirmed in full.
+  numbers sheet       a spreadsheet for bulk changes. Fill new_number:
+                      blank = leave that row alone, a number = move it there,
+                      0 = DELETE that row, the same number typed on 2+ rows
+                      = MERGE them into one row.
+  delete <n>          take a row out of the book. Its number is freed at once,
+                      its close bundles are archived, its knowledge facts are
+                      kept. Undoable with restore.
+  restore <uuid>      bring a deleted row back — its original number if that
+                      is still free, otherwise the lowest free one
+  purge <uuid>        end the undo window. Archived bundles and knowledge
+                      facts both stay; only the undo goes away.
+
+KNOWLEDGE AND WINDOWS
+  strike <the line>   drop a wrong line from "learned since you were last
+                      here". It is an edge, not a delete — the line stays on
+                      disk, so a wrong strike is undoable.
+  merge <a> into <b>  fold two windows of one project into one
+  conflicts           read-only scan for clashes: BLEED, NAME-CLASH,
+                      ROOT-GONE, ROOT-UNREACHABLE, SESSION-SHARED.
+                      It reports and repairs nothing.
+
+SEEING BEFORE DOING
+  dry run 2, 5, 7     resolve the picks and print what would happen,
+                      opening nothing
+  13 label <text>     name the new window `<project> <text>` instead of
+                      letting it auto-number
+  go to the open one  jump to a window already open on that project,
+                      instead of opening another"""
+
+
 def render_human(book, use_color):
     def c(code, text):
         return "%s%s%s" % (code, text, RESET) if use_color else text
@@ -728,6 +828,12 @@ def render_human(book, use_color):
         "numbers are permanent — say `numbers` to list them, `number <n> to <m>` to move one, "
         "`swap <a> <b>` to exchange two"
     )
+    # The verb sheet rides on the render itself, so it can never be trimmed,
+    # forgotten or paraphrased by a caller. `help` prints the full one.
+    vs = VERBS_SHORT.strip("\n").split("\n")
+    lines.append("")
+    lines.append(c(BOLD, vs[0]))
+    lines.extend(vs[1:])
     return "\n".join(lines)
 
 
@@ -739,7 +845,14 @@ def main(argv=None):
     ap.add_argument("--no-cmux", action="store_true", help="skip the cmux workspace join")
     ap.add_argument("--no-procs", action="store_true", help="skip the claude process join")
     ap.add_argument("--color", choices=("auto", "always", "never"), default="auto")
+    ap.add_argument("--verbs", action="store_true",
+                    help="print the full verb sheet (what `help` shows) and exit")
     args = ap.parse_args(argv)
+
+    if args.verbs:
+        # No registry read, no cmux join — the sheet is static text.
+        print(VERBS_FULL)
+        return 0
 
     home = args.home or os.environ.get("ACOS_REGISTRY_HOME") or None
     book = build_book(home, args.no_cmux, args.no_procs)

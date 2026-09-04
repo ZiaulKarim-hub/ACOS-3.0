@@ -1,6 +1,6 @@
 ---
 name: acos-resurrect
-description: The Resurrection Protocol menu. A TYPED NUMBER IS THE WHOLE PICK — `/acos-resurrect 20` opens row 20 with no menu at all, `/acos-resurrect 20 here` makes THIS tab that project instead of opening a window, `/acos-resurrect 20 tab` opens it as a new TAB inside the workspace that project is already open in (opt-in; the default is still a whole new workspace), and the full book appears only when no number is typed. With no argument it renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Route words (here, tab, window, adopt) work both on the /acos-resurrect line AND as a reply to the rendered book — `20 here` typed as a reply used to be refused because `here` was read as a row name. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
+description: The Resurrection Protocol menu. A TYPED NUMBER IS THE WHOLE PICK — `/acos-resurrect 20` opens row 20 with no menu at all, `/acos-resurrect 20 here` makes THIS tab that project instead of opening a window, `/acos-resurrect 20 tab` opens it as a new TAB inside the workspace that project is already open in (opt-in; the default is still a whole new workspace), and the full book appears only when no number is typed. With no argument it renders the registry book FRESH via resurrect-view.py and shows it VERBATIM, then routes the user's pick through open-picks.sh: a pick may be a LIST ("2, 5, 7, 9" opens all four), every pick opens its OWN window in that project's own folder running claude --dangerously-skip-permissions, and re-opening a row that is already open gives it another window instead of a question. adopt <n> is the opt-in verb for making THIS tab the project. Route words (here, tab, window, adopt) work both on the /acos-resurrect line AND as a reply to the rendered book — `20 here` typed as a reply used to be refused because `here` was read as a row name. Every render ends with a WHAT YOU CAN DO verb sheet printed by the renderer itself, and `help` prints the full sheet (`resurrect-view.py --verbs`) — so what is possible is always on the page, never only in this file. Also runs the loop verbs: finish (status completed — hidden in ARCHIVED, never deleted), tombstone (human-initiated only), curate (walk the seed CURATION-REPORT one row at a time). Trigger phrases: "resurrect", "resurrection protocol", "show my projects", "project menu", "which projects", "/acos-resurrect".
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -93,6 +93,14 @@ it is not bound to.
   rows are always shown with their reason — never hidden, never dropped. No
   green badges, no checkmarks, no "verified" stamps: the renderer prints facts
   only (red/amber only) and you add NOTHING to them.
+- **The `WHAT YOU CAN DO` sheet at the foot of the render is PART OF THE BOOK**
+  (Zee's ask, 2026-09-04: "along with the list of rows, instructions are given
+  as to what is possible and how to do it"). It ships inside `resurrect-view.py`
+  — not here — precisely so it cannot be trimmed, forgotten or paraphrased by a
+  caller. Never cut it to shorten the block, and never retype it in your own
+  words above or below the fence. The short sheet ends by pointing at `help`;
+  `help` prints the full one (Step 5). If the two ever disagree, the RENDERER is
+  right and this file is stale.
 - Workspace actions belong to the SCRIPTS. This skill NEVER calls
   `cmux workspace create` / `select` / `close` / `rename` / `set-description`
   directly — the only routes are `open-picks.sh` (every pick, one or many),
@@ -114,11 +122,15 @@ it is not bound to.
 - **Never claim a delivery the script did not verify.** exit 3 means the marker
   was not seen; quote the line. A `TRUST GATE DETECTED` line means claude is
   sitting on the folder-trust prompt and has NOT received the reentry.
-- **The outgoing project is checked before it is released.** `adopt-project.sh`
-  exits 3 with `OUTGOING NOT-CLOSED` when the tab's current project has no
-  `last_close` record. Relay that verbatim and STOP — offer `/acos-safe-close`
-  or picking that project instead. Never work around it; an unclosed project
-  loses its reentry state when its tab is taken.
+- **`here` / `adopt` NEVER refuses for the tab's old project, nor for a project
+  open elsewhere** (Zee's ruling, 2026-09-03: "when I adopt a project in a
+  window, I know what I am doing, you don't have to worry about losing context
+  in that window"). `adopt-project.sh` releases the outgoing row
+  `active -> parked` with NO close-record check, and LISTS other windows on the
+  picked project instead of refusing. The old exit 3 `OUTGOING NOT-CLOSED` and
+  exit 4 `ALREADY OPEN` refusals are retired. Never re-add a check of your own,
+  never ask him to `/acos-safe-close` first. The only refusals left are
+  `CROSS-ROOT` (exit 5, a physical limit) and a tombstoned / missing root.
 - Registry mutations go through `registry_lib` ONLY — the transition blocks
   below. Never hand-edit a row file. NOTHING here deletes a row: `finish` and
   `tombstone` both HIDE the row in ARCHIVED; the row file stays on disk.
@@ -191,6 +203,19 @@ Tokens, and only these:
   since 2026-08-25 `open-picks.sh` reads route words out of `--picks` itself, so
   passing the picks verbatim also works. Two different route words in one pick
   is refused — relay it and ask which one.
+- **an ACCOUNT WORD** (any case), anywhere in the argument — `jason` or
+  `personal` (Zee, 2026-09-03). It says WHICH CLAUDE ACCOUNT the new window
+  signs in as: `5 jason` opens row 5 on Jason's account, `5 personal` on
+  Zee's own. `open-picks.sh` reads it out of `--picks` itself and passes
+  `--account` to `launch-project.sh`, which sets `CLAUDE_ACCOUNT=<word>` for
+  the account door (`~/.claude-account/bin/claude`) — the door then skips its
+  meter check and its prompt, so the choice is his and certain. With NO
+  account word the door decides silently (Jason below 65% on both meters, else
+  personal; meters unreadable -> personal), the same rule `cc` uses unattended.
+  Two different account words in one pick is refused. An account word
+  alongside `here` is refused: `here` keeps this tab's already-running Claude,
+  so no account can be chosen for it. Pass the words verbatim; never pick an
+  account on your own initiative.
 - **anything else** → do NOT guess. Say plainly what you did not understand,
   then render the book (Step 1) and ask.
 
@@ -203,6 +228,8 @@ The mapping (these lines are EXAMPLES OF THE SYNTAX, never picks to act on):
 | `/acos-resurrect 20 here` | `--picks "20" --here` |
 | `/acos-resurrect 20 tab` | `--picks "20" --tab` |
 | `/acos-resurrect 2, 5, 7` | `--picks "2, 5, 7"` |
+| `/acos-resurrect 5 jason` | `--picks "5 jason"` (the window signs in as Jason) |
+| `/acos-resurrect 5 tab personal` | `--picks "5 tab personal"` |
 
 **Why a bare number is safe now.** A row's number used to be a per-render
 counter, so a number from an earlier render could name a different row. Since
@@ -242,7 +269,10 @@ cat "$SCRATCH/book.txt"; echo "exit=$RC"
 ```
 
 Present the `cat` output whole and unmodified inside one fenced block — that IS
-the menu. `book.json` is for YOUR machine reading of `project_uuid`/`root`/
+the menu. Since 2026-09-04 that output ends with the `WHAT YOU CAN DO` verb
+sheet, so the routing words are already on the page: do not restate them in
+prose around the fence, and do not trim them out of it. `book.json` is for YOUR
+machine reading of `project_uuid`/`root`/
 `next_action`/`tier` in the steps below (same facts, a second fresh
 computation); it is never shown as the book and never reused in a later
 invocation. `exit != 0` → relay the output verbatim and STOP.
@@ -270,6 +300,11 @@ windows on row 5 (Rule 3).
   The renderer prints the pick number in the left gutter and carries the same
   integer as `pick_number` in `book.json`; ARCHIVED rows have no number. The
   same verbs are accepted here.
+
+`help` is a legal reply at either size, and the rendered sheet tells the user
+so. It is not a pick: run the `help` block in Step 5 and re-offer the pick.
+Never answer `help` from memory — the sheet is generated, and a hand-written
+answer is the drift this design exists to prevent.
 
 Numbers are PERMANENT (Zee's ruling 2026-08-19). A number is `pick_ordinal`,
 stored on the row itself; the renderer only copies it to `pick_number`. Rows
@@ -328,8 +363,29 @@ Read the exit code, then act:
   for a corrected list, and STOP. Do not open the resolvable subset "to save a
   step" — all-or-nothing is the contract.
 
-Six flags exist, and NONE of them is ever your own initiative:
+**Every window launches through the account door** (fixed 2026-09-03). Before
+that, the bare `claude` the launcher ran never reached
+`~/.claude-account/bin/claude`: cmux's own wrapper walks PATH for the real
+binary and finds `~/.claude/local` first, so every resurrected window ran on
+the personal account and the `CLAUDE_ACCOUNT_NO_PROMPT=1` it set was read by
+nobody. The launch command now sets `CMUX_CUSTOM_CLAUDE_PATH` to the door —
+exactly what `cc` does — AND calls cmux's wrapper by its absolute path
+(`/Applications/cmux.app/Contents/Resources/bin/cmux-claude-wrapper`) instead
+of the bare word, because under `zsh -lic` (the tab route, any respawn-pane)
+the login files put `~/.claude/local` at PATH position 1 and cmux's shim at 18,
+so the bare word never reached the wrapper either (measured live 2026-09-03:
+the first Route-B restart landed on personal that way). The receipt prints an
+`account:` line saying which account the window signs in as, and via what.
+Relay that line. If it says the door is MISSING, the window is on the personal
+account; say so.
 
+Seven flags exist, and NONE of them is ever your own initiative:
+
+- `--account jason|personal` — which Claude account the NEW window signs in
+  as. Pass it when Step 0a found an account word, or the user named the
+  account in words (`open 5 on Jason's account`). Never on your own
+  initiative: with no word the door decides silently, and that is the
+  default. Refused alongside `here` (this tab's Claude is already running).
 - `--tab` — the new window opens as a TAB inside the workspace that project is
   ALREADY open in, instead of as a second workspace. Pass it when Step 0a found
   the word `tab`, or the user asked for a tab in words. OPT-IN: without it a
@@ -344,8 +400,8 @@ Six flags exist, and NONE of them is ever your own initiative:
   routes to `adopt-project.sh` instead of `launch-project.sh`. It takes exactly
   ONE pick and refuses a list, and it refuses alongside `--focus-existing`
   (they mean opposite things). Read the SUMMARY line for its outcome:
-  `THIS TAB is now the project`, or a REFUSAL naming `OUTGOING NOT-CLOSED`,
-  `ALREADY OPEN`, or `CROSS-ROOT`. On `CROSS-ROOT`, relay it and OFFER to re-run
+  `THIS TAB is now the project`, or a REFUSAL naming `CROSS-ROOT` (the only
+  refusal left since 2026-09-03). On `CROSS-ROOT`, relay it and OFFER to re-run
   without `here` — never pass `--allow-cross-root` unasked.
 - `--focus-existing` — jump to a window already open on that project instead of
   making another. Use ONLY when the user asks to go to the existing one.
@@ -375,8 +431,8 @@ cat "$SCRATCH/adopt-out.txt"; echo "exit=$RC"
 ```
 
 Relay the `cat` output whole and unmodified inside one fenced block. The script
-owns every gate and every write: the outgoing-close check, the outgoing
-`active -> parked` release, the sidebar rename, the `[key:<uuid>]` tag
+owns every gate and every write: the outgoing `active -> parked` release (no
+close-record check since 2026-09-03), the sidebar rename, the `[key:<uuid>]` tag
 round-trip, the picked row's status flip, the reentry resolution, and the audit
 event.
 
@@ -391,12 +447,9 @@ WINDOWS ON THIS PROJECT`** (what other live windows are doing).
 - **exit 0** → this tab IS the picked project now. Read the printed `reentry:`
   path with the Read tool, say you are continuing from it, and pick up its next
   step IN THIS CONVERSATION.
-- **exit 3 / `OUTGOING NOT-CLOSED`** → STOP. The project currently in this tab
-  has no close record, and adopting would release it with unsaved reentry state.
-  Relay the line, then offer exactly two options: run `/acos-safe-close` on that
-  project first, or pick that project instead. Never override the gate.
-- **exit 4 / `ALREADY OPEN`** → the row is live in another workspace. Under
-  Rule 3 the answer is a new window, so route it through Step 3 instead.
+- **already open elsewhere** → NOT a refusal (Zee, 2026-09-03). The receipt lists
+  the other windows under `also open elsewhere` and adoption proceeds; several
+  windows on one project is normal (Rule 3). Exit 3 and exit 4 are retired.
 - **exit 5 / `CROSS-ROOT`** → the row's root is not this tab's folder. Relay the
   block and route it through Step 3, which opens it in its own folder. Do NOT
   re-run with `--allow-cross-root` unless the user asked for adopt-in-place in
@@ -406,6 +459,22 @@ WINDOWS ON THIS PROJECT`** (what other live windows are doing).
   process thinks it is in no longer exists.
 
 ## Step 5 — Loop verbs
+
+### help — print the full verb sheet (Zee's ask, 2026-09-04)
+
+The render carries a SHORT sheet; `help` prints the full one. Both live in
+`resurrect-view.py`, so this skill relays and composes nothing. The flag reads
+no registry and joins no cmux, so it is instant and safe at any time.
+
+```bash
+ROOT="$(pwd)"; RESDIR="$ROOT/.claude/scripts/resurrection"; [ -f "$RESDIR/resurrect-view.py" ] || RESDIR="/Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/scripts/resurrection"
+python3 "$RESDIR/resurrect-view.py" --verbs
+```
+
+Relay it whole in one fenced block, then re-offer the pick. Answer a `help`,
+"what can I do here", or "what are my options" the same way — by RUNNING it.
+The sheet is the single source of truth for what this skill accepts; anything
+you add from memory can only drift out of date.
 
 ### numbers — see, set and swap the pick numbers yourself (Zee's ask, 2026-08-24)
 
