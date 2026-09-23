@@ -26,6 +26,7 @@ import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
 import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
+import { commandValuedConfigKeys } from "./git-guard.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
@@ -65,6 +66,25 @@ function main(): number {
     }
   } else {
     console.log(`note: no slice file at ${slicePath} — the pre-code status check is recorded as UNVERIFIED.`);
+  }
+
+  // ---- Z1 (eighth security review, EXECUTED) ------------------------------
+  // seal runs in the AUTHORING WINDOW — the one moment the answer key is
+  // plaintext on disk. A hostile case from an earlier reveal planted
+  // core.fsmonitor in .git/config, and the custodian's next plain `git status`
+  // executed it and harvested the next pack's answers. GIT_SAFE immunizes only
+  // OUR git calls; the custodian's own are unprotectable — so the foothold is
+  // DETECTED and sealing refuses until the repository is clean.
+  {
+    const badKeys = commandValuedConfigKeys();
+    if (badKeys.length) {
+      die(`seal refused: .git/config carries command-valued key(s) git will EXECUTE:\n` +
+          badKeys.map((k) => `  ${k}`).join("\n") +
+          `\nA hostile case can plant these, and they fire inside ANY git command — including\n` +
+          `yours, right now, while the answer key is plaintext (security review Z1).\n` +
+          `Inspect the value(s), then remove each with\n` +
+          `    git config --local --unset <key>\nand seal again.`);
+    }
   }
 
   // ---- write-once refusals FIRST -------------------------------------------

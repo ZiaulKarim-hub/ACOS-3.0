@@ -45,20 +45,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sha256Hex } from "./canonical-hash.ts";
 import { trustedRegions } from "./record-format.ts";
+import { GIT_SAFE } from "./git-guard.ts";
 
 const EVIDENCE_ROOT = "planning/evidence";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";
 
-// X2 (seventh security review): .git/config can carry command-executing keys
-// (core.fsmonitor, hooks, askpass) that a hostile case planted — config is out
-// of tree and invisible to every check. This tool's own git calls must never
-// execute them.
-const GIT_SAFE = [
-  "-c", "core.hooksPath=/var/empty",
-  "-c", "core.fsmonitor=false",
-  "-c", "core.askPass=",
-  "-c", "credential.helper=",
-];
+// X2: GIT_SAFE (imported) rides every git call — this tool must never execute
+// a planted config command either.
 
 const fieldFrom = (text: string, key: string): string | null => {
   // Function-free line scan; the first match wins, quoted values unquoted.
@@ -83,6 +76,7 @@ const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
                        "manifest_rewritten_during_run", "post_run_pack_untouched",
                        "post_run_attempts_intact", "attempts_anchor_committed",
                        "post_run_bundle_clean",
+                       "config_planted_during_run", "git_config_command_keys",
                        "attempts_log_sha256"] as const;
 
 /** GENESIS-rooted hash chain; returns problems, never throws. */
@@ -152,7 +146,7 @@ function verifyBundle(dir: string): { bad: string[]; note?: string } {
     if (fieldFrom(regions.footer, "bricked") !== "true") {
       bad.push(`manifest says bricked: true but the hashed log's footer does not`);
     }
-    for (const key of ["bricked_commit", "bricked_author", ...HEADER_FIELDS] as const) {
+    for (const key of ["bricked_commit", "bricked_commit_author_claim", ...HEADER_FIELDS] as const) {
       const region = key.startsWith("bricked") ? regions.footer : regions.header;
       const inMan = fieldFrom(man, key);
       const inLog = fieldFrom(region, key);

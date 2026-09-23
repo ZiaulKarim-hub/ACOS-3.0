@@ -2,7 +2,20 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 194/194. Raised from 186 on 2026-09-23 after the SEVENTH security review
+ * Expect 200/200. Raised from 194 on 2026-09-23 after the EIGHTH security review
+ * returned REJECT with Z1-Z3: the planted-config foothold, neutralized for
+ * reveal's calls (X2), still fired in the CUSTODIAN's own plain `git status` —
+ * during the authoring window, harvesting the next pack's plaintext answers
+ * (fix: command-valued local config is DETECTED — seal refuses, reveal refuses
+ * pre-run, and a mid-run plant is sealed as tampering with the keys named);
+ * signing a shrink as holdout-reveal@local bought SILENCE where a foreign
+ * author left a branded brick — the incentive was inverted (fix: every shrink
+ * bricks; the reveal-identity spelling is marked FORGED); and bricked_author
+ * was attacker-chosen free text presented as attribution (fix: renamed to
+ * bricked_commit_author_claim, with the unauthenticated-identity caveat in the
+ * record itself).
+ *
+ * Previously 194/194. Raised from 186 on 2026-09-23 after the SEVENTH security review
  * returned REJECT with X1-X4: a forward MERGE commit whose tree carried the old
  * anchor (seal commit as second parent) was TREESAME-simplified out of
  * `git log -- path`, hiding every growth commit from the W1 walk and un-spending
@@ -1627,6 +1640,7 @@ const fgLog = [
   `post_run_tree_clean_semantics: test-semantics`, `head_unchanged_during_run: unverified`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
+  `config_planted_during_run: false`, `git_config_command_keys: []`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
@@ -1644,6 +1658,7 @@ const fgManifest = (untouched: string) => [
   `post_run_tree_clean_semantics: test-semantics`, `head_unchanged_during_run: unverified`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
+  `config_planted_during_run: false`, `git_config_command_keys: []`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
 ].join("\n");
 writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
@@ -1964,9 +1979,10 @@ ok("W1/X3: a COMMITTED truncation is caught by the history walk and sealed as a 
    w1Resit.code !== 0 && /BRICKED BY TAMPERING/.test(w1Resit.out), w1Resit.out.slice(-260));
 const w1BunDir = join(repo2, "planning/evidence", "EVB-" + w1Id);
 const w1BrickMan = existsSync(join(w1BunDir, "manifest.yaml")) ? readFileSync(join(w1BunDir, "manifest.yaml"), "utf8") : "(no bricked record was sealed)";
-ok("X3: the bricked record names the shrinking commit and its foreign author",
-   /bricked: true/.test(w1BrickMan) && /bricked_commit: [0-9a-f]{40}/.test(w1BrickMan) && /bricked_author: x@x/.test(w1BrickMan),
-   w1BrickMan.slice(0, 400));
+ok("X3/Z3: the bricked record names the shrinking commit, and the author as an unauthenticated CLAIM",
+   /bricked: true/.test(w1BrickMan) && /bricked_commit: [0-9a-f]{40}/.test(w1BrickMan) &&
+   /bricked_commit_author_claim: x@x/.test(w1BrickMan) && /UNAUTHENTICATED free text/.test(w1BrickMan),
+   w1BrickMan.slice(0, 500));
 const w1Again = run({ WB_QA_CONTEXT: "1" }, ["--id", w1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
 ok("X3: a bricked pack refuses forever WITHOUT sealing a second record",
    w1Again.code !== 0 && /is BRICKED/.test(w1Again.out) &&
@@ -2071,8 +2087,76 @@ const x2ConfigSet = git("config", "--get", "core.fsmonitor").trim();
 const x2Fired = existsSync(x2Flag);
 git("config", "--unset", "core.fsmonitor");
 ok("X2: a case CAN plant core.fsmonitor — but reveal's own git calls never execute it",
-   x2Run.code === 0 && x2ConfigSet === x2Script && !x2Fired,
-   `code=${x2Run.code} set=${JSON.stringify(x2ConfigSet)} fired=${x2Fired}`);
+   x2ConfigSet === x2Script && !x2Fired,
+   `set=${JSON.stringify(x2ConfigSet)} fired=${x2Fired}`);
+// Z1 (eighth review): neutralizing OUR calls was not the property that mattered
+// — the custodian's next plain `git status` still ran the payload, in the
+// window where the NEXT pack's answers are plaintext. A mid-run plant cannot
+// be refused away, so it is SEALED as tampering and the unset command printed.
+const x2Man = readFileSync(join(repo2, "planning/evidence", "EVB-" + x2Id, "manifest.yaml"), "utf8");
+ok("Z1: the mid-run plant is SEALED as tampering — keys named, unset command printed, exit 1",
+   x2Run.code !== 0 && /TAMPERING RECORDED/.test(x2Run.out) && /config_planted=true/.test(x2Run.out) &&
+   /git config --local --unset core\.fsmonitor/.test(x2Run.out) &&
+   /config_planted_during_run: true/.test(x2Man) && /core\.fsmonitor/.test(x2Man),
+   x2Run.out.slice(-300));
+
+// Z1 — the OTHER two doors. seal runs in the authoring window itself (the one
+// moment the answer key is plaintext), so it refuses outright; reveal refuses
+// PRE-run — one unset later the pack reveals cleanly. Recovery, not a brick.
+const z1Id = "HLD-S90J-v1";
+const z1Pack = join(repo2, "qa-private", z1Id);
+mkdirSync(z1Pack, { recursive: true });
+writeFileSync(join(z1Pack, "README.md"), "# z1\n");
+writeFileSync(join(z1Pack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
+writeFileSync(join(z1Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+git("config", "alias.pwn", "!echo pwned");
+const z1Seal1 = seal(["--slice", "S90J", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("Z1: seal REFUSES while .git/config carries a command-valued key — the authoring window stays clean",
+   z1Seal1.code !== 0 && /alias\.pwn/.test(z1Seal1.out) && /command-valued/.test(z1Seal1.out),
+   z1Seal1.out.slice(-240));
+git("config", "--unset", "alias.pwn");
+seal(["--slice", "S90J", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "z1 pack");
+git("config", "core.sshCommand", "ssh -o ProxyCommand=evil");
+const z1Rev1 = run({ WB_QA_CONTEXT: "1" }, ["--id", z1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("Z1: reveal REFUSES pre-run on a planted key — recoverable, pack NOT spent",
+   z1Rev1.code !== 0 && /core\.sshcommand/.test(z1Rev1.out) && /pack NOT spent/.test(z1Rev1.out),
+   z1Rev1.out.slice(-260));
+git("config", "--unset", "core.sshCommand");
+const z1Rev2 = run({ WB_QA_CONTEXT: "1" }, ["--id", z1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("Z1: one unset later the same pack reveals cleanly — the refusal is recovery, not a brick",
+   z1Rev2.code === 0 && /1 PASS \/ 0 FAIL/.test(z1Rev2.out), z1Rev2.out.slice(-200));
+
+// Z2 — the silence branch. The identical shrink, committed AS
+// holdout-reveal@local, used to take the hard-refusal path: no record, ever —
+// strictly better for the attacker than the branded brick the foreign author
+// earned. Every shrink now bricks; this spelling is additionally marked FORGED.
+const z2Id = "HLD-S90I-v1";
+const z2Pack = join(repo2, "qa-private", z2Id);
+const z2AnchorRel = "planning/holdouts/attempts/" + z2Id + ".log";
+const z2CopyRel = "planning/evidence/EVB-" + z2Id + "/attempts.log";
+mkdirSync(z2Pack, { recursive: true });
+writeFileSync(join(z2Pack, "README.md"), "# z2\n");
+writeFileSync(join(z2Pack, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"head -n1 " + z2AnchorRel + " > " + join(tmp, "z2a") + " && mv " + join(tmp, "z2a") + " " + z2AnchorRel + "; head -n1 " + z2CopyRel + " > " + join(tmp, "z2b") + " && mv " + join(tmp, "z2b") + " " + z2CopyRel + "; git -c user.email=holdout-reveal@local -c user.name=holdout-reveal commit -q -m tidy -- " + z2AnchorRel + "; kill -9 $PPID; true\"\n");
+writeFileSync(join(z2Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90I", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "z2 pack");
+writeFileSync(join(tmp, "z2key"), packKeys.get(z2Id)! + "\n");
+execFileSync("/bin/sh", ["-c",
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${z2Id} --candidate $(git rev-parse HEAD) --allow-unverified-candidate --key-stdin < ${JSON.stringify(join(tmp, "z2key"))} > /dev/null 2>&1; exit 0`,
+], { cwd: repo2 });
+execFileSync("/bin/sh", ["-c", `chmod u+rwX qa-private/${z2Id} && chmod -R u+rwX qa-private/${z2Id}`], { cwd: repo2 });
+rmSync(join(repo2, "planning/evidence", "EVB-" + z2Id, ".reveal.lock"), { force: true });
+const z2Resit = run({ WB_QA_CONTEXT: "1" }, ["--id", z2Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("Z2: forging reveal's identity no longer buys silence — the shrink bricks like any other",
+   z2Resit.code !== 0 && /BRICKED BY TAMPERING/.test(z2Resit.out), z2Resit.out.slice(-260));
+const z2Man = readFileSync(join(repo2, "planning/evidence", "EVB-" + z2Id, "manifest.yaml"), "utf8");
+const z2V = vrrRun(repo2);
+ok("Z2/Z3: the record marks the identity FORGED, and the verifier confirms the brick",
+   /bricked_commit_author_claim: holdout-reveal@local \(FORGED/.test(z2Man) &&
+   /ok\s+EVB-HLD-S90I-v1\s+\[BRICKED BY TAMPERING/.test(z2V.out),
+   z2Man.slice(0, 500));
 
 // W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
 // dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse

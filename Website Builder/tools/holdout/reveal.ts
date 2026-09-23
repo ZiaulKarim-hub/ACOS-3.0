@@ -34,6 +34,7 @@ import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-h
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
+import { GIT_SAFE, commandValuedConfigKeys } from "./git-guard.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
@@ -79,23 +80,10 @@ const arg = (n: string): string | null => {
 const has = (n: string) => process.argv.includes(n);
 const die = (msg: string): never => { console.error(msg); process.exit(1); };
 
-// X2 (seventh security review, EXECUTED): a case ran `git config core.fsmonitor
-// /tmp/x.sh` — .git/config is untracked, invisible to every tree check — and
-// git executed that command inside reveal's own next `git status`, with
-// reveal's FULL environment, and again on every later reveal in the repo. That
-// is escape from the U3 env sandbox plus a persistent foothold. Hooks were
-// silenced in the sixth pass, but fsmonitor is a separate config-driven
-// command, and only the COMMIT calls carried the override. Every git call this
-// tool makes now carries one neutralizing prefix: no hooks, no fsmonitor, no
-// askpass, no credential helper. This NEUTRALIZES config-driven execution for
-// reveal's own calls; it cannot detect the config edit itself — .git/ is out
-// of tree, and that boundary is stated where the hooks fix already states it.
-const GIT_SAFE = [
-  "-c", "core.hooksPath=/var/empty",
-  "-c", "core.fsmonitor=false",
-  "-c", "core.askPass=",
-  "-c", "credential.helper=",
-];
+// X2: GIT_SAFE (imported) rides every git call this tool makes — hooks,
+// fsmonitor, askpass and credential helpers get no say. Z1: what GIT_SAFE
+// cannot do is protect OTHER processes from a planted config; that is
+// commandValuedConfigKeys(), enforced below.
 
 /**
  * `git status --porcelain -uall`, minus the paths reveal itself legitimately
@@ -293,6 +281,24 @@ function main(): number {
         `attribute the result to, and falling back to UNVERIFIED here would let any string\n` +
         `be sealed as the candidate. Commit the frozen candidate first, then reveal.`,
       );
+    }
+  }
+
+  // Z1 (eighth security review, EXECUTED): a case planted core.fsmonitor in
+  // .git/config during pack v1's reveal, and the CUSTODIAN's next plain
+  // `git status` — in the authoring window, when pack v2's expected.json was
+  // still plaintext — executed the payload and harvested the answers. GIT_SAFE
+  // protects only the calls THESE tools make, so a planted key must never
+  // survive into a run: refused here, recoverable with one command, pack NOT
+  // spent. seal.ts refuses the same way in the authoring window itself.
+  if (inRepo) {
+    const preKeys = commandValuedConfigKeys();
+    if (preKeys.length) {
+      die(`reveal refused (pack NOT spent): .git/config carries command-valued key(s) git will EXECUTE:\n` +
+          preKeys.map((k) => `  ${k}`).join("\n") +
+          `\nA previous hostile case can plant these; they fire inside ANY git command in this\n` +
+          `repository (security review Z1). Inspect the value(s), then remove each with\n` +
+          `    git config --local --unset <key>\nand run reveal again.`);
     }
   }
 
@@ -668,12 +674,15 @@ function main(): number {
         // reveal only ever appends, so that author line is itself forged.
         let shrinkAuthor = "";
         try { shrinkAuthor = execFileSync("git", [...GIT_SAFE, "log", "-1", "--format=%ae", h], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
-        if (shrinkAuthor === "holdout-reveal@local") {
-          die(`reveal refused: the attempts anchor's COMMIT HISTORY is not append-only —\n` +
-              `commit ${h.slice(0, 12)} shrank or rewrote ${anchorPath} UNDER REVEAL'S OWN IDENTITY.\n` +
-              `reveal only ever appends, so the identity on that commit is forged.\n` +
-              `Read \`git log -p -- ${anchorPath}\` before touching this pack.`);
-        }
+        // Z2 (eighth review, EXECUTED): refusing the reveal-identity case
+        // bought the attacker SILENCE — sign the shrink as holdout-reveal@local
+        // and no record of the imminent FAIL ever existed, while the foreign
+        // author left a branded brick. Forging reveal's identity must never be
+        // the quiet option: EVERY shrink bricks. Z3: git author identity is
+        // unauthenticated free text, so the record carries it as a CLAIM.
+        const authorClaim = shrinkAuthor === "holdout-reveal@local"
+          ? `holdout-reveal@local (FORGED — reveal only ever appends; a shrink under its identity is a forged identity)`
+          : (shrinkAuthor || "(unreadable)");
         const bDir = join(EVIDENCE_ROOT, `EVB-${id}`);
         const bMan = join(bDir, "manifest.yaml");
         if (existsSync(bMan)) {
@@ -699,7 +708,9 @@ function main(): number {
           FOOTER_DELIM,
           `bricked: true`,
           `bricked_commit: ${h}`,
-          `bricked_author: ${shrinkAuthor || "(unreadable)"}`,
+          `bricked_commit_author_claim: ${authorClaim}`,
+          `# git author identity is UNAUTHENTICATED free text: this record is evidence THAT`,
+          `# tampering occurred, never WHO did it. The claim above is whatever the tamperer typed.`,
           `finished_at: ${bFinished}`, `result: 0 PASS / 0 FAIL of 0 — BRICKED BY TAMPERING`,
         ].join("\n") + "\n";
         writeFileSync(join(bDir, bLogName), bLogText);
@@ -708,11 +719,15 @@ function main(): number {
           `candidate_verified: ${inRepo}`, `attempt: ${anchorLines.length}`,
           `started_at: "${bFinished}"`, `finished_at: "${bFinished}"`, `case_count: 0`,
           `pass: 0`, `fail: 0`, `raw_log: ${bLogName}`, `raw_log_sha256: "${sha256Hex(bLogText)}"`,
-          `bricked: true`, `bricked_commit: ${h}`, `bricked_author: ${shrinkAuthor || "(unreadable)"}`,
+          `bricked: true`, `bricked_commit: ${h}`, `bricked_commit_author_claim: ${authorClaim}`,
           `# BRICKED BY TAMPERING: no case ran. The anchor's commit history shrank; the pack is`,
-          `# terminally spent. The replacement is a NEW pack at the next version (PRD §22, O43).`, "",
+          `# terminally spent. The replacement is a NEW pack at the next version (PRD §22, O43).`,
+          `# git author identity is UNAUTHENTICATED free text: this record is evidence THAT`,
+          `# tampering occurred, never WHO did it (Z3). candidate above is the sha this reveal`,
+          `# was INVOKED with — under tampering it may be the tamperer's own commit, not the`,
+          `# implementation freeze the pack was written against.`, "",
         ].join("\n"));
-        console.error(`BRICKED BY TAMPERING: commit ${h.slice(0, 12)} shrank ${anchorPath} (author ${shrinkAuthor || "unreadable"}).`);
+        console.error(`BRICKED BY TAMPERING: commit ${h.slice(0, 12)} shrank ${anchorPath} (author claim: ${authorClaim}).`);
         console.error(`No case ran. The terminal verdict is sealed at ${join(bDir, bLogName)} — this pack never runs again.`);
         process.exit(1);
       }
@@ -1080,6 +1095,12 @@ function main(): number {
     bundleExpectedFiles.add("attempts-anchor-as-found-after-run.log");
     bundleExpectedFiles.add("attempts-log-as-found-after-run.log");
   }
+  // Z1: a key planted DURING the run cannot be refused away — it already
+  // happened. It is sealed as tampering, and the warning below tells the
+  // custodian to unset it BEFORE any other git command runs the payload.
+  const postConfigKeys = inRepo ? commandValuedConfigKeys() : [];
+  const configPlantedDuringRun = postConfigKeys.length > 0;
+
   let bundleExtraFiles: string[] = [];
   try { bundleExtraFiles = readdirSync(join(EVIDENCE_ROOT, `EVB-${id}`)).filter((f) => !bundleExpectedFiles.has(f)).sort(); }
   catch { bundleExtraFiles = ["(bundle directory unreadable)"]; }
@@ -1111,6 +1132,8 @@ function main(): number {
     // JSON-escaped: a planted FILENAME may contain newlines, and this line
     // lives in the trusted footer (T2) — it must stay one line.
     `bundle_extra_files: ${JSON.stringify(bundleExtraFiles)}`,
+    `config_planted_during_run: ${configPlantedDuringRun}`,
+    `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
     `attempts_log_sha256: ${attemptsTail}`,
     `finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`,
   ]).join("\n") + "\n";
@@ -1130,6 +1153,8 @@ function main(): number {
      `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
      `attempts_anchor_committed: ${inRepo}`,
      `post_run_bundle_clean: ${bundleCleanAfterRun}`,
+     `config_planted_during_run: ${configPlantedDuringRun}`,
+     `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
      `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
@@ -1172,9 +1197,14 @@ function main(): number {
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
   const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched
-    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false";
+    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false" || configPlantedDuringRun;
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun} config_planted=${configPlantedDuringRun}.`);
+    if (configPlantedDuringRun) {
+      console.log(`DANGER: a case planted command-valued git config: ${postConfigKeys.join(", ")}.`);
+      console.log(`The payload fires inside the NEXT plain git command anyone runs in this repository.`);
+      console.log(`Remove it FIRST: ${postConfigKeys.map((k) => `git config --local --unset ${k}`).join(" && ")}`);
+    }
     console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
   }
   console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : tampered ? `Cases passed, but see the tampering record above.` : `All cases passed.`);
