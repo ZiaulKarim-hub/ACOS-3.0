@@ -138,8 +138,8 @@ Restated against §3.2's three-tier user model: the primary and secondary users 
 
 | | |
 |---|---|
-| **Inputs** | Target project path; glob of `.acos/design-library/*/design-system-spec.yaml`, `.acos/website-builder/systems/*/system.json`, the target project's own `.acos/`, and any asset library (sprite folders, photo folders, existing site trees) |
-| **Process** | Scan for prior systems and prior sites. Scan for an **asset library** — this is the binary that decides whether artwork is real or theatre (§17-R1). Detect any existing site to mine for copy/structure. Present findings. Split what's offered into **reusable system assets** (always offered) and **identity** (offered only if the user declares a sibling site). |
+| **Inputs** | Target project path; glob of `.acos/design-library/*/design-system-spec.yaml`, `.acos/website-builder/systems/*/system.json`, the target project's own `.acos/`, and any asset library (sprite folders, photo folders, existing site trees). **Added 2026-09-22:** `website-handoff.json` if `/acos-logo-forge` wrote one (§23.1-E6 — brief answers pre-fill the interview, `logo_exports` supplies the mark), and **optionally a URL**, which enters the clone-and-fan-out route (§21) rather than this table's normal scan |
+| **Process** | Scan for prior systems and prior sites. Scan for an **asset library** — this is the binary that decides whether artwork is real or theatre (§17-R1). Detect any existing site to mine for copy/structure — **note that this means a LOCAL tree the user already owns; a URL is a different input with a different risk profile and is handled by §21.2.1's admissibility checks, not here.** Read `website-handoff.json` if present. Present findings. Split what's offered into **reusable system assets** (always offered) and **identity** (offered only if the user declares a sibling site). |
 | **Outputs** | `session.json` with `{warmStart: none\|system-only\|full, sourceSystemId, assetLibraryPath, minedSources[]}` |
 | **Exit criteria** | User has explicitly chosen fresh / reuse-as-is / reuse-and-revise, and the asset-library question is answered |
 
@@ -328,6 +328,8 @@ No-forms cases add one more real prune not previously named as a "root": `D7` (f
 | TS3 | Of the ones you hated, pick your top 3 and say one sentence on what turns you off. | T1 | always | same surprise-me mechanism as `TS2`, applied to the hated set | Negative references are more diagnostic than positive **[V — wayfront.com branding questionnaire; prior report Finding 4 deny-list mechanism]** |
 | TS4 | Move each slider: Minimal↔Maximal, Playful↔Serious, Quiet↔Loud, Classic↔Futuristic, Corporate↔Handmade, Light-first↔Dark-first, Warm↔Cool, Dense↔Airy. | T1 | always | if explicitly deferred per-slider: midpoint, with a note that midpoint defaults reduce directional signal and should be revisited before Step 2 fires | 8 semantic-differential pairs. Research recommends 5–10 per battery |
 | TS5 | Is there a competitor or peer site whose visual territory you want to actively avoid, even if it's well-made? | T2 | always | "none named" if skipped | Trade-dress proximity + negative constraint |
+| TS6 | **NEW 2026-09-22 (§21).** Is there a site you want this one *built from* — a URL to reproduce and then reshape? | T2 | always | "none" if skipped — the ordinary from-scratch route runs | **The positive twin of TS5, and it enters a materially different pipeline.** A URL routes to §21's clone-and-fan-out route, with its admissibility checks (§21.2.1 — public pages only, no login wall, `robots.txt` honoured), its quarantine (§21.2.3) and gate 35. **A "yes" here does NOT skip this interview** — §21.4's re-wording has nothing to say without it |
+| TS7 | **NEW 2026-09-22 (§21.3).** Beyond that site, name at least two more references — from different eras, genres or cultures. | T2 | `TS6 != "none"` | **no default — hard block on the clone route only** | §15.9's ≥3-reference rule is the legal boundary, and §21's route starts at one. These two answers are what a fan-out option cites to become selectable at all (§21.3). Seeded from `B2` competitors, `TS1`'s reference sort and `V2`'s "moving away from" anchor, so the user is editing a list rather than facing a blank |
 
 **Verbal (asked only after the visual tasks)**
 
@@ -835,7 +837,7 @@ Every row here is Scope `direction-slot` by definition — that is what "identit
 |---|---|---|---|---|---|
 | `direction.manifesto` | **10** | per-direction | direction-slot | v1 | 40–80 words naming the point of view, the tension it resolves, what it refuses to do. One per direction — this IS the direction. **10 = the direction count** |
 | `direction.mood-tags` | **10** | per-direction | direction-slot | v1 | 3–6 tags from a closed ~30-term vocabulary, so tags are machine-comparable for artwork affinity and Step-5 queries. The closed vocabulary is itself `site-global`; the *selection* is per-direction |
-| `direction.reference-triangulation` | **n/a** | n/a | site-global (invariant record) | v1 | ≥3 named references per direction, **abstracted attributes only** (proportion, contrast strategy, rhythm) — no reference pixels retained. Provenance metadata; also the trade-dress safety measure. **Not a varying slot** — it is a record attached to each direction, which is why the vector is 24 varying, not 26 |
+| `direction.reference-triangulation` | **n/a** | n/a | site-global (invariant record) | v1 | ≥3 named references per direction, **abstracted attributes only** (proportion, contrast strategy, rhythm) — no reference pixels retained. Provenance metadata; also the trade-dress safety measure. **§21.3 (2026-09-22) adds one field, `derived_from_capture`, for the clone-and-fan-out route — and NO exemption: that route begins at N=1 with pixels retained, and §21.2.3's quarantine plus gate 35 are what make the ≥3 / no-pixels invariant true again BEFORE anything is shippable. The clause is enforced at LOCK, not at capture.** **Not a varying slot** — it is a record attached to each direction, which is why the vector is 24 varying, not 26 |
 | `direction.signature-moment` | **10** | per-direction | direction-slot | v1 | One per direction, specified as intent + trigger + duration budget. Award-tier work has exactly one; three reads as noise **[V — prior report Findings 2, 6]**. **Kind is `per-direction`, which is why this is compatible with §20.1's exclusion of a 10-option catalogue** — see §7.0.1 |
 | `typeface.display` | **10** | per-direction | direction-slot | v1 | The loudest identity carrier. If two directions share it they are not two directions. **10 = the direction count**, drawn from the pinned OFL shortlist (§6.1 demand 4) |
 | `typeface.body` | **10** | per-direction | direction-slot | v1 | Ten slots that may resolve to as few as 5 distinct faces — directions can legitimately share a body face |
@@ -2085,9 +2087,9 @@ Canva — explicitly built for non-designers — ships by default only canvas + 
 | Variant hover-preview before commit | v1 | Ghost-previews live in the actual page context (current copy, current neighbours). **Essential, not nice, once there are 10 variants** — an isolated thumbnail can't show fit. Confirmed by §18 (bundled with the row above) |
 | Icon picker | v2 | Unchanged |
 | Embeddable content blocks | v2 | Video, maps, forms. Unchanged |
-| Custom-component insertion — minimal whitelisted registry (table, chart, embed, form) | v1 **(new row — see the sign-off note above this table)** | Placement only, from a **fixed catalog of four component kinds sourced from the system library**, no arbitrary Step-6 code, no free-form "insert anything." This is the minimal path that lets a v1 site actually place the chart component the next row and §14.6 both assume exists. **Requires user sign-off** — see the note above the table |
+| Custom-component insertion — minimal whitelisted registry (table, chart, embed, form) | v1 **(new row — see the sign-off note above this table)** | Placement only, from a **fixed catalog of four component kinds sourced from the system library**, no arbitrary Step-6 code, no free-form "insert anything." This is the minimal path that lets a v1 site actually place the chart component the next row and §14.6 both assume exists. **☑ SIGNED 2026-09-22** as carve-out C3 of the §18 sign-off (§18.0.1) — the deviation from §18's literal cut is ACCEPTED |
 | Custom-component insertion — full Step-6 authoring | v2 **(renamed from the original "Custom-component insertion" row; Reconciled with §18 — was v1, i.e. undifferentiated)** | Free-form addition of components not in the base registry, arbitrary Step-6 custom code, per-section notes-driven generation of new component types. §18's v1 cut ("no custom-component insertion") applies in full to this row; only the minimal registry row above is proposed as a v1 exception |
-| Minimal chart-data field (CSV/table paste bound to a chart node's props) | v1 **(new row — see the sign-off note above this table)** | A single paste-a-table-of-numbers field wired directly to the chart component's data prop. Not a spreadsheet: no formulas, no multi-sheet, no cell formatting — just the minimum surface that lets a v1 SVG chart (§18: "build-time SVG only, ≤4 mark types") receive real data instead of shipping with placeholder numbers. **Requires user sign-off** — see the note above the table |
+| Minimal chart-data field (CSV/table paste bound to a chart node's props) | v1 **(new row — see the sign-off note above this table)** | A single paste-a-table-of-numbers field wired directly to the chart component's data prop. Not a spreadsheet: no formulas, no multi-sheet, no cell formatting — just the minimum surface that lets a v1 SVG chart (§18: "build-time SVG only, ≤4 mark types") receive real data instead of shipping with placeholder numbers. **☑ SIGNED 2026-09-22** as carve-out C3 of the §18 sign-off (§18.0.1) |
 | Table/data editor for charts (full spreadsheet-grade) | v3 | Lightweight spreadsheet backing any chart. **Relationship to the row above:** this is the eventual replacement for the v1 paste field, not a second unrelated feature — the v1 field's data model should be a strict subset of this editor's, so upgrading doesn't require a migration |
 | Link field with validation | v1 | href + URL validation + `target=_blank` toggle |
 | Site-wide link manager | v2 | Every internal and external link with destination and status |
@@ -2242,7 +2244,7 @@ Pre-reconciliation, for comparison: 113 rows, 71 v1 / 37 v2 / 5 v3 (mechanical r
 1. **`layout.json` vs `pages/<id>.doc.json`** (§10.4's file-naming note). Renamed within this section; §4, §11, and §12.6/§12.10 still say `layout.json` as of this revision. Whether the command stack, op log, and editor lock are per-page or site-wide is undecided anywhere in the PRD — **requires a §12 update this section cannot make.**
 2. **1440 has no live preview surface** (§10.1's breakpoint note). Checked at LOCK and at preflight, never previewable interactively in v1 or v2 as scoped here. **Requires user decision** on whether to add it as a fifth switcher option.
 3. **Four rows kept on inference alone** (Breakpoint switcher, Type-aware resize, the section-level/general split on Drag-to-reorder-in-tree, Per-breakpoint visibility) — see the Method paragraph above. **No known mitigation beyond re-confirming against the next §18 revision.**
-4. **Custom-component insertion (minimal) and the minimal chart-data field are deviations from §18's literal v1 cut, restoring a user-named Step-6 example (charts) to v1 usability. REQUIRES USER SIGN-OFF** before implementation — see the sign-off note at the top of §10.3. If the user declines, the honest fallback is to also move "Charts: build-time SVG only" out of v1 in §18, since a chart component nobody can populate with data is not a real v1 feature — that fallback would itself need to be written into §18, which is outside this section's authority.
+4. **Custom-component insertion (minimal) and the minimal chart-data field are deviations from §18's literal v1 cut, restoring a user-named Step-6 example (charts) to v1 usability. ☑ SIGNED 2026-09-22** as carve-out C3 of the §18 sign-off — see §18.0.1. Both rows are v1 and may be implemented. **The declined-path fallback is NOT taken:** "Charts: build-time SVG only" STAYS in v1, because the rows were signed rather than refused. The fallback text is kept here unchanged, as the record of what would have happened instead — if the user declines, the honest fallback is to also move "Charts: build-time SVG only" out of v1 in §18, since a chart component nobody can populate with data is not a real v1 feature.
 ## 11. Layout and dragging model (D2, settled)
 
 ### 11.1 The four-level layout contract (normative)
@@ -2948,8 +2950,11 @@ Ordering follows cheapest-and-most-foundational-first: the build must succeed be
 | 26 | Asset licence-manifest completeness | Every font and image has a recorded licence class; commercial foundry faces emit a **pre-launch blocker** |
 | 27 | LOCK purity gates 1–5 (§12.5) | All pass |
 | 28 | Evidence bundle assembled | §15.6 |
+| **35** | **Clone-route publish gate (new 2026-09-22, §21.6)** | **Runs ONLY on a project whose provenance points at a §21 capture; absent on every other project.** Five conditions, all required: (1) every similarity component — structural, geometric, perceptual — **≤70%**, applied per component and never on an average; (2) token independence and asset independence both **100%**; (3) reference count **≥3** with the triangulation record written; (4) **no captured artifact appears in `dist/`**, asserted by the same walk gate 23a already performs; (5) the `00-faithful/` quarantine holds — no build input resolves inside it. **Tier 1: blocks LOCK, never interrupts live editing.** On failure it reports which component failed, by how much, and on which pages — **it does not regenerate**, because the user has been reshaping deliberately and §21's ruling 3 makes them the judge of when that is finished |
 
-**Total gate count note:** the checklist is now 28 base gates plus 4 lettered insertions (4a, 11a, 13a, 23a) — 32 checks in total. This is reflected in the LOCK wall-clock budget in §13.1, which was sized with these additions in mind rather than against the original 28.
+**Total gate count note:** the checklist is now 28 base gates plus 4 lettered insertions (4a, 11a, 13a, 23a) — 32 checks in total. This is reflected in the LOCK wall-clock budget in §13.1, which was sized with these additions in mind rather than against the original 28. **Gate 35 (2026-09-22) is conditional — it runs only on clone-route projects — so it does not move the 32 for an ordinary build, and the §13.1 budget is unchanged for those.**
+
+> **Numbering note, recorded rather than silently resolved.** This table's base list runs to 28. Elsewhere the document already proposes **"gate 31" (§8.7-A4, the chart accessible-alternative check)** and **"gate 34" (§8.5.2, the variant-distinctness check)** — numbers that do not exist in this list and were never reconciled with it. That is a **pre-existing inconsistency**, of the same family as the `O31`/`O32` and `A91+` collisions recorded in the analysis report. The new gate takes **35** — the next number above every existing proposal — specifically so that it cannot collide with either while the older mismatch is still open. **Renumbering 31 and 34 into this table is real work that belongs to a reconciliation pass, and it is not done here; inventing a tidy number for the new gate would have hidden the problem rather than fixed it.**
 
 ### 13.5 Core Web Vitals as of 2026
 
@@ -2972,7 +2977,7 @@ Unique `<title>` per page; meta description 50–160 chars; canonical URL; Open 
 | Tier | Blocks | Examples | Surfacing |
 |---|---|---|---|
 | **0** | The individual placement/edit from completing | Contrast <3:1 on placed text; target <24px with no valid exception; missing alt/decorative choice on a new image; duplicate ARIA id | Inline, immediate |
-| **1** | LOCK only — never interrupts live editing | Full-page axe critical/serious; `lhci` budget miss beyond the floor; 320px reflow breakage; missing required structured-data fields; unresolved asset-licence gap; **missing skip link (11a); missing pause/stop/hide affordance on qualifying motion (13a); dangling asset reference (23a); motion-concurrency cap exceeded (4a)** | The gate report |
+| **1** | LOCK only — never interrupts live editing | Full-page axe critical/serious; `lhci` budget miss beyond the floor; 320px reflow breakage; missing required structured-data fields; unresolved asset-licence gap; **missing skip link (11a); missing pause/stop/hide affordance on qualifying motion (13a); dangling asset reference (23a); motion-concurrency cap exceeded (4a); clone-route drift or quarantine failure (35, §21.6 — conditional, clone-route projects only)** | The gate report |
 | **2** | Nothing — advisory, dismissible | APCA good-but-not-great; non-optimal image format; duration slightly out of band; **the anti-slop advisory**; **motion-variant homogeneity signal (§13.8) — using many distinct motion "kinds" from the catalog on one site**; **motion-concurrency count approaching (but not yet exceeding) a 4a cap, surfaced early via the live counter in §13.3** | Batched into the Design Health pill, **never a toast stream** |
 | **3** | Nothing — silent telemetry | Minor spacing deviations under free-position; motion-library usage stats | End-of-session digest |
 
@@ -3183,6 +3188,15 @@ Prevention: `git init` at Step 0; `provenance.json`; content mode; a machine-rea
 **The ≥3-reference rule is the legal boundary.** US copyright/trade-dress law treats look-and-feel as largely not copyrightable absent consumer confusion plus a trade-dress claim requiring integration of multiple nonfunctional elements. The safe pattern is ≥3 references from different eras/genres/cultures, abstracted to principles, recombined. With <3 the "derived from X" risk increases. **[V — UC Law Review, Michigan Studio Space guidance; agency practice at Sagmeister & Walsh, Pentagram]**
 
 Add a post-generation check: **if a direction is >70% overlap with any single reference, regenerate against a different reference.**
+
+**Amended 2026-09-22 by §21 (D6, the clone-and-fan-out route).** That route deliberately starts at
+**one** reference and near-total overlap, so the rule above is not suspended — it is **moved from
+the start of the pipeline to the end of it**. The 70% figure is re-used there as **gate 35's hard
+publish bar**, applied per similarity component rather than on an average, alongside a ≥3-reference
+requirement and 100% token-and-asset independence. Two honest qualifications, stated here because
+this is where the number lives: **the 70% figure is inherited from this paragraph and no source
+consulted establishes it as a legal threshold**, and **a similarity score is not an infringement
+finding** in either direction. See §21.3 and §21.6. **[I]**
 
 ---
 ## 16. Architecture
@@ -3753,26 +3767,140 @@ user. It is put to the user here.
 | **1** Interview | Interview about site + design system | **Full** — 78-question bank, three tiers, ~35–45 answered | none | — |
 | **2** Prompt generation | A prompt producing the whole design system (font, front animation, button, colour schema, cursor, background art/style, top ribbon, arts — "only examples") | **Full** — Stage A + Stage B, full return schema, font catalog, frozen token manifest, envelope + terminator | none | — |
 | **3** Manual paste on claude.ai | User pastes, generates, hands everything back | **Full** — plus Local Regeneration Mode as a zero-paste alternative (§20.2 disagreement 12) | none | — |
-| **4(a)** Gridlines for precise placement, removable later | Visible grid the user places against | **NOT DELIVERED in v1.** Deferred to v2 | **Yes — a named vision feature is absent from the first shipping version** | **requires user sign-off** |
-| **4(b)** Drag-movable components | Direct manipulation of position | **PARTIAL — reorder only.** Section reorder + anchor verbs; no pointer-drag placement. Deferred to v2 | **Yes — D2 (constraint dragging) is *inert* in v1: the only version that ships first contains no dragging of any kind** | **requires user sign-off** |
-| **4(c)** Editable text | Inline text editing | **Full** — `plaintext-only` inline editing on ~90% of text nodes; the rich-text block is v2 | Rich-text formatting (bold/link/list inside a paragraph) is v2 | **requires user sign-off (minor)** |
-| **4(d)** Component bar — swap any component for a comparable variant | Swap surface across the system | **Full within one direction** — 10 variants per component (12 for hero/CTA band/card/badge/feature grid/pricing per §20.2 disagreement 5). **Cross-direction swaps are v2** because only one direction is generated in full in v1 | Only one direction exists in v1, so "swap to a different direction's version of this component" is not reachable | **requires user sign-off** |
+| **4(a)** Gridlines for precise placement, removable later | Visible grid the user places against | ~~NOT DELIVERED in v1~~ → **DELIVERED in v1.** Superseded by DECISIONS.md item 1, settled 2026-07-26 as option B | Deviation **withdrawn** — option B pulls the canvas into v1, so no named vision feature is absent | **☑ RESOLVED 2026-07-26 — no deviation remains** |
+| **4(b)** Drag-movable components | Direct manipulation of position | ~~PARTIAL — reorder only~~ → **FULL constraint dragging in v1.** Superseded by DECISIONS.md item 1, settled 2026-07-26 as option B | Deviation **withdrawn** — D2 is **active** in v1, not inert. R47 below is therefore **retired**; see the note under it | **☑ RESOLVED 2026-07-26 — no deviation remains** |
+| **4(c)** Editable text | Inline text editing | **Full** — `plaintext-only` inline editing on ~90% of text nodes; the rich-text block is v2. **Plus inline LINKS in v1** (new, 2026-09-22) | Bold and list formatting inside a paragraph remain v2. **Inline links do not** — see 18.0.1 | **☑ SIGNED 2026-09-22 — accepted with the inline-link carve-out** |
+| **4(d)** Component bar — swap any component for a comparable variant | Swap surface across the system | **Full within one direction** — 10 variants per component (12 for hero/CTA band/card/badge/feature grid/pricing per §20.2 disagreement 5). **Cross-direction swaps are v2** because only one direction is generated in full in v1 | Only one direction exists in v1, so "swap to a different direction's version of this component" is not reachable — the feature has no second target to point at, which makes this a consequence of the v1 generation budget rather than a cut | **☑ SIGNED 2026-09-22 — accepted as written** |
 | **4(e)** A way to save changes | Save | **Full** — autosave + named snapshots + save-as-variation + every-save-is-a-commit | none | — |
-| **4(f)** "Whatever else research says a tool at this level needs" | Open-ended | **Substantially expanded in this revision** — navigator tree, asset library pane, recovery bin, element freeze, duplicate/paste with overrides, per-breakpoint visibility, per-section notes → scoped regeneration (all now v1; see the v1 list) | The v1 editor is still editor-lite: no canvas, no zoom/pan, no rulers, no multi-select | **requires user sign-off** |
+| **4(f)** "Whatever else research says a tool at this level needs" | Open-ended | **Substantially expanded in this revision** — navigator tree, asset library pane, recovery bin, element freeze, duplicate/paste with overrides, per-breakpoint visibility, per-section notes → scoped regeneration (all now v1; see the v1 list). **Plus minimal multi-select in v1** (new, 2026-09-22). **Further expanded by §23's Logo Forge absorption** | ~~no canvas~~ **struck — stale**: item 1 option B put the canvas IN v1, so this cell contradicted a settled decision until 2026-09-22. What remains cut in v1: **no zoom/pan, no rulers.** Multi-select is no longer cut — see 18.0.1 | **☑ SIGNED 2026-09-22 — cell corrected first, then accepted with the multi-select carve-out** |
 | **5** If nothing looks good | Generate more variants, or a brand-new design-system prompt | **Full, plus the middle gear** — per-section notes → scoped regeneration is moved into v1 by this revision so the answer is not only "swap one variant" or "regenerate everything" | none (was a gap; closed below) | — |
-| **6** Custom components (graphs, charts) | User-added components the tool would not normally include | **PARTIAL** — build-time SVG charts, ≤4 mark types, whitelist only. Full 12-mark chart kit and the custom code block are v2; exotic and interactive charts are v3 | A user who wants a scatter, heatmap or interactive chart in v1 cannot have one | **requires user sign-off** |
-| **7** LOCK / unlock | Toolbars and gridlines removed, visitor view, reversible | **Full** — five purity gates, two-build byte-equality, re-render not copy-strip, reversible (D3). Note: v1 has no gridlines to remove, so the "gridlines disappear" part of the LOCK experience is vacuous until v2 | Consequence of the 4(a) deviation, not a separate one | covered by the 4(a) sign-off |
+| **6** Custom components (graphs, charts) | User-added components the tool would not normally include | **PARTIAL** — build-time SVG charts, ≤4 mark types, whitelist only. Full 12-mark chart kit and the custom code block are v2; exotic and interactive charts are v3. **The two §10.3 rows that make a v1 chart reachable are signed with this row** | A user who wants a scatter, heatmap or interactive chart in v1 cannot have one. **The placement hole is closed** — see 18.0.1 | **☑ SIGNED 2026-09-22 — accepted, CONDITIONAL on the two §10.3 rows, which are signed** |
+| **7** LOCK / unlock | Toolbars and gridlines removed, visitor view, reversible | **Full** — five purity gates, two-build byte-equality, re-render not copy-strip, reversible (D3). ~~v1 has no gridlines to remove, so the "gridlines disappear" moment is vacuous~~ → **struck: v1 HAS gridlines** under item 1 option B, so the moment has real content from the first ship | none remaining | **☑ RESOLVED 2026-07-26 via 4(a)** |
 | **8** Publish + evidence bundle with every font and asset licence | Publish + licence evidence | **Full** — evidence bundle + licence manifest + publish (or an explicit runbook, stated) | none | — |
 
-**R47 (new risk, continuing §17's numbering) — v1 ships without exercising D2 at all.**
-D2 was negotiated specifically to make dragging safe. If v1 contains no dragging, the constraint
-model's day-to-day usability is **unvalidated at the moment of first ship**, and §17-R8's concrete
-friction scenario ("the hero headline 12px higher") is not encountered until v2 — after the
-constraint machinery has already been designed around. **Mitigation:** the v1 exit criterion below
-requires the user to report which operations they reached for and could not perform; that report is
-the empirical input to the v2 canvas design (§17-O3). **This mitigation is partial, not complete —
-it detects the problem late by construction, and there is no known way to validate a constraint
-drag model without building a drag model. [I]**
+### 18.0.1 Sign-off record — the deviations table is now RESOLVED (2026-09-22)
+
+**Status: every row in the table above carries a resolution. §18's own precondition — "Nothing in
+v1 may be built until the sign-off column below is resolved" — is therefore SATISFIED, and it is
+no longer the gate on starting v1.** It was the gate for 58 days, from the table's authoring to
+this record. Two rows were resolved on 2026-07-26 by DECISIONS.md item 1; four were signed by Zee
+on 2026-09-22; one (step 7) was always a consequence of 4(a) and follows it.
+
+| Row | Resolution | Date | Deviation still live? |
+|---|---|---|---|
+| 4(a) gridlines | item 1 option B — pulled into v1 | 2026-07-26 | no — withdrawn |
+| 4(b) dragging | item 1 option B — full constraint dragging in v1 | 2026-07-26 | no — withdrawn |
+| 4(c) editable text | **signed**, with the inline-link carve-out | 2026-09-22 | yes — bold/lists stay v2 |
+| 4(d) component bar | **signed** as written | 2026-09-22 | yes — cross-direction swap stays v2 |
+| 4(f) editor-lite | cell corrected, then **signed** with the multi-select carve-out | 2026-09-22 | yes — zoom/pan and rulers stay v2 |
+| 6 charts | **signed**, conditional on the two §10.3 rows, which are signed | 2026-09-22 | yes — scatter/heatmap/interactive stay v2–v3 |
+| 7 LOCK | follows 4(a) | 2026-07-26 | no — withdrawn |
+
+#### The three carve-outs, stated precisely so an implementer can build them
+
+**C1 — Inline links ship in v1 (amends 4(c)).** `plaintext-only` inline editing stays exactly as
+specified for ~90% of text nodes. On top of it, v1 gains **one** rich-text affordance: wrapping a
+selected run in an `<a href>`. Bold, italic, and lists inside a paragraph remain v2 and are not
+reachable by any v1 surface. Rationale: a marketing page that cannot put a link mid-sentence is not
+a marketing page, and every one of the eight vision steps assumes a site a visitor can navigate.
+**Scope fence, so this does not become the rich-text block by the back door:** the link affordance
+emits an anchor element and nothing else — no nested marks, no style attributes on the anchor, no
+class, no target other than the two enumerated values (`_self`, `_blank`), and `rel="noopener
+noreferrer"` is written automatically whenever `_blank` is chosen. A pasted run carrying any other
+markup is flattened to text on entry, per the existing `plaintext-only` rule, which this carve-out
+does not relax. **Cost: unbudgeted, and not measured. [I]**
+
+**C2 — Minimal multi-select ships in v1 (amends 4(f)).** Select several blocks, then move, delete,
+duplicate, or hide them as one set. **What is explicitly NOT in v1:** editing the constraint set of
+a multi-selection (pinning, anchoring or stretching several blocks at once), aligning or
+distributing across a multi-selection, and any group-level container. Rationale: item 1 put real
+dragging in v1, and a drag surface with no way to move two things together produces exactly the
+friction §17-R8 describes, one block at a time. The cut half is the half that is genuinely hard:
+merging N constraint sets has no settled semantics in this PRD and inventing one here would be
+fabrication. **Cost: unbudgeted, and not measured. [I]**
+
+**C3 — Charts are signed only because their placement path is signed with them (amends 6).**
+Row 6 could not be signed alone. §10.3's sign-off note records why: §18's v1 scope cut removes
+"custom-component insertion" entirely, so a literal reading ships v1 with charts that **nobody has
+any way to place and no way to feed with data**. Both §10.3 rows are therefore signed on the same
+date as part of this ruling:
+- *Custom-component insertion — minimal whitelisted registry (table, chart, embed, form)* — **SIGNED**
+- *Minimal chart-data field (CSV/table paste bound to a chart node's props)* — **SIGNED**
+
+The fallback §10.3 named for a refusal — "also move 'Charts: build-time SVG only' out of v1 in
+§18" — is **not taken**, because the rows were signed rather than declined. §14.6 and the chart
+accessible-alternative contract are unaffected and keep their stated versions.
+
+#### 18.0.2 Re-baselining — mandatory; **RUN 2026-09-22, result in `planning/REBASELINE-18.0.2.md`**
+
+> **UPDATE 2026-09-22 — the re-baseline has been run.** Its result is a **band, not a point**,
+> because no per-item or per-variant day cost is measured anywhere in this PRD and this section
+> forbids inventing one. §8.4's counts were parsed and re-added mechanically and are **correct**:
+> 87 pickable items / 674 variants, every family's internal arithmetic matching. The Branch A+
+> spine (L1+L2+L3a+L4) re-baselines to **27.8–41.8 days if nothing scales**, **41.5–62.3 days**
+> if the three build lines scale linearly with variants, and **45.7–68.6 days** if they scale
+> linearly with items. The instruction below to treat every §18 day-figure as a floor is therefore
+> **confirmed and quantified**. The figures in §18's line table are deliberately left unchanged,
+> because replacing them requires choosing one of those three models, and that choice is not the
+> re-baseline task's to make. The stacking additions (item 1, D5, C1–C3) are **not** folded in,
+> and §13's gate budgets are **not** re-baselined — §13.1's budget is sized against the 32-gate
+> list, not the item catalogue. Full method, including a parser defect that briefly and wrongly
+> accused §9's row of a miscount, is in `planning/REBASELINE-18.0.2.md`.
+
+DECISIONS.md item 2 was settled on 2026-09-22 as **option 1: accept 87 pickable items / 674
+variants as the v1 set and re-baseline.** The stale figure this section and §13 were sized against
+was **~50 items / ~430 variants** — a **~74% increase in items and ~57% in variants**, which §8.4
+records as a real scope change, not a re-count of the same thing.
+
+**Every day-figure printed anywhere in §18 and every gate budget in §13 is therefore known to be
+low, and none of them has been recomputed.** That is stated here rather than silently corrected,
+because inventing a corrected number would be exactly the fabrication this PRD refuses elsewhere.
+What is known about the direction and the size of the gap:
+
+| Load | Figure | Status |
+|---|---|---|
+| Item 1 option B (canvas into v1) | ~16–24 days, ~25–35 days against the revised baseline | **[I]** inference, accepted 2026-07-26 |
+| D5 (layers as a real tier) | 16–24 days **[I]**, explicitly "stacks on top of" item 1's figures | **[I]** inference, accepted 2026-08-20 |
+| Item 2 (87/674 vs ~50/~430) | +~74% items, +~57% variants | measured counts; **day-cost not derived** |
+| C1 inline links | unbudgeted | not measured |
+| C2 minimal multi-select | unbudgeted | not measured |
+| C3 registry + chart-data field | unbudgeted | not measured |
+| §21 clone-and-fan-out route | see §21.9 | v2 route; **not in the v1 baseline** |
+| §22 holdout verification | see §22.8 | process overhead on every slice |
+| §23 Logo Forge absorption | see §23.6 | mixed v1/v2/v3; the v1 tranche is named there |
+
+**The re-baseline is a task, not a paragraph.** It belongs to the slice set, and it must read the
+counts rather than restate them. Until it runs, treat every §18 day-figure as a floor and not an
+estimate. **Per-project demotion is the relief valve item 2 chose** — the global 87 is not cut, but
+a given project generates only the rows its interview answers call for, with each demotion written
+to that project's `session.json` with a reason. **Radio group and Toggle switch are non-demotable**
+in every project.
+
+---
+
+**~~R47 (new risk, continuing §17's numbering) — v1 ships without exercising D2 at all.~~
+RETIRED 2026-07-26 by DECISIONS.md item 1 option B.** The risk is quoted below unchanged, because
+§20.1's own principle is that dropped items are traded, not lost — and because the *mitigation* it
+describes survives its own retirement, as §18.0.3 records.
+
+> D2 was negotiated specifically to make dragging safe. If v1 contains no dragging, the constraint
+> model's day-to-day usability is **unvalidated at the moment of first ship**, and §17-R8's concrete
+> friction scenario ("the hero headline 12px higher") is not encountered until v2 — after the
+> constraint machinery has already been designed around. **Mitigation:** the v1 exit criterion below
+> requires the user to report which operations they reached for and could not perform; that report is
+> the empirical input to the v2 canvas design (§17-O3). **This mitigation is partial, not complete —
+> it detects the problem late by construction, and there is no known way to validate a constraint
+> drag model without building a drag model. [I]**
+
+**18.0.3 — What R47's retirement does NOT buy.** R47 said the constraint model would be unvalidated
+at first ship. Option B removes that by shipping the drag model in v1 — so the model IS exercised.
+It does **not** follow that the model is validated. It follows only that the first real evidence
+arrives at v1 instead of v2, which is earlier, not safer. **The v1 exit criterion's operation report
+is therefore KEPT, unchanged, and re-pointed:** it now feeds the v1.x constraint revision rather
+than the v2 canvas design. Deleting it along with R47 would have discarded the one empirical input
+this PRD has on a mechanic that §20.2 disagreement 13 costs at **30–60 days for L3b** and that no
+lens other than Lens 12 estimated at all. **R47 is retired because its premise is false, not
+because its worry was answered. [I]**
 
 ---
 
@@ -3973,7 +4101,23 @@ Continuing the existing numbering; nothing is renumbered.
 
 | Id | Type | Statement |
 |---|---|---|
-| **R47** | Risk (§17) | v1 ships without exercising D2 at all; the constraint drag model is unvalidated at first ship. Mitigation is partial and detects the problem late by construction **[I]** |
+| **R47** | Risk (§17) | ~~v1 ships without exercising D2 at all~~ — **RETIRED 2026-07-26** by DECISIONS.md item 1 option B, which puts full constraint dragging in v1. Quoted unchanged at §18.0.2, and its mitigation is KEPT and re-pointed: see §18.0.3. **Retired because its premise is false, not because its worry was answered [I]** |
+| **R48** | Risk (§21.8) | The fan-out's 2 "close" options are the most useful and the most likely to fail gate 35. The live drift score is a partial mitigation only — a user can spend a whole session on an option that will never clear **[I]** |
+| **R49** | Risk (§21.8) | Re-wording can produce a site shaped like a claim the new business cannot make. Numbers, claims, testimonials and credentials are stripped outright; **no known mitigation for the subtler shape mismatch** beyond the reinterpreted and bold fan-out bands |
+| **R50** | Risk (§21.8) | Capture drift — the source changes after capture, so every evidence-bundle measurement is against a snapshot that no longer exists. **A disclosure, not a fix [I]** |
+| **R51** | Risk (§21.8) | The whole drift machinery is computed against a copy of **unmeasured completeness**. The only figure available is another skill's **~83–87%** ceiling for one capture layer. **Residual risk has no mitigation beyond measurement — O36 [I]** |
+| **R52** | Risk (§21.8) | The route makes an unlawful act easy to attempt. Quarantine, ≥3 references, gate 35 and a permanent source-URL record make it never invisible. **No mechanism here can judge intent, and this PRD does not claim one [I]** |
+| **O36** | Open question (§21.10) | What fidelity does this pipeline actually reach? **Cheap — now item 0 of §20.4.** No §21 decision should rest on 83–87% until it runs |
+| **O37** | Open question (§21.10) | Is 70% the right bar, and should it differ per similarity component? The number is inherited from §15.9, not derived. **Requires user decision once O36 gives real numbers** |
+| **O38** | Open question (§21.10) | What happens to a multi-locale source? **Default:** capture the locale the URL resolves to, record the others as present-but-not-captured |
+| **O39** | Open question (§21.10) | May the route take more than one URL? Safer start, but no merge semantics are specified. **Default:** one URL; the other two references are named rather than captured |
+| **O40** | Open question (§21.10) | How is "satisfied" recorded, given ruling 3 makes the user the standard? **Default:** a statement in the user's own words at LOCK, stored beside the drift record |
+| **O41** | Open question (§22.9) | Who is the holdout custodian, given `.claude/agents/` is human-approval-restricted? **Default:** `Task(general-purpose)` with a custodian prompt in the skill's own directory |
+| **O42** | Open question (§22.9) | Does the holdout run in CI or by hand? **Default:** by hand at candidate freeze, context-gated — a CI job that can read the pack has already lost the property |
+| **O43** | Open question (§22.9) | What happens on a holdout FAIL? **Default:** the run is preserved as-produced and the pack is spent; a fix needs a new pack at `v<n+1>`. **A pack that can be re-run until it passes is homework, not an exam** |
+| **O44** | Open question (§23.6) | Does the ribbon replace §10's chrome or wrap it? **Default:** the ribbon IS the chrome specification and §10's 155 rows are its contents |
+| **O45** | Open question (§23.6) | How far does gallery borrowing reach? **Default:** within-project in v2; cross-project behind an explicit confirmation naming the source; **never from a quarantined directory** |
+| **O46** | Open question (§23.6) | Do the artwork tools ship with v1's `ArtContainer`? **Default:** containers in v1 with the existing generate-and-place path; the pen, combine and node tools in v2 |
 | **O31** | Open question (§17) | Which O10 branch — A (single page), A+ (single page, page-tree-ready model) or B (multi-page in v1)? **Requires user decision before the v1 build starts.** Both branches are costed above; no default is applied silently |
 | **O32** | Open question (§17) | For a project with no asset library whose direction needs photographic or painterly raster art, who produces it in v1? **Requires user decision per project. No known mitigation that keeps the paste-only path intact** |
 | **O33** | Open question (§17) | Final UI wording for the element-level freeze — "Freeze", "Pin", or another word. **The constraint is settled** (it must not be "Lock"); the word itself is cosmetic and **requires user preference** |
@@ -4164,6 +4308,16 @@ Testable statements. Each maps to a gate, a script, or an observable behaviour.
 | **HTML→JSON round-tripping** | Lens 6, Lens 12 | The canonical WYSIWYG failure, worse here because Claude also writes the source (§12.1) |
 | **Deriving reduced-motion at build time by zeroing duration** | Lens 8, Lens 9 | Produces a broken-looking experience. Art-directed siblings authored at generation time (§7.7) |
 | **Rust** | Lens 10 | Nothing here is performance-critical or needs a single binary; the language rule's own guidance says TypeScript |
+| **Publishing the faithful copy** (§21) | D6, 2026-09-22 | It is an intermediate step by ruling 5. Enforced structurally — quarantined directory, fail-closed build check, LOCK refusal with no override flag (§21.2.3) |
+| **Capturing behind a login wall** (§21) | D6, 2026-09-22 | Public pages only by ruling 4. A hard block, not an Oracle-scored escalation — bypassing access control is not a design operation. Inherited verbatim from `acos-reverse-cleanroom` capture layer 7 |
+| **Copying a source's logo, photography, font files, embeds or legal text** (§21) | D6, 2026-09-22 | Separately owned contents, distinct from the arrangement. The route copies arrangement only — §21.2.5 |
+| **The back-end reverse-engineering capture layers** (3, 4, 7–09, 12–18, 21–22, 24, 26–27) | D6, 2026-09-22 | They reverse-engineer an *application*. This route reproduces a site's appearance and structure, and has no use for inferred API contracts or authorization matrices. **Recorded so a later session does not "complete" the layer set as an improvement** (§21.2.2) |
+| **A single blended fidelity or drift score** (§21) | D6, 2026-09-22 | An average lets a structurally-wrong copy hide behind a good screenshot match — the same failure class as the already-excluded HTML→JSON round trip. Three measurements, reported separately (§21.2.4, §21.6) |
+| **Holdout packs on all 78 slices** (§22) | 2026-09-22 | A process that heavy is abandoned in week two, and an abandoned gate reads as protection that is not there. Scoped to where a wrong answer is *silent* (§22.3) |
+| **R2P's artifact-ID scheme and the Logo Forge's `e<N>`/`d<N>`/`v<N>` families** | 2026-09-22 | This project mints no second numbering scheme: preeng ids S01–S78 are carried verbatim, and the estate already carries O31–O34 and A91+ collisions (§22.4, §23.3) |
+| **Freehand drawing, boolean combine, node editing, split-apart and the gizmo on PAGE CONTENT** (§23) | 2026-09-22 | The substrate rejects them — a DOM node in a CSS Grid has no path to node-edit. **All five ARE adopted inside `ArtContainer`**, which is an SVG surface (§23.3) |
+| **"Standard colours" in the fill menu, and free font family/size in the text group** (§23) | 2026-09-22 | A one-click door to an off-token value undoes §7's token system and contradicts §13.8's anti-slop position. The theme grid is adopted; the escape hatch beside it is not (§23.1-D4, D8) |
+| **Ribbon mirrors (the same command on two tabs)** (§23) | 2026-09-22 | Adopted deliberately in the Logo Forge with Zee's approval there. **Not carried by default** because §10's 155 rows make the duplication surface far larger. Cheap to relax later, expensive to tighten (§23.3) |
 
 ### 20.2 Disagreements between lenses, and how they were resolved
 
@@ -4215,6 +4369,7 @@ Claims used in this PRD that were **not** independently verified, listed so they
 
 In priority order, all cheap:
 
+0. **The capture-fidelity spike** (O36, added 2026-09-22) — capture one public site, rebuild it, run §21.2.4's three-part oracle, read the numbers. **Listed first because §21's entire drift machinery is computed against a copy whose completeness is currently unmeasured**, and because the only figure this PRD has — **~83–87% element-fidelity** — is another skill's recorded ceiling for one capture layer, not a measurement of this pipeline. **No §21 decision should rest on 83–87% until this runs (R51).**
 1. **The claude.ai artifact font test** (O1) — 60 seconds, determines whether Step 2 can ask for base64 fonts or whether direction selection needs a different mechanism entirely.
 2. **The TS detached-spawn turn-boundary test** (O5) — determines whether the language rule and the only proven server recipe can coexist.
 3. **Copy-paste fidelity from claude.ai's rendered chat view** — whether triple-backtick fences survive. The entire `FILE:`-header contract depends on it. Test all three paste paths a real user would use (rendered view, per-block copy button, conversation export).
@@ -4222,3 +4377,980 @@ In priority order, all cheap:
 5. **Astro HMR round-trip latency for a move op** (U20) — determines whether the editor needs an optimistic local preview layer.
 6. **Single-origin vs two-origin spike** (O4).
 7. **The GrapesJS-class licence re-verification at pin time** for every adopted dependency (dnd-kit, TipTap/ProseMirror) — against the actual LICENSE file, not the marketing page.
+
+
+---
+
+> **Numbering note.** §§21–23 are **appended after §20**, not inserted before it, so that no
+> existing cross-reference moves. This follows the precedent §7.14/§7.15 already set in this
+> document — *"Subsection numbers are appended … rather than inserted so no existing §7.x
+> cross-reference moves."* §20 remains the Appendix; it is simply no longer the last section.
+---
+## 21. The clone-and-fan-out route (D6, settled 2026-09-22)
+
+### 21.0 What this section is, and why it is a section rather than a feature row
+
+Every other entry into this product starts from a blank page: interview the user, generate a
+design system, build a site (§4 Steps 0–8). This section specifies a **second entry**: the user
+supplies a **URL**, the product reproduces that site as faithfully as it can, re-words it for the
+business the site is actually for, and then **fans out** — producing N further options that keep
+the original's structural core while taking on the new business's identity, until the result is
+far enough from the original to be its own artifact.
+
+It is a section, not a feature row, for three reasons:
+
+1. **It changes the shape of Step 0.** §15.1's warm start already scans for prior systems and
+   "any existing site to mine for copy/structure" — but that is a *local directory* the user
+   already owns. A URL is a different input with a different risk profile.
+2. **It collides head-on with a rule this PRD calls the legal boundary.** §15.9 states:
+   *"The ≥3-reference rule is the legal boundary… The safe pattern is ≥3 references from
+   different eras/genres/cultures, abstracted to principles, recombined. With <3 the 'derived
+   from X' risk increases."* And §7.0.1's `direction.reference-triangulation` is a v1 invariant
+   reading *"≥3 named references per direction, **abstracted attributes only** (proportion,
+   contrast strategy, rhythm) — **no reference pixels retained**."* This route begins at **N = 1,
+   with reference pixels deliberately retained.** A feature row cannot resolve that. §21.3 does.
+3. **It is the only route in this product whose intermediate artifact must never ship.**
+   Everything else in the PRD produces artifacts that are either final or discarded. The faithful
+   copy is neither: it is required, it is kept, and it is structurally barred from publication.
+
+### 21.1 The six rulings that define this route (Zee, 2026-09-22)
+
+Recorded verbatim in shape, because the section is built on them and a later reader must be able
+to tell a ruling from an inference:
+
+| # | Question put | Ruling | Where it binds |
+|---|---|---|---|
+| 1 | Does the ≥3-reference rule bend, or does the route live outside it? | **The fan-out must clear the >70% overlap check.** | §21.3, §21.6, gate 35 |
+| 2 | Does "fan out" mean N options or one re-skin? | **N options.** | §21.5 |
+| 3 | How faithful must the copy be? | **The first copy must be 100% faithful**, then *"we slowly reshape it until we are satisfied that it will not infringe into anyone else's artifact."* | §21.2, §21.4, §21.6 |
+| 4 | Whose sites are allowed? | **Publicly available pages.** | §21.2.1 |
+| 5 | Is the faithful copy a deliverable? | **It is an intermediate step.** | §21.2.3 |
+| 6 | Own PRD or this one? | **This one.** | this section exists |
+
+**Ruling 3 is the one that carries the most weight, and it is also the one this PRD must qualify
+rather than simply obey.** "100% faithful" is the *instruction*, and §21.2.2 specifies the route
+to pursue it without a fidelity cap written in. But the honest state of the art is that a
+capture-and-reproduce pipeline does not reach 100%: this estate's own capture library records a
+**~83–87% element-fidelity ceiling** on vision capture (`acos-reverse-cleanroom`,
+`references/capture-layers.md`, layer 5). The route therefore targets 100%, measures what it
+actually achieved, and **reports the gap rather than claiming the target**. Nothing downstream is
+allowed to assume the copy is complete. This is a qualification of the achievable result, not a
+softening of the instruction — see §21.2.2 and R51.
+
+### 21.2 Phase A — the faithful copy
+
+#### 21.2.1 Admissibility: what may be pointed at
+
+**Publicly available pages only (ruling 4).** Concretely, a page is admissible when all of these
+hold, and the route refuses the URL out loud when any fails:
+
+- It is reachable **without authentication** — no login, no paywall, no session cookie, no
+  signed URL, no token in the query string.
+- It is not disallowed for the fetching agent by the origin's `robots.txt`.
+- It responds over plain HTTPS to a normal GET with a normal browser user-agent.
+- It is not behind an interstitial that a human would have to dismiss to see the content
+  (age gate, consent wall that blocks rendering, bot challenge).
+
+**A login wall is never bypassed, and never asked about.** `acos-reverse-cleanroom`'s capture
+layer 7 carries the same rule in the same words — *"NEVER automate a login-wall bypass"* — and
+this route inherits it unchanged. If the user supplies credentials unprompted, the route refuses
+the URL and says why. **This is a hard block, not an Oracle-scored escalation:** it is the one
+place in this product where proceeding on a user's say-so would convert a design tool into an
+access-control bypass.
+
+**`robots.txt` is honoured as a refusal, with one narrow recorded exception:** a user pointing at
+**their own site**, attested as such, may capture a path their own `robots.txt` disallows, because
+`robots.txt` governs crawlers, not owners. The attestation is recorded in the evidence bundle
+(§21.7). No other exception exists. **[I — this exception is this PRD's inference, not a rule
+taken from a source; it is narrow by construction and can be removed without affecting anything
+else in the route.]**
+
+#### 21.2.2 What "100% faithful" means as a build target
+
+The route captures, and then **measures what it captured against what exists**. Two numbers come
+out of Phase A and both are recorded:
+
+- **Coverage** — what fraction of the discovered surface was captured at all (pages found vs
+  pages captured, elements present vs elements reproduced).
+- **Fidelity** — how closely each captured element matches its source, per §21.2.4's oracle.
+
+**No fidelity floor is written into this section as a pass bar, and that is deliberate.** Ruling 3
+sets the target at 100% and makes the *user*, not a threshold, the judge of when reshaping has
+gone far enough — *"until we are satisfied."* A PRD-authored floor would quietly overrule that.
+What the route owes instead is an honest, visible number, and a refusal to describe a 91% copy as
+a copy.
+
+**The capture layers this route runs**, adapted from `acos-reverse-cleanroom`'s 27-layer library.
+That skill strips expression on purpose; this route **keeps** it, which is the single inversion —
+every other constraint carries over:
+
+| Layer (source library #) | What it gives this route | Status |
+|---|---|---|
+| 1 Structure discovery | the page map + the completeness DENOMINATOR (`surface-census.json`) | required |
+| 5 Vision capture | the rendered look, per breakpoint — **~83–87% element-fidelity ceiling** | required |
+| 6 Accessibility tree | roles, names and states screenshots cannot show | required |
+| 20 Device / responsive matrix | how the source reshapes at each breakpoint, dark mode, reduced motion | required |
+| 25 SEO / metadata | titles, meta, sitemap, structured data, Open Graph shape | required |
+| 10 Third-party dependency | external scripts/SDKs/CDNs the copy must NOT reproduce (§21.2.5) | required |
+| 23 Content-vs-code | which text is content (gets re-worded) vs chrome (does not) | required |
+| 2 Behavioral capture | interaction states — hover, focus, open, error, loading, empty | required |
+| 11 Security-surface | the source's CSP/headers, read to inform ours — never copied | advisory |
+| 19 Internationalisation | whether the source is multi-locale, so a single-locale copy is a *known* reduction | conditional |
+| 3, 4, 7–9, 12–18, 21–22, 24, 26–27 | back-end contracts, auth roles, storage, real-time, business rules | **NOT RUN** |
+
+**The excluded majority is the point.** Those layers exist to reverse-engineer an *application*.
+This route reproduces a *site's appearance and structure*. Running them would capture material —
+inferred API contracts, authorization matrices, validation logic — that this product has no use
+for and no business holding. **Stated as an exclusion so that a later session does not "complete"
+the layer set as an improvement.**
+
+#### 21.2.3 The copy is quarantined, and cannot be published
+
+**Ruling 5: the faithful copy is an intermediate step.** That is enforced structurally, not by
+convention:
+
+- The copy lands in `.acos/website-builder/clone/<session>/00-faithful/`, which is **outside the
+  project's buildable tree**. No Astro route, no `src/pages` entry, no `dist` path resolves into it.
+- The directory carries a `QUARANTINE` marker file. The build script refuses to run if any input
+  path resolves inside a quarantined directory — a fail-closed check, in the same shape as the
+  egress guard `acos-reverse-cleanroom` arms at init.
+- **LOCK (§12) refuses outright** while the active document's provenance still points at
+  `00-faithful/` with no fan-out selection recorded. There is no override flag, no `--force`, and
+  no session threshold that clears it.
+- Publish (§15.4) is unreachable without LOCK, so this single block covers both.
+
+**Why a structural block rather than a warning.** A warning is a thing a tired person clicks
+through at 1 a.m. The copy is, by construction, the one artifact in this product most likely to
+cause a legal problem and most tempting to ship because it looks finished. §12's LOCK is already
+the choke point every publishable artifact passes through, so the block costs one condition at a
+place that already exists.
+
+#### 21.2.4 The fidelity oracle
+
+Faithfulness is measured, not asserted. The oracle compares the **rendered copy** against the
+**captured source**, per page and per breakpoint (320/390/768/1280/1440, the profile §15.6's
+evidence screenshots already use):
+
+1. **Structural diff** — the accessibility tree of the copy against the captured tree: node count,
+   role sequence, heading order, landmark set. Deterministic, cheap, runs first.
+2. **Geometric diff** — bounding boxes of corresponding nodes, normalised to viewport width.
+   Reported as the fraction of nodes whose box centre lands within a stated tolerance.
+3. **Perceptual diff** — a screenshot comparison per breakpoint, reported as a similarity figure.
+
+**All three are reported separately and never averaged into one score.** A single blended number
+would let a structurally-wrong copy hide behind a good screenshot match, which is precisely the
+failure §12's "HTML→JSON round-tripping" exclusion already names as the canonical WYSIWYG trap.
+
+**The oracle is also the input to the drift score (§21.6) — the same measurements read in the
+opposite direction.** Phase A wants them high. Phase C needs them low. Computing them once, in
+one place, is what keeps "how faithful is the copy" and "how far have we moved" from drifting into
+two different and disagreeing implementations.
+
+#### 21.2.5 What is never copied, even in the faithful copy
+
+The faithful copy reproduces **layout, structure, spacing, type scale, colour relationships,
+component shapes, interaction states, and motion behaviour**. It does **not** take:
+
+| Not copied | Why | What happens instead |
+|---|---|---|
+| The source's logo, wordmark, or brand marks | Trademark, not trade dress. Copying a mark is a different and clearer wrong than echoing a layout | Placeholder slot; the business's own mark is dropped in — `/acos-logo-forge`'s `website-handoff.json` already supplies one |
+| Photographs, illustrations, video, icon art | Copyright in the asset itself, independent of look-and-feel | Slot with declared dimensions and art direction; filled per §7's Lane A/B/C |
+| Font **files** | Licences are per-file and rarely transferable | The font is **identified** and matched from `font-catalog.json` (§6), or flagged as a pre-launch blocker per §15.2's commercial-foundry rule |
+| Third-party embeds, trackers, analytics, tag managers | Someone else's contract and someone else's data collection | Recorded in the capture as *present*, reproduced only if the user's own interview answers call for that capability |
+| Any text that is a legal instrument — terms, privacy policy, disclaimers | Copying legal text is both infringement and malpractice; a policy that describes another company's practices is actively false | Flagged, never carried. §5-G0's jurisdiction branch handles the real one |
+| Source code comments, build fingerprints, generated ids | Not expression the user wants; carries provenance that should not travel silently | Discarded at capture |
+
+**The distinction the table encodes** is between the *arrangement* (which US law treats as largely
+not copyrightable absent a trade-dress claim, per §15.9's cited reading) and the *contents* (which
+are separately owned and separately protected). The route copies the first and never the second.
+**This is not legal advice, and this PRD is not competent to give it** — it is a design rule
+derived from the boundary §15.9 already cites, stated so an implementer builds the conservative
+version by default.
+
+### 21.3 How this route and the ≥3-reference rule are reconciled
+
+This is the load-bearing subsection. §15.9 calls the ≥3-reference rule the legal boundary; §7.0.1
+makes `direction.reference-triangulation` a v1 invariant; and §15.9 adds a tripwire: *"if a
+direction is >70% overlap with any single reference, regenerate against a different reference."*
+This route starts at **one** reference and **~100% overlap**, on purpose. Both statements are
+true, and the resolution is a sequence, not an exception.
+
+**The rule is not suspended. It is moved from the START of the pipeline to the END of it.**
+
+| Stage | References | Overlap with source | Publishable? |
+|---|---|---|---|
+| Phase A — faithful copy | 1 | targeted at 100% | **no** — quarantined (§21.2.3) |
+| Phase B — re-worded | 1 | unchanged; only text moved | **no** — same quarantine |
+| Phase C — fan-out, per option | **≥3 required** | measured, must fall | only once §21.6 clears |
+| LOCK | ≥3 recorded | **≤70% required** | yes |
+
+**Three consequences follow, and each is a build requirement:**
+
+1. **Every fan-out option must cite ≥3 references before it can be selected.** The captured site
+   is reference #1. The option must name at least two more, from different eras, genres or
+   cultures, per §15.9's stated safe pattern — drawn from the interview's own answers (§5-B2
+   competitors, §5-TS1's reference sort, §5-V2's "moving away from" anchor) or named by the user.
+   An option that cannot reach three is **not selectable**, and the editor says so rather than
+   hiding it.
+2. **`direction.reference-triangulation` is written for every option, unchanged in schema.** It
+   already exists as a site-global invariant record carrying which references informed the
+   direction and how they were abstracted. A clone-route option writes the same record, with one
+   added field: `derived_from_capture: true`, plus the capture session id. **The schema gains a
+   field; it does not gain an exemption.**
+3. **The "no reference pixels retained" clause is honoured at LOCK, not at capture.** §7.0.1's
+   invariant is a statement about what the *shipped direction* carries. Phase A deliberately
+   retains reference pixels, and §21.2.3 is what stops that state from ever being a shipped
+   direction. The build is the boundary: **no captured pixel, screenshot, or source markup string
+   may appear in `dist/`**, and gate 35 (§21.6) asserts it.
+
+**What this reconciliation does NOT claim.** It does not claim the result is lawful. It does not
+claim 70% is a legally meaningful line — §15.9 introduced that number as a *post-generation
+regeneration trigger*, and this PRD has no source establishing it as a legal threshold. It claims
+only that the route ends in the same state the rest of the product is required to end in, by the
+same measurements, and that the states in between are unpublishable. **The legality of this shape
+is untested; `acos-reverse-cleanroom`'s own SKILL.md says as much about a weaker version of the
+same idea — *"The legality of AI-authored clean-room specs is untested."* Ruling 3's language is
+the governing standard and it is a standard of satisfaction, not of law: reshape "until we are
+satisfied that it will not infringe into anyone else's artifact." Where real exposure is possible,
+that is a question for counsel and not for this document. [I]**
+
+### 21.4 Phase B — the re-wording
+
+**Every string classified as content by capture layer 23 is replaced; nothing else moves.** The
+layout does not shift, the components do not change, the colours do not change. Only language.
+
+- **Source of the new words:** the interview (§5), which this route does **not** skip. A clone
+  route that skipped the interview would have nothing to say about the new business, and would
+  produce the original site with the original's words — which is the one output this whole section
+  exists to prevent.
+- **Re-wording preserves the source's *shape*, not its sentences:** a 4-word headline slot gets a
+  headline of roughly 4 words, because the layout was captured against that length. §13's
+  text-fit checks already exist and are reused unchanged.
+- **Chrome text is not content.** Navigation labels, button verbs ("Submit", "Learn more"), form
+  labels, and error strings are structural and stay, unless the interview supplies a different
+  vocabulary.
+- **Any string the classifier is unsure about is surfaced, never guessed.** An unclassified string
+  is shown to the user in a review list with the page and slot it came from. **Silent carry-over
+  of a source sentence is the specific failure this list exists to catch**, because a carried
+  sentence is the most legible possible evidence of copying and the easiest to miss in a long page.
+- **Numbers, claims, testimonials, names and credentials are never carried, even when classified
+  as content.** They are removed and their slots flagged as empty. A testimonial from the original
+  company's customer, re-labelled with the new business's name, is fabrication — and §5's own
+  interview has no mechanism to invent one honestly.
+
+### 21.5 Phase C — the fan-out (ruling 2: N options)
+
+**"Fan out" here carries the meaning it already has in this estate.** `/acos-logo-forge` defines
+it as *"10 new logos INSPIRED by one candidate (2 close, 4 reinterpreted, 4 bold departures — an
+interpretation, never a parameter sweep)"*. This route uses that shape, on sites:
+
+| Band | Count at N=10 | What it means here |
+|---|---|---|
+| **Close** | 2 | The captured structure, re-skinned with the business's tokens. Lowest drift, highest risk — see §21.6 |
+| **Reinterpreted** | 4 | The structure's *intent* kept, its expression re-decided: section order may change, a hero may change composition, the type scale is re-derived |
+| **Bold departures** | 4 | Only the **design core** survives (§21.5.1). Everything else is re-authored from the business's own direction |
+
+**N is the user's, defaulting to 10**, matching the logo forge's batch size and §8.5's evidence
+that 10 is safe *when the four choice-overload moderators are engineered away* — which §8.5's
+mechanisms already do, and which apply here unchanged.
+
+**It is an interpretation, never a parameter sweep.** The same directive `/acos-logo-forge`
+carries applies: ten options that differ by a slider value are one option shown ten times.
+§8.5.2's "indistinguishable at 200×120px" rule and its structural axis-vector check are the
+existing enforcement, and they run on the fan-out set.
+
+**Batches accumulate; nothing is replaced.** The logo forge's gallery rule — *every generated
+round, newest first* — carries over, because reshaping is iterative by ruling 3 ("slowly reshape")
+and a round that overwrites its predecessor destroys the record of how far the work has travelled.
+Any option from any round may be fanned out again, with an optional direction line steering it.
+
+#### 21.5.1 "Design core" — defined, because the ruling turns on it
+
+Ruling 3 and the original instruction both say the fan-out **keeps the design core** while taking
+on the business's identity. That phrase decides which properties may change and which may not, so
+it is defined rather than left to a reader:
+
+**The design core is the set of properties that make the source's layout *work*, expressed as
+relationships rather than values:**
+
+- **Proportional system** — the ratio between the type scale's steps, the spacing scale's base and
+  ratio, the grid's track count and gutter relationship. Not the absolute numbers.
+- **Rhythm** — where the page breathes: section height relationships, the cadence of dense against
+  open, the count of distinct sections before the fold repeats.
+- **Contrast strategy** — how the source creates hierarchy: by weight, by size, by colour, by
+  space, or by enclosure. Not which colours.
+- **Compositional skeleton** — what sits where, at the level of "media left, text right, full-bleed
+  band, three-up grid". Not the content of any cell.
+- **Interaction temperament** — how much the source moves, how fast, and on what trigger.
+
+**Everything else is identity and is re-decided from the business's own design system:** every
+colour value, every typeface, every corner radius, every shadow, every border treatment, every
+piece of artwork, every icon, every motion curve's personality, and every word.
+
+**These five are the same attributes §7.0.1 already names as the *abstractable* ones** —
+*"proportion, contrast strategy, rhythm"* — which is not a coincidence and is the reason the
+reconciliation in §21.3 can work at all. The design core is, precisely, the part of a reference
+that §15.9's cited safe pattern says may be taken when it is abstracted to principle. **The
+"bold departures" band keeps only this; the "close" band keeps considerably more, which is why the
+close band is the one most likely to fail gate 35.**
+
+### 21.6 The drift score, and gate 35
+
+**The drift score is the fidelity oracle (§21.2.4) read backwards**, computed per fan-out option
+against the captured source, and shown live in the editor while reshaping. It is not one number.
+It is the same three measurements, reported separately, plus the identity swap:
+
+| Component | What it measures | Direction wanted in Phase C |
+|---|---|---|
+| Structural similarity | accessibility-tree and DOM-shape correspondence | down |
+| Geometric similarity | normalised bounding-box correspondence | down |
+| Perceptual similarity | screenshot comparison per breakpoint | down |
+| Token independence | fraction of colour/type/spacing/radius/shadow tokens that are the business's own rather than derived from the capture | **up** |
+| Asset independence | fraction of images, icons and artwork that are the business's own | **up** |
+| Reference count | how many references the option cites | **≥3** |
+
+**Gate 35 — the publish gate (new, continuing §13's gate numbering). Blocks LOCK.** An option may
+LOCK only when **all** of these hold:
+
+1. **Every similarity component is ≤70%**, applying §15.9's existing tripwire as a hard bar rather
+   than a regeneration trigger. **The bar is per-component, not on an average** — for the same
+   reason §21.2.4 refuses to blend them.
+2. **Token independence and asset independence are both 100%.** Not "high". A single captured
+   colour value or a single captured image surviving into `dist/` is a retained reference pixel,
+   which §7.0.1 forbids outright.
+3. **Reference count ≥3**, with the triangulation record written (§21.3).
+4. **No captured artifact appears in the build.** Asserted by walking `dist/` for any byte-string
+   from the capture corpus — the same shape as §13's gate 23a asset-reference walk, which already
+   walks every `url()`, `font-family`, SVG id and asset path in the built output.
+5. **The quarantine holds** — no build input resolves inside `00-faithful/` (§21.2.3).
+
+**On failure, gate 35 does not regenerate.** §15.9's original tripwire said "regenerate against a
+different reference", which is right for a from-scratch direction and wrong here: the user has
+been reshaping deliberately, and throwing that away would discard their judgement. Gate 35
+**reports which component failed, by how much, and on which pages**, and returns the user to the
+editor. Ruling 3 makes the user the judge of when reshaping is finished; gate 35 makes sure the
+judgement is informed and that "finished" has a floor.
+
+**Honest limits of gate 35, stated because they matter:**
+
+- **A similarity number is not an infringement finding.** Two sites can score 40% alike and still
+  present a trade-dress problem, and two can score 75% alike with no exposure at all. The gate is
+  a floor against the obvious case, not a clearance. **[I]**
+- **The 70% figure is inherited, not derived.** §15.9 introduced it for a different purpose and
+  cites no source for the number itself. It is kept for consistency with the rule already in the
+  PRD, and it should be treated as a convention this project adopted rather than a measured
+  threshold. **[I]**
+- **Perceptual similarity is the weakest of the three.** A screenshot comparison is sensitive to
+  colour, which Phase C changes first and most, so it falls fastest and can read as progress while
+  structure has not moved at all. That is exactly why it is never averaged with the other two.
+
+### 21.7 Where this route sits in the eight steps, and what the evidence bundle gains
+
+**The clone route replaces Steps 1–3's *output*, not the steps themselves.** It enters at Step 0
+and rejoins at Step 4, because Step 4's editor consumes `layout.json` plus a resolved token set —
+and that is exactly what Phase C produces.
+
+| Step | Normal route | Clone route |
+|---|---|---|
+| 0 Warm start | scan for prior systems and local sites | **plus: accept a URL** → Phase A capture |
+| 1 Interview | full interview | **unchanged and still mandatory** (§21.4) |
+| 2 Prompt generation | generate the design-system prompt | **unchanged** — the business still needs its own system, which is what Phase C dresses the structure in |
+| 3 Manual paste | user pastes on claude.ai, hands back | **unchanged** |
+| 4 Editor | build the live editable site | **Phase B + Phase C run here**; reshaping happens in the editor |
+| 5 Nothing looks good | more variants, or a new system | **plus: fan out again from any option, any round** |
+| 6 Custom components | charts, graphs | unchanged |
+| 7 LOCK | five purity gates | **plus gate 35** (§21.6) |
+| 8 Publish + evidence | bundle + licences | **plus the clone record below** |
+
+**Evidence-bundle additions.** §15.6's bundle already carries fonts, assets, third-party marks,
+the gate report, the contrast proof table, screenshots, the direction tour, the disclosure, the
+substitution log and the publish record. A clone-route build adds:
+
+| New entry | Contents |
+|---|---|
+| **Capture record** | source URL, capture timestamp, `robots.txt` state at capture time, admissibility check results (§21.2.1), which capture layers ran, coverage and fidelity figures (§21.2.2) |
+| **Ownership attestation** | if the `robots.txt` owner-exception was used, the user's attestation verbatim, with its timestamp |
+| **Drift record** | gate 35's six components at LOCK time, per page and per breakpoint, with the measured values and the 70% bar shown beside them |
+| **Fan-out tour** | every round generated, every option, which the user chose, and their stated reason — the same "proof of intentional design" role §15.6's direction tour already plays, extended to cover the reshaping |
+| **Triangulation record** | the ≥3 references for the chosen option and how each was abstracted (§21.3), with `derived_from_capture: true` and the capture session id |
+| **Quarantine proof** | the assertion that no build input resolved inside `00-faithful/`, and the `dist/` walk from gate 35 condition 4 |
+
+**The fan-out tour is the most valuable of the six and the reason to keep every round.** §15.6
+describes the direction tour's purpose as the legal and creative record — *"we showed 10 distinct
+directions; the user chose #5 because \[principle\]; all code conforms to direction-5 spec. Proof
+of intentional design."* For this route the equivalent record is stronger, because it shows the
+work moving away from the source over time, with dates and measurements, rather than a single
+end-state that has to be taken on trust.
+
+### 21.8 New risks
+
+**R48 — the close band is the whole risk, concentrated.** The 2 "close" options are the most
+useful (they are what the user asked for: the original's look with their identity) and the most
+likely to fail gate 35. **Mitigation:** the drift score is shown live while reshaping, so failure
+is visible early and continuously rather than at LOCK. **This mitigation is partial:** the user
+may spend the entire session on a close option and only discover at LOCK that it will not clear,
+because the bar is per-component and structural similarity is the slowest of the three to move.
+**A close option that cannot clear gate 35 is a dead end by design, and the product should say so
+the moment the number stops falling, not at the end. [I]**
+
+**R49 — re-wording produces a site that says nothing true.** The structure was designed to carry
+another company's argument. A different business dropped into those slots can end up with a
+headline shaped like a claim it cannot make. **Mitigation:** §21.4 strips numbers, claims,
+testimonials and credentials outright and flags the empty slots, so the failure mode is a visible
+hole rather than an invented statement. **No known mitigation for the subtler case** where the
+*shape* of the argument fits badly — a services business inheriting a product launch's rhythm —
+other than the fan-out's reinterpreted and bold bands, which re-decide exactly that.
+
+**R50 — capture drift.** The source site changes after capture. Every measurement in the evidence
+bundle is then against a version that no longer exists. **Mitigation:** the capture is timestamped
+and hashed, and the bundle records that the comparison is against the captured snapshot, not
+against the live site. **This is a disclosure, not a fix** — there is no way to measure against a
+site's future. **[I]**
+
+**R51 — the fidelity gap is reported, and reporting it is not the same as closing it.** Ruling 3
+asks for 100%. The estate's own recorded ceiling for the relevant layer is **~83–87%**, and this
+PRD has not measured what this pipeline achieves. Everything downstream — the drift score, gate
+35, the user's sense of how far they have travelled — is computed against a copy that is
+**incomplete by an unmeasured amount**. **Mitigation:** §21.2.2 requires coverage and fidelity to
+be measured and shown, and §20.4's list gains a cheap first spike (§21.10). **The residual risk is
+real and has no mitigation beyond measurement**: a drift score of 60% against a copy that was only
+85% faithful is not a statement about the original site, and the product must not present it as
+one. **[I]**
+
+**R52 — the route makes an unlawful act easy to attempt.** Nothing in §21.2.1 prevents a user from
+pointing at a competitor and reshaping just far enough to clear a threshold this PRD itself says
+is not a legal line (§21.6). **Mitigation:** the structural quarantine, the ≥3-reference
+requirement, gate 35, and an evidence bundle that records the source URL permanently — so the act
+is never invisible, including to the person who did it. **There is no mechanism here that can
+judge intent, and this PRD does not claim one. The product is a tool; the user is responsible for
+the use. [I]**
+
+### 21.9 Cost, and where it lands in the phasing
+
+**This route is not in v1.** v1 is already re-baselining against item 2's 87/674 and carrying item
+1's and D5's stacked inference estimates (§18.0.2). Adding a capture pipeline to that would be
+adding an unmeasured line to a schedule that is already known to be low.
+
+| Component | Shape | Estimate |
+|---|---|---|
+| Phase A capture harness | reuses `acos-reverse-cleanroom`'s layer library; new work is the adapter and the quarantine | **not estimated** |
+| Fidelity oracle (§21.2.4) | three diffs, all deterministic; the geometric and structural parts are cheap | **not estimated** |
+| Phase B re-wording | classifier + review list; the classifier is capture layer 23, already specified | **not estimated** |
+| Phase C fan-out | reuses §8.5's variant machinery and the logo forge's gallery model (§23) | **not estimated** |
+| Gate 35 | one gate, five conditions, four of which reuse existing walks | **not estimated** |
+
+**No figure is invented here.** Every other estimate in this PRD that carries a number is tagged
+`[I]` and anchored on something; there is nothing to anchor these on, and §20.3's discipline is to
+say so rather than to produce a plausible range. **The one thing that can be said with confidence
+is the ordering: Phase A is the largest and the only one that is genuinely new work.**
+
+**Placement: v2, gated on the v1 editor existing.** Phase C runs *in the editor*, so the route
+cannot precede it. The honest sequencing is v1 ships the editor, then this route is built against
+a surface that already works.
+
+### 21.10 Open questions this section does not answer
+
+- **O36 — what fidelity does this pipeline actually reach?** The ~83–87% figure is another
+  skill's recorded ceiling for one layer, not a measurement of this route. **Cheap to settle:**
+  capture one site, rebuild it, run §21.2.4's oracle, read the three numbers. Belongs at the top of
+  §20.4's verification list. **No decision should rest on 83–87% until this runs.**
+- **O37 — is 70% the right bar, and should it differ per component?** Structural similarity at 70%
+  and perceptual similarity at 70% are not comparable quantities. The single number is inherited
+  from §15.9 for consistency, not derived. **Requires user decision once O36 gives real numbers to
+  look at.**
+- **O38 — what happens to a multi-locale source?** Capture layer 19 detects it; this section
+  specifies single-locale capture and calls the reduction *known*. Whether the route should refuse
+  such a source, or capture one locale and say so, is unresolved. **Default if unanswered:**
+  capture the locale the URL resolves to, record the others as present-but-not-captured.
+- **O39 — does the route allow pointing at more than one site at once?** §15.9's safe pattern is
+  ≥3 references, and a user could supply three URLs rather than one. That would start the route in
+  a materially safer place — but it multiplies Phase A and has no specified merge semantics.
+  **Not specified here. Default if unanswered:** one URL, and the other two references are named
+  rather than captured.
+- **O40 — how is "satisfied" recorded?** Ruling 3 makes the user the judge — *"until we are
+  satisfied that it will not infringe into anyone else's artifact"*. Gate 35 supplies a floor, but
+  the user's own satisfaction is the actual standard and currently has no artifact. **Default if
+  unanswered:** a recorded statement at LOCK time, in the user's words, stored in the fan-out tour
+  beside the drift record — the same shape §15.6 already uses for the direction tour's "stated
+  reason".
+
+---
+## 22. Holdout verification — imported from R2P (2026-09-22)
+
+### 22.0 The problem this solves
+
+Every other quality mechanism in this PRD checks the **product**: §13's gates measure the built
+site, §19's acceptance criteria measure behaviour, §20.4's spikes measure assumptions. None of
+them checks the **builder of the builder**. This product is being implemented largely by AI
+agents across 78 slices, and the failure that matters is not a bug — it is an implementation that
+passes every test it can see, because it was written against the tests it could see.
+
+An agent that can read the test suite can satisfy the test suite. That is not dishonesty; it is
+what optimising against a visible target looks like. The fix is a target that is not visible.
+
+**A holdout is a set of test cases written BEFORE the code, sealed away from whoever writes the
+code, and run ONCE against the finished work.** It is the closed-book exam next to the open-book
+homework. The homework still has to be done, and it still counts; the exam is what tells you
+whether the homework taught anything.
+
+**This is imported from R2P** (`~/Documents/Vibe Coding/R2P`), where it is specified in that
+project's PRD §16 / §18.3 / §18.4 / Appendix F.6 and partly built. §22.7 records exactly how much
+of it is proven there, because importing a design and importing a working system are different
+things and this section must not blur them.
+
+### 22.1 The mechanism
+
+Five properties do the work. Remove any one and the rest stop meaning anything.
+
+1. **Pre-code.** The holdout is authored and committed **before** implementation starts, against
+   the slice's stated contract — not against the code, which does not exist yet. A holdout written
+   afterwards tests what was built, which is the thing it exists to avoid.
+2. **Custodian ≠ implementer.** A different agent authors it. R2P's manifests record this in the
+   file itself: `custodian: "holdout-custodian-agent (not the implementation agent)"`.
+3. **Public manifest, private pack.** The manifest is committed and readable by everyone. It
+   carries the *shape* of the exam — how many cases, which classes, which invariants — and the
+   **hashes** of the sealed content. The cases and their expected results live elsewhere, withheld.
+4. **Hash-sealed.** `private_pack_sha256` covers the whole pack; `expected_results_sha256` covers
+   the expected results alone. Both are published **before** the code exists, so neither the cases
+   nor the answers can be altered later to fit what was built.
+5. **Revealed once, at candidate freeze.** The pack is opened only after the implementation is
+   frozen at a named commit. The run happens in a separate context, its raw results are sealed
+   as-produced, and `revealed_at` is stamped.
+
+**The manifest shape, carried over unchanged** — this is a real R2P manifest, quoted so the import
+is against the artifact rather than a description of it:
+
+```yaml
+artifact_type: HoldoutManifest
+id: HLD-001-001-01-v1
+parent_story_id: STORY-001-001
+dev_id: DEV-001-001-01
+qa_id: QA-001-001-01
+contract_version: "v1 (DEV-001-001-01 economic_rules)"
+created_at: "2026-08-06T19:52:36Z"
+custodian: "holdout-custodian-agent (not the implementation agent)"
+case_classes: [nominal, boundary, hostile, counterexample]
+case_count: 8
+covered_invariants: [INV-001]
+private_pack_sha256: "931c2fc4764c72b478138df5f64f01ae08324e06b45960badb8a2d8add2f1a71"
+expected_results_sha256: "7b42c9f23eda5f503f724729b6e22f80cbe16f5276831f9c83cf7b7f19c67eb8"
+revealed_at: "2026-08-06T21:09:46Z"
+run_evidence_bundle: EVB-HLD-001-001-01-v1
+```
+
+**`revealed_at: null` is the normal state.** A manifest with a timestamp is an exam already taken.
+R2P's `verify-holdout-manifests.ts` checks that the field is either `null` or a well-formed
+ISO-8601 UTC timestamp — and its own header states the limit plainly: *"It does NOT verify that a
+filled `revealed_at` is TRUE. A well-formed timestamp for a reveal that never happened would pass
+this check. Truth comes from the evidence bundle, not from this parser."* That limitation carries
+over with the import and is not silently fixed by restating it.
+
+**The context gate.** R2P's `qa:holdout` command refuses to run outside the review context:
+
+> `qa:holdout refused: this command is available only in the QA review context (PRD §18.4). Set
+> R2P_QA_CONTEXT=1 to run it from a separate QA worktree/session — never from the implementation
+> agent's own context.`
+
+This route adopts the same gate under this project's own variable name, `WB_QA_CONTEXT=1`, for the
+same reason: the value of a holdout is entirely destroyed the moment the implementing context can
+read the cases, and an environment check is the cheapest available fence around that.
+
+### 22.2 The four case classes, applied to this product
+
+R2P's `case_classes: [nominal, boundary, hostile, counterexample]` carry over. What changes is
+what each one means when the thing under test is a website builder rather than a finance engine:
+
+| Class | Means here | Example for a real slice |
+|---|---|---|
+| **nominal** | the ordinary path the slice was written for | S41 gridline overlay: gridlines render at the declared track count, at 1280 |
+| **boundary** | the edges of every declared range | a 1-track grid; a 12-track grid; a section of zero height; the `CANVAS_MIN`/`CANVAS_MAX` analogue for whatever the slice bounds |
+| **hostile** | inputs chosen to break it, including ones a user would never type | a token file with a cyclic reference; 400 sections; a colour value that is valid CSS and not a colour |
+| **counterexample** | a case that must FAIL, and the slice must fail it correctly | a direction citing 2 references must be refused by §21.3, not accepted with a warning |
+
+**The counterexample class is the one most often skipped and the one that catches the most.** A
+suite made only of cases that should pass cannot distinguish a working gate from a gate that
+approves everything. Gate 35 (§21.6) is the clearest instance in this PRD: an implementation that
+returns PASS unconditionally satisfies every nominal case it will ever be given.
+
+### 22.3 What gets a holdout in this product
+
+**Not every slice.** 78 slices each carrying a custodian-authored pack is a process that will be
+abandoned in week two, and an abandoned gate is worse than none because it reads as protection
+that is not there. Holdouts attach where a silent wrong answer is both possible and expensive:
+
+| Area | Why it earns one |
+|---|---|
+| **§13's quality gates** (all 35, including gate 35) | A gate that silently passes is invisible. Every gate needs at least one counterexample case that it must fail |
+| **§11's constraint solver** | D2's whole purpose. A solver that produces plausible-looking wrong geometry is the hardest thing in this product to notice by eye |
+| **§12's LOCK / byte-equality** | D3's proof. §12-O33 already records that bundler byte-reproducibility is **not established by any source consulted** — so the check itself must be verified, not trusted |
+| **§21's fidelity oracle and drift score** | Numbers a human will act on legally. A drift score that is wrong in the optimistic direction is the worst failure in this document |
+| **§8.6's variant axis schema + §8.5.2's distinctness check** | Deterministic by design (§8.5.2: "no model opinion is in this loop"), so it is exactly testable and exactly the kind of thing that silently degrades |
+| **§7's licence manifest and §13 gate 26** | A licence gate that passes an unlicensed font ships a legal problem |
+| **§5's interview branching** | A skipped hard-block question (G0's jurisdiction, B2's competitors) produces a document that looks complete |
+
+**Everything else uses ordinary tests.** The rule for deciding is one question: *if this were
+wrong, would anything visibly break?* If yes, ordinary tests are enough. If it would be quietly
+wrong and still look right, it earns a holdout.
+
+### 22.4 The surrounding quality rules imported with it
+
+The holdout is the sealed part of a larger operating system in R2P, and importing the seal without
+the frame would leave it load-bearing on nothing. Carried over:
+
+- **DEV/QA parity.** *"Every DEV slice has exactly one reciprocal adversarial QA slice, created
+  BEFORE implementation, same Story parent, closed together. No orphan DEV, no retrofitted QA, no
+  exception, no merge."* This is what makes "pre-code" enforceable: the QA slice is where the
+  holdout is authored, and it exists before the DEV slice starts.
+- **Coverage gates, ratchet up only, never silently down:** changed-line **≥90%**, core-mechanics
+  branch **≥85%**, mutation score on changed material business logic **≥70%**.
+- **Default when unsure: HOLD, not PASS.** R2P's swarm-review rule, and the same posture §13 and
+  the ACOS reviewer machinery already take (a crashed reviewer is INCONCLUSIVE, which blocks like
+  a REJECT).
+- **Evidence bundles are content-addressed and immutable once sealed.** This PRD already has
+  evidence bundles at §15.6; the holdout run-record is a new bundle kind, not a new mechanism.
+
+**Not imported: R2P's artifact-ID scheme.** R2P uses `EPIC-eee / STORY-eee-sss / DEV-eee-sss-dd /
+QA-eee-sss-dd / HLD-eee-sss-dd-vv`. This project's planning artifacts already carry preeng ids
+`S01`–`S78`, carried verbatim into the ACOS slices specifically so that no second numbering scheme
+exists — the project already suffers `O31`/`O32`/`O33`/`O34` and `A91+` id collisions and a new
+scheme would add to them. **Holdout ids here are therefore `HLD-<slice-id>-v<n>`**, e.g.
+`HLD-S41-v1`, which needs no new numbering to be invented.
+
+### 22.5 Where the private pack lives
+
+`qa-private/HLD-<slice-id>-v<n>/`, holding exactly three files, matching R2P's pack shape:
+`cases.yaml`, `expected.json`, `README.md`. The directory is **git-ignored in the implementation
+worktree** and present only in the QA worktree or a withheld archive — R2P §18.3's rule, carried
+over: *"holdouts run in a separate QA worktree or withheld archive (qa-private/), not the
+implementation context."*
+
+### 22.6 One hashing method, fixed — the flaw NOT to import
+
+R2P's `planning/holdouts/HASHING.md` is 922 lines long, and its own opening paragraph says why:
+
+> Different custodians used different derivation methods, and most manifests do not document
+> theirs in-manifest. **Evaluators MUST consult this file before running a holdout
+> hash-verification step** — guessing the wrong method produces a false MISMATCH on a valid,
+> unmodified pack.
+
+**A false MISMATCH on a valid pack is the worst possible failure for this mechanism**, because it
+is indistinguishable from tampering and it trains everyone to stop believing the check. The
+recorded reproducing command for the one verified manifest shows how fragile the space is — member
+order `README.md, cases.yaml, expected.json` (**not alphabetical**), each name prefixed, run from
+a specific working directory, with pack files carrying a **normalised mtime** because tar headers
+embed it:
+
+```sh
+cd qa-private && COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -cf - \
+  HLD-001-001-01-v1/README.md HLD-001-001-01-v1/cases.yaml HLD-001-001-01-v1/expected.json \
+  | shasum -a 256
+```
+
+The custodian who found it did so by *"exhaustively trying all 6 orderings x {bare filename,
+dir-prefixed} x {with/without --no-xattrs --no-mac-metadata}"*.
+
+**This project fixes that on import, and the fix is the only deliberate divergence from R2P's
+design:**
+
+1. **One derivation method, written into the tool, with no per-manifest variation permitted.**
+2. **The method is named inside every manifest** (`hash_method: <id>`), so a manifest is
+   self-describing and no external lookup table can go stale.
+3. **The hash is computed over a canonical byte stream that does not include filesystem
+   metadata** — a sorted concatenation of `path\0` + `sha256(content)` per file, hashed once.
+   Mtimes, extended attributes, tar header layout and archive member order stop being inputs, so
+   the normalised-mtime dance disappears along with the class of failure it existed to prevent.
+4. **The tool writes the hash and the tool verifies it.** No hand-run `shasum` pipeline appears in
+   any runbook, because that is where the six orderings came from.
+
+**What is kept from R2P even though it is inconvenient:** the manifest still publishes *two*
+hashes, pack and expected-results. Publishing only the pack hash would let a custodian silently
+swap the answer key while keeping the questions, and the whole point is that neither moves.
+
+### 22.7 What is actually proven in R2P, stated plainly
+
+Importing a design is not importing a working system, and the difference is recorded here so that
+nobody downstream treats §22 as finished machinery:
+
+| Piece | State in R2P, as read on 2026-09-22 |
+|---|---|
+| Manifest format | **Real and in use.** 32 manifest files under `planning/holdouts/manifests/` |
+| `verify-holdout-manifests.ts` | **Built**, 229 lines. Parses every manifest, checks `revealed_at` shape, enforces an expected file count |
+| Hash derivation | **Works, but inconsistently across custodians** — the 922-line `HASHING.md` exists precisely because of that. §22.6 is the fix |
+| `qa:holdout` runner | **Scaffolding only.** Its own output says: *"qa-private/ exists but no holdout run-record verification is implemented yet in this scaffolding slice — nothing sealed."* |
+| End-to-end reveal | **Once.** `HASHING.md`: *"This is the only manifest in the corpus with a matching evidence bundle… because it is the only pack that has actually been revealed and run (`revealed_at` is set; the other 14 have `revealed_at: null`)"* |
+| That one run's result | 8 cases, **6 PASS / 2 FAIL** (H004, H006), *"preserved as-produced"* against frozen candidate `0feeb340f9b9654055166857f3a93f53f4bc71f2` |
+
+**Read the last row again, because it is the argument for the whole section.** The single holdout
+that has ever been revealed in R2P **failed two of its eight cases**. The implementation that
+those two cases caught had passed everything it could see. That is one data point, not a
+statistically meaningful result, and it should not be presented as more than that — but it is the
+only empirical evidence either project has about whether this mechanism catches anything, and it
+points one way. **[I]**
+
+### 22.8 Cost, and the honest objection
+
+**The cost is real and recurring:** a second agent per holdout-bearing slice, authoring work
+before implementation starts, a separate worktree, and a reveal step that cannot be skipped or
+batched. R2P's own census line has been hand-edited at least four times as pairs were added, each
+time with a written reason — and its author recorded that the gate *"went RED… before this line
+moved, and that is the census working rather than failing."* A mechanism that goes red when
+someone adds work is a mechanism people route around.
+
+**The objection, stated fairly:** this project is one person and a set of agents, not a team with
+an adversarial QA function. Importing a process built for auditable financial software may be
+heavier than a website builder warrants.
+
+**The answer, and why the import proceeds anyway:** the scope is deliberately narrow (§22.3 —
+gates, solver, LOCK, drift score, licence manifest, interview branching, variant distinctness;
+not all 78 slices), and every one of those is a place where a wrong answer is *silent*. §21's
+drift score is the strongest case in the document: it is a number a user will rely on when
+deciding whether something infringes, and an optimistic wrong value there has consequences that no
+amount of ordinary testing would surface, because nothing about it would look broken.
+
+### 22.9 Open questions
+
+- **O41 — who is the custodian?** R2P names a `holdout-custodian-agent`. This project has no such
+  agent, and `.claude/agents/` is human-approval-restricted (§20.1). **Default if unanswered:**
+  `Task(general-purpose)` with a custodian prompt kept in the skill's own directory — the
+  established zero-approval route §16.5 already uses.
+- **O42 — does the holdout run in CI or by hand?** R2P's runs are manual and context-gated.
+  **Default if unanswered:** by hand at candidate freeze, with the context gate, because a CI job
+  that can read the pack has already lost the property the pack exists to provide.
+- **O43 — what happens on a holdout FAIL?** R2P preserved its 2 failures *as-produced* and did not
+  re-run. **Default if unanswered:** the same — a revealed pack is spent; fixing the code requires
+  a new pack at `v<n+1>`, authored by the custodian, and the failed run stays in the record. A
+  pack that can be re-run until it passes is homework, not an exam.
+
+---
+## 23. Absorbing the Logo Forge (2026-09-22)
+
+### 23.0 The instruction, and the one principle that governs it
+
+Zee, 2026-09-22: *"The logo builder allows drawing adding and many other operations with it's
+components, allows gallery, and editing a gallery and copying components for gallery. Almost every
+feature the logo builder has, can be useful for the website builder too. Take everything from logo
+builder and find ways to incorporate them to the website builder."*
+
+`/acos-logo-forge` is the most mature browser tool in this estate: a 113,158-byte SKILL.md, a
+657,144-byte single-file editor, a PowerPoint-shaped ribbon over a full vector system, a gallery
+that accumulates every round, a specimen page where every view is saveable, and seven regression
+suites. It has had roughly two months of daily use and correction, and **most of its rules exist
+because something specific went wrong.** That is what makes it worth mining: the features are
+cheap to copy, but the *reasons* are the expensive part and they are already paid for.
+
+**§16.1 already set the governing principle, for a different tool, in words that decide this
+whole section:**
+
+> **Every structural element the Website Builder editor needs already exists there in working
+> form.** The one thing that does not transfer is the substrate: image-builder composites raster
+> pixels on a `<canvas>`; a website editor manipulates real DOM nodes with CSS anchors. **Reuse
+> the shell and the server contract; do not reuse the canvas compositor.**
+
+The Logo Forge sits one step closer than `acos-image-builder` did — it is **vector**, not raster,
+so its objects are already shapes with identity rather than pixels. But the same line holds, and
+it is the line this section applies to every row below:
+
+| Logo Forge substrate | Website Builder substrate | Consequence |
+|---|---|---|
+| free-floating shapes at arbitrary x/y in a viewBox | DOM nodes inside a CSS Grid, placed by integer track (§11.1, five levels since D5) | **Anything that moves a thing to a coordinate does not transfer.** Anything that moves a thing *relative to another thing* transfers directly |
+| one document, one board | a multi-page site with sections, layers, blocks and breakpoints | Every Logo Forge single-scope command needs a scope decision here: which page, which layer, which breakpoint |
+| the output IS the artwork | the output is a built static site; the editor is scaffolding LOCK removes | **Nothing absorbed may leave a trace in `dist/`** — §12's zero-DOM-injection rule (§11.9) governs every adopted surface |
+
+**The verdict column below uses four values:** **ADOPT** (take it, it fits), **ADAPT** (the idea
+transfers, the mechanism must be re-derived for DOM + grid), **ALREADY** (this PRD already
+specifies it — recorded so nobody builds it twice), **REJECT** (with the reason stated, per
+§20.1's rule that dropped items are traded, not lost).
+
+### 23.1 The full inventory
+
+#### A. Gallery and rounds
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| A1 | Gallery shows **EVERY generated round, newest first — batches accumulate, nothing is replaced** | **ADOPT — v1** | The direction gallery keeps every generated round. §4 Step 4's tournament currently surfaces 6 of 10 with "see more"; it does not keep *rounds*. Regenerating (Step 5) must add a round, not overwrite one |
+| A2 | **"add 10"** for a fresh batch | **ADAPT — v1** | "Generate more directions" already exists as Step 5. The change is that it appends a round rather than replacing the set |
+| A3 | Per-card **fan out** | **ADOPT — v2** | §21.5 already specifies this for the clone route. The same surface serves ordinary directions: fan out from direction #5 to get 10 more like it |
+| A4 | **Reject / restore** a card | **ADOPT — v1** | Rejected directions are hidden, never deleted. Restorable. Cheap, and it removes the fear that makes people keep everything visible |
+| A5 | **Recategorize** a card between forges, preserving its round number | **ADAPT — v2** | The analogue is moving a saved *section* between pattern shelves (hero / band / footer). Round preservation carries over |
+| A6 | Per-card **notes** that survive later saves | **ADOPT — v1** | §18's v1 list already has "per-section notes → scoped regeneration". This extends notes to gallery cards, which is where the user is actually choosing |
+| A7 | **Cull gate** on fan-out (`app/cull.ts`) | **ADOPT — v1** | §8.5.2's "indistinguishable at 200×120px" rule is the same idea and is already specified as a two-stage deterministic check. The Logo Forge has a *working* implementation of the shape — reuse the structure, keep §8.5.2's axis-vector Stage 1 |
+| A8 | **Gallery borrow window** — browse any candidate in any forge, drill into its separate shapes, take ONE onto the clipboard | **ADOPT — v2** | **This is the single most valuable item in the inventory.** See §23.2 |
+
+#### B. The editor shell
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| B1 | **Quick Access strip** — Undo, Redo, Save, ← Gallery, 👁 Preview, doc name | **ADOPT — v1** | Exactly the six things a website editor needs at all times. Costs one strip |
+| B2 | **Ribbon with tabs** (Home / Insert / Draw) | **ADAPT — v1** | §10's 155 feature rows need an organising surface and this PRD does not specify one. Tabs by *job*, not by age — the rule `ribbon-test` pins in the Logo Forge |
+| B3 | **Every tab the same height**, enforced by a 12-width height sweep in test | **ADOPT — v1** | A layout regression nobody sees by eye. The Logo Forge records a real instance: a two-line label cost **2px across the whole ribbon**, 112.3 → 114.3 group and 123.3 → 125.3 tab, "at 1400, 1500 and 1680 alike… The height guard caught it, not the eye" |
+| B4 | **RELOCATE, DON'T DUPLICATE**, with mirrors as the one relaxation | **ADOPT — v1** | A command lives in one place and is proxied elsewhere. Prevents two doors to one action drifting apart |
+| B5 | **Menus drop below the ribbon** via one anchor helper, not below their button | **ADOPT — v1** | Trivial, and it is the difference between a menu that is readable and one that covers the work |
+| B6 | **Overflow well that wraps**, with `overflow-x:auto` as the backstop | **ADOPT — v1** | The Logo Forge hit this exactly: at 800px the parked groups ran 834px inside a 786px box, "reachable only by scrolling a container with no visible scrollbar" |
+| B7 | **PowerPoint keyboard accelerators** | **ADOPT — v1** | Free familiarity. ⌘Z/⌘Y/⌘C/⌘V/⌘D/⌘S/⌘A behave as expected |
+| B8 | **Designer pane** in the right sidebar | **ADAPT — v2** | The website analogue is §14's scoped regeneration surface: describe a change in words, get options for that section |
+| B9 | **Canvas resize** (grow/shrink/fit/exact, art holds still) | **REJECT** | A website has no board to resize — the viewport is the board and §10.1's breakpoint switcher already owns it. **The *reading* transfers as a warning:** the Logo Forge chose "the art keeps its size, the board grows" over "art scales with the board" because the latter "changes nothing about the drawing — that is a zoom." The same trap exists for a website's zoom/pan, which §18.0.1 C2 keeps out of v1 |
+
+#### C. Selection, arrangement, spacing
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| C1 | **Selection group, six tiles** — Select · Select all · Similar ▾ ‖ Duplicate · Delete · Lock ▾, ordered by JOB not age | **ADOPT — v1** | Multi-select is now v1 (§18.0.1 C2), so the group has something to act on |
+| C2 | **Similar ▾** — mark every shape sharing the selected one's fill, outline, weight or type | **ADAPT — v1** | The website form is stronger: mark every block sharing a **component kind**, a **variant**, or a **token binding**. "Recolour one shade across a logo one piece at a time" becomes "change every card that uses this surface token" |
+| C3 | **An empty key is REFUSED OUT LOUD, not matched** | **ADOPT — v1** | The Logo Forge's exact reasoning applies: match "same outline" on a shape with no outline and you sweep the whole board while looking like it worked. Here: "same variant" on a block with no variant |
+| C4 | **Lock ▾** — lock, unlock, unlock all; a locked thing ignores clicks so you can reach what is under it | **ADOPT — v1** | **Sections stack, and a full-bleed background layer is exactly the D5 case that swallows every click.** The mechanism transfers verbatim: `pointer-events:none` on the rendered node, so *the browser* decides the hit, rather than filtering after the fact — which "could only say 'the top thing is locked'; it could not say what is UNDER it" |
+| C5 | Locked things stay reachable **from the layer list** | **ADOPT — v1** | §20.2 disagreement 10 already makes the navigator tree mandatory in v1. This is the reason it must never route through the canvas hit test: "a lock you cannot undo is a trap" |
+| C6 | **Spacing group, six tiles** — Arrange ▾ · Align ▾ · Distribute ▾ ‖ Gap ▾ · Match ▾ · Guides | **ADAPT — v1** | Align and Distribute become grid-track operations, not coordinate ones. Gap ▾ maps directly onto the CSS gap the grid already has |
+| C7 | **Dist H + Dist V merged into one Distribute tile**, axis in the menu; the old ids asserted ABSENT so they cannot creep back | **ADOPT — v1** | The absence assertion is the transferable part — a removed door that nothing forbids comes back |
+| C8 | **Gap ▾ opens showing the gap you have now**, so it doubles as a measurement | **ADOPT — v1** | Free, and it removes a whole class of "what is it now?" round trips |
+| C9 | **`alignKey` — hold the first-clicked shape still** | **ADOPT — v1** | Same toggle, same reason. Without it, "align left" moves everything including the one thing that was right |
+| C10 | **One item selected aligns to the BOARD**, as an action, not a toast | **ADAPT — v1** | One block selected aligns within its **layer's grid**, not the viewport — D5's tier makes the scope unambiguous |
+| C11 | **Every command takes the marked SET if there is one, else the selection, else it speaks up** — one rule, one place, all menus | **ADOPT — v1** | `spaceSet(min, what)` is the shape. One function, not four copies that diverge |
+| C12 | **Align was REWRITTEN because it aligned anchor points, not edges** | **ADOPT — v1** | Take the *fix*, not the bug: align on measured boxes with scale and rotation applied. The Logo Forge found this only when the command moved onto the ribbon — "it had been in the Arrange menu, unexercised, for weeks" |
+| C13 | **Smart guides with snap** — `SNAP_PX` 6 screen px, axes snap independently, ⌥ drags past, targets are other visible layers plus the board, a set never snaps to its own members, guides live for ONE drag | **ADOPT — v1** | D2 makes gridlines what components snap to, and item 1 put both in v1. Every one of these six sub-rules is a lesson this PRD does not currently carry |
+| C14 | **THE SNAP IS THE FEATURE; the line is its receipt** | **ADOPT — v1** | The strongest single sentence in the source. "Gridlines ALONE would not have worked at all: lines you can see but cannot snap to are decoration, the hand still lands between them." §18's 4(a) row is about gridlines; this says what makes them real |
+| C15 | Why guides and **not** a grid, in the Logo Forge | **REJECT — and record why the rejection does not travel** | It was rejected there because "every logo carries its own arbitrary viewBox… so one grid step would mean a different visible distance in every document." A website has a **declared 12/6/4 track grid** (§11.1), so the objection does not apply and the grid stays |
+
+#### D. Clipboard, drawing, text, shapes
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| D1 | **Paste Special ▾** — a 12-deep history of cuts and copies with live thumbnails, pick any one, then seven ways to land it | **ADAPT — v1** | §18's v1 list already has "duplicate/paste with overrides". The **history with thumbnails** is the new part, and the landing modes become: keep source styling · adopt destination tokens · structure only · content only |
+| D2 | **Copy ▾** — plain, Copy as SVG, Copy as picture | **ADAPT — v2** | Copy as **HTML fragment**, Copy as **JSON block**, Copy as **picture**. The JSON form is what makes a block portable between projects |
+| D3 | **Format Painter** | **ADOPT — v1** | Copy a block's token bindings and overrides onto another block. One of the highest-value-per-line items in the whole inventory |
+| D4 | **Shape Fill ▾ with PowerPoint's whole model** — a 10 × 6 theme grid (tints and shades), standard colours, recent, No Fill, eyedropper, gradients | **ADAPT — v1** | **The theme grid is the right surface for design tokens and this PRD has no equivalent.** Each column is a token; each row a tint or shade. §7's M3 state-layer model (4 opacities) supplies the rows. **The "standard colours" row is REJECTED** — an off-token colour is exactly what §13.8's anti-slop advisory exists to discourage, and a one-click door to it undoes the token system |
+| D5 | **Dropper / eyedropper** | **ADOPT — v1** | Pick a colour from anywhere on the page — **and resolve it to the nearest token, naming the token**, rather than to a hex. That inversion is what keeps it inside the system |
+| D6 | **Drawing group** — Select, Pen (with Pencil / Marker / Calligraphy / Highlighter behind its ▾), Eraser, Straight line, pen size | **REJECT for page content — ADOPT for artwork** | Freehand strokes do not belong in a DOM grid. They **do** belong inside an `ArtContainer` (§9), which is already an SVG surface. Zee's instruction is met without letting a pen tool loose on a live page: the pen edits *art*, which is what it is for |
+| D7 | **Live text keeps a font NAME, not outlines** | **ADOPT — v1** | Already the right instinct here for the opposite reason: a website's text must stay real text for SEO, screen readers and §13's no-JS crawler view |
+| D8 | **Text group** — family + size, B/I/U + tracking + colour + highlight, direction + vertical align + one alignment button opening a pop-out; six less-used commands behind the corner launcher | **ADAPT — v1** | The **surface** transfers; the **commands** must be token-bound, not free. Family and size choose from the type scale (§6); colour chooses from the palette. §18.0.1 C1 keeps inline formatting to links only in v1, so the B/I group stays greyed with a stated reason until v2 |
+| D9 | **Shape library**, Pictures, Symbols, Quick Styles | **ADAPT — v1** | This is §8's component library and §7's artwork inventory, which already exist. What transfers is the **presentation**: a picker at the ribbon, not a separate mode |
+| D10 | **Combine — union / subtract / intersect / exclude** | **REJECT for layout — ADOPT for artwork** | Boolean geometry on DOM nodes is meaningless. Inside an `ArtContainer` it is exactly right, and `app/cull.ts`'s sibling machinery already exists |
+| D11 | **Node editing, split-apart, smooth loop, gizmo** | **REJECT for layout — ADOPT for artwork** | Same boundary as D6 and D10 |
+| D12 | **A MASK IS NOT ALWAYS A CUT LAYER** — the re-import trap | **ADOPT as a rule — v1** | The general lesson: **a round-trip through your own export format is not lossless unless you prove it is.** §12 already excludes "HTML→JSON round-tripping" as "the canonical WYSIWYG failure". The Logo Forge is the worked example of what that failure looks like when it is subtle — "the gallery card is a clean dark square, the editor drew a cream notch at the top right" |
+
+#### E. Preview, specimen, export
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| E1 | **Specimen page** — 12 backgrounds, size waterfall, favicon simulation, clear-space frame | **ADAPT — v1** | The website equivalent is a **context sheet**: the site at 320/390/768/1280/1440, light and dark, full and reduced motion — the exact matrix §15.6's evidence screenshots already specify. **This PRD generates that matrix for the evidence bundle but never shows it to the user.** The Logo Forge's insight is that the sheet is a *working surface*, not an export artifact |
+| E2 | **Every view is saveable** — per-view ⤓ File and ＋ Save, with a checkbox deciding whether the background travels | **ADOPT — v2** | Save any breakpoint/theme view as its own card. The checkbox analogue: does the view carry its page context, or just the section? |
+| E3 | **⇩ adds every view to the export bundle in one go** | **ADOPT — v1** | Feeds §15.6's bundle directly; the bundle already wants exactly these screenshots |
+| E4 | **Hero background and tile size remembered per logo per forge** | **ADOPT — v1** | Per-project, per-page view preferences persist. Small, and its absence is felt every session |
+| E5 | **Export verification before the handoff is written** | **ALREADY** | §13's LOCK gates and §15.6's evidence bundle are the stronger form of this |
+| E6 | **`website-handoff.json`** — brief answers + `logo_exports` + `website_offer`, written atomically | **ADOPT — v1, as an INPUT** | The Logo Forge already writes this file *for this product*, and its SKILL.md records the handshake as pending: *"status 2026-07-26: PRD-stage, parked at `ACOS 3.0/Website Builder`, blocked on DECISIONS.md item 1."* **Item 1 was settled 2026-07-26 and the §18 table is resolved as of 2026-09-22, so that blocker is gone.** §15.1's warm start must read this file: the brief answers pre-fill the interview, and `logo_exports` supplies the mark §21.2.5 leaves as a placeholder slot |
+
+#### F. Persistence, and the traps that shaped it
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| F1 | **THE GALLERY AND THE EDITOR MUST AGREE** — what shows in the gallery opens in the editor; a saved edit is what the gallery then shows | **ADOPT — v1** | Stated by Zee as a requirement in the source, and it is the same requirement here between the direction gallery and the page editor |
+| F2 | **Two artifacts per card** — the drawn picture and the layer document; save writes BOTH under one id so they cannot drift | **ADAPT — v1** | Here: the rendered preview and `layout.json`. Same rule, same reason |
+| F3 | **Save lands on the card you opened. Save-as mints the new id** | **ADOPT — v1** | The Logo Forge shipped the other behaviour first and it was wrong: "open the generated candidate r2-10, press Save, and r2-10 stayed untouched while the edit went to a second card r2-10e1" |
+| F4 | **Boot order: the saved document if there is one, else the candidate the gallery draws. The browser autosave NEVER wins** | **ADOPT — v1** | The failure it fixes is precise and was reproduced: "Zee picked `r1-01`, the gallery card is a two-layer G, and the board came up as a six-layer CS." **The stated cost carries over too: "a crash no longer restores an unsaved session by itself. It takes one click on that bar"** |
+| F5 | **The crash copy is offered in a bar that does not fade, and is never deleted or overwritten** | **ADOPT — v1** | Recovery without precedence. §18's v1 recovery bin is the neighbouring idea |
+| F6 | **The carve-out:** when an id has no saved document AND no candidate file, the browser copy loads | **ADOPT — v1** | "refusing would throw the only copy away" |
+| F7 | **Autosave on a 700ms debounce** | **ADOPT — v1** | With F8's warning attached |
+| F8 | **The debounce made three test assertions flip run to run**, until a helper dropped the saved doc before each reload | **ADOPT as a test rule — v1** | Any test that reloads must start from a known store. §22's holdout cases inherit this |
+| F9 | **A `localStorage` key carries the forge prefix**, so the same id on another shelf is a different key | **ADAPT — v1** | Key by project **and** page **and** breakpoint. This product has three axes where the Logo Forge had one, so the collision surface is larger, not smaller |
+
+#### G. Testing discipline
+
+| # | Logo Forge capability | Verdict | Website Builder form |
+|---|---|---|---|
+| G1 | **Always check the exit code, not just the tally** | **ADOPT — v1** | A suite that throws mid-run still prints "N/N passed". §22's holdout runs inherit this |
+| G2 | **A `p.click()` on a control whose ribbon tab is not active throws** | **ADOPT — v1** | Test helpers activate the tab first. Saves a debugging round that the source already paid for |
+| G3 | **A mouse-driven test on stacked artwork silently measures the wrong shape** | **ADOPT — v1** | Test the pure function — the Logo Forge's `snapMove(box0, dx, dy, movingIds, suppress)` is pure given a start box and a delta. The website analogue is the constraint solver, and this is how §22's solver holdout must be written |
+| G4 | **A fresh Puppeteer browser starts with EMPTY `localStorage`, so a parity sweep is STRUCTURALLY BLIND to autosave-wins defects** | **ADOPT — v1** | The source records the exact cost: "It passed 12/13 while Zee's own browser was showing the wrong artwork." Plant a decoy autosave before opening, or the sweep proves nothing |
+| G5 | **Named suites with expected totals** (`view-test` 35/35, the ribbon height sweep across 12 widths) | **ADOPT — v1** | An expected total is what makes a *shrinking* suite a failure rather than a faster green run |
+| G6 | **The server's workspace and the test's workspace must be the SAME directory** | **ADOPT — v1** | Mundane, and it cost the source a round |
+
+### 23.2 The gallery borrow window — the one to build first
+
+A8 is called out separately because it is the item with the largest gap between what it costs and
+what it changes. In the Logo Forge it reads:
+
+> **Gallery** opens a borrow window: browse any candidate in any forge, drill into its separate
+> shapes, take ONE onto the clipboard — so every Paste Special mode works on borrowed art.
+
+**Rendered for this product:** from inside the editor, open any *other* direction, any other
+round, any other page — **or any other project** — drill into its sections and blocks, and take
+one onto the clipboard, where every paste mode then applies to it.
+
+**Why this is the highest-value item in the inventory:**
+
+1. **It is the answer to Step 5 that the PRD currently lacks.** §18 moved "per-section notes →
+   scoped regeneration" into v1 precisely because v1's answer to *"nothing looks good"* was
+   otherwise only "swap one variant" or "regenerate everything" — **"there is no middle gear."**
+   Borrowing is a second middle gear, and a cheaper one: the user does not describe what they
+   want, they go and take it from the direction that already has it.
+2. **It makes the ten generated directions worth generating.** D1 settles on ~10 directions and
+   the tournament surfaces 6; nine of them are then discarded whole. Borrowing turns the nine into
+   a parts bin.
+3. **It is the natural home for §21's fan-out rounds.** Every reshaping round is a candidate to
+   borrow from, which is the mechanism by which "slowly reshape" (ruling 3) actually happens.
+4. **The clipboard machinery it needs is D1 and D3, which are v1 anyway.**
+
+**The constraint that makes it safe, and it is not optional:** a borrowed block arrives **bound to
+the destination's tokens, not the source's**. Otherwise borrowing is how a project acquires a
+second colour system by accident — and for a §21 clone-route project, borrowing from the
+`00-faithful/` copy would be a hole straight through the quarantine. **Borrowing from a
+quarantined directory is refused, by the same check §21.2.3 already arms.**
+
+### 23.3 What is deliberately NOT taken, and why
+
+Per §20.1's rule that dropped items are traded rather than lost:
+
+| Not taken | Reason |
+|---|---|
+| **Freehand drawing, boolean combine, node editing, split-apart, the gizmo** on page content | The substrate rejects them. A DOM node inside a CSS Grid has no path to node-edit and no meaningful intersection with its neighbour. **All five are adopted inside `ArtContainer`**, which is an SVG surface and is where they belong |
+| **Canvas resize** | The viewport is the board; §10.1 owns it |
+| **"Standard colours" in the fill menu** | A one-click door to an off-token colour undoes §7's token system and contradicts §13.8 |
+| **Free font family and size in the text group** | Same reason: the type scale is derived (D1), not picked |
+| **The `e<N>` / `d<N>` / `v<N>` id families** | Three suffix families is a naming scheme, and §22.4 already records why this project mints no new numbering: the estate already carries `O31`–`O34` and `A91+` collisions |
+| **Mirrors** (the same command on two tabs) | The Logo Forge relaxed "relocate, don't duplicate" deliberately, and Zee approved it there — *"They are available in more than one place but that is ok."* **Not carried by default here**, because §10's 155 rows make the duplication surface far larger. Revisit if the ribbon proves hard to navigate; the rule is cheap to relax later and expensive to tighten |
+| **The 113,158-byte single-file SKILL.md and the 657,144-byte single-file editor** | The shape, not the packaging. §16.1 already chose the architecture |
+
+### 23.4 The meta-lesson worth more than any single feature
+
+Reading the source end to end, the pattern is not the feature list. It is that **almost every rule
+carries the incident that produced it, with the measurement attached** — 112.3 → 114.3px across
+twelve window widths; 834px of groups inside a 786px box; "it passed 12/13 while Zee's own browser
+was showing the wrong artwork"; "the gallery card is a clean dark square, the editor drew a cream
+notch at the top right"; three assertions flipping run to run on a 700ms debounce.
+
+This PRD already has that discipline in places — §20.3's unverified-claims table, the `[I]` tags,
+§8.5.2's refusal to leave "indistinguishable" undefined. **§23's recommendation is that the
+editor's own documentation adopt the Logo Forge's habit explicitly: when a rule exists because
+something broke, the rule carries the break.** A rule with its incident attached survives a
+rewrite; a rule without one gets "simplified" by the next session that does not know why it is
+there. **This is an observation about documentation practice, not a measured claim. [I]**
+
+### 23.5 Where this lands, and what it costs
+
+**§23 is not a slice. It is a source to mine, and the mining happens inside slices that already
+exist** — which is what keeps it from adding a parallel workstream to a schedule §18.0.2 already
+records as low.
+
+| Tranche | Contents | Lands in |
+|---|---|---|
+| **v1, inside existing editor slices** | B1–B7, C1–C14, D3, D5, D7, E3, E4, F1–F9, G1–G6 | §10's editor slices, §11's dragging slices, the S41 gridline slice |
+| **v1, new surface** | The ribbon (B2) and the theme-grid fill menu (D4) | Needs a home; §10 has the feature rows but no chrome specification |
+| **v1, as an input** | E6 — read `website-handoff.json` at warm start | §15.1 |
+| **v2** | A3, A5, A8 (borrow), B8, D1's history depth, D2, E2 | After the v1 editor exists |
+| **Artwork-only, with `ArtContainer`** | D6, D10, D11 | §9's slices |
+
+**No day figures.** Most of these are single rules inside work that is already scheduled, and the
+two that are genuinely new surfaces (the ribbon, the theme-grid fill menu) have no anchor to
+estimate against. §18.0.2's re-baseline is the place these get costed, once, with everything else.
+
+### 23.6 Open questions
+
+- **O44 — does the ribbon replace §10's current chrome, or wrap it?** §10 specifies 155 feature
+  rows and no organising surface, so there may be nothing to replace. **Default if unanswered:**
+  the ribbon IS the chrome specification, and §10's rows are its contents.
+- **O45 — how far does borrowing reach?** Within a project is obviously right. Across projects is
+  where the value is and where the token-rebinding risk lives. **Default if unanswered:**
+  within-project in v2, cross-project behind an explicit confirmation that names the source
+  project, and never from a quarantined directory (§21.2.3).
+- **O46 — do the artwork tools ship with v1's `ArtContainer` or later?** §9's containers are v1;
+  the pen, combine and node tools are a large surface. **Default if unanswered:** the containers
+  ship in v1 with the existing generate-and-place path, and the editing tools arrive in v2.

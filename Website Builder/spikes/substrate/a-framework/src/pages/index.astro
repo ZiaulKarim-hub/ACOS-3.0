@@ -1,0 +1,47 @@
+---
+import tokens from "../../../shared/tokens.json";
+import content from "../../../shared/content.json";
+const cssVars = Object.keys(tokens).sort().flatMap((g) =>
+  Object.keys((tokens as any)[g]).sort().map((k) => `  --${g}-${k}: ${(tokens as any)[g][k]};`)
+).join("\n");
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{content.title}</title>
+<meta name="description" content={content.tagline}>
+<style is:global set:html={`
+:root {
+${cssVars}
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text);
+       font-family: var(--type-family); font-size: var(--type-body); line-height: var(--type-lh); }
+.wrap { max-width: 760px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+h1 { font-size: var(--type-h1); margin: 0 0 var(--space-sm); letter-spacing: -0.02em; }
+h2 { font-size: var(--type-h2); margin: 0 0 var(--space-xs); }
+.tagline { color: var(--color-muted); margin: 0 0 var(--space-xl); }
+section { background: var(--color-surface); border-radius: var(--radius-md);
+          padding: var(--space-md); margin-bottom: var(--space-md); }
+section p { margin: 0; color: var(--color-muted); }
+a.cta { display: inline-block; margin-top: var(--space-md); padding: var(--space-sm) var(--space-md);
+        background: var(--color-accent); color: var(--color-bg); border-radius: var(--radius-md);
+        text-decoration: none; font-weight: 600; }
+`}></style>
+</head>
+<body>
+<main class="wrap">
+<h1>{content.title}</h1>
+<p class="tagline">{content.tagline}</p>
+{content.sections.map((s: any) => (
+<section>
+<h2>{s.heading}</h2>
+<p>{s.body}</p>
+</section>
+))}
+<a class="cta" href={content.cta.href}>{content.cta.label}</a>
+</main>
+</body>
+</html>

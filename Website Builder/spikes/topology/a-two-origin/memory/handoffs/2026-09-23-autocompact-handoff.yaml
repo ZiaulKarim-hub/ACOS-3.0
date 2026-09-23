@@ -1,0 +1,368 @@
+timestamp: "2026-09-23T04:28:24Z"
+status: "active"
+type: "autocompact"
+trigger: "precompact-hook:auto"
+session_id: "bac449f9-ed36-4ef3-87ed-17ba26eb97f2"
+estimated_tokens: 500037
+written_by: "precompact-handoff.ts"
+
+# Depth restoration (2026-08-13). This hook can only record FACTS — it is a
+# script running in a frozen pane, so it cannot read the conversation and form a
+# judgement the way the old handoff-agent did. Two later stages fill that in,
+# and this field is how they find their work:
+#   pending          -> written here, nothing enriched yet
+#   summary-written  -> handoff-enrich.ts (PostCompact) pasted in the real
+#                       model-written compaction summary. No extra model call:
+#                       Claude Code hands the summary straight to the hook.
+#   deepened         -> the resumed session itself added the judgement fields
+#                       (decisions, blockers, learnings) that only a reader of
+#                       the whole conversation can produce.
+# A handoff stuck at "pending" is not broken — every mechanical fact below is
+# still true. It just never got its narrative.
+enrichment_status: "summary-written"
+
+session_summary: |
+  Written automatically by the PreCompact hook, immediately before Claude Code
+  compacted this session. Trigger was "auto" ("auto" = the built-in token
+  threshold fired on its own, with no keystrokes; "manual" = someone ran /compact).
+  
+  This file is the DURABLE, MECHANICAL record. It is deliberately not a
+  narrative summary — the compaction summary in the conversation itself is the
+  narrative, and it is written by the model with the whole transcript in view.
+  What this file adds is the set of facts a summary can silently drop: the exact
+  last thing the human typed, which background agents were still running, and
+  what the repo looked like at the moment of the cut.
+
+human_last_message: |
+  A session-scoped Stop hook is now active with condition: "/acos-oracle-protocol autopilot "Build the Website Builder to its PRD: every slice S01-S78 implemented, each gated by a revealed holdout pack that passes, all assigned reviewers PASS, and zero findings from /acos-robust-code-review. Stop and ask rather than deciding any open item in DECISIONS.md." --goal-file "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/planning/BUILD-CHARTER.md"". Briefly acknowledge the goal, then immediately start (or continue) working toward it — treat the condition itself as your directive and do not pause to ask the user what to do. The hook will block stopping until the condition holds. It auto-clears once the condition is met — do not tell the user to run `/goal clear` after success; that's only for clearing a goal early.
+
+assistant_tail: |
+  Still pending. Reading what the page actually reports rather than guessing again.
+  
+  ---
+  
+  No move ever reached the server, so it stalls before the first request — virtual time is freezing the iframe load. Keeping Chrome alive instead.
+
+in_flight_subagents:
+  []
+
+repo_state:
+  branch: "resurrection-static-ordinals-2026-08-19"
+  uncommitted_file_count: 648
+  recent_commits: |
+    d69d274 feat(resurrection): the book now says what can be done with it
+    440f208 feat(resurrection): the account door, and an adopt that never refuses
+    f694391 feat(resurrection): a repeat open can be a TAB inside the project's own workspace
+    b4c5839 chore(resurrection): the carry-forward the merge left behind
+    5131749 feat(resurrection): the same number typed twice folds two rows into one
+
+uncommitted_files:
+  - "M .claude/scripts/resurrection/enroll-project.sh"
+  - "M .claude/scripts/resurrection/registry_lib.py"
+  - "M .claude/skills/acos-safe-close/SKILL.md"
+  - "M \"Logo Builder/brandsync/avoid.json\""
+  - "M \"Logo Builder/brandsync/brief.json\""
+  - "M \"Logo Builder/brandsync/brief.md\""
+  - "D \"Logo Builder/brandsync/candidates/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-01.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-02.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-03.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-04.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-05.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-06.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-07.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-08.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-09.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/logo-10.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-1/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/meta.json\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-01.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-02.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-03.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-04.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-05.svg\""
+  - "D \"Logo Builder/brandsync/candidates/round-10/r10-06.svg\""
+
+next_actions:
+  - "Read human_last_message above. If it is still an open question, answer it FIRST."
+  - "Verify real state on disk before trusting any summary — recount, re-check, re-run."
+  - "If in_flight_subagents is non-empty, their results may still arrive. Do not discard them."
+
+reconstruction_sources:
+  transcript_path: "/Users/zee/.claude/projects/-Users-zee-Documents-Vibe-Coding-ACOS-3-0-Website-Builder/bac449f9-ed36-4ef3-87ed-17ba26eb97f2.jsonl"
+  transcript_lines_parsed: 1607
+  cwd: "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/spikes/topology/a-two-origin"
+
+# ── The model-written narrative ──────────────────────────────────────────────
+# This is the ACTUAL compaction summary Claude Code produced, handed to the
+# PostCompact hook verbatim in its `compact_summary` field. It replaces what
+# handoff-agent used to write, and it is strictly better sourced: it was made
+# with the whole conversation in context, not from a transcript tail.
+#
+# summary_quality is a HEURISTIC, not a verdict. "suspect" means the text looks
+# like a refusal rather than a summary — the one failure that would otherwise
+# lose a whole session silently. When it says suspect, the mechanical fields
+# above are the trustworthy record, and the raw transcript named in
+# reconstruction_sources is the fallback.
+summary_quality: "ok"
+compaction_summary: |
+  <analysis>
+  Let me work through this conversation chronologically.
+  
+  **Turn 1 (user):** "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/memory/handoffs/closed/2026-08-18-Website-builder-close-2/2026-08-18-Website-builder-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  
+  I read the reentry note, handoff.yaml, checked git, read DECISIONS.md, INDEX.md, §18 of the PRD. Found NEXT ACTION = "Sign off the 4 unsigned section-18 rows, then settle DECISIONS.md item 2". Presented the 4 rows + item 2 with recommendations and asked for rulings. Also found drift: D5 settled 2026-08-20 (after the close), everything already pushed, INDEX.md stale.
+  
+  **Turn 2 (user):** "accept the recommendations." + new idea about website cloning/fan-out + "/restate"
+  
+  I invoked the `restate` skill, investigated the PRD (found the ≥3-reference rule at §7.0.1 and §15.9 legal boundary, the >70% overlap tripwire, §20.1 exclusions didn't contain the idea, acos-reverse-cleanroom's 27-layer capture library with ~83–87% element-fidelity ceiling, logo-forge's fan-out definition), and produced a structured restatement with GOAL/FLOW/ASSUMPTIONS/MISSING(6 items with defaults)/UPGRADES.
+  
+  **Turn 3 (user):** Answered all 6:
+  1. "Make sure the fan out clear the 70% overlap check."
+  2. "N options."
+  3. "The first copy needs to be 100% faithful and then we slowly reshape it until we are satisfied that it will not infringe into anyone else's artifact."
+  4. "Publicly available pages."
+  5. "The 100% faithful copy is an intermediate step."
+  6. "Goes into this PRD."
+  Plus three new instructions: "Rewrite the PRD with this added." / "Import holdout test system from R2P..." / "Take everything from logo builder and find ways to incorporate them to the website builder."
+  
+  I investigated R2P (holdout manifests, HASHING.md 922 lines, qa-holdout.ts is 41-line scaffolding, only 1 of 15 revealed, 6 PASS/2 FAIL), logo-forge SKILL.md (113,158 bytes, 1,650 lines; editor.html 657,144 bytes). Then:
+  - Recorded item 2 as settled (option 1)
+  - Resolved all 7 §18 sign-off rows
+  - Added §18.0.1/18.0.2/18.0.3 with carve-outs C1/C2/C3
+  - Signed the two §10.3 rows
+  - Appended §21 (clone-and-fan-out), §22 (holdout), §23 (Logo Forge absorption) AFTER §20
+  - Cross-cutting amendments: §7.0.1, §15.9, §15.1 (×2), §20.1 exclusions, §20.4, gate 35 in §13, TS6/TS7 interview rows, R48–R52 + O36–O46 register
+  - Wrote D6 decision file, refreshed INDEX.md, updated memory
+  - PRD went 635,881 → 742,574 bytes; 99,380 → 116,047 words; 20 → 23 sections
+  
+  I deviated: appended+patched rather than literally regenerating 99,380 words, and said so explicitly, offering to do a full regeneration if that's what was meant.
+  
+  **Turn 4 (user):** "what is the name of the prd?"
+  Answered: file `website-builder-prd.md`, title "Website Builder — Product Requirements Document", flagged 3 stale header lines (skill name `acos-website-builder` vs renamed `/acos-website-forge`, Status "Draft for approval", Date 2026-07-25). Offered to fix; user never answered.
+  
+  **Turn 5 (user):** Asked how to word a goal prompt for implementing the PRD with holdout tests, triple-check, quadruple code quality check.
+  I gave the command, mapped his four checks to real machinery, and named three blockers: holdout tooling doesn't exist, autopilot auto-answers AskUserQuestion, 50-iteration cap vs 78 slices. Offered to write BUILD-CHARTER.md.
+  
+  **Turn 6 (user):** `/goal` with exactly the command I proposed. Stop hook activated.
+  
+  From here it's autonomous work driven by the Stop hook re-invoking me. No further genuine user messages.
+  
+  Work done in the autonomous phase:
+  1. Parsed all 78 slices — 0 unresolvable dep ids, no cycles, 78/78 topologically ordered, 22 waves, 20 epics, 13 S/47 M/18 L, 77 MUST/1 COULD, epic order E0→E1→...→E8→E16→E9→...→E19
+  2. Wrote planning/BUILD-CHARTER.md (26,725 bytes, 78 slice rows, 0 broken tables)
+  3. Built S79 (holdout tooling): canonical-hash.ts, manifest.ts, verify-manifests.ts, reveal.ts, holdout-test.ts
+  4. Built S80: seal.ts, custodian-prompt.md
+  5. Self-test grew to 34/34, exit 0
+  6. .gitignore for qa-private/ and clone quarantine
+  7. S01: probe-turn-boundary.ts + launch-f1.ts; launched pid 58187 on 8820; 4 ordinary crossings all SURVIVED; /clear crossing outstanding
+  8. S03: substrate spike — a-framework (Astro 5.14.1, 251 top-level packages, 144M) vs b-plain (0 deps). Pixel-identical screenshots (sha256 2a97119777d5bdbb79783c061132bffa1649127ee942d54fb87db42f9aeaa5b5, 61715 bytes each). 1 scrub string (`is:global`) vs 0. Rebuild 1008/835/796ms vs 38/32/33ms. Both byte-identical across two builds on one install. ADR-03 = NON-DECISION, I6 remains.
+  9. S02: font-policy probe — fixtures a-linked/b-base64/c-control. KEY FINDING: `document.fonts.check` returned `true` in ALL THREE including the control that fell back. Widths: target 1160.83 vs missing 1071.89, delta 88.94 (A and B); control delta 0.00. ADR-02 = PARTIAL, generation-surface observation outstanding.
+  10. S06 part (d): licence verification — 273 packages. Final numbers after two of my own bugs were fixed: 251 agree, 14 no licence file, 7 undetermined, 1 mismatch (zod-to-ts), 2 multi-licence files, 1 copyleft (@img/sharp-libvips-darwin-arm64 LGPL-3.0-or-later with NO licence file).
+  11. Dispatched 4 reviewers via assign-reviewers.sh → ["integration-reviewer","performance-reviewer","qa-reviewer","security-reviewer"]
+  12. Performance reviewer returned REJECT with findings; I confirmed the symlink bug and the maxBuffer bug myself
+  13. Started S04 topology spike — this is where I am now
+  
+  Errors I made and fixed:
+  - Shell mangled quotes in S02 fixture JS → `c.font = 96px + f` invalid JS → rewrote with Python heredoc
+  - verify-licences.ts first-match-wins → false mismatches on vite/@astrojs/compiler → rewrote to detectAll()
+  - verify-licences.ts literal-space regexes → 101/273 false UNDETERMINED → whitespace normalisation → 7
+  - holdout-test.ts assertion looked for `/1 FAIL/` in manifest.yaml which holds `fail: 1` → fixed to check both records
+  - holdout-test.ts header said 18/18 then 22/22 then 33/33 → corrected to 34/34 by counting ok() call sites
+  - S04: pkill didn't kill servers → EADDRINUSE → killed by port with lsof -t
+  - S04: `pv.src = pv.src` doesn't reload an iframe → added `?r=` cache buster
+  - S04 bench still pending after that fix — UNRESOLVED at time of summary
+  
+  Reviewer findings still outstanding: symlink bug in canonical-hash.ts (confirmed), maxBuffer/ENOBUFS false-FAIL in reveal.ts (confirmed), no timeout in reveal.ts, render.ts watch dies on parse error, render.ts throttle drops rebuilds, plus recommended non-blocking fixes.
+  
+  Three reviewers still running: qa-reviewer (ac0a6cc9e1a41e055), security-reviewer (a24b318da9ad3f49b), integration-reviewer (a1ab69bd337f734ae).
+  
+  The very last tool output shows the S04 bench still stuck at "running…", iframe src still `/preview/home`, `unsaved: 0` (no move reached the server), server pid now 1253.
+  
+  Security-relevant constraints from user/CLAUDE.md to preserve:
+  - Push defaults to PERSONAL (`ZiaulKarim-hub`); never bare `git push`; `okoateam` only when named
+  - Never touch jason@ mail/cal/drive
+  - review-rules/ — HUMAN EDITABLE ONLY, no agent may read or modify
+  - .claude/agents/ — modification requires human approval
+  - Never use ANTHROPIC_API_KEY (subscription only)
+  - Publicly available pages only for the clone route; never bypass a login wall
+  - I said I would not drive the user's browser to claude.ai without permission
+  </analysis>
+  
+  <summary>
+  
+  ## 1. Primary Request and Intent
+  
+  **Initial (turn 1):** "Resume this project. Read the reentry note at `/Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/memory/handoffs/closed/2026-08-18-Website-builder-close-2/2026-08-18-Website-builder-close-2.reentry.md` first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  
+  **Turn 2:** "accept the recommendations." — then a new feature idea, verbatim:
+  > "In addition to the description and design system based website generation. There needs to be a system that will be able to generate a website exaclty like a website that it was pointed to. I will give a link, and the system copies the website every possible way, not skipping anything and then change the wordings and letters to match the business we are creating the website for. Next step would be to fan out from that website in a way that keeps the look of the orginal website but assumes the identity of the business entity the website is being built for. Keeping the design core, the fan out would attempt to redesign buttons and components in the color and style of the business." + `/restate`
+  
+  **Turn 3 — the six rulings (verbatim):**
+  1. "Make sure the fan out clear the 70% overlap check."
+  2. "N options."
+  3. "The first copy needs to be 100% faithful and then we slowly reshape it until we are satisfied that it will not infringe into anyone else's artifact."
+  4. "Publicly available pages."
+  5. "The 100% faithful copy is an intermediate step."
+  6. "Goes into this PRD."
+  
+  Plus three instructions:
+  - "Rewrite the PRD with this added."
+  - "Import holdout test system from R2P so that it can be made sure that AI is crating the builder faithfully with desired quality."
+  - "The logo builder allows drawing adding and many other operations with it's components, allows gallery, and editing a gallery and copying components for gallery. Almost every feature the logo builder has, can be useful for the website builder too. Take everything from logo builder and find ways to incorporate them to the website builder."
+  
+  **Turn 4:** "what is the name of the prd?"
+  
+  **Turn 5:** Asked how to word a goal prompt: "I want to give a goal to claude to impplement the prd without missing anything, double check the each of the components have been implemented and working with holdout tests, triple check the system is working as intended and do quariple code quality check to ensure that there is no bug and nothing is broken. How should I word the goal prompt?"
+  
+  **Turn 6:** Ran `/goal` with the exact command I proposed, activating a Stop hook:
+  ```
+  /acos-oracle-protocol autopilot "Build the Website Builder to its PRD: every slice S01-S78 implemented, each gated by a revealed holdout pack that passes, all assigned reviewers PASS, and zero findings from /acos-robust-code-review. Stop and ask rather than deciding any open item in DECISIONS.md." --goal-file "/Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/planning/BUILD-CHARTER.md"
+  ```
+  
+  All work after turn 6 is autonomous, driven by the Stop hook.
+  
+  ## 2. Key Technical Concepts
+  
+  - **ACOS** four-layer completion: layer 1 implement + verify, layer 2 holdout, layer 3 `/acos-review` reviewers, layer 4 `/acos-robust-code-review` to zero findings
+  - **Independence Wall** — `review-rules/` is HUMAN EDITABLE ONLY, no agent may read or modify; `.claude/agents/` needs human approval
+  - **Holdout pack** — pre-code sealed test cases; public manifest + private pack; custodian ≠ implementer; revealed once at candidate freeze; a revealed pack is SPENT
+  - **≥3-reference rule / trade dress** — PRD §7.0.1 `direction.reference-triangulation`, §15.9 "the legal boundary", >70% overlap tripwire
+  - Bun 1.3.9 at `/Users/zee/.bun/bin/bun`, node v20.19.3, `Bun.YAML` built in (zero-dep YAML)
+  - Eden Protocol Level 3 governs all top-level replies (plain language, ≤15-word sentences)
+  - Language rule: TypeScript/Rust, not Python, for new code
+  
+  ## 3. Files and Code Sections
+  
+  ### Modified — PRD and planning
+  - **`prd/website-builder-prd.md`** — 635,881 → **742,574 bytes**, 99,380 → **116,047 words**, 20 → **23 sections**, 5,342 lines. §§21–23 appended AFTER §20 per the §7.14 precedent ("appended … rather than inserted so no existing §7.x cross-reference moves"). All 7 §18 sign-off rows resolved (0 remaining "requires user sign-off"). Added §18.0.1/18.0.2/18.0.3, gate 35 in §13, TS6/TS7 interview rows, R48–R52, O36–O46, 11 new §20.1 exclusion rows, §20.4 item 0. Table integrity verified: 16 pre-existing broken rows before and after — **0 introduced**.
+  - **`DECISIONS.md`** — item 2 marked ☑ decided 2026-09-22 as option 1 (accept 87/674, re-baseline, per-project demotion; Radio group and Toggle switch non-demotable). Header now says D1–D6 settled, 14 open (items 3–16).
+  - **`INDEX.md`** — 4,519 → 6,653 bytes. Decisions list now six. Blocker section rewritten to RESOLVED. NEXT ACTION now "Run the §18.0.2 re-baseline, then settle DECISIONS.md item 3."
+  - **`memory/decisions/D6-clone-and-fanout-route.md`** — new, 7,454 bytes, 124 lines.
+  - **`planning/BUILD-CHARTER.md`** — new, 26,725 bytes, 435 lines, all 78 slice rows, 0 broken tables.
+  
+  ### Created — S79/S80 holdout tooling (`tools/holdout/`)
+  - **`canonical-hash.ts`** (5,077 B) — `HASH_METHOD = "wb-canon-1"`, `PACK_FILES = ["cases.yaml","expected.json","README.md"]`, `canonicalPackHash()` = sha256 over `<relpath>\0<sha256(content)>\n` sorted; `expectedResultsHash()` = sha256 of expected.json alone (byte-compatible with `shasum -a 256`). **CONTAINS CONFIRMED BUG** — uses `statSync` (follows symlinks) while the comment claims it does not.
+  - **`manifest.ts`** (7,091 B) — `CASE_CLASSES = ["nominal","boundary","hostile","counterexample"]`, `ISO_UTC` regex, `ID_SHAPE = /^HLD-(S\d{2,}[A-Za-z0-9-]*)-v(\d+)$/`, `validate()` returning `Problem[]`, `parse()` via `Bun.YAML.parse`.
+  - **`verify-manifests.ts`** (3,123 B) — `--expect N` census.
+  - **`reveal.ts`** (10,026 B) — context gate `WB_QA_CONTEXT !== "1"`, refuses already-revealed, verifies both hashes BEFORE running, requires `--candidate`, refuses dirty tree, seals `EVB-<id>` then stamps manifest last. **CONTAINS TWO CONFIRMED REJECT-LEVEL BUGS** (see §4).
+  - **`seal.ts`** (7,875 B) — custodian side; refuses `status: "complete"`, refuses overwrite, `--require-counterexample`.
+  - **`holdout-test.ts`** (12,709 B) — **34/34 passing, exit 0**.
+  - **`custodian-prompt.md`** (4,738 B).
+  
+  ### Created — S01 (`scripts/probes/`)
+  - **`probe-turn-boundary.ts`** — binds `127.0.0.1:8820`, `/health` returns `{ok,pid,bootedAt,uptimeSeconds,rung}`, writes `.acos/probes/s01/state.json`.
+  - **`launch-f1.ts`** — `spawn(detached:true, stdio:["ignore",fd,fd])` + `unref()`.
+  
+  ### Created — S03 (`spikes/substrate/`)
+  - `shared/tokens.json`, `shared/content.json`, `b-plain/render.ts`, `a-framework/src/pages/index.astro`, `docs/adr/ADR-03-substrate.md` (99 lines, **NON-DECISION**).
+  
+  ### Created — S02 (`scripts/probes/font-policy/`)
+  - `fixture-a-linked.html`, `fixture-b-base64.html` (34,077 B, 0 remote refs), `fixture-c-control.html`, `playfair.woff2` (23,316 B), `playfair.b64.txt` (31,088 chars), `docs/adr/ADR-02-font-policy.md` (94 lines, **PARTIAL**).
+  
+  ### Created — S06 (`spikes/channel/`, `docs/licences/`)
+  - `verify-licences.ts`, `verification-2026-09-22.md` (107 lines), `scan-2026-09-22.json` (49,960 B).
+  
+  ### Created — S04 (`spikes/topology/`) — IN PROGRESS
+  - `shared/doc.json`, `shared/model.ts` (`move()`, `renderPreview()`, `Block`/`Page`/`Doc`)
+  - `b-single-origin/server.ts` — port **8830**, `/editor`, `/preview/*`, `/api/doc`, `/api/move`, `/api/state`, `/bench`, `/api/bench-result`
+  - `a-two-origin/preview-server.ts` — port **8832**, CORS to 8831, injects `BRIDGE` postMessage listener, `?bare=1` omits it
+  - `a-two-origin/editor-server.ts` — port **8831**, `/editor`, `/bench`
+  - Channel-only lines tagged `//CHANNEL` for LOC counting
+  
+  ### Evidence bundles under `.acos/evidence/2026-09-22/`
+  `S01-.../evidence-bundle.md` + `curl-transcript.log`; `S02-.../evidence-bundle.md` + 3 PNGs; `S03-.../evidence-bundle.md` + 2 PNGs; `S06-.../evidence-bundle.md`
+  
+  ### `.gitignore` (new)
+  ```
+  qa-private/
+  .acos/website-builder/clone/*/00-faithful/
+  spikes/**/node_modules/
+  spikes/**/dist/
+  ```
+  
+  ## 4. Errors and Fixes
+  
+  **My own bugs, found and fixed:**
+  1. **S02 fixture JS mangled by shell** — `c.font = 96px + f` (invalid JavaScript). Shell ate the quotes. Fixed by rewriting with a Python heredoc; verified with `node --check`.
+  2. **verify-licences.ts first-match-wins** — reported `vite` as ISC and `@astrojs/compiler` as BSD-3-Clause, both false. Rewrote `detect()` → `detectAll()` returning all licences ordered by position.
+  3. **verify-licences.ts literal-space regexes** — licence files hard-wrap (`obtaining\na copy`), so **101 of 273** came back UNDETERMINED, 91 of which plainly declare and contain MIT. Fixed with `raw.replace(/\s+/g," ")` before matching → UNDETERMINED **101 → 7**, agreements **157 → 251**.
+  4. **holdout-test.ts wrong assertion** — looked for `/1 FAIL/` in `manifest.yaml`, which actually holds `fail: 1`. Verified the tooling was correct, then strengthened the test to check the machine-readable count, the raw log reason verbatim, and the log's own hash.
+  5. **holdout-test.ts stale expected total** — header said 18/18, then 22/22, then 33/33. Corrected to **34/34** by counting `ok()` call sites.
+  6. **S04 `pkill -f "spikes/topology"` didn't kill servers** → `EADDRINUSE`. Fixed by killing via `lsof -nP -iTCP:$P -sTCP:LISTEN -t`, taking care to leave pid 58187 on 8820 alive.
+  7. **S04 `pv.src = pv.src` does not reload an iframe** → `onload` never fires → bench hangs. Patched both files to add `?r=" + Date.now()`. **Bench still pending after this fix — UNRESOLVED.**
+  
+  **Bugs found by review (not yet fixed — deliberately held):**
+  8. **`canonical-hash.ts` symlink bug — CONFIRMED by my own test.** `statSync` follows symlinks; `lstatSync` does not. My comment claims the opposite. Proof: a pack with a file symlink and a directory symlink hashed `["README.md","cases.yaml","expected.json","linked.txt","linkeddir/secret.txt"]`; changing only the outside target moved the digest `d158d0cad2fa8e3167c51653cf00ccec` → `ff192ac062e1a1d3bb49d4a1408fbeda`. **Planned fix: REFUSE a pack containing any symlink, not skip it** — because `reveal.ts` reads `cases.yaml` with `readFileSync`, which follows symlinks, so a silently-skipped symlinked cases file would RUN but not be hashed.
+  9. **`reveal.ts` maxBuffer false-FAIL — CONFIRMED by my own test.** Default `maxBuffer` is 1,048,576 bytes. At 1,048,577 `execFileSync` throws `ENOBUFS`, `e.status` is `null`, so the catch records `code = 1`. Measured: 1,048,575 bytes exit 0 → recorded 0; 1,048,577 bytes exit 0 → recorded **1**. A passing case is permanently failed on a one-shot exam that is then SPENT.
+  10. **`reveal.ts` no timeout** — a hanging case hangs the whole reveal forever; nothing is written until the end so a hang loses the run.
+  11. **`render.ts` watch dies on parse error** — measured: process exits code 1, no further events. No try/catch, and the `FSWatcher` has no `error` listener.
+  12. **`render.ts` throttle drops rebuilds** — it is leading-edge, not a debounce; a discarded event is never rescheduled. The comment "fs.watch fires twice per write on macOS" **did not reproduce** (80 writes / 40 trials → 41 events). Currently masked at 0% stale rate. Always rebuilding costs 0.014 ms.
+  
+  ## 5. Problem Solving
+  
+  **Solved:** The ≥3-reference collision — resolved by moving the rule from the START of the pipeline to the END (quarantine + gate 35), not by suspending it. Dependency graph derived rather than asserted (0 unresolvable ids, no cycles, 78/78, 22 waves). `document.fonts.check` exposed as a false-positive oracle by building a deliberate negative control. Licence scanning corrected twice.
+  
+  **Ongoing:** S04 bench harness still reports "running…" — the iframe cache-buster fix did not resolve it. Last diagnostic showed iframe src still `/preview/home`, `{"pid":1253,"unsaved":0}` (no move reached the server), no server-side error.
+  
+  **Process gap flagged:** the performance reviewer reported its isolated worktree did not contain `Website Builder` (untracked in git), so it measured against the real project root. The isolation the review system assumes did not hold.
+  
+  ## 6. All User Messages
+  
+  1. "Resume this project. Read the reentry note at /Users/zee/Documents/Vibe Coding/ACOS 3.0/Website Builder/memory/handoffs/closed/2026-08-18-Website-builder-close-2/2026-08-18-Website-builder-close-2.reentry.md first, follow its 'Read first' order, then continue from its NEXT ACTION."
+  2. "accept the recommendations. / Now, I have a new idea for the website that is paramount to the success of this builder. This is what I envision: In addition to the description and design system based website generation. There needs to be a system that will be able to generate a website exaclty like a website that it was pointed to. I will give a link, and the system copies the website every possible way, not skipping anything and then change the wordings and letters to match the business we are creating the website for. Next step would be to fan out from that website in a way that keeps the look of the orginal website but assumes the identity of the business entity the website is being built for. Keeping the design core, the fan out would attempt to redesign buttons and components in the color and style of the business. /restate"
+  3. "1. Make sure the fan out clear the 70% overlap check. 2. N options. 3. The first copy needs to be 100% faithful and then we slowly reshape it until we are satisfied that it will not infringe into anyone else's artifact. 4. Publicly available pages. 5. The 100% faithful copy is an intermediate step. 6. Goes into this PRD. / Rewrite the PRD with this added. / Import holdout test system from R2P so that it can be made sure that AI is crating the builder faithfully with desired quality. / The logo builder allows drawing adding and many other operations with it's components, allows gallery, and editing a gallery and copying components for gallery. Almost every feature the logo builder has, can be useful for the website builder too. Take everything from logo builder and find ways to incorporate them to the website builder."
+  4. "what is the name of the prd?"
+  5. "I want to give a goal to claude to impplement the prd without missing anything, double check the each of the components have been implemented and working with holdout tests, triple check the system is working as intended and do quariple code quality check to ensure that there is no bug and nothing is broken. How should I word the goal prompt?"
+  6. `/goal` invoking the autopilot command quoted in §1.
+  
+  **Standing constraints that remain in force:**
+  - Push defaults to **PERSONAL** (`ZiaulKarim-hub`), no asking; **never a bare `git push`** — always name the remote; `okoateam` only when Zee names it in the current conversation. `ACOS 3.0` has both remotes and `origin` is the WORK one.
+  - Never touch jason@ mail/calendar/drive.
+  - `review-rules/` — HUMAN EDITABLE ONLY, no agent may read or modify. `.claude/agents/` — modification requires human approval.
+  - Subscription only; never `ANTHROPIC_API_KEY`.
+  - Clone route: publicly available pages only; never bypass a login wall.
+  - I stated I would not drive Zee's browser to claude.ai without his say-so; he has not answered.
+  - Deliverables are never `.md` for Zee-facing output; output files default to `~/Documents/OKOA`.
+  
+  ## 7. Pending Tasks
+  
+  - **Unanswered from turn 4:** whether to fix the three stale PRD header lines (`Skill name: acos-website-builder`, `Status: Draft for approval`, `Date: 2026-07-25`). I offered to count the other occurrences of the old name first.
+  - **Unanswered from turn 3:** whether "rewrite the PRD" meant a literal full regeneration rather than the append+patch I did.
+  - **Unanswered:** whether I may drive the browser to the generation surface for S02, or whether Zee will spend the 60 seconds himself.
+  - Fix the confirmed REJECT findings (reveal.ts maxBuffer + timeout) and the symlink bug, plus recommended non-blocking fixes.
+  - Finish S04 measurements: channel LOC, preview-only screenshot, move latency median of 5, kill-preview behaviour (invariant I5), then ADR-04.
+  - S01 `/clear` crossing; S02 surface observation; S06 parts a/b/c/e (part b blocks S17).
+  - The §18.0.2 re-baseline and O36 capture-fidelity spike.
+  - Nothing has been committed or pushed.
+  
+  ## 8. Current Work
+  
+  Building **S04 (topology spike)** while three reviewers run. Both topologies are up and serving; the S01 probe on 8820 is untouched (uptime 2,882s, pid 58187).
+  
+  The immediate blocker: the browser benchmark that measures move round-trip latency never completes. Last diagnostic:
+  
+  ```
+  OUT ELEMENT: running…
+  iframe src in dumped dom: /preview/home
+  === did any move reach the server? ===
+  {"pid":1253,"unsaved":0}
+  === server stderr ===
+  B single-origin listening on http://127.0.0.1:8830/editor  pid=1253
+  ```
+  
+  So no move reached the server at all, and the iframe src in the dumped DOM is still the original `/preview/home` — the cache-buster rewrite is not visible in the dump, which suggests the async loop never reaches its first iteration. The server itself is healthy.
+  
+  Still running: qa-reviewer `ac0a6cc9e1a41e055`, security-reviewer `a24b318da9ad3f49b`, integration-reviewer `a1ab69bd337f734ae`. The performance reviewer completed with **REJECT** on two findings.
+  
+  **I am deliberately NOT editing `tools/holdout/*.ts`, `scripts/probes/*.ts`, `spikes/substrate/b-plain/render.ts`, `spikes/channel/verify-licences.ts`, or `planning/BUILD-CHARTER.md` while those three reviewers are reading them** — to avoid shifting line numbers under them. All fixes are batched for one pass after they report.
+  
+  ## 9. Optional Next Step
+  
+  Diagnose why the S04 bench loop never starts — most likely candidates are that the first `await new Promise((r) => { pv.onload = r; })` in topology A never resolves because the iframe already loaded, or that headless Chrome's `--virtual-time-budget` does not advance real network I/O for the fetch/iframe reload. A reliable alternative is to drop the browser harness and measure the server-side API round trip directly with curl (median of 5), recording honestly that the in-browser `postMessage` leg was not measured — which is exactly the kind of caveat I have been carrying elsewhere.
+  
+  Verbatim from my last message before the diagnostic: *"Still pending. Reading what the page actually reports rather than guessing again."*
+  
+  And from the message before that, on the same harness: *"Found it — assigning the same value to `src` does not reload an iframe, so the wait never resolves. That bug is in my editor code too. Fixing both."* — that fix was applied (`patched files: 2`, `?r=` present in both) but did not resolve the hang.
+  
+  </summary>

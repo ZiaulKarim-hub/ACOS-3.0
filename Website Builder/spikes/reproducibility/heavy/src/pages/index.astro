@@ -1,0 +1,17 @@
+---
+import { PALETTE } from "../lib/a.ts";
+---
+<html lang="en"><head><meta charset="utf-8"><title>heavy</title></head>
+<body>
+  <ul>{PALETTE.map((c: string) => <li style={`color:${c}`}>{c}</li>)}</ul>
+  <pre id="out">…</pre>
+  <script>
+    // A dynamic import forces Vite to emit a SEPARATE content-hashed chunk.
+    // Chunk hashing and module ordering are exactly where bundler
+    // nondeterminism would show up, and the light fixture emitted no JS at all.
+    Promise.all([import("../lib/c.ts"), import("../lib/d.ts")]).then(([m, d]) => {
+      document.getElementById("out")!.textContent =
+        m.describe() + " " + m.EXTRA.length + " " + d.SEEDED + " " + (typeof d.makeId);
+    });
+  </script>
+</body></html>

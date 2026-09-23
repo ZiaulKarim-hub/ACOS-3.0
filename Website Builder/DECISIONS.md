@@ -4,8 +4,11 @@
 fabricating an answer. Each has my recommendation. A recommendation is an opinion, not a
 finding — the PRD's own evidence is cited where it exists.
 
-Ordered by how much downstream work each one blocks. **D1–D4 are settled and not listed here**
-(see `memory/decisions/`).
+Ordered by how much downstream work each one blocks. **D1–D6 are settled and not listed here**
+(see `memory/decisions/`). D5 (layers are a real document tier) was settled 2026-08-20; D6 (the
+clone-and-fan-out route) was settled 2026-09-22 and is specified in §21.
+
+**Settled here so far: items 1 and 2.** Fourteen remain open (3–16).
 
 Status legend: ☐ open · ☑ decided (record the answer and the date inline)
 
@@ -45,7 +48,7 @@ note is now moot.
 
 ---
 
-## 2. ☐ v1 component set — 87 items / 674 variants, or cut back?
+## 2. ☑ v1 component set — 87 items / 674 variants, or cut back?
 
 **Where:** §8.8-X3, marked "⚠ REQUIRES USER SIGN-OFF".
 
@@ -57,6 +60,19 @@ and Toggle switch are named as **non-demotable**.
 **My recommendation: re-baseline, then demote only what the interview says this project does
 not need.** A fixed 87 for every site is the wrong shape — per-project demotion is cheaper than
 arguing about the global list. Pairs naturally with decision 1's option C.
+
+**☑ Decided 2026-09-22: option 1 — accept 87/674 as the v1 set and re-baseline.** Zee accepted
+the recommendation. §18's phase sizing and §13's gate budgets are re-baselined against **87
+pickable items / 674 variants**, replacing the stale **~50 items / ~430 variants** they were
+built on — a **~74% increase in items and ~57% in variants**, which the PRD records as a real
+scope change, not a re-count. The global list is NOT cut. Demotion happens **per project, at
+interview time**, driven by the interview's site-type and vertical answers, and each demotion
+is recorded in that project's `session.json` with its reason. **Radio group and Toggle switch
+remain non-demotable** — dropping either ships an incomplete form system. Option 3 (v1a/v1b)
+is refused as a consequence of decision 1, which already rejected splitting v1. Accepted
+consequence: the re-baselined schedule is larger than any figure currently written in §18, and
+§18's own estimates are tagged inference, not measurement — see the re-baselining note added to
+§18 on the same date.
 
 ---
 
@@ -84,7 +100,7 @@ worse than building it in.
 
 ---
 
-## 5. ☐ Build byte-reproducibility — is D3's proof achievable?
+## 5. ☑ Build byte-reproducibility — is D3's proof achievable? — CLOSED 2026-09-23: YES
 
 **Where:** §12.8, §12-O33. **No source consulted established that Astro/Vite builds are
 byte-reproducible across two installs.** §12.8 only constrains *our generator's* determinism.
@@ -94,6 +110,14 @@ a normalised-comparison fallback — flagged as **weakening D3's proof**, hence 
 **My recommendation: run the Phase-0 spike before committing to two-build byte-equality.** If
 it fails, accept normalised comparison and say so in the PRD rather than claiming a guarantee
 the toolchain cannot give. This is the item most likely to quietly become untrue.
+
+**RESOLUTION (2026-09-23).** The Phase-0 spike WAS run (S05, `spikes/reproducibility/`,
+ADR-05): two fully independent `npm ci` installs, three fixtures including dynamic `import()`
+and `nanoid@5.0.9`, and both tests produced byte-identical output. Reproducibility is
+ACHIEVABLE; the normalised-comparison fallback is NOT needed on this evidence. Six limits are
+stated in ADR-05 (this machine/toolchain, these fixtures — not a universal proof). Closed under
+Zee's 2026-09-23 no-questions instruction, adopting the recommendation shown to him that day;
+reversible by saying so.
 
 ---
 
