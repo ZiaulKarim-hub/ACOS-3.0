@@ -2,7 +2,22 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 175/175. Raised from 169 on 2026-09-23 after the FIFTH security review
+ * Expect 186/186. Raised from 175 on 2026-09-23 after the SIXTH security review
+ * returned REJECT with W1-W5: an ordinary FORWARD COMMIT of a truncated anchor
+ * defeated the HEAD-prefix check (the committed copy WAS the truncation); a
+ * spent pack was re-sat with two seds and an rm -rf, because revealed_at's
+ * committed state is null; a ONE-LINE flow mapping bypassed the dash-anchored
+ * flow refusal and executed a hidden second command; and a case that COMMITTED
+ * its own edit read as a clean tree. Now: the anchor's whole commit history
+ * must be append-only (every blob a prefix of the next); a sealed reveal
+ * appends and commits a `revealed` spent marker to the chain (its committed
+ * state is its ABSENCE, so reverting shows); the sealed cases.yaml must BE the
+ * canonical serialization of its own parse (wb-cases-1 — kills the whole
+ * YAML-spelling class, three passes of regex defeats); HEAD after the cases
+ * must equal the commit reveal itself made; and reveal's git commits run with
+ * hooks disabled (a planted pre-commit hook is pinned harmless).
+ *
+ * Previously 175/175. Raised from 169 on 2026-09-23 after the FIFTH security review
  * returned REJECT with V1-V3: SIGKILL bypassed the U1 exit-handler heal (a
  * signal is not an exit) and truncating both chain copies to the COMMITTED
  * genesis left git status empty — the forged state WAS the committed state;
@@ -90,6 +105,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, sha256Hex, HASH_METHOD } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, decryptExpected, encryptExpected, newKeyHex } from "./keybox.ts";
+import { canonicalCasesText, caseKeyProblems } from "./json-keys.ts";
 import { validate } from "./manifest.ts";
 import { duplicateJsonKeys } from "./json-keys.ts";
 
@@ -150,6 +166,7 @@ ok("restoring the content restores the digest", canonicalPackHash(packDir).diges
 // T1 changed the sealed shape: the answer key on disk is expected.json.enc, and
 // expectedResultsHash covers the CIPHERTEXT. The pack is encrypted here — after
 // the plaintext-era hash tests above, before anything derives manifest hashes.
+writeFileSync(join(packDir, "cases.yaml"), canonicalCasesText(readFileSync(join(packDir, "cases.yaml"), "utf8")));
 const key99 = encryptPack("HLD-S99-v1", packDir);
 const sealedPack99 = canonicalPackHash(packDir);
 ok("a sealed pack lists the ciphertext, never the plaintext",
@@ -238,12 +255,23 @@ const seal = (args: string[], cwd = repoRoot) => {
 // ambiguous packs at authoring time (F9), but reveal's guards must hold even
 // against a manifest a compliant seal would never have produced — a hand-written
 // or older-tool manifest is exactly the adversarial input reveal exists to survive.
-const manualSeal = (id2: string, dir2: string, caseCount = 1) => {
+const manualSeal = (id2: string, dir2: string, caseCount = 1, opts?: { rawCases?: boolean }) => {
   const m = /^HLD-(S\d+)[A-Za-z0-9-]*-v(\d+)$/.exec(id2)!;
   // T1/T3: a hand-written manifest still describes the SEALED shape — encrypt
   // the answer key (registering the key) and plant the tracked anchor, exactly
   // as seal.ts would, THEN hash. The point of manualSeal is bypassing seal's
   // REFUSALS, not producing a pack shape reveal would never see.
+  // W3: reveal requires canonical cases.yaml. manualSeal canonicalizes a
+  // WELL-FORMED file just as seal.ts would — but leaves any file the scanner
+  // flags untouched, because those packs exist to prove reveal refuses them.
+  try {
+    const ctRaw = readFileSync(join(dir2, "cases.yaml"));
+    const ct = ctRaw.toString("utf8");
+    // non-UTF-8 attack packs stay byte-exact: canonicalizing would LAUNDER them
+    if (!(opts && opts.rawCases) && Buffer.from(ct, "utf8").equals(ctRaw) && caseKeyProblems(ct).length === 0) {
+      writeFileSync(join(dir2, "cases.yaml"), canonicalCasesText(ct));
+    }
+  } catch { /* unparseable attack pack: leave as authored */ }
   if (existsSync(join(dir2, PLAIN_NAME))) encryptPack(id2, dir2);
   const packDigest = canonicalPackHash(dir2).digest;
   anchorPack(repoRoot, id2, packDigest);
@@ -548,7 +576,13 @@ writeFileSync(join(u8Dir, "cases.yaml"), Buffer.concat([
   Buffer.from([0xFF]),
   Buffer.from("\"\n")]));
 writeFileSync(join(u8Dir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
-seal(["--slice", "S88", "--story", "ST-88", "--contract", "v1"]);
+// W3 made seal REWRITE cases.yaml — so seal must refuse bad bytes rather than
+// launder them into clean UTF-8, and reveal's own refusal is reached via
+// manualSeal, which keeps attack packs byte-exact.
+const u8Seal = seal(["--slice", "S88", "--story", "ST-88", "--contract", "v1"]);
+ok("seal refuses a cases.yaml that is not valid UTF-8 — the rewrite must never launder bytes",
+   u8Seal.code !== 0 && /not valid UTF-8/.test(u8Seal.out), u8Seal.out.slice(-200));
+manualSeal(u8Id, u8Dir);
 const u8 = run({ WB_QA_CONTEXT: "1" }, ["--id", u8Id, "--candidate", "cafe088"]);
 ok("a cases.yaml that is not valid UTF-8 is REFUSED before anything runs",
    u8.code !== 0 && /not valid UTF-8/.test(u8.out), u8.out.slice(-220));
@@ -1561,10 +1595,10 @@ const fgBundle = join(repoRoot, "planning/evidence", "EVB-" + fgId);
 mkdirSync(fgBundle, { recursive: true });
 const fgGenesis = `sealed at=2026-01-01T00:00:00Z id=${fgId} pack_sha256=${"0".repeat(64)} prev=GENESIS`;
 const fgAttempt = `attempt=1 at=2026-01-01T00:00:01Z pid=1 candidate=abc1230 prev=${sha256Hex(fgGenesis)}`;
-const fgChain = fgGenesis + "\n" + fgAttempt + "\n";
+const fgChain = fgGenesis + "\n" + fgAttempt + "\n";   // the chain as sealed INSIDE the log (pre-marker)
 mkdirSync(join(repoRoot, "planning/holdouts/attempts"), { recursive: true });
-writeFileSync(join(repoRoot, "planning/holdouts/attempts", fgId + ".log"), fgChain);
-writeFileSync(join(fgBundle, "attempts.log"), fgChain);
+// full on-disk chain = sealed chain + the W2 spent marker naming this log's hash
+let fgChainFull = "";   // finished below, once fgLog's hash exists
 const FOOTER = "=== wb-run-record footer v2: authoritative fields run from the LAST occurrence of this line to end-of-file ===";
 const CASESD = "=== cases: candidate-controlled region — no field below this line is trusted until the footer delimiter ===";
 const fgLog = [
@@ -1575,12 +1609,16 @@ const fgLog = [
   `## H1 [hostile] PASS`, `post_run_pack_untouched: true`, `exit: 0`, "",
   FOOTER,
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
-  `post_run_tree_clean_semantics: test-semantics`,
+  `post_run_tree_clean_semantics: test-semantics`, `head_unchanged_during_run: unverified`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
+fgChainFull = fgChain + `revealed at=2026-01-01T00:00:03Z raw_log_sha256=${sha256Hex(fgLog)} prev=${sha256Hex(fgAttempt)}` + "\n";
+mkdirSync(join(repoRoot, "planning/holdouts/attempts"), { recursive: true });
+writeFileSync(join(repoRoot, "planning/holdouts/attempts", fgId + ".log"), fgChainFull);
+writeFileSync(join(fgBundle, "attempts.log"), fgChainFull);
 writeFileSync(join(fgBundle, "holdout-run-forged.log"), fgLog);
 const fgManifest = (untouched: string) => [
   `artifact_type: HoldoutRunRecord`, `id: EVB-${fgId}`, `holdout_id: ${fgId}`,
@@ -1588,7 +1626,7 @@ const fgManifest = (untouched: string) => [
   `case_count: 1`, `pass: 1`, `fail: 0`, `raw_log: holdout-run-forged.log`,
   `raw_log_sha256: "${sha256Hex(fgLog)}"`,
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
-  `post_run_tree_clean_semantics: test-semantics`,
+  `post_run_tree_clean_semantics: test-semantics`, `head_unchanged_during_run: unverified`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
@@ -1831,6 +1869,139 @@ const v1Rec = readFileSync(join(repo2, "planning/evidence", "EVB-" + v1Id, "mani
 ok("V1: the repaired chain seals attempt: 2, anchor committed, exit 0",
    v1Third.code === 0 && /attempt: 2/.test(v1Rec) && /attempts_anchor_committed: true/.test(v1Rec),
    v1Rec.slice(0, 340) + " ||" + v1Third.out.slice(-160));
+
+console.log("— sixth security review: W1/W2/W3/W4, each executed defeat pinned —");
+
+// W3 — the reviewer's ONE-LINE flow pack: `cases: [{... run: a, run: b}]`
+// bypassed every dash-anchored regex and executed the hidden second command.
+const w3Id = "HLD-S27-v1";
+const w3Dir = join(repoRoot, "qa-private", w3Id);
+mkdirSync(w3Dir, { recursive: true });
+writeFileSync(join(w3Dir, "README.md"), "# w3\n");
+writeFileSync(join(w3Dir, "cases.yaml"), "cases: [{id: H001, class: nominal, run: echo SAFE, run: echo PWNED}]\n");
+writeFileSync(join(w3Dir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
+const w3Seal = seal(["--slice", "S27", "--story", "ST-27", "--contract", "v1"]);
+ok("W3: a one-line flow mapping is refused at seal — structure, not a dash spelling",
+   w3Seal.code !== 0 && /flow-style collections/.test(w3Seal.out), w3Seal.out.slice(-200));
+manualSeal(w3Id, w3Dir, 1, { rawCases: true });
+const w3Rev = run({ WB_QA_CONTEXT: "1" }, ["--id", w3Id, "--candidate", "abc1230"]);
+ok("W3: reveal refuses the same pack sealed around the tool — the file must BE its own parse",
+   w3Rev.code !== 0 && /flow-style collections|canonical form/.test(w3Rev.out), w3Rev.out.slice(-220));
+// ...and braces INSIDE a quoted run string are still fine — no false refusal.
+const w3b = join(repoRoot, "qa-private", "HLD-S26-v1");
+mkdirSync(w3b, { recursive: true });
+writeFileSync(join(w3b, "README.md"), "# w3b\n");
+writeFileSync(join(w3b, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo '{ok}'\"\n");
+writeFileSync(join(w3b, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "{ok}" } }) + "\n");
+seal(["--slice", "S26", "--story", "ST-26", "--contract", "v1"]);
+const w3bRun = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S26-v1", "--candidate", "abc1230"]);
+ok("W3: braces inside a quoted run string seal and reveal cleanly",
+   w3bRun.code === 0 && /1 PASS \/ 0 FAIL/.test(w3bRun.out), w3bRun.out.slice(-200));
+
+// W2 — the re-sit. revealed_at's committed state is null, so two seds and an
+// rm -rf re-armed a spent pack with git status clean. The spent marker now
+// lives in the chain, where the committed state is its ABSENCE.
+const w2Id = "HLD-S28-v1";
+const w2Dir = join(repoRoot, "qa-private", w2Id);
+mkdirSync(w2Dir, { recursive: true });
+writeFileSync(join(w2Dir, "README.md"), "# w2\n");
+writeFileSync(join(w2Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo done\"\n");
+writeFileSync(join(w2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S28", "--story", "ST-28", "--contract", "v1"]);
+const w2First = run({ WB_QA_CONTEXT: "1" }, ["--id", w2Id, "--candidate", "abc1230"]);
+const w2Anchor = readFileSync(join(repoRoot, "planning/holdouts/attempts", w2Id + ".log"), "utf8").trim().split("\n");
+ok("W2: a sealed reveal appends the spent marker to the chain",
+   w2First.code === 0 && w2Anchor[w2Anchor.length - 1].startsWith("revealed "), w2Anchor.slice(-1)[0]);
+// The reviewer's exact re-arm: two seds + rm -rf, tree byte-identical to committed.
+const w2Man = join(repoRoot, "planning/holdouts/manifests", w2Id + ".yaml");
+writeFileSync(w2Man, readFileSync(w2Man, "utf8")
+  .replace(/^revealed_at:.*$/m, "revealed_at: null")
+  .replace(/^run_evidence_bundle:.*$/m, "run_evidence_bundle: null"));
+rmSync(join(repoRoot, "planning/evidence", "EVB-" + w2Id), { recursive: true, force: true });
+const w2Resit = run({ WB_QA_CONTEXT: "1" }, ["--id", w2Id, "--candidate", "abc1230"]);
+ok("W2: the re-sit is REFUSED off the chain's revealed line — homework is dead again",
+   w2Resit.code !== 0 && /"revealed" line/.test(w2Resit.out) && /O43/.test(w2Resit.out), w2Resit.out.slice(-240));
+
+// W1 — the forward-commit burn. The case commits its own truncation, so
+// HEAD's copy IS the truncated one; only the HISTORY walk sees the shrink.
+const w1Id = "HLD-S90D-v1";
+const w1Pack = join(repo2, "qa-private", w1Id);
+const w1AnchorRel = "planning/holdouts/attempts/" + w1Id + ".log";
+const w1CopyRel = "planning/evidence/EVB-" + w1Id + "/attempts.log";
+mkdirSync(w1Pack, { recursive: true });
+writeFileSync(join(w1Pack, "README.md"), "# w1\n");
+writeFileSync(join(w1Pack, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"head -n1 " + w1AnchorRel + " > " + join(tmp, "w1a") + " && mv " + join(tmp, "w1a") + " " + w1AnchorRel + "; head -n1 " + w1CopyRel + " > " + join(tmp, "w1b") + " && mv " + join(tmp, "w1b") + " " + w1CopyRel + "; git -c user.email=x@x -c user.name=x commit -q -m tidy -- " + w1AnchorRel + "; kill -9 $PPID; true\"\n");
+writeFileSync(join(w1Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90D", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "w1 pack");
+writeFileSync(join(tmp, "w1key"), packKeys.get(w1Id)! + "\n");
+execFileSync("/bin/sh", ["-c",
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${w1Id} --candidate ${git("rev-parse", "HEAD").trim()} --key-stdin < ${JSON.stringify(join(tmp, "w1key"))} > /dev/null 2>&1; exit 0`,
+], { cwd: repo2 });
+execFileSync("/bin/sh", ["-c", `chmod u+rwX qa-private/${w1Id} && chmod -R u+rwX qa-private/${w1Id}`], { cwd: repo2 });
+rmSync(join(repo2, "planning/evidence", "EVB-" + w1Id, ".reveal.lock"), { force: true });
+const w1Resit = run({ WB_QA_CONTEXT: "1" }, ["--id", w1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("W1: a COMMITTED truncation is caught by the append-only history walk",
+   w1Resit.code !== 0 && /not append-only/.test(w1Resit.out) && /shrank or rewrote/.test(w1Resit.out),
+   w1Resit.out.slice(-260));
+
+// W4 — modify-then-COMMIT mid-run: the tree reads clean, but HEAD is no longer
+// the commit reveal itself made, and that is now a sealed, tampering fact.
+const w4Id = "HLD-S90E-v1";
+const w4Pack = join(repo2, "qa-private", w4Id);
+mkdirSync(w4Pack, { recursive: true });
+writeFileSync(join(w4Pack, "README.md"), "# w4\n");
+writeFileSync(join(w4Pack, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "echo w4 >> src.txt; git -c user.email=x@x -c user.name=x commit -qam w4-cover"\n');
+writeFileSync(join(w4Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90E", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "w4 pack");
+const w4Run = run({ WB_QA_CONTEXT: "1" }, ["--id", w4Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const w4Rec = readFileSync(join(repo2, "planning/evidence", "EVB-" + w4Id, "manifest.yaml"), "utf8");
+ok("W4: a case that COMMITS its own edit is sealed as tampering even though the tree is clean",
+   w4Run.code !== 0 && /TAMPERING RECORDED/.test(w4Run.out) &&
+   /head_unchanged_during_run: false/.test(w4Rec) && /post_run_tree_clean: true/.test(w4Rec),
+   w4Run.out.slice(-240));
+
+// The reviewer's reasoned (untested) item: a planted .git/hooks/pre-commit.
+// reveal's own commits run with core.hooksPath pointing at an empty directory,
+// so a hostile hook can neither sabotage the anchor commits nor run code.
+const whId = "HLD-S90F-v1";
+const whPack = join(repo2, "qa-private", whId);
+mkdirSync(whPack, { recursive: true });
+writeFileSync(join(whPack, "README.md"), "# wh\n");
+writeFileSync(join(whPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo hi"\n');
+writeFileSync(join(whPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90F", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "wh pack");
+mkdirSync(join(repo2, ".git/hooks"), { recursive: true });
+writeFileSync(join(repo2, ".git/hooks/pre-commit"), "#!/bin/sh\nexit 1\n");
+chmodSync(join(repo2, ".git/hooks/pre-commit"), 0o755);
+const whRun = run({ WB_QA_CONTEXT: "1" }, ["--id", whId, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+rmSync(join(repo2, ".git/hooks/pre-commit"), { force: true });
+ok("HOOKS: a planted pre-commit hook cannot block or ride reveal's anchor commits",
+   whRun.code === 0 && /1 PASS \/ 0 FAIL/.test(whRun.out), whRun.out.slice(-220));
+
+// W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
+// dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse
+// requirement refuses it — remove that check and this test alone catches it.
+const w3c = join(repoRoot, "qa-private", "HLD-S25-v1");
+mkdirSync(w3c, { recursive: true });
+writeFileSync(join(w3c, "README.md"), "# w3c\n");
+writeFileSync(join(w3c, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo ok\"\n");
+writeFileSync(join(w3c, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+manualSeal("HLD-S25-v1", w3c, 1, { rawCases: true });
+const w3cRev = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S25-v1", "--candidate", "abc1230"]);
+ok("W3: a scanner-clean but non-canonical pack is refused — the canonical check carries weight of its own",
+   w3cRev.code !== 0 && /canonical form/.test(w3cRev.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S25-v1.yaml"), "utf8")),
+   w3cRev.out.slice(-200));
+
+// The landscape this suite built — honest seals, tampered seals, forged-but-
+// consistent bundles, healed chains — must verify as one coherent whole.
+const wFinal = vrrRun(repoRoot);
+ok("FINAL: verify-run-records passes the whole fixture landscape", wFinal.code === 0, wFinal.out.slice(-300));
 
 // S6 — a FIFO left the digest byte-identical (executed by the reviewer).
 const s6Dir = join(tmp, "s6-pack");

@@ -29,7 +29,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
@@ -339,6 +339,25 @@ function main(): number {
     }
   }
 
+  // W3 (sixth security review, EXECUTED): three passes in a row, a YAML
+  // spelling nobody enumerated smuggled a duplicate key past a line regex —
+  // last time a ONE-LINE flow mapping sealed and executed a hidden second
+  // command. Structural fix: a sealed cases.yaml must BE the canonical
+  // serialization of its own parse. Whatever Bun.YAML read is regenerated
+  // here; one byte of difference means the bytes on disk are not their own
+  // parse, and that is exactly the reader/harness divergence PRD §22 forbids.
+  {
+    let canon = "";
+    try { canon = canonicalCasesText(casesText); }
+    catch (e: any) { die(`reveal refused (pack NOT spent): cases.yaml did not canonicalize — ${String(e?.message ?? e)}`); }
+    if (canon !== casesText) {
+      die(`reveal refused (pack NOT spent): cases.yaml is not in canonical form wb-cases-1.\n` +
+          `seal.ts writes the canonical serialization; a sealed pack that deviates from the\n` +
+          `canonical form of its OWN parse can show a reader one thing and run another.\n` +
+          `Re-seal the pack at the next version.`);
+    }
+  }
+
   // ---- the answer key: ciphertext on disk, key on stdin, plaintext in memory (T1)
   if (!has("--key-stdin")) {
     die(`reveal refused (pack NOT spent): the answer key is encrypted and no --key-stdin was given.\n` +
@@ -528,6 +547,20 @@ function main(): number {
   if (!anchorLines.length || !anchorLines[0].startsWith("sealed ")) {
     die(`reveal refused: ${anchorPath} does not begin with its sealed genesis line — it was edited or rebuilt.`);
   }
+  // W2 (sixth security review, EXECUTED): revealed_at lives in the pack
+  // manifest, whose COMMITTED state is `revealed_at: null` by design — so two
+  // seds and an rm -rf re-armed a genuinely spent pack with `git status`
+  // clean, and the re-sit sealed as an innocent-looking attempt 2. "A pack
+  // that can be re-run until it passes is homework, not an exam" (PRD §22
+  // O43). Spentness is therefore ALSO written into the attempts chain: a
+  // successful seal appends (and in a repo, commits) a `revealed ...` line,
+  // which is NOT the committed-at-seal state — reverting it shows.
+  if (anchorLines.some((l) => l.startsWith("revealed "))) {
+    die(`reveal refused: the attempts chain for ${id} carries a "revealed" line — this pack\n` +
+        `was revealed and its result sealed. Resetting revealed_at in the pack manifest\n` +
+        `cannot un-spend it: the spent marker lives in the chain${inRepo ? " and in git history" : ""}.\n` +
+        `A failed exam takes a NEW pack at the next version (PRD §22, O43).`);
+  }
   // V1 (fifth security review, EXECUTED): the exit-handler heal is bypassed by
   // SIGKILL — a signal is not an exit — and truncating BOTH chain copies back
   // to the COMMITTED genesis line left `git status` empty, because the forged
@@ -554,6 +587,34 @@ function main(): number {
           `this is truncation of the attempt history (security review V1). Restore it with\n` +
           `    git checkout -- ${anchorPath}\n` +
           `then make the bundle copy agree, and read the history before revealing again.`);
+    }
+    // W1 (sixth security review, EXECUTED): comparing only HEAD's copy was
+    // defeated by an ordinary FORWARD commit — a case committed its own
+    // truncation, so HEAD's copy WAS the truncated one and the prefix held.
+    // The anchor's whole commit history is the oracle: walked oldest-first,
+    // every successive committed blob must be a prefix of the next. A
+    // truncation commit breaks monotonic growth immediately. What remains is
+    // history REWRITE (reset/rebase/filter), the stated universal boundary,
+    // which reflog records.
+    let commits: string[] = [];
+    try {
+      commits = execFileSync("git", ["log", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+        .trim().split("\n").filter(Boolean).reverse();
+    } catch {
+      die(`reveal refused: git log on ${anchorPath} failed — the anchor's history cannot be verified.`);
+    }
+    let prevBlob = "";
+    for (const h of commits) {
+      let blob = "";
+      try { blob = execFileSync("git", ["show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+      catch { continue; }   // the commit touched the path by deletion/rename; the prefix chain over what exists still binds
+      if (!blob.startsWith(prevBlob)) {
+        die(`reveal refused: the attempts anchor's COMMIT HISTORY is not append-only —\n` +
+            `commit ${h.slice(0, 12)} shrank or rewrote ${anchorPath}.\n` +
+            `Attempt lines only ever grow (security review W1); a commit that shortens the\n` +
+            `chain is a forged reset. Read \`git log -p -- ${anchorPath}\` before touching this pack.`);
+      }
+      prevBlob = blob;
     }
   }
   const anchorTail = verifyChain(anchorLines, anchorPath);
@@ -622,11 +683,18 @@ function main(): number {
   // still holds for the retry. HEAD moves by one anchor-only commit per
   // attempt; the candidate was verified against HEAD before this point, and
   // the next pack's candidate is simply the then-current HEAD.
+  // core.hooksPath points at an empty directory (reviewer's reasoned finding,
+  // sixth pass): a case from an EARLIER run could plant .git/hooks/pre-commit —
+  // .git/ is invisible to every tree check — and either sabotage all future
+  // anchor commits or run code inside reveal's process tree. Hooks get no say.
+  const GIT_ID = ["-c", "user.email=holdout-reveal@local", "-c", "user.name=holdout-reveal", "-c", "core.hooksPath=/var/empty"];
+  let ownCommitSha = "";
   if (inRepo) {
     try {
-      execFileSync("git", ["-c", "user.email=holdout-reveal@local", "-c", "user.name=holdout-reveal",
+      execFileSync("git", [...GIT_ID,
         "commit", "-q", "-m", `holdout: ${id} attempt ${attemptCount}`, "--", anchorPath],
         { stdio: ["ignore", "pipe", "pipe"] });
+      ownCommitSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch (e: any) {
       die(`reveal refused: could not commit the attempt line to ${anchorPath} — ${String(e?.stderr ?? e?.message ?? e).trim()}\n` +
           `The attempt count is bound to git history (V1); an uncommittable anchor cannot bind it.`);
@@ -644,16 +712,17 @@ function main(): number {
   // are preserved as evidence and the true chain is put back from memory.
   // SIGKILL still skips this — and SIGKILL already leaves a locked pack and a
   // stale lock, so that abort is loud and manual by design, never silent.
+  let chainHealTarget = anchorExpectedAfter;   // grows by the spent marker after a seal (W2)
   const restoreAttempts = () => {
     for (const [path2, label] of [[anchorPath, "attempts-anchor"], [attemptsPath, "attempts-log"]] as const) {
       try {
         const now = readFileSync(path2, "utf8");
-        if (now !== anchorExpectedAfter) {
+        if (now !== chainHealTarget) {
           try { writeFileSync(join(bundleDirEarly, `${label}-as-found-after-run.log`), now); } catch {}
-          writeFileSync(path2, anchorExpectedAfter);
+          writeFileSync(path2, chainHealTarget);
         }
       } catch {
-        try { writeFileSync(path2, anchorExpectedAfter); } catch {}
+        try { writeFileSync(path2, chainHealTarget); } catch {}
       }
     }
   };
@@ -870,6 +939,17 @@ function main(): number {
     catch { attemptsIntactAfterRun = false; }
   }
   if (!attemptsIntactAfterRun) restoreAttempts();
+  // W4 (sixth security review, EXECUTED): a case that COMMITTED its own edit
+  // of a tracked file read as a clean tree — modify-then-commit is easier than
+  // modify-then-restore, and V1's per-attempt anchor commits made mid-run HEAD
+  // movement look routine. HEAD after the cases must be exactly the commit
+  // reveal itself made before them.
+  let headUnchangedDuringRun: "true" | "false" | "unverified" = "unverified";
+  if (inRepo) {
+    try {
+      headUnchangedDuringRun = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() === ownCommitSha ? "true" : "false";
+    } catch { headUnchangedDuringRun = "false"; }
+  }
   let treeCleanAfterRun: "true" | "false" | "unverified" = "unverified";
   if (inRepo) {
     // Filtered exactly like the pre-run check — except the anchor, which is
@@ -921,6 +1001,7 @@ function main(): number {
     `post_run_pack_intact: ${packIntactAfterRun}`,
     `post_run_tree_clean: ${treeCleanAfterRun}`,
     `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
+    `head_unchanged_during_run: ${headUnchangedDuringRun}`,
     `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
     `post_run_pack_untouched: ${packUntouched}`,
     `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
@@ -942,6 +1023,7 @@ function main(): number {
      `post_run_pack_intact: ${packIntactAfterRun}`,
      `post_run_tree_clean: ${treeCleanAfterRun}`,
      `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
+     `head_unchanged_during_run: ${headUnchangedDuringRun}`,
      `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
      `post_run_pack_untouched: ${packUntouched}`,
      `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
@@ -968,17 +1050,36 @@ function main(): number {
   writeFileSync(mTmp, stamped);
   renameSync(mTmp, mPath);
 
+  // W2: the SPENT marker, in the chain itself. `revealed_at:` lives in a file
+  // whose committed state is null, so reverting it is invisible to git; this
+  // line is appended only when a seal actually happened, so its removal is a
+  // shrink of committed history (W1 walk) or a visible working-tree edit.
+  const revealedLine = `revealed at=${finishedAt} raw_log_sha256=${logHash} prev=${sha256Hex(attemptLine)}`;
+  const chainFinal = anchorExpectedAfter + revealedLine + "\n";
+  appendFileSync(anchorPath, revealedLine + "\n");
+  writeFileSync(attemptsPath, chainFinal);
+  chainHealTarget = chainFinal;   // the exit-handler heal must not erase the spent marker
+  let spentCommitFailed = false;
+  if (inRepo) {
+    try {
+      execFileSync("git", [...GIT_ID, "commit", "-q", "-m", `holdout: ${id} revealed`, "--", anchorPath], { stdio: ["ignore", "pipe", "pipe"] });
+    } catch {
+      spentCommitFailed = true;
+      console.log(`WARNING: the spent marker could not be COMMITTED — it exists only in the working tree. Commit ${anchorPath} by hand.`);
+    }
+  }
+
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
   const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched
-    || !attemptsIntactAfterRun || !bundleCleanAfterRun;
+    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false";
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun}.`);
     console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
   }
   console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : tampered ? `Cases passed, but see the tampering record above.` : `All cases passed.`);
   // Exit non-zero on failure so a caller that checks the EXIT CODE and not the
   // tally sees it — a suite that throws mid-run still prints "N/N passed".
-  return fail || tampered ? 1 : 0;
+  return fail || tampered || spentCommitFailed ? 1 : 0;
 }
 
 process.exit(main());

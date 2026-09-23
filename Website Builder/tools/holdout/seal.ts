@@ -25,7 +25,7 @@ import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
-import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
@@ -109,7 +109,15 @@ function main(): number {
         `mean to seal, and re-run.`);
   }
 
-  const casesText = readFileSync(join(packDir, "cases.yaml"), "utf8");
+  // Raw-bytes round trip BEFORE any parse: an invalid byte decodes to U+FFFD,
+  // and the canonical rewrite below would then LAUNDER the attack bytes into
+  // clean UTF-8 — sealing a command the author never wrote. Refused instead,
+  // for the same reason reveal refuses it (the hash pins bytes, not decodes).
+  const casesRawBytes = readFileSync(join(packDir, "cases.yaml"));
+  const casesText = casesRawBytes.toString("utf8");
+  if (!Buffer.from(casesText, "utf8").equals(casesRawBytes)) {
+    die(`seal refused: cases.yaml is not valid UTF-8 — decoding would silently replace bytes,\nand the sealed pack would not hold the bytes the author wrote.`);
+  }
   // The same two ambiguity refusals reveal.ts applies, HERE, where fixing them is
   // free — at reveal time the same defect costs a spent pack (security review F9).
   {
@@ -137,6 +145,21 @@ function main(): number {
       die(`seal refused: case string fields must be single-line —\n  ` + multiline.join("\n  ") +
           `\nAn embedded newline in a case field is a run-record injection vector (security review T2).`);
     }
+    // W3: the canonical rewrite below keeps exactly the four known keys, so
+    // anything else would be silently dropped — refused instead, and every
+    // kept field must be a string (a non-string run would reach sh -c).
+    const fieldProblems = cases.flatMap((c) => {
+      const out: string[] = [];
+      for (const k of Object.keys(c as object)) {
+        if (!["id", "class", "description", "run"].includes(k)) out.push(`${JSON.stringify(c.id)}: unknown case field ${JSON.stringify(k)}`);
+      }
+      for (const k of ["id", "class", "run"] as const) {
+        if (typeof (c as any)[k] !== "string") out.push(`${JSON.stringify(c.id)}: field "${k}" is ${typeof (c as any)[k]}, expected a string`);
+      }
+      if ("description" in c && typeof (c as any).description !== "string") out.push(`${JSON.stringify(c.id)}: "description" must be a string`);
+      return out;
+    });
+    if (fieldProblems.length) die(`seal refused: cases.yaml holds fields the canonical form cannot carry —\n  ` + fieldProblems.join("\n  "));
   }
   const expected = JSON.parse(rawExpected) as Record<string, unknown>;
 
@@ -160,6 +183,17 @@ function main(): number {
   // ---- seal the answer key: plaintext in memory, ciphertext on disk (T1) --
   // From here to the end, any failure RESTORES the plaintext so the custodian
   // is never left with a half-sealed pack and no key.
+  // W3: the sealed cases.yaml IS the canonical serialization of its parse —
+  // reveal refuses any deviation, so no YAML spelling can make a reader and
+  // the harness disagree inside a sealed pack. The authored bytes are kept in
+  // memory and restored if anything below refuses.
+  const casesOriginalBytes = readFileSync(join(packDir, "cases.yaml"));
+  const casesCanonical = canonicalCasesText(casesText);
+  if (casesCanonical !== casesText) {
+    writeFileSync(join(packDir, "cases.yaml"), casesCanonical);
+    console.log(`note: cases.yaml was rewritten into canonical form (comments dropped, values JSON-quoted).`);
+    console.log(`      REVIEW the sealed file — it is what auditors and the harness will both read.`);
+  }
   const plainBytes = readFileSync(join(packDir, PLAIN_NAME));
   const keyHex = newKeyHex();
   writeFileSync(join(packDir, ENC_NAME), encryptExpected(plainBytes, keyHex));
@@ -177,6 +211,7 @@ function main(): number {
   const restorePlain = () => {
     try { writeFileSync(join(packDir, PLAIN_NAME), plainBytes); } catch {}
     try { rmSync(join(packDir, ENC_NAME), { force: true }); } catch {}
+    try { writeFileSync(join(packDir, "cases.yaml"), casesOriginalBytes); } catch {}
   };
 
   // ---- hash and publish ---------------------------------------------------

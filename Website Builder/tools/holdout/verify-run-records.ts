@@ -68,7 +68,7 @@ const fieldFrom = (text: string, key: string): string | null => {
 // Header fields are written before any case runs; footer fields after the last.
 const HEADER_FIELDS = ["candidate", "candidate_verified", "attempt"] as const;
 const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
-                       "post_run_tree_clean_semantics",
+                       "post_run_tree_clean_semantics", "head_unchanged_during_run",
                        "manifest_rewritten_during_run", "post_run_pack_untouched",
                        "post_run_attempts_intact", "attempts_anchor_committed",
                        "post_run_bundle_clean",
@@ -158,13 +158,28 @@ function verifyBundle(dir: string): string[] {
     const attemptsRaw = readFileSync(attemptsPath, "utf8");
     const lines = attemptsRaw.split("\n").filter(Boolean);
     bad.push(...chainProblems(lines, "attempts.log"));
+    // W2: a SEALED bundle's chain must END with the spent marker, and that
+    // marker must name this very record's raw_log_sha256. attempts_log_sha256
+    // was sealed inside the log BEFORE the marker existed, so it covers the
+    // chain WITHOUT its trailing revealed line.
+    const last = lines[lines.length - 1] ?? "";
+    if (!last.startsWith("revealed ")) {
+      bad.push(`the attempts chain does not end with a "revealed" spent marker — a sealed record without one means the marker was stripped (W2)`);
+    } else {
+      const sealedLogHash = fieldFrom(man, "raw_log_sha256");
+      if (sealedLogHash && !last.includes(`raw_log_sha256=${sealedLogHash}`)) {
+        bad.push(`the chain's revealed line names a different raw_log_sha256 than this record — it belongs to another run`);
+      }
+    }
+    const preMarker = lines.filter((l) => !l.startsWith("revealed ")).join("\n") + "\n";
     const sealedAttempts = fieldFrom(regions.footer, "attempts_log_sha256");
-    if (sealedAttempts && sealedAttempts !== sha256Hex(attemptsRaw)) {
+    if (sealedAttempts && sealedAttempts !== sha256Hex(preMarker)) {
       bad.push(`attempts.log no longer matches the anchor sealed in the hashed log — lines were added or removed AFTER sealing`);
     }
     const attempt = fieldFrom(regions.header, "attempt");
-    if (attempt && Number(attempt) !== lines.length - 1) {
-      bad.push(`sealed attempt number ${attempt} != ${lines.length - 1} chained attempt line(s)`);
+    const attemptLines = lines.filter((l) => l.startsWith("attempt=")).length;
+    if (attempt && Number(attempt) !== attemptLines) {
+      bad.push(`sealed attempt number ${attempt} != ${attemptLines} chained attempt line(s)`);
     }
     if (!holdoutId) {
       bad.push(`manifest.yaml names no holdout_id, so the tracked attempts anchor cannot be located`);
@@ -183,6 +198,18 @@ function verifyBundle(dir: string): string[] {
           const committed = execFileSync("git", ["show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
           if (!readFileSync(anchorPath, "utf8").startsWith(committed)) {
             bad.push(`the anchor on disk is SHORTER than or diverged from HEAD's copy — attempt history was truncated after its commit`);
+          }
+          // W1: HEAD alone was defeated by a forward commit OF a truncation —
+          // the whole history must be append-only, each blob a prefix of the next.
+          const commits = execFileSync("git", ["log", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+            .trim().split("\n").filter(Boolean).reverse();
+          let prevBlob = "";
+          for (const h of commits) {
+            let blob = "";
+            try { blob = execFileSync("git", ["show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+            catch { continue; }
+            if (!blob.startsWith(prevBlob)) { bad.push(`anchor commit ${h.slice(0, 12)} SHRANK or rewrote the chain — attempt history is not append-only (W1)`); break; }
+            prevBlob = blob;
           }
         } catch { /* not a repo, or anchor never committed: the record's attempts_anchor_committed field carries that fact */ }
       }
