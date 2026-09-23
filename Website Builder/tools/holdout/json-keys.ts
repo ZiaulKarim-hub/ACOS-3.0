@@ -45,3 +45,46 @@ export const duplicateJsonKeys = (text: string): string[] => {
   }
   return [...dupes];
 };
+
+/**
+ * F9 (security review): the duplicate-key defence covered expected.json but not
+ * cases.yaml — and Bun.YAML.parse keeps the LAST duplicate key in silence, MEASURED:
+ * a case carrying `run:` twice showed a reader one command and executed the other.
+ * The same defect class as duplicateJsonKeys closes, one file over.
+ *
+ * Scope, stated: block-style case lists only, which is the only shape seal.ts
+ * documents. Flow-style case mappings ("- { id: H1, run: a, run: b }") are refused
+ * outright rather than scanned, and a block scalar ("run: |") is refused because
+ * its continuation lines are indistinguishable from keys to a line scanner. A
+ * false refusal costs a re-seal; a missed duplicate costs a spent pack.
+ */
+export const CASE_KEYS = ["id", "class", "description", "run"] as const;
+export const caseKeyProblems = (text: string): string[] => {
+  const problems: string[] = [];
+  const lines = text.split("\n");
+  let block: Array<{ line: string; at: number }> = [];
+  let blockStart = 0;
+  const flush = () => {
+    if (!block.length) return;
+    for (const key of CASE_KEYS) {
+      // The keys are compile-time literals, never user input — nothing to escape.
+      const hits = block.filter((b) => new RegExp(`^\\s*(?:-\\s+)?${key}\\s*:`).test(b.line)).length;
+      if (hits > 1) {
+        problems.push(`the case starting at line ${blockStart + 1} carries "${key}:" ${hits} times — YAML keeps only the LAST one, so a reader and the harness would disagree about this case`);
+      }
+    }
+    block = [];
+  };
+  lines.forEach((line, i) => {
+    if (/^\s*-\s*\{/.test(line)) {
+      problems.push(`line ${i + 1}: flow-style case mappings ("- { ... }") are refused — a repeated key inside one is invisible to a line scan`);
+    }
+    if (/:\s*[|>]/.test(line)) {
+      problems.push(`line ${i + 1}: block scalars ("|" or ">") are refused — their continuation lines are indistinguishable from keys to this scan`);
+    }
+    if (/^\s*-\s/.test(line)) { flush(); blockStart = i; }
+    block.push({ line, at: i });
+  });
+  flush();
+  return problems;
+};

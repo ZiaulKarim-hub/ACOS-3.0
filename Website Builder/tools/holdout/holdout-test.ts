@@ -45,7 +45,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, sha256Hex, HASH_METHOD } from "./canonical-hash.ts";
@@ -115,26 +115,30 @@ const yaml = Object.entries(good).map(([k, v]) =>
   `${k}: ${v === null ? "null" : Array.isArray(v) ? `[${v.join(", ")}]` : typeof v === "number" ? v : JSON.stringify(v)}`).join("\n") + "\n";
 writeFileSync(join(repoRoot, "planning/holdouts/manifests/HLD-S99-v1.yaml"), yaml);
 const TOOL = join(process.cwd(), "tools/holdout/reveal.ts");
+// The fixture root is deliberately NOT a git repository, and reveal now REFUSES
+// that state unless --allow-unverified-candidate is passed (security review F2).
+// The helper passes the flag so every existing test exercises the override path;
+// the F2 tests below call the tool directly to pin the refusal itself.
 const run = (env: Record<string, string>, args: string[], cwd = repoRoot) => {
   try {
-    const out = execFileSync("bun", [TOOL, ...args], { cwd, encoding: "utf8", env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    const out = execFileSync("bun", [TOOL, ...args, "--allow-unverified-candidate"], { cwd, encoding: "utf8", env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
     return { code: 0, out };
   } catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
 };
-const gated = run({}, ["--id", "HLD-S99-v1", "--candidate", "abc123"]);
+const gated = run({}, ["--id", "HLD-S99-v1", "--candidate", "abc1230"]);
 ok("refuses without WB_QA_CONTEXT=1", gated.code !== 0 && /only in the QA review context/.test(gated.out));
-const dry = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc123", "--dry-run"]);
+const dry = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc1230", "--dry-run"]);
 ok("--dry-run verifies both hashes and runs nothing", dry.code === 0 && /MATCH/.test(dry.out) && /NOT run/.test(dry.out), dry.out.slice(-200));
 ok("--dry-run leaves revealed_at untouched", /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests/HLD-S99-v1.yaml"), "utf8")));
 
 write("README.md", before + "tampered");
-const mism = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc123"]);
+const mism = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc1230"]);
 ok("a tampered pack refuses and runs NOTHING", mism.code !== 0 && /MISMATCH/.test(mism.out) && /NOTHING WAS RUN/.test(mism.out));
 write("README.md", before);
 
-const real = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc123"]);
+const real = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc1230"]);
 ok("a real reveal runs every case and seals a run record", real.code === 0 && /2 PASS \/ 0 FAIL/.test(real.out) && existsSync(join(repoRoot, "planning/evidence/EVB-HLD-S99-v1/manifest.yaml")), real.out.slice(-300));
-const spent = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc123"]);
+const spent = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S99-v1", "--candidate", "abc1230"]);
 ok("a revealed pack is SPENT and refuses a second run", spent.code !== 0 && /already revealed/.test(spent.out));
 
 console.log("— seal, the custodian side —");
@@ -142,6 +146,23 @@ const SEAL = join(process.cwd(), "tools/holdout/seal.ts");
 const seal = (args: string[], cwd = repoRoot) => {
   try { return { code: 0, out: execFileSync("bun", [SEAL, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
   catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+};
+
+// manualSeal writes a manifest directly, BYPASSING seal.ts. seal now refuses
+// ambiguous packs at authoring time (F9), but reveal's guards must hold even
+// against a manifest a compliant seal would never have produced — a hand-written
+// or older-tool manifest is exactly the adversarial input reveal exists to survive.
+const manualSeal = (id2: string, dir2: string, caseCount = 1) => {
+  const m = /^HLD-(S\d+)[A-Za-z0-9-]*-v(\d+)$/.exec(id2)!;
+  const g: Record<string, unknown> = { ...good, id: id2, parent_story_id: "ST-" + m[1].slice(1),
+    dev_id: m[1] + "-x", qa_id: "QA-" + m[1], contract_version: "v" + m[2],
+    case_classes: ["nominal"], case_count: caseCount, covered_invariants: ["INV-1"],
+    private_pack_sha256: canonicalPackHash(dir2).digest,
+    expected_results_sha256: expectedResultsHash(dir2),
+    revealed_at: null, run_evidence_bundle: null };
+  const y = Object.entries(g).map(([k, v]) =>
+    `${k}: ${v === null ? "null" : Array.isArray(v) ? `[${v.join(", ")}]` : typeof v === "number" ? v : JSON.stringify(v)}`).join("\n") + "\n";
+  writeFileSync(join(repoRoot, "planning/holdouts/manifests", id2 + ".yaml"), y);
 };
 
 // A fresh pack for the round trip — the first one is spent by the reveal above.
@@ -175,7 +196,7 @@ const s5 = seal(["--slice", "S96", "--story", "ST-96", "--contract", "v1"]);
 ok("seal refuses a slice already marked complete", s5.code !== 0 && /already marked complete/.test(s5.out));
 
 // the round trip that matters: sealed by one tool, opened by the other
-const rt = run({ WB_QA_CONTEXT: "1" }, ["--id", rtId, "--candidate", "cafe01"]);
+const rt = run({ WB_QA_CONTEXT: "1" }, ["--id", rtId, "--candidate", "cafe011"]);
 ok("a sealed pack reveals cleanly — seal and reveal agree on the hash", rt.code === 0 && /2 PASS \/ 0 FAIL/.test(rt.out), rt.out.slice(-300));
 
 // a FAILING pack must exit non-zero and keep its result
@@ -185,7 +206,7 @@ writeFileSync(join(failDir, "README.md"), "#\n");
 writeFileSync(join(failDir, "cases.yaml"), "cases:\n  - id: H001\n    class: nominal\n    run: \"exit 1\"\n");
 writeFileSync(join(failDir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
 seal(["--slice", "S95", "--story", "ST-95", "--contract", "v1"]);
-const bad = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S95-v1", "--candidate", "cafe02"]);
+const bad = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S95-v1", "--candidate", "cafe022"]);
 ok("a failing pack exits NON-ZERO", bad.code !== 0, `exit ${bad.code}`);
 // "Sealed, not discarded" is TWO claims: the count is recorded machine-readably,
 // AND the reason survives verbatim. A record that says `fail: 1` without saying
@@ -222,7 +243,7 @@ writeFileSync(join(bigDir, "cases.yaml"),
   "cases:\n  - id: H001\n    class: nominal\n    run: \"printf '%*s' 2097152 ''\"\n");
 writeFileSync(join(bigDir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
 seal(["--slice", "S94", "--story", "ST-94", "--contract", "v1"]);
-const big = run({ WB_QA_CONTEXT: "1" }, ["--id", bigId, "--candidate", "cafe03"]);
+const big = run({ WB_QA_CONTEXT: "1" }, ["--id", bigId, "--candidate", "cafe033"]);
 ok("a case writing 2 MiB to stdout still PASSES (the 1 MiB default would false-FAIL it)",
    big.code === 0 && /1 PASS \/ 0 FAIL/.test(big.out), big.out.slice(-220));
 
@@ -236,7 +257,7 @@ writeFileSync(join(hangDir, "cases.yaml"), "cases:\n  - id: H001\n    class: nom
 writeFileSync(join(hangDir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
 seal(["--slice", "S93", "--story", "ST-93", "--contract", "v1"]);
 const hang = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "1500" },
-                 ["--id", hangId, "--candidate", "cafe04"]);
+                 ["--id", hangId, "--candidate", "cafe044"]);
 ok("a hanging case ABORTS the reveal rather than recording a verdict",
    hang.code !== 0 && /did not finish within/.test(hang.out), hang.out.slice(-220));
 ok("...and the pack is NOT spent — revealed_at stays null",
@@ -273,7 +294,7 @@ writeFileSync(join(byteDir, "README.md"), "# non-utf8 stdout\n");
 writeFileSync(join(byteDir, "cases.yaml"), "cases:\n  - id: H001\n    class: nominal\n    run: '" + RUN_NON_UTF8 + "'\n");
 writeFileSync(join(byteDir, "expected.json"), JSON.stringify({ H001: { exit: 0, stdout_sha256: custodianHash } }) + "\n");
 seal(["--slice", "S92", "--story", "ST-92", "--contract", "v1"]);
-const bytes = run({ WB_QA_CONTEXT: "1" }, ["--id", byteId, "--candidate", "cafe05"]);
+const bytes = run({ WB_QA_CONTEXT: "1" }, ["--id", byteId, "--candidate", "cafe055"]);
 ok("a correct answer containing non-UTF-8 bytes PASSES against a shasum-derived expectation",
    bytes.code === 0 && /1 PASS \/ 0 FAIL/.test(bytes.out), bytes.out.slice(-260));
 
@@ -292,7 +313,7 @@ const rtManifest = join(repoRoot, "planning/holdouts/manifests", rtId + ".yaml")
 writeFileSync(rtManifest, readFileSync(rtManifest, "utf8")
   .replace(/^revealed_at:.*$/m, "revealed_at: null")
   .replace(/^run_evidence_bundle:.*$/m, "run_evidence_bundle: null"));
-const second = run({ WB_QA_CONTEXT: "1" }, ["--id", rtId, "--candidate", "cafe06"]);
+const second = run({ WB_QA_CONTEXT: "1" }, ["--id", rtId, "--candidate", "cafe066"]);
 ok("a second reveal REFUSES rather than overwriting the first run record",
    second.code !== 0 && /run record already exists/.test(second.out), second.out.slice(-260));
 
@@ -315,9 +336,9 @@ const rc = join(tmp, "race");
 mkdirSync(rc, { recursive: true });
 const one = (cand: string, tag: string) =>
   "( WB_QA_CONTEXT=1 bun " + JSON.stringify(TOOL) + " --id " + raceId + " --candidate " + cand +
-  " > " + rc + "/" + tag + ".log 2>&1; echo $? > " + rc + "/" + tag + ".rc ) &";
+  " --allow-unverified-candidate > " + rc + "/" + tag + ".log 2>&1; echo $? > " + rc + "/" + tag + ".rc ) &";
 execFileSync("/bin/sh", ["-c",
-  "cd " + JSON.stringify(repoRoot) + " && " + one("race-aaa", "a") + " " + one("race-bbb", "b") + " wait",
+  "cd " + JSON.stringify(repoRoot) + " && " + one("aaaaaa1", "a") + " " + one("bbbbbb2", "b") + " wait",
 ], { encoding: "utf8" });
 const rcA = readFileSync(join(rc, "a.rc"), "utf8").trim();
 const rcB = readFileSync(join(rc, "b.rc"), "utf8").trim();
@@ -325,7 +346,7 @@ ok("two concurrent reveals of one id: EXACTLY ONE succeeds",
    [rcA, rcB].filter((x) => x === "0").length === 1, "exit codes " + rcA + " and " + rcB);
 const raceMan = readFileSync(join(repoRoot, "planning/holdouts/manifests", raceId + ".yaml"), "utf8");
 const raceEvb = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + raceId, "manifest.yaml"), "utf8");
-const manCand = (/frozen candidate (\S+);/.exec(raceMan) ?? [])[1] ?? "";
+const manCand = (/(?:frozen|UNVERIFIED) candidate (\S+);/.exec(raceMan) ?? [])[1] ?? "";
 const evbCand = (/^candidate: (.+)$/m.exec(raceEvb) ?? [])[1] ?? "";
 ok("...and the two records name the SAME candidate",
    manCand !== "" && manCand === evbCand, "manifest " + manCand + " vs bundle " + evbCand);
@@ -346,7 +367,7 @@ seal(["--slice", "S87", "--story", "ST-87", "--contract", "v1"]);
 const heldBundle = join(repoRoot, "planning/evidence", "EVB-" + heldId);
 mkdirSync(heldBundle, { recursive: true });
 writeFileSync(join(heldBundle, ".reveal.lock"), "pid: 999999\ncandidate: someone-else\n");
-const held = run({ WB_QA_CONTEXT: "1" }, ["--id", heldId, "--candidate", "cafe09"]);
+const held = run({ WB_QA_CONTEXT: "1" }, ["--id", heldId, "--candidate", "cafe099"]);
 ok("a reveal REFUSES while another holds the lock",
    held.code !== 0 && /holds the lock/.test(held.out), held.out.slice(-220));
 ok("...and that refusal does NOT spend the pack",
@@ -371,7 +392,7 @@ const git = (...a: string[]) =>
                { cwd: repo2, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 git("init", "-q"); git("add", "-A"); git("commit", "-q", "-m", "seal");
 const head = git("rev-parse", "HEAD").trim();
-const wrongSha = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S90-v1", "--candidate", "totally-fabricated-not-a-sha"], repo2);
+const wrongSha = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S90-v1", "--candidate", "deadbeefdeadbee"], repo2);
 ok("a --candidate that does not name HEAD is REFUSED",
    wrongSha.code !== 0 && /does not name the commit/.test(wrongSha.out), wrongSha.out.slice(-200));
 ok("...and the pack is NOT spent by the refusal",
@@ -392,7 +413,7 @@ writeFileSync(join(badDir, "cases.yaml"),
   "  - id: H002\n    class: nominal\n    run: \"echo two\"\n");
 writeFileSync(join(badDir, "expected.json"), JSON.stringify({ H001: { exit: 0 }, H002: null }) + "\n");
 seal(["--slice", "S89", "--story", "ST-89", "--contract", "v1"]);
-const malformed = run({ WB_QA_CONTEXT: "1" }, ["--id", badId, "--candidate", "cafe07"]);
+const malformed = run({ WB_QA_CONTEXT: "1" }, ["--id", badId, "--candidate", "cafe077"]);
 ok("a malformed expected.json is refused, naming the offending case",
    malformed.code !== 0 && /expected\.json is malformed/.test(malformed.out) && /H002/.test(malformed.out),
    malformed.out.slice(-220));
@@ -411,7 +432,7 @@ writeFileSync(join(u8Dir, "cases.yaml"), Buffer.concat([
   Buffer.from("\"\n")]));
 writeFileSync(join(u8Dir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
 seal(["--slice", "S88", "--story", "ST-88", "--contract", "v1"]);
-const u8 = run({ WB_QA_CONTEXT: "1" }, ["--id", u8Id, "--candidate", "cafe08"]);
+const u8 = run({ WB_QA_CONTEXT: "1" }, ["--id", u8Id, "--candidate", "cafe088"]);
 ok("a cases.yaml that is not valid UTF-8 is REFUSED before anything runs",
    u8.code !== 0 && /not valid UTF-8/.test(u8.out), u8.out.slice(-220));
 
@@ -445,7 +466,7 @@ writeFileSync(join(zc, "qa-private/HLD-S86-v1/expected.json"), JSON.stringify({ 
 seal(["--slice", "S86", "--story", "ST-86", "--contract", "v1"], zc);
 const zcClean = execFileSync("git", ["status", "--porcelain"], { cwd: zc, encoding: "utf8" }).trim();
 ok("a zero-commit repo with an exclude-all IS clean (the precondition for the bypass)", zcClean === "", "status [" + zcClean + "]");
-const zcRun = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S86-v1", "--candidate", "totally-made-up-not-a-commit"], zc);
+const zcRun = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S86-v1", "--candidate", "deadbeefdeadbee"], zc);
 ok("a repo whose HEAD does not resolve is REFUSED, not treated as 'not a git repository'",
    zcRun.code !== 0 && /HEAD does not resolve/.test(zcRun.out), zcRun.out.slice(-220));
 ok("...and the pack is NOT spent by that refusal",
@@ -492,7 +513,7 @@ writeFileSync(join(ctDir, "README.md"), "# contains\n");
 writeFileSync(join(ctDir, "cases.yaml"), "cases:\n  - id: H001\n    class: nominal\n    run: 'printf \"\\376\\101\"'\n");
 writeFileSync(join(ctDir, "expected.json"), JSON.stringify({ H001: { exit: 0, stdout_contains: "�A" } }) + "\n");
 seal(["--slice", "S84", "--story", "ST-84", "--contract", "v1"]);
-const ct = run({ WB_QA_CONTEXT: "1" }, ["--id", ctId, "--candidate", "cafe10"]);
+const ct = run({ WB_QA_CONTEXT: "1" }, ["--id", ctId, "--candidate", "cafe100"]);
 ok("stdout_contains does NOT falsely match a replacement character the output never held",
    ct.code !== 0 && /stdout missing/.test(ct.out), ct.out.slice(-220));
 
@@ -511,7 +532,7 @@ writeFileSync(join(dupDir, "cases.yaml"),
   "  - id: H001\n    class: nominal\n    run: \"echo second\"\n");
 writeFileSync(join(dupDir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
 seal(["--slice", "S83", "--story", "ST-83", "--contract", "v1"]);
-const dupRun = run({ WB_QA_CONTEXT: "1" }, ["--id", dupId, "--candidate", "cafe11"]);
+const dupRun = run({ WB_QA_CONTEXT: "1" }, ["--id", dupId, "--candidate", "cafe111"]);
 ok("cases.yaml repeating a case id is REFUSED",
    dupRun.code !== 0 && /repeats case id/.test(dupRun.out), dupRun.out.slice(-200));
 ok("...and that refusal does not spend the pack",
@@ -526,8 +547,11 @@ mkdirSync(dkDir, { recursive: true });
 writeFileSync(join(dkDir, "README.md"), "# dup keys\n");
 writeFileSync(join(dkDir, "cases.yaml"), "cases:\n  - id: H001\n    class: nominal\n    run: \"exit 5\"\n");
 writeFileSync(join(dkDir, "expected.json"), "{\"H001\":{\"exit\":0},\"H001\":{\"exit\":5}}\n");
-seal(["--slice", "S82", "--story", "ST-82", "--contract", "v1"]);
-const dkRun = run({ WB_QA_CONTEXT: "1" }, ["--id", dkId, "--candidate", "cafe12"]);
+const dkSeal = seal(["--slice", "S82", "--story", "ST-82", "--contract", "v1"]);
+ok("seal refuses an expected.json with a repeated key, at authoring time",
+   dkSeal.code !== 0 && /repeats key/.test(dkSeal.out), dkSeal.out.slice(-160));
+manualSeal(dkId, dkDir);
+const dkRun = run({ WB_QA_CONTEXT: "1" }, ["--id", dkId, "--candidate", "cafe122"]);
 ok("expected.json repeating a key is REFUSED, not silently last-key-wins",
    dkRun.code !== 0 && /repeats key/.test(dkRun.out), dkRun.out.slice(-200));
 ok("...and that refusal does not spend the pack either",
@@ -560,7 +584,7 @@ for (let i = 0; i < bigN; i++) {
 writeFileSync(join(bigCountDir, "cases.yaml"), bigCases);
 writeFileSync(join(bigCountDir, "expected.json"), JSON.stringify(bigExp) + "\n");
 seal(["--slice", "S77", "--story", "ST-77", "--contract", "v1"]);
-const bigRun = run({ WB_QA_CONTEXT: "1" }, ["--id", bigCountId, "--candidate", "cafe13"]);
+const bigRun = run({ WB_QA_CONTEXT: "1" }, ["--id", bigCountId, "--candidate", "cafe133"]);
 ok("a " + bigN + "-case pack runs every case with nothing dropped",
    bigRun.code === 0 && new RegExp(bigN + " PASS \\/ 0 FAIL of " + bigN).test(bigRun.out), bigRun.out.slice(-200));
 
@@ -580,8 +604,8 @@ mkdirSync(metaDir, { recursive: true });
 writeFileSync(join(metaDir, "README.md"), "# metachar\n");
 writeFileSync(join(metaDir, "cases.yaml"), "cases:\n  - id: \"H(1)\"\n    class: nominal\n    run: \"echo hi\"\n");
 writeFileSync(join(metaDir, "expected.json"), "{\n  \"H(1)\": { \"exit\": 0 },\n  \"H(1)\": { \"exit\": 9 }\n}\n");
-seal(["--slice", "S76", "--story", "ST-76", "--contract", "v1"]);
-const meta = run({ WB_QA_CONTEXT: "1" }, ["--id", metaId, "--candidate", "cafe14"]);
+manualSeal(metaId, metaDir);
+const meta = run({ WB_QA_CONTEXT: "1" }, ["--id", metaId, "--candidate", "cafe144"]);
 ok("a duplicate key is caught even when the case id holds a regex metacharacter",
    meta.code !== 0 && /repeats key/.test(meta.out), meta.out.slice(-220));
 ok("...and that pack is NOT spent",
@@ -599,7 +623,7 @@ writeFileSync(join(okMetaDir, "cases.yaml"),
 writeFileSync(join(okMetaDir, "expected.json"),
   JSON.stringify({ "H(1)": { exit: 0, stdout_contains: "hi" }, "H.2": { exit: 4 } }) + "\n");
 seal(["--slice", "S75", "--story", "ST-75", "--contract", "v1", "--require-counterexample"]);
-const okMeta = run({ WB_QA_CONTEXT: "1" }, ["--id", okMetaId, "--candidate", "cafe15"]);
+const okMeta = run({ WB_QA_CONTEXT: "1" }, ["--id", okMetaId, "--candidate", "cafe155"]);
 ok("a metacharacter id with NO duplicate still runs and passes normally",
    okMeta.code === 0 && /2 PASS \/ 0 FAIL/.test(okMeta.out), okMeta.out.slice(-220));
 
@@ -619,8 +643,8 @@ writeFileSync(join(escDir, "README.md"), "# escape equivalence\n");
 writeFileSync(join(escDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
 writeFileSync(join(escDir, "expected.json"),
   '{\n  "H1"   :   { "exit": 0 },\n  "H' + '\\u0031": { "exit": 9 }\n}\n');
-seal(["--slice", "S74", "--story", "ST-74", "--contract", "v1"]);
-const esc = run({ WB_QA_CONTEXT: "1" }, ["--id", escId, "--candidate", "cafe16"]);
+manualSeal(escId, escDir);
+const esc = run({ WB_QA_CONTEXT: "1" }, ["--id", escId, "--candidate", "cafe166"]);
 ok("a duplicate key spelled two different ways is REFUSED", esc.code !== 0 && /repeats key/.test(esc.out), esc.out.slice(-260));
 ok("...and that pack is NOT spent", /revealed_at: null/.test(readFileSync(join(ESC_MANIFESTS, escId + ".yaml"), "utf8")));
 
@@ -632,8 +656,8 @@ mkdirSync(wsDir, { recursive: true });
 writeFileSync(join(wsDir, "README.md"), "# whitespace\n");
 writeFileSync(join(wsDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
 writeFileSync(join(wsDir, "expected.json"), '{\n  "H1"\n  :\n  { "exit": 0 },\n  "H1"\t:\t{ "exit": 9 }\n}\n');
-seal(["--slice", "S73", "--story", "ST-73", "--contract", "v1"]);
-const ws = run({ WB_QA_CONTEXT: "1" }, ["--id", wsId, "--candidate", "cafe17"]);
+manualSeal(wsId, wsDir);
+const ws = run({ WB_QA_CONTEXT: "1" }, ["--id", wsId, "--candidate", "cafe177"]);
 ok("a duplicate key separated from its colon by newlines and tabs is REFUSED", ws.code !== 0 && /repeats key/.test(ws.out), ws.out.slice(-260));
 
 // A duplicate NESTED inside one entry is just as dangerous: a repeated "exit"
@@ -644,8 +668,8 @@ mkdirSync(nestDir, { recursive: true });
 writeFileSync(join(nestDir, "README.md"), "# nested duplicate\n");
 writeFileSync(join(nestDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
 writeFileSync(join(nestDir, "expected.json"), '{\n  "H1": { "exit": 0, "exit": 9 }\n}\n');
-seal(["--slice", "S71", "--story", "ST-71", "--contract", "v1"]);
-const nest = run({ WB_QA_CONTEXT: "1" }, ["--id", nestId, "--candidate", "cafe18"]);
+manualSeal(nestId, nestDir);
+const nest = run({ WB_QA_CONTEXT: "1" }, ["--id", nestId, "--candidate", "cafe188"]);
 ok("a duplicate key nested INSIDE one expectation is REFUSED", nest.code !== 0 && /repeats key/.test(nest.out), nest.out.slice(-260));
 
 // The other half, and the reason the scanner decodes keys rather than hunting for
@@ -655,11 +679,12 @@ const valId = "HLD-S72-v1";
 const valDir = join(repoRoot, "qa-private", valId);
 mkdirSync(valDir, { recursive: true });
 writeFileSync(join(valDir, "README.md"), "# lookalike in a value\n");
-writeFileSync(join(valDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
+writeFileSync(join(valDir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: nominal\n    run: \"echo '\\\"H1\\\" : this is a VALUE, not a key'\"\n");
 writeFileSync(join(valDir, "expected.json"),
-  '{\n  "H1": { "exit": 0, "note": "\\"H1\\" : this is a VALUE, not a key" }\n}\n');
+  '{\n  "H1": { "exit": 0, "stdout_contains": "\\"H1\\" : this is a VALUE, not a key" }\n}\n');
 seal(["--slice", "S72", "--story", "ST-72", "--contract", "v1"]);
-const val = run({ WB_QA_CONTEXT: "1" }, ["--id", valId, "--candidate", "cafe19"]);
+const val = run({ WB_QA_CONTEXT: "1" }, ["--id", valId, "--candidate", "cafe199"]);
 ok("a key-lookalike inside a string VALUE does NOT falsely refuse",
    val.code === 0 && /1 PASS \/ 0 FAIL/.test(val.out), val.out.slice(-260));
 
@@ -672,11 +697,16 @@ const deepDir = join(repoRoot, "qa-private", deepId);
 mkdirSync(deepDir, { recursive: true });
 writeFileSync(join(deepDir, "README.md"), "# nested elsewhere\n");
 writeFileSync(join(deepDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
-writeFileSync(join(deepDir, "expected.json"), '{\n  "H1": { "exit": 0, "meta": { "H1": 1 } }\n}\n');
-seal(["--slice", "S69", "--story", "ST-69", "--contract", "v1"]);
-const deep = run({ WB_QA_CONTEXT: "1" }, ["--id", deepId, "--candidate", "cafe20"]);
-ok("the same id as a key in a DIFFERENT nested object is not a duplicate",
-   deep.code === 0 && /1 PASS \/ 0 FAIL/.test(deep.out), deep.out.slice(-260));
+// F10 now refuses the unknown "meta" field a full pack needed to express this, so
+// the scanner property is pinned as direct unit tests instead — same property,
+// plus the quote/backslash frame-desync values S62 can no longer legally carry.
+ok("scanner: the same id as a key in a DIFFERENT nested object is not a duplicate",
+   duplicateJsonKeys('{ "H1": { "exit": 0, "meta": { "H1": 1 } } }').length === 0);
+ok("scanner: a genuine duplicate nested two levels down IS caught",
+   duplicateJsonKeys('{ "a": { "b": { "k": 1, "k": 2 } } }').join(",") === "k");
+ok("scanner: a value holding quotes, backslashes and braces does not desync the frames",
+   duplicateJsonKeys('{ "H1": { "exit": 0, "s": "}}} {{{ \\" \\\\ ,,, ::: " }, "H2": { "exit": 1 } }').length === 0);
+rmSync(deepDir, { recursive: true, force: true });
 
 // The sharpest false-refusal case: a string VALUE whose text is identical to a
 // key in the SAME object. Here "exit" is both a key and, separately, the note's
@@ -686,10 +716,10 @@ const sameId = "HLD-S68-v1";
 const sameDir = join(repoRoot, "qa-private", sameId);
 mkdirSync(sameDir, { recursive: true });
 writeFileSync(join(sameDir, "README.md"), "# value equals a sibling key\n");
-writeFileSync(join(sameDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
-writeFileSync(join(sameDir, "expected.json"), '{\n  "H1": { "exit": 0, "note": "exit" }\n}\n');
+writeFileSync(join(sameDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo exit-ok\"\n");
+writeFileSync(join(sameDir, "expected.json"), '{\n  "H1": { "exit": 0, "stdout_contains": "exit" }\n}\n');
 seal(["--slice", "S68", "--story", "ST-68", "--contract", "v1"]);
-const same = run({ WB_QA_CONTEXT: "1" }, ["--id", sameId, "--candidate", "cafe21"]);
+const same = run({ WB_QA_CONTEXT: "1" }, ["--id", sameId, "--candidate", "cafe211"]);
 ok("a string value identical to a sibling KEY does not falsely refuse",
    same.code === 0 && /1 PASS \/ 0 FAIL/.test(same.out), same.out.slice(-260));
 
@@ -706,7 +736,7 @@ const fuzzPack = (id: string, yamlId: string, rawExpected: string, slice: string
   writeFileSync(join(dir, "expected.json"), rawExpected);
   const sealed = seal(["--slice", slice, "--story", `ST-${slice.slice(1)}`, "--contract", "v1"]);
   if (sealed.code !== 0) console.log(`    (seal ${slice} refused: ${sealed.out.trim().split("\n")[0]})`);
-  return { sealed, reveal: () => run({ WB_QA_CONTEXT: "1" }, ["--id", id, "--candidate", "cafe" + slice.slice(1)]) };
+  return { sealed, reveal: () => run({ WB_QA_CONTEXT: "1" }, ["--id", id, "--candidate", "cafe000" + slice.slice(1)]) };
 };
 
 // 1. A SURROGATE PAIR. "H😀" and a literal H followed by U+1F600 are the
@@ -715,6 +745,7 @@ const fuzzPack = (id: string, yamlId: string, rawExpected: string, slice: string
 const astral = "H\u{1F600}";
 const fz1 = fuzzPack("HLD-S66-v1", JSON.stringify(astral),
   '{\n  "' + astral + '": { "exit": 0 },\n  "H' + '\\uD83D\\uDE00": { "exit": 9 }\n}\n', "S66");
+manualSeal("HLD-S66-v1", join(repoRoot, "qa-private", "HLD-S66-v1"));
 const r1 = fz1.reveal();
 ok("a duplicate key spelled as a literal astral character and as a surrogate pair is REFUSED",
    r1.code !== 0 && /repeats key/.test(r1.out), r1.out.slice(-240));
@@ -733,6 +764,7 @@ ok("an astral-character key with no duplicate still runs and passes",
 const backslashId = "H\\1";
 const fz3 = fuzzPack("HLD-S64-v1", JSON.stringify(backslashId),
   '{\n  "H\\\\1": { "exit": 0 },\n  "H' + '\\u005C1": { "exit": 9 }\n}\n', "S64");
+manualSeal("HLD-S64-v1", join(repoRoot, "qa-private", "HLD-S64-v1"));
 const r3 = fz3.reveal();
 ok("a key holding a literal backslash, spelled two ways, is REFUSED",
    r3.code !== 0 && /repeats key/.test(r3.out), r3.out.slice(-240));
@@ -742,6 +774,7 @@ ok("a key holding a literal backslash, spelled two ways, is REFUSED",
 const quoteId = 'a"b';
 const fz4 = fuzzPack("HLD-S63-v1", JSON.stringify(quoteId),
   '{\n  "a\\"b": { "exit": 0 },\n  "a' + '\\u0022b": { "exit": 9 }\n}\n', "S63");
+manualSeal("HLD-S63-v1", join(repoRoot, "qa-private", "HLD-S63-v1"));
 const r4 = fz4.reveal();
 ok("a key holding an escaped quote, spelled two ways, is REFUSED",
    r4.code !== 0 && /repeats key/.test(r4.out), r4.out.slice(-240));
@@ -749,10 +782,18 @@ ok("a key holding an escaped quote, spelled two ways, is REFUSED",
 // 5. A string VALUE stuffed with the characters that drive the frame stack. If any
 // of these were read outside the string, the tokenizer would push or pop a frame
 // that JSON.parse never saw, and every later key would land in the wrong object.
-const fz5 = fuzzPack("HLD-S62-v1", "H1",
-  '{\n  "H1": { "exit": 0, "note": "}}} {{{ [[[ ]]] ,,, ::: \\" \\\\ " }\n}\n', "S62");
-const r5 = fz5.reveal();
-ok("braces, brackets, commas, colons, a quote and a backslash inside a VALUE do not desync the scan",
+// (the quote/backslash-in-value variants are unit-tested on the scanner directly,
+// because F10 now refuses the unknown carrier field a full pack needed for them)
+const fz5Dir = join(repoRoot, "qa-private", "HLD-S62-v1");
+mkdirSync(fz5Dir, { recursive: true });
+writeFileSync(join(fz5Dir, "README.md"), "# hostile value\n");
+writeFileSync(join(fz5Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: nominal\n    run: \"printf '%s' '}}} {{{ [[[ ]]] ,,, ::: '\"\n");
+writeFileSync(join(fz5Dir, "expected.json"),
+  '{\n  "H1": { "exit": 0, "stdout_contains": "}}} {{{ [[[ ]]] ,,, ::: " }\n}\n');
+seal(["--slice", "S62", "--story", "ST-62", "--contract", "v1"]);
+const r5 = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S62-v1", "--candidate", "cafe5555"]);
+ok("braces, brackets, commas, colons inside a VALUE do not desync the scan",
    r5.code === 0 && /1 PASS \/ 0 FAIL/.test(r5.out), r5.out.slice(-240));
 
 // 6. A BOM (byte order mark, U+FEFF) in front of the JSON. JSON.parse rejects it,
@@ -914,6 +955,212 @@ const seenHashes = [...new Set(readFileSync(sealRaceLog, "utf8").trim().split("\
 ok("every concurrent read of the manifest returned the SAME bytes",
    seenHashes.length === 1 && seenHashes[0] === sha256Hex(readFileSync(sealRacePath)),
    `${seenHashes.length} distinct hash(es) across the reads`);
+
+console.log("— security review F1-F12, each finding pinned by its own attack —");
+
+// F3 — --id was interpolated raw into three path expressions that normalize
+// differently; "./" defeated the write-once guard and "../.." escaped qa-private.
+const f3a = run({ WB_QA_CONTEXT: "1" }, ["--id", "./HLD-S99-v1", "--candidate", "abc1230"]);
+ok("F3: --id with a ./ prefix is refused unseen", f3a.code !== 0 && /not a valid pack id/.test(f3a.out), f3a.out.slice(-160));
+const f3b = run({ WB_QA_CONTEXT: "1" }, ["--id", "../../etc", "--candidate", "abc1230"]);
+ok("F3: --id with path traversal is refused unseen", f3b.code !== 0 && /not a valid pack id/.test(f3b.out), f3b.out.slice(-160));
+// ...and a manifest reachable under a name it does not claim is refused.
+const wrongName = join(repoRoot, "planning/holdouts/manifests", "HLD-S59-v1.yaml");
+writeFileSync(wrongName, readFileSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S99-v1.yaml"), "utf8"));
+mkdirSync(join(repoRoot, "qa-private", "HLD-S59-v1"), { recursive: true });
+const f3c = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S59-v1", "--candidate", "abc1230"]);
+ok("F3: a manifest that claims a different id than its filename is refused",
+   f3c.code !== 0 && /does not claim|says id/.test(f3c.out), f3c.out.slice(-200));
+rmSync(wrongName, { force: true });
+
+// F2 — outside a git repository used to be a console note; the sealed record was
+// byte-indistinguishable from a verified run. Now: refusal without the override,
+// and candidate_verified: false in the record with it.
+const f2Id = "HLD-S58-v1";
+const f2Dir = join(repoRoot, "qa-private", f2Id);
+mkdirSync(f2Dir, { recursive: true });
+writeFileSync(join(f2Dir, "README.md"), "# f2\n");
+writeFileSync(join(f2Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
+writeFileSync(join(f2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S58", "--story", "ST-58", "--contract", "v1"]);
+const f2bare = (() => {   // deliberately WITHOUT the helper's override flag
+  try {
+    const out = execFileSync("bun", [TOOL, "--id", f2Id, "--candidate", "abc1230"],
+      { cwd: repoRoot, encoding: "utf8", env: { ...process.env, WB_QA_CONTEXT: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+    return { code: 0, out };
+  } catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+})();
+ok("F2: outside a git repository, reveal REFUSES without the explicit override",
+   f2bare.code !== 0 && /not a git repository/.test(f2bare.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", f2Id + ".yaml"), "utf8")),
+   f2bare.out.slice(-200));
+const f2run = run({ WB_QA_CONTEXT: "1" }, ["--id", f2Id, "--candidate", "abc1230"]);
+const f2rec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f2Id, "manifest.yaml"), "utf8");
+ok("F2: with the override, the sealed record says candidate_verified: false",
+   f2run.code === 0 && /candidate_verified: false/.test(f2rec), f2rec.slice(0, 300));
+ok("F2: the manifest stamp says UNVERIFIED, not 'frozen'",
+   /UNVERIFIED candidate/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", f2Id + ".yaml"), "utf8")));
+const f2inj = run({ WB_QA_CONTEXT: "1" }, ["--id", f2Id, "--candidate", "abc1230\npid: 99999"]);
+ok("F2: a candidate carrying a newline is refused by shape — YAML injection is dead",
+   f2inj.code !== 0 && /not a commit sha/.test(f2inj.out), f2inj.out.slice(-160));
+
+// F7 — a garbage timeout refuses up front. It used to throw MID-RUN (NaN) or
+// silently disable the timer (0), both measured.
+const f7a = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "not-a-number" }, ["--id", f2Id, "--candidate", "abc1230"]);
+ok("F7: a non-numeric timeout env is refused before anything runs",
+   f7a.code !== 0 && /WB_HOLDOUT_CASE_TIMEOUT_MS/.test(f7a.out), f7a.out.slice(-160));
+const f7b = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "0" }, ["--id", f2Id, "--candidate", "abc1230"]);
+ok("F7: a zero timeout is refused — it silently DISABLED the timer",
+   f7b.code !== 0 && /WB_HOLDOUT_CASE_TIMEOUT_MS/.test(f7b.out), f7b.out.slice(-160));
+
+// F1 — the answer key is not readable from inside a case. The case below IS the
+// attack: it tries to read its own pack's expected.json mid-run. The custodian
+// seals the expectation that the attempt FAILS (cat exits 1), so a pass here is
+// a live demonstration that the pack was gone during execution.
+const f1Id = "HLD-S57-v1";
+const f1Dir = join(repoRoot, "qa-private", f1Id);
+mkdirSync(f1Dir, { recursive: true });
+writeFileSync(join(f1Dir, "README.md"), "# f1\n");
+writeFileSync(join(f1Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"cat qa-private/" + f1Id + "/expected.json\"\n");
+writeFileSync(join(f1Dir, "expected.json"), JSON.stringify({ H1: { exit: 1 } }) + "\n");
+seal(["--slice", "S57", "--story", "ST-57", "--contract", "v1"]);
+const f1run = run({ WB_QA_CONTEXT: "1" }, ["--id", f1Id, "--candidate", "abc1230"]);
+ok("F1: a case that reads its own pack's answer key mid-run finds NOTHING",
+   f1run.code === 0 && /1 PASS \/ 0 FAIL/.test(f1run.out), f1run.out.slice(-240));
+ok("F1: the pack is restored after the run, byte-identical",
+   existsSync(join(f1Dir, "expected.json")) &&
+   /post_run_pack_intact: true/.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f1Id, "manifest.yaml"), "utf8")));
+
+// F6 — a case that rewrites the MANIFEST mid-run. The rewrite used to be what got
+// stamped by this very tool. Now: the pre-run text is stamped, the rewrite is
+// discarded, the record says manifest_rewritten_during_run: true, and the exit
+// code is non-zero even though every case passed.
+const f6Id = "HLD-S56-v1";
+const f6Dir = join(repoRoot, "qa-private", f6Id);
+mkdirSync(f6Dir, { recursive: true });
+writeFileSync(join(f6Dir, "README.md"), "# f6\n");
+writeFileSync(join(f6Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"printf 'attacker-was-here' > planning/holdouts/manifests/" + f6Id + ".yaml\"\n");
+writeFileSync(join(f6Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S56", "--story", "ST-56", "--contract", "v1"]);
+const f6run = run({ WB_QA_CONTEXT: "1" }, ["--id", f6Id, "--candidate", "abc1230"]);
+const f6man = readFileSync(join(repoRoot, "planning/holdouts/manifests", f6Id + ".yaml"), "utf8");
+const f6rec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f6Id, "manifest.yaml"), "utf8");
+ok("F6: the attacker's rewrite of the manifest is DISCARDED — the validated text is stamped",
+   !/attacker-was-here/.test(f6man) && /revealed_at: "/.test(f6man), f6man.slice(0, 200));
+ok("F6: the record says manifest_rewritten_during_run: true",
+   /manifest_rewritten_during_run: true/.test(f6rec));
+ok("F6: tampering exits non-zero even though every case passed",
+   f6run.code !== 0 && /1 PASS \/ 0 FAIL/.test(f6run.out) && /TAMPERING RECORDED/.test(f6run.out), f6run.out.slice(-300));
+
+// F8 — attempts are on the record. Attempt 1 aborts on a per-case timeout (a
+// harness limit, pack NOT spent); attempt 2 seals, and the record says attempt: 2.
+const f8Id = "HLD-S55-v1";
+const f8Dir = join(repoRoot, "qa-private", f8Id);
+mkdirSync(f8Dir, { recursive: true });
+writeFileSync(join(f8Dir, "README.md"), "# f8\n");
+writeFileSync(join(f8Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"sleep 1; echo hi\"\n");
+writeFileSync(join(f8Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S55", "--story", "ST-55", "--contract", "v1"]);
+const f8abort = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "80" }, ["--id", f8Id, "--candidate", "abc1230"]);
+ok("F8: the timeout abort still refuses without spending the pack (spawnSync path re-verified)",
+   f8abort.code !== 0 && /did not finish within 80 ms/.test(f8abort.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", f8Id + ".yaml"), "utf8")),
+   f8abort.out.slice(-200));
+const f8run = run({ WB_QA_CONTEXT: "1" }, ["--id", f8Id, "--candidate", "abc1230"]);
+const f8rec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f8Id, "manifest.yaml"), "utf8");
+ok("F8: the sealed record counts BOTH attempts — the abort is no longer invisible",
+   f8run.code === 0 && /attempt: 2/.test(f8rec), f8rec.slice(0, 300));
+
+// F11 — stderr of a SUCCEEDING case is hashed into the raw log.
+const f11Id = "HLD-S54-v1";
+const f11Dir = join(repoRoot, "qa-private", f11Id);
+mkdirSync(f11Dir, { recursive: true });
+writeFileSync(join(f11Dir, "README.md"), "# f11\n");
+writeFileSync(join(f11Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo visible; echo hidden-error 1>&2\"\n");
+writeFileSync(join(f11Dir, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "visible" } }) + "\n");
+seal(["--slice", "S54", "--story", "ST-54", "--contract", "v1"]);
+const f11run = run({ WB_QA_CONTEXT: "1" }, ["--id", f11Id, "--candidate", "abc1230"]);
+const f11bundle = join(repoRoot, "planning/evidence", "EVB-" + f11Id);
+const f11log = readdirSync(f11bundle).filter((f) => f.endsWith(".log")).map((f) => readFileSync(join(f11bundle, f), "utf8")).join("");
+ok("F11: a succeeding case's stderr is hashed into the raw log",
+   f11run.code === 0 && new RegExp("stderr_sha256: " + sha256Hex("hidden-error\n")).test(f11log) && /stderr_bytes: 13/.test(f11log),
+   f11log.slice(-300));
+
+// F9 — cases.yaml ambiguity. Bun.YAML.parse keeps the LAST duplicate key in
+// silence (MEASURED: run: twice parsed to the second command).
+const f9Dir = join(repoRoot, "qa-private", "HLD-S53-v1");
+mkdirSync(f9Dir, { recursive: true });
+writeFileSync(join(f9Dir, "README.md"), "# f9\n");
+writeFileSync(join(f9Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: nominal\n    run: \"echo real\"\n    run: \"echo evil\"\n");
+writeFileSync(join(f9Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const f9seal = seal(["--slice", "S53", "--story", "ST-53", "--contract", "v1"]);
+ok("F9: seal refuses a case carrying run: twice — a reader and the harness would disagree",
+   f9seal.code !== 0 && /"run:" 2 times/.test(f9seal.out), f9seal.out.slice(-200));
+manualSeal("HLD-S53-v1", f9Dir);
+const f9rev = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S53-v1", "--candidate", "abc1230"]);
+ok("F9: reveal refuses the same pack even when the manifest was written around seal",
+   f9rev.code !== 0 && /"run:" 2 times/.test(f9rev.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S53-v1.yaml"), "utf8")),
+   f9rev.out.slice(-200));
+writeFileSync(join(f9Dir, "cases.yaml"), 'cases:\n  - { id: H1, class: nominal, run: "echo a", run: "echo b" }\n');
+const f9flow = seal(["--slice", "S53", "--story", "ST-53", "--contract", "v1"]);
+ok("F9: flow-style case mappings are refused outright rather than scanned",
+   f9flow.code !== 0 && /flow-style/.test(f9flow.out), f9flow.out.slice(-160));
+
+// F4 — the pack ROOT itself as a symlink. The walk refused symlinks it found,
+// but followed one it was handed.
+const f4Real = join(tmp, "outside-pack");
+mkdirSync(f4Real, { recursive: true });
+writeFileSync(join(f4Real, "README.md"), "# f4\n");
+writeFileSync(join(f4Real, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
+writeFileSync(join(f4Real, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const f4Link = join(repoRoot, "qa-private", "HLD-S52-v1");
+symlinkSync(f4Real, f4Link);
+manualSeal("HLD-S52-v1", f4Real);
+const f4run = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S52-v1", "--candidate", "abc1230"]);
+ok("F4: a pack whose ROOT is a symlink out of the tree is refused",
+   f4run.code !== 0 && /is a symlink/.test(f4run.out), f4run.out.slice(-200));
+rmSync(f4Link, { force: true });
+
+// F5 — the executable bit now moves the digest (wb-canon-2).
+const f5Dir = join(tmp, "f5-pack");
+mkdirSync(f5Dir, { recursive: true });
+writeFileSync(join(f5Dir, "README.md"), "# f5\n");
+writeFileSync(join(f5Dir, "cases.yaml"), "cases: []\n");
+writeFileSync(join(f5Dir, "expected.json"), "{}\n");
+const f5Before = canonicalPackHash(f5Dir).digest;
+chmodSync(join(f5Dir, "cases.yaml"), 0o755);
+ok("F5: flipping the executable bit MOVES the pack digest",
+   canonicalPackHash(f5Dir).digest !== f5Before);
+chmodSync(join(f5Dir, "cases.yaml"), 0o644);
+ok("F5: restoring the bit restores the digest", canonicalPackHash(f5Dir).digest === f5Before);
+mkdirSync(join(f5Dir, "empty-dir"));
+let f5Threw = "";
+try { canonicalPackHash(f5Dir); } catch (e: any) { f5Threw = String(e?.message ?? e); }
+ok("F5: an empty directory in a pack is refused", /empty directory/.test(f5Threw), f5Threw.slice(0, 120));
+
+// F10 — the expectation shape check covers every field.
+const f10Dir = join(repoRoot, "qa-private", "HLD-S51-v1");
+mkdirSync(f10Dir, { recursive: true });
+writeFileSync(join(f10Dir, "README.md"), "# f10\n");
+writeFileSync(join(f10Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo hi\"\n");
+const f10try = (expectedBody: string, label: string, want: RegExp) => {
+  writeFileSync(join(f10Dir, "expected.json"), expectedBody);
+  rmSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S51-v1.yaml"), { force: true });
+  rmSync(join(repoRoot, "planning/evidence", "EVB-HLD-S51-v1"), { recursive: true, force: true });
+  manualSeal("HLD-S51-v1", f10Dir);
+  const r = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S51-v1", "--candidate", "abc1230"]);
+  ok(label, r.code !== 0 && want.test(r.out), r.out.slice(-220));
+};
+f10try('{"H1": {"exit": 0, "stdout_sha265": "x"}}',
+       "F10: a MISSPELLED expectation field is refused, not silently ignored", /unknown expectation field/);
+f10try('{"H1": {"exit": 0, "stdout_contains": ""}}',
+       "F10: an empty stdout_contains is refused — it matches everything and checks nothing", /non-empty string/);
+f10try('{"H1": {"exit": 0, "stdout_sha256": "ABC"}}',
+       "F10: a malformed stdout_sha256 is refused", /64 lowercase hex/);
 
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass}/${pass + fail} passed.`);

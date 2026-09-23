@@ -23,12 +23,13 @@
  *   [--dry-run]   verify hashes and print the plan; run nothing, seal nothing.
  */
 
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { appendFileSync, chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { duplicateJsonKeys } from "./json-keys.ts";
+import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
-import { parse, validate, type HoldoutManifest } from "./manifest.ts";
+import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const PACK_ROOT = "qa-private";
@@ -45,7 +46,20 @@ interface Case { id: string; class: string; description?: string; run: string }
  * limit as a case failure would burn the pack on a bug in this file.
  */
 const CASE_MAX_BUFFER = 64 * 1024 * 1024;   // 64 MiB, vs the 1 MiB default
-const CASE_TIMEOUT_MS = Number(process.env.WB_HOLDOUT_CASE_TIMEOUT_MS ?? 120_000);
+// MEASURED (security review F7): the old `Number(env ?? 120_000)` accepted garbage.
+// On bun 1.3.9, `timeout: NaN` makes spawn THROW ERR_OUT_OF_RANGE — per case, after
+// earlier cases already ran — and `timeout: 0` silently disables the timer and the
+// child ran to completion. Both are refused here, before anything is read or run.
+const CASE_TIMEOUT_MS = (() => {
+  const raw = process.env.WB_HOLDOUT_CASE_TIMEOUT_MS;
+  if (raw === undefined) return 120_000;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    console.error(`reveal refused: WB_HOLDOUT_CASE_TIMEOUT_MS is ${JSON.stringify(raw)} — it must be a positive integer of milliseconds.\nA non-number here used to throw mid-run; 0 or a negative silently DISABLED the per-case timeout.`);
+    process.exit(1);
+  }
+  return n;
+})();
 interface Expected { exit: number; stdout_sha256?: string; stdout_contains?: string }
 
 const arg = (n: string): string | null => {
@@ -65,19 +79,44 @@ function main(): number {
   }
 
   const id = arg("--id") ?? die("reveal refused: --id <HLD-...> is required.");
+  // Security review F3: --id used to be interpolated raw into THREE path
+  // expressions that normalize differently. MEASURED: with --id "./HLD-S41-v1",
+  // join() collapses "./" in the manifest and pack paths but NOT in
+  // "EVB-./HLD-S41-v1" — so the same pack resolved, while the write-once guard
+  // and the lock both looked at a directory that never exists. "../.." escaped
+  // qa-private/ entirely. The shape check kills the whole class: no dots, no
+  // separators, nothing for normalize() to disagree about.
+  if (!ID_SHAPE.test(id)) {
+    die(`reveal refused: --id ${JSON.stringify(id)} is not a valid pack id (HLD-S<nn>...-v<n>).\nThe id becomes three filesystem paths; anything but the strict shape is refused unseen.`);
+  }
   const candidate = arg("--candidate") ?? die("reveal refused: --candidate <commit-sha> is required.\nA pack is run against a NAMED FROZEN candidate, or the result cannot be attributed to anything.");
+  // Security review F2 (secondary): the candidate is written into the lock file,
+  // the run record and a YAML comment. It names a COMMIT, so it is hex or nothing —
+  // which also makes newline/YAML injection through it impossible by construction.
+  if (!/^[0-9a-fA-F]{7,40}$/.test(candidate.trim())) {
+    die(`reveal refused: --candidate ${JSON.stringify(candidate)} is not a commit sha (7-40 hex characters).\nAttribution to anything other than a commit is not attribution.`);
+  }
   const dryRun = has("--dry-run");
+  const allowUnverified = has("--allow-unverified-candidate");
 
   // ---- the manifest -------------------------------------------------------
   const mPath = join(MANIFEST_DIR, `${id}.yaml`);
   if (!existsSync(mPath)) die(`reveal refused: no manifest at ${mPath}`);
-  const parsed = parse(readFileSync(mPath, "utf8"));
+  // Held in memory until the stamp at the very end. The stamp used to RE-READ the
+  // file from disk after every case had run — so a case's own shell command could
+  // rewrite the manifest mid-run and the rewrite is what got stamped and sealed
+  // (security review F6). What gets stamped now is exactly what was validated.
+  const preRunManifestText = readFileSync(mPath, "utf8");
+  const parsed = parse(preRunManifestText);
   if (!parsed.ok) die(`reveal refused: ${mPath} does not parse — ${parsed.error}`);
   const problems = validate(parsed.value);
   if (problems.length) {
     die(`reveal refused: ${mPath} is invalid —\n` + problems.map((p) => `    ${p.field}: ${p.message}`).join("\n"));
   }
   const man = parsed.value as HoldoutManifest;
+  if (man.id !== id) {
+    die(`reveal refused: the manifest at ${mPath} says id ${JSON.stringify(man.id)}, not ${JSON.stringify(id)}.\nA manifest reachable under a name it does not claim is a moved or forged manifest.`);
+  }
 
   if (man.revealed_at !== null) {
     die(
@@ -95,6 +134,19 @@ function main(): number {
       `The pack is withheld from the implementation worktree by design — run this from the\n` +
       `QA worktree or the withheld archive where ${PACK_ROOT}/ actually exists (PRD §22.5).`,
     );
+  }
+
+  // Security review F4: listPackFiles() lstat-refuses symlinks it WALKS TO, but the
+  // walk starts with readdirSync on the root it was handed, which FOLLOWS a link.
+  // So qa-private/ or the pack directory itself could be a symlink out of the
+  // audited tree, and "a pack must be self-contained" was not true at the root.
+  for (const p of [PACK_ROOT, packDir]) {
+    if (lstatSync(p).isSymbolicLink()) {
+      die(`reveal refused: ${p} is a symlink. A holdout pack must be self-contained;\nwhat a link points at can change without the pack changing.`);
+    }
+  }
+  if (realpathSync(packDir) !== join(realpathSync(PACK_ROOT), id)) {
+    die(`reveal refused: ${packDir} does not resolve to a plain directory under ${PACK_ROOT}/.`);
   }
 
   const { digest, files } = canonicalPackHash(packDir);
@@ -132,7 +184,20 @@ function main(): number {
   } catch { /* genuinely outside a repository */ }
 
   if (!inRepo) {
-    console.log("note: not a git repository — the frozen-candidate check is recorded as UNVERIFIED.");
+    // Security review F2: this used to be a console note and nothing else. The
+    // sealed record then read "run exactly once against frozen candidate X" —
+    // byte-indistinguishable from a verified run. Copy the manifest and pack to
+    // any non-repo directory and ANY string sealed as the candidate. Now it is a
+    // refusal, and the explicit override writes UNVERIFIED into everything.
+    if (!allowUnverified) {
+      die(
+        `reveal refused: not a git repository, so the candidate cannot be verified as frozen.\n` +
+        `Run from the repository the candidate commit lives in. If you truly need an\n` +
+        `unattributed run, pass --allow-unverified-candidate — the run record and the\n` +
+        `manifest stamp will then both carry candidate_verified: false, permanently.`,
+      );
+    }
+    console.log("note: not a git repository — candidate is UNVERIFIED and the sealed record will say so.");
   } else {
     dirty = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim();
     try {
@@ -168,50 +233,6 @@ function main(): number {
     );
   }
 
-  // ---- the run record must never be overwritten -----------------------------
-  // seal.ts refuses to overwrite an existing manifest; reveal.ts did not, so a
-  // second reveal of the same id silently replaced the first run's record while
-  // that record's own comment claimed it was "Preserved AS PRODUCED". The
-  // revealed_at stamp is the primary guard, but it lives in an editable file —
-  // this is the defence in depth for a cleared, restored or double-invoked run.
-  // Checked BEFORE any case runs, so a refusal costs nothing.
-  const bundleDirEarly = join(EVIDENCE_ROOT, `EVB-${id}`);
-  if (existsSync(join(bundleDirEarly, "manifest.yaml"))) {
-    die(
-      `reveal refused: a run record already exists at ${join(bundleDirEarly, "manifest.yaml")}.\n` +
-      `A holdout pack is revealed exactly once, and the first run's record is evidence.\n` +
-      `Overwriting it would destroy the only account of what actually ran.`,
-    );
-  }
-
-  // An existsSync check followed by a later write is NOT atomic. MEASURED: two
-  // reveal.ts processes launched together against the same unrevealed id BOTH
-  // passed the check above, both ran, and the last writer won — leaving the
-  // manifest stamped "candidate: race-A" while the evidence bundle recorded
-  // "candidate: race-B", on a pack that is now genuinely spent. One raw log was
-  // overwritten outright, because both runs derived the same filename from a
-  // whole-second timestamp.
-  //
-  // The lock closes it: "wx" fails if the path exists, and that test-and-create
-  // is a single atomic syscall, so exactly one process can hold it.
-  mkdirSync(bundleDirEarly, { recursive: true });
-  const lockPath = join(bundleDirEarly, ".reveal.lock");
-  try {
-    writeFileSync(lockPath, `pid: ${process.pid}\ncandidate: ${candidate}\nlocked_at: ${new Date().toISOString()}\n`, { flag: "wx" });
-  } catch (e: any) {
-    if (e?.code === "EEXIST") {
-      die(
-        `reveal refused: ${lockPath} exists, so another reveal of ${id} holds the lock.\n` +
-        `Two concurrent reveals would spend one pack and disagree about which candidate ran it.\n` +
-        `If no reveal is running, a previous one died mid-run: read the lock file, work out what\n` +
-        `actually happened to the pack, and remove it by hand. This is deliberately not automatic.`,
-      );
-    }
-    throw e;
-  }
-  // Release the lock however this process ends, but ONLY if we still own it.
-  process.on("exit", () => { try { if (readFileSync(lockPath, "utf8").includes(`pid: ${process.pid}\n`)) rmSync(lockPath, { force: true }); } catch {} });
-
   // ---- load the cases (FIRST read of withheld content in this process) ----
   // The pack hash is over cases.yaml's RAW BYTES, but the file is parsed as UTF-8.
   // An invalid byte is silently replaced with U+FFFD before the command is built,
@@ -225,6 +246,14 @@ function main(): number {
       `The pack hash covers its raw bytes, but parsing would silently replace the invalid\n` +
       `ones, so the command that ran would not be the command the hash pinned.`,
     );
+  }
+  // F9: Bun.YAML.parse keeps the LAST duplicate key in silence (MEASURED: a case
+  // carrying run: twice executed the second command while a reader saw the first).
+  {
+    const yamlProblems = caseKeyProblems(casesText);
+    if (yamlProblems.length) {
+      die(`reveal refused (pack NOT spent): cases.yaml is ambiguous —\n  ` + yamlProblems.join("\n  "));
+    }
   }
   const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] }).cases;
   const expected = JSON.parse(readFileSync(join(packDir, "expected.json"), "utf8")) as Record<string, Expected>;
@@ -287,6 +316,22 @@ function main(): number {
       if (w === undefined) shapeProblems.push(`${c.id}: no entry in expected.json`);
       else if (w === null || typeof w !== "object" || Array.isArray(w)) shapeProblems.push(`${c.id}: entry is ${w === null ? "null" : Array.isArray(w) ? "an array" : typeof w}, expected an object`);
       else if (typeof w.exit !== "number") shapeProblems.push(`${c.id}: "exit" is ${typeof w.exit}, expected a number`);
+      else {
+        // Security review F10: optional fields were tested for TRUTHINESS at use,
+        // so "" or null silently disabled that check for that case, and a
+        // misspelled field name was silently ignored. All refused here instead.
+        for (const k of Object.keys(w)) {
+          if (k !== "exit" && k !== "stdout_sha256" && k !== "stdout_contains") {
+            shapeProblems.push(`${c.id}: unknown expectation field ${JSON.stringify(k)} — a typo here would silently weaken the case`);
+          }
+        }
+        if ("stdout_sha256" in w && (typeof w.stdout_sha256 !== "string" || !SHA256_HEX.test(w.stdout_sha256))) {
+          shapeProblems.push(`${c.id}: "stdout_sha256" must be 64 lowercase hex characters`);
+        }
+        if ("stdout_contains" in w && (typeof w.stdout_contains !== "string" || w.stdout_contains.length === 0)) {
+          shapeProblems.push(`${c.id}: "stdout_contains" must be a non-empty string — an empty one matches everything and checks nothing`);
+        }
+      }
     }
     if (shapeProblems.length) {
       die(`reveal refused (pack NOT spent): expected.json is malformed and NOTHING WAS RUN.\n  ` + shapeProblems.join("\n  "));
@@ -301,7 +346,108 @@ function main(): number {
 
   if (dryRun) { console.log(`\n--dry-run: ${cases.length} case(s) verified and NOT run. revealed_at untouched.`); return 0; }
 
+  // ---- the run record must never be overwritten -----------------------------
+  // seal.ts refuses to overwrite an existing manifest; reveal.ts did not, so a
+  // second reveal of the same id silently replaced the first run's record while
+  // that record's own comment claimed it was "Preserved AS PRODUCED". The
+  // revealed_at stamp is the primary guard, but it lives in an editable file —
+  // this is the defence in depth for a cleared, restored or double-invoked run.
+  // Checked BEFORE any case runs, so a refusal costs nothing.
+  const bundleDirEarly = join(EVIDENCE_ROOT, `EVB-${id}`);
+  if (existsSync(join(bundleDirEarly, "manifest.yaml"))) {
+    die(
+      `reveal refused: a run record already exists at ${join(bundleDirEarly, "manifest.yaml")}.\n` +
+      `A holdout pack is revealed exactly once, and the first run's record is evidence.\n` +
+      `Overwriting it would destroy the only account of what actually ran.`,
+    );
+  }
+
+  // An existsSync check followed by a later write is NOT atomic. MEASURED: two
+  // reveal.ts processes launched together against the same unrevealed id BOTH
+  // passed the check above, both ran, and the last writer won — leaving the
+  // manifest stamped "candidate: race-A" while the evidence bundle recorded
+  // "candidate: race-B", on a pack that is now genuinely spent. One raw log was
+  // overwritten outright, because both runs derived the same filename from a
+  // whole-second timestamp.
+  //
+  // The lock closes it: "wx" fails if the path exists, and that test-and-create
+  // is a single atomic syscall, so exactly one process can hold it.
+  mkdirSync(bundleDirEarly, { recursive: true });
+  const lockPath = join(bundleDirEarly, ".reveal.lock");
+  try {
+    writeFileSync(lockPath, `pid: ${process.pid}\ncandidate: ${candidate}\nlocked_at: ${new Date().toISOString()}\n`, { flag: "wx" });
+  } catch (e: any) {
+    if (e?.code === "EEXIST") {
+      die(
+        `reveal refused: ${lockPath} exists, so another reveal of ${id} holds the lock.\n` +
+        `Two concurrent reveals would spend one pack and disagree about which candidate ran it.\n` +
+        `If no reveal is running, a previous one died mid-run: read the lock file, work out what\n` +
+        `actually happened to the pack, and remove it by hand. This is deliberately not automatic.`,
+      );
+    }
+    throw e;
+  }
+  // Release the lock however this process ends, but ONLY if we still own it.
+  process.on("exit", () => { try { if (readFileSync(lockPath, "utf8").includes(`pid: ${process.pid}\n`)) rmSync(lockPath, { force: true }); } catch {} });
+
+  // F12 fixed by ORDER: everything above this line is read-only, and --dry-run
+  // returns before the bundle directory or the lock ever exist.
+
+  // F8 (security review): every abort path after this point used to exit with
+  // NOTHING written, while the console printed each case's PASS/FAIL as it ran.
+  // A reveal could be started, watched, and killed before the seal, arbitrarily
+  // many times — "a pack that can be re-run until it passes is homework, not an
+  // exam", and the abort paths were the re-run. Every attempt now lands in the
+  // bundle BEFORE the first case runs, and the count is sealed into the record.
+  const attemptsPath = join(bundleDirEarly, "attempts.log");
+  appendFileSync(attemptsPath, `${new Date().toISOString()} pid=${process.pid} candidate=${candidate} starting\n`);
+  const attemptCount = readFileSync(attemptsPath, "utf8").split("\n").filter((l) => l.endsWith(" starting") || l.includes(" starting")).length;
+  if (attemptCount > 1) {
+    console.log(`note: this is reveal ATTEMPT ${attemptCount} for ${id} — earlier attempts aborted before sealing, and the sealed record will say so.`);
+  }
+
   // ---- run, once ----------------------------------------------------------
+  // F1 (security review, CRITICAL): each case is the IMPLEMENTER'S code running
+  // with this process's filesystem rights, and the pack — answer key included —
+  // sat at a well-known path in the same tree. A case could read
+  // qa-private/*/expected.json on its first invocation and satisfy every later
+  // case from the answers. So for the duration of the run the pack lives at an
+  // unguessable mkdtemp path outside the repository, mode 700.
+  //
+  // STATED LIMIT, not hidden: the cases run as the SAME USER as this process, so
+  // a determined case can still hunt the temp root or attach a debugger. That
+  // cannot be closed without OS-level sandboxing (PRD §22 assumes the candidate
+  // is graded, not imprisoned). What this buys: the answer key is no longer at a
+  // knowable path, and the POST-RUN re-verification below turns silent tampering
+  // into a recorded, sealed fact.
+  const hideBase = mkdtempSync(join(tmpdir(), "wb-reveal-"));
+  chmodSync(hideBase, 0o700);
+  const hiddenPack = join(hideBase, "pack");
+  let packHidden = false;
+  try {
+    renameSync(packDir, hiddenPack);
+    packHidden = true;
+  } catch (e: any) {
+    if (e?.code === "EXDEV") {   // tmp on another volume: copy, then remove
+      cpSync(packDir, hiddenPack, { recursive: true });
+      rmSync(packDir, { recursive: true, force: true });
+      packHidden = true;
+    } else { rmSync(hideBase, { recursive: true, force: true }); throw e; }
+  }
+  // The lock file names the hiding place, so a SIGKILLed reveal can be recovered
+  // by hand — consistent with the lock's "deliberately not automatic" doctrine.
+  appendFileSync(lockPath, `pack_hidden_at: ${hiddenPack}\n`);
+  const restorePack = () => {
+    if (!packHidden) return;
+    try { renameSync(hiddenPack, packDir); }
+    catch {
+      try { cpSync(hiddenPack, packDir, { recursive: true }); } catch {}
+    }
+    packHidden = false;
+    try { rmSync(hideBase, { recursive: true, force: true }); } catch {}
+  };
+  process.on("exit", restorePack);   // fires on die() too — die() is process.exit(1)
+
   const startedAt = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const log: string[] = [
     `# Holdout run record — ${id}`, `candidate: ${candidate}`, `started_at: ${startedAt}`,
@@ -321,13 +467,19 @@ function main(): number {
     // therefore recorded FAIL and the pack spent on it. Worse, 0xFF 0x41 and
     // 0xFE 0x41 are different byte streams that decode to the SAME string, so
     // two distinct answers collided into a single verdict.
-    let outBuf: Buffer = Buffer.alloc(0), code = 0, signalName = "";
-    try {
-      outBuf = execFileSync("/bin/sh", ["-c", c.run], {
-        stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: CASE_MAX_BUFFER, timeout: CASE_TIMEOUT_MS,
-      });
-    } catch (e: any) {
+    let outBuf: Buffer = Buffer.alloc(0), errBuf: Buffer = Buffer.alloc(0), code = 0, signalName = "";
+    // spawnSync, not execFileSync: execFileSync only surfaces stderr on the ERROR
+    // object, so a SUCCEEDING case's stderr was silently discarded (security
+    // review F11) and could never be part of the evidence. spawnSync returns
+    // errors in-band, so the abort branches below read r.error instead of a catch.
+    const r = spawnSync("/bin/sh", ["-c", c.run], {
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: CASE_MAX_BUFFER, timeout: CASE_TIMEOUT_MS,
+    });
+    outBuf = Buffer.isBuffer(r.stdout) ? r.stdout : Buffer.from(String(r.stdout ?? ""));
+    errBuf = Buffer.isBuffer(r.stderr) ? r.stderr : Buffer.from(String(r.stderr ?? ""));
+    {
+      const e: any = r.error;
       // A harness limit is not a verdict. Abort before sealing so the pack
       // survives to be revealed again once the harness is fixed.
       if (e?.code === "ENOBUFS") {
@@ -338,19 +490,19 @@ function main(): number {
       // status null, and leaves `killed` UNDEFINED. Testing `killed` alone never
       // matched, so the hang fell through to the signal branch and was sealed as a
       // real FAIL — spending the pack on a harness limit. Node sets `killed`, so
-      // both are checked.
-      if (e?.code === "ETIMEDOUT" || e?.killed === true) {
+      // both are checked. (Re-verified across the execFileSync->spawnSync move by
+      // the suite's own timeout assertion.)
+      if (e?.code === "ETIMEDOUT" || (r as any).killed === true) {
         die(`reveal aborted (pack NOT spent): case ${c.id} did not finish within ${CASE_TIMEOUT_MS} ms and was killed.\n` +
             `A timeout is a harness limit, not a failure. Fix the case or raise CASE_TIMEOUT_MS, then re-run.`);
       }
-      outBuf = Buffer.isBuffer(e.stdout) ? e.stdout : Buffer.from(String(e.stdout ?? ""));
-      if (typeof e.status === "number") {
-        code = e.status;
-      } else if (typeof e.signal === "string" && e.signal) {
+      if (typeof r.status === "number") {
+        code = r.status;
+      } else if (typeof r.signal === "string" && r.signal) {
         // Killed by a signal: a real failure, but it has no exit code. Record
         // the signal rather than inventing an exit status the case never had.
         code = -1;
-        signalName = e.signal;
+        signalName = r.signal;
       } else {
         die(`reveal aborted (pack NOT spent): case ${c.id} failed with no exit status and no signal — ` +
             `${String(e?.code ?? e?.message ?? e)}. That is a harness fault, not a verdict.`);
@@ -372,11 +524,35 @@ function main(): number {
 
     const ok = reasons.length === 0;
     ok ? pass++ : fail++;
-    log.push(`## ${c.id} [${c.class}] ${ok ? "PASS" : "FAIL"}`, `run: ${c.run}`, `exit: ${code}`, `stdout_sha256: ${outHash}`);
+    log.push(`## ${c.id} [${c.class}] ${ok ? "PASS" : "FAIL"}`, `run: ${c.run}`, `exit: ${code}`, `stdout_sha256: ${outHash}`,
+             `stderr_sha256: ${sha256Hex(errBuf)}`, `stderr_bytes: ${errBuf.length}`);
     if (!ok) log.push(`reasons: ${reasons.join("; ")}`);
     log.push("");
     console.log(`  ${ok ? "PASS" : "FAIL"}  ${c.id} [${c.class}]${ok ? "" : "  — " + reasons.join("; ")}`);
   }
+
+  // ---- restore the pack, then RE-VERIFY everything the run could have bent ----
+  restorePack();
+  // F1's detection half: the pack hash and the working tree were verified BEFORE
+  // the run and never re-checked, so anything a case modified stayed invisible to
+  // the sealed record. Both are re-verified here and sealed into the record. A
+  // failed re-check still seals — the pack IS spent; what must not happen is the
+  // tampering staying off the record — and the process exits non-zero.
+  let packIntactAfterRun = false;
+  try {
+    packIntactAfterRun =
+      canonicalPackHash(packDir).digest === man.private_pack_sha256 &&
+      expectedResultsHash(packDir) === man.expected_results_sha256;
+  } catch { packIntactAfterRun = false; }
+  let treeCleanAfterRun: "true" | "false" | "unverified" = "unverified";
+  if (inRepo) {
+    try { treeCleanAfterRun = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() === "" ? "true" : "false"; }
+    catch { treeCleanAfterRun = "false"; }
+  }
+  // F6: what gets stamped is the text validated BEFORE the run. If the file on
+  // disk changed while cases were running, that is recorded as tampering.
+  const manifestOnDiskNow = readFileSync(mPath, "utf8");
+  const manifestRewrittenDuringRun = manifestOnDiskNow !== preRunManifestText;
 
   // ---- seal, as produced --------------------------------------------------
   const finishedAt = new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -392,13 +568,19 @@ function main(): number {
   const logHash = sha256Hex(logText);
   writeFileSync(join(bundleDir, "manifest.yaml"),
     [`artifact_type: HoldoutRunRecord`, `id: ${bundle}`, `holdout_id: ${id}`, `candidate: ${candidate}`,
+     `candidate_verified: ${inRepo}`, `attempt: ${attemptCount}`,
      `started_at: "${startedAt}"`, `finished_at: "${finishedAt}"`, `case_count: ${cases.length}`,
      `pass: ${pass}`, `fail: ${fail}`, `raw_log: ${logName}`, `raw_log_sha256: "${logHash}"`,
+     `post_run_pack_intact: ${packIntactAfterRun}`,
+     `post_run_tree_clean: ${treeCleanAfterRun}`,
+     `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
   // Stamp the manifest last, so a crash mid-run never marks a pack spent that
-  // produced no sealed record.
-  const src = readFileSync(mPath, "utf8");
+  // produced no sealed record. Stamped from the PRE-RUN text held in memory (F6):
+  // a case that rewrote the manifest mid-run used to have its rewrite stamped by
+  // this very tool; now the rewrite is discarded and recorded as tampering.
+  const src = preRunManifestText;
   // Written to a sibling temp file and RENAMED into place. A plain overwrite is
   // not atomic: a concurrent reader can observe a half-written manifest, and a
   // torn read of a seal.ts write was OBSERVED in review (1 run in 5). rename(2)
@@ -406,17 +588,22 @@ function main(): number {
   // Function replacers, never replacement STRINGS: a "$&" in a replacement string
   // expands to the matched text, which has silently corrupted generated code here.
   const stamped = src
-    .replace(/^revealed_at:.*$/m, () => `revealed_at: "${finishedAt}" # ${cases.length} case(s) run exactly once against frozen candidate ${candidate}; ${pass} PASS / ${fail} FAIL, preserved as-produced`)
+    .replace(/^revealed_at:.*$/m, () => `revealed_at: "${finishedAt}" # ${cases.length} case(s) run exactly once against ${inRepo ? "frozen candidate" : "UNVERIFIED candidate"} ${candidate}; ${pass} PASS / ${fail} FAIL, preserved as-produced`)
     .replace(/^run_evidence_bundle:.*$/m, () => `run_evidence_bundle: ${bundle}`);
   const mTmp = `${mPath}.tmp-${process.pid}`;
   writeFileSync(mTmp, stamped);
   renameSync(mTmp, mPath);
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
-  console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : `All cases passed.`);
+  const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun;
+  if (tampered) {
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun}.`);
+    console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
+  }
+  console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : tampered ? `Cases passed, but see the tampering record above.` : `All cases passed.`);
   // Exit non-zero on failure so a caller that checks the EXIT CODE and not the
   // tally sees it — a suite that throws mid-run still prints "N/N passed".
-  return fail ? 1 : 0;
+  return fail || tampered ? 1 : 0;
 }
 
 process.exit(main());

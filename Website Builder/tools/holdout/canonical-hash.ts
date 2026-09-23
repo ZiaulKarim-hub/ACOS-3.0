@@ -38,8 +38,22 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-/** The only method id this project mints. A manifest naming anything else is refused. */
-export const HASH_METHOD = "wb-canon-1" as const;
+/**
+ * The only method id this project mints. A manifest naming anything else is refused.
+ *
+ * wb-canon-2 (security review F5): wb-canon-1 hashed path + content only. A pack
+ * may ship a helper script a case invokes as `./helper.sh`, and flipping its
+ * executable bit changed behaviour from "runs" to "permission denied" with the
+ * digest UNCHANGED — a pack that moved without its seal moving. The executable
+ * bit now feeds the digest. ONLY the owner-execute bit: group/other permission
+ * bits vary with umask across ordinary copies, and a hash that depends on the
+ * copying machine is a false MISMATCH on a valid pack — the worst failure this
+ * mechanism has (see the header). Empty directories are refused for the same
+ * reason symlinks are: they exist without contributing anything the seal covers.
+ * No pack was ever sealed under wb-canon-1 in this project (zero manifests), so
+ * this is a rename, not a migration.
+ */
+export const HASH_METHOD = "wb-canon-2" as const;
 
 /** Files a pack must contain, per PRD §22.5 (R2P's pack shape, carried over). */
 export const PACK_FILES = ["cases.yaml", "expected.json", "README.md"] as const;
@@ -69,8 +83,16 @@ export function listPackFiles(dir: string): string[] {
           `without the pack changing, so the pack hash would no longer pin what runs.`,
         );
       }
-      if (st.isDirectory()) walk(full);
-      else if (st.isFile()) out.push(relative(dir, full).split(sep).join("/"));
+      if (st.isDirectory()) {
+        if (readdirSync(full).length === 0) {
+          throw new Error(
+            `pack refused: "${relative(dir, full).split(sep).join("/")}/" is an empty directory.\n` +
+            `It exists without contributing anything the seal covers — a case could still\n` +
+            `observe it (test -d), so its presence would be unpinned behaviour.`,
+          );
+        }
+        walk(full);
+      } else if (st.isFile()) out.push(relative(dir, full).split(sep).join("/"));
     }
   };
   walk(dir);
@@ -81,20 +103,28 @@ export function listPackFiles(dir: string): string[] {
 }
 
 /**
- * wb-canon-1: sha256 over `<relpath>\0<sha256(content)>\n` per file, paths sorted.
+ * wb-canon-2: sha256 over `<relpath>\0<x|->\0<sha256(content)>\n` per file, paths
+ * sorted. The middle byte is "x" when the owner-execute bit is set, "-" otherwise.
  *
  * Content is hashed per file rather than concatenated, so a byte moving across a
- * file boundary cannot leave the stream unchanged. The NUL separates a path from
- * its digest because NUL cannot occur in either, so no path can be crafted to
- * impersonate a path-plus-digest pair.
+ * file boundary cannot leave the stream unchanged. The NUL separates the fields
+ * because NUL cannot occur in a POSIX path, so no path can be crafted to
+ * impersonate a path-plus-digest pair. The digest is fixed-width hex, so the
+ * framing stays injective for a distinct sorted path set — hand-traced in
+ * security review (F5): a collision between two different packs reduces to a
+ * sha256 collision.
  */
 export function canonicalPackHash(dir: string): { digest: string; files: string[] } {
   const files = listPackFiles(dir);
   const h = createHash("sha256");
   for (const rel of files) {
+    const full = join(dir, rel);
+    const exec = (lstatSync(full).mode & 0o100) !== 0;
     h.update(Buffer.from(rel, "utf8"));
     h.update(Buffer.from([0x00]));
-    h.update(Buffer.from(sha256Hex(readFileSync(join(dir, rel))), "utf8"));
+    h.update(Buffer.from(exec ? "x" : "-", "utf8"));
+    h.update(Buffer.from([0x00]));
+    h.update(Buffer.from(sha256Hex(readFileSync(full)), "utf8"));
     h.update(Buffer.from([0x0a]));
   }
   return { digest: h.digest("hex"), files };

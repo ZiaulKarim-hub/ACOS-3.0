@@ -57,9 +57,9 @@ const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 /** `HLD-<slice-id>-v<n>` — PRD §22.4. The slice id is carried verbatim, because
  *  this project mints no second numbering scheme (it already carries O31–O34 and
  *  A91+ collisions and will not add to them). */
-const ID_SHAPE = /^HLD-(S\d{2,}[A-Za-z0-9-]*)-v(\d+)$/;
+export const ID_SHAPE = /^HLD-(S\d{2,}[A-Za-z0-9-]*)-v(\d+)$/;
 
-const SHA256_HEX = /^[0-9a-f]{64}$/;
+export const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 export interface Problem { field: string; message: string }
 

@@ -24,6 +24,7 @@
 import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
+import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
@@ -74,9 +75,21 @@ function main(): number {
     if (!existsSync(join(packDir, f))) die(`seal refused: ${packDir}/${f} is missing.`);
   }
 
-  const cases = ((globalThis as any).Bun.YAML.parse(readFileSync(join(packDir, "cases.yaml"), "utf8")) as { cases: Array<{ id: string; class: string; run: string }> }).cases;
+  const casesText = readFileSync(join(packDir, "cases.yaml"), "utf8");
+  // The same two ambiguity refusals reveal.ts applies, HERE, where fixing them is
+  // free — at reveal time the same defect costs a spent pack (security review F9).
+  {
+    const yamlProblems = caseKeyProblems(casesText);
+    if (yamlProblems.length) die(`seal refused: cases.yaml is ambiguous —\n  ` + yamlProblems.join("\n  "));
+  }
+  const rawExpected = readFileSync(join(packDir, "expected.json"), "utf8");
+  {
+    const dupKeys = duplicateJsonKeys(rawExpected);
+    if (dupKeys.length) die(`seal refused: expected.json repeats key(s) ${dupKeys.join(", ")} — JSON keeps only the LAST one, and a pack sealed over that ambiguity is a wrong verdict waiting to happen.`);
+  }
+  const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Array<{ id: string; class: string; run: string }> }).cases;
   if (!Array.isArray(cases) || cases.length === 0) die("seal refused: cases.yaml holds no cases.");
-  const expected = JSON.parse(readFileSync(join(packDir, "expected.json"), "utf8")) as Record<string, unknown>;
+  const expected = JSON.parse(rawExpected) as Record<string, unknown>;
 
   const missing = cases.filter((c) => !(c.id in expected)).map((c) => c.id);
   if (missing.length) die(`seal refused: no expected result for ${missing.join(", ")}.`);

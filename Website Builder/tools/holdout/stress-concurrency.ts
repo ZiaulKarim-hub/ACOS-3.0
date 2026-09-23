@@ -129,7 +129,7 @@ for (let round = 0; round < RACE_ROUNDS; round++) {
   const out = spawnSync("sh", ["-c",
     `( bun "${SEAL}" --slice S60 --story ST-60 --contract v1 >/dev/null 2>&1 ) &\n` +
     `sleep ${delay.toFixed(3)}\n` +
-    `bun "${REVEAL}" --id ${packId} --candidate cafe60 2>&1\n` +
+    `bun "${REVEAL}" --id ${packId} --candidate cafe6000 --allow-unverified-candidate 2>&1\n` +
     `wait\n`,
   ], { cwd: repo, encoding: "utf8", env: { ...process.env, WB_QA_CONTEXT: "1" } });
   const text = (out.stdout ?? "") + (out.stderr ?? "");
