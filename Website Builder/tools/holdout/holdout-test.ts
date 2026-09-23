@@ -2,7 +2,22 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 71/71. Raised from 68 on 2026-09-22 after a review DEFEATED the
+ * Expect 161/161. Raised from 138 on 2026-09-23 after the THIRD security review
+ * returned REJECT with two EXECUTED forgeries: T1, a file descriptor opened
+ * before the mode-000 lockdown read the plaintext answer key straight through
+ * it (POSIX checks permission at open, not read); and T2, a multi-line case
+ * `run` string injected footer fields into the hashed log, which the verifier's
+ * first-match scan then trusted. The pack's answer key is now CIPHERTEXT on
+ * disk (seal encrypts, reveal takes the key on stdin, plaintext exists only in
+ * memory); the run record has delimited trust regions; the attempts chain is
+ * anchored in a TRACKED file (T3); and post_run_tree_clean states its own
+ * limits inside the record (T4). The new tests re-run the reviewer's own
+ * attacks — the fd daemon now harvests ciphertext, the injection is refused at
+ * both tools, the forged-bundle sed flip is caught by region parsing, and both
+ * live branches of post_run_tree_clean are exercised in a real git fixture.
+ *
+ * Previously 138/138 (v3 lockdown + ctime tripwire + hardlink attack).
+ * Before that, expect 71/71. Raised from 68 on 2026-09-22 after a review DEFEATED the
  * duplicate-key guard: it was built from a regex whose escape a patch tool had
  * corrupted, so any case id holding a regex metacharacter slipped past. EVERY id in
  * this suite was alphanumeric, which is why nothing here could see it. Three cases
@@ -49,8 +64,31 @@ import { chmodSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, re
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, sha256Hex, HASH_METHOD } from "./canonical-hash.ts";
+import { ENC_NAME, PLAIN_NAME, decryptExpected, encryptExpected, newKeyHex } from "./keybox.ts";
 import { validate } from "./manifest.ts";
 import { duplicateJsonKeys } from "./json-keys.ts";
+
+// T1: every sealed pack's answer key is ciphertext; the suite plays custodian
+// and keeps each pack's key here, handing it to reveal on stdin like the real
+// flow does. seal() parses the key seal.ts prints; encryptPack() is the
+// manual-seal equivalent.
+const packKeys = new Map<string, string>();
+const encryptPack = (id: string, dir: string): string => {
+  const plain = join(dir, PLAIN_NAME);
+  rmSync(join(dir, ENC_NAME), { force: true });   // a stale seal never survives a re-author
+  const key = newKeyHex();
+  writeFileSync(join(dir, ENC_NAME), encryptExpected(readFileSync(plain), key));
+  rmSync(plain);
+  packKeys.set(id, key);
+  return key;
+};
+// T3: manual seals must also plant the TRACKED attempts anchor seal.ts creates.
+const anchorPack = (root: string, id: string, digest: string) => {
+  mkdirSync(join(root, "planning/holdouts/attempts"), { recursive: true });
+  writeFileSync(join(root, "planning/holdouts/attempts", `${id}.log`),
+    `sealed at=2026-01-01T00:00:00Z id=${id} pack_sha256=${digest} prev=GENESIS
+`);
+};
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, detail = "") => {
@@ -84,8 +122,17 @@ ok("a content change DOES move the digest", canonicalPackHash(packDir).digest !=
 write("README.md", before);
 ok("restoring the content restores the digest", canonicalPackHash(packDir).digest === a.digest);
 
-const shasum = execFileSync("/bin/sh", ["-c", `shasum -a 256 "${join(packDir, "expected.json")}" | cut -d' ' -f1`], { encoding: "utf8" }).trim();
-ok("expected_results_sha256 equals `shasum -a 256 expected.json`", expectedResultsHash(packDir) === shasum, `${expectedResultsHash(packDir)} vs ${shasum}`);
+// T1 changed the sealed shape: the answer key on disk is expected.json.enc, and
+// expectedResultsHash covers the CIPHERTEXT. The pack is encrypted here — after
+// the plaintext-era hash tests above, before anything derives manifest hashes.
+const key99 = encryptPack("HLD-S99-v1", packDir);
+const sealedPack99 = canonicalPackHash(packDir);
+ok("a sealed pack lists the ciphertext, never the plaintext",
+   sealedPack99.files.join(",") === "README.md,cases.yaml,expected.json.enc", sealedPack99.files.join(","));
+const shasum = execFileSync("/bin/sh", ["-c", `shasum -a 256 "${join(packDir, ENC_NAME)}" | cut -d' ' -f1`], { encoding: "utf8" }).trim();
+ok("expected_results_sha256 equals `shasum -a 256 expected.json.enc`", expectedResultsHash(packDir) === shasum, `${expectedResultsHash(packDir)} vs ${shasum}`);
+ok("the ciphertext round-trips under its key",
+   decryptExpected(readFileSync(join(packDir, ENC_NAME)), key99).toString().includes('"H002"'));
 
 console.log("— manifest validation —");
 const good = {
@@ -93,7 +140,7 @@ const good = {
   dev_id: "S99-example", qa_id: "QA-S99", contract_version: "v1", created_at: "2026-09-22T00:00:00Z",
   custodian: "holdout-custodian-agent (not the implementation agent)", hash_method: HASH_METHOD,
   case_classes: ["nominal", "counterexample"], case_count: 2, covered_invariants: ["INV-1"],
-  private_pack_sha256: a.digest, expected_results_sha256: expectedResultsHash(packDir),
+  private_pack_sha256: sealedPack99.digest, expected_results_sha256: expectedResultsHash(packDir),
   revealed_at: null, run_evidence_bundle: null,
 };
 ok("a well-formed manifest validates clean", validate(good).length === 0, JSON.stringify(validate(good)));
@@ -114,14 +161,20 @@ mkdirSync(join(repoRoot, "planning/holdouts/manifests"), { recursive: true });
 const yaml = Object.entries(good).map(([k, v]) =>
   `${k}: ${v === null ? "null" : Array.isArray(v) ? `[${v.join(", ")}]` : typeof v === "number" ? v : JSON.stringify(v)}`).join("\n") + "\n";
 writeFileSync(join(repoRoot, "planning/holdouts/manifests/HLD-S99-v1.yaml"), yaml);
+anchorPack(repoRoot, "HLD-S99-v1", sealedPack99.digest);
 const TOOL = join(process.cwd(), "tools/holdout/reveal.ts");
 // The fixture root is deliberately NOT a git repository, and reveal now REFUSES
 // that state unless --allow-unverified-candidate is passed (security review F2).
 // The helper passes the flag so every existing test exercises the override path;
 // the F2 tests below call the tool directly to pin the refusal itself.
 const run = (env: Record<string, string>, args: string[], cwd = repoRoot) => {
+  // T1: the key rides stdin, exactly like the real flow. Unknown id -> empty
+  // stdin, which only matters to tests that get past every earlier refusal.
+  const id2 = args[args.indexOf("--id") + 1] ?? "";
+  const key = packKeys.get(id2) ?? "";
   try {
-    const out = execFileSync("bun", [TOOL, ...args, "--allow-unverified-candidate"], { cwd, encoding: "utf8", env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    const out = execFileSync("bun", [TOOL, ...args, "--allow-unverified-candidate", "--key-stdin"],
+      { cwd, encoding: "utf8", env: { ...process.env, ...env }, input: key + "\n", stdio: ["pipe", "pipe", "pipe"] });
     return { code: 0, out };
   } catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
 };
@@ -144,8 +197,13 @@ ok("a revealed pack is SPENT and refuses a second run", spent.code !== 0 && /alr
 console.log("— seal, the custodian side —");
 const SEAL = join(process.cwd(), "tools/holdout/seal.ts");
 const seal = (args: string[], cwd = repoRoot) => {
-  try { return { code: 0, out: execFileSync("bun", [SEAL, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
-  catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+  let r: { code: number; out: string };
+  try { r = { code: 0, out: execFileSync("bun", [SEAL, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
+  catch (e: any) { r = { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+  // T1: seal prints the answer key ONCE; the suite is the custodian and keeps it.
+  const m = /sealed (HLD-[A-Za-z0-9-]+)[\s\S]*?WB_HOLDOUT_KEY=([0-9a-f]{64})/.exec(r.out);
+  if (m) packKeys.set(m[1], m[2]);
+  return r;
 };
 
 // manualSeal writes a manifest directly, BYPASSING seal.ts. seal now refuses
@@ -154,10 +212,17 @@ const seal = (args: string[], cwd = repoRoot) => {
 // or older-tool manifest is exactly the adversarial input reveal exists to survive.
 const manualSeal = (id2: string, dir2: string, caseCount = 1) => {
   const m = /^HLD-(S\d+)[A-Za-z0-9-]*-v(\d+)$/.exec(id2)!;
+  // T1/T3: a hand-written manifest still describes the SEALED shape — encrypt
+  // the answer key (registering the key) and plant the tracked anchor, exactly
+  // as seal.ts would, THEN hash. The point of manualSeal is bypassing seal's
+  // REFUSALS, not producing a pack shape reveal would never see.
+  if (existsSync(join(dir2, PLAIN_NAME))) encryptPack(id2, dir2);
+  const packDigest = canonicalPackHash(dir2).digest;
+  anchorPack(repoRoot, id2, packDigest);
   const g: Record<string, unknown> = { ...good, id: id2, parent_story_id: "ST-" + m[1].slice(1),
     dev_id: m[1] + "-x", qa_id: "QA-" + m[1], contract_version: "v" + m[2],
     case_classes: ["nominal"], case_count: caseCount, covered_invariants: ["INV-1"],
-    private_pack_sha256: canonicalPackHash(dir2).digest,
+    private_pack_sha256: packDigest,
     expected_results_sha256: expectedResultsHash(dir2),
     revealed_at: null, run_evidence_bundle: null };
   const y = Object.entries(g).map(([k, v]) =>
@@ -334,9 +399,10 @@ writeFileSync(join(raceDir, "expected.json"), JSON.stringify({ H001: { exit: 0, 
 seal(["--slice", "S91", "--story", "ST-91", "--contract", "v1"]);
 const rc = join(tmp, "race");
 mkdirSync(rc, { recursive: true });
+writeFileSync(join(rc, "key.txt"), packKeys.get(raceId)! + "\n");   // T1: each contender reads the key itself
 const one = (cand: string, tag: string) =>
   "( WB_QA_CONTEXT=1 bun " + JSON.stringify(TOOL) + " --id " + raceId + " --candidate " + cand +
-  " --allow-unverified-candidate > " + rc + "/" + tag + ".log 2>&1; echo $? > " + rc + "/" + tag + ".rc ) &";
+  " --allow-unverified-candidate --key-stdin < " + rc + "/key.txt > " + rc + "/" + tag + ".log 2>&1; echo $? > " + rc + "/" + tag + ".rc ) &";
 execFileSync("/bin/sh", ["-c",
   "cd " + JSON.stringify(repoRoot) + " && " + one("aaaaaa1", "a") + " " + one("bbbbbb2", "b") + " wait",
 ], { encoding: "utf8" });
@@ -400,6 +466,29 @@ ok("...and the pack is NOT spent by the refusal",
 const rightSha = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S90-v1", "--candidate", head], repo2);
 ok("...and the real HEAD sha is accepted",
    rightSha.code === 0 && /1 PASS \/ 0 FAIL/.test(rightSha.out), rightSha.out.slice(-200));
+// The reviewer's three-round-old gap, closed: post_run_tree_clean's live "true"
+// branch. exit 0 above already implies it, but the field is the evidence — and
+// it proves the T3/T4 filter: reveal's OWN writes (the anchor append; the
+// bundle is gitignored in this fixture) do not condemn an honest run.
+ok("GIT: an honest run in a real repository seals post_run_tree_clean: true",
+   /post_run_tree_clean: true/.test(readFileSync(join(repo2, "planning/evidence/EVB-HLD-S90-v1/manifest.yaml"), "utf8")));
+
+// ...and the live "false" branch: a case that dirties a TRACKED file is caught,
+// recorded, and fails the exit code even though the case itself passed.
+writeFileSync(join(repo2, "src.txt"), "original\n");
+mkdirSync(join(repo2, "qa-private", "HLD-S90B-v1"), { recursive: true });
+writeFileSync(join(repo2, "qa-private/HLD-S90B-v1/README.md"), "# dirty\n");
+writeFileSync(join(repo2, "qa-private/HLD-S90B-v1/cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"echo tampered >> src.txt\"\n");
+writeFileSync(join(repo2, "qa-private/HLD-S90B-v1/expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90B", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "second pack");
+const head2 = git("rev-parse", "HEAD").trim();
+const dirtyRun = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S90B-v1", "--candidate", head2], repo2);
+ok("GIT: a case that modifies a TRACKED file seals post_run_tree_clean: false and fails the exit",
+   dirtyRun.code !== 0 && /TAMPERING RECORDED/.test(dirtyRun.out) &&
+   /post_run_tree_clean: false/.test(readFileSync(join(repo2, "planning/evidence/EVB-HLD-S90B-v1/manifest.yaml"), "utf8")),
+   dirtyRun.out.slice(-240));
 
 // A malformed expectation used to throw mid-loop at want.exit — AFTER earlier cases
 // had already run their shell commands and left side effects behind.
@@ -1022,14 +1111,14 @@ const f1Dir = join(repoRoot, "qa-private", f1Id);
 mkdirSync(f1Dir, { recursive: true });
 writeFileSync(join(f1Dir, "README.md"), "# f1\n");
 writeFileSync(join(f1Dir, "cases.yaml"),
-  "cases:\n  - id: H1\n    class: hostile\n    run: \"cat qa-private/" + f1Id + "/expected.json\"\n");
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"cat qa-private/" + f1Id + "/" + ENC_NAME + "\"\n");
 writeFileSync(join(f1Dir, "expected.json"), JSON.stringify({ H1: { exit: 1 } }) + "\n");
 seal(["--slice", "S57", "--story", "ST-57", "--contract", "v1"]);
 const f1run = run({ WB_QA_CONTEXT: "1" }, ["--id", f1Id, "--candidate", "abc1230"]);
 ok("F1: a case that reads its own pack's answer key mid-run finds NOTHING",
    f1run.code === 0 && /1 PASS \/ 0 FAIL/.test(f1run.out), f1run.out.slice(-240));
 ok("F1: the pack is restored after the run, byte-identical",
-   existsSync(join(f1Dir, "expected.json")) &&
+   existsSync(join(f1Dir, ENC_NAME)) &&
    /post_run_pack_intact: true/.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f1Id, "manifest.yaml"), "utf8")));
 
 // F6 — a case that rewrites the MANIFEST mid-run. The rewrite used to be what got
@@ -1106,6 +1195,13 @@ ok("F9: reveal refuses the same pack even when the manifest was written around s
    /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S53-v1.yaml"), "utf8")),
    f9rev.out.slice(-200));
 writeFileSync(join(f9Dir, "cases.yaml"), 'cases:\n  - { id: H1, class: nominal, run: "echo a", run: "echo b" }\n');
+// Back to the AUTHORING shape: seal consumes plaintext, and the manualSeal above
+// left a manifest + anchor that would trip the write-once refusal before the
+// flow-style scan this test exists to reach.
+writeFileSync(join(f9Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+rmSync(join(f9Dir, ENC_NAME), { force: true });
+rmSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S53-v1.yaml"), { force: true });
+rmSync(join(repoRoot, "planning/holdouts/attempts", "HLD-S53-v1.log"), { force: true });
 const f9flow = seal(["--slice", "S53", "--story", "ST-53", "--contract", "v1"]);
 ok("F9: flow-style case mappings are refused outright rather than scanned",
    f9flow.code !== 0 && /flow-style/.test(f9flow.out), f9flow.out.slice(-160));
@@ -1203,8 +1299,10 @@ const s3HashBefore = canonicalPackHash(s3Dir).digest;
 // orphan finished, sealed, and raced the next test's reveal over one bundle.
 // (reveal.ts caught that interference and flagged it, which is how the launcher
 // bug was found.) cwd comes from execFileSync, so nothing wraps bun.
+const s3KeyFile = join(tmp, "s3key.txt");
+writeFileSync(s3KeyFile, packKeys.get(s3Id)! + "\n");
 execFileSync("/bin/sh", ["-c",
-  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${s3Id} --candidate abc1230 --allow-unverified-candidate > /dev/null 2>&1 & pid=$!; sleep 1.2; kill -TERM $pid 2>/dev/null; wait $pid 2>/dev/null; exit 0`,
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${s3Id} --candidate abc1230 --allow-unverified-candidate --key-stdin < ${JSON.stringify(s3KeyFile)} > /dev/null 2>&1 & pid=$!; sleep 1.2; kill -TERM $pid 2>/dev/null; wait $pid 2>/dev/null; exit 0`,
 ], { cwd: repoRoot });
 // v3 contract, measured: a signal handler CANNOT run while bun is blocked inside
 // spawnSync, so nothing restores on SIGTERM — and nothing needs to. The pack
@@ -1250,7 +1348,9 @@ const s2LogName = s2Logs[0];
 const s2Log = readFileSync(join(s2Bundle, s2LogName), "utf8");
 ok("S2: every integrity field is inside the HASHED log",
    s2run.code === 0 &&
-   /candidate_verified: false/.test(s2Log) && /attempt: 1/.test(s2Log) &&
+   // attempt: 2, not 1 — the s4 block above rm -rf'd the whole bundle, and the
+   // TRACKED anchor still remembers the SIGTERM attempt (T3: rm resets nothing).
+   /candidate_verified: false/.test(s2Log) && /attempt: 2/.test(s2Log) &&
    /post_run_pack_intact: true/.test(s2Log) && /manifest_rewritten_during_run: false/.test(s2Log) &&
    /attempts_log_sha256: [0-9a-f]{64}/.test(s2Log),
    s2Log.slice(-400) + " ||EXIT=" + s2run.code + "|| " + s2run.out.slice(-200));
@@ -1268,9 +1368,11 @@ ok("S2: the reviewer's sed flip of candidate_verified is now CAUGHT",
    vrr2.code !== 0 && /candidate_verified DISAGREES/.test(vrr2.out), vrr2.out.slice(-300));
 writeFileSync(s2Man, readFileSync(s2Man, "utf8").replace("candidate_verified: true", "candidate_verified: false"));
 const s2LogPath = join(s2Bundle, s2LogName);
-writeFileSync(s2LogPath, readFileSync(s2LogPath, "utf8").replace("post_run_pack_intact: true", "post_run_pack_intact: banana"));
+const s2LogOriginal = readFileSync(s2LogPath, "utf8");
+writeFileSync(s2LogPath, s2LogOriginal.replace("post_run_pack_intact: true", "post_run_pack_intact: banana"));
 const vrr3 = vrr(repoRoot);
 ok("S2: an edited raw log is CAUGHT by its own hash", vrr3.code !== 0 && /raw_log_sha256 mismatch/.test(vrr3.out), vrr3.out.slice(-300));
+writeFileSync(s2LogPath, s2LogOriginal);   // restore: later verifier passes must see honest records
 
 // The ctime tripwire, attacked. A case that chmods the pack directory to reach
 // inside it moves the dir's ctime — a timestamp only the kernel writes and no
@@ -1310,11 +1412,224 @@ writeFileSync(join(hlDir, "cases.yaml"),
   "cases:\n  - id: H1\n    class: hostile\n    run: \"cat " + hlLink + "\"\n");
 writeFileSync(join(hlDir, "expected.json"), JSON.stringify({ H1: { exit: 1 } }) + "\n");
 seal(["--slice", "S41A", "--story", "ST-41", "--contract", "v1"]);
-linkSync(join(hlDir, "expected.json"), hlLink);   // the attacker's pre-made second name
+linkSync(join(hlDir, ENC_NAME), hlLink);   // the attacker's pre-made second name
 const hlRun = run({ WB_QA_CONTEXT: "1" }, ["--id", hlId, "--candidate", "abc1230"]);
 ok("HARDLINK: a pre-made hardlink to the answer key reads NOTHING during the run",
    hlRun.code === 0 && /1 PASS \/ 0 FAIL/.test(hlRun.out), hlRun.out.slice(-240));
 rmSync(hlLink, { force: true });
+
+console.log("— third security review: T1/T2/T3/T4, each executed defeat pinned —");
+
+// A direct-key runner for the refusal tests: exact control of what stdin carries.
+const runKey = (id2: string, keyLine: string | null, cwd = repoRoot) => {
+  const args = [TOOL, "--id", id2, "--candidate", "abc1230", "--allow-unverified-candidate"];
+  if (keyLine !== null) args.push("--key-stdin");
+  try {
+    const out = execFileSync("bun", args, { cwd, encoding: "utf8",
+      env: { ...process.env, WB_QA_CONTEXT: "1" },
+      ...(keyLine !== null ? { input: keyLine + "\n", stdio: ["pipe", "pipe", "pipe"] as const }
+                           : { stdio: ["ignore", "pipe", "pipe"] as const }) });
+    return { code: 0, out };
+  } catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+};
+
+// T1 — the reviewer's pre-opened-descriptor daemon, re-run against the sealed
+// shape. POSIX checks permission at open(2), not read(2): the fd DOES read
+// straight through mode 000, the tripwire records nothing — and it no longer
+// matters, because what it reads is ciphertext.
+const t1Id = "HLD-S40-v1";
+const t1Dir = join(repoRoot, "qa-private", t1Id);
+mkdirSync(t1Dir, { recursive: true });
+const t1Flag = join(tmp, "t1-flag"), t1Dump = join(tmp, "t1-dump.bin"), t1Ready = join(tmp, "t1-ready");
+writeFileSync(join(t1Dir, "README.md"), "# t1\n");
+writeFileSync(join(t1Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"touch " + t1Flag + "; sleep 0.6\"\n");
+writeFileSync(join(t1Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S40", "--story", "ST-40", "--contract", "v1"]);
+ok("T1: after sealing, NO plaintext answer key exists on disk",
+   !existsSync(join(t1Dir, PLAIN_NAME)) && existsSync(join(t1Dir, ENC_NAME)));
+const t1Cipher = readFileSync(join(t1Dir, ENC_NAME));
+// The daemon: open the key file BEFORE the reveal, signal readiness, then dump
+// THROUGH the held descriptor while the case (which raised the flag) still runs
+// and the file sits at mode 000.
+execFileSync("/bin/sh", ["-c",
+  `( exec 3< ${JSON.stringify(join(t1Dir, ENC_NAME))}; : > ${JSON.stringify(t1Ready)}; ` +
+  `while [ ! -e ${JSON.stringify(t1Flag)} ]; do sleep 0.05; done; cat <&3 > ${JSON.stringify(t1Dump)} ) &`], { cwd: repoRoot });
+execFileSync("/bin/sh", ["-c", `for i in $(seq 40); do [ -e ${JSON.stringify(t1Ready)} ] && exit 0; sleep 0.05; done; exit 1`]);
+const t1Run = run({ WB_QA_CONTEXT: "1" }, ["--id", t1Id, "--candidate", "abc1230"]);
+execFileSync("/bin/sh", ["-c", `for i in $(seq 20); do [ -s ${JSON.stringify(t1Dump)} ] && exit 0; sleep 0.1; done; exit 0`]);
+const t1Got = existsSync(t1Dump) ? readFileSync(t1Dump) : Buffer.alloc(0);
+ok("T1: the pre-opened fd reads THROUGH mode 000 — and harvests ONLY ciphertext",
+   t1Got.length > 0 && t1Got.equals(t1Cipher) && !t1Got.includes(Buffer.from('"exit"')),
+   `dumped ${t1Got.length} byte(s)`);
+ok("T1: the run it spied on is unforged, and the tripwire honestly saw nothing (fd reads move no ctime)",
+   t1Run.code === 0 && /1 PASS \/ 0 FAIL/.test(t1Run.out) &&
+   /post_run_pack_untouched: true/.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + t1Id, "manifest.yaml"), "utf8")),
+   t1Run.out.slice(-200));
+
+// T1, the key-handling refusals — all on an UNSPENT pack, none spend it.
+const t1xId = "HLD-S39-v1";
+const t1xDir = join(repoRoot, "qa-private", t1xId);
+mkdirSync(t1xDir, { recursive: true });
+writeFileSync(join(t1xDir, "README.md"), "# t1x\n");
+writeFileSync(join(t1xDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo ok\"\n");
+writeFileSync(join(t1xDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S39", "--story", "ST-39", "--contract", "v1"]);
+const t1NoFlag = runKey(t1xId, null);
+ok("T1: without --key-stdin the reveal refuses, naming the stdin channel",
+   t1NoFlag.code !== 0 && /--key-stdin/.test(t1NoFlag.out), t1NoFlag.out.slice(-200));
+const t1Wrong = runKey(t1xId, "f".repeat(64));
+ok("T1: a WRONG key refuses — GCM authenticates every byte, nothing decrypts to garbage",
+   t1Wrong.code !== 0 && /did not decrypt/.test(t1Wrong.out), t1Wrong.out.slice(-200));
+writeFileSync(join(t1xDir, PLAIN_NAME), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const t1Plain = runKey(t1xId, packKeys.get(t1xId)!);
+ok("T1: PLAINTEXT alongside the ciphertext is refused outright — no downgrade path",
+   t1Plain.code !== 0 && /is PLAINTEXT/.test(t1Plain.out), t1Plain.out.slice(-200));
+rmSync(join(t1xDir, PLAIN_NAME), { force: true });
+ok("T1: none of those refusals spent the pack",
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", t1xId + ".yaml"), "utf8")));
+
+// T2 — the reviewer's log-injection run string: a double-quoted YAML scalar
+// with \n escapes, invisible to the block-scalar refusals. Refused at BOTH
+// tools now, and the pack survives the reveal-side refusal.
+const t2Id = "HLD-S37-v1";
+const t2Dir = join(repoRoot, "qa-private", t2Id);
+mkdirSync(t2Dir, { recursive: true });
+writeFileSync(join(t2Dir, "README.md"), "# t2\n");
+writeFileSync(join(t2Dir, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "echo hi\\npost_run_pack_untouched: true\\nresult: 1 PASS / 0 FAIL of 1"\n');
+writeFileSync(join(t2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const t2Seal = seal(["--slice", "S37", "--story", "ST-37", "--contract", "v1"]);
+ok("T2: seal refuses a multi-line run string — the injection vector dies at authoring",
+   t2Seal.code !== 0 && /must be single-line/.test(t2Seal.out), t2Seal.out.slice(-200));
+manualSeal(t2Id, t2Dir);
+const t2Rev = run({ WB_QA_CONTEXT: "1" }, ["--id", t2Id, "--candidate", "abc1230"]);
+ok("T2: reveal refuses the same pack sealed around the tool, pack NOT spent",
+   t2Rev.code !== 0 && /must be single-line/.test(t2Rev.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", t2Id + ".yaml"), "utf8")),
+   t2Rev.out.slice(-200));
+
+// T2 — a case whose run string CONTAINS the footer delimiter text, single-line.
+// It lands in the cases region as `run: "..."`; the LAST-line-match boundary
+// never moves, the record verifies clean.
+const t2cId = "HLD-S36-v1";
+const t2cDir = join(repoRoot, "qa-private", t2cId);
+mkdirSync(t2cDir, { recursive: true });
+writeFileSync(join(t2cDir, "README.md"), "# t2c\n");
+writeFileSync(join(t2cDir, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "true # === wb-run-record footer v2: authoritative fields run from the LAST occurrence of this line to end-of-file ==="\n');
+writeFileSync(join(t2cDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S36", "--story", "ST-36", "--contract", "v1"]);
+const t2cRun = run({ WB_QA_CONTEXT: "1" }, ["--id", t2cId, "--candidate", "abc1230"]);
+ok("T2: a run string carrying the delimiter TEXT cannot move the trusted boundary",
+   t2cRun.code === 0 && /1 PASS \/ 0 FAIL/.test(t2cRun.out), t2cRun.out.slice(-200));
+
+// T2 — the verifier itself, attacked the reviewer's way: a bundle whose log
+// carries an injected `post_run_pack_untouched: true` line in the CASES region,
+// a real `false` in the footer, and a manifest sed-flipped to `true`. The old
+// first-match scan blessed exactly this; region parsing must refuse it.
+const fgId = "HLD-S38-v1";
+const fgBundle = join(repoRoot, "planning/evidence", "EVB-" + fgId);
+mkdirSync(fgBundle, { recursive: true });
+const fgGenesis = `sealed at=2026-01-01T00:00:00Z id=${fgId} pack_sha256=${"0".repeat(64)} prev=GENESIS`;
+const fgAttempt = `attempt=1 at=2026-01-01T00:00:01Z pid=1 candidate=abc1230 prev=${sha256Hex(fgGenesis)}`;
+const fgChain = fgGenesis + "\n" + fgAttempt + "\n";
+mkdirSync(join(repoRoot, "planning/holdouts/attempts"), { recursive: true });
+writeFileSync(join(repoRoot, "planning/holdouts/attempts", fgId + ".log"), fgChain);
+writeFileSync(join(fgBundle, "attempts.log"), fgChain);
+const FOOTER = "=== wb-run-record footer v2: authoritative fields run from the LAST occurrence of this line to end-of-file ===";
+const CASESD = "=== cases: candidate-controlled region — no field below this line is trusted until the footer delimiter ===";
+const fgLog = [
+  `# Holdout run record — ${fgId}`, `candidate: abc1230`, `candidate_verified: false`,
+  `attempt: 1`, `started_at: 2026-01-01T00:00:02Z`, `hash_method: wb-canon-2`,
+  `pack_sha256: ${"0".repeat(64)}`, `expected_results_sha256: ${"1".repeat(64)}`, "",
+  CASESD, "",
+  `## H1 [hostile] PASS`, `post_run_pack_untouched: true`, `exit: 0`, "",
+  FOOTER,
+  `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
+  `post_run_tree_clean_semantics: test-semantics`,
+  `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
+  `attempts_log_sha256: ${sha256Hex(fgChain)}`,
+  `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
+].join("\n") + "\n";
+writeFileSync(join(fgBundle, "holdout-run-forged.log"), fgLog);
+const fgManifest = (untouched: string) => [
+  `artifact_type: HoldoutRunRecord`, `id: EVB-${fgId}`, `holdout_id: ${fgId}`,
+  `candidate: abc1230`, `candidate_verified: false`, `attempt: 1`,
+  `case_count: 1`, `pass: 1`, `fail: 0`, `raw_log: holdout-run-forged.log`,
+  `raw_log_sha256: "${sha256Hex(fgLog)}"`,
+  `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
+  `post_run_tree_clean_semantics: test-semantics`,
+  `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
+  `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
+].join("\n");
+writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
+const VRR = join(process.cwd(), "tools/holdout/verify-run-records.ts");
+const vrrRun = (cwd: string) => {
+  try { return { code: 0, out: execFileSync("bun", [VRR], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
+  catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+};
+const fgV1 = vrrRun(repoRoot);
+ok("T2: the verifier reads the FOOTER, not the injected line — the sed flip is caught",
+   fgV1.code !== 0 && /post_run_pack_untouched DISAGREES/.test(fgV1.out), fgV1.out.slice(-300));
+// A fully CONSISTENT forged bundle passes: this tool proves consistency and
+// post-seal integrity, not provenance. Whole-cloth fabrication remains the
+// stated same-user limit (reviewer round 3, item withheld by design).
+writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("false"));
+const fgV2 = vrrRun(repoRoot);
+ok("T2: with the lie corrected, every bundle verifies again", fgV2.code === 0, fgV2.out.slice(-300));
+
+// T3 — the tracked anchor. Deleting it refuses; resetting it to genesis while
+// the bundle copy remembers refuses. (The rm -rf amnesia itself is already
+// pinned above: the S2 record now says `attempt: 2` BECAUSE the anchor
+// survived the s4 block's whole-bundle rm.)
+const t3Id = "HLD-S35-v1";
+const t3Dir = join(repoRoot, "qa-private", t3Id);
+mkdirSync(t3Dir, { recursive: true });
+writeFileSync(join(t3Dir, "README.md"), "# t3\n");
+writeFileSync(join(t3Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"sleep 2\"\n");
+writeFileSync(join(t3Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S35", "--story", "ST-35", "--contract", "v1"]);
+const t3Anchor = join(repoRoot, "planning/holdouts/attempts", t3Id + ".log");
+const t3AnchorGenesis = readFileSync(t3Anchor, "utf8");
+rmSync(t3Anchor);
+const t3NoAnchor = run({ WB_QA_CONTEXT: "1" }, ["--id", t3Id, "--candidate", "abc1230"]);
+ok("T3: a deleted attempts anchor refuses — its absence is the removal of a TRACKED file",
+   t3NoAnchor.code !== 0 && /no attempts anchor/.test(t3NoAnchor.out), t3NoAnchor.out.slice(-200));
+writeFileSync(t3Anchor, t3AnchorGenesis);
+// One aborted attempt (per-case timeout), so both copies carry attempt=1...
+const t3Abort = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "200" }, ["--id", t3Id, "--candidate", "abc1230"]);
+ok("T3: the timeout abort landed attempt=1 on BOTH copies of the chain",
+   t3Abort.code !== 0 && /attempt=1 /.test(readFileSync(t3Anchor, "utf8")) &&
+   /attempt=1 /.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + t3Id, "attempts.log"), "utf8")),
+   t3Abort.out.slice(-160));
+// ...then the insider "git checkout"s the anchor back to its committed genesis.
+writeFileSync(t3Anchor, t3AnchorGenesis);
+rmSync(join(repoRoot, "planning/evidence", "EVB-" + t3Id, ".reveal.lock"), { force: true });
+const t3Reset = run({ WB_QA_CONTEXT: "1" }, ["--id", t3Id, "--candidate", "abc1230"]);
+ok("T3: an anchor reset to genesis DISAGREES with the bundle copy and refuses",
+   t3Reset.code !== 0 && /disagree/.test(t3Reset.out), t3Reset.out.slice(-240));
+
+// T3/T4 on the verifier: a sealed record whose anchor disappears afterwards.
+const t2cBundle = join(repoRoot, "planning/evidence", "EVB-" + t2cId);
+const t2cAnchor = join(repoRoot, "planning/holdouts/attempts", t2cId + ".log");
+const t2cAnchorText = readFileSync(t2cAnchor, "utf8");
+rmSync(t2cAnchor);
+const t3V1 = vrrRun(repoRoot);
+ok("T3: verify-run-records catches a MISSING tracked anchor behind a sealed record",
+   t3V1.code !== 0 && /attempts anchor .* is MISSING/.test(t3V1.out), t3V1.out.slice(-300));
+writeFileSync(t2cAnchor, t2cAnchorText);
+// T4: the semantics caveat is IN the record, in both halves, and cross-checked.
+const t2cMan = join(t2cBundle, "manifest.yaml");
+ok("T4: the record itself states what post_run_tree_clean cannot see",
+   /post_run_tree_clean_semantics: end-of-run snapshot; blind to a modify-then-restore/.test(readFileSync(t2cMan, "utf8")));
+writeFileSync(t2cMan, readFileSync(t2cMan, "utf8").replace("blind to a modify-then-restore", "sees a modify-then-restore"));
+const t4V = vrrRun(repoRoot);
+ok("T4: editing the manifest's semantics line DISAGREES with the hashed log",
+   t4V.code !== 0 && /post_run_tree_clean_semantics DISAGREES/.test(t4V.out), t4V.out.slice(-300));
+writeFileSync(t2cMan, readFileSync(t2cMan, "utf8").replace("sees a modify-then-restore", "blind to a modify-then-restore"));
+const t4V2 = vrrRun(repoRoot);
+ok("T4: restored, every record verifies again", t4V2.code === 0, t4V2.out.slice(-200));
 
 // S6 — a FIFO left the digest byte-identical (executed by the reviewer).
 const s6Dir = join(tmp, "s6-pack");

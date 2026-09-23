@@ -19,8 +19,11 @@
  * not an exam.
  *
  * Usage:
- *   WB_QA_CONTEXT=1 bun tools/holdout/reveal.ts --id HLD-S41-v1 --candidate <sha>
+ *   printf '%s\n' "$WB_HOLDOUT_KEY" | \
+ *     WB_QA_CONTEXT=1 bun tools/holdout/reveal.ts --id HLD-S41-v1 --candidate <sha> --key-stdin
  *   [--dry-run]   verify hashes and print the plan; run nothing, seal nothing.
+ *   The answer key travels on STDIN only (T1): argv and env are visible to any
+ *   same-user process via ps; stdin is not.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -28,11 +31,19 @@ import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSyn
 import { dirname, join } from "node:path";
 import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
+import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
+import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
+const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
 const PACK_ROOT = "qa-private";
 const EVIDENCE_ROOT = "planning/evidence";
+
+// T4, recorded IN the record rather than only in a comment: what the tree
+// snapshot can and cannot see. Cross-checked verbatim between the hashed log
+// and the readable manifest by verify-run-records.ts, like every other field.
+const TREE_CLEAN_SEMANTICS = "end-of-run snapshot; blind to a modify-then-restore during the run and to gitignored paths; reveal's own run artifacts (this pack's evidence bundle and attempts anchor) are excluded";
 
 interface Case { id: string; class: string; description?: string; run: string }
 
@@ -67,6 +78,30 @@ const arg = (n: string): string | null => {
 };
 const has = (n: string) => process.argv.includes(n);
 const die = (msg: string): never => { console.error(msg); process.exit(1); };
+
+/**
+ * `git status --porcelain -uall`, minus the paths reveal itself legitimately
+ * writes during a run: this pack's evidence bundle (untracked until someone
+ * commits it) and this pack's attempts anchor (a TRACKED file each attempt
+ * appends to — that append is the T3 fix, not tampering). Without the filter,
+ * reveal's own bookkeeping makes every git-repo run read "dirty": an aborted
+ * attempt's bundle blocked the next attempt pre-run, and the post-run snapshot
+ * condemned every run for the bundle it had just sealed. -uall, because
+ * porcelain otherwise collapses an untracked directory to one line and the
+ * individual paths cannot be filtered. Rename lines are never filtered.
+ * Quoted paths (spaces, escapes) are never filtered either — ours contain none.
+ */
+const gitDirtyFiltered = (id: string): string => {
+  const raw = execFileSync("git", ["status", "--porcelain", "-uall"], { encoding: "utf8" });
+  const bundlePrefix = `${EVIDENCE_ROOT}/EVB-${id}/`;
+  const anchorFile = `${ATTEMPTS_DIR}/${id}.log`;
+  return raw.split("\n").filter(Boolean).filter((line) => {
+    if (line.includes(" -> ")) return true;            // renames always count
+    const path = line.slice(3);
+    if (path.startsWith('"')) return true;             // quoted: not ours, keep
+    return !(path.startsWith(bundlePrefix) || path === anchorFile);
+  }).join("\n");
+};
 
 function main(): number {
   if (process.env.WB_QA_CONTEXT !== "1") {
@@ -159,6 +194,19 @@ function main(): number {
     die(`reveal refused: ${packDir} does not resolve to a plain directory under ${PACK_ROOT}/.`);
   }
 
+  // T1: a sealed pack carries the answer key as CIPHERTEXT only. Plaintext on
+  // disk is exactly what the pre-opened-descriptor attack read through the
+  // mode-000 lockdown, so its presence is refused outright — there is no
+  // downgrade path back to the defeated design.
+  if (existsSync(join(packDir, PLAIN_NAME))) {
+    die(`reveal refused: ${join(packDir, PLAIN_NAME)} is PLAINTEXT.\n` +
+        `A sealed pack holds ${ENC_NAME}; plaintext on disk is readable by any same-user\n` +
+        `process that opened it early (security review T1). Re-seal through seal.ts.`);
+  }
+  if (!existsSync(join(packDir, ENC_NAME))) {
+    die(`reveal refused: ${join(packDir, ENC_NAME)} is missing — this pack was not sealed by seal.ts.`);
+  }
+
   const { digest, files } = canonicalPackHash(packDir);
   const expDigest = expectedResultsHash(packDir);
   const packOk = digest === man.private_pack_sha256;
@@ -209,7 +257,7 @@ function main(): number {
     }
     console.log("note: not a git repository — candidate is UNVERIFIED and the sealed record will say so.");
   } else {
-    dirty = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim();
+    dirty = gitDirtyFiltered(id).trim();
     try {
       headSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
@@ -266,7 +314,43 @@ function main(): number {
     }
   }
   const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] }).cases;
-  const expected = JSON.parse(readFileSync(join(packDir, "expected.json"), "utf8")) as Record<string, Expected>;
+
+  // T2 (EXECUTED): a double-quoted YAML scalar with \n escapes is a multi-line
+  // run string the block-scalar refusals never see, and it used to be written
+  // verbatim into the hashed log — where the verifier's first-match field scan
+  // read the INJECTED footer field instead of the real one. seal.ts refuses
+  // these at authoring; this is the same refusal against a hand-written pack.
+  {
+    const multiline = cases.flatMap((c) =>
+      (["id", "class", "description", "run"] as const)
+        .filter((k) => typeof (c as any)[k] === "string" && /[\r\n]/.test((c as any)[k]))
+        .map((k) => `${JSON.stringify(c.id)}: field "${k}" contains a newline`));
+    if (multiline.length) {
+      die(`reveal refused (pack NOT spent): case string fields must be single-line —\n  ` + multiline.join("\n  ") +
+          `\nAn embedded newline in a case field is a run-record injection vector (security review T2).`);
+    }
+  }
+
+  // ---- the answer key: ciphertext on disk, key on stdin, plaintext in memory (T1)
+  if (!has("--key-stdin")) {
+    die(`reveal refused (pack NOT spent): the answer key is encrypted and no --key-stdin was given.\n` +
+        `Pipe the key the custodian recorded at seal time:\n` +
+        `    printf '%s\\n' "$WB_HOLDOUT_KEY" | WB_QA_CONTEXT=1 bun tools/holdout/reveal.ts ... --key-stdin\n` +
+        `Stdin, not argv or env: ps shows both of those to any same-user process.`);
+  }
+  let keyLine = "";
+  try { keyLine = readFileSync(0, "utf8").split("\n")[0].trim(); } catch { keyLine = ""; }
+  if (!KEY_HEX.test(keyLine)) {
+    die(`reveal refused (pack NOT spent): stdin did not carry a 64-hex answer key.`);
+  }
+  let expectedText = "";
+  try {
+    expectedText = decryptExpected(readFileSync(join(packDir, ENC_NAME)), keyLine).toString("utf8");
+  } catch (e: any) {
+    die(`reveal refused (pack NOT spent): ${ENC_NAME} did not decrypt — wrong key, or the\n` +
+        `ciphertext was modified (GCM authenticates every byte). ${String(e?.message ?? e)}`);
+  }
+  const expected = JSON.parse(expectedText) as Record<string, Expected>;
 
   // MEASURED: a cases.yaml carrying the SAME id twice ran BOTH commands and sealed
   // "2 PASS / 0 FAIL of 2". Two different commands were then graded against one
@@ -289,7 +373,7 @@ function main(): number {
   // scanned. The pack hash pins these bytes, but pinning the wrong expectation is
   // not the same as catching it.
   {
-    const rawExpected = readFileSync(join(packDir, "expected.json"), "utf8");
+    const rawExpected = expectedText;   // the DECRYPTED bytes — the only copy that exists (T1)
     // The scanner lives in ./json-keys.ts so it can be property-tested directly.
     // Two earlier attempts at this guard were BOTH defeated, and both failed the
     // same way — they searched the raw text for ONE literal spelling of the key:
@@ -383,8 +467,69 @@ function main(): number {
   // The lock closes it: "wx" fails if the path exists, and that test-and-create
   // is a single atomic syscall, so exactly one process can hold it.
   const bundlePreExisted = existsSync(bundleDirEarly);
-  mkdirSync(bundleDirEarly, { recursive: true });
+
+  // ---- the attempt chain: verify READ-ONLY, before anything is created ------
+  // Order matters (found by this suite's own T3 test): these checks used to sit
+  // after the bundle directory and the lock existed, so a refusal here left an
+  // EMPTY pre-existing bundle behind, and the next attempt was refused for the
+  // wrong reason ("no attempts.log"). Everything below is a read; the appends
+  // happen only after the lock is held.
+  // A held lock outranks every other refusal about this bundle: if another
+  // reveal is mid-run, its bundle legitimately exists and half-written state
+  // must not be diagnosed as tampering. Read-only peek here; the atomic "wx"
+  // acquisition below remains the authoritative gate.
   const lockPath = join(bundleDirEarly, ".reveal.lock");
+  if (existsSync(lockPath)) {
+    die(
+      `reveal refused: ${lockPath} exists, so another reveal of ${id} holds the lock.\n` +
+      `Two concurrent reveals would spend one pack and disagree about which candidate ran it.\n` +
+      `If no reveal is running, a previous one died mid-run: read the lock file, work out what\n` +
+      `actually happened to the pack, and remove it by hand. This is deliberately not automatic.`,
+    );
+  }
+  const attemptsPath = join(bundleDirEarly, "attempts.log");
+  if (bundlePreExisted && !existsSync(attemptsPath)) {
+    die(`reveal refused: ${bundleDirEarly} already existed but holds no attempts.log.\n` +
+        `Every reveal writes its attempt line BEFORE running anything, so a pre-existing\n` +
+        `bundle without the log has had it deleted. The attempt history is evidence;\n` +
+        `remove the whole directory by hand if a reset is truly intended — THAT act is\n` +
+        `the stated limit of this record, and it is at least an act, not an edit.`);
+  }
+  const verifyChain = (lines: string[], what: string): string => {
+    let prevHash = "GENESIS";
+    for (const [i, line] of lines.entries()) {
+      if (!line.includes(`prev=${prevHash}`)) {
+        die(`reveal refused: ${what} line ${i + 1} does not chain to the line before it.\n` +
+            `The log has been edited or truncated. The attempt history is evidence; repair is manual.`);
+      }
+      prevHash = sha256Hex(line);
+    }
+    return prevHash;
+  };
+  const bundleChainText = existsSync(attemptsPath) ? readFileSync(attemptsPath, "utf8") : null;
+  if (bundleChainText !== null) verifyChain(bundleChainText.split("\n").filter(Boolean), "attempts.log");
+  const anchorPath = join(ATTEMPTS_DIR, `${id}.log`);
+  if (!existsSync(anchorPath)) {
+    die(`reveal refused: no attempts anchor at ${anchorPath}.\n` +
+        `seal.ts creates it and it is committed with the manifest, so its absence means\n` +
+        `it was deleted — \`git status\` will show a tracked file missing. Restore it\n` +
+        `(git checkout -- ${anchorPath}) and read it before revealing again.`);
+  }
+  const anchorText = readFileSync(anchorPath, "utf8");
+  const anchorLines = anchorText.split("\n").filter(Boolean);
+  if (!anchorLines.length || !anchorLines[0].startsWith("sealed ")) {
+    die(`reveal refused: ${anchorPath} does not begin with its sealed genesis line — it was edited or rebuilt.`);
+  }
+  const anchorTail = verifyChain(anchorLines, anchorPath);
+  if (bundleChainText !== null && bundleChainText !== anchorText) {
+    die(`reveal refused: the two copies of the attempt chain disagree.\n` +
+        `  tracked anchor: ${anchorPath} (${anchorLines.length} line(s))\n` +
+        `  bundle copy:    ${attemptsPath}\n` +
+        `One of them was edited or reset. The attempt history is evidence; repair is manual.`);
+  }
+  const attemptCount = anchorLines.length;   // genesis + N-1 prior attempts -> this is attempt N
+
+  mkdirSync(bundleDirEarly, { recursive: true });
   try {
     writeFileSync(lockPath, `pid: ${process.pid}\ncandidate: ${candidate}\nlocked_at: ${new Date().toISOString()}\n`, { flag: "wx" });
   } catch (e: any) {
@@ -416,36 +561,28 @@ function main(): number {
   // refused outright, and each line carries the sha256 of the line before it, so
   // an edited or truncated log breaks the chain and is refused too.
   //
-  // STATED LIMIT: an insider can still delete the WHOLE bundle directory before
-  // any record is sealed, and nothing inside the repository can prove a directory
-  // never existed. The chain makes tampering with a surviving log evident; it
-  // cannot make deletion of everything evident. That boundary is the same one the
-  // lock file already documents ("deliberately not automatic").
-  const attemptsPath = join(bundleDirEarly, "attempts.log");
-  if (bundlePreExisted && !existsSync(attemptsPath)) {
-    die(`reveal refused: ${bundleDirEarly} already existed but holds no attempts.log.\n` +
-        `Every reveal writes its attempt line BEFORE running anything, so a pre-existing\n` +
-        `bundle without the log has had it deleted. The attempt history is evidence;\n` +
-        `remove the whole directory by hand if a reset is truly intended — THAT act is\n` +
-        `the stated limit of this record, and it is at least an act, not an edit.`);
-  }
-  const prevChain = existsSync(attemptsPath) ? readFileSync(attemptsPath, "utf8") : "";
-  const prevLines = prevChain.split("\n").filter(Boolean);
+  // T3 (third review, EXECUTED): the chain used to live ONLY in the bundle — an
+  // UNTRACKED directory this tool itself creates, invisible to `git status`
+  // throughout the retry loop — so one `rm -rf` reset the sealed counter to 1
+  // and the record AFFIRMED it. The chain's ANCHOR now lives in a TRACKED file
+  // (planning/holdouts/attempts/<id>.log), created and committed at seal time;
+  // the bundle keeps a byte-identical copy. Deleting the anchor is the deletion
+  // of a tracked file; resetting it to its committed genesis while the bundle
+  // copy remembers is a visible disagreement, refused above.
+  //
+  // NARROWED LIMIT, stated: an insider who BOTH git-restores the anchor AND
+  // rm -rf's the bundle still erases pre-seal history. Erasure now takes a git
+  // operation on tracked content plus a deletion — not one rm — and surviving
+  // history can no longer be silently renumbered. Full erasure resistance is
+  // git-history territory, the boundary every file in this repository shares.
+
   {
-    // Verify the existing chain before extending it: line N must carry the sha256
-    // of line N-1 exactly. A broken chain is an edited log, and it refuses.
-    let prevHash = "GENESIS";
-    for (const [i, line] of prevLines.entries()) {
-      if (!line.includes(`prev=${prevHash}`)) {
-        die(`reveal refused: attempts.log line ${i + 1} does not chain to the line before it.\n` +
-            `The log has been edited or truncated. The attempt history is evidence; repair is manual.`);
-      }
-      prevHash = sha256Hex(line);
-    }
-    const tail = prevLines.length ? sha256Hex(prevLines[prevLines.length - 1]) : "GENESIS";
-    appendFileSync(attemptsPath, `attempt=${prevLines.length + 1} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${tail}\n`);
+    const line = `attempt=${attemptCount} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${anchorTail}`;
+    appendFileSync(anchorPath, line + "\n");
+    // The bundle copy is the WHOLE chain, byte-identical to the anchor — one
+    // hash (attempts_log_sha256, sealed in the footer) then covers both.
+    writeFileSync(attemptsPath, anchorText + line + "\n");
   }
-  const attemptCount = prevLines.length + 1;
   if (attemptCount > 1) {
     console.log(`note: this is reveal ATTEMPT ${attemptCount} for ${id} — earlier attempts aborted before sealing, and the sealed record will say so.`);
   }
@@ -507,10 +644,17 @@ function main(): number {
   // with sed left raw_log_sha256 identical. Every integrity fact is now written
   // into the LOG, which is what gets hashed; the bundle manifest repeats them for
   // readability and tools/holdout/verify-run-records.ts cross-checks the two.
+  // T2: the log has three regions — header (trusted), cases (candidate-
+  // controlled, NEVER parsed for fields), footer (trusted). The delimiters are
+  // defined once in record-format.ts and verify-run-records.ts bounds every
+  // field read by them: header fields before the FIRST cases delimiter, footer
+  // fields after the LAST footer delimiter. A case that echoes either string
+  // lands between the two and moves neither boundary.
   const log: string[] = [
     `# Holdout run record — ${id}`, `candidate: ${candidate}`, `candidate_verified: ${inRepo}`,
     `attempt: ${attemptCount}`, `started_at: ${startedAt}`,
     `hash_method: ${man.hash_method}`, `pack_sha256: ${digest}`, `expected_results_sha256: ${expDigest}`, "",
+    CASES_DELIM, "",
   ];
   let pass = 0, fail = 0;
 
@@ -583,7 +727,10 @@ function main(): number {
 
     const ok = reasons.length === 0;
     ok ? pass++ : fail++;
-    log.push(`## ${c.id} [${c.class}] ${ok ? "PASS" : "FAIL"}`, `run: ${c.run}`, `exit: ${code}`, `stdout_sha256: ${outHash}`,
+    // JSON-escaped, so the one candidate-authored string in this file cannot
+    // even CONTAIN a raw newline here (T2 belt-and-braces; the refusal above
+    // already guarantees it).
+    log.push(`## ${c.id} [${c.class}] ${ok ? "PASS" : "FAIL"}`, `run: ${JSON.stringify(c.run)}`, `exit: ${code}`, `stdout_sha256: ${outHash}`,
              `stderr_sha256: ${sha256Hex(errBuf)}`, `stderr_bytes: ${errBuf.length}`);
     if (!ok) log.push(`reasons: ${reasons.join("; ")}`);
     log.push("");
@@ -630,7 +777,9 @@ function main(): number {
   } catch { packIntactAfterRun = false; }
   let treeCleanAfterRun: "true" | "false" | "unverified" = "unverified";
   if (inRepo) {
-    try { treeCleanAfterRun = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() === "" ? "true" : "false"; }
+    // Filtered exactly like the pre-run check: the bundle this run just wrote
+    // and the anchor line it just appended are its own bookkeeping, not dirt.
+    try { treeCleanAfterRun = gitDirtyFiltered(id).trim() === "" ? "true" : "false"; }
     catch { treeCleanAfterRun = "false"; }
   }
   // F6: what gets stamped is the text validated BEFORE the run. If the file on
@@ -654,8 +803,10 @@ function main(): number {
   const logName = `holdout-run-${new Date().toISOString().replace(/[-:.]/g, "")}.log`;
   const attemptsTail = sha256Hex(readFileSync(attemptsPath, "utf8"));
   const logText = log.concat([
+    FOOTER_DELIM,
     `post_run_pack_intact: ${packIntactAfterRun}`,
     `post_run_tree_clean: ${treeCleanAfterRun}`,
+    `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
     `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
     `post_run_pack_untouched: ${packUntouched}`,
     `attempts_log_sha256: ${attemptsTail}`,
@@ -670,6 +821,7 @@ function main(): number {
      `pass: ${pass}`, `fail: ${fail}`, `raw_log: ${logName}`, `raw_log_sha256: "${logHash}"`,
      `post_run_pack_intact: ${packIntactAfterRun}`,
      `post_run_tree_clean: ${treeCleanAfterRun}`,
+     `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
      `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
      `post_run_pack_untouched: ${packUntouched}`,
      `attempts_log_sha256: "${attemptsTail}"`,

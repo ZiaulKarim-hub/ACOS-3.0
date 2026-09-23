@@ -63,8 +63,16 @@ import { join, relative, sep } from "node:path";
  */
 export const HASH_METHOD = "wb-canon-2" as const;
 
-/** Files a pack must contain, per PRD §22.5 (R2P's pack shape, carried over). */
-export const PACK_FILES = ["cases.yaml", "expected.json", "README.md"] as const;
+/**
+ * Files a SEALED pack must contain. R2P's pack shape (PRD §22.5) carried the
+ * answer key as plaintext `expected.json`; since security review T1 (executed:
+ * a pre-opened file descriptor read the plaintext straight through the mode-000
+ * lockdown) the sealed shape holds only its CIPHERTEXT, `expected.json.enc`
+ * (see keybox.ts). The plaintext exists at authoring time and seal.ts deletes
+ * it in the act of sealing. An imported R2P pack must be RE-SEALED through
+ * seal.ts; it cannot be verified as-is under this shape.
+ */
+export const PACK_FILES = ["cases.yaml", "expected.json.enc", "README.md"] as const;
 
 export function sha256Hex(data: Buffer | string): string {
   return createHash("sha256").update(data).digest("hex");
@@ -151,17 +159,17 @@ export function canonicalPackHash(dir: string): { digest: string; files: string[
 }
 
 /**
- * The expected-results digest: sha256 of `expected.json` alone.
+ * The expected-results digest: sha256 of `expected.json.enc` alone (the
+ * CIPHERTEXT — the plaintext never exists on disk in a sealed pack; T1).
  *
  * Kept as a SECOND published hash even though it is inconvenient. Publishing only
  * the pack hash would let a custodian silently swap the answer key while keeping
  * the questions, and the point of the seal is that neither moves (PRD §22.6).
  *
- * Deliberately byte-identical to `shasum -a 256 <pack>/expected.json`, which
- * R2P's HASHING.md reports holds "for every one of the 15 in-scope manifests,
- * with no exceptions found" — so an imported R2P pack verifies on this field
- * without re-derivation.
+ * HISTORY: this used to be byte-identical to `shasum -a 256 expected.json` for
+ * R2P import compatibility. That property died with the plaintext (T1). It is
+ * still `shasum -a 256 expected.json.enc`, so a hand check remains one command.
  */
 export function expectedResultsHash(dir: string): string {
-  return sha256Hex(readFileSync(join(dir, "expected.json")));
+  return sha256Hex(readFileSync(join(dir, "expected.json.enc")));
 }

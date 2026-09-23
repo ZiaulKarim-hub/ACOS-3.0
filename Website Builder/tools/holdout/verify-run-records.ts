@@ -10,19 +10,32 @@
  * as well; this tool is the other half: it re-derives everything derivable and
  * refuses records whose two halves disagree.
  *
+ * T2 (third review, EXECUTED): the first version of THIS tool was itself
+ * defeated. It read fields with a first-match line scan over the whole log, and
+ * case sections precede the footer — so a case `run` string carrying escaped
+ * newlines injected `post_run_pack_untouched: true` ABOVE the real `false`,
+ * the log hash still verified (nothing was edited after sealing; the sealer
+ * wrote the forgery itself), and this tool blessed the lie. Fields are now read
+ * ONLY from the log's trusted regions (record-format.ts): header fields before
+ * the FIRST cases delimiter, footer fields after the LAST footer delimiter.
+ * The region between them is candidate-controlled and is never parsed.
+ *
  * Checks, per EVB-* bundle under planning/evidence/:
  *   1. manifest.yaml parses and names a raw log that exists.
  *   2. sha256(raw log bytes) === raw_log_sha256.
- *   3. Every duplicated field (candidate, candidate_verified, attempt, pass/fail
- *      counts, post_run_*, manifest_rewritten_during_run, attempts_log_sha256)
- *      says the SAME thing in the hashed log and the readable manifest.
- *   4. attempts.log exists, its hash chain is unbroken, and its sha256 matches
- *      the anchor sealed inside the hashed log.
+ *   3. The log carries both trust delimiters.
+ *   4. Every duplicated field says the SAME thing in the hashed log's trusted
+ *      region and the readable manifest.
+ *   5. attempts.log (bundle copy) and the TRACKED anchor at
+ *      planning/holdouts/attempts/<id>.log are byte-identical, begin with the
+ *      sealed genesis line, chain unbroken, match the sha256 anchor sealed
+ *      inside the hashed log, and agree with the sealed attempt number (T3).
  *
- * STATED LIMIT (same boundary as the lock file's): an insider who deletes an
- * ENTIRE bundle directory before sealing leaves nothing for this tool to check.
- * Tamper-evidence covers what survives; nothing inside the repository can prove
- * a directory never existed.
+ * STATED LIMIT (narrowed by T3, not gone): an insider who deletes an ENTIRE
+ * unsealed bundle AND git-restores the tracked anchor to its committed genesis
+ * erases pre-seal attempt history. That now takes a git operation on a tracked
+ * file plus a deletion; a bare rm no longer does it. Nothing inside a
+ * same-user repository can survive deliberate git history surgery.
  *
  * Exit: 0 all records verify (or none exist); 1 any record fails.
  */
@@ -30,11 +43,15 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sha256Hex } from "./canonical-hash.ts";
+import { trustedRegions } from "./record-format.ts";
 
 const EVIDENCE_ROOT = "planning/evidence";
+const ATTEMPTS_DIR = "planning/holdouts/attempts";
 
 const fieldFrom = (text: string, key: string): string | null => {
   // Function-free line scan; the first match wins, quoted values unquoted.
+  // SAFE ONLY on trusted text: a whole manifest (no candidate-controlled
+  // content) or a trusted region of the log — never the full log (T2).
   for (const line of text.split("\n")) {
     if (line.startsWith(`${key}:`)) {
       let v = line.slice(key.length + 1).trim();
@@ -46,6 +63,26 @@ const fieldFrom = (text: string, key: string): string | null => {
   }
   return null;
 };
+
+// Header fields are written before any case runs; footer fields after the last.
+const HEADER_FIELDS = ["candidate", "candidate_verified", "attempt"] as const;
+const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
+                       "post_run_tree_clean_semantics",
+                       "manifest_rewritten_during_run", "post_run_pack_untouched",
+                       "attempts_log_sha256"] as const;
+
+/** GENESIS-rooted hash chain; returns problems, never throws. */
+function chainProblems(lines: string[], what: string): string[] {
+  if (!lines.length || !lines[0].startsWith("sealed ")) {
+    return [`${what} does not begin with its sealed genesis line — edited or rebuilt`];
+  }
+  let prev = "GENESIS";
+  for (const [i, line] of lines.entries()) {
+    if (!line.includes(`prev=${prev}`)) return [`${what} line ${i + 1} breaks the hash chain — the log was edited`];
+    prev = sha256Hex(line);
+  }
+  return [];
+}
 
 function verifyBundle(dir: string): string[] {
   const bad: string[] = [];
@@ -74,44 +111,58 @@ function verifyBundle(dir: string): string[] {
     bad.push(`raw_log_sha256 mismatch — sealed ${sealedHash}, actual ${actualHash}: the log was edited`);
   }
 
+  // T2: fields are read ONLY from the trusted regions. A log without both
+  // delimiters is not this format and cannot be verified.
+  const regions = trustedRegions(logText);
+  if (!regions) {
+    bad.push(`the raw log lacks its trust delimiters — pre-T2 format, or a forged log`);
+    return bad;
+  }
+
   // Both halves must tell the same story, field by field.
-  for (const key of ["candidate", "candidate_verified", "attempt",
-                     "post_run_pack_intact", "post_run_tree_clean",
-                     "manifest_rewritten_during_run", "post_run_pack_untouched",
-                     "attempts_log_sha256"]) {
-    const inMan = fieldFrom(man, key);
-    const inLog = fieldFrom(logText, key);
-    if (inMan === null || inLog === null) {
-      bad.push(`field ${key} missing from ${inMan === null ? "manifest.yaml" : "the raw log"}`);
-    } else if (inMan !== inLog) {
-      bad.push(`field ${key} DISAGREES — manifest says ${JSON.stringify(inMan)}, hashed log says ${JSON.stringify(inLog)}`);
+  for (const [keys, region] of [[HEADER_FIELDS, regions.header], [FOOTER_FIELDS, regions.footer]] as const) {
+    for (const key of keys) {
+      const inMan = fieldFrom(man, key);
+      const inLog = fieldFrom(region, key);
+      if (inMan === null || inLog === null) {
+        bad.push(`field ${key} missing from ${inMan === null ? "manifest.yaml" : "the raw log's trusted region"}`);
+      } else if (inMan !== inLog) {
+        bad.push(`field ${key} DISAGREES — manifest says ${JSON.stringify(inMan)}, hashed log says ${JSON.stringify(inLog)}`);
+      }
     }
   }
   const manPass = fieldFrom(man, "pass"), manFail = fieldFrom(man, "fail");
-  const result = fieldFrom(logText, "result");
+  const result = fieldFrom(regions.footer, "result");
   if (result && (manPass === null || manFail === null || !result.startsWith(`${manPass} PASS / ${manFail} FAIL`))) {
     bad.push(`pass/fail counts DISAGREE — manifest ${manPass}/${manFail}, hashed log "${result}"`);
   }
 
-  // The attempts chain, and its anchor inside the hashed log.
+  // The attempts chain: bundle copy, tracked anchor, and the sealed hash (T3).
+  const holdoutId = fieldFrom(man, "holdout_id");
   const attemptsPath = join(dir, "attempts.log");
   if (!existsSync(attemptsPath)) {
     bad.push(`attempts.log is MISSING — every reveal writes it before running anything`);
   } else {
     const attemptsRaw = readFileSync(attemptsPath, "utf8");
     const lines = attemptsRaw.split("\n").filter(Boolean);
-    let prev = "GENESIS";
-    for (const [i, line] of lines.entries()) {
-      if (!line.includes(`prev=${prev}`)) { bad.push(`attempts.log line ${i + 1} breaks the hash chain — the log was edited`); break; }
-      prev = sha256Hex(line);
-    }
-    const sealedAttempts = fieldFrom(logText, "attempts_log_sha256");
+    bad.push(...chainProblems(lines, "attempts.log"));
+    const sealedAttempts = fieldFrom(regions.footer, "attempts_log_sha256");
     if (sealedAttempts && sealedAttempts !== sha256Hex(attemptsRaw)) {
       bad.push(`attempts.log no longer matches the anchor sealed in the hashed log — lines were added or removed AFTER sealing`);
     }
-    const attempt = fieldFrom(logText, "attempt");
-    if (attempt && Number(attempt) !== lines.length) {
-      bad.push(`sealed attempt number ${attempt} != ${lines.length} chained line(s)`);
+    const attempt = fieldFrom(regions.header, "attempt");
+    if (attempt && Number(attempt) !== lines.length - 1) {
+      bad.push(`sealed attempt number ${attempt} != ${lines.length - 1} chained attempt line(s)`);
+    }
+    if (!holdoutId) {
+      bad.push(`manifest.yaml names no holdout_id, so the tracked attempts anchor cannot be located`);
+    } else {
+      const anchorPath = join(ATTEMPTS_DIR, `${holdoutId}.log`);
+      if (!existsSync(anchorPath)) {
+        bad.push(`the TRACKED attempts anchor ${anchorPath} is MISSING — seal.ts created it; its deletion is the removal of a tracked file`);
+      } else if (readFileSync(anchorPath, "utf8") !== attemptsRaw) {
+        bad.push(`the tracked anchor ${anchorPath} and the bundle's attempts.log DISAGREE — one was edited or reset`);
+      }
     }
   }
   return bad;

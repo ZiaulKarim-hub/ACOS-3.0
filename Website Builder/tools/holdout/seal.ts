@@ -24,10 +24,17 @@
 import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
+import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
 import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
+// T3 (security review, executed): the attempts chain used to live ONLY in the
+// untracked evidence bundle, so `rm -rf` of that directory reset the sealed
+// attempt counter to 1 and the record AFFIRMED it. The chain's anchor now lives
+// under a TRACKED directory, created at seal time and committed with the
+// manifest — deleting it shows in `git status` as the deletion of a tracked file.
+const ATTEMPTS_DIR = "planning/holdouts/attempts";
 const PACK_ROOT = "qa-private";
 const SLICE_DIR = "planning/slices";
 
@@ -60,19 +67,44 @@ function main(): number {
     console.log(`note: no slice file at ${slicePath} — the pre-code status check is recorded as UNVERIFIED.`);
   }
 
+  // ---- write-once refusals FIRST -------------------------------------------
+  // Before touching the pack at all: a re-seal of an existing version must say
+  // "already exists", not stumble over the transformed pack shape the first
+  // seal left behind (the plaintext is deleted in the act of sealing).
+  const outPath = join(MANIFEST_DIR, `${id}.yaml`);
+  const anchorPath = join(ATTEMPTS_DIR, `${id}.log`);
+  if (existsSync(outPath)) {
+    die(`seal refused: ${outPath} already exists. A pack version is written once; a changed pack takes the next version.`);
+  }
+  if (existsSync(anchorPath)) {
+    die(`seal refused: ${anchorPath} already exists — an attempts anchor for ${id} was already sealed.\n` +
+        `A pack version is written once; a changed pack takes the next version.`);
+  }
+
   // ---- the pack the custodian wrote --------------------------------------
   const packDir = join(PACK_ROOT, id);
   if (!existsSync(packDir)) {
     die(
       `seal refused: no pack at ${packDir}.\n` +
-      `Write the three files first: ${PACK_FILES.join(", ")}.\n` +
+      `Write the three files first: cases.yaml, ${PLAIN_NAME}, README.md.\n` +
       `  cases.yaml     — { cases: [ { id, class, description?, run } ] }\n` +
-      `  expected.json  — { "<case id>": { exit, stdout_sha256? , stdout_contains? } }\n` +
-      `  README.md      — what this pack covers, and why these cases.`,
+      `  ${PLAIN_NAME}  — { "<case id>": { exit, stdout_sha256? , stdout_contains? } }\n` +
+      `  README.md      — what this pack covers, and why these cases.\n` +
+      `Sealing ENCRYPTS ${PLAIN_NAME} into ${ENC_NAME} and deletes the plaintext (T1);\n` +
+      `the sealed pack then holds ${PACK_FILES.join(", ")}.`,
     );
   }
-  for (const f of PACK_FILES) {
+  // The AUTHORING shape: plaintext answer key in, ciphertext out. A pack that
+  // already carries ${ENC_NAME} was sealed once (or half-sealed); this tool
+  // cannot validate ciphertext it has no key for, so it refuses rather than
+  // double-encrypt or trust it.
+  for (const f of ["cases.yaml", PLAIN_NAME, "README.md"]) {
     if (!existsSync(join(packDir, f))) die(`seal refused: ${packDir}/${f} is missing.`);
+  }
+  if (existsSync(join(packDir, ENC_NAME))) {
+    die(`seal refused: ${packDir}/${ENC_NAME} already exists alongside the plaintext.\n` +
+        `A pack is sealed once. If a previous seal failed half-way, delete the stale\n` +
+        `ciphertext by hand after checking the plaintext is the version you mean to seal.`);
   }
 
   const casesText = readFileSync(join(packDir, "cases.yaml"), "utf8");
@@ -87,8 +119,23 @@ function main(): number {
     const dupKeys = duplicateJsonKeys(rawExpected);
     if (dupKeys.length) die(`seal refused: expected.json repeats key(s) ${dupKeys.join(", ")} — JSON keeps only the LAST one, and a pack sealed over that ambiguity is a wrong verdict waiting to happen.`);
   }
-  const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Array<{ id: string; class: string; run: string }> }).cases;
+  const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Array<{ id: string; class: string; run: string; description?: string }> }).cases;
   if (!Array.isArray(cases) || cases.length === 0) die("seal refused: cases.yaml holds no cases.");
+  // T2 (security review, EXECUTED): a double-quoted YAML scalar with \n escapes
+  // is a MULTI-LINE run string that the block-scalar refusals never see, and
+  // reveal used to write it verbatim into the hashed log — where a first-match
+  // field scan then read the injected line instead of the real footer. A case
+  // command has no business spanning lines; refuse at authoring, where it is free.
+  {
+    const multiline = cases.flatMap((c) =>
+      (["id", "class", "description", "run"] as const)
+        .filter((k) => typeof c[k] === "string" && /[\r\n]/.test(c[k] as string))
+        .map((k) => `${JSON.stringify(c.id)}: field "${k}" contains a newline`));
+    if (multiline.length) {
+      die(`seal refused: case string fields must be single-line —\n  ` + multiline.join("\n  ") +
+          `\nAn embedded newline in a case field is a run-record injection vector (security review T2).`);
+    }
+  }
   const expected = JSON.parse(rawExpected) as Record<string, unknown>;
 
   const missing = cases.filter((c) => !(c.id in expected)).map((c) => c.id);
@@ -108,6 +155,18 @@ function main(): number {
     );
   }
 
+  // ---- seal the answer key: plaintext in memory, ciphertext on disk (T1) --
+  // From here to the end, any failure RESTORES the plaintext so the custodian
+  // is never left with a half-sealed pack and no key.
+  const plainBytes = readFileSync(join(packDir, PLAIN_NAME));
+  const keyHex = newKeyHex();
+  writeFileSync(join(packDir, ENC_NAME), encryptExpected(plainBytes, keyHex));
+  rmSync(join(packDir, PLAIN_NAME));
+  const restorePlain = () => {
+    try { writeFileSync(join(packDir, PLAIN_NAME), plainBytes); } catch {}
+    try { rmSync(join(packDir, ENC_NAME), { force: true }); } catch {}
+  };
+
   // ---- hash and publish ---------------------------------------------------
   const { digest, files } = canonicalPackHash(packDir);
   const expDigest = expectedResultsHash(packDir);
@@ -124,12 +183,31 @@ function main(): number {
   };
 
   const problems = validate(man, { requireCounterexample });
-  if (problems.length) die(`seal refused: the manifest this would write is invalid —\n` + problems.map((p) => `    ${p.field}: ${p.message}`).join("\n"));
+  if (problems.length) {
+    restorePlain();
+    die(`seal refused: the manifest this would write is invalid —\n` + problems.map((p) => `    ${p.field}: ${p.message}`).join("\n"));
+  }
 
   mkdirSync(MANIFEST_DIR, { recursive: true });
-  const outPath = join(MANIFEST_DIR, `${id}.yaml`);
-  if (existsSync(outPath)) {
-    die(`seal refused: ${outPath} already exists. A pack version is written once; a changed pack takes the next version.`);
+  mkdirSync(ATTEMPTS_DIR, { recursive: true });
+
+  // ---- the tracked attempts anchor (T3), published write-once -------------
+  // Same temp-then-link(2) publish as the manifest below, for the same two
+  // measured reasons: atomicity and EEXIST-as-write-once in one syscall.
+  const genesis = `sealed at=${now} id=${id} pack_sha256=${digest} prev=GENESIS\n`;
+  const anchorTmp = join(ATTEMPTS_DIR, `.${id}.log.tmp-${process.pid}`);
+  writeFileSync(anchorTmp, genesis);
+  try {
+    linkSync(anchorTmp, anchorPath);
+  } catch (e: any) {
+    rmSync(anchorTmp, { force: true });
+    restorePlain();
+    if (e?.code === "EEXIST") {
+      die(`seal refused: ${anchorPath} already exists — an attempts anchor for ${id} was already sealed.`);
+    }
+    throw e;
+  } finally {
+    rmSync(anchorTmp, { force: true });
   }
 
   // Built in a sibling temp file, then PUBLISHED with link(2). Two reasons, both
@@ -164,6 +242,8 @@ function main(): number {
     linkSync(tmpPath, outPath);
   } catch (e: any) {
     rmSync(tmpPath, { force: true });
+    rmSync(anchorPath, { force: true });   // created THIS run; a lost race unpublishes it
+    restorePlain();
     if (e?.code === "EEXIST") {
       die(`seal refused: ${outPath} already exists. A pack version is written once; a changed pack takes the next version.`);
     }
@@ -177,8 +257,16 @@ function main(): number {
   console.log(`  cases    ${cases.length}  [${classes.join(", ")}]`);
   console.log(`  method   ${HASH_METHOD}`);
   console.log(`  manifest ${outPath}`);
-  console.log(`\nCommit the manifest now, before implementation starts. Do NOT commit ${PACK_ROOT}/ —`);
-  console.log(`.gitignore holds it out of the implementation worktree on purpose.`);
+  console.log(`  attempts ${anchorPath}  (tracked; every reveal attempt chains onto it)`);
+  console.log(`\nANSWER KEY for ${id} — shown ONCE, stored NOWHERE by this tool:`);
+  console.log(`  WB_HOLDOUT_KEY=${keyHex}`);
+  console.log(`Store it OUTSIDE this repository (T1: anything on disk here, a same-user`);
+  console.log(`process can read). reveal.ts will ask for it on stdin (--key-stdin).`);
+  console.log(`Anyone holding this key AND the pack can read the answers; losing it means`);
+  console.log(`the pack can never be revealed and must be re-sealed at the next version.`);
+  console.log(`\nCommit the manifest AND the attempts anchor now, before implementation starts.`);
+  console.log(`Do NOT commit ${PACK_ROOT}/ — .gitignore holds it out of the implementation`);
+  console.log(`worktree on purpose.`);
   return 0;
 }
 

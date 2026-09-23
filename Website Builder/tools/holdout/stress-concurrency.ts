@@ -32,8 +32,20 @@ const packDir = join(repo, "qa-private", packId);
 mkdirSync(packDir, { recursive: true });
 writeFileSync(join(packDir, "README.md"), "# stress\n");
 writeFileSync(join(packDir, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo hi"\n');
-writeFileSync(join(packDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const EXPECTED_BODY = JSON.stringify({ H1: { exit: 0 } }) + "\n";
+writeFileSync(join(packDir, "expected.json"), EXPECTED_BODY);
 const manifestPath = join(repo, "planning/holdouts/manifests", `${packId}.yaml`);
+const anchorPath = join(repo, "planning/holdouts/attempts", `${packId}.log`);
+// T1/T3 changed what sealing leaves behind: the plaintext answer key is
+// CONSUMED (encrypted to expected.json.enc) and a tracked attempts anchor is
+// published write-once. Re-arming a round therefore means restoring the
+// authoring shape, not just removing the manifest.
+const rearm = () => {
+  rmSync(manifestPath, { force: true });
+  rmSync(anchorPath, { force: true });
+  rmSync(join(packDir, "expected.json.enc"), { force: true });
+  writeFileSync(join(packDir, "expected.json"), EXPECTED_BODY);
+};
 const readerLog = join(repo, "reads.txt");
 const rcLog = join(repo, "rc.txt");
 
@@ -47,7 +59,7 @@ console.log(`stress: ${ROUNDS} rounds, repo ${repo}`);
 const started = Date.now();
 
 for (let round = 0; round < ROUNDS; round++) {
-  rmSync(manifestPath, { force: true });
+  rearm();
   // Two seals of the SAME id, launched together, with a reader hashing the name
   // as fast as it can for the whole window. Exactly one seal may win.
   const doneFlag = join(repo, "round.done");
@@ -118,28 +130,38 @@ if (!roundsWithReads) { console.log(`\nFAIL: no read ever landed — the test pr
 // Second phase: seal racing a reveal of the SAME id, at volume. A reveal must
 // either refuse cleanly (no manifest yet) or run against a fully valid manifest.
 // It must NEVER refuse because the manifest failed to parse or validate.
-let parseRefusals = 0, cleanRefusals = 0, reveals = 0, otherOutcomes = 0;
+let parseRefusals = 0, cleanRefusals = 0, keyRefusals = 0, reveals = 0, otherOutcomes = 0;
 const RACE_ROUNDS = Math.max(20, Math.floor(ROUNDS / 3));
+const sealOut = join(repo, "seal-out.txt");
 for (let round = 0; round < RACE_ROUNDS; round++) {
-  rmSync(manifestPath, { force: true });
+  rearm();
   rmSync(join(repo, "planning/evidence"), { recursive: true, force: true });
   // A randomized sub-second delay before the reveal, so the rounds SAMPLE across
   // the seal's whole execution window instead of all landing in the same instant.
+  // T1: the key is minted BY the racing seal and printed at its end, so the
+  // reveal scrapes whatever the seal has printed SO FAR. An empty scrape against
+  // a published manifest is itself a legitimate ordering (manifest links before
+  // the key prints) and is counted separately — the one outcome that must never
+  // happen is a manifest that fails to parse or validate.
   const delay = (round % 12) * 0.004;
   const out = spawnSync("sh", ["-c",
-    `( bun "${SEAL}" --slice S60 --story ST-60 --contract v1 >/dev/null 2>&1 ) &\n` +
+    `: > "${sealOut}"\n` +
+    `( bun "${SEAL}" --slice S60 --story ST-60 --contract v1 > "${sealOut}" 2>&1 ) &\n` +
     `sleep ${delay.toFixed(3)}\n` +
-    `bun "${REVEAL}" --id ${packId} --candidate cafe6000 --allow-unverified-candidate 2>&1\n` +
+    `key=$(grep -o 'WB_HOLDOUT_KEY=[0-9a-f]*' "${sealOut}" 2>/dev/null | head -1 | cut -d= -f2)\n` +
+    `printf '%s\\n' "$key" | bun "${REVEAL}" --id ${packId} --candidate cafe6000 --allow-unverified-candidate --key-stdin 2>&1\n` +
     `wait\n`,
   ], { cwd: repo, encoding: "utf8", env: { ...process.env, WB_QA_CONTEXT: "1" } });
   const text = (out.stdout ?? "") + (out.stderr ?? "");
   if (/does not parse|is invalid/.test(text)) parseRefusals++;
   else if (/no manifest at/.test(text)) cleanRefusals++;
+  else if (/64-hex answer key|did not decrypt/.test(text)) keyRefusals++;
   else if (/PASS \/ .* FAIL of/.test(text)) reveals++;
   else otherOutcomes++;
 }
 console.log(`\nseal-vs-reveal, same id, ${RACE_ROUNDS} rounds`);
 console.log(`  clean "no manifest yet" refusals   ${cleanRefusals}`);
+console.log(`  key-not-yet-printed refusals       ${keyRefusals}`);
 console.log(`  full reveals against a valid file  ${reveals}`);
 console.log(`  other outcomes                     ${otherOutcomes}`);
 console.log(`  PARSE/VALIDATE refusals (the bug)  ${parseRefusals}`);
