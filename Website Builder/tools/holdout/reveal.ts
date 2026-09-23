@@ -310,9 +310,20 @@ function main(): number {
   // post-commit — so existence cannot HARD-refuse), and a before/after snapshot
   // that proves none were PLANTED or CHANGED during the run, which is the exact
   // mechanism door 3 used and is sealed as tampering below.
-  let hooksBefore: Record<string, string> = {};
+  let hooksBefore: Record<string, string> | null = null;
   if (inRepo) {
     hooksBefore = hookSnapshot();
+    // CC2 (eleventh review): a null audit is "could not verify", never clean.
+    // Statically null means git is too old to locate the hooks dir safely, or
+    // the dir is unreadable — refuse PRE-run (pack not spent) rather than seal a
+    // hook-clean run we could not check.
+    if (hooksBefore === null) {
+      die(`reveal refused (pack NOT spent): the git hooks directory could not be audited.\n` +
+          `Either git is older than 2.31 (no --path-format, so the common-dir hooks path\n` +
+          `cannot be resolved) or that directory is unreadable. A holdout run must not\n` +
+          `certify a hook-clean run it cannot verify (security review CC2). Upgrade git or\n` +
+          `fix the permissions on the hooks directory, then reveal again.`);
+    }
     const present = hookCensus();
     if (present.length) {
       console.log(`WARNING: the repository's hooks directory carries executable hook(s): ${present.join(", ")}.`);
@@ -1128,7 +1139,12 @@ function main(): number {
   const postConfigKeys = inRepo ? commandValuedConfigKeys() : [];
   const configPlantedDuringRun = postConfigKeys.length > 0;
   // AA1: a hook added or changed WHILE cases ran — door 3's exact mechanism.
-  const hooksPlanted = inRepo ? hookDelta(hooksBefore, hookSnapshot()) : [];
+  // CC2: a post-run snapshot that comes back null (a transient rev-parse failure
+  // or the dir turned unreadable mid-run) is "could not verify", sealed as
+  // unverified + tampering — never a false clean.
+  const hooksAfter = inRepo ? hookSnapshot() : {};
+  const hookAuditUnverified = inRepo && (hooksBefore === null || hooksAfter === null);
+  const hooksPlanted = (inRepo && hooksBefore && hooksAfter) ? hookDelta(hooksBefore, hooksAfter) : [];
   const hookPlantedDuringRun = hooksPlanted.length > 0;
 
   let bundleExtraFiles: string[] = [];
@@ -1166,6 +1182,7 @@ function main(): number {
     `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
     `hook_planted_during_run: ${hookPlantedDuringRun}`,
     `git_hooks_planted: ${JSON.stringify(hooksPlanted)}`,
+    `hook_audit: ${hookAuditUnverified ? "unverified" : "verified"}`,
     `attempts_log_sha256: ${attemptsTail}`,
     `finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`,
   ]).join("\n") + "\n";
@@ -1189,6 +1206,7 @@ function main(): number {
      `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
      `hook_planted_during_run: ${hookPlantedDuringRun}`,
      `git_hooks_planted: ${JSON.stringify(hooksPlanted)}`,
+     `hook_audit: ${hookAuditUnverified ? "unverified" : "verified"}`,
      `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
@@ -1231,9 +1249,13 @@ function main(): number {
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
   const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched
-    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false" || configPlantedDuringRun || hookPlantedDuringRun;
+    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false" || configPlantedDuringRun || hookPlantedDuringRun || hookAuditUnverified;
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun} config_planted=${configPlantedDuringRun} hook_planted=${hookPlantedDuringRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun} config_planted=${configPlantedDuringRun} hook_planted=${hookPlantedDuringRun} hook_audit=${hookAuditUnverified ? "unverified" : "verified"}.`);
+    if (hookAuditUnverified) {
+      console.log(`DANGER: the git hooks directory could not be audited after the run — a planted hook`);
+      console.log(`may be present and unseen. This run is NOT certified hook-clean (security review CC2).`);
+    }
     if (configPlantedDuringRun) {
       console.log(`DANGER: a case planted command-valued git config: ${postConfigKeys.join(", ")}.`);
       console.log(`The payload fires inside the NEXT plain git command anyone runs in this repository.`);

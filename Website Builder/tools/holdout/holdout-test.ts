@@ -2,7 +2,7 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 209/209. Raised from 200 on 2026-09-23 after the NINTH security review
+ * Expect 216/216. Raised from 200 on 2026-09-23 after the NINTH security review
  * returned REJECT with AA1: the eighth-round config detector asked `git config
  * --local --list`, which missed four doors to the same planted-command payload
  * — include.path (a local key pointing at a second config file whose keys are
@@ -1665,7 +1665,7 @@ const fgLog = [
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `config_planted_during_run: false`, `git_config_command_keys: []`,
-  `hook_planted_during_run: false`, `git_hooks_planted: []`,
+  `hook_planted_during_run: false`, `git_hooks_planted: []`, `hook_audit: verified`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
@@ -1684,7 +1684,7 @@ const fgManifest = (untouched: string) => [
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `config_planted_during_run: false`, `git_config_command_keys: []`,
-  `hook_planted_during_run: false`, `git_hooks_planted: []`,
+  `hook_planted_during_run: false`, `git_hooks_planted: []`, `hook_audit: verified`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
 ].join("\n");
 writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
@@ -2341,6 +2341,112 @@ ok("BB1: reveal run FROM a linked worktree sees a common-dir hook plant and seal
    /TAMPERING RECORDED/.test(bbRun) && /hook_planted=true/.test(bbRun) &&
    /hook_planted_during_run: true/.test(bbMan) && /pre-commit/.test(bbMan),
    bbRun.slice(-320));
+
+console.log("— eleventh security review: CC1 (shape-based config) + CC2 (unverified audit) —");
+
+// A real pack for the seal-time CC1 probes (seal checks config BEFORE the pack,
+// but the clean case must reach a real pack to succeed).
+const ccPackId = "HLD-S90P-v1";
+const ccPack = join(repo2, "qa-private", ccPackId);
+const ccMakePack = () => {
+  rmSync(join(repo2, "planning/holdouts/manifests", ccPackId + ".yaml"), { force: true });
+  rmSync(join(repo2, "planning/holdouts/attempts", ccPackId + ".log"), { force: true });
+  mkdirSync(ccPack, { recursive: true });
+  writeFileSync(join(ccPack, "README.md"), "# cc — what this pack covers, and why these cases.\n");
+  writeFileSync(join(ccPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
+  writeFileSync(join(ccPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+};
+
+// CC1 — diff.external fires on a plain `git diff`, was not on the allowlist, and
+// the AA1 harvest returned. Now flagged at seal (the authoring window).
+const ccExt = join(tmp, "cc-ext.sh");
+writeFileSync(ccExt, "#!/bin/sh\nexit 0\n"); chmodSync(ccExt, 0o755);
+ccMakePack();
+git("config", "diff.external", ccExt);
+const cc1Seal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
+git("config", "--unset", "diff.external");
+ok("CC1: diff.external (fires on a plain git diff) is flagged at seal — the missed AA1 key",
+   cc1Seal.code !== 0 && /diff\.external/.test(cc1Seal.out), cc1Seal.out.slice(-220));
+
+// CC1 shape rule — an UNLISTED key whose value is a planted executable is
+// flagged by WHAT IT IS, not by name. The durable answer to "the allowlist
+// trails git".
+git("config", "totally.unknownkey", ccExt);
+const cc1bSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
+git("config", "--unset", "totally.unknownkey");
+ok("CC1: an UNLISTED config key pointing at an executable is flagged by SHAPE — allowlist-independent",
+   cc1bSeal.code !== 0 && /totally\.unknownkey/.test(cc1bSeal.out), cc1bSeal.out.slice(-220));
+
+// ...and diff.external is flagged by NAME even when its value is a BARE command
+// (no path for the shape rule to see) — the interim named entry earns its keep.
+git("config", "diff.external", "somebarecmd");
+const cc1nSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
+git("config", "--unset", "diff.external");
+ok("CC1: diff.external is flagged by NAME even with a bare-command value the shape rule cannot see",
+   cc1nSeal.code !== 0 && /diff\.external/.test(cc1nSeal.out), cc1nSeal.out.slice(-220));
+
+// ...and a benign non-executable value on an unknown key does NOT false-refuse.
+git("config", "totally.benignkey", "just-a-string-value");
+const cc1cSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
+git("config", "--unset", "totally.benignkey");
+ok("CC1: a benign string value on an unknown key does NOT false-refuse — the shape rule is targeted",
+   cc1cSeal.code === 0, cc1cSeal.out.slice(-200));
+git("add", "-A"); git("commit", "-q", "-m", "cc1 pack");
+
+// CC1 end-to-end — a case plants diff.external mid-run; it is now on the
+// command-key set, so the post-run scan seals it as tampering.
+const cc1dId = "HLD-S90Q-v1";
+const cc1dPack = join(repo2, "qa-private", cc1dId);
+mkdirSync(cc1dPack, { recursive: true });
+writeFileSync(join(cc1dPack, "README.md"), "# cc1d\n");
+writeFileSync(join(cc1dPack, "cases.yaml"),
+  `cases:\n  - id: H1\n    class: hostile\n    run: "git config diff.external ${ccExt}; echo planted"\n`);
+writeFileSync(join(cc1dPack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+seal(["--slice", "S90Q", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "cc1d pack");
+const cc1dRun = run({ WB_QA_CONTEXT: "1" }, ["--id", cc1dId, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const cc1dMan = readFileSync(join(repo2, "planning/evidence", "EVB-" + cc1dId, "manifest.yaml"), "utf8");
+git("config", "--unset", "diff.external");
+ok("CC1: a diff.external planted mid-run is sealed as tampering — the AA1 harvest is closed",
+   cc1dRun.code !== 0 && /config_planted=true/.test(cc1dRun.out) &&
+   /config_planted_during_run: true/.test(cc1dMan) && /diff\.external/.test(cc1dMan),
+   cc1dRun.out.slice(-300));
+
+// CC2 — a null hook audit must record unverified + tampering, never a false
+// clean. Forced deterministically: a case chmod 000's the common-dir hooks so
+// the POST-run snapshot cannot be read.
+const cc2Id = "HLD-S90R-v1";
+const cc2Pack = join(repo2, "qa-private", cc2Id);
+const cc2HooksDir = execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: repo2, encoding: "utf8" }).trim() + "/hooks";
+mkdirSync(cc2Pack, { recursive: true });
+writeFileSync(join(cc2Pack, "README.md"), "# cc2\n");
+writeFileSync(join(cc2Pack, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "chmod 000 $(git rev-parse --git-common-dir)/hooks; echo done"\n');
+writeFileSync(join(cc2Pack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "done" } }) + "\n");
+const cc2Seal = seal(["--slice", "S90R", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "cc2 pack");
+const cc2Run = run({ WB_QA_CONTEXT: "1" }, ["--id", cc2Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+try { chmodSync(cc2HooksDir, 0o755); } catch {}
+const cc2Man = existsSync(join(repo2, "planning/evidence", "EVB-" + cc2Id, "manifest.yaml"))
+  ? readFileSync(join(repo2, "planning/evidence", "EVB-" + cc2Id, "manifest.yaml"), "utf8") : "(no record)";
+ok("CC2: a hook audit that cannot be READ is sealed as unverified + tampering, never a false clean",
+   cc2Seal.code === 0 && cc2Run.code !== 0 && /hook_audit=unverified/.test(cc2Run.out) &&
+   /hook_audit: unverified/.test(cc2Man),
+   `seal=${cc2Seal.code} ` + cc2Run.out.slice(-280));
+
+// CC2 — an ordinary run seals hook_audit: verified, and the verifier cross-checks it.
+const cc2eId = "HLD-S90S-v1";
+const cc2ePack = join(repo2, "qa-private", cc2eId);
+mkdirSync(cc2ePack, { recursive: true });
+writeFileSync(join(cc2ePack, "README.md"), "# cc2e\n");
+writeFileSync(join(cc2ePack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
+writeFileSync(join(cc2ePack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90S", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "cc2e pack");
+const cc2eRun = run({ WB_QA_CONTEXT: "1" }, ["--id", cc2eId, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const cc2eMan = readFileSync(join(repo2, "planning/evidence", "EVB-" + cc2eId, "manifest.yaml"), "utf8");
+ok("CC2: an honest run seals hook_audit: verified",
+   cc2eRun.code === 0 && /hook_audit: verified/.test(cc2eMan), cc2eRun.out.slice(-220));
 
 // W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
 // dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse

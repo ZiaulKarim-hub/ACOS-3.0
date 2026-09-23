@@ -56,6 +56,11 @@ const PLANTABLE_SCOPES = new Set(["local", "worktree"]);
 const EXACT_KEYS = new Set([
   "core.fsmonitor", "core.attributesfile", "core.sshcommand", "core.pager",
   "core.editor", "sequence.editor", "core.askpass", "credential.helper", "gpg.program",
+  // CC1 (eleventh review, EXECUTED): diff.external runs on a plain `git diff`
+  // (no tty, no --ext-diff); interactive.diffFilter on `git add -p`. Both were
+  // missed and reopened the AA1 harvest. Named here for the bare-command case;
+  // the SHAPE rule below is the durable catch for path-valued unlisted keys.
+  "diff.external", "interactive.difffilter",
   // AA1: the redirection keys themselves — a smuggled second config or a
   // worktree-config switch is suspicious in its own right.
   "include.path", "extensions.worktreeconfig",
@@ -70,7 +75,25 @@ const isCommandValued = (key: string): boolean =>
   || (key.startsWith("difftool.") && key.endsWith(".cmd"))
   || (key.startsWith("merge.") && key.endsWith(".driver"))
   || (key.startsWith("mergetool.") && key.endsWith(".cmd"))
+  || key.startsWith("pager.")
+  || (key.startsWith("trailer.") && key.endsWith(".command"))
   || (key.startsWith("url.") && /\.insteadof$/.test(key));
+
+// CC1 (eleventh review): the allowlist is a hand-enumerated set that TRAILS git
+// — diff.external proved it live. The durable defense is DEFAULT-SUSPICIOUS by
+// SHAPE, not by name: a local/worktree value that begins with "!" (git's shell
+// syntax) or whose first token is an existing executable file is treated as a
+// planted command whatever its key. So an UNLISTED executable-valued key is
+// caught by what it IS, not by whether we remembered its name.
+const valueShapeIsCommand = (value: string): boolean => {
+  const v = value.trim();
+  if (v.startsWith("!")) return true;
+  const first = (v.split(/\s+/)[0] ?? "").replace(/^["']|["']$/g, "");
+  if (first.includes("/")) {
+    try { const st = statSync(first); if (st.isFile() && (st.mode & 0o111) !== 0) return true; } catch {}
+  }
+  return false;
+};
 
 const canon = (p: string): string => { try { return realpathSync(p); } catch { return p; } };
 
@@ -129,7 +152,7 @@ export function commandValuedConfigKeys(): string[] {
       bad.add(key);
       continue;
     }
-    if (isCommandValued(key)) bad.add(key);
+    if (isCommandValued(key) || valueShapeIsCommand(value)) bad.add(key);
   }
   return [...bad].sort();
 }
@@ -156,11 +179,15 @@ export function hookCensus(): string[] {
 }
 
 /** name -> sha256:mode for every live hook, so reveal can diff before/after. */
-export function hookSnapshot(): Record<string, string> {
+export function hookSnapshot(): Record<string, string> | null {
+  // CC2 (eleventh review): null means "could not audit" (dir unlocatable — git
+  // too old for --path-format, rev-parse failed — or unreadable). It is NOT the
+  // same as {} ("audited, no live hook"): reveal must refuse or record
+  // unverified on null, never seal hook_planted_during_run: false from it.
   const dir = hooksDir();
-  if (!dir) return {};
+  if (!dir) return null;
   let names: string[] = [];
-  try { names = readdirSync(dir); } catch { return {}; }
+  try { names = readdirSync(dir); } catch { return null; }
   const out: Record<string, string> = {};
   for (const name of names) {
     if (!isLiveHook(name)) continue;
