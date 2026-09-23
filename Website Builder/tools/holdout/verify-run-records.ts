@@ -77,6 +77,7 @@ const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
                        "post_run_attempts_intact", "attempts_anchor_committed",
                        "post_run_bundle_clean",
                        "config_planted_during_run", "git_config_command_keys",
+                       "hook_planted_during_run", "git_hooks_planted",
                        "attempts_log_sha256"] as const;
 
 /** GENESIS-rooted hash chain; returns problems, never throws. */

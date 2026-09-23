@@ -2,7 +2,22 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 200/200. Raised from 194 on 2026-09-23 after the EIGHTH security review
+ * Expect 207/207. Raised from 200 on 2026-09-23 after the NINTH security review
+ * returned REJECT with AA1: the eighth-round config detector asked `git config
+ * --local --list`, which missed four doors to the same planted-command payload
+ * — include.path (a local key pointing at a second config file whose keys are
+ * never --local-listed), worktree-scope config, a hostile hook in the DEFAULT
+ * .git/hooks dir (NO config key at all), and the hooksPath carve-out blessing
+ * exactly that dir. Fixes: config is read with --show-scope filtered to the
+ * local+worktree scopes a case can plant (include.path's imported keys carry
+ * the including file's scope, so doors 1-2 close while the custodian's global
+ * keychain stays unflagged); the redirection keys are on the watch list; hooks
+ * get a WARNING for what already exists (a legit repo carries its own) and a
+ * before/after snapshot that seals a MID-run plant as tampering (door 3). Also
+ * (AA1, named): case ids that normalize to the same text (NFC) are refused, so
+ * two ids cannot render identically into indistinguishable record sections.
+ *
+ * Previously 200/200. Raised from 194 on 2026-09-23 after the EIGHTH security review
  * returned REJECT with Z1-Z3: the planted-config foothold, neutralized for
  * reveal's calls (X2), still fired in the CUSTODIAN's own plain `git status` —
  * during the authoring window, harvesting the next pack's plaintext answers
@@ -710,12 +725,21 @@ writeFileSync(join(dupDir, "cases.yaml"),
   "cases:\n  - id: H001\n    class: nominal\n    run: \"echo first\"\n" +
   "  - id: H001\n    class: nominal\n    run: \"echo second\"\n");
 writeFileSync(join(dupDir, "expected.json"), JSON.stringify({ H001: { exit: 0 } }) + "\n");
-seal(["--slice", "S83", "--story", "ST-83", "--contract", "v1"]);
+// AA1 raised this to a SEAL-time refusal: a repeated id is a reader-collision
+// (the exact-match case of NFC confusability), caught in the authoring window.
+const dupSeal = seal(["--slice", "S83", "--story", "ST-83", "--contract", "v1"]);
+ok("cases.yaml repeating a case id is REFUSED at seal — no manifest is written",
+   dupSeal.code !== 0 && /appears more than once/.test(dupSeal.out) &&
+   !existsSync(join(repoRoot, "planning/holdouts/manifests", dupId + ".yaml")),
+   dupSeal.out.slice(-200));
+// ...and reveal still refuses a dup-id pack sealed AROUND the tool (manualSeal
+// bypasses seal): the guard is not seal-only.
+manualSeal(dupId, dupDir, 2, { rawCases: true });
 const dupRun = run({ WB_QA_CONTEXT: "1" }, ["--id", dupId, "--candidate", "cafe111"]);
-ok("cases.yaml repeating a case id is REFUSED",
-   dupRun.code !== 0 && /repeats case id/.test(dupRun.out), dupRun.out.slice(-200));
-ok("...and that refusal does not spend the pack",
-   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", dupId + ".yaml"), "utf8")));
+ok("...and a dup-id pack sealed around the tool is REFUSED at reveal too, pack not spent",
+   dupRun.code !== 0 && /(appears more than once|repeats case id)/.test(dupRun.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", dupId + ".yaml"), "utf8")),
+   dupRun.out.slice(-200));
 
 // MEASURED before the fix: expected.json with one key twice parses last-key-wins in
 // silence. {"H001":{"exit":0},"H001":{"exit":5}} graded the case against exit 5 and
@@ -1641,6 +1665,7 @@ const fgLog = [
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `config_planted_during_run: false`, `git_config_command_keys: []`,
+  `hook_planted_during_run: false`, `git_hooks_planted: []`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
@@ -1659,6 +1684,7 @@ const fgManifest = (untouched: string) => [
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
   `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `config_planted_during_run: false`, `git_config_command_keys: []`,
+  `hook_planted_during_run: false`, `git_hooks_planted: []`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
 ].join("\n");
 writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
@@ -2157,6 +2183,109 @@ ok("Z2/Z3: the record marks the identity FORGED, and the verifier confirms the b
    /bricked_commit_author_claim: holdout-reveal@local \(FORGED/.test(z2Man) &&
    /ok\s+EVB-HLD-S90I-v1\s+\[BRICKED BY TAMPERING/.test(z2V.out),
    z2Man.slice(0, 500));
+
+console.log("— ninth security review: AA1 doors, each executed defeat pinned —");
+
+// AA1 door 1 — include.path: a local key points at a SECOND config file whose
+// command-valued keys --local never lists. --show-scope resolves them under the
+// including file's scope (local), so the detector sees them now.
+const aa1aId = "HLD-S90K-v1";
+const aa1aPack = join(repo2, "qa-private", aa1aId);
+mkdirSync(aa1aPack, { recursive: true });
+writeFileSync(join(aa1aPack, "README.md"), "# aa1a\n");
+writeFileSync(join(aa1aPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
+writeFileSync(join(aa1aPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+writeFileSync(join(repo2, "extra.conf"), "[core]\n\tfsmonitor = /tmp/payload.sh\n");
+git("config", "include.path", join(repo2, "extra.conf"));
+const aa1aSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("AA1 door 1: an include.path smuggling a command key is CAUGHT — --show-scope resolves the include",
+   aa1aSeal.code !== 0 && /command-valued/.test(aa1aSeal.out) &&
+   (/core\.fsmonitor/.test(aa1aSeal.out) || /include\.path/.test(aa1aSeal.out)),
+   aa1aSeal.out.slice(-260));
+git("config", "--unset", "include.path");
+
+// AA1 door 1b — the include.path key is flagged EVEN when the included file
+// carries no command key: a local-scope chain to a second file is itself an
+// attack surface (fix b, "the redirection itself is visible").
+writeFileSync(join(repo2, "benign.conf"), "[user]\n\temail = x@example.com\n");
+git("config", "include.path", join(repo2, "benign.conf"));
+const aa1a2Seal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("AA1 door 1b: a local include.path is flagged as a redirection even with a benign target",
+   aa1a2Seal.code !== 0 && /include\.path/.test(aa1a2Seal.out), aa1a2Seal.out.slice(-220));
+git("config", "--unset", "include.path");
+
+// AA1 door 2 — worktree config: extensions.worktreeConfig + a worktree-scope key.
+git("config", "extensions.worktreeConfig", "true");
+git("config", "--worktree", "core.pager", "/tmp/wt.sh");
+const aa1bSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("AA1 door 2: a worktree-scope command key is CAUGHT — the scan is not --local-only",
+   aa1bSeal.code !== 0 && /command-valued/.test(aa1bSeal.out) &&
+   (/core\.pager/.test(aa1bSeal.out) || /worktreeconfig/.test(aa1bSeal.out)),
+   aa1bSeal.out.slice(-260));
+git("config", "--worktree", "--unset", "core.pager");
+git("config", "--unset", "extensions.worktreeConfig");
+
+// AA1 door 4 — core.hooksPath REDIRECTED to a non-default dir is flagged; the
+// carve-out is ONLY for the repo's own .git/hooks (door 4 the carve-out itself
+// is made safe by the mid-run hook snapshot below).
+git("config", "core.hooksPath", join(tmp, "evil-hooks"));
+const aa1fSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("AA1 door 4: a REDIRECTED core.hooksPath is flagged — only the repo's own hooks dir is carved out",
+   aa1fSeal.code !== 0 && /core\.hookspath/.test(aa1fSeal.out), aa1fSeal.out.slice(-220));
+git("config", "--unset", "core.hooksPath");
+
+// AA1 door 3 — a hook planted DURING a run, NO config key. The before/after
+// snapshot seals it as tampering, so the record no longer affirms clean.
+const aa1cId = "HLD-S90L-v1";
+const aa1cPack = join(repo2, "qa-private", aa1cId);
+const aa1cHook = join(repo2, ".git/hooks/pre-commit");
+mkdirSync(aa1cPack, { recursive: true });
+writeFileSync(join(aa1cPack, "README.md"), "# aa1c\n");
+writeFileSync(join(aa1cPack, "cases.yaml"),
+  // A single-line command (no embedded newline — that is refused at T2): the
+  // mid-run snapshot catches ANY new executable hook, shebang or not.
+  `cases:\n  - id: H1\n    class: hostile\n    run: "echo pwned > ${aa1cHook}; chmod +x ${aa1cHook}; echo planted"\n`);
+writeFileSync(join(aa1cPack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+seal(["--slice", "S90L", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "aa1c pack");
+const aa1cRun = run({ WB_QA_CONTEXT: "1" }, ["--id", aa1cId, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const aa1cMan = readFileSync(join(repo2, "planning/evidence", "EVB-" + aa1cId, "manifest.yaml"), "utf8");
+rmSync(aa1cHook, { force: true });
+ok("AA1 door 3: a hook PLANTED during the run is sealed as tampering — the record no longer says clean",
+   aa1cRun.code !== 0 && /TAMPERING RECORDED/.test(aa1cRun.out) && /hook_planted=true/.test(aa1cRun.out) &&
+   /hook_planted_during_run: true/.test(aa1cMan) && /pre-commit/.test(aa1cMan),
+   aa1cRun.out.slice(-320));
+
+// AA1 — a legitimate pre-existing hook is a WARNING, not a refusal: reveal still
+// runs and seals clean (this is the property that keeps the real repo usable).
+const aa1dId = "HLD-S90M-v1";
+const aa1dPack = join(repo2, "qa-private", aa1dId);
+const aa1dHook = join(repo2, ".git/hooks/post-commit");
+mkdirSync(aa1dPack, { recursive: true });
+writeFileSync(join(aa1dPack, "README.md"), "# aa1d\n");
+writeFileSync(join(aa1dPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
+writeFileSync(join(aa1dPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+writeFileSync(aa1dHook, "#!/bin/sh\nexit 0\n"); chmodSync(aa1dHook, 0o755);
+const aa1dSeal = seal(["--slice", "S90M", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "aa1d pack");
+const aa1dRun = run({ WB_QA_CONTEXT: "1" }, ["--id", aa1dId, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+rmSync(aa1dHook, { force: true });
+ok("AA1: a pre-existing hook WARNS but does not refuse — an honest run still seals (the real-repo property)",
+   aa1dSeal.code !== 0 || aa1dRun.code === 0 ? (aa1dRun.code === 0 && /WARNING/.test(aa1dRun.out + aa1dSeal.out) && /1 PASS \/ 0 FAIL/.test(aa1dRun.out)) : false,
+   aa1dRun.out.slice(-220));
+
+// AA1 named gap — NFC-confusable case ids. "é" (U+00E9) vs "e"+U+0301 are
+// distinct JSON keys that render identically; the run record would carry two
+// sections a reader cannot tell apart.
+const aa1eDir = join(repoRoot, "qa-private", "HLD-S22-v1");
+mkdirSync(aa1eDir, { recursive: true });
+writeFileSync(join(aa1eDir, "README.md"), "# aa1e\n");
+writeFileSync(join(aa1eDir, "cases.yaml"),
+  "cases:\n  - id: \"caf\u00e9\"\n    class: nominal\n    run: \"echo a\"\n  - id: \"cafe\u0301\"\n    class: nominal\n    run: \"echo b\"\n");
+writeFileSync(join(aa1eDir, "expected.json"), JSON.stringify({ "café": { exit: 0 }, "café": { exit: 0 } }) + "\n");
+const aa1eSeal = seal(["--slice", "S22", "--story", "ST-22", "--contract", "v1"]);
+ok("AA1: NFC-confusable case ids are refused at seal — two ids cannot render identically",
+   aa1eSeal.code !== 0 && /normalize to the same text/.test(aa1eSeal.out), aa1eSeal.out.slice(-240));
 
 // W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
 // dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse

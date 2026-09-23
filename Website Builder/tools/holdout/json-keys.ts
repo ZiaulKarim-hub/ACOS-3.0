@@ -145,3 +145,29 @@ export const invisibleName = (s: string): string | null => {
   const m = INVISIBLE_CODEPOINTS.exec(s);
   return m ? `U+${m[0].codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}` : null;
 };
+
+/**
+ * AA1 (ninth security review, NAMED): two case ids can be DISTINCT JSON keys
+ * yet render identically — "\u00e9" (é) vs "e\u0301" (e + combining accent),
+ * or any NFC/NFD pair. wb-cases-1 canonicalizes STRUCTURE, X4 refuses bidi and
+ * zero-width, but neither sees Unicode FORM. Two ids that look the same to a
+ * reader produce two run-record sections a reader cannot tell apart — exactly
+ * the harm the duplicate-id refusal exists to prevent. Refuse ids that collide
+ * after NFC normalization (whether or not the raw bytes matched).
+ */
+export const caseIdCollisions = (ids: string[]): string[] => {
+  const seen = new Map<string, string>();
+  const problems: string[] = [];
+  for (const id of ids) {
+    const norm = id.normalize("NFC");
+    const prior = seen.get(norm);
+    if (prior !== undefined) {
+      problems.push(prior === id
+        ? `case id ${JSON.stringify(id)} appears more than once`
+        : `case ids ${JSON.stringify(prior)} and ${JSON.stringify(id)} are distinct byte sequences that normalize to the same text (NFC) — a reader cannot tell their run-record sections apart`);
+    } else {
+      seen.set(norm, id);
+    }
+  }
+  return problems;
+};

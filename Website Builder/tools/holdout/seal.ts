@@ -25,8 +25,8 @@ import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
-import { commandValuedConfigKeys } from "./git-guard.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
+import { commandValuedConfigKeys, hookCensus } from "./git-guard.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
@@ -84,6 +84,20 @@ function main(): number {
           `yours, right now, while the answer key is plaintext (security review Z1).\n` +
           `Inspect the value(s), then remove each with\n` +
           `    git config --local --unset <key>\nand seal again.`);
+    }
+  }
+
+  // AA1: a hook already in the repo is a WARNING, not a refusal — a legitimate
+  // repository may carry its own (this one has a post-commit). seal cannot vouch
+  // for hook CONTENTS, and it runs while the answer key is plaintext, so it says
+  // so loudly; reveal's before/after snapshot is the hard guarantee against a
+  // hook PLANTED during a run (door 3).
+  {
+    const hooks = hookCensus();
+    if (hooks.length) {
+      console.log(`WARNING: the repository's hooks directory carries executable hook(s): ${hooks.join(", ")}.`);
+      console.log(`These run on your own git commands while ${PLAIN_NAME} is still plaintext. Confirm none are`);
+      console.log(`hostile before sealing — a planted hook can read the answer key on your next commit (AA1).`);
     }
   }
 
@@ -175,6 +189,12 @@ function main(): number {
     if (invisibles.length) {
       die(`seal refused: case string fields may not carry bidi or zero-width codepoints —\n  ` + invisibles.join("\n  ") +
           `\nText that renders differently than it executes is a Trojan Source vector (security review X4).`);
+    }
+    // AA1: case ids that normalize to the same text render identically.
+    const idCollisions = caseIdCollisions(cases.map((c) => String(c.id)));
+    if (idCollisions.length) {
+      die(`seal refused: case ids must be distinct to a reader —\n  ` + idCollisions.join("\n  ") +
+          `\nUnicode-confusable ids produce run-record sections nobody can tell apart (security review AA1).`);
     }
     // W3: the canonical rewrite below keeps exactly the four known keys, so
     // anything else would be silently dropped — refused instead, and every

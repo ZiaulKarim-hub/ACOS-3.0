@@ -29,12 +29,12 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
-import { GIT_SAFE, commandValuedConfigKeys } from "./git-guard.ts";
+import { GIT_SAFE, commandValuedConfigKeys, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
@@ -302,6 +302,26 @@ function main(): number {
     }
   }
 
+  // AA1 (ninth security review, EXECUTED): door 3 needed NO config key — a case
+  // dropped .git/hooks/pre-commit and the custodian's next ordinary commit ran
+  // it, in the authoring window, harvesting the next pack's plaintext. A value-
+  // classifier can never see a hook. Two defenses: a WARNING for hooks that
+  // already exist (a legitimate repo may carry its own — this one has a
+  // post-commit — so existence cannot HARD-refuse), and a before/after snapshot
+  // that proves none were PLANTED or CHANGED during the run, which is the exact
+  // mechanism door 3 used and is sealed as tampering below.
+  let hooksBefore: Record<string, string> = {};
+  if (inRepo) {
+    hooksBefore = hookSnapshot();
+    const present = hookCensus();
+    if (present.length) {
+      console.log(`WARNING: the repository's hooks directory carries executable hook(s): ${present.join(", ")}.`);
+      console.log(`These run on the CUSTODIAN's own git commands (not reveal's — those are hook-disabled).`);
+      console.log(`Confirm none are hostile before authoring the next pack; a planted hook fires while its`);
+      console.log(`answer key is still plaintext. reveal will seal tampering if any changes DURING this run.`);
+    }
+  }
+
   // A clean tree only proves nothing is UNCOMMITTED. It says nothing about WHICH
   // commit is checked out, so --candidate was previously an unverified label: any
   // string was accepted and written into the evidence as the thing that ran. The
@@ -372,6 +392,13 @@ function main(): number {
     if (invisibles.length) {
       die(`reveal refused (pack NOT spent): case string fields may not carry bidi or zero-width codepoints —\n  ` + invisibles.join("\n  ") +
           `\nText that renders differently than it executes is a Trojan Source vector (security review X4).`);
+    }
+    // AA1: ids that normalize to the same text render identically — refuse the
+    // same way at reveal against a pack sealed around the tool.
+    const idCollisions = caseIdCollisions(cases.map((c) => String((c as any).id)));
+    if (idCollisions.length) {
+      die(`reveal refused (pack NOT spent): case ids must be distinct to a reader —\n  ` + idCollisions.join("\n  ") +
+          `\nUnicode-confusable ids produce run-record sections nobody can tell apart (security review AA1).`);
     }
   }
 
@@ -1100,6 +1127,9 @@ function main(): number {
   // custodian to unset it BEFORE any other git command runs the payload.
   const postConfigKeys = inRepo ? commandValuedConfigKeys() : [];
   const configPlantedDuringRun = postConfigKeys.length > 0;
+  // AA1: a hook added or changed WHILE cases ran — door 3's exact mechanism.
+  const hooksPlanted = inRepo ? hookDelta(hooksBefore, hookSnapshot()) : [];
+  const hookPlantedDuringRun = hooksPlanted.length > 0;
 
   let bundleExtraFiles: string[] = [];
   try { bundleExtraFiles = readdirSync(join(EVIDENCE_ROOT, `EVB-${id}`)).filter((f) => !bundleExpectedFiles.has(f)).sort(); }
@@ -1134,6 +1164,8 @@ function main(): number {
     `bundle_extra_files: ${JSON.stringify(bundleExtraFiles)}`,
     `config_planted_during_run: ${configPlantedDuringRun}`,
     `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
+    `hook_planted_during_run: ${hookPlantedDuringRun}`,
+    `git_hooks_planted: ${JSON.stringify(hooksPlanted)}`,
     `attempts_log_sha256: ${attemptsTail}`,
     `finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`,
   ]).join("\n") + "\n";
@@ -1155,6 +1187,8 @@ function main(): number {
      `post_run_bundle_clean: ${bundleCleanAfterRun}`,
      `config_planted_during_run: ${configPlantedDuringRun}`,
      `git_config_command_keys: ${JSON.stringify(postConfigKeys)}`,
+     `hook_planted_during_run: ${hookPlantedDuringRun}`,
+     `git_hooks_planted: ${JSON.stringify(hooksPlanted)}`,
      `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
@@ -1197,13 +1231,19 @@ function main(): number {
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
   const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched
-    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false" || configPlantedDuringRun;
+    || !attemptsIntactAfterRun || !bundleCleanAfterRun || headUnchangedDuringRun === "false" || configPlantedDuringRun || hookPlantedDuringRun;
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun} config_planted=${configPlantedDuringRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun} head_unchanged=${headUnchangedDuringRun} config_planted=${configPlantedDuringRun} hook_planted=${hookPlantedDuringRun}.`);
     if (configPlantedDuringRun) {
       console.log(`DANGER: a case planted command-valued git config: ${postConfigKeys.join(", ")}.`);
       console.log(`The payload fires inside the NEXT plain git command anyone runs in this repository.`);
       console.log(`Remove it FIRST: ${postConfigKeys.map((k) => `git config --local --unset ${k}`).join(" && ")}`);
+    }
+    if (hookPlantedDuringRun) {
+      console.log(`DANGER: a case planted or changed git hook(s): ${hooksPlanted.join(", ")}.`);
+      console.log(`A hook fires inside the NEXT plain git commit anyone runs in this repository — while the`);
+      console.log(`next pack's answer key is still plaintext (security review AA1, door 3).`);
+      console.log(`Remove FIRST: ${hooksPlanted.map((h) => `rm "$(git rev-parse --absolute-git-dir)/hooks/${h}"`).join(" && ")}`);
     }
     console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
   }
