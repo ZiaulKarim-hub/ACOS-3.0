@@ -26,10 +26,18 @@
  *   1. ONE method, in code, with no per-manifest variation permitted.
  *   2. The method id is written INTO every manifest as `hash_method`, so a
  *      manifest is self-describing and no external lookup table can go stale.
- *   3. The digest is computed over file CONTENT ONLY. No mtime, no extended
- *      attributes, no tar header layout, no archive member order. Those are the
- *      inputs that produced the six orderings, so they are removed rather than
- *      documented.
+ *   3. The digest is computed over file CONTENT ONLY (plus, since wb-canon-2,
+ *      the owner-execute bit). No mtime, no extended attributes, no tar header
+ *      layout, no archive member order. Those are the inputs that produced the
+ *      six orderings, so they are removed rather than documented.
+ *      SECURITY TRADE-OFF, stated (re-review S7, executed): because xattrs are
+ *      outside the digest, a macOS pack can carry an arbitrary hidden payload in
+ *      an extended attribute without moving either published hash. Hashing them
+ *      would fabricate false MISMATCHes on ordinary copies — the worst failure
+ *      this file exists to prevent — so they stay excluded. Two mitigations:
+ *      reveal.ts holds the pack in MEMORY during the run (file CONTENT only), so
+ *      no case can read an xattr at grade time, and its restore is written fresh
+ *      from those bytes, so xattrs are DROPPED rather than carried forward.
  *   4. The tool writes the hash and the tool verifies it. No hand-run `shasum`
  *      pipeline appears in any runbook, because that is where the drift came from.
  */
@@ -92,7 +100,19 @@ export function listPackFiles(dir: string): string[] {
           );
         }
         walk(full);
-      } else if (st.isFile()) out.push(relative(dir, full).split(sep).join("/"));
+      } else if (st.isFile()) {
+        out.push(relative(dir, full).split(sep).join("/"));
+      } else {
+        // S6 (security re-review, EXECUTED): a FIFO in a pack left the digest
+        // byte-identical — it fell off this if/else and contributed nothing,
+        // while a case could still observe it (`test -p`). The same reasoning
+        // that refuses empty directories applies to every non-regular file.
+        throw new Error(
+          `pack refused: "${relative(dir, full).split(sep).join("/")}" is not a regular file.\n` +
+          `FIFOs, sockets and device nodes exist without contributing anything the seal\n` +
+          `covers, so their presence would be unpinned behaviour.`,
+        );
+      }
     }
   };
   walk(dir);

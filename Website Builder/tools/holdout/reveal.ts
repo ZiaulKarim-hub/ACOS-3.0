@@ -24,9 +24,8 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { appendFileSync, chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
@@ -140,6 +139,17 @@ function main(): number {
   // walk starts with readdirSync on the root it was handed, which FOLLOWS a link.
   // So qa-private/ or the pack directory itself could be a symlink out of the
   // audited tree, and "a pack must be self-contained" was not true at the root.
+  // A pack at mode 000 is the footprint of an INTERRUPTED reveal (the v3 lockdown
+  // below survives any kill). The pack is intact; the refusal says how to recover.
+  if ((lstatSync(packDir).mode & 0o777) === 0) {
+    die(
+      `reveal refused: ${packDir} is at mode 000 — an interrupted reveal left it locked down.\n` +
+      `The pack is INTACT, merely unreadable. Recover it with:\n` +
+      `    chmod u+rwX ${packDir} && chmod -R u+rwX ${packDir}\n` +
+      `then read attempts.log in ${join(EVIDENCE_ROOT, "EVB-" + id)} before revealing again —\n` +
+      `the interrupted attempt is already on that record.`,
+    );
+  }
   for (const p of [PACK_ROOT, packDir]) {
     if (lstatSync(p).isSymbolicLink()) {
       die(`reveal refused: ${p} is a symlink. A holdout pack must be self-contained;\nwhat a link points at can change without the pack changing.`);
@@ -372,6 +382,7 @@ function main(): number {
   //
   // The lock closes it: "wx" fails if the path exists, and that test-and-create
   // is a single atomic syscall, so exactly one process can hold it.
+  const bundlePreExisted = existsSync(bundleDirEarly);
   mkdirSync(bundleDirEarly, { recursive: true });
   const lockPath = join(bundleDirEarly, ".reveal.lock");
   try {
@@ -399,9 +410,42 @@ function main(): number {
   // many times — "a pack that can be re-run until it passes is homework, not an
   // exam", and the abort paths were the re-run. Every attempt now lands in the
   // bundle BEFORE the first case runs, and the count is sealed into the record.
+  // S4 (security re-review, EXECUTED): one `rm attempts.log` reset the counter to 1
+  // and the sealed record then AFFIRMED the wrong number. Two changes close what
+  // can be closed: a bundle directory that exists WITHOUT its attempts log is
+  // refused outright, and each line carries the sha256 of the line before it, so
+  // an edited or truncated log breaks the chain and is refused too.
+  //
+  // STATED LIMIT: an insider can still delete the WHOLE bundle directory before
+  // any record is sealed, and nothing inside the repository can prove a directory
+  // never existed. The chain makes tampering with a surviving log evident; it
+  // cannot make deletion of everything evident. That boundary is the same one the
+  // lock file already documents ("deliberately not automatic").
   const attemptsPath = join(bundleDirEarly, "attempts.log");
-  appendFileSync(attemptsPath, `${new Date().toISOString()} pid=${process.pid} candidate=${candidate} starting\n`);
-  const attemptCount = readFileSync(attemptsPath, "utf8").split("\n").filter((l) => l.endsWith(" starting") || l.includes(" starting")).length;
+  if (bundlePreExisted && !existsSync(attemptsPath)) {
+    die(`reveal refused: ${bundleDirEarly} already existed but holds no attempts.log.\n` +
+        `Every reveal writes its attempt line BEFORE running anything, so a pre-existing\n` +
+        `bundle without the log has had it deleted. The attempt history is evidence;\n` +
+        `remove the whole directory by hand if a reset is truly intended — THAT act is\n` +
+        `the stated limit of this record, and it is at least an act, not an edit.`);
+  }
+  const prevChain = existsSync(attemptsPath) ? readFileSync(attemptsPath, "utf8") : "";
+  const prevLines = prevChain.split("\n").filter(Boolean);
+  {
+    // Verify the existing chain before extending it: line N must carry the sha256
+    // of line N-1 exactly. A broken chain is an edited log, and it refuses.
+    let prevHash = "GENESIS";
+    for (const [i, line] of prevLines.entries()) {
+      if (!line.includes(`prev=${prevHash}`)) {
+        die(`reveal refused: attempts.log line ${i + 1} does not chain to the line before it.\n` +
+            `The log has been edited or truncated. The attempt history is evidence; repair is manual.`);
+      }
+      prevHash = sha256Hex(line);
+    }
+    const tail = prevLines.length ? sha256Hex(prevLines[prevLines.length - 1]) : "GENESIS";
+    appendFileSync(attemptsPath, `attempt=${prevLines.length + 1} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${tail}\n`);
+  }
+  const attemptCount = prevLines.length + 1;
   if (attemptCount > 1) {
     console.log(`note: this is reveal ATTEMPT ${attemptCount} for ${id} — earlier attempts aborted before sealing, and the sealed record will say so.`);
   }
@@ -409,48 +453,63 @@ function main(): number {
   // ---- run, once ----------------------------------------------------------
   // F1 (security review, CRITICAL): each case is the IMPLEMENTER'S code running
   // with this process's filesystem rights, and the pack — answer key included —
-  // sat at a well-known path in the same tree. A case could read
-  // qa-private/*/expected.json on its first invocation and satisfy every later
-  // case from the answers. So for the duration of the run the pack lives at an
-  // unguessable mkdtemp path outside the repository, mode 700.
+  // sat at a well-known path in the same tree.
   //
-  // STATED LIMIT, not hidden: the cases run as the SAME USER as this process, so
-  // a determined case can still hunt the temp root or attach a debugger. That
-  // cannot be closed without OS-level sandboxing (PRD §22 assumes the candidate
-  // is graded, not imprisoned). What this buys: the answer key is no longer at a
-  // knowable path, and the POST-RUN re-verification below turns silent tampering
-  // into a recorded, sealed fact.
-  const hideBase = mkdtempSync(join(tmpdir(), "wb-reveal-"));
-  chmodSync(hideBase, 0o700);
-  const hiddenPack = join(hideBase, "pack");
-  let packHidden = false;
-  try {
-    renameSync(packDir, hiddenPack);
-    packHidden = true;
-  } catch (e: any) {
-    if (e?.code === "EXDEV") {   // tmp on another volume: copy, then remove
-      cpSync(packDir, hiddenPack, { recursive: true });
-      rmSync(packDir, { recursive: true, force: true });
-      packHidden = true;
-    } else { rmSync(hideBase, { recursive: true, force: true }); throw e; }
+  // THREE designs, two of them defeated, all on the record:
+  //   v1: pack at its normal path. DEFEATED on paper (review F1): one cat.
+  //   v2: pack relocated to an unguessable mkdtemp dir. DEFEATED, executed
+  //       (re-review S1): the lock file published `pack_hidden_at:` at a path
+  //       derived from --id, and $TMPDIR held stale hide dirs findable by glob.
+  //       Its crash story was WORSE than the disease (S3, executed): a SIGTERM
+  //       mid-run stranded the repo's only copy of an unrevealed pack in
+  //       /var/folders — and a signal handler cannot save it, MEASURED: bun's
+  //       loop is blocked inside spawnSync, so handlers never ran and the
+  //       process died with the pack still outside the tree.
+  //   v3, this one: the pack NEVER LEAVES ITS PLACE. Every pack file and the
+  //       pack directory drop to mode 000 for the duration of the run, and
+  //       their ctimes are recorded first. To read anything a case must chmod
+  //       something — through the path or through a pre-made hardlink, mode
+  //       lives on the inode — and chmod moves ctime, WHICH THE KERNEL OWNS.
+  //       No same-user process can set ctime back. So reading is no longer
+  //       silent: the post-run comparison seals `post_run_pack_untouched`.
+  //
+  // Crash story of v3: any kill, including SIGKILL, leaves the pack INTACT at
+  // its own path, merely unreadable. Recovery is one command, printed in the
+  // lock's own doctrine: chmod -R u+rwX qa-private/<id>. Nothing is ever
+  // outside the repository, so nothing can be stranded.
+  //
+  // STATED LIMIT, unchanged: a same-user debugger can read this process's
+  // memory, where the parsed expectations live. That is OS-sandbox territory;
+  // PRD §22 grades the candidate, it does not imprison it.
+  // ctime is recorded AFTER each chmod — the chmod itself moves ctime, so the
+  // baseline must be the post-lockdown value or every comparison fails vacuously.
+  const packCtimes = new Map<string, number>();
+  const packModes = new Map<string, number>();
+  for (const rel of files) {
+    const p = join(packDir, rel);
+    packModes.set(rel, lstatSync(p).mode & 0o777);
+    chmodSync(p, 0o000);
+    packCtimes.set(rel, lstatSync(p).ctimeMs);
   }
-  // The lock file names the hiding place, so a SIGKILLed reveal can be recovered
-  // by hand — consistent with the lock's "deliberately not automatic" doctrine.
-  appendFileSync(lockPath, `pack_hidden_at: ${hiddenPack}\n`);
-  const restorePack = () => {
-    if (!packHidden) return;
-    try { renameSync(hiddenPack, packDir); }
-    catch {
-      try { cpSync(hiddenPack, packDir, { recursive: true }); } catch {}
-    }
-    packHidden = false;
-    try { rmSync(hideBase, { recursive: true, force: true }); } catch {}
+  const dirCtimeBefore = (() => { chmodSync(packDir, 0o000); return lstatSync(packDir).ctimeMs; })();
+  let accessRestored = false;
+  const restoreAccess = () => {
+    if (accessRestored) return;
+    accessRestored = true;
+    try { chmodSync(packDir, 0o700); } catch {}
+    for (const [rel, mode] of packModes) { try { chmodSync(join(packDir, rel), mode); } catch {} }
   };
-  process.on("exit", restorePack);   // fires on die() too — die() is process.exit(1)
+  process.on("exit", restoreAccess);   // fires on die() too — die() is process.exit(1)
 
   const startedAt = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  // S2 (security re-review, EXECUTED): every detection field used to live ONLY in
+  // the bundle manifest — outside the one hash — and flipping candidate_verified
+  // with sed left raw_log_sha256 identical. Every integrity fact is now written
+  // into the LOG, which is what gets hashed; the bundle manifest repeats them for
+  // readability and tools/holdout/verify-run-records.ts cross-checks the two.
   const log: string[] = [
-    `# Holdout run record — ${id}`, `candidate: ${candidate}`, `started_at: ${startedAt}`,
+    `# Holdout run record — ${id}`, `candidate: ${candidate}`, `candidate_verified: ${inRepo}`,
+    `attempt: ${attemptCount}`, `started_at: ${startedAt}`,
     `hash_method: ${man.hash_method}`, `pack_sha256: ${digest}`, `expected_results_sha256: ${expDigest}`, "",
   ];
   let pass = 0, fail = 0;
@@ -531,13 +590,38 @@ function main(): number {
     console.log(`  ${ok ? "PASS" : "FAIL"}  ${c.id} [${c.class}]${ok ? "" : "  — " + reasons.join("; ")}`);
   }
 
-  // ---- restore the pack, then RE-VERIFY everything the run could have bent ----
-  restorePack();
+  // ---- verify the tripwire, restore access, then RE-VERIFY content ----------
+  // Order matters: the dir ctime is sampled BEFORE restoreAccess touches modes,
+  // because restoring modes moves ctime again. A changed ctime here means some
+  // process chmod-ed, renamed, relinked or otherwise reached for the pack while
+  // the cases were running — the kernel wrote that fact and nobody can unwrite it.
+  let packUntouched = true;
+  try {
+    if (lstatSync(packDir).ctimeMs !== dirCtimeBefore) packUntouched = false;
+  } catch { packUntouched = false; }   // the DIRECTORY itself is gone or moved
+  if (packUntouched) {
+    // Search permission only — enough to lstat the children, not to read them.
+    // This moves the DIR's ctime, which was already compared above.
+    try { chmodSync(packDir, 0o100); } catch { packUntouched = false; }
+    for (const [rel, ct] of packCtimes) {
+      try { if (lstatSync(join(packDir, rel)).ctimeMs !== ct) { packUntouched = false; break; } }
+      catch { packUntouched = false; break; }
+    }
+  }
+  restoreAccess();
   // F1's detection half: the pack hash and the working tree were verified BEFORE
   // the run and never re-checked, so anything a case modified stayed invisible to
   // the sealed record. Both are re-verified here and sealed into the record. A
   // failed re-check still seals — the pack IS spent; what must not happen is the
   // tampering staying off the record — and the process exits non-zero.
+  // STATED LIMITS on the three checks below (re-review S5, S8 — reasoned there,
+  // recorded here): they are END-OF-RUN SNAPSHOTS. A case that modifies a file
+  // and restores it before the last case exits leaves them clean, and
+  // `git status --porcelain` honours .gitignore, so ignored paths are invisible
+  // to the tree check. And candidate_verified: true asserts only that a CLEAN
+  // git checkout in this cwd has the named commit as HEAD — it does not bind
+  // that repository to this project's history. Snapshots narrow the window and
+  // record what they saw; they are not a movie of the run.
   let packIntactAfterRun = false;
   try {
     packIntactAfterRun =
@@ -553,6 +637,11 @@ function main(): number {
   // disk changed while cases were running, that is recorded as tampering.
   const manifestOnDiskNow = readFileSync(mPath, "utf8");
   const manifestRewrittenDuringRun = manifestOnDiskNow !== preRunManifestText;
+  if (manifestRewrittenDuringRun) {
+    // The rewrite is about to be DISCARDED by the stamp below, so preserve what
+    // was found — the attacker's own text is the best evidence of the attack.
+    writeFileSync(join(EVIDENCE_ROOT, `EVB-${id}`, "manifest-as-found-after-run.yaml"), manifestOnDiskNow);
+  }
 
   // ---- seal, as produced --------------------------------------------------
   const finishedAt = new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -563,7 +652,15 @@ function main(): number {
   // milliseconds, because two runs in the same second previously produced the
   // same name and one raw log was silently overwritten.
   const logName = `holdout-run-${new Date().toISOString().replace(/[-:.]/g, "")}.log`;
-  const logText = log.concat([`finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`]).join("\n") + "\n";
+  const attemptsTail = sha256Hex(readFileSync(attemptsPath, "utf8"));
+  const logText = log.concat([
+    `post_run_pack_intact: ${packIntactAfterRun}`,
+    `post_run_tree_clean: ${treeCleanAfterRun}`,
+    `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
+    `post_run_pack_untouched: ${packUntouched}`,
+    `attempts_log_sha256: ${attemptsTail}`,
+    `finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`,
+  ]).join("\n") + "\n";
   writeFileSync(join(bundleDir, logName), logText);
   const logHash = sha256Hex(logText);
   writeFileSync(join(bundleDir, "manifest.yaml"),
@@ -574,6 +671,8 @@ function main(): number {
      `post_run_pack_intact: ${packIntactAfterRun}`,
      `post_run_tree_clean: ${treeCleanAfterRun}`,
      `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
+     `post_run_pack_untouched: ${packUntouched}`,
+     `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
   // Stamp the manifest last, so a crash mid-run never marks a pack spent that
@@ -595,9 +694,9 @@ function main(): number {
   renameSync(mTmp, mPath);
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
-  const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun;
+  const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched;
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun}.`);
     console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
   }
   console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : tampered ? `Cases passed, but see the tampering record above.` : `All cases passed.`);

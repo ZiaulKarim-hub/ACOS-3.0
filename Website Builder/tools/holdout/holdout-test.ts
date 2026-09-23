@@ -45,7 +45,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, sha256Hex, HASH_METHOD } from "./canonical-hash.ts";
@@ -1161,6 +1161,172 @@ f10try('{"H1": {"exit": 0, "stdout_contains": ""}}',
        "F10: an empty stdout_contains is refused — it matches everything and checks nothing", /non-empty string/);
 f10try('{"H1": {"exit": 0, "stdout_sha256": "ABC"}}',
        "F10: a malformed stdout_sha256 is refused", /64 lowercase hex/);
+
+console.log("— security re-review S1-S9, each defeat pinned —");
+
+// S1 — the first F1 fix was DEFEATED, executed, two ways: the lock file published
+// pack_hidden_at at a path derived from --id, and $TMPDIR held stale wb-reveal-*
+// hide dirs findable with one glob. The pack now lives in reveal's MEMORY: no
+// pointer to leak because there is no location to point at.
+const s1Id = "HLD-S48-v1";
+const s1Dir = join(repoRoot, "qa-private", s1Id);
+mkdirSync(s1Dir, { recursive: true });
+writeFileSync(join(s1Dir, "README.md"), "# s1\n");
+// The case IS the reviewer's attack: read the lock hunting for the pointer.
+writeFileSync(join(s1Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"! grep -q pack_hidden_at planning/evidence/EVB-" + s1Id + "/.reveal.lock\"\n");
+writeFileSync(join(s1Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S48", "--story", "ST-48", "--contract", "v1"]);
+const tmpRootS1 = process.env.TMPDIR ?? "/tmp";
+const hideDirsBefore = readdirSync(tmpRootS1).filter((d) => d.startsWith("wb-reveal-")).length;
+const s1run = run({ WB_QA_CONTEXT: "1" }, ["--id", s1Id, "--candidate", "abc1230"]);
+const hideDirsAfter = readdirSync(tmpRootS1).filter((d) => d.startsWith("wb-reveal-")).length;
+ok("S1: the lock carries NO pointer to the pack during the run — the case looked",
+   s1run.code === 0 && /1 PASS \/ 0 FAIL/.test(s1run.out), s1run.out.slice(-240));
+ok("S1/S9: a reveal creates NO hide directory in $TMPDIR — nothing for a glob to find",
+   hideDirsAfter === hideDirsBefore, `before=${hideDirsBefore} after=${hideDirsAfter}`);
+
+// S3 — SIGTERM two seconds into a run used to leave the repository's only copy of
+// an unrevealed pack stranded in /var/folders. Executed by the reviewer. The
+// restore now runs from memory on SIGINT/SIGTERM/SIGHUP.
+const s3Id = "HLD-S47-v1";
+const s3Dir = join(repoRoot, "qa-private", s3Id);
+mkdirSync(s3Dir, { recursive: true });
+writeFileSync(join(s3Dir, "README.md"), "# s3\n");
+writeFileSync(join(s3Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"sleep 5; echo hi\"\n");
+writeFileSync(join(s3Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S47", "--story", "ST-47", "--contract", "v1"]);
+const s3HashBefore = canonicalPackHash(s3Dir).digest;
+// The kill must hit BUN, not a wrapper shell. An earlier version wrote
+// `cd X && bun ... &`, which backgrounds the WHOLE `cd && bun` compound — $! was
+// the subshell, the kill orphaned the reveal instead of ending it, and the
+// orphan finished, sealed, and raced the next test's reveal over one bundle.
+// (reveal.ts caught that interference and flagged it, which is how the launcher
+// bug was found.) cwd comes from execFileSync, so nothing wraps bun.
+execFileSync("/bin/sh", ["-c",
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${s3Id} --candidate abc1230 --allow-unverified-candidate > /dev/null 2>&1 & pid=$!; sleep 1.2; kill -TERM $pid 2>/dev/null; wait $pid 2>/dev/null; exit 0`,
+], { cwd: repoRoot });
+// v3 contract, measured: a signal handler CANNOT run while bun is blocked inside
+// spawnSync, so nothing restores on SIGTERM — and nothing needs to. The pack
+// never left its path; the kill leaves it at mode 000, intact.
+ok("S3: after a SIGTERM mid-run the pack is still ON DISK at its own path, locked",
+   existsSync(s3Dir) && (lstatSync(s3Dir).mode & 0o777) === 0, `mode=${(lstatSync(s3Dir).mode & 0o777).toString(8)}`);
+ok("S3: ...and the interrupted pack is NOT spent",
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", s3Id + ".yaml"), "utf8")));
+const s3Locked = run({ WB_QA_CONTEXT: "1" }, ["--id", s3Id, "--candidate", "abc1230"]);
+ok("S3: revealing a locked-down pack refuses WITH the recovery command",
+   s3Locked.code !== 0 && /interrupted reveal/.test(s3Locked.out) && /chmod u\+rwX/.test(s3Locked.out), s3Locked.out.slice(-260));
+execFileSync("/bin/sh", ["-c", `chmod u+rwX ${JSON.stringify(s3Dir)} && chmod -R u+rwX ${JSON.stringify(s3Dir)}`]);
+ok("S3: one chmod recovers it byte-identical — nothing was ever outside the repository",
+   canonicalPackHash(s3Dir).digest === s3HashBefore);
+
+// S4 — one `rm attempts.log` reset the sealed attempt counter to 1 (executed by
+// the reviewer). Now: a bundle with content but no attempts log refuses, and an
+// edited line breaks the hash chain and refuses.
+const s4Bundle = join(repoRoot, "planning/evidence", "EVB-" + s3Id);
+// The SIGTERM above also stranded the lock — by design ("deliberately not
+// automatic"). The documented manual recovery removes it before going on.
+rmSync(join(s4Bundle, ".reveal.lock"), { force: true });
+ok("S4: the aborted attempt above IS on the chained record",
+   existsSync(join(s4Bundle, "attempts.log")) && /attempt=1 /.test(readFileSync(join(s4Bundle, "attempts.log"), "utf8")));
+rmSync(join(s4Bundle, "attempts.log"), { force: true });
+const s4NoLog = run({ WB_QA_CONTEXT: "1" }, ["--id", s3Id, "--candidate", "abc1230"]);
+ok("S4: a bundle with content but NO attempts.log is refused — the rm is no longer silent",
+   s4NoLog.code !== 0 && /no attempts.log/.test(s4NoLog.out), s4NoLog.out.slice(-200));
+writeFileSync(join(s4Bundle, "attempts.log"), `attempt=1 at=2026-01-01T00:00:00Z pid=1 candidate=abc1230 prev=GENESIS\nattempt=2 at=2026-01-01T00:00:01Z pid=2 candidate=abc1230 prev=WRONGHASH\n`);
+const s4BadChain = run({ WB_QA_CONTEXT: "1" }, ["--id", s3Id, "--candidate", "abc1230"]);
+ok("S4: an attempts.log whose lines do not chain is refused as edited",
+   s4BadChain.code !== 0 && /does not chain/.test(s4BadChain.out), s4BadChain.out.slice(-200));
+rmSync(s4Bundle, { recursive: true, force: true });   // stated limit: whole-dir deletion is the boundary
+
+// S2 — the detection fields used to live outside the only hash; flipping one with
+// sed left raw_log_sha256 identical (executed by the reviewer). They are now IN
+// the hashed log, and verify-run-records.ts cross-checks the two halves.
+const s2run = run({ WB_QA_CONTEXT: "1" }, ["--id", s3Id, "--candidate", "abc1230"]);
+const s2Bundle = join(repoRoot, "planning/evidence", "EVB-" + s3Id);
+const s2Logs = readdirSync(s2Bundle).filter((f) => f.endsWith(".log") && f.startsWith("holdout-run-"));
+ok("S2: exactly ONE run log exists — no concurrent reveal sealed this bundle", s2Logs.length === 1, s2Logs.join(", "));
+const s2LogName = s2Logs[0];
+const s2Log = readFileSync(join(s2Bundle, s2LogName), "utf8");
+ok("S2: every integrity field is inside the HASHED log",
+   s2run.code === 0 &&
+   /candidate_verified: false/.test(s2Log) && /attempt: 1/.test(s2Log) &&
+   /post_run_pack_intact: true/.test(s2Log) && /manifest_rewritten_during_run: false/.test(s2Log) &&
+   /attempts_log_sha256: [0-9a-f]{64}/.test(s2Log),
+   s2Log.slice(-400) + " ||EXIT=" + s2run.code + "|| " + s2run.out.slice(-200));
+const VERIFY_RECORDS = join(process.cwd(), "tools/holdout/verify-run-records.ts");
+const vrr = (cwd: string) => {
+  try { return { code: 0, out: execFileSync("bun", [VERIFY_RECORDS], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
+  catch (e: any) { return { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
+};
+const vrr1 = vrr(repoRoot);
+ok("S2: verify-run-records PASSES every honestly sealed bundle", vrr1.code === 0, vrr1.out.slice(-300));
+const s2Man = join(s2Bundle, "manifest.yaml");
+writeFileSync(s2Man, readFileSync(s2Man, "utf8").replace("candidate_verified: false", "candidate_verified: true"));
+const vrr2 = vrr(repoRoot);
+ok("S2: the reviewer's sed flip of candidate_verified is now CAUGHT",
+   vrr2.code !== 0 && /candidate_verified DISAGREES/.test(vrr2.out), vrr2.out.slice(-300));
+writeFileSync(s2Man, readFileSync(s2Man, "utf8").replace("candidate_verified: true", "candidate_verified: false"));
+const s2LogPath = join(s2Bundle, s2LogName);
+writeFileSync(s2LogPath, readFileSync(s2LogPath, "utf8").replace("post_run_pack_intact: true", "post_run_pack_intact: banana"));
+const vrr3 = vrr(repoRoot);
+ok("S2: an edited raw log is CAUGHT by its own hash", vrr3.code !== 0 && /raw_log_sha256 mismatch/.test(vrr3.out), vrr3.out.slice(-300));
+
+// The ctime tripwire, attacked. A case that chmods the pack directory to reach
+// inside it moves the dir's ctime — a timestamp only the kernel writes and no
+// same-user process can rewind. The reach itself becomes a sealed fact, even
+// when the case puts the mode back afterwards.
+const twId = "HLD-S42-v1";
+const twDir = join(repoRoot, "qa-private", twId);
+mkdirSync(twDir, { recursive: true });
+writeFileSync(join(twDir, "README.md"), "# ctime tripwire\n");
+writeFileSync(join(twDir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"chmod 700 qa-private/" + twId + "; chmod 000 qa-private/" + twId + "; true\"\n");
+writeFileSync(join(twDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S42", "--story", "ST-42", "--contract", "v1"]);
+const twRun = run({ WB_QA_CONTEXT: "1" }, ["--id", twId, "--candidate", "abc1230"]);
+const twRec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + twId, "manifest.yaml"), "utf8");
+ok("TRIPWIRE: a case that chmods the pack dir and puts it back is still RECORDED",
+   /post_run_pack_untouched: false/.test(twRec), twRec.slice(0, 400));
+ok("TRIPWIRE: ...and the reach fails the exit code even though the case passed",
+   twRun.code !== 0 && /1 PASS \/ 0 FAIL/.test(twRun.out) && /TAMPERING RECORDED/.test(twRun.out), twRun.out.slice(-260));
+
+// ...and the other direction: an honest run records post_run_pack_untouched: true.
+ok("TRIPWIRE: an honest run seals post_run_pack_untouched: true",
+   /post_run_pack_untouched: true/.test(f2rec) || /post_run_pack_untouched: true/.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + f1Id, "manifest.yaml"), "utf8")));
+
+// The HARDLINK route, attacked. A hardlink is a second name for the same file;
+// directory permissions do not apply to it, because mode lives on the inode.
+// An implementer who hardlinks expected.json BEFORE the reveal can read straight
+// through it — UNLESS the files themselves drop to mode 000. This is the one
+// attack the per-file lockdown exists for, and the mutant that skipped that
+// lockdown survived the suite until this test.
+const hlId = "HLD-S41A-v1";
+const hlDir = join(repoRoot, "qa-private", hlId);
+const hlLink = join(tmp, "smuggled-answer-key");
+mkdirSync(hlDir, { recursive: true });
+writeFileSync(join(hlDir, "README.md"), "# hardlink\n");
+writeFileSync(join(hlDir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"cat " + hlLink + "\"\n");
+writeFileSync(join(hlDir, "expected.json"), JSON.stringify({ H1: { exit: 1 } }) + "\n");
+seal(["--slice", "S41A", "--story", "ST-41", "--contract", "v1"]);
+linkSync(join(hlDir, "expected.json"), hlLink);   // the attacker's pre-made second name
+const hlRun = run({ WB_QA_CONTEXT: "1" }, ["--id", hlId, "--candidate", "abc1230"]);
+ok("HARDLINK: a pre-made hardlink to the answer key reads NOTHING during the run",
+   hlRun.code === 0 && /1 PASS \/ 0 FAIL/.test(hlRun.out), hlRun.out.slice(-240));
+rmSync(hlLink, { force: true });
+
+// S6 — a FIFO left the digest byte-identical (executed by the reviewer).
+const s6Dir = join(tmp, "s6-pack");
+mkdirSync(s6Dir, { recursive: true });
+writeFileSync(join(s6Dir, "README.md"), "# s6\n");
+writeFileSync(join(s6Dir, "cases.yaml"), "cases: []\n");
+writeFileSync(join(s6Dir, "expected.json"), "{}\n");
+execFileSync("mkfifo", [join(s6Dir, "helper")]);
+let s6Threw = "";
+try { canonicalPackHash(s6Dir); } catch (e: any) { s6Threw = String(e?.message ?? e); }
+ok("S6: a FIFO in a pack is refused, as symlinks and empty dirs already are",
+   /not a regular file/.test(s6Threw), s6Threw.slice(0, 120));
 
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass}/${pass + fail} passed.`);
