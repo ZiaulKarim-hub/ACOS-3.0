@@ -103,8 +103,10 @@ function main(): number {
   }
   if (existsSync(join(packDir, ENC_NAME))) {
     die(`seal refused: ${packDir}/${ENC_NAME} already exists alongside the plaintext.\n` +
-        `A pack is sealed once. If a previous seal failed half-way, delete the stale\n` +
-        `ciphertext by hand after checking the plaintext is the version you mean to seal.`);
+        `A pack is sealed once. If a previous seal crashed half-way, its key was already\n` +
+        `printed (the key prints BEFORE the plaintext is deleted); discard that key,\n` +
+        `delete the stale ciphertext by hand, check the plaintext is the version you\n` +
+        `mean to seal, and re-run.`);
   }
 
   const casesText = readFileSync(join(packDir, "cases.yaml"), "utf8");
@@ -161,6 +163,16 @@ function main(): number {
   const plainBytes = readFileSync(join(packDir, PLAIN_NAME));
   const keyHex = newKeyHex();
   writeFileSync(join(packDir, ENC_NAME), encryptExpected(plainBytes, keyHex));
+  // V3 (fifth security review): the key used to print at the very END, after
+  // the plaintext was deleted — so a kill landing between the two left a pack
+  // whose ciphertext no one could ever open. The key prints BEFORE the
+  // deletion: a crash after this line loses nothing (the plaintext, the
+  // ciphertext and the printed key all still exist), and a refusal below
+  // restores the plaintext, after which this key should simply be discarded.
+  console.log(`ANSWER KEY for ${id} — shown ONCE, stored NOWHERE by this tool:`);
+  console.log(`  WB_HOLDOUT_KEY=${keyHex}`);
+  console.log(`(printed before the plaintext is deleted, so no crash can strand an unopenable pack;`);
+  console.log(` if this seal REFUSES below, the plaintext is restored and this key is void)`);
   rmSync(join(packDir, PLAIN_NAME));
   const restorePlain = () => {
     try { writeFileSync(join(packDir, PLAIN_NAME), plainBytes); } catch {}
@@ -258,8 +270,7 @@ function main(): number {
   console.log(`  method   ${HASH_METHOD}`);
   console.log(`  manifest ${outPath}`);
   console.log(`  attempts ${anchorPath}  (tracked; every reveal attempt chains onto it)`);
-  console.log(`\nANSWER KEY for ${id} — shown ONCE, stored NOWHERE by this tool:`);
-  console.log(`  WB_HOLDOUT_KEY=${keyHex}`);
+  console.log(`\nThe ANSWER KEY was printed above, before the plaintext was deleted (V3).`);
   console.log(`Store it OUTSIDE this repository (T1: anything on disk here, a same-user`);
   console.log(`process can read). reveal.ts will ask for it on stdin (--key-stdin).`);
   console.log(`Anyone holding this key AND the pack can read the answers; losing it means`);

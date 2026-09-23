@@ -2,7 +2,20 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 169/169. Raised from 161 later on 2026-09-23 after the FOURTH security
+ * Expect 175/175. Raised from 169 on 2026-09-23 after the FIFTH security review
+ * returned REJECT with V1-V3: SIGKILL bypassed the U1 exit-handler heal (a
+ * signal is not an exit) and truncating both chain copies to the COMMITTED
+ * genesis left git status empty — the forged state WAS the committed state;
+ * a QUOTED key spelling ("run":) slipped past caseKeyProblems while Bun.YAML
+ * treated it as the same key; and seal printed the answer key only AFTER
+ * deleting the plaintext, leaving a crash window that strands an unopenable
+ * pack. Now: reveal COMMITS every attempt line before any case runs (a kill
+ * cannot un-commit; HEAD's copy must be a prefix of the working tree's),
+ * quoted spellings count as the bare key, and the key prints before the
+ * deletion. The burn is pinned live: truncate-both + kill -9, recovery, then
+ * the refusal that reads the committed history.
+ *
+ * Previously 169/169. Raised from 161 later on 2026-09-23 after the FOURTH security
  * review returned REJECT with U1-U3: the T4 git filter had CANCELLED the T3
  * anchor (a case truncated the tracked chain during an ABORTED run — no
  * post-run check fires there — and the next seal affirmed attempt: 1); the
@@ -213,8 +226,11 @@ const seal = (args: string[], cwd = repoRoot) => {
   try { r = { code: 0, out: execFileSync("bun", [SEAL, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
   catch (e: any) { r = { code: e.status ?? 1, out: String(e.stdout ?? "") + String(e.stderr ?? "") }; }
   // T1: seal prints the answer key ONCE; the suite is the custodian and keeps it.
-  const m = /sealed (HLD-[A-Za-z0-9-]+)[\s\S]*?WB_HOLDOUT_KEY=([0-9a-f]{64})/.exec(r.out);
-  if (m) packKeys.set(m[1], m[2]);
+  // V3 moved the key print BEFORE the plaintext deletion (and so before the
+  // final "sealed <id>" line) — the two are matched independently.
+  const mId = /ANSWER KEY for (HLD-[A-Za-z0-9-]+)/.exec(r.out);
+  const mKey = /WB_HOLDOUT_KEY=([0-9a-f]{64})/.exec(r.out);
+  if (r.code === 0 && mId && mKey) packKeys.set(mId[1], mKey[1]);
   return r;
 };
 
@@ -1561,7 +1577,7 @@ const fgLog = [
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
   `post_run_tree_clean_semantics: test-semantics`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
-  `post_run_attempts_intact: true`, `post_run_bundle_clean: true`,
+  `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
@@ -1574,7 +1590,7 @@ const fgManifest = (untouched: string) => [
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
   `post_run_tree_clean_semantics: test-semantics`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
-  `post_run_attempts_intact: true`, `post_run_bundle_clean: true`,
+  `post_run_attempts_intact: true`, `attempts_anchor_committed: false`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
 ].join("\n");
 writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
@@ -1737,6 +1753,84 @@ seal(["--slice", "S31", "--story", "ST-31", "--contract", "v1"]);
 const u3Run = run({ WB_QA_CONTEXT: "1", WB_CANARY_SECRET: "leak-me" }, ["--id", u3Id, "--candidate", "abc1230"]);
 ok("U3: a secret in reveal's environment is INVISIBLE to the case; HOME still present",
    u3Run.code === 0 && /1 PASS \/ 0 FAIL/.test(u3Run.out), u3Run.out.slice(-200));
+
+console.log("— fifth security review: V1/V2, each executed defeat pinned —");
+
+// V2 — a QUOTED key spelling is the same key. `run:` plus `"run":` sealed and
+// executed the second command while a reader saw the first (executed, fifth
+// pass). One regex character class closes it, both tools, same scanner.
+const v2Id = "HLD-S30-v1";
+const v2Dir = join(repoRoot, "qa-private", v2Id);
+mkdirSync(v2Dir, { recursive: true });
+writeFileSync(join(v2Dir, "README.md"), "# v2\n");
+writeFileSync(join(v2Dir, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: nominal\n    run: "echo SAFE"\n    "run": "echo PWNED"\n');
+writeFileSync(join(v2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const v2Seal = seal(["--slice", "S30", "--story", "ST-30", "--contract", "v1"]);
+ok("V2: seal refuses a double-quoted duplicate of run:",
+   v2Seal.code !== 0 && /"run:" 2 times/.test(v2Seal.out), v2Seal.out.slice(-200));
+manualSeal(v2Id, v2Dir);
+const v2Rev = run({ WB_QA_CONTEXT: "1" }, ["--id", v2Id, "--candidate", "abc1230"]);
+ok("V2: reveal refuses the same pack sealed around the tool, pack NOT spent",
+   v2Rev.code !== 0 && /"run:" 2 times/.test(v2Rev.out) &&
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", v2Id + ".yaml"), "utf8")),
+   v2Rev.out.slice(-200));
+// ...and a SINGLE quoted spelling used once is not a false refusal.
+const v2b = join(repoRoot, "qa-private", "HLD-S29-v1");
+mkdirSync(v2b, { recursive: true });
+writeFileSync(join(v2b, "README.md"), "# v2b\n");
+writeFileSync(join(v2b, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    \'run\': "echo ok"\n');
+writeFileSync(join(v2b, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const v2bSeal = seal(["--slice", "S29", "--story", "ST-29", "--contract", "v1"]);
+ok("V2: one quoted key, used once, still seals — no false refusal", v2bSeal.code === 0, v2bSeal.out.slice(-160));
+
+// V1 — the SIGKILL burn. A case truncates BOTH chain copies to the committed
+// genesis and kill -9's reveal: the exit handler never runs (a signal is not
+// an exit) and git status is EMPTY, because the forged state IS the committed
+// state. The counter that survives: reveal COMMITS each attempt line before
+// any case runs, and a kill cannot un-commit.
+const v1Id = "HLD-S90C-v1";
+const v1Pack = join(repo2, "qa-private", v1Id);
+const v1AnchorRel = "planning/holdouts/attempts/" + v1Id + ".log";
+const v1CopyRel = "planning/evidence/EVB-" + v1Id + "/attempts.log";
+// Arm flag and key file live OUTSIDE repo2 — an untracked file inside it
+// would (correctly) fail reveal's dirty-tree check before the burn even runs.
+const v1Arm = join(tmp, "v1-burnarm");
+const v1Key = join(tmp, "v1-key");
+mkdirSync(v1Pack, { recursive: true });
+writeFileSync(join(v1Pack, "README.md"), "# v1\n");
+writeFileSync(join(v1Pack, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"if [ -f " + v1Arm + " ]; then head -n1 " + v1AnchorRel + " > " + join(tmp, "b1") + " && mv " + join(tmp, "b1") + " " + v1AnchorRel + "; head -n1 " + v1CopyRel + " > " + join(tmp, "b2") + " && mv " + join(tmp, "b2") + " " + v1CopyRel + "; kill -9 $PPID; fi; true\"\n");
+writeFileSync(join(v1Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90C", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "v1 pack");
+writeFileSync(v1Key, packKeys.get(v1Id)! + "\n");
+writeFileSync(v1Arm, "armed\n");
+execFileSync("/bin/sh", ["-c",
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${v1Id} --candidate ${git("rev-parse", "HEAD").trim()} --key-stdin < ${JSON.stringify(v1Key)} > /dev/null 2>&1; exit 0`,
+], { cwd: repo2 });
+rmSync(v1Arm, { force: true });
+const v1DiskLines = readFileSync(join(repo2, v1AnchorRel), "utf8").split("\n").filter(Boolean).length;
+const v1HeadLines = git("show", "HEAD:./" + v1AnchorRel).split("\n").filter(Boolean).length;
+ok("V1: the attempt line was COMMITTED before cases ran — SIGKILL could not rewind it",
+   v1DiskLines === 1 && v1HeadLines === 2, `disk=${v1DiskLines} HEAD=${v1HeadLines}`);
+// The documented crash recovery (chmod + remove the stale lock)...
+execFileSync("/bin/sh", ["-c", `chmod u+rwX qa-private/${v1Id} && chmod -R u+rwX qa-private/${v1Id}`], { cwd: repo2 });
+rmSync(join(repo2, "planning/evidence", "EVB-" + v1Id, ".reveal.lock"), { force: true });
+// ...and the next reveal REFUSES: the working tree chain is shorter than HEAD's.
+const v1Second = run({ WB_QA_CONTEXT: "1" }, ["--id", v1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("V1: after recovery, the truncated anchor is refused against its committed copy",
+   v1Second.code !== 0 && /SHORTER than/.test(v1Second.out) &&
+   /revealed_at: null/.test(readFileSync(join(repo2, "planning/holdouts/manifests", v1Id + ".yaml"), "utf8")),
+   v1Second.out.slice(-260));
+// Repair exactly as the refusal instructs, disarm the burn, and the seal is honest.
+git("checkout", "--", v1AnchorRel);
+execFileSync("cp", [join(repo2, v1AnchorRel), join(repo2, v1CopyRel)]);
+const v1Third = run({ WB_QA_CONTEXT: "1" }, ["--id", v1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const v1Rec = readFileSync(join(repo2, "planning/evidence", "EVB-" + v1Id, "manifest.yaml"), "utf8");
+ok("V1: the repaired chain seals attempt: 2, anchor committed, exit 0",
+   v1Third.code === 0 && /attempt: 2/.test(v1Rec) && /attempts_anchor_committed: true/.test(v1Rec),
+   v1Rec.slice(0, 340) + " ||" + v1Third.out.slice(-160));
 
 // S6 — a FIFO left the digest byte-identical (executed by the reviewer).
 const s6Dir = join(tmp, "s6-pack");

@@ -528,6 +528,34 @@ function main(): number {
   if (!anchorLines.length || !anchorLines[0].startsWith("sealed ")) {
     die(`reveal refused: ${anchorPath} does not begin with its sealed genesis line — it was edited or rebuilt.`);
   }
+  // V1 (fifth security review, EXECUTED): the exit-handler heal is bypassed by
+  // SIGKILL — a signal is not an exit — and truncating BOTH chain copies back
+  // to the COMMITTED genesis line left `git status` empty, because the forged
+  // state WAS the committed state. So the count is now bound to something a
+  // SIGKILLed run cannot rewind: every attempt line is COMMITTED the moment it
+  // is appended (below), and here the committed copy must be a PREFIX of the
+  // working-tree copy. A truncated-to-genesis anchor is then SHORTER than
+  // HEAD's copy, and refuses loudly. Rewriting git history remains the stated
+  // universal boundary; a crash cannot un-commit.
+  // `HEAD:./path` — the ./ makes the path cwd-relative for git show.
+  if (inRepo) {
+    let committedAnchor = "";
+    try {
+      committedAnchor = execFileSync("git", ["show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      die(`reveal refused: ${anchorPath} is not committed (git show HEAD:./${anchorPath} failed).\n` +
+          `seal.ts creates the anchor and instructs the custodian to COMMIT it with the\n` +
+          `manifest before any reveal. An uncommitted anchor cannot bind the attempt count.`);
+    }
+    if (!anchorText.startsWith(committedAnchor)) {
+      die(`reveal refused: the attempts anchor on disk is SHORTER than (or diverged from) its\n` +
+          `committed copy — HEAD:./${anchorPath} holds ${committedAnchor.split("\n").filter(Boolean).length} chained line(s),\n` +
+          `the working tree holds ${anchorLines.length}. A crash cannot un-commit an attempt line, so\n` +
+          `this is truncation of the attempt history (security review V1). Restore it with\n` +
+          `    git checkout -- ${anchorPath}\n` +
+          `then make the bundle copy agree, and read the history before revealing again.`);
+    }
+  }
   const anchorTail = verifyChain(anchorLines, anchorPath);
   if (bundleChainText !== null && bundleChainText !== anchorText) {
     die(`reveal refused: the two copies of the attempt chain disagree.\n` +
@@ -587,6 +615,23 @@ function main(): number {
   const attemptLine = `attempt=${attemptCount} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${anchorTail}`;
   const anchorExpectedAfter = anchorText + attemptLine + "\n";
   appendFileSync(anchorPath, attemptLine + "\n");
+  // V1: committed BEFORE any case runs, so no kill at any later moment can make
+  // this attempt not have happened. The commit touches ONLY the anchor (pathspec
+  // commit); the tree was verified clean of everything else above. A failed
+  // commit refuses — the appended line stays on disk, and the prefix check
+  // still holds for the retry. HEAD moves by one anchor-only commit per
+  // attempt; the candidate was verified against HEAD before this point, and
+  // the next pack's candidate is simply the then-current HEAD.
+  if (inRepo) {
+    try {
+      execFileSync("git", ["-c", "user.email=holdout-reveal@local", "-c", "user.name=holdout-reveal",
+        "commit", "-q", "-m", `holdout: ${id} attempt ${attemptCount}`, "--", anchorPath],
+        { stdio: ["ignore", "pipe", "pipe"] });
+    } catch (e: any) {
+      die(`reveal refused: could not commit the attempt line to ${anchorPath} — ${String(e?.stderr ?? e?.message ?? e).trim()}\n` +
+          `The attempt count is bound to git history (V1); an uncommittable anchor cannot bind it.`);
+    }
+  }
   // The bundle copy is the WHOLE chain, byte-identical to the anchor — one
   // hash (attempts_log_sha256, sealed in the footer) then covers both.
   writeFileSync(attemptsPath, anchorExpectedAfter);
@@ -879,6 +924,7 @@ function main(): number {
     `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
     `post_run_pack_untouched: ${packUntouched}`,
     `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
+    `attempts_anchor_committed: ${inRepo}`,
     `post_run_bundle_clean: ${bundleCleanAfterRun}`,
     // JSON-escaped: a planted FILENAME may contain newlines, and this line
     // lives in the trusted footer (T2) — it must stay one line.
@@ -899,6 +945,7 @@ function main(): number {
      `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
      `post_run_pack_untouched: ${packUntouched}`,
      `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
+     `attempts_anchor_committed: ${inRepo}`,
      `post_run_bundle_clean: ${bundleCleanAfterRun}`,
      `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));

@@ -53,7 +53,8 @@ export const duplicateJsonKeys = (text: string): string[] => {
  * The same defect class as duplicateJsonKeys closes, one file over.
  *
  * Scope, stated: block-style case lists only, which is the only shape seal.ts
- * documents. Flow-style case mappings ("- { id: H1, run: a, run: b }") are refused
+ * documents. Quoted key spellings ("run": / 'run':) are matched as the bare
+ * key, because YAML resolves them to the same key (V2, executed). Flow-style case mappings ("- { id: H1, run: a, run: b }") are refused
  * outright rather than scanned, and a block scalar ("run: |") is refused because
  * its continuation lines are indistinguishable from keys to a line scanner. A
  * false refusal costs a re-seal; a missed duplicate costs a spent pack.
@@ -68,7 +69,12 @@ export const caseKeyProblems = (text: string): string[] => {
     if (!block.length) return;
     for (const key of CASE_KEYS) {
       // The keys are compile-time literals, never user input — nothing to escape.
-      const hits = block.filter((b) => new RegExp(`^\\s*(?:-\\s+)?${key}\\s*:`).test(b.line)).length;
+      // V2 (fifth security review, EXECUTED): `"run":` and `'run':` resolve to
+      // the SAME key as bare `run:` in Bun.YAML — and the old pattern matched
+      // only the bare spelling, so a pack carrying `run:` and `"run":` sealed
+      // without complaint and executed the second. Quoted spellings count too,
+      // exactly as duplicateJsonKeys already decodes them on the JSON side.
+      const hits = block.filter((b) => new RegExp(`^\\s*(?:-\\s+)?["']?${key}["']?\\s*:`).test(b.line)).length;
       if (hits > 1) {
         problems.push(`the case starting at line ${blockStart + 1} carries "${key}:" ${hits} times — YAML keeps only the LAST one, so a reader and the harness would disagree about this case`);
       }

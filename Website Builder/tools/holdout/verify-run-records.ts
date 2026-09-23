@@ -40,6 +40,7 @@
  * Exit: 0 all records verify (or none exist); 1 any record fails.
  */
 
+import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sha256Hex } from "./canonical-hash.ts";
@@ -69,7 +70,8 @@ const HEADER_FIELDS = ["candidate", "candidate_verified", "attempt"] as const;
 const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
                        "post_run_tree_clean_semantics",
                        "manifest_rewritten_during_run", "post_run_pack_untouched",
-                       "post_run_attempts_intact", "post_run_bundle_clean",
+                       "post_run_attempts_intact", "attempts_anchor_committed",
+                       "post_run_bundle_clean",
                        "attempts_log_sha256"] as const;
 
 /** GENESIS-rooted hash chain; returns problems, never throws. */
@@ -172,6 +174,17 @@ function verifyBundle(dir: string): string[] {
         bad.push(`the TRACKED attempts anchor ${anchorPath} is MISSING — seal.ts created it; its deletion is the removal of a tracked file`);
       } else if (readFileSync(anchorPath, "utf8") !== attemptsRaw) {
         bad.push(`the tracked anchor ${anchorPath} and the bundle's attempts.log DISAGREE — one was edited or reset`);
+      } else {
+        // V1: reveal commits every attempt line, so HEAD's copy of the anchor
+        // must be a prefix of (or equal to) the working-tree copy. Best effort:
+        // silently skipped outside a git repository (fixtures), where the
+        // record itself says attempts_anchor_committed: false.
+        try {
+          const committed = execFileSync("git", ["show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+          if (!readFileSync(anchorPath, "utf8").startsWith(committed)) {
+            bad.push(`the anchor on disk is SHORTER than or diverged from HEAD's copy — attempt history was truncated after its commit`);
+          }
+        } catch { /* not a repo, or anchor never committed: the record's attempts_anchor_committed field carries that fact */ }
       }
     }
   }
