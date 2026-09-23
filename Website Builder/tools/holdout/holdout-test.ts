@@ -2,7 +2,7 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 207/207. Raised from 200 on 2026-09-23 after the NINTH security review
+ * Expect 209/209. Raised from 200 on 2026-09-23 after the NINTH security review
  * returned REJECT with AA1: the eighth-round config detector asked `git config
  * --local --list`, which missed four doors to the same planted-command payload
  * — include.path (a local key pointing at a second config file whose keys are
@@ -2234,6 +2234,14 @@ ok("AA1 door 4: a REDIRECTED core.hooksPath is flagged — only the repo's own h
    aa1fSeal.code !== 0 && /core\.hookspath/.test(aa1fSeal.out), aa1fSeal.out.slice(-220));
 git("config", "--unset", "core.hooksPath");
 
+// AA1 item 5 — sequence.editor executes during git commit / rebase -i (the
+// authoring window), a sibling of core.editor the first key list missed.
+git("config", "sequence.editor", join(tmp, "seq-evil.sh"));
+const aa1gSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("AA1 item 5: sequence.editor is flagged — the key set tracks git's executable-valued keys",
+   aa1gSeal.code !== 0 && /sequence\.editor/.test(aa1gSeal.out), aa1gSeal.out.slice(-220));
+git("config", "--unset", "sequence.editor");
+
 // AA1 door 3 — a hook planted DURING a run, NO config key. The before/after
 // snapshot seals it as tampering, so the record no longer affirms clean.
 const aa1cId = "HLD-S90L-v1";
@@ -2286,6 +2294,53 @@ writeFileSync(join(aa1eDir, "expected.json"), JSON.stringify({ "café": { exit: 
 const aa1eSeal = seal(["--slice", "S22", "--story", "ST-22", "--contract", "v1"]);
 ok("AA1: NFC-confusable case ids are refused at seal — two ids cannot render identically",
    aa1eSeal.code !== 0 && /normalize to the same text/.test(aa1eSeal.out), aa1eSeal.out.slice(-240));
+
+console.log("— tenth security review: BB1, the worktree hook-audit blind spot —");
+
+// BB1 (tenth review, EXECUTED): the hook audit read join(--absolute-git-dir,
+// "hooks"). In a LINKED WORKTREE — reveal's documented deployment — that is
+// .git/worktrees/<name>/hooks (empty), while git runs hooks from the COMMON dir
+// .git/hooks. A case planted pre-commit in the common dir with NO config key,
+// the snapshot watched the wrong empty dir, and the record certified
+// hook_planted_during_run: false while the payload was live. Fixed by reading
+// <git-common-dir>/hooks. This test runs reveal FROM a linked worktree.
+const bbId = "HLD-S90N-v1";
+const bbMain = join(tmp, "repo3");
+const bbGit = (cwd: string, ...a: string[]) =>
+  execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...a],
+               { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+mkdirSync(join(bbMain, "planning/holdouts/manifests"), { recursive: true });
+mkdirSync(join(bbMain, "qa-private", bbId), { recursive: true });
+writeFileSync(join(bbMain, ".gitignore"), "qa-private/\nplanning/evidence/\n");
+writeFileSync(join(bbMain, "base.txt"), "base\n");
+writeFileSync(join(bbMain, "qa-private", bbId, "README.md"), "# bb1\n");
+// The case plants a hook into git's REAL common-dir hooks — computed live, no
+// config key — exactly the reviewer's plant10.sh, on a single line.
+writeFileSync(join(bbMain, "qa-private", bbId, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "H=$(git rev-parse --git-common-dir)/hooks; echo x > $H/pre-commit; chmod +x $H/pre-commit; echo planted"\n');
+writeFileSync(join(bbMain, "qa-private", bbId, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+bbGit(bbMain, "init", "-q");
+seal(["--slice", "S90N", "--story", "ST-90", "--contract", "v1"], bbMain);
+bbGit(bbMain, "add", "-A");
+bbGit(bbMain, "commit", "-q", "-m", "bb1 pack");
+// A linked worktree, and the (gitignored) pack copied into it — the QA setup.
+const bbWt = join(tmp, "repo3-wt");
+bbGit(bbMain, "worktree", "add", "-q", bbWt);
+execFileSync("cp", ["-R", join(bbMain, "qa-private"), join(bbWt, "qa-private")]);
+const bbHead = bbGit(bbWt, "rev-parse", "HEAD").trim();
+writeFileSync(join(tmp, "bbkey"), packKeys.get(bbId)! + "\n");
+const bbRun = execFileSync("/bin/sh", ["-c",
+  `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${bbId} --candidate ${bbHead} --key-stdin < ${JSON.stringify(join(tmp, "bbkey"))} 2>&1; exit 0`,
+], { cwd: bbWt, encoding: "utf8" });
+// Clean the planted hook out of the shared common dir before anything else runs.
+rmSync(join(bbMain, ".git/hooks/pre-commit"), { force: true });
+const bbMan = existsSync(join(bbWt, "planning/evidence", "EVB-" + bbId, "manifest.yaml"))
+  ? readFileSync(join(bbWt, "planning/evidence", "EVB-" + bbId, "manifest.yaml"), "utf8")
+  : "(no record sealed)";
+ok("BB1: reveal run FROM a linked worktree sees a common-dir hook plant and seals it as tampering",
+   /TAMPERING RECORDED/.test(bbRun) && /hook_planted=true/.test(bbRun) &&
+   /hook_planted_during_run: true/.test(bbMan) && /pre-commit/.test(bbMan),
+   bbRun.slice(-320));
 
 // W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
 // dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse

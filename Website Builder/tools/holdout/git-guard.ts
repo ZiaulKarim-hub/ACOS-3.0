@@ -50,9 +50,12 @@ export const GIT_SAFE = [
 // flagging them would refuse on an ordinary credential helper or editor.
 const PLANTABLE_SCOPES = new Set(["local", "worktree"]);
 
+// BB1 item 5 (tenth review, NAMED): this allowlist is a MAINTENANCE SURFACE, not
+// a closed set — git keeps adding executable-valued keys, so it must track git's
+// evolution. sequence.editor (git commit / rebase -i) joined core.editor here.
 const EXACT_KEYS = new Set([
   "core.fsmonitor", "core.attributesfile", "core.sshcommand", "core.pager",
-  "core.editor", "core.askpass", "credential.helper", "gpg.program",
+  "core.editor", "sequence.editor", "core.askpass", "credential.helper", "gpg.program",
   // AA1: the redirection keys themselves — a smuggled second config or a
   // worktree-config switch is suspicious in its own right.
   "include.path", "extensions.worktreeconfig",
@@ -71,10 +74,26 @@ const isCommandValued = (key: string): boolean =>
 
 const canon = (p: string): string => { try { return realpathSync(p); } catch { return p; } };
 
-const absoluteGitDir = (): string | null => {
+// BB1 (tenth security review, EXECUTED): the hook audit read
+// join(--absolute-git-dir, "hooks"). In a LINKED WORKTREE — the documented QA
+// deployment (reviewers run in worktrees; reveal's docstring says "a separate
+// QA worktree") — --absolute-git-dir is .git/worktrees/<name>, but git runs
+// hooks from the COMMON dir (.git/hooks). The census/snapshot read an empty
+// directory that does not exist, saw [], and a case's planted hook fired on the
+// custodian's commit while the record certified hook_planted_during_run: false.
+// The hooks directory git ACTUALLY runs from is <common-dir>/hooks (a linked
+// worktree shares the common dir; core.hooksPath can redirect it, but a
+// redirect is flagged by door 4, so the DEFAULT location is what this audits).
+// NB: `git rev-parse --git-path hooks` cannot be used — it HONORS core.hooksPath,
+// and GIT_SAFE sets core.hooksPath=/var/empty, so it would report /var/empty and
+// the audit would read an empty directory (measured). --git-common-dir is not
+// hooksPath-sensitive; --path-format=absolute makes it correct from any subdir.
+const hooksDir = (): string | null => {
   try {
-    return execFileSync("git", [...GIT_SAFE, "rev-parse", "--absolute-git-dir"],
+    const common = execFileSync("git",
+      [...GIT_SAFE, "rev-parse", "--path-format=absolute", "--git-common-dir"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return common ? join(common, "hooks") : null;
   } catch { return null; }
 };
 
@@ -91,8 +110,8 @@ export function commandValuedConfigKeys(): string[] {
     raw = execFileSync("git", [...GIT_SAFE, "config", "--show-scope", "--list", "-z"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   } catch { return []; }
-  const gitDir = absoluteGitDir();
-  const ownHooks = gitDir ? canon(join(gitDir, "hooks")) : "";
+  const own = hooksDir();
+  const ownHooks = own ? canon(own) : "";
   // `--show-scope -z` emits alternating NUL-separated tokens: scope, then
   // "key\nvalue", repeating. (Measured on git 2.x.)
   const tokens = raw.split("\0");
@@ -121,9 +140,8 @@ const isLiveHook = (name: string): boolean => !name.endsWith(".sample");
 
 /** Executable non-sample hook files in the repo's active hooks dir, sorted. */
 export function hookCensus(): string[] {
-  const gitDir = absoluteGitDir();
-  if (!gitDir) return [];
-  const dir = join(gitDir, "hooks");
+  const dir = hooksDir();
+  if (!dir) return [];
   let names: string[] = [];
   try { names = readdirSync(dir); } catch { return []; }
   const live: string[] = [];
@@ -139,9 +157,8 @@ export function hookCensus(): string[] {
 
 /** name -> sha256:mode for every live hook, so reveal can diff before/after. */
 export function hookSnapshot(): Record<string, string> {
-  const gitDir = absoluteGitDir();
-  if (!gitDir) return {};
-  const dir = join(gitDir, "hooks");
+  const dir = hooksDir();
+  if (!dir) return {};
   let names: string[] = [];
   try { names = readdirSync(dir); } catch { return {}; }
   const out: Record<string, string> = {};
