@@ -29,7 +29,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
@@ -79,6 +79,24 @@ const arg = (n: string): string | null => {
 const has = (n: string) => process.argv.includes(n);
 const die = (msg: string): never => { console.error(msg); process.exit(1); };
 
+// X2 (seventh security review, EXECUTED): a case ran `git config core.fsmonitor
+// /tmp/x.sh` — .git/config is untracked, invisible to every tree check — and
+// git executed that command inside reveal's own next `git status`, with
+// reveal's FULL environment, and again on every later reveal in the repo. That
+// is escape from the U3 env sandbox plus a persistent foothold. Hooks were
+// silenced in the sixth pass, but fsmonitor is a separate config-driven
+// command, and only the COMMIT calls carried the override. Every git call this
+// tool makes now carries one neutralizing prefix: no hooks, no fsmonitor, no
+// askpass, no credential helper. This NEUTRALIZES config-driven execution for
+// reveal's own calls; it cannot detect the config edit itself — .git/ is out
+// of tree, and that boundary is stated where the hooks fix already states it.
+const GIT_SAFE = [
+  "-c", "core.hooksPath=/var/empty",
+  "-c", "core.fsmonitor=false",
+  "-c", "core.askPass=",
+  "-c", "credential.helper=",
+];
+
 /**
  * `git status --porcelain -uall`, minus the paths reveal itself legitimately
  * writes during a run: this pack's evidence bundle (untracked until someone
@@ -92,7 +110,7 @@ const die = (msg: string): never => { console.error(msg); process.exit(1); };
  * Quoted paths (spaces, escapes) are never filtered either — ours contain none.
  */
 const gitDirtyFiltered = (id: string, anchorClean: boolean): string => {
-  const raw = execFileSync("git", ["status", "--porcelain", "-uall"], { encoding: "utf8" });
+  const raw = execFileSync("git", [...GIT_SAFE, "status", "--porcelain", "-uall"], { encoding: "utf8" });
   const bundlePrefix = `${EVIDENCE_ROOT}/EVB-${id}/`;
   const anchorFile = `${ATTEMPTS_DIR}/${id}.log`;
   return raw.split("\n").filter(Boolean).filter((line) => {
@@ -245,7 +263,7 @@ function main(): number {
   // the check exists to prevent, surviving in one untested state.
   let dirty = "", headSha = "", inRepo = false;
   try {
-    execFileSync("git", ["rev-parse", "--git-dir"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    execFileSync("git", [...GIT_SAFE, "rev-parse", "--git-dir"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     inRepo = true;
   } catch { /* genuinely outside a repository */ }
 
@@ -267,7 +285,7 @@ function main(): number {
   } else {
     dirty = gitDirtyFiltered(id, true).trim();   // anchor content was chain-verified moments ago
     try {
-      headSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      headSha = execFileSync("git", [...GIT_SAFE, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
       die(
         `reveal refused: this IS a git repository, but HEAD does not resolve to a commit.\n` +
@@ -336,6 +354,18 @@ function main(): number {
     if (multiline.length) {
       die(`reveal refused (pack NOT spent): case string fields must be single-line —\n  ` + multiline.join("\n  ") +
           `\nAn embedded newline in a case field is a run-record injection vector (security review T2).`);
+    }
+    // X4 (seventh review, EXECUTED): U+202E in a run string is a FIXED POINT
+    // of canonicalization — the W3 byte-compare passes — while the text reads
+    // reversed to every human. seal refuses it at authoring; this is the same
+    // refusal against a pack sealed around the tool.
+    const invisibles = cases.flatMap((c) =>
+      (["id", "class", "description", "run"] as const)
+        .filter((k) => typeof (c as any)[k] === "string" && INVISIBLE_CODEPOINTS.test((c as any)[k]))
+        .map((k) => `${JSON.stringify(c.id)}: field "${k}" carries ${invisibleName((c as any)[k])}, a bidi/invisible control codepoint`));
+    if (invisibles.length) {
+      die(`reveal refused (pack NOT spent): case string fields may not carry bidi or zero-width codepoints —\n  ` + invisibles.join("\n  ") +
+          `\nText that renders differently than it executes is a Trojan Source vector (security review X4).`);
     }
   }
 
@@ -476,6 +506,16 @@ function main(): number {
   // Checked BEFORE any case runs, so a refusal costs nothing.
   const bundleDirEarly = join(EVIDENCE_ROOT, `EVB-${id}`);
   if (existsSync(join(bundleDirEarly, "manifest.yaml"))) {
+    // X3: a BRICKED record is also a run record — the terminal kind. Name it,
+    // so the refusal tells the reader the pack is dead, not merely spent.
+    const priorMan = readFileSync(join(bundleDirEarly, "manifest.yaml"), "utf8");
+    if (/^bricked: true$/m.test(priorMan)) {
+      die(
+        `reveal refused: ${id} is BRICKED — its anchor history was tampered with, and the\n` +
+        `terminal verdict is already sealed at ${join(bundleDirEarly, "manifest.yaml")}.\n` +
+        `A bricked pack never runs again; the replacement is a NEW pack at the next version (PRD §22, O43).`,
+      );
+    }
     die(
       `reveal refused: a run record already exists at ${join(bundleDirEarly, "manifest.yaml")}.\n` +
       `A holdout pack is revealed exactly once, and the first run's record is evidence.\n` +
@@ -574,7 +614,7 @@ function main(): number {
   if (inRepo) {
     let committedAnchor = "";
     try {
-      committedAnchor = execFileSync("git", ["show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+      committedAnchor = execFileSync("git", [...GIT_SAFE, "show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     } catch {
       die(`reveal refused: ${anchorPath} is not committed (git show HEAD:./${anchorPath} failed).\n` +
           `seal.ts creates the anchor and instructs the custodian to COMMIT it with the\n` +
@@ -596,9 +636,17 @@ function main(): number {
     // truncation commit breaks monotonic growth immediately. What remains is
     // history REWRITE (reset/rebase/filter), the stated universal boundary,
     // which reflog records.
+    // X1 (seventh review, EXECUTED): WITHOUT --full-history, `git log -- path`
+    // applies TREESAME simplification — at a merge whose tree matches one
+    // parent for this path, it follows ONLY that parent. A forward merge
+    // carrying the OLD anchor as its tree, with the seal commit as second
+    // parent, hid every growth commit from this very walk and reset the
+    // sealed attempt count to 1. No commit was altered, nothing orphaned: an
+    // ordinary ref update, INSIDE the stated boundary. --full-history lists
+    // the merge and the hidden growth commits, and the prefix walk refuses.
     let commits: string[] = [];
     try {
-      commits = execFileSync("git", ["log", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+      commits = execFileSync("git", [...GIT_SAFE, "log", "--full-history", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
         .trim().split("\n").filter(Boolean).reverse();
     } catch {
       die(`reveal refused: git log on ${anchorPath} failed — the anchor's history cannot be verified.`);
@@ -606,13 +654,67 @@ function main(): number {
     let prevBlob = "";
     for (const h of commits) {
       let blob = "";
-      try { blob = execFileSync("git", ["show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+      try { blob = execFileSync("git", [...GIT_SAFE, "show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
       catch { continue; }   // the commit touched the path by deletion/rename; the prefix chain over what exists still binds
       if (!blob.startsWith(prevBlob)) {
-        die(`reveal refused: the attempts anchor's COMMIT HISTORY is not append-only —\n` +
-            `commit ${h.slice(0, 12)} shrank or rewrote ${anchorPath}.\n` +
-            `Attempt lines only ever grow (security review W1); a commit that shortens the\n` +
-            `chain is a forged reset. Read \`git log -p -- ${anchorPath}\` before touching this pack.`);
+        // X3 (seventh review, EXECUTED): this refusal used to be PERMANENT.
+        // The shrinking commit is immutable in history, so one hostile
+        // `git commit -- <anchor>` from a case denied every future verdict,
+        // deniably — and a failing implementer's whole goal is that no FAIL
+        // is ever sealed. The shrink is still never accepted; but when its
+        // author is not reveal itself, the outcome now REACHES THE RECORD:
+        // a terminal BRICKED run record is sealed, exactly once, and the
+        // pack never runs again. Refusal stays for reveal's own identity —
+        // reveal only ever appends, so that author line is itself forged.
+        let shrinkAuthor = "";
+        try { shrinkAuthor = execFileSync("git", [...GIT_SAFE, "log", "-1", "--format=%ae", h], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
+        if (shrinkAuthor === "holdout-reveal@local") {
+          die(`reveal refused: the attempts anchor's COMMIT HISTORY is not append-only —\n` +
+              `commit ${h.slice(0, 12)} shrank or rewrote ${anchorPath} UNDER REVEAL'S OWN IDENTITY.\n` +
+              `reveal only ever appends, so the identity on that commit is forged.\n` +
+              `Read \`git log -p -- ${anchorPath}\` before touching this pack.`);
+        }
+        const bDir = join(EVIDENCE_ROOT, `EVB-${id}`);
+        const bMan = join(bDir, "manifest.yaml");
+        if (existsSync(bMan)) {
+          const prior = readFileSync(bMan, "utf8");
+          die(/^bricked: true$/m.test(prior)
+            ? `reveal refused: ${id} is BRICKED — commit ${h.slice(0, 12)} shrank ${anchorPath} and the\n` +
+              `terminal verdict is already sealed in ${bMan}.\n` +
+              `A bricked pack never runs again; the replacement is a NEW pack at the next version (PRD §22, O43).`
+            : `reveal refused: the attempts anchor's COMMIT HISTORY is not append-only —\n` +
+              `commit ${h.slice(0, 12)} shrank or rewrote ${anchorPath}, and ${bMan}\n` +
+              `already holds a sealed record, so the shrink happened AFTER sealing.\n` +
+              `verify-run-records.ts will name it. Read \`git log -p -- ${anchorPath}\`.`);
+        }
+        // Terminal record: no case runs; the verdict IS the tampering.
+        const bNow = new Date();
+        const bFinished = bNow.toISOString().replace(/\.\d+Z$/, "Z");
+        mkdirSync(bDir, { recursive: true });
+        const bLogName = `holdout-run-${bNow.toISOString().replace(/[-:.]/g, "")}.log`;
+        const bLogText = [
+          `# Holdout run record — ${id}`, `candidate: ${candidate}`, `candidate_verified: ${inRepo}`,
+          `attempt: ${anchorLines.length}`, `started_at: ${bFinished}`, "",
+          CASES_DELIM, "",
+          FOOTER_DELIM,
+          `bricked: true`,
+          `bricked_commit: ${h}`,
+          `bricked_author: ${shrinkAuthor || "(unreadable)"}`,
+          `finished_at: ${bFinished}`, `result: 0 PASS / 0 FAIL of 0 — BRICKED BY TAMPERING`,
+        ].join("\n") + "\n";
+        writeFileSync(join(bDir, bLogName), bLogText);
+        writeFileSync(bMan, [
+          `artifact_type: HoldoutRunRecord`, `id: EVB-${id}`, `holdout_id: ${id}`, `candidate: ${candidate}`,
+          `candidate_verified: ${inRepo}`, `attempt: ${anchorLines.length}`,
+          `started_at: "${bFinished}"`, `finished_at: "${bFinished}"`, `case_count: 0`,
+          `pass: 0`, `fail: 0`, `raw_log: ${bLogName}`, `raw_log_sha256: "${sha256Hex(bLogText)}"`,
+          `bricked: true`, `bricked_commit: ${h}`, `bricked_author: ${shrinkAuthor || "(unreadable)"}`,
+          `# BRICKED BY TAMPERING: no case ran. The anchor's commit history shrank; the pack is`,
+          `# terminally spent. The replacement is a NEW pack at the next version (PRD §22, O43).`, "",
+        ].join("\n"));
+        console.error(`BRICKED BY TAMPERING: commit ${h.slice(0, 12)} shrank ${anchorPath} (author ${shrinkAuthor || "unreadable"}).`);
+        console.error(`No case ran. The terminal verdict is sealed at ${join(bDir, bLogName)} — this pack never runs again.`);
+        process.exit(1);
       }
       prevBlob = blob;
     }
@@ -683,18 +785,17 @@ function main(): number {
   // still holds for the retry. HEAD moves by one anchor-only commit per
   // attempt; the candidate was verified against HEAD before this point, and
   // the next pack's candidate is simply the then-current HEAD.
-  // core.hooksPath points at an empty directory (reviewer's reasoned finding,
-  // sixth pass): a case from an EARLIER run could plant .git/hooks/pre-commit —
-  // .git/ is invisible to every tree check — and either sabotage all future
-  // anchor commits or run code inside reveal's process tree. Hooks get no say.
-  const GIT_ID = ["-c", "user.email=holdout-reveal@local", "-c", "user.name=holdout-reveal", "-c", "core.hooksPath=/var/empty"];
+  // GIT_SAFE (X2) silences hooks, fsmonitor and credential prompts on every
+  // git call this tool makes; the identity pair below additionally marks the
+  // commits reveal itself authors — the X3 brick logic keys off that author.
+  const GIT_ID = [...GIT_SAFE, "-c", "user.email=holdout-reveal@local", "-c", "user.name=holdout-reveal"];
   let ownCommitSha = "";
   if (inRepo) {
     try {
       execFileSync("git", [...GIT_ID,
         "commit", "-q", "-m", `holdout: ${id} attempt ${attemptCount}`, "--", anchorPath],
         { stdio: ["ignore", "pipe", "pipe"] });
-      ownCommitSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      ownCommitSha = execFileSync("git", [...GIT_SAFE, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch (e: any) {
       die(`reveal refused: could not commit the attempt line to ${anchorPath} — ${String(e?.stderr ?? e?.message ?? e).trim()}\n` +
           `The attempt count is bound to git history (V1); an uncommittable anchor cannot bind it.`);
@@ -947,7 +1048,7 @@ function main(): number {
   let headUnchangedDuringRun: "true" | "false" | "unverified" = "unverified";
   if (inRepo) {
     try {
-      headUnchangedDuringRun = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() === ownCommitSha ? "true" : "false";
+      headUnchangedDuringRun = execFileSync("git", [...GIT_SAFE, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() === ownCommitSha ? "true" : "false";
     } catch { headUnchangedDuringRun = "false"; }
   }
   let treeCleanAfterRun: "true" | "false" | "unverified" = "unverified";

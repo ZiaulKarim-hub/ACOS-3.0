@@ -2,7 +2,22 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 186/186. Raised from 175 on 2026-09-23 after the SIXTH security review
+ * Expect 194/194. Raised from 186 on 2026-09-23 after the SEVENTH security review
+ * returned REJECT with X1-X4: a forward MERGE commit whose tree carried the old
+ * anchor (seal commit as second parent) was TREESAME-simplified out of
+ * `git log -- path`, hiding every growth commit from the W1 walk and un-spending
+ * a W2-sealed pack — one ordinary ref update, inside the stated boundary
+ * (fix: --full-history, both walkers); a case planted core.fsmonitor in
+ * .git/config and git executed it INSIDE reveal's own status/commit calls with
+ * reveal's full environment, persistently (fix: GIT_SAFE prefix on EVERY git
+ * call); the W1 refusal was PERMANENT, so one hostile anchor commit denied all
+ * future verdicts deniably (fix: a terminal BRICKED run record is sealed once,
+ * and verify-run-records confirms the brick is real before honoring it); and
+ * bidi controls (U+202E) are fixed points of canonicalization that render
+ * reversed while executing forwards (fix: byte-level refusal of bidi/zero-width
+ * codepoints in case string fields, at seal and at reveal).
+ *
+ * Previously 186/186. Raised from 175 on 2026-09-23 after the SIXTH security review
  * returned REJECT with W1-W5: an ordinary FORWARD COMMIT of a truncated anchor
  * defeated the HEAD-prefix check (the committed copy WAS the truncation); a
  * spent pack was re-sat with two seds and an rm -rf, because revealed_at's
@@ -1942,9 +1957,21 @@ execFileSync("/bin/sh", ["-c",
 execFileSync("/bin/sh", ["-c", `chmod u+rwX qa-private/${w1Id} && chmod -R u+rwX qa-private/${w1Id}`], { cwd: repo2 });
 rmSync(join(repo2, "planning/evidence", "EVB-" + w1Id, ".reveal.lock"), { force: true });
 const w1Resit = run({ WB_QA_CONTEXT: "1" }, ["--id", w1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
-ok("W1: a COMMITTED truncation is caught by the append-only history walk",
-   w1Resit.code !== 0 && /not append-only/.test(w1Resit.out) && /shrank or rewrote/.test(w1Resit.out),
-   w1Resit.out.slice(-260));
+// X3 (seventh review): the walk still catches the shrink — but the permanent
+// refusal was itself a weapon (one hostile anchor commit denied every future
+// verdict, deniably). A foreign-author shrink now seals a TERMINAL record.
+ok("W1/X3: a COMMITTED truncation is caught by the history walk and sealed as a terminal BRICKED verdict",
+   w1Resit.code !== 0 && /BRICKED BY TAMPERING/.test(w1Resit.out), w1Resit.out.slice(-260));
+const w1BunDir = join(repo2, "planning/evidence", "EVB-" + w1Id);
+const w1BrickMan = existsSync(join(w1BunDir, "manifest.yaml")) ? readFileSync(join(w1BunDir, "manifest.yaml"), "utf8") : "(no bricked record was sealed)";
+ok("X3: the bricked record names the shrinking commit and its foreign author",
+   /bricked: true/.test(w1BrickMan) && /bricked_commit: [0-9a-f]{40}/.test(w1BrickMan) && /bricked_author: x@x/.test(w1BrickMan),
+   w1BrickMan.slice(0, 400));
+const w1Again = run({ WB_QA_CONTEXT: "1" }, ["--id", w1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+ok("X3: a bricked pack refuses forever WITHOUT sealing a second record",
+   w1Again.code !== 0 && /is BRICKED/.test(w1Again.out) &&
+   readdirSync(w1BunDir).filter((f) => f.startsWith("holdout-run-")).length === 1,
+   w1Again.out.slice(-220));
 
 // W4 — modify-then-COMMIT mid-run: the tree reads clean, but HEAD is no longer
 // the commit reveal itself made, and that is now a sealed, tampering fact.
@@ -1983,6 +2010,70 @@ rmSync(join(repo2, ".git/hooks/pre-commit"), { force: true });
 ok("HOOKS: a planted pre-commit hook cannot block or ride reveal's anchor commits",
    whRun.code === 0 && /1 PASS \/ 0 FAIL/.test(whRun.out), whRun.out.slice(-220));
 
+console.log("— seventh security review: X1/X2/X4, each executed defeat pinned —");
+
+// X1 — the reviewer's merge burn. A merge commit whose TREE carries the old
+// anchor, with the seal commit as second parent, is TREESAME to that parent —
+// and a default `git log -- path` follows ONLY the TREESAME parent, hiding
+// every growth commit from the walk. No history rewrite: an ordinary forward
+// ref update. --full-history lists the merge; the prefix walk then refuses,
+// and the X3 brick path seals the terminal verdict.
+const x1Id = "HLD-S90G-v1";
+const x1Pack = join(repo2, "qa-private", x1Id);
+const x1AnchorRel = "planning/holdouts/attempts/" + x1Id + ".log";
+mkdirSync(x1Pack, { recursive: true });
+writeFileSync(join(x1Pack, "README.md"), "# x1\n");
+writeFileSync(join(x1Pack, "cases.yaml"), 'cases:\n  - id: H1\n    class: hostile\n    run: "kill -9 $PPID; true"\n');
+writeFileSync(join(x1Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S90G", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "x1 pack");
+const x1Seal = git("rev-parse", "HEAD").trim();
+writeFileSync(join(tmp, "x1key"), packKeys.get(x1Id)! + "\n");
+for (let i = 0; i < 2; i++) {   // two aborted attempts -> two committed growth commits
+  execFileSync("/bin/sh", ["-c",
+    `WB_QA_CONTEXT=1 bun ${JSON.stringify(TOOL)} --id ${x1Id} --candidate $(git rev-parse HEAD) --allow-unverified-candidate --key-stdin < ${JSON.stringify(join(tmp, "x1key"))} > /dev/null 2>&1; exit 0`,
+  ], { cwd: repo2 });
+  execFileSync("/bin/sh", ["-c", `chmod u+rwX qa-private/${x1Id} && chmod -R u+rwX qa-private/${x1Id}`], { cwd: repo2 });
+  rmSync(join(repo2, "planning/evidence", "EVB-" + x1Id, ".reveal.lock"), { force: true });
+}
+git("checkout", x1Seal, "--", x1AnchorRel);          // stage the 1-line genesis blob
+const x1Tree = git("write-tree").trim();
+const x1Merge = git("commit-tree", x1Tree, "-p", "HEAD", "-p", x1Seal, "-m", "merge: housekeeping").trim();
+git("reset", "--hard", x1Merge);                     // forward ref move: ordinary reflog entry, no rewrite
+writeFileSync(join(repo2, "planning/evidence", "EVB-" + x1Id, "attempts.log"),
+  readFileSync(join(repo2, x1AnchorRel), "utf8"));   // bundle copy agrees with the shrunk anchor
+const x1Resit = run({ WB_QA_CONTEXT: "1" }, ["--id", x1Id, "--candidate", x1Merge], repo2);
+ok("X1: a TREESAME merge cannot hide the growth commits — --full-history walks them, and the pack bricks",
+   x1Resit.code !== 0 && /BRICKED BY TAMPERING/.test(x1Resit.out) && !/1 PASS/.test(x1Resit.out),
+   x1Resit.out.slice(-260));
+const x1V = vrrRun(repo2);
+ok("X1/X3: verify-run-records CONFIRMS each brick against the live history and reports it terminal",
+   /ok\s+EVB-HLD-S90G-v1\s+\[BRICKED BY TAMPERING/.test(x1V.out) && /ok\s+EVB-HLD-S90D-v1\s+\[BRICKED BY TAMPERING/.test(x1V.out),
+   x1V.out.slice(-500));
+
+// X2 — the fsmonitor foothold. .git/config is out of tree; a case CAN plant
+// core.fsmonitor there. What it can no longer do is get reveal to EXECUTE it:
+// every git call reveal makes carries -c core.fsmonitor=false (GIT_SAFE).
+const x2Id = "HLD-S90H-v1";
+const x2Pack = join(repo2, "qa-private", x2Id);
+const x2Flag = join(tmp, "fsmon-fired");
+const x2Script = join(tmp, "fsmon.sh");
+writeFileSync(x2Script, `#!/bin/sh\ntouch ${x2Flag}\nexit 1\n`);
+chmodSync(x2Script, 0o755);
+mkdirSync(x2Pack, { recursive: true });
+writeFileSync(join(x2Pack, "README.md"), "# x2\n");
+writeFileSync(join(x2Pack, "cases.yaml"), `cases:\n  - id: H1\n    class: hostile\n    run: "git config core.fsmonitor ${x2Script}; echo planted"\n`);
+writeFileSync(join(x2Pack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+seal(["--slice", "S90H", "--story", "ST-90", "--contract", "v1"], repo2);
+git("add", "-A"); git("commit", "-q", "-m", "x2 pack");
+const x2Run = run({ WB_QA_CONTEXT: "1" }, ["--id", x2Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+const x2ConfigSet = git("config", "--get", "core.fsmonitor").trim();
+const x2Fired = existsSync(x2Flag);
+git("config", "--unset", "core.fsmonitor");
+ok("X2: a case CAN plant core.fsmonitor — but reveal's own git calls never execute it",
+   x2Run.code === 0 && x2ConfigSet === x2Script && !x2Fired,
+   `code=${x2Run.code} set=${JSON.stringify(x2ConfigSet)} fired=${x2Fired}`);
+
 // W3, the mutant-killer: a pack every SCANNER passes (plain block style, no
 // dups, no flow) that is simply not canonical. Only the file-IS-its-own-parse
 // requirement refuses it — remove that check and this test alone catches it.
@@ -1997,6 +2088,34 @@ ok("W3: a scanner-clean but non-canonical pack is refused — the canonical chec
    w3cRev.code !== 0 && /canonical form/.test(w3cRev.out) &&
    /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", "HLD-S25-v1.yaml"), "utf8")),
    w3cRev.out.slice(-200));
+
+// X4 — Trojan Source. U+202E (RIGHT-TO-LEFT OVERRIDE) in a run string is a
+// FIXED POINT of canonicalization: canonical(parse(x)) == x, so the W3 check
+// passes while the text renders REVERSED to every human reader. The refusal
+// is byte-level, beside the structural one, at seal AND at reveal.
+const x4Dir = join(repoRoot, "qa-private", "HLD-S24-v1");
+mkdirSync(x4Dir, { recursive: true });
+writeFileSync(join(x4Dir, "README.md"), "# x4\n");
+writeFileSync(join(x4Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo \u202Egnp.liame\u202C ok\"\n");
+writeFileSync(join(x4Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const x4Seal = seal(["--slice", "S24", "--story", "ST-24", "--contract", "v1"]);
+ok("X4: a bidi override in a run string is refused at seal, named by codepoint",
+   x4Seal.code !== 0 && /U\+202E/.test(x4Seal.out) && /Trojan Source/.test(x4Seal.out), x4Seal.out.slice(-240));
+// No rawCases here: manualSeal CANONICALIZES, and the bidi char survives it —
+// this is the exact fixed point where the W3 byte-compare passes and ONLY the
+// byte-level rule stands between the reader and the reversed text.
+manualSeal("HLD-S24-v1", x4Dir, 1);
+const x4Rev = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S24-v1", "--candidate", "abc1230"]);
+ok("X4: the pack in CANONICAL form with the bidi char is refused at reveal, pack not spent",
+   x4Rev.code !== 0 && /U\+202E/.test(x4Rev.out) && /pack NOT spent/.test(x4Rev.out), x4Rev.out.slice(-240));
+const x4b = join(repoRoot, "qa-private", "HLD-S23-v1");
+mkdirSync(x4b, { recursive: true });
+writeFileSync(join(x4b, "README.md"), "# x4b\n");
+writeFileSync(join(x4b, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo a\u200Bb\"\n");
+writeFileSync(join(x4b, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const x4bSeal = seal(["--slice", "S23", "--story", "ST-23", "--contract", "v1"]);
+ok("X4: a ZERO-WIDTH SPACE is refused the same way — the whole invisible class, not one codepoint",
+   x4bSeal.code !== 0 && /U\+200B/.test(x4bSeal.out), x4bSeal.out.slice(-200));
 
 // The landscape this suite built — honest seals, tampered seals, forged-but-
 // consistent bundles, healed chains — must verify as one coherent whole.

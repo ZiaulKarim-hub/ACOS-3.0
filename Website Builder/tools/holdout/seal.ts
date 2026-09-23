@@ -25,7 +25,7 @@ import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys } from "./json-keys.ts";
+import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
@@ -144,6 +144,17 @@ function main(): number {
     if (multiline.length) {
       die(`seal refused: case string fields must be single-line —\n  ` + multiline.join("\n  ") +
           `\nAn embedded newline in a case field is a run-record injection vector (security review T2).`);
+    }
+    // X4 (seventh review, EXECUTED): a run string carrying U+202E sealed
+    // cleanly and read REVERSED in every render of the record — a fixed point
+    // of canonicalization, invisible to the structural check. Byte-level rule.
+    const invisibles = cases.flatMap((c) =>
+      (["id", "class", "description", "run"] as const)
+        .filter((k) => typeof c[k] === "string" && INVISIBLE_CODEPOINTS.test(c[k] as string))
+        .map((k) => `${JSON.stringify(c.id)}: field "${k}" carries ${invisibleName(c[k] as string)}, a bidi/invisible control codepoint`));
+    if (invisibles.length) {
+      die(`seal refused: case string fields may not carry bidi or zero-width codepoints —\n  ` + invisibles.join("\n  ") +
+          `\nText that renders differently than it executes is a Trojan Source vector (security review X4).`);
     }
     // W3: the canonical rewrite below keeps exactly the four known keys, so
     // anything else would be silently dropped — refused instead, and every

@@ -49,6 +49,17 @@ import { trustedRegions } from "./record-format.ts";
 const EVIDENCE_ROOT = "planning/evidence";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";
 
+// X2 (seventh security review): .git/config can carry command-executing keys
+// (core.fsmonitor, hooks, askpass) that a hostile case planted — config is out
+// of tree and invisible to every check. This tool's own git calls must never
+// execute them.
+const GIT_SAFE = [
+  "-c", "core.hooksPath=/var/empty",
+  "-c", "core.fsmonitor=false",
+  "-c", "core.askPass=",
+  "-c", "credential.helper=",
+];
+
 const fieldFrom = (text: string, key: string): string | null => {
   // Function-free line scan; the first match wins, quoted values unquoted.
   // SAFE ONLY on trusted text: a whole manifest (no candidate-controlled
@@ -87,7 +98,7 @@ function chainProblems(lines: string[], what: string): string[] {
   return [];
 }
 
-function verifyBundle(dir: string): string[] {
+function verifyBundle(dir: string): { bad: string[]; note?: string } {
   const bad: string[] = [];
   const manPath = join(dir, "manifest.yaml");
   if (!existsSync(manPath)) {
@@ -96,13 +107,13 @@ function verifyBundle(dir: string): string[] {
     // writes the attempt line before running and seals only at the end. It is
     // corrupt only if run artifacts exist without their seal.
     const leftovers = readdirSync(dir).filter((f) => f.startsWith("holdout-run-"));
-    if (leftovers.length) return [`run log(s) ${leftovers.join(", ")} exist but the bundle was never sealed — a crashed or truncated seal`];
-    return [];   // unsealed attempts-only bundle: nothing to verify yet
+    if (leftovers.length) return { bad: [`run log(s) ${leftovers.join(", ")} exist but the bundle was never sealed — a crashed or truncated seal`] };
+    return { bad: [] };   // unsealed attempts-only bundle: nothing to verify yet
   }
   const man = readFileSync(manPath, "utf8");
 
   const logName = fieldFrom(man, "raw_log");
-  if (!logName) return [`manifest.yaml names no raw_log`];
+  if (!logName) return { bad: [`manifest.yaml names no raw_log`] };
   // U2 (fourth review, EXECUTED): a case planted a SECOND holdout-run-*.log in
   // a sealed bundle and this tool said nothing — it only inspected leftovers
   // when the manifest was MISSING. A sealed bundle records exactly one run.
@@ -113,7 +124,7 @@ function verifyBundle(dir: string): string[] {
     bad.push(`the one run log on disk (${runLogs[0]}) is not the one the manifest names (${logName})`);
   }
   const logPath = join(dir, logName);
-  if (!existsSync(logPath)) return [`raw log ${logName} is MISSING`];
+  if (!existsSync(logPath)) return { bad: [`raw log ${logName} is MISSING`] };
   const logBytes = readFileSync(logPath);
   const logText = logBytes.toString("utf8");
 
@@ -128,7 +139,51 @@ function verifyBundle(dir: string): string[] {
   const regions = trustedRegions(logText);
   if (!regions) {
     bad.push(`the raw log lacks its trust delimiters — pre-T2 format, or a forged log`);
-    return bad;
+    return { bad };
+  }
+
+  // X3 (seventh review): a BRICKED record is the terminal verdict reveal seals
+  // when the anchor's commit history shrank under a foreign author. It has no
+  // cases, no chain tail and no footer battery — its truth condition is
+  // different: both halves must agree it is bricked, and the brick must be
+  // REAL: the append-only walk over the live anchor history must fail at the
+  // named commit. A "bricked" claim over a healthy history is a forgery.
+  if (fieldFrom(man, "bricked") === "true") {
+    if (fieldFrom(regions.footer, "bricked") !== "true") {
+      bad.push(`manifest says bricked: true but the hashed log's footer does not`);
+    }
+    for (const key of ["bricked_commit", "bricked_author", ...HEADER_FIELDS] as const) {
+      const region = key.startsWith("bricked") ? regions.footer : regions.header;
+      const inMan = fieldFrom(man, key);
+      const inLog = fieldFrom(region, key);
+      if (inMan === null || inLog === null) {
+        bad.push(`field ${key} missing from ${inMan === null ? "manifest.yaml" : "the raw log's trusted region"}`);
+      } else if (inMan !== inLog) {
+        bad.push(`field ${key} DISAGREES — manifest says ${JSON.stringify(inMan)}, hashed log says ${JSON.stringify(inLog)}`);
+      }
+    }
+    const bHoldout = fieldFrom(man, "holdout_id");
+    const namedCommit = fieldFrom(man, "bricked_commit") ?? "";
+    if (!bHoldout) {
+      bad.push(`manifest.yaml names no holdout_id, so the brick cannot be confirmed against the anchor`);
+    } else {
+      const bAnchor = join(ATTEMPTS_DIR, `${bHoldout}.log`);
+      try {
+        const commits = execFileSync("git", [...GIT_SAFE, "log", "--full-history", "--format=%H", "--", bAnchor], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+          .trim().split("\n").filter(Boolean).reverse();
+        let prevBlob = "", shrankAt = "";
+        for (const h of commits) {
+          let blob = "";
+          try { blob = execFileSync("git", [...GIT_SAFE, "show", `${h}:./${bAnchor}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+          catch { continue; }
+          if (!blob.startsWith(prevBlob)) { shrankAt = h; break; }
+          prevBlob = blob;
+        }
+        if (!shrankAt) bad.push(`record claims BRICKED but the anchor's history walks append-only CLEAN — a forged brick`);
+        else if (namedCommit && shrankAt !== namedCommit) bad.push(`record names bricked_commit ${namedCommit.slice(0, 12)} but the walk shrinks at ${shrankAt.slice(0, 12)}`);
+      } catch { /* not a repo: a bricked record moved out of its repository is the stated whole-cloth limit */ }
+    }
+    return { bad, note: "BRICKED BY TAMPERING — terminal verdict, no case ran" };
   }
 
   // Both halves must tell the same story, field by field.
@@ -195,18 +250,20 @@ function verifyBundle(dir: string): string[] {
         // silently skipped outside a git repository (fixtures), where the
         // record itself says attempts_anchor_committed: false.
         try {
-          const committed = execFileSync("git", ["show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+          const committed = execFileSync("git", [...GIT_SAFE, "show", `HEAD:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
           if (!readFileSync(anchorPath, "utf8").startsWith(committed)) {
             bad.push(`the anchor on disk is SHORTER than or diverged from HEAD's copy — attempt history was truncated after its commit`);
           }
           // W1: HEAD alone was defeated by a forward commit OF a truncation —
           // the whole history must be append-only, each blob a prefix of the next.
-          const commits = execFileSync("git", ["log", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+          // X1: --full-history, or TREESAME simplification follows a merge's
+          // matching parent and HIDES the growth commits (seventh review, EXECUTED).
+          const commits = execFileSync("git", [...GIT_SAFE, "log", "--full-history", "--format=%H", "--", anchorPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
             .trim().split("\n").filter(Boolean).reverse();
           let prevBlob = "";
           for (const h of commits) {
             let blob = "";
-            try { blob = execFileSync("git", ["show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+            try { blob = execFileSync("git", [...GIT_SAFE, "show", `${h}:./${anchorPath}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
             catch { continue; }
             if (!blob.startsWith(prevBlob)) { bad.push(`anchor commit ${h.slice(0, 12)} SHRANK or rewrote the chain — attempt history is not append-only (W1)`); break; }
             prevBlob = blob;
@@ -215,7 +272,7 @@ function verifyBundle(dir: string): string[] {
       }
     }
   }
-  return bad;
+  return { bad };
 }
 
 function main(): number {
@@ -226,13 +283,13 @@ function main(): number {
   if (!bundles.length) { console.log("verify-run-records: no EVB-* bundles — nothing to check."); return 0; }
   let badCount = 0;
   for (const b of bundles) {
-    const problems = verifyBundle(join(EVIDENCE_ROOT, b));
+    const { bad: problems, note } = verifyBundle(join(EVIDENCE_ROOT, b));
     if (problems.length) {
       badCount++;
       console.log(`FAIL  ${b}`);
       for (const p of problems) console.log(`      ${p}`);
     } else {
-      console.log(`ok    ${b}`);
+      console.log(`ok    ${b}${note ? `  [${note}]` : ""}`);
     }
   }
   console.log(`\n${bundles.length - badCount} ok / ${badCount} bad of ${bundles.length} run record(s).`);

@@ -129,3 +129,19 @@ export function canonicalCasesText(casesText: string): string {
   }
   return out.join("\n") + "\n";
 }
+
+/**
+ * X4 (seventh security review, EXECUTED): bidi and zero-width codepoints are
+ * FIXED POINTS of canonicalization — canonical(parse(x)) == x holds, so the
+ * structural wb-cases-1 check cannot see them — and a `run` carrying U+202E
+ * renders REVERSED to a human reader while executing forwards (Trojan Source).
+ * JSON.stringify passes them through literally, so the canonical rewrite
+ * preserves them too. The rule is byte-level and sits BESIDE the structural
+ * one: no case string field may carry a bidi control (U+202A-202E,
+ * U+2066-2069) or a zero-width/invisible format codepoint (U+200B-200F).
+ */
+export const INVISIBLE_CODEPOINTS = /[\u202A-\u202E\u2066-\u2069\u200B-\u200F]/;
+export const invisibleName = (s: string): string | null => {
+  const m = INVISIBLE_CODEPOINTS.exec(s);
+  return m ? `U+${m[0].codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}` : null;
+};
