@@ -91,7 +91,7 @@ const die = (msg: string): never => { console.error(msg); process.exit(1); };
  * individual paths cannot be filtered. Rename lines are never filtered.
  * Quoted paths (spaces, escapes) are never filtered either — ours contain none.
  */
-const gitDirtyFiltered = (id: string): string => {
+const gitDirtyFiltered = (id: string, anchorClean: boolean): string => {
   const raw = execFileSync("git", ["status", "--porcelain", "-uall"], { encoding: "utf8" });
   const bundlePrefix = `${EVIDENCE_ROOT}/EVB-${id}/`;
   const anchorFile = `${ATTEMPTS_DIR}/${id}.log`;
@@ -99,7 +99,15 @@ const gitDirtyFiltered = (id: string): string => {
     if (line.includes(" -> ")) return true;            // renames always count
     const path = line.slice(3);
     if (path.startsWith('"')) return true;             // quoted: not ours, keep
-    return !(path.startsWith(bundlePrefix) || path === anchorFile);
+    // U1 (fourth review, EXECUTED): a blanket path exclusion here CANCELLED the
+    // T3 anchor — a case truncated the tracked anchor and the tree still read
+    // clean, because the one file whose changes mattered was the one file the
+    // check skipped. The anchor is excluded ONLY while its content is exactly
+    // what this process itself wrote (anchorClean); pre-run that is the text
+    // just chain-verified, post-run it is pre-run text + this run's own line,
+    // checked byte-for-byte by the caller. Anything else is dirt.
+    if (path === anchorFile) return !anchorClean;
+    return !path.startsWith(bundlePrefix);             // bundle content is checked separately (U2)
   }).join("\n");
 };
 
@@ -257,7 +265,7 @@ function main(): number {
     }
     console.log("note: not a git repository — candidate is UNVERIFIED and the sealed record will say so.");
   } else {
-    dirty = gitDirtyFiltered(id).trim();
+    dirty = gitDirtyFiltered(id, true).trim();   // anchor content was chain-verified moments ago
     try {
       headSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
@@ -576,13 +584,35 @@ function main(): number {
   // history can no longer be silently renumbered. Full erasure resistance is
   // git-history territory, the boundary every file in this repository shares.
 
-  {
-    const line = `attempt=${attemptCount} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${anchorTail}`;
-    appendFileSync(anchorPath, line + "\n");
-    // The bundle copy is the WHOLE chain, byte-identical to the anchor — one
-    // hash (attempts_log_sha256, sealed in the footer) then covers both.
-    writeFileSync(attemptsPath, anchorText + line + "\n");
-  }
+  const attemptLine = `attempt=${attemptCount} at=${new Date().toISOString()} pid=${process.pid} candidate=${candidate} prev=${anchorTail}`;
+  const anchorExpectedAfter = anchorText + attemptLine + "\n";
+  appendFileSync(anchorPath, attemptLine + "\n");
+  // The bundle copy is the WHOLE chain, byte-identical to the anchor — one
+  // hash (attempts_log_sha256, sealed in the footer) then covers both.
+  writeFileSync(attemptsPath, anchorExpectedAfter);
+  // U1 (fourth review, EXECUTED): a hostile case truncated BOTH copies during
+  // an ABORTED run — where no post-run check ever fires — and the next reveal
+  // sealed `attempt: 1` off the shortened chain, verifier's blessing included.
+  // Every abort path is a die(), and die() is process.exit(), so an exit
+  // handler CAN act there (unlike signals during spawnSync, measured): if the
+  // chain on disk is not exactly what this process wrote, the tampered bytes
+  // are preserved as evidence and the true chain is put back from memory.
+  // SIGKILL still skips this — and SIGKILL already leaves a locked pack and a
+  // stale lock, so that abort is loud and manual by design, never silent.
+  const restoreAttempts = () => {
+    for (const [path2, label] of [[anchorPath, "attempts-anchor"], [attemptsPath, "attempts-log"]] as const) {
+      try {
+        const now = readFileSync(path2, "utf8");
+        if (now !== anchorExpectedAfter) {
+          try { writeFileSync(join(bundleDirEarly, `${label}-as-found-after-run.log`), now); } catch {}
+          writeFileSync(path2, anchorExpectedAfter);
+        }
+      } catch {
+        try { writeFileSync(path2, anchorExpectedAfter); } catch {}
+      }
+    }
+  };
+  process.on("exit", restoreAttempts);
   if (attemptCount > 1) {
     console.log(`note: this is reveal ATTEMPT ${attemptCount} for ${id} — earlier attempts aborted before sealing, and the sealed record will say so.`);
   }
@@ -675,8 +705,18 @@ function main(): number {
     // object, so a SUCCEEDING case's stderr was silently discarded (security
     // review F11) and could never be part of the evidence. spawnSync returns
     // errors in-band, so the abort branches below read r.error instead of a catch.
+    // U3 (fourth review, EXECUTED): cases used to inherit reveal's WHOLE
+    // environment, and `ps -E` from inside a case dumped it — the reviewer's
+    // probe printed a live third-party API key its shell happened to export.
+    // Cases get a minimal environment: enough to run a shell command, nothing
+    // that belongs to the QA agent.
     const r = spawnSync("/bin/sh", ["-c", c.run], {
       stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        HOME: process.env.HOME ?? "",
+        TMPDIR: process.env.TMPDIR ?? "/tmp",
+      },
       maxBuffer: CASE_MAX_BUFFER, timeout: CASE_TIMEOUT_MS,
     });
     outBuf = Buffer.isBuffer(r.stdout) ? r.stdout : Buffer.from(String(r.stdout ?? ""));
@@ -775,11 +815,21 @@ function main(): number {
       canonicalPackHash(packDir).digest === man.private_pack_sha256 &&
       expectedResultsHash(packDir) === man.expected_results_sha256;
   } catch { packIntactAfterRun = false; }
+  // U1: the chain on disk must be EXACTLY what this process wrote — pre-run
+  // text plus its own appended line, both copies. A mismatch is sealed as
+  // tampering, the found bytes are preserved, and the true chain is restored
+  // (the same restore the exit handler performs on abort paths).
+  let attemptsIntactAfterRun = true;
+  for (const p2 of [anchorPath, attemptsPath]) {
+    try { if (readFileSync(p2, "utf8") !== anchorExpectedAfter) attemptsIntactAfterRun = false; }
+    catch { attemptsIntactAfterRun = false; }
+  }
+  if (!attemptsIntactAfterRun) restoreAttempts();
   let treeCleanAfterRun: "true" | "false" | "unverified" = "unverified";
   if (inRepo) {
-    // Filtered exactly like the pre-run check: the bundle this run just wrote
-    // and the anchor line it just appended are its own bookkeeping, not dirt.
-    try { treeCleanAfterRun = gitDirtyFiltered(id).trim() === "" ? "true" : "false"; }
+    // Filtered exactly like the pre-run check — except the anchor, which is
+    // only excluded while its content matches what reveal itself wrote (U1).
+    try { treeCleanAfterRun = gitDirtyFiltered(id, attemptsIntactAfterRun).trim() === "" ? "true" : "false"; }
     catch { treeCleanAfterRun = "false"; }
   }
   // F6: what gets stamped is the text validated BEFORE the run. If the file on
@@ -792,6 +842,23 @@ function main(): number {
     writeFileSync(join(EVIDENCE_ROOT, `EVB-${id}`, "manifest-as-found-after-run.yaml"), manifestOnDiskNow);
   }
 
+  // U2 (fourth review, EXECUTED): the bundle directory was a write-anything
+  // blind zone — a case planted a SECOND holdout-run-*.log in a sealed bundle
+  // and the verifier said nothing, because it only inspected leftovers when
+  // the manifest was MISSING. The bundle's contents are censused here, before
+  // the log and manifest are written: everything reveal itself created is
+  // expected; anything else is a planted file, sealed as tampering.
+  const bundleExpectedFiles = new Set(["attempts.log", ".reveal.lock"]);
+  if (manifestRewrittenDuringRun) bundleExpectedFiles.add("manifest-as-found-after-run.yaml");
+  if (!attemptsIntactAfterRun) {
+    bundleExpectedFiles.add("attempts-anchor-as-found-after-run.log");
+    bundleExpectedFiles.add("attempts-log-as-found-after-run.log");
+  }
+  let bundleExtraFiles: string[] = [];
+  try { bundleExtraFiles = readdirSync(join(EVIDENCE_ROOT, `EVB-${id}`)).filter((f) => !bundleExpectedFiles.has(f)).sort(); }
+  catch { bundleExtraFiles = ["(bundle directory unreadable)"]; }
+  const bundleCleanAfterRun = bundleExtraFiles.length === 0;
+
   // ---- seal, as produced --------------------------------------------------
   const finishedAt = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const bundle = `EVB-${id}`;
@@ -801,7 +868,9 @@ function main(): number {
   // milliseconds, because two runs in the same second previously produced the
   // same name and one raw log was silently overwritten.
   const logName = `holdout-run-${new Date().toISOString().replace(/[-:.]/g, "")}.log`;
-  const attemptsTail = sha256Hex(readFileSync(attemptsPath, "utf8"));
+  // Hash the chain reveal ITSELF wrote (held in memory), never a re-read: a
+  // case that rewrote the file mid-run must not choose what gets sealed (U1).
+  const attemptsTail = sha256Hex(anchorExpectedAfter);
   const logText = log.concat([
     FOOTER_DELIM,
     `post_run_pack_intact: ${packIntactAfterRun}`,
@@ -809,6 +878,11 @@ function main(): number {
     `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
     `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
     `post_run_pack_untouched: ${packUntouched}`,
+    `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
+    `post_run_bundle_clean: ${bundleCleanAfterRun}`,
+    // JSON-escaped: a planted FILENAME may contain newlines, and this line
+    // lives in the trusted footer (T2) — it must stay one line.
+    `bundle_extra_files: ${JSON.stringify(bundleExtraFiles)}`,
     `attempts_log_sha256: ${attemptsTail}`,
     `finished_at: ${finishedAt}`, `result: ${pass} PASS / ${fail} FAIL of ${cases.length}`,
   ]).join("\n") + "\n";
@@ -824,6 +898,8 @@ function main(): number {
      `post_run_tree_clean_semantics: ${TREE_CLEAN_SEMANTICS}`,
      `manifest_rewritten_during_run: ${manifestRewrittenDuringRun}`,
      `post_run_pack_untouched: ${packUntouched}`,
+     `post_run_attempts_intact: ${attemptsIntactAfterRun}`,
+     `post_run_bundle_clean: ${bundleCleanAfterRun}`,
      `attempts_log_sha256: "${attemptsTail}"`,
      `# Preserved AS PRODUCED. Failures are not re-run and are not edited (PRD §22, O43).`, ""].join("\n"));
 
@@ -846,9 +922,10 @@ function main(): number {
   renameSync(mTmp, mPath);
 
   console.log(`\n${pass} PASS / ${fail} FAIL of ${cases.length}. Sealed at ${join(bundleDir, logName)}`);
-  const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched;
+  const tampered = !packIntactAfterRun || treeCleanAfterRun === "false" || manifestRewrittenDuringRun || !packUntouched
+    || !attemptsIntactAfterRun || !bundleCleanAfterRun;
   if (tampered) {
-    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun}.`);
+    console.log(`TAMPERING RECORDED: pack_intact=${packIntactAfterRun} pack_untouched=${packUntouched} tree_clean=${treeCleanAfterRun} manifest_rewritten=${manifestRewrittenDuringRun} attempts_intact=${attemptsIntactAfterRun} bundle_clean=${bundleCleanAfterRun}.`);
     console.log(`The run is sealed AS PRODUCED, the pack is spent, and this verdict must not be trusted.`);
   }
   console.log(fail ? `FAIL is the result. It stands. A fix needs a new pack at the next version.` : tampered ? `Cases passed, but see the tampering record above.` : `All cases passed.`);

@@ -69,6 +69,7 @@ const HEADER_FIELDS = ["candidate", "candidate_verified", "attempt"] as const;
 const FOOTER_FIELDS = ["post_run_pack_intact", "post_run_tree_clean",
                        "post_run_tree_clean_semantics",
                        "manifest_rewritten_during_run", "post_run_pack_untouched",
+                       "post_run_attempts_intact", "post_run_bundle_clean",
                        "attempts_log_sha256"] as const;
 
 /** GENESIS-rooted hash chain; returns problems, never throws. */
@@ -100,6 +101,15 @@ function verifyBundle(dir: string): string[] {
 
   const logName = fieldFrom(man, "raw_log");
   if (!logName) return [`manifest.yaml names no raw_log`];
+  // U2 (fourth review, EXECUTED): a case planted a SECOND holdout-run-*.log in
+  // a sealed bundle and this tool said nothing — it only inspected leftovers
+  // when the manifest was MISSING. A sealed bundle records exactly one run.
+  const runLogs = readdirSync(dir).filter((f) => f.startsWith("holdout-run-")).sort();
+  if (runLogs.length !== 1) {
+    bad.push(`${runLogs.length} holdout-run-* file(s) exist (${runLogs.join(", ")}) — a sealed bundle records exactly ONE run; extras are planted`);
+  } else if (runLogs[0] !== logName) {
+    bad.push(`the one run log on disk (${runLogs[0]}) is not the one the manifest names (${logName})`);
+  }
   const logPath = join(dir, logName);
   if (!existsSync(logPath)) return [`raw log ${logName} is MISSING`];
   const logBytes = readFileSync(logPath);

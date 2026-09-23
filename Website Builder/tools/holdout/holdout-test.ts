@@ -2,7 +2,19 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 161/161. Raised from 138 on 2026-09-23 after the THIRD security review
+ * Expect 169/169. Raised from 161 later on 2026-09-23 after the FOURTH security
+ * review returned REJECT with U1-U3: the T4 git filter had CANCELLED the T3
+ * anchor (a case truncated the tracked chain during an ABORTED run — no
+ * post-run check fires there — and the next seal affirmed attempt: 1); the
+ * bundle directory was a write-anything blind zone (a planted second run log
+ * passed the verifier); and cases inherited reveal's whole environment (a live
+ * API key was ps-readable from inside a case). Now: the anchor leaves the
+ * blind zone unless its bytes equal what reveal itself wrote, an exit handler
+ * heals aborted-run truncation from memory and preserves the found bytes, the
+ * bundle is censused before sealing, the verifier demands exactly one run log,
+ * and cases get a minimal PATH/HOME/TMPDIR environment with a canary test.
+ *
+ * Previously 161/161. Raised from 138 on 2026-09-23 after the THIRD security review
  * returned REJECT with two EXECUTED forgeries: T1, a file descriptor opened
  * before the mode-000 lockdown read the plaintext answer key straight through
  * it (POSIX checks permission at open, not read); and T2, a multi-line case
@@ -1549,6 +1561,7 @@ const fgLog = [
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
   `post_run_tree_clean_semantics: test-semantics`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: false`,
+  `post_run_attempts_intact: true`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: ${sha256Hex(fgChain)}`,
   `finished_at: 2026-01-01T00:00:03Z`, `result: 1 PASS / 0 FAIL of 1`,
 ].join("\n") + "\n";
@@ -1561,6 +1574,7 @@ const fgManifest = (untouched: string) => [
   `post_run_pack_intact: true`, `post_run_tree_clean: unverified`,
   `post_run_tree_clean_semantics: test-semantics`,
   `manifest_rewritten_during_run: false`, `post_run_pack_untouched: ${untouched}`,
+  `post_run_attempts_intact: true`, `post_run_bundle_clean: true`,
   `attempts_log_sha256: "${sha256Hex(fgChain)}"`, "",
 ].join("\n");
 writeFileSync(join(fgBundle, "manifest.yaml"), fgManifest("true"));   // the sed lie
@@ -1630,6 +1644,99 @@ ok("T4: editing the manifest's semantics line DISAGREES with the hashed log",
 writeFileSync(t2cMan, readFileSync(t2cMan, "utf8").replace("sees a modify-then-restore", "blind to a modify-then-restore"));
 const t4V2 = vrrRun(repoRoot);
 ok("T4: restored, every record verifies again", t4V2.code === 0, t4V2.out.slice(-200));
+
+console.log("— fourth security review: U1/U2/U3, each executed defeat pinned —");
+
+// U1 — the reviewer's anchor truncation, sealing-run variant: a case shortens
+// BOTH copies of the chain to their genesis line mid-run. The blanket path
+// exclusion used to hide this from the tree check; the content check seals it.
+const u1Id = "HLD-S34-v1";
+const u1Dir = join(repoRoot, "qa-private", u1Id);
+mkdirSync(u1Dir, { recursive: true });
+const u1Anchor = "planning/holdouts/attempts/" + u1Id + ".log";
+const u1Copy = "planning/evidence/EVB-" + u1Id + "/attempts.log";
+const truncBoth = "head -n1 " + u1Anchor + " > .u1t && mv .u1t " + u1Anchor + "; head -n1 " + u1Copy + " > .u1u && mv .u1u " + u1Copy;
+writeFileSync(join(u1Dir, "README.md"), "# u1\n");
+writeFileSync(join(u1Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"" + truncBoth + "; true\"\n");
+writeFileSync(join(u1Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S34", "--story", "ST-34", "--contract", "v1"]);
+const u1Run = run({ WB_QA_CONTEXT: "1" }, ["--id", u1Id, "--candidate", "abc1230"]);
+const u1Rec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + u1Id, "manifest.yaml"), "utf8");
+ok("U1: a case that truncates BOTH chain copies mid-run is sealed as tampering",
+   u1Run.code !== 0 && /TAMPERING RECORDED/.test(u1Run.out) &&
+   /post_run_attempts_intact: false/.test(u1Rec), u1Run.out.slice(-240));
+ok("U1: the found bytes are preserved and the true chain is restored from memory",
+   existsSync(join(repoRoot, "planning/evidence", "EVB-" + u1Id, "attempts-anchor-as-found-after-run.log")) &&
+   /attempt=1 /.test(readFileSync(join(repoRoot, u1Anchor), "utf8")));
+
+// U1 — the reviewer's EXECUTED variant: truncation during an ABORTED run,
+// where no post-run check ever fires. The exit handler heals it, so the next
+// reveal counts attempt 2, not the forged 1.
+const u1bId = "HLD-S33-v1";
+const u1bDir = join(repoRoot, "qa-private", u1bId);
+mkdirSync(u1bDir, { recursive: true });
+const u1bAnchor = "planning/holdouts/attempts/" + u1bId + ".log";
+const u1bCopy = "planning/evidence/EVB-" + u1bId + "/attempts.log";
+const truncB = "head -n1 " + u1bAnchor + " > .u1v && mv .u1v " + u1bAnchor + "; head -n1 " + u1bCopy + " > .u1w && mv .u1w " + u1bCopy;
+writeFileSync(join(u1bDir, "README.md"), "# u1b\n");
+writeFileSync(join(u1bDir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"" + truncB + "; sleep 2\"\n");
+writeFileSync(join(u1bDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S33", "--story", "ST-33", "--contract", "v1"]);
+const u1bAbort = run({ WB_QA_CONTEXT: "1", WB_HOLDOUT_CASE_TIMEOUT_MS: "300" }, ["--id", u1bId, "--candidate", "abc1230"]);
+const u1bAnchorNow = readFileSync(join(repoRoot, u1bAnchor), "utf8");
+ok("U1: truncation during an ABORTED run is healed by the exit handler — attempt 1 survives",
+   u1bAbort.code !== 0 && /attempt=1 /.test(u1bAnchorNow) && u1bAnchorNow.split("\n").filter(Boolean).length === 2,
+   `anchor lines=${u1bAnchorNow.split("\n").filter(Boolean).length}`);
+rmSync(join(repoRoot, "planning/evidence", "EVB-" + u1bId, ".reveal.lock"), { force: true });
+const u1bSecond = run({ WB_QA_CONTEXT: "1" }, ["--id", u1bId, "--candidate", "abc1230"]);
+const u1bRec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + u1bId, "manifest.yaml"), "utf8");
+// The sealing run exits 1 too: the hostile case truncates again and is caught
+// live this time. Both halves of the reviewer's attack now fail separately —
+// the aborted-run theft of history (healed) and the count itself (attempt: 2).
+ok("U1: the sealing run records attempt: 2 — the reviewer's forged '1' is dead",
+   u1bSecond.code !== 0 && /attempt: 2/.test(u1bRec) && /post_run_attempts_intact: false/.test(u1bRec),
+   u1bRec.slice(0, 300));
+
+// U2 — a case plants a decoy run log inside its own bundle.
+const u2Id = "HLD-S32-v1";
+const u2Dir = join(repoRoot, "qa-private", u2Id);
+mkdirSync(u2Dir, { recursive: true });
+writeFileSync(join(u2Dir, "README.md"), "# u2\n");
+writeFileSync(join(u2Dir, "cases.yaml"),
+  "cases:\n  - id: H1\n    class: hostile\n    run: \"echo decoy > planning/evidence/EVB-" + u2Id + "/holdout-run-00000000T000000000Z.log\"\n");
+writeFileSync(join(u2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S32", "--story", "ST-32", "--contract", "v1"]);
+const u2Run = run({ WB_QA_CONTEXT: "1" }, ["--id", u2Id, "--candidate", "abc1230"]);
+const u2Rec = readFileSync(join(repoRoot, "planning/evidence", "EVB-" + u2Id, "manifest.yaml"), "utf8");
+ok("U2: a planted file in the bundle is sealed as tampering, named in the hashed log",
+   u2Run.code !== 0 && /post_run_bundle_clean: false/.test(u2Rec) &&
+   /holdout-run-00000000T000000000Z\.log/.test(readFileSync(join(repoRoot, "planning/evidence", "EVB-" + u2Id,
+     readdirSync(join(repoRoot, "planning/evidence", "EVB-" + u2Id)).filter((f) => f.startsWith("holdout-run-2"))[0]), "utf8")),
+   u2Run.out.slice(-240));
+const u2V1 = vrrRun(repoRoot);
+ok("U2: the verifier refuses a sealed bundle holding two run logs",
+   u2V1.code !== 0 && /exactly ONE run/.test(u2V1.out), u2V1.out.slice(-300));
+rmSync(join(repoRoot, "planning/evidence", "EVB-" + u2Id, "holdout-run-00000000T000000000Z.log"), { force: true });
+const u2V2 = vrrRun(repoRoot);
+ok("U2: with the decoy removed every record verifies again (the sealed 'false' stays consistent)",
+   u2V2.code === 0, u2V2.out.slice(-300));
+
+// U3 — cases run with a MINIMAL environment. The reviewer's ps -E probe read a
+// live API key out of reveal's inherited env; a canary now proves nothing but
+// PATH/HOME/TMPDIR crosses the boundary.
+const u3Id = "HLD-S31-v1";
+const u3Dir = join(repoRoot, "qa-private", u3Id);
+mkdirSync(u3Dir, { recursive: true });
+writeFileSync(join(u3Dir, "README.md"), "# u3\n");
+writeFileSync(join(u3Dir, "cases.yaml"),
+  'cases:\n  - id: H1\n    class: hostile\n    run: "test -z \\"$WB_CANARY_SECRET\\" && test -n \\"$HOME\\""\n');
+writeFileSync(join(u3Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+seal(["--slice", "S31", "--story", "ST-31", "--contract", "v1"]);
+const u3Run = run({ WB_QA_CONTEXT: "1", WB_CANARY_SECRET: "leak-me" }, ["--id", u3Id, "--candidate", "abc1230"]);
+ok("U3: a secret in reveal's environment is INVISIBLE to the case; HOME still present",
+   u3Run.code === 0 && /1 PASS \/ 0 FAIL/.test(u3Run.out), u3Run.out.slice(-200));
 
 // S6 — a FIFO left the digest byte-identical (executed by the reviewer).
 const s6Dir = join(tmp, "s6-pack");
