@@ -82,20 +82,26 @@ export const caseKeyProblems = (text: string): string[] => {
     block = [];
   };
   lines.forEach((line, i) => {
-    // W3 (sixth security review, EXECUTED): the old pattern caught only "- {"
-    // on one line. `cases: [{...}]`, a dash on its own line, and a multi-line
-    // flow mapping all bypassed it — and a one-line flow pack carrying run:
-    // twice SEALED and executed the second command. Any line whose structure
-    // OPENS a flow collection is refused: first non-space char "{" or "[",
-    // "- {" / "- [", or a key ending in "[" or "{". Braces INSIDE a quoted
-    // run string sit after `run: "` and never match these shapes. This scan
-    // is now belt-and-braces anyway: reveal requires the file to BE the
-    // canonical serialization of its own parse (canonicalCasesText below),
-    // which no flow spelling can satisfy.
-    if (/^\s*[\{\[]/.test(line) || /^\s*-\s*[\{\[]/.test(line) || /:\s*[\{\[]/.test(line)) {
+    // W3 (sixth security review, EXECUTED): a one-line flow pack carrying run:
+    // twice SEALED and executed the second command, invisible to a line scan.
+    // Any line whose STRUCTURE opens a flow or block collection is refused: a
+    // line beginning "{"/"["; a "- {" / "- [" list item; or a CASE KEY whose
+    // unquoted value opens a flow ("run: {") or a block scalar ("run: |").
+    // The value check is ANCHORED to a structural key-colon (a key at the
+    // start of the field, [^:] up to the first colon), so it fires on any
+    // "cases: [" / "run: {" / "run: |" but a brace, bracket, "|" or ">" INSIDE
+    // a quoted value — e.g.
+    // run: "printf '{...: [1]}'" or description: "ratio: >50%" — is NOT a false
+    // refusal (the old ":\s*[{[]" and ":\s*[|>]" matched anywhere on the line
+    // and PERMANENTLY blocked such legitimate packs — robust-review round 2).
+    // This scan is belt-and-braces anyway: reveal requires cases.yaml to BE the
+    // canonical serialization of its own parse (canonicalCasesText below), which
+    // no flow or block spelling can satisfy, so the real duplicate-key attack is
+    // defeated whether or not this line scan sees it.
+    if (/^\s*[\{\[]/.test(line) || /^\s*-\s*[\{\[]/.test(line) || /^\s*(?:-\s+)?["']?[^\s:"'][^:\n]*:\s*[\{\[]/.test(line)) {
       problems.push(`line ${i + 1}: flow-style collections ("{...}" / "[...]") are refused in cases.yaml structure — a repeated key inside one is invisible to a line scan`);
     }
-    if (/:\s*[|>]/.test(line)) {
+    if (/^\s*(?:-\s+)?["']?[^\s:"'][^:\n]*:\s*[|>]/.test(line)) {
       problems.push(`line ${i + 1}: block scalars ("|" or ">") are refused — their continuation lines are indistinguishable from keys to this scan`);
     }
     if (/^\s*-\s/.test(line)) { flush(); blockStart = i; }

@@ -1962,6 +1962,42 @@ const w3bRun = run({ WB_QA_CONTEXT: "1" }, ["--id", "HLD-S26-v1", "--candidate",
 ok("W3: braces inside a quoted run string seal and reveal cleanly",
    w3bRun.code === 0 && /1 PASS \/ 0 FAIL/.test(w3bRun.out), w3bRun.out.slice(-200));
 
+// robust-review round 2 (LOW, EXECUTED): the flow/block line-scan matched
+// ":\s*[{[]" and ":\s*[|>]" ANYWHERE on a line, so a colon+brace/bracket/pipe/gt
+// INSIDE a quoted case value (run: "echo 'a: [1]'", description: "ratio: >50%")
+// permanently blocked a legitimate pack at seal.ts:163 — a false refusal that
+// no re-seal could clear. The scan is now ANCHORED to the case keys. These pin
+// both halves: legitimate quoted values with an internal ": [" / ": {" / ": >"
+// seal, while a real structural flow/block opener is still refused (the actual
+// duplicate-key attack is caught by canonicalCasesText regardless).
+ok("RR2: a quoted value with an internal ': [' is NOT a false refusal (was permanent)",
+   caseKeyProblems("cases:\n  - id: H1\n    class: nominal\n    run: \"echo 'a: [b]'\"\n").length === 0);
+ok("RR2: a quoted value with an internal ': {' is NOT a false refusal",
+   caseKeyProblems("cases:\n  - id: H1\n    class: nominal\n    run: \"printf 'x: {y}'\"\n").length === 0);
+ok("RR2: a quoted description with an internal ': >' is NOT a false refusal (block-scalar scan)",
+   caseKeyProblems("cases:\n  - id: H1\n    class: nominal\n    description: \"ratio: >50%\"\n    run: \"echo ok\"\n").length === 0);
+ok("RR2: an UNQUOTED flow value (run: {a: b}) is STILL refused as flow-style",
+   caseKeyProblems("cases:\n  - id: H1\n    class: nominal\n    run: {a: b}\n").some((x) => /flow-style/.test(x)));
+ok("RR2: a flow list item (- {id: ...}) is STILL refused as flow-style",
+   caseKeyProblems("cases:\n  - {id: H1, class: nominal, run: echo x}\n").some((x) => /flow-style/.test(x)));
+ok("RR2: a block-scalar opener (run: |) is STILL refused",
+   caseKeyProblems("cases:\n  - id: H1\n    class: nominal\n    run: |\n").some((x) => /block scalars/.test(x)));
+ok("RR2: a line beginning with '[' is STILL refused as flow-style",
+   caseKeyProblems("cases:\n[ {id: H1} ]\n").some((x) => /flow-style/.test(x)));
+// End-to-end: the previously-unsealable legitimate pack now seals AND reveals clean.
+const rr2Id = "HLD-S49-v1";
+const rr2Dir = join(repoRoot, "qa-private", rr2Id);
+mkdirSync(rr2Dir, { recursive: true });
+writeFileSync(join(rr2Dir, "README.md"), "# rr2\n");
+writeFileSync(join(rr2Dir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo 'a: [1]'\"\n");
+writeFileSync(join(rr2Dir, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "a: [1]" } }) + "\n");
+const rr2Seal = seal(["--slice", "S49", "--story", "ST-49", "--contract", "v1"]);
+ok("RR2: a pack whose run holds ': [' inside quotes now SEALS (was blocked at seal.ts:163)",
+   rr2Seal.code === 0, rr2Seal.out.slice(-160));
+const rr2Run = run({ WB_QA_CONTEXT: "1" }, ["--id", rr2Id, "--candidate", "abc1230"]);
+ok("RR2: and it reveals clean — 1 PASS / 0 FAIL",
+   rr2Run.code === 0 && /1 PASS \/ 0 FAIL/.test(rr2Run.out), rr2Run.out.slice(-200));
+
 // W2 — the re-sit. revealed_at's committed state is null, so two seds and an
 // rm -rf re-armed a spent pack with git status clean. The spent marker now
 // lives in the chain, where the committed state is its ABSENCE.
