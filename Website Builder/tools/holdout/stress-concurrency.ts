@@ -53,7 +53,7 @@ const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 
 // Every distinct byte-state any reader ever saw, across every round.
 const states = new Map<string, { text: string; count: number; rounds: Set<number> }>();
-let multiWinnerRounds = 0, zeroWinnerRounds = 0, roundsWithReads = 0, totalReads = 0;
+let multiWinnerRounds = 0, zeroWinnerRounds = 0, roundsWithReads = 0, totalReads = 0, invalidFinalRounds = 0;
 
 console.log(`stress: ${ROUNDS} rounds, repo ${repo}`);
 const started = Date.now();
@@ -97,6 +97,7 @@ for (let round = 0; round < ROUNDS; round++) {
     const p = parse(finalText);
     if (!p.ok || validate(p.value).length) {
       console.log(`ROUND ${round}: FINAL MANIFEST INVALID — ${p.ok ? validate(p.value).map((x) => x.field).join(",") : p.error}`);
+      invalidFinalRounds++;
     }
     states.set("FINAL:" + finalHash, { text: finalText, count: 1, rounds: new Set([round]) });
   }
@@ -126,6 +127,7 @@ if (multiWinnerRounds) { console.log(`\nFAIL: ${multiWinnerRounds} round(s) had 
 if (zeroWinnerRounds) { console.log(`\nFAIL: ${zeroWinnerRounds} round(s) had no winning seal.`); bad++; }
 if (unexpected.length) { console.log(`\nFAIL: readers observed ${unexpected.length} state(s) that were never a published final file.`); bad++; }
 if (!roundsWithReads) { console.log(`\nFAIL: no read ever landed — the test proved nothing.`); bad++; }
+if (invalidFinalRounds) { console.log(`\nFAIL: ${invalidFinalRounds} round(s) published a final manifest that did not parse or validate.`); bad++; }
 
 // Second phase: seal racing a reveal of the SAME id, at volume. A reveal must
 // either refuse cleanly (no manifest yet) or run against a fully valid manifest.
