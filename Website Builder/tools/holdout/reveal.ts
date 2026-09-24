@@ -32,7 +32,7 @@ import { join } from "node:path";
 import { CASE_KEYS, canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
-import { ID_SHAPE, SHA256_HEX, expectedShapeProblems, parse, validate, type HoldoutManifest } from "./manifest.ts";
+import { ID_SHAPE, expectedShapeProblems, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
 import { GIT_SAFE, commandValuedConfigMap, allConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
