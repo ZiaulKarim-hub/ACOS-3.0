@@ -29,7 +29,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
+import { CASE_KEYS, canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
@@ -393,7 +393,16 @@ function main(): number {
       die(`reveal refused (pack NOT spent): cases.yaml is ambiguous —\n  ` + yamlProblems.join("\n  "));
     }
   }
-  const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] }).cases;
+  // Consistency with seal (robust-review round 3): a malformed cases.yaml throws
+  // an uncaught parse exception otherwise. Gated here by the pack-hash check, so
+  // only reachable via forgery, but the clean refusal matches seal and manifest.
+  let casesDoc: { cases: Case[] };
+  try {
+    casesDoc = (globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] };
+  } catch (e) {
+    die(`reveal refused (pack NOT spent): cases.yaml does not parse as YAML — ${String(e instanceof Error ? e.message : e)}`);
+  }
+  const cases = casesDoc.cases;
 
   // T2 (EXECUTED): a double-quoted YAML scalar with \n escapes is a multi-line
   // run string the block-scalar refusals never see, and it used to be written
@@ -402,7 +411,7 @@ function main(): number {
   // these at authoring; this is the same refusal against a hand-written pack.
   {
     const multiline = cases.flatMap((c) =>
-      (["id", "class", "description", "run"] as const)
+      CASE_KEYS
         .filter((k) => typeof (c as any)[k] === "string" && /[\r\n]/.test((c as any)[k]))
         .map((k) => `${JSON.stringify(c.id)}: field "${k}" contains a newline`));
     if (multiline.length) {
@@ -414,7 +423,7 @@ function main(): number {
     // reversed to every human. seal refuses it at authoring; this is the same
     // refusal against a pack sealed around the tool.
     const invisibles = cases.flatMap((c) =>
-      (["id", "class", "description", "run"] as const)
+      CASE_KEYS
         .filter((k) => typeof (c as any)[k] === "string" && INVISIBLE_CODEPOINTS.test((c as any)[k]))
         .map((k) => `${JSON.stringify(c.id)}: field "${k}" carries ${invisibleName((c as any)[k])}, a bidi/invisible control codepoint`));
     if (invisibles.length) {
@@ -468,7 +477,12 @@ function main(): number {
     die(`reveal refused (pack NOT spent): ${ENC_NAME} did not decrypt — wrong key, or the\n` +
         `ciphertext was modified (GCM authenticates every byte). ${String(e?.message ?? e)}`);
   }
-  const expected = JSON.parse(expectedText) as Record<string, Expected>;
+  let expected: Record<string, Expected>;
+  try {
+    expected = JSON.parse(expectedText) as Record<string, Expected>;
+  } catch (e) {
+    die(`reveal refused (pack NOT spent): expected.json does not parse as JSON — ${String(e instanceof Error ? e.message : e)}`);
+  }
 
   // MEASURED: a cases.yaml carrying the SAME id twice ran BOTH commands and sealed
   // "2 PASS / 0 FAIL of 2". Two different commands were then graded against one

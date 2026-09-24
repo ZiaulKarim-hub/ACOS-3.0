@@ -26,7 +26,19 @@ const MANIFEST_DIR = "planning/holdouts/manifests";
 
 function main(argv: string[]): number {
   const i = argv.indexOf("--expect");
-  const expect = i >= 0 ? Number(argv[i + 1]) : null;
+  // A garbage --expect must not slip through as NaN: with the dir present that
+  // prints "expected NaN", and with the dir absent NaN > 0 is falsy so a bad
+  // census silently passes. Validate a non-negative integer up front, like
+  // reveal validates WB_HOLDOUT_CASE_TIMEOUT_MS (robust-review round 3).
+  let expect: number | null = null;
+  if (i >= 0) {
+    const raw = argv[i + 1];
+    if (raw === undefined || !/^\d+$/.test(raw)) {
+      console.log(`verify-manifests: --expect needs a non-negative integer, got ${raw === undefined ? "(nothing)" : JSON.stringify(raw)}.`);
+      return 1;
+    }
+    expect = Number(raw);
+  }
 
   if (!existsSync(MANIFEST_DIR)) {
     // Diagnostic, not a failure: before the first pack is authored there is

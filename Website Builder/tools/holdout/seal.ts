@@ -25,7 +25,7 @@ import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { join } from "node:path";
 import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from "./canonical-hash.ts";
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
-import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
+import { CASE_KEYS, canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { commandValuedConfigKeys, hookCensus } from "./git-guard.ts";
 import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
 
@@ -168,7 +168,17 @@ function main(): number {
     const dupKeys = duplicateJsonKeys(rawExpected);
     if (dupKeys.length) die(`seal refused: expected.json repeats key(s) ${dupKeys.join(", ")} — JSON keeps only the LAST one, and a pack sealed over that ambiguity is a wrong verdict waiting to happen.`);
   }
-  const cases = ((globalThis as any).Bun.YAML.parse(casesText) as { cases: Array<{ id: string; class: string; run: string; description?: string }> }).cases;
+  // A UTF-8-valid but syntactically malformed cases.yaml passes the checks above
+  // and would throw an UNCAUGHT parse exception here — a raw stack trace instead
+  // of the tool's clean refusal. Wrapped, exactly as manifest.parse() wraps the
+  // identical Bun.YAML call (robust-review round 3).
+  let casesDoc: { cases: Array<{ id: string; class: string; run: string; description?: string }> };
+  try {
+    casesDoc = (globalThis as any).Bun.YAML.parse(casesText) as { cases: Array<{ id: string; class: string; run: string; description?: string }> };
+  } catch (e) {
+    die(`seal refused: cases.yaml does not parse as YAML — ${String(e instanceof Error ? e.message : e)}`);
+  }
+  const cases = casesDoc.cases;
   if (!Array.isArray(cases) || cases.length === 0) die("seal refused: cases.yaml holds no cases.");
   // T2 (security review, EXECUTED): a double-quoted YAML scalar with \n escapes
   // is a MULTI-LINE run string that the block-scalar refusals never see, and
@@ -177,7 +187,7 @@ function main(): number {
   // command has no business spanning lines; refuse at authoring, where it is free.
   {
     const multiline = cases.flatMap((c) =>
-      (["id", "class", "description", "run"] as const)
+      CASE_KEYS
         .filter((k) => typeof c[k] === "string" && /[\r\n]/.test(c[k] as string))
         .map((k) => `${JSON.stringify(c.id)}: field "${k}" contains a newline`));
     if (multiline.length) {
@@ -188,7 +198,7 @@ function main(): number {
     // cleanly and read REVERSED in every render of the record — a fixed point
     // of canonicalization, invisible to the structural check. Byte-level rule.
     const invisibles = cases.flatMap((c) =>
-      (["id", "class", "description", "run"] as const)
+      CASE_KEYS
         .filter((k) => typeof c[k] === "string" && INVISIBLE_CODEPOINTS.test(c[k] as string))
         .map((k) => `${JSON.stringify(c.id)}: field "${k}" carries ${invisibleName(c[k] as string)}, a bidi/invisible control codepoint`));
     if (invisibles.length) {
@@ -207,7 +217,7 @@ function main(): number {
     const fieldProblems = cases.flatMap((c) => {
       const out: string[] = [];
       for (const k of Object.keys(c as object)) {
-        if (!["id", "class", "description", "run"].includes(k)) out.push(`${JSON.stringify(c.id)}: unknown case field ${JSON.stringify(k)}`);
+        if (!(CASE_KEYS as readonly string[]).includes(k)) out.push(`${JSON.stringify(c.id)}: unknown case field ${JSON.stringify(k)}`);
       }
       for (const k of ["id", "class", "run"] as const) {
         if (typeof (c as any)[k] !== "string") out.push(`${JSON.stringify(c.id)}: field "${k}" is ${typeof (c as any)[k]}, expected a string`);
@@ -217,7 +227,12 @@ function main(): number {
     });
     if (fieldProblems.length) die(`seal refused: cases.yaml holds fields the canonical form cannot carry —\n  ` + fieldProblems.join("\n  "));
   }
-  const expected = JSON.parse(rawExpected) as Record<string, unknown>;
+  let expected: Record<string, unknown>;
+  try {
+    expected = JSON.parse(rawExpected) as Record<string, unknown>;
+  } catch (e) {
+    die(`seal refused: expected.json does not parse as JSON — ${String(e instanceof Error ? e.message : e)}`);
+  }
 
   const missing = cases.filter((c) => !(c.id in expected)).map((c) => c.id);
   if (missing.length) die(`seal refused: no expected result for ${missing.join(", ")}.`);

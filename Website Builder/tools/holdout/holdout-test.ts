@@ -1998,6 +1998,34 @@ const rr2Run = run({ WB_QA_CONTEXT: "1" }, ["--id", rr2Id, "--candidate", "abc12
 ok("RR2: and it reveals clean — 1 PASS / 0 FAIL",
    rr2Run.code === 0 && /1 PASS \/ 0 FAIL/.test(rr2Run.out), rr2Run.out.slice(-200));
 
+// robust-review round 3: seal parsed the two hand-authored custodian files
+// (cases.yaml, expected.json) WITHOUT the try/catch manifest.parse() applies to
+// the identical Bun.YAML call, so a UTF-8-valid but malformed file threw an
+// UNCAUGHT exception — a raw stack trace + exit 1 instead of a clean refusal.
+// Both parses are now wrapped. These pin the clean refusal (and, via --expect
+// below, the parallel unvalidated-flag fix).
+const rr3aDir = join(repoRoot, "qa-private", "HLD-S50-v1");
+mkdirSync(rr3aDir, { recursive: true });
+writeFileSync(join(rr3aDir, "README.md"), "# rr3a\n");
+writeFileSync(join(rr3aDir, "cases.yaml"), "cases:\n  - id: \"H1\n    class: nominal\n    run: \"echo x\"\n");  // unterminated quote — valid UTF-8, passes caseKeyProblems, throws in Bun.YAML.parse
+writeFileSync(join(rr3aDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const rr3aSeal = seal(["--slice", "S50", "--story", "ST-50", "--contract", "v1"]);
+ok("RR3: a malformed cases.yaml is a clean 'does not parse' refusal, not a stack trace",
+   rr3aSeal.code !== 0 && /seal refused: cases\.yaml does not parse as YAML/.test(rr3aSeal.out) && !/\n\s+at .+:\d+/.test(rr3aSeal.out),
+   rr3aSeal.out.slice(-200));
+const rr3bDir = join(repoRoot, "qa-private", "HLD-S46-v1");
+mkdirSync(rr3bDir, { recursive: true });
+writeFileSync(join(rr3bDir, "README.md"), "# rr3b\n");
+writeFileSync(join(rr3bDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo x\"\n");
+writeFileSync(join(rr3bDir, "expected.json"), '{"H1": {"exit": 0},}\n');  // trailing comma — passes duplicateJsonKeys, throws in JSON.parse
+const rr3bSeal = seal(["--slice", "S46", "--story", "ST-46", "--contract", "v1"]);
+ok("RR3: a malformed expected.json is a clean 'does not parse' refusal, not a stack trace",
+   rr3bSeal.code !== 0 && /seal refused: expected\.json does not parse as JSON/.test(rr3bSeal.out) && !/\n\s+at .+:\d+/.test(rr3bSeal.out),
+   rr3bSeal.out.slice(-200));
+const rr3c = (() => { try { execFileSync("bun", [join(process.cwd(), "tools/holdout/verify-manifests.ts"), "--expect", "abc"], { cwd: repoRoot, encoding: "utf8" }); return "exit0"; } catch (e: any) { return String(e.stdout ?? ""); } })();
+ok("RR3: verify-manifests rejects a non-integer --expect with a clear message",
+   rr3c !== "exit0" && /needs a non-negative integer/.test(rr3c), rr3c.slice(-160));
+
 // W2 — the re-sit. revealed_at's committed state is null, so two seds and an
 // rm -rf re-armed a spent pack with git status clean. The spent marker now
 // lives in the chain, where the committed state is its ABSENCE.

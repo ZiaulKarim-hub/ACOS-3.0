@@ -79,7 +79,7 @@ export function sha256Hex(data: Buffer | string): string {
 }
 
 /** Every file under `dir`, as POSIX-separated paths relative to it, sorted by byte order. */
-export function listPackFiles(dir: string): string[] {
+function listPackFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
     for (const name of readdirSync(d).sort()) {
