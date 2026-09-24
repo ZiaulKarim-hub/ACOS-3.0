@@ -77,7 +77,11 @@ const isCommandValued = (key: string): boolean =>
   || (key.startsWith("mergetool.") && key.endsWith(".cmd"))
   || key.startsWith("pager.")
   || (key.startsWith("trailer.") && key.endsWith(".command"))
-  || (key.startsWith("url.") && /\.insteadof$/.test(key));
+  || (key.startsWith("url.") && /\.insteadof$/.test(key))
+  // DD2 (twelfth review): gpg.<format>.program runs on a signed commit / tag -s
+  // (only gpg.program was listed); *.packObjectsHook runs on fetch/push.
+  || (key.startsWith("gpg.") && key.endsWith(".program"))
+  || key.endsWith(".packobjectshook");
 
 // CC1 (eleventh review): the allowlist is a hand-enumerated set that TRAILS git
 // — diff.external proved it live. The durable defense is DEFAULT-SUSPICIOUS by
@@ -127,18 +131,18 @@ const hooksDir = (): string | null => {
  * repo does exactly that) and is NOT flagged — but hookCensus/hookSnapshot then
  * make that carve-out safe by auditing that very directory.
  */
-export function commandValuedConfigKeys(): string[] {
+export function commandValuedConfigMap(): Record<string, string> {
   let raw = "";
   try {
     raw = execFileSync("git", [...GIT_SAFE, "config", "--show-scope", "--list", "-z"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  } catch { return []; }
+  } catch { return {}; }
   const own = hooksDir();
   const ownHooks = own ? canon(own) : "";
   // `--show-scope -z` emits alternating NUL-separated tokens: scope, then
   // "key\nvalue", repeating. (Measured on git 2.x.)
   const tokens = raw.split("\0");
-  const bad = new Set<string>();
+  const out: Record<string, string> = {};
   for (let i = 0; i + 1 < tokens.length; i += 2) {
     const scope = tokens[i];
     const kv = tokens[i + 1];
@@ -149,12 +153,30 @@ export function commandValuedConfigKeys(): string[] {
     const value = nl >= 0 ? kv.slice(nl + 1) : "";
     if (key === "core.hookspath") {
       if (ownHooks && canon(value) === ownHooks) continue;   // default location
-      bad.add(key);
+      out[key] = value;
       continue;
     }
-    if (isCommandValued(key) || valueShapeIsCommand(value)) bad.add(key);
+    // A multivar key can repeat; the value recorded is enough for change
+    // detection (a mid-run edit changes it), which is all reveal's delta needs.
+    if (isCommandValued(key) || valueShapeIsCommand(value)) out[key] = value;
   }
-  return [...bad].sort();
+  return out;
+}
+
+// Keys only — for seal's presence WARNING, which cannot tell legit tooling
+// (git-lfs, Watchman) from a persisted plant, so it never refuses on presence
+// (DD1). reveal's before/after delta is what treats a change as a plant.
+export function commandValuedConfigKeys(): string[] {
+  return Object.keys(commandValuedConfigMap()).sort();
+}
+
+// DD1 (twelfth review): keys whose presence-or-VALUE differs between two
+// snapshots — appeared or changed. This is a PLANT; a pre-existing key is not.
+export function configDelta(before: Record<string, string>, after: Record<string, string>): string[] {
+  const changed = new Set<string>();
+  for (const k of Object.keys(after)) if (before[k] !== after[k]) changed.add(k);
+  for (const k of Object.keys(before)) if (!(k in after)) changed.add(k);
+  return [...changed].sort();
 }
 
 // A hook is "live" if it is an executable regular file that git will run: the

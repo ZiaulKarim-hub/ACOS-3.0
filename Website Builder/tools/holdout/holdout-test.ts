@@ -2126,32 +2126,34 @@ ok("Z1: the mid-run plant is SEALED as tampering — keys named, unset command p
    /config_planted_during_run: true/.test(x2Man) && /core\.fsmonitor/.test(x2Man),
    x2Run.out.slice(-300));
 
-// Z1 — the OTHER two doors. seal runs in the authoring window itself (the one
-// moment the answer key is plaintext), so it refuses outright; reveal refuses
-// PRE-run — one unset later the pack reveals cleanly. Recovery, not a brick.
+// DD1 (twelfth security review, EXECUTED): a PRE-EXISTING command-valued key
+// is NOT a plant. Refusing on presence broke every honest git-lfs / Watchman /
+// diff.external repo. seal and reveal now WARN and PROCEED; the guarantee moved
+// to reveal's before/after DELTA (a key that appears or changes DURING the run),
+// tested just below. Here: legitimate git-lfs config, present throughout, seals
+// and reveals cleanly — the DD1 regression.
 const z1Id = "HLD-S90J-v1";
 const z1Pack = join(repo2, "qa-private", z1Id);
 mkdirSync(z1Pack, { recursive: true });
 writeFileSync(join(z1Pack, "README.md"), "# z1\n");
 writeFileSync(join(z1Pack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
 writeFileSync(join(z1Pack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
-git("config", "alias.pwn", "!echo pwned");
+git("config", "filter.lfs.clean", "git-lfs clean -- %f");
+git("config", "filter.lfs.process", "git-lfs filter-process");
+git("config", "filter.lfs.smudge", "git-lfs smudge -- %f");
 const z1Seal1 = seal(["--slice", "S90J", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("Z1: seal REFUSES while .git/config carries a command-valued key — the authoring window stays clean",
-   z1Seal1.code !== 0 && /alias\.pwn/.test(z1Seal1.out) && /command-valued/.test(z1Seal1.out),
-   z1Seal1.out.slice(-240));
-git("config", "--unset", "alias.pwn");
-seal(["--slice", "S90J", "--story", "ST-90", "--contract", "v1"], repo2);
+ok("DD1: seal WARNS but PROCEEDS on legitimate git-lfs config — an honest repo can seal",
+   z1Seal1.code === 0 && /WARNING/.test(z1Seal1.out) && /filter\.lfs/.test(z1Seal1.out),
+   z1Seal1.out.slice(-260));
 git("add", "-A"); git("commit", "-q", "-m", "z1 pack");
-git("config", "core.sshCommand", "ssh -o ProxyCommand=evil");
 const z1Rev1 = run({ WB_QA_CONTEXT: "1" }, ["--id", z1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
-ok("Z1: reveal REFUSES pre-run on a planted key — recoverable, pack NOT spent",
-   z1Rev1.code !== 0 && /core\.sshcommand/.test(z1Rev1.out) && /pack NOT spent/.test(z1Rev1.out),
+const z1Man1 = readFileSync(join(repo2, "planning/evidence", "EVB-" + z1Id, "manifest.yaml"), "utf8");
+ok("DD1: reveal WARNS on the pre-existing lfs config and RUNS — it is not a plant (delta empty)",
+   z1Rev1.code === 0 && /1 PASS \/ 0 FAIL/.test(z1Rev1.out) && /config_planted_during_run: false/.test(z1Man1),
    z1Rev1.out.slice(-260));
-git("config", "--unset", "core.sshCommand");
-const z1Rev2 = run({ WB_QA_CONTEXT: "1" }, ["--id", z1Id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
-ok("Z1: one unset later the same pack reveals cleanly — the refusal is recovery, not a brick",
-   z1Rev2.code === 0 && /1 PASS \/ 0 FAIL/.test(z1Rev2.out), z1Rev2.out.slice(-200));
+git("config", "--unset", "filter.lfs.clean");
+git("config", "--unset", "filter.lfs.process");
+git("config", "--unset", "filter.lfs.smudge");
 
 // Z2 — the silence branch. The identical shrink, committed AS
 // holdout-reveal@local, used to take the hard-refusal path: no record, ever —
@@ -2184,63 +2186,43 @@ ok("Z2/Z3: the record marks the identity FORGED, and the verifier confirms the b
    /ok\s+EVB-HLD-S90I-v1\s+\[BRICKED BY TAMPERING/.test(z2V.out),
    z2Man.slice(0, 500));
 
-console.log("— ninth security review: AA1 doors, each executed defeat pinned —");
+console.log("— DD1 mid-run plants: the delta catches a config CHANGE, whatever the key —");
 
-// AA1 door 1 — include.path: a local key points at a SECOND config file whose
-// command-valued keys --local never lists. --show-scope resolves them under the
-// including file's scope (local), so the detector sees them now.
-const aa1aId = "HLD-S90K-v1";
-const aa1aPack = join(repo2, "qa-private", aa1aId);
-mkdirSync(aa1aPack, { recursive: true });
-writeFileSync(join(aa1aPack, "README.md"), "# aa1a\n");
-writeFileSync(join(aa1aPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
-writeFileSync(join(aa1aPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
-writeFileSync(join(repo2, "extra.conf"), "[core]\n\tfsmonitor = /tmp/payload.sh\n");
-git("config", "include.path", join(repo2, "extra.conf"));
-const aa1aSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("AA1 door 1: an include.path smuggling a command key is CAUGHT — --show-scope resolves the include",
-   aa1aSeal.code !== 0 && /command-valued/.test(aa1aSeal.out) &&
-   (/core\.fsmonitor/.test(aa1aSeal.out) || /include\.path/.test(aa1aSeal.out)),
-   aa1aSeal.out.slice(-260));
-git("config", "--unset", "include.path");
-
-// AA1 door 1b — the include.path key is flagged EVEN when the included file
-// carries no command key: a local-scope chain to a second file is itself an
-// attack surface (fix b, "the redirection itself is visible").
-writeFileSync(join(repo2, "benign.conf"), "[user]\n\temail = x@example.com\n");
-git("config", "include.path", join(repo2, "benign.conf"));
-const aa1a2Seal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("AA1 door 1b: a local include.path is flagged as a redirection even with a benign target",
-   aa1a2Seal.code !== 0 && /include\.path/.test(aa1a2Seal.out), aa1a2Seal.out.slice(-220));
-git("config", "--unset", "include.path");
-
-// AA1 door 2 — worktree config: extensions.worktreeConfig + a worktree-scope key.
-git("config", "extensions.worktreeConfig", "true");
-git("config", "--worktree", "core.pager", "/tmp/wt.sh");
-const aa1bSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("AA1 door 2: a worktree-scope command key is CAUGHT — the scan is not --local-only",
-   aa1bSeal.code !== 0 && /command-valued/.test(aa1bSeal.out) &&
-   (/core\.pager/.test(aa1bSeal.out) || /worktreeconfig/.test(aa1bSeal.out)),
-   aa1bSeal.out.slice(-260));
-git("config", "--worktree", "--unset", "core.pager");
-git("config", "--unset", "extensions.worktreeConfig");
-
-// AA1 door 4 — core.hooksPath REDIRECTED to a non-default dir is flagged; the
-// carve-out is ONLY for the repo's own .git/hooks (door 4 the carve-out itself
-// is made safe by the mid-run hook snapshot below).
-git("config", "core.hooksPath", join(tmp, "evil-hooks"));
-const aa1fSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("AA1 door 4: a REDIRECTED core.hooksPath is flagged — only the repo's own hooks dir is carved out",
-   aa1fSeal.code !== 0 && /core\.hookspath/.test(aa1fSeal.out), aa1fSeal.out.slice(-220));
-git("config", "--unset", "core.hooksPath");
-
-// AA1 item 5 — sequence.editor executes during git commit / rebase -i (the
-// authoring window), a sibling of core.editor the first key list missed.
-git("config", "sequence.editor", join(tmp, "seq-evil.sh"));
-const aa1gSeal = seal(["--slice", "S90K", "--story", "ST-90", "--contract", "v1"], repo2);
-ok("AA1 item 5: sequence.editor is flagged — the key set tracks git's executable-valued keys",
-   aa1gSeal.code !== 0 && /sequence\.editor/.test(aa1gSeal.out), aa1gSeal.out.slice(-220));
-git("config", "--unset", "sequence.editor");
+// The security guarantee lives here now: a command-valued key that APPEARS or
+// CHANGES while cases run is the plant, sealed as tampering — include.path
+// (door 1), a redirected hooksPath (door 4), sequence.editor (item 5),
+// gpg.<f>.program and *.packObjectsHook (DD2), and an unlisted executable-PATH
+// key by SHAPE (CC1). One helper drives them all; each cleans up after itself
+// so the next case's baseline is clean.
+writeFileSync(join(repo2, "extra.conf"), "[user]\n\temail = x@example.com\n");
+const dEd = join(tmp, "d-ed.sh"); writeFileSync(dEd, "#!/bin/sh\nexit 0\n"); chmodSync(dEd, 0o755);
+const midRunPlant = (slice: string, cfgCmd: string, expectKey: RegExp): boolean => {
+  const id = `HLD-${slice}-v1`;
+  const pack = join(repo2, "qa-private", id);
+  mkdirSync(pack, { recursive: true });
+  writeFileSync(join(pack, "README.md"), `# ${slice}\n`);
+  writeFileSync(join(pack, "cases.yaml"), `cases:\n  - id: H1\n    class: hostile\n    run: "${cfgCmd}; echo planted"\n`);
+  writeFileSync(join(pack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+  seal(["--slice", slice, "--story", "ST-90", "--contract", "v1"], repo2);
+  git("add", "-A"); git("commit", "-q", "-m", `${slice} pack`);
+  const r = run({ WB_QA_CONTEXT: "1" }, ["--id", id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+  const man = readFileSync(join(repo2, "planning/evidence", "EVB-" + id, "manifest.yaml"), "utf8");
+  for (const k of ["include.path", "core.hooksPath", "sequence.editor", "gpg.ssh.program", "uploadpack.packObjectsHook", "totally.unknownkey"]) { try { git("config", "--unset", k); } catch {} }
+  return r.code !== 0 && /config_planted=true/.test(r.out) &&
+         /config_planted_during_run: true/.test(man) && expectKey.test(man);
+};
+ok("DD1/door1: an include.path planted mid-run is sealed as tampering (the delta, not presence)",
+   midRunPlant("S90K", `git config include.path ${join(repo2, "extra.conf")}`, /include\.path/));
+ok("DD1/door4: a redirected core.hooksPath planted mid-run is sealed as tampering",
+   midRunPlant("S90Ka", `git config core.hooksPath ${join(tmp, "evil-hooks")}`, /core\.hookspath/));
+ok("DD1/item5: sequence.editor planted mid-run is sealed as tampering",
+   midRunPlant("S90Kb", `git config sequence.editor ${dEd}`, /sequence\.editor/));
+ok("DD2: gpg.ssh.program planted mid-run is sealed as tampering — BARE-name value, only the NAME rule sees it",
+   midRunPlant("S90Kc", `git config gpg.ssh.program ssh-keygen`, /gpg\.ssh\.program/));
+ok("DD2: *.packObjectsHook planted mid-run is sealed as tampering — BARE-name value, NAME rule only",
+   midRunPlant("S90Kd", `git config uploadpack.packObjectsHook mygithook`, /packobjectshook/));
+ok("CC1/shape: an UNLISTED key with an executable-PATH value planted mid-run is caught by SHAPE",
+   midRunPlant("S90Ke", `git config totally.unknownkey ${dEd}`, /totally\.unknownkey/));
 
 // AA1 door 3 — a hook planted DURING a run, NO config key. The before/after
 // snapshot seals it as tampering, so the record no longer affirms clean.
@@ -2351,46 +2333,51 @@ const ccPack = join(repo2, "qa-private", ccPackId);
 const ccMakePack = () => {
   rmSync(join(repo2, "planning/holdouts/manifests", ccPackId + ".yaml"), { force: true });
   rmSync(join(repo2, "planning/holdouts/attempts", ccPackId + ".log"), { force: true });
+  rmSync(join(ccPack, "expected.json.enc"), { force: true });   // a prior successful seal left this
   mkdirSync(ccPack, { recursive: true });
   writeFileSync(join(ccPack, "README.md"), "# cc — what this pack covers, and why these cases.\n");
   writeFileSync(join(ccPack, "cases.yaml"), 'cases:\n  - id: H1\n    class: nominal\n    run: "echo ok"\n');
   writeFileSync(join(ccPack, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
 };
 
-// CC1 — diff.external fires on a plain `git diff`, was not on the allowlist, and
-// the AA1 harvest returned. Now flagged at seal (the authoring window).
+// CC1 — diff.external fires on a plain `git diff`. At SEAL (the authoring
+// window) a pre-existing key WARNS-and-proceeds (DD1); the seal proves the key
+// is CLASSIFIED (it appears in the warning), without refusing an honest repo.
 const ccExt = join(tmp, "cc-ext.sh");
 writeFileSync(ccExt, "#!/bin/sh\nexit 0\n"); chmodSync(ccExt, 0o755);
 ccMakePack();
 git("config", "diff.external", ccExt);
 const cc1Seal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
 git("config", "--unset", "diff.external");
-ok("CC1: diff.external (fires on a plain git diff) is flagged at seal — the missed AA1 key",
-   cc1Seal.code !== 0 && /diff\.external/.test(cc1Seal.out), cc1Seal.out.slice(-220));
+ok("CC1: diff.external is CLASSIFIED (named in the seal warning) — but seal PROCEEDS, not refuses (DD1)",
+   cc1Seal.code === 0 && /WARNING/.test(cc1Seal.out) && /diff\.external/.test(cc1Seal.out), cc1Seal.out.slice(-220));
 
 // CC1 shape rule — an UNLISTED key whose value is a planted executable is
-// flagged by WHAT IT IS, not by name. The durable answer to "the allowlist
-// trails git".
+// classified by WHAT IT IS, not by name. It appears in the warning.
+ccMakePack();
 git("config", "totally.unknownkey", ccExt);
 const cc1bSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
 git("config", "--unset", "totally.unknownkey");
-ok("CC1: an UNLISTED config key pointing at an executable is flagged by SHAPE — allowlist-independent",
-   cc1bSeal.code !== 0 && /totally\.unknownkey/.test(cc1bSeal.out), cc1bSeal.out.slice(-220));
+ok("CC1: an UNLISTED key pointing at an executable is classified by SHAPE (named in the warning)",
+   cc1bSeal.code === 0 && /WARNING/.test(cc1bSeal.out) && /totally\.unknownkey/.test(cc1bSeal.out), cc1bSeal.out.slice(-220));
 
-// ...and diff.external is flagged by NAME even when its value is a BARE command
-// (no path for the shape rule to see) — the interim named entry earns its keep.
+// ...and diff.external is classified by NAME even with a BARE-command value the
+// shape rule cannot see — the interim named entry earns its keep.
+ccMakePack();
 git("config", "diff.external", "somebarecmd");
 const cc1nSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
 git("config", "--unset", "diff.external");
-ok("CC1: diff.external is flagged by NAME even with a bare-command value the shape rule cannot see",
-   cc1nSeal.code !== 0 && /diff\.external/.test(cc1nSeal.out), cc1nSeal.out.slice(-220));
+ok("CC1: diff.external is classified by NAME even with a bare-command value the shape rule cannot see",
+   cc1nSeal.code === 0 && /WARNING/.test(cc1nSeal.out) && /diff\.external/.test(cc1nSeal.out), cc1nSeal.out.slice(-220));
 
-// ...and a benign non-executable value on an unknown key does NOT false-refuse.
+// ...and a benign non-executable value on an unknown key is NOT classified — no
+// warning about it, and seal proceeds (the shape rule is targeted, not blanket).
+ccMakePack();
 git("config", "totally.benignkey", "just-a-string-value");
 const cc1cSeal = seal(["--slice", "S90P", "--story", "ST-90", "--contract", "v1"], repo2);
 git("config", "--unset", "totally.benignkey");
-ok("CC1: a benign string value on an unknown key does NOT false-refuse — the shape rule is targeted",
-   cc1cSeal.code === 0, cc1cSeal.out.slice(-200));
+ok("CC1: a benign string value on an unknown key is NOT classified — seal proceeds, key unnamed",
+   cc1cSeal.code === 0 && !/totally\.benignkey/.test(cc1cSeal.out), cc1cSeal.out.slice(-200));
 git("add", "-A"); git("commit", "-q", "-m", "cc1 pack");
 
 // CC1 end-to-end — a case plants diff.external mid-run; it is now on the

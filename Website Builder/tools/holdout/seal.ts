@@ -75,15 +75,20 @@ function main(): number {
   // executed it and harvested the next pack's answers. GIT_SAFE immunizes only
   // OUR git calls; the custodian's own are unprotectable — so the foothold is
   // DETECTED and sealing refuses until the repository is clean.
+  // DD1 (twelfth security review, EXECUTED): a REFUSAL on presence broke every
+  // honest git-lfs / Watchman / diff.external repo — none could seal. seal runs
+  // in the authoring window and cannot tell legitimate tooling from a persisted
+  // plant, so it WARNS (it never refuses on presence). The hard guarantee lives
+  // in reveal's before/after delta, which seals a key CHANGED mid-run as
+  // tampering; a control that forces users to disable real tooling gets disabled.
   {
-    const badKeys = commandValuedConfigKeys();
-    if (badKeys.length) {
-      die(`seal refused: .git/config carries command-valued key(s) git will EXECUTE:\n` +
-          badKeys.map((k) => `  ${k}`).join("\n") +
-          `\nA hostile case can plant these, and they fire inside ANY git command — including\n` +
-          `yours, right now, while the answer key is plaintext (security review Z1).\n` +
-          `Inspect the value(s), then remove each with\n` +
-          `    git config --local --unset <key>\nand seal again.`);
+    const keys = commandValuedConfigKeys();
+    if (keys.length) {
+      console.log(`WARNING: .git/config carries command-valued key(s) git may EXECUTE while ${PLAIN_NAME}`);
+      console.log(`is still plaintext: ${keys.join(", ")}.`);
+      console.log(`Legitimate tooling (git-lfs, Watchman) is indistinguishable from a persisted plant.`);
+      console.log(`Confirm each is yours before sealing — a hostile one reads the answer key on your`);
+      console.log(`next git command. Remove a suspect one with: git config --local --unset <key>.`);
     }
   }
 

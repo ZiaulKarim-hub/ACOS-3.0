@@ -34,7 +34,7 @@ import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-h
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
-import { GIT_SAFE, commandValuedConfigKeys, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
+import { GIT_SAFE, commandValuedConfigKeys, commandValuedConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
@@ -291,14 +291,24 @@ function main(): number {
   // protects only the calls THESE tools make, so a planted key must never
   // survive into a run: refused here, recoverable with one command, pack NOT
   // spent. seal.ts refuses the same way in the authoring window itself.
+  // DD1 (twelfth security review, EXECUTED): refusing on PRESENCE broke every
+  // honest repo carrying legitimate command-valued config — git-lfs's
+  // filter.lfs.*, Watchman's core.fsmonitor, a project diff.external — none of
+  // which can then seal a holdout at all. The hook path already learned this:
+  // pre-existing WARNS, only a change DURING the run is tampering. So the
+  // config path now snapshots before/after too. A pre-existing key is warned
+  // about (the custodian may need to unset a persisted plant), but the run
+  // proceeds; a key that APPEARS or CHANGES mid-run is the plant, flagged below.
+  let configBefore: Record<string, string> = {};
   if (inRepo) {
-    const preKeys = commandValuedConfigKeys();
+    configBefore = commandValuedConfigMap();
+    const preKeys = Object.keys(configBefore).sort();
     if (preKeys.length) {
-      die(`reveal refused (pack NOT spent): .git/config carries command-valued key(s) git will EXECUTE:\n` +
-          preKeys.map((k) => `  ${k}`).join("\n") +
-          `\nA previous hostile case can plant these; they fire inside ANY git command in this\n` +
-          `repository (security review Z1). Inspect the value(s), then remove each with\n` +
-          `    git config --local --unset <key>\nand run reveal again.`);
+      console.log(`WARNING: .git/config carries command-valued key(s) git may EXECUTE on the`);
+      console.log(`custodian's own commands: ${preKeys.join(", ")}.`);
+      console.log(`Legitimate tooling (git-lfs, Watchman) looks identical to a persisted plant —`);
+      console.log(`confirm each is yours; a hostile one reads the answer key on your next git command.`);
+      console.log(`A key that CHANGES during this run is sealed as tampering regardless (Z1/CC1).`);
     }
   }
 
@@ -1136,7 +1146,10 @@ function main(): number {
   // Z1: a key planted DURING the run cannot be refused away — it already
   // happened. It is sealed as tampering, and the warning below tells the
   // custodian to unset it BEFORE any other git command runs the payload.
-  const postConfigKeys = inRepo ? commandValuedConfigKeys() : [];
+  // DD1: the plant is the DELTA — a command-valued key that appeared or whose
+  // value changed while cases ran. A pre-existing key (in configBefore) is not
+  // a plant and does not condemn an honest run.
+  const postConfigKeys = inRepo ? configDelta(configBefore, commandValuedConfigMap()) : [];
   const configPlantedDuringRun = postConfigKeys.length > 0;
   // AA1: a hook added or changed WHILE cases ran — door 3's exact mechanism.
   // CC2: a post-run snapshot that comes back null (a transient rev-parse failure
