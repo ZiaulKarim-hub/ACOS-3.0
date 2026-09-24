@@ -28,13 +28,13 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
-import { GIT_SAFE, commandValuedConfigKeys, commandValuedConfigMap, allConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
+import { GIT_SAFE, commandValuedConfigMap, allConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
@@ -81,9 +81,11 @@ const has = (n: string) => process.argv.includes(n);
 const die = (msg: string): never => { console.error(msg); process.exit(1); };
 
 // X2: GIT_SAFE (imported) rides every git call this tool makes — hooks,
-// fsmonitor, askpass and credential helpers get no say. Z1: what GIT_SAFE
-// cannot do is protect OTHER processes from a planted config; that is
-// commandValuedConfigKeys(), enforced below.
+// fsmonitor, askpass and credential helpers get no say. Z1/DD1/EE1: what
+// GIT_SAFE cannot do is protect OTHER processes from a planted config. That
+// is caught by the before/after config snapshot — commandValuedConfigMap()
+// drives the pre-existing WARN, and the mid-run configDelta over
+// allConfigMap() (below) seals any config planted during the run as tampering.
 
 /**
  * `git status --porcelain -uall`, minus the paths reveal itself legitimately
