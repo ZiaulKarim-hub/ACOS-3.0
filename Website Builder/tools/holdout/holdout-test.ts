@@ -2026,6 +2026,24 @@ const rr3c = (() => { try { execFileSync("bun", [join(process.cwd(), "tools/hold
 ok("RR3: verify-manifests rejects a non-integer --expect with a clear message",
    rr3c !== "exit0" && /needs a non-negative integer/.test(rr3c), rr3c.slice(-160));
 
+// robust-review round 4 (LOW): reveal dereferenced `cases` as an array before any
+// shape guard, so a cases.yaml that PARSES but is not a {cases: [...]} mapping
+// threw an uncaught TypeError (raw stack trace) instead of a clean refusal on the
+// hand-crafted-pack path (seal.ts guards this at authoring; reveal now mirrors it).
+const rr4Id = "HLD-S44-v1";
+const rr4Dir = join(repoRoot, "qa-private", rr4Id);
+mkdirSync(rr4Dir, { recursive: true });
+writeFileSync(join(rr4Dir, "README.md"), "# rr4\n");
+writeFileSync(join(rr4Dir, "cases.yaml"), "notcases:\n  - id: H1\n    class: nominal\n    run: \"echo x\"\n");  // parses fine, but no top-level cases: key
+writeFileSync(join(rr4Dir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+manualSeal(rr4Id, rr4Dir, 1, { rawCases: true });
+const rr4Run = run({ WB_QA_CONTEXT: "1" }, ["--id", rr4Id, "--candidate", "abc1230"]);
+ok("RR4: a parseable but wrong-shape cases.yaml is a clean refusal, not a stack trace",
+   rr4Run.code !== 0 && /reveal refused \(pack NOT spent\): cases\.yaml holds no cases: list\./.test(rr4Run.out) && !/\n\s+at .+:\d+/.test(rr4Run.out),
+   rr4Run.out.slice(-200));
+ok("RR4: and the wrong-shape pack is NOT spent (revealed_at stays null)",
+   /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", rr4Id + ".yaml"), "utf8")));
+
 // W2 — the re-sit. revealed_at's committed state is null, so two seds and an
 // rm -rf re-armed a spent pack with git status clean. The spent marker now
 // lives in the chain, where the committed state is its ABSENCE.

@@ -396,11 +396,20 @@ function main(): number {
   // Consistency with seal (robust-review round 3): a malformed cases.yaml throws
   // an uncaught parse exception otherwise. Gated here by the pack-hash check, so
   // only reachable via forgery, but the clean refusal matches seal and manifest.
-  let casesDoc: { cases: Case[] };
+  let casesDoc: { cases: Case[] } | null;
   try {
-    casesDoc = (globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] };
+    casesDoc = (globalThis as any).Bun.YAML.parse(casesText) as { cases: Case[] } | null;
   } catch (e) {
     die(`reveal refused (pack NOT spent): cases.yaml does not parse as YAML — ${String(e instanceof Error ? e.message : e)}`);
+  }
+  // A cases.yaml that PARSES but is not a {cases: [...]} mapping (YAML null `~`, a
+  // scalar, or a top-level list) would otherwise throw an uncaught TypeError at the
+  // first array use below — a raw stack trace, not a clean refusal. seal.ts guards
+  // this at authoring; mirror it here so the wrong shape does not reach the array
+  // use before reveal's own (later) canonical-form check (robust-review round 4).
+  // Reachable only via a hand-crafted pack; the pack is NOT spent.
+  if (!casesDoc || typeof casesDoc !== "object" || !Array.isArray(casesDoc.cases) || casesDoc.cases.length === 0) {
+    die(`reveal refused (pack NOT spent): cases.yaml holds no cases: list.`);
   }
   const cases = casesDoc.cases;
 
