@@ -2,7 +2,15 @@
 /**
  * holdout-test.ts — S79's own layer-1 verification.
  *
- * Expect 216/216. Raised from 200 on 2026-09-23 after the NINTH security review
+ * Expect 217/217. Raised across the TWELFTH review (DD1/DD2: the config guard
+ * became before/after like hooks — pre-existing WARNS, only a mid-run CHANGE is
+ * tampering — so honest git-lfs/Watchman/diff.external repos seal cleanly; plus
+ * gpg.*.program and *.packObjectsHook) and the THIRTEENTH (EE1: the config
+ * DELTA now snapshots ALL local/worktree config, not just classifier-recognized
+ * keys, so an unlisted executer like diff.*.textconv planted mid-run — bare-name
+ * value, name-miss and shape-miss — is still caught with an origin record).
+ *
+ * Previously 200. Raised on 2026-09-23 after the NINTH security review
  * returned REJECT with AA1: the eighth-round config detector asked `git config
  * --local --list`, which missed four doors to the same planted-command payload
  * — include.path (a local key pointing at a second config file whose keys are
@@ -2223,6 +2231,35 @@ ok("DD2: *.packObjectsHook planted mid-run is sealed as tampering — BARE-name 
    midRunPlant("S90Kd", `git config uploadpack.packObjectsHook mygithook`, /packobjectshook/));
 ok("CC1/shape: an UNLISTED key with an executable-PATH value planted mid-run is caught by SHAPE",
    midRunPlant("S90Ke", `git config totally.unknownkey ${dEd}`, /totally\.unknownkey/));
+
+// EE1 (thirteenth review, EXECUTED): diff.<driver>.textconv is a real executer
+// (fires on git diff / log -p / show), UNLISTED, and evadable with a bare-name
+// value — so the OLD classifier-gated delta saw it in neither snapshot and
+// sealed config_planted: false with no origin record. The all-config delta
+// catches ANY key that appears mid-run, whatever its name.
+{
+  const id = "HLD-S90Kf-v1";
+  const pack = join(repo2, "qa-private", id);
+  mkdirSync(pack, { recursive: true });
+  writeFileSync(join(pack, "README.md"), "# ee1\n");
+  // A key the classifier does NOT recognize (not a named executer, bare
+  // non-path value → shape-miss). diff.*.textconv itself is now named as the
+  // interim fix, so it would no longer distinguish the two deltas; this
+  // arbitrary key proves the DURABLE fix — the delta snapshots ALL config, so
+  // its correctness does not depend on the name list. (A case running git
+  // config at all is the tampering, whatever the key: EE1's principle.)
+  writeFileSync(join(pack, "cases.yaml"), 'cases:\n  - id: H1\n    class: hostile\n    run: "git config zzz.customexecuter someplainvalue; echo planted"\n');
+  writeFileSync(join(pack, "expected.json"), JSON.stringify({ H1: { exit: 0, stdout_contains: "planted" } }) + "\n");
+  seal(["--slice", "S90Kf", "--story", "ST-90", "--contract", "v1"], repo2);
+  git("add", "-A"); git("commit", "-q", "-m", "ee1 pack");
+  const r = run({ WB_QA_CONTEXT: "1" }, ["--id", id, "--candidate", git("rev-parse", "HEAD").trim()], repo2);
+  const man = readFileSync(join(repo2, "planning/evidence", "EVB-" + id, "manifest.yaml"), "utf8");
+  try { git("config", "--remove-section", "zzz"); } catch {}
+  ok("EE1: an UNCLASSIFIED key written mid-run is sealed as tampering — the all-config delta needs no name list",
+     r.code !== 0 && /config_planted=true/.test(r.out) &&
+     /config_planted_during_run: true/.test(man) && /zzz\.customexecuter/.test(man),
+     r.out.slice(-300));
+}
 
 // AA1 door 3 — a hook planted DURING a run, NO config key. The before/after
 // snapshot seals it as tampering, so the record no longer affirms clean.

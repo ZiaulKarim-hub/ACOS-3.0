@@ -71,7 +71,7 @@ const isCommandValued = (key: string): boolean =>
   || key.startsWith("alias.")
   || (key.startsWith("includeif.") && key.endsWith(".path"))
   || (key.startsWith("filter.") && /\.(clean|smudge|process)$/.test(key))
-  || (key.startsWith("diff.") && key.endsWith(".command"))
+  || (key.startsWith("diff.") && (key.endsWith(".command") || key.endsWith(".textconv")))
   || (key.startsWith("difftool.") && key.endsWith(".cmd"))
   || (key.startsWith("merge.") && key.endsWith(".driver"))
   || (key.startsWith("mergetool.") && key.endsWith(".cmd"))
@@ -159,6 +159,36 @@ export function commandValuedConfigMap(): Record<string, string> {
     // A multivar key can repeat; the value recorded is enough for change
     // detection (a mid-run edit changes it), which is all reveal's delta needs.
     if (isCommandValued(key) || valueShapeIsCommand(value)) out[key] = value;
+  }
+  return out;
+}
+
+// EE1 (thirteenth security review, EXECUTED): the config DELTA must NOT gate on
+// the classifier. diff.<driver>.textconv is a real executer (fires on git diff /
+// log -p / show), unlisted, and evadable with a bare-name value — so it was in
+// neither the before nor after classified map, configDelta saw no change, and a
+// mid-run plant sealed config_planted_during_run: false with NO origin record.
+// The fix: for the delta, snapshot ALL local/worktree config by value. A case
+// has no business running `git config` at all during a run, so ANY key that
+// appears or changes is a plant, whatever its name — the delta's correctness no
+// longer depends on the name list being complete. The classifier stays ONLY for
+// the pre-existing WARN (so reveal/seal don't warn on every benign key).
+export function allConfigMap(): Record<string, string> {
+  let raw = "";
+  try {
+    raw = execFileSync("git", [...GIT_SAFE, "config", "--show-scope", "--list", "-z"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch { return {}; }
+  const tokens = raw.split("\0");
+  const out: Record<string, string> = {};
+  for (let i = 0; i + 1 < tokens.length; i += 2) {
+    const scope = tokens[i];
+    const kv = tokens[i + 1];
+    if (!scope || kv === undefined) continue;
+    if (!PLANTABLE_SCOPES.has(scope)) continue;
+    const nl = kv.indexOf("\n");
+    const key = (nl >= 0 ? kv.slice(0, nl) : kv);
+    out[key] = nl >= 0 ? kv.slice(nl + 1) : "";
   }
   return out;
 }

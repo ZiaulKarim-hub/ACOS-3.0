@@ -34,7 +34,7 @@ import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-h
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
 import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
-import { GIT_SAFE, commandValuedConfigKeys, commandValuedConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
+import { GIT_SAFE, commandValuedConfigKeys, commandValuedConfigMap, allConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 const ATTEMPTS_DIR = "planning/holdouts/attempts";   // TRACKED attempts anchors (T3)
@@ -299,9 +299,14 @@ function main(): number {
   // config path now snapshots before/after too. A pre-existing key is warned
   // about (the custodian may need to unset a persisted plant), but the run
   // proceeds; a key that APPEARS or CHANGES mid-run is the plant, flagged below.
+  // configBefore (classified) drives the pre-existing WARN; allConfigBefore
+  // (EVERY local/worktree key) drives the delta, so an unlisted executer planted
+  // mid-run cannot hide from it (EE1).
   let configBefore: Record<string, string> = {};
+  let allConfigBefore: Record<string, string> = {};
   if (inRepo) {
     configBefore = commandValuedConfigMap();
+    allConfigBefore = allConfigMap();
     const preKeys = Object.keys(configBefore).sort();
     if (preKeys.length) {
       console.log(`WARNING: .git/config carries command-valued key(s) git may EXECUTE on the`);
@@ -1146,10 +1151,13 @@ function main(): number {
   // Z1: a key planted DURING the run cannot be refused away — it already
   // happened. It is sealed as tampering, and the warning below tells the
   // custodian to unset it BEFORE any other git command runs the payload.
-  // DD1: the plant is the DELTA — a command-valued key that appeared or whose
-  // value changed while cases ran. A pre-existing key (in configBefore) is not
-  // a plant and does not condemn an honest run.
-  const postConfigKeys = inRepo ? configDelta(configBefore, commandValuedConfigMap()) : [];
+  // DD1 + EE1: the plant is the DELTA over ALL local/worktree config — any key
+  // that appeared or whose value changed while cases ran. A case has no business
+  // running `git config` at all, so the key's NAME is irrelevant; this catches
+  // diff.*.textconv and every future executer without enumerating it. A
+  // pre-existing key (in allConfigBefore) is not a plant and never condemns an
+  // honest run — the git-lfs repo's filter.lfs.* are in both snapshots.
+  const postConfigKeys = inRepo ? configDelta(allConfigBefore, allConfigMap()) : [];
   const configPlantedDuringRun = postConfigKeys.length > 0;
   // AA1: a hook added or changed WHILE cases ran — door 3's exact mechanism.
   // CC2: a post-run snapshot that comes back null (a transient rev-parse failure
