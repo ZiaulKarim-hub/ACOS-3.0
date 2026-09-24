@@ -27,7 +27,7 @@ import { canonicalPackHash, expectedResultsHash, HASH_METHOD, PACK_FILES } from 
 import { ENC_NAME, PLAIN_NAME, encryptExpected, newKeyHex } from "./keybox.ts";
 import { CASE_KEYS, canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { commandValuedConfigKeys, hookCensus } from "./git-guard.ts";
-import { CASE_CLASSES, validate, type CaseClass } from "./manifest.ts";
+import { CASE_CLASSES, expectedShapeProblems, validate, type CaseClass } from "./manifest.ts";
 
 const MANIFEST_DIR = "planning/holdouts/manifests";
 // T3 (security review, executed): the attempts chain used to live ONLY in the
@@ -238,6 +238,12 @@ function main(): number {
   if (missing.length) die(`seal refused: no expected result for ${missing.join(", ")}.`);
   const orphan = Object.keys(expected).filter((k) => !cases.some((c) => c.id === k));
   if (orphan.length) die(`seal refused: expected.json holds results for cases that do not exist: ${orphan.join(", ")}.`);
+  // The SAME per-entry shape reveal enforces pre-run — checked HERE too, where a
+  // fix is free. Without it a malformed answer key (e.g. {"H1":{"exit":"0"}})
+  // seals a write-once v1 that reveal then refuses, forcing a re-version
+  // (robust-review round 5).
+  const shapeProblems = expectedShapeProblems(cases.map((c) => c.id), expected);
+  if (shapeProblems.length) die(`seal refused: expected.json is malformed —\n  ` + shapeProblems.join("\n  "));
 
   const classes = [...new Set(cases.map((c) => c.class))] as CaseClass[];
   const unknown = classes.filter((c) => !CASE_CLASSES.includes(c));
@@ -349,7 +355,7 @@ function main(): number {
     `hash_method: ${man.hash_method}   # the ONE derivation method; see tools/holdout/canonical-hash.ts`,
     `case_classes: [${man.case_classes.join(", ")}]`,
     `case_count: ${man.case_count}`,
-    `covered_invariants: [${man.covered_invariants.join(", ")}]`,
+    `covered_invariants: [${man.covered_invariants.map((s) => JSON.stringify(s)).join(", ")}]`,   // free text: quote each, unlike the closed-enum case_classes
     `private_pack_sha256: ${JSON.stringify(man.private_pack_sha256)}`,
     `expected_results_sha256: ${JSON.stringify(man.expected_results_sha256)}`,
     `revealed_at: null`,

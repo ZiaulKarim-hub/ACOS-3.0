@@ -32,7 +32,7 @@ import { join } from "node:path";
 import { CASE_KEYS, canonicalCasesText, caseKeyProblems, duplicateJsonKeys, caseIdCollisions, INVISIBLE_CODEPOINTS, invisibleName } from "./json-keys.ts";
 import { canonicalPackHash, expectedResultsHash, sha256Hex } from "./canonical-hash.ts";
 import { ENC_NAME, KEY_HEX, PLAIN_NAME, decryptExpected } from "./keybox.ts";
-import { ID_SHAPE, SHA256_HEX, parse, validate, type HoldoutManifest } from "./manifest.ts";
+import { ID_SHAPE, SHA256_HEX, expectedShapeProblems, parse, validate, type HoldoutManifest } from "./manifest.ts";
 import { CASES_DELIM, FOOTER_DELIM } from "./record-format.ts";
 import { GIT_SAFE, commandValuedConfigMap, allConfigMap, configDelta, hookCensus, hookSnapshot, hookDelta } from "./git-guard.ts";
 
@@ -545,29 +545,7 @@ function main(): number {
   // null entry previously threw mid-loop at `want.exit` — after earlier cases had
   // already executed their shell commands and left side effects behind.
   {
-    const shapeProblems: string[] = [];
-    for (const c of cases) {
-      const w = (expected as any)[c.id];
-      if (w === undefined) shapeProblems.push(`${c.id}: no entry in expected.json`);
-      else if (w === null || typeof w !== "object" || Array.isArray(w)) shapeProblems.push(`${c.id}: entry is ${w === null ? "null" : Array.isArray(w) ? "an array" : typeof w}, expected an object`);
-      else if (typeof w.exit !== "number") shapeProblems.push(`${c.id}: "exit" is ${typeof w.exit}, expected a number`);
-      else {
-        // Security review F10: optional fields were tested for TRUTHINESS at use,
-        // so "" or null silently disabled that check for that case, and a
-        // misspelled field name was silently ignored. All refused here instead.
-        for (const k of Object.keys(w)) {
-          if (k !== "exit" && k !== "stdout_sha256" && k !== "stdout_contains") {
-            shapeProblems.push(`${c.id}: unknown expectation field ${JSON.stringify(k)} — a typo here would silently weaken the case`);
-          }
-        }
-        if ("stdout_sha256" in w && (typeof w.stdout_sha256 !== "string" || !SHA256_HEX.test(w.stdout_sha256))) {
-          shapeProblems.push(`${c.id}: "stdout_sha256" must be 64 lowercase hex characters`);
-        }
-        if ("stdout_contains" in w && (typeof w.stdout_contains !== "string" || w.stdout_contains.length === 0)) {
-          shapeProblems.push(`${c.id}: "stdout_contains" must be a non-empty string — an empty one matches everything and checks nothing`);
-        }
-      }
-    }
+    const shapeProblems = expectedShapeProblems(cases.map((c) => c.id), expected);
     if (shapeProblems.length) {
       die(`reveal refused (pack NOT spent): expected.json is malformed and NOTHING WAS RUN.\n  ` + shapeProblems.join("\n  "));
     }
@@ -576,9 +554,6 @@ function main(): number {
   if (cases.length !== man.case_count) {
     die(`reveal refused: manifest says case_count ${man.case_count}, pack holds ${cases.length}. The count was published before the code existed; a disagreement means the pack moved.`);
   }
-  const missing = cases.filter((c) => !(c.id in expected)).map((c) => c.id);
-  if (missing.length) die(`reveal refused: no expected result for ${missing.join(", ")}.`);
-
   if (dryRun) { console.log(`\n--dry-run: ${cases.length} case(s) verified and NOT run. revealed_at untouched.`); return 0; }
 
   // ---- the run record must never be overwritten -----------------------------

@@ -608,10 +608,13 @@ writeFileSync(join(badDir, "cases.yaml"),
   "cases:\n  - id: H001\n    class: nominal\n    run: \"touch " + marker + "\"\n" +
   "  - id: H002\n    class: nominal\n    run: \"echo two\"\n");
 writeFileSync(join(badDir, "expected.json"), JSON.stringify({ H001: { exit: 0 }, H002: null }) + "\n");
-seal(["--slice", "S89", "--story", "ST-89", "--contract", "v1"]);
+// seal now refuses this at authoring (robust-review round 5 — the shape check
+// moved to seal too), so author it via manualSeal to reach REVEAL's own guard:
+// reveal must still refuse a hand-crafted pack BEFORE any case runs.
+manualSeal(badId, badDir, 2);
 const malformed = run({ WB_QA_CONTEXT: "1" }, ["--id", badId, "--candidate", "cafe077"]);
-ok("a malformed expected.json is refused, naming the offending case",
-   malformed.code !== 0 && /expected\.json is malformed/.test(malformed.out) && /H002/.test(malformed.out),
+ok("a malformed expected.json is refused at reveal, naming the offending case, nothing run",
+   malformed.code !== 0 && /expected\.json is malformed/.test(malformed.out) && /H002/.test(malformed.out) && !existsSync(marker),
    malformed.out.slice(-220));
 ok("...and NOTHING ran — the first case left no side effect", !existsSync(marker));
 
@@ -2043,6 +2046,50 @@ ok("RR4: a parseable but wrong-shape cases.yaml is a clean refusal, not a stack 
    rr4Run.out.slice(-200));
 ok("RR4: and the wrong-shape pack is NOT spent (revealed_at stays null)",
    /revealed_at: null/.test(readFileSync(join(repoRoot, "planning/holdouts/manifests", rr4Id + ".yaml"), "utf8")));
+
+// robust-review round 5. (1) covered_invariants was interpolated RAW into the
+// manifest while every sibling field was quoted, so an invariant with a YAML
+// metacharacter corrupted the manifest. Each element is now quoted. (2) seal
+// validated cases exhaustively but not each expected.json entry's shape, which
+// reveal enforces — so a malformed answer key sealed a write-once v1 that could
+// never reveal. seal now runs reveal's shape check too (shared helper). (3) a
+// dead missing-block in reveal was removed; the shape helper's "no entry" branch
+// covers it.
+const rr5aId = "HLD-S43-v1";
+const rr5aDir = join(repoRoot, "qa-private", rr5aId);
+mkdirSync(rr5aDir, { recursive: true });
+writeFileSync(join(rr5aDir, "README.md"), "# rr5a\n");
+writeFileSync(join(rr5aDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo x\"\n");
+writeFileSync(join(rr5aDir, "expected.json"), JSON.stringify({ H1: { exit: 0 } }) + "\n");
+const rr5aSeal = seal(["--slice", "S43", "--story", "ST-43", "--contract", "v1", "--invariants", "ratio: >50%, key: value"]);
+const rr5aParsed = (() => { try { return (globalThis as any).Bun.YAML.parse(readFileSync(join(repoRoot, "planning/holdouts/manifests", rr5aId + ".yaml"), "utf8")); } catch (e) { return { __parseError: String(e) }; } })();
+ok("RR5: an invariant with YAML metacharacters seals a manifest that still parses, values intact",
+   rr5aSeal.code === 0 && !("__parseError" in rr5aParsed) && Array.isArray(rr5aParsed.covered_invariants) &&
+   rr5aParsed.covered_invariants[0] === "ratio: >50%" && rr5aParsed.covered_invariants[1] === "key: value",
+   rr5aSeal.out.slice(-140) + " || " + JSON.stringify(rr5aParsed.covered_invariants));
+const rr5bDir = join(repoRoot, "qa-private", "HLD-S45-v1");
+mkdirSync(rr5bDir, { recursive: true });
+writeFileSync(join(rr5bDir, "README.md"), "# rr5b\n");
+writeFileSync(join(rr5bDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo x\"\n");
+writeFileSync(join(rr5bDir, "expected.json"), '{"H1": {"exit": "0"}}\n');  // exit is a STRING, not a number
+const rr5bSeal = seal(["--slice", "S45", "--story", "ST-45", "--contract", "v1"]);
+ok("RR5: seal refuses a malformed expected.json (exit not a number) at authoring, not at reveal",
+   rr5bSeal.code !== 0 && /seal refused: expected\.json is malformed/.test(rr5bSeal.out) && /"exit" is string, expected a number/.test(rr5bSeal.out),
+   rr5bSeal.out.slice(-200));
+writeFileSync(join(rr5bDir, "expected.json"), '{"H1": {"exit": 0, "stdout_containz": "x"}}\n');  // typo-d field name
+const rr5bSeal2 = seal(["--slice", "S45", "--story", "ST-45", "--contract", "v1"]);
+ok("RR5: seal refuses an unknown/typo-d expectation field at authoring",
+   rr5bSeal2.code !== 0 && /unknown expectation field/.test(rr5bSeal2.out), rr5bSeal2.out.slice(-200));
+const rr5cId = "HLD-S60-v1";
+const rr5cDir = join(repoRoot, "qa-private", rr5cId);
+mkdirSync(rr5cDir, { recursive: true });
+writeFileSync(join(rr5cDir, "README.md"), "# rr5c\n");
+writeFileSync(join(rr5cDir, "cases.yaml"), "cases:\n  - id: H1\n    class: nominal\n    run: \"echo x\"\n");
+writeFileSync(join(rr5cDir, "expected.json"), "{}\n");  // no entry for H1
+manualSeal(rr5cId, rr5cDir, 1);
+const rr5cRun = run({ WB_QA_CONTEXT: "1" }, ["--id", rr5cId, "--candidate", "abc1230"]);
+ok("RR5: reveal still refuses a missing expected entry (shape helper covers the removed dead block)",
+   rr5cRun.code !== 0 && /no entry in expected\.json/.test(rr5cRun.out), rr5cRun.out.slice(-200));
 
 // W2 — the re-sit. revealed_at's committed state is null, so two seds and an
 // rm -rf re-armed a spent pack with git status clean. The spent marker now

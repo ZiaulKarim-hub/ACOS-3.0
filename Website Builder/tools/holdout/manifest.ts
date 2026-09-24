@@ -134,3 +134,39 @@ export function parse(text: string): { ok: true; value: unknown } | { ok: false;
     return { ok: false, error: String(e instanceof Error ? e.message : e) };
   }
 }
+
+
+/**
+ * Shape-check every expected.json entry, shared by seal (refuse at authoring,
+ * where a fix is free) and reveal (refuse pre-run, before any case executes).
+ * `caseIds` are the ids to check; `expected` is the parsed expected.json.
+ * Robust-review round 5 factored this out of reveal so seal enforces the same
+ * shape — a malformed answer key no longer seals a v1 that can never be revealed.
+ */
+export function expectedShapeProblems(caseIds: string[], expected: Record<string, unknown>): string[] {
+  const problems: string[] = [];
+  for (const id of caseIds) {
+    const w = (expected as any)[id];
+    if (w === undefined) { problems.push(`${id}: no entry in expected.json`); continue; }
+    if (w === null || typeof w !== "object" || Array.isArray(w)) {
+      problems.push(`${id}: entry is ${w === null ? "null" : Array.isArray(w) ? "an array" : typeof w}, expected an object`);
+      continue;
+    }
+    if (typeof (w as any).exit !== "number") { problems.push(`${id}: "exit" is ${typeof (w as any).exit}, expected a number`); continue; }
+    // Security review F10: optional fields were tested for TRUTHINESS at use, so
+    // "" or null silently disabled that check, and a misspelled field name was
+    // silently ignored. All refused here instead.
+    for (const k of Object.keys(w)) {
+      if (k !== "exit" && k !== "stdout_sha256" && k !== "stdout_contains") {
+        problems.push(`${id}: unknown expectation field ${JSON.stringify(k)} — a typo here would silently weaken the case`);
+      }
+    }
+    if ("stdout_sha256" in w && (typeof (w as any).stdout_sha256 !== "string" || !SHA256_HEX.test((w as any).stdout_sha256))) {
+      problems.push(`${id}: "stdout_sha256" must be 64 lowercase hex characters`);
+    }
+    if ("stdout_contains" in w && (typeof (w as any).stdout_contains !== "string" || (w as any).stdout_contains.length === 0)) {
+      problems.push(`${id}: "stdout_contains" must be a non-empty string — an empty one matches everything and checks nothing`);
+    }
+  }
+  return problems;
+}
