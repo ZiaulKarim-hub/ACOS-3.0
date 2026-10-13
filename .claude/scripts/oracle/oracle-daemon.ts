@@ -32,6 +32,7 @@ import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, chm
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { randomBytes } from "node:crypto";
+import { RequestFramer } from "./framing";
 
 const ORACLE_HOME = join(homedir(), ".acos", "oracle");
 const SOCK = join(ORACLE_HOME, "oracle.sock");
@@ -127,13 +128,82 @@ interface JudgeRequest {
   goal?: string;
 }
 
+function isJudgeRequest(v: unknown): v is JudgeRequest {
+  if (v === null || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.tool_name === "string" && typeof o.cwd === "string" &&
+    o.tool_input !== null && typeof o.tool_input === "object" && !Array.isArray(o.tool_input);
+}
+
 interface Verdict {
   decision: "allow" | "deny";
   reason: string;
   elapsed_ms: number;
   model: string;
-  /** True when the judge could not be reached and the fallback allowed it. */
-  fallback?: boolean;
+  /** D-14 (2026-10-08): when the first reply was unreadable, what class it was and what was tried. */
+  cause?: FailureClass;
+  recovery?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Unreadable replies: classify, recover, and only then deny — NEVER allow.
+//
+// Zee, 2026-10-08: "make sure that the oracle finds the reason of a verdict being
+// unreadable and finds a way to read this and then makes the decision, not just passes it
+// to me." Before this change 990 verdicts were silently allowed as unreadable, 87 of 169
+// Writes among them. The reasons were lost because stderr was discarded and the prompt sat
+// on the command line (E2BIG for big Writes). Now: the prompt goes on STDIN, stderr is kept,
+// the failure is classified, each class has a recovery plan, and a final failure is a DENY
+// that names the class. (Mirrors acos-nemesis-protocol/scripts/lib/verdict.ts, reimplemented
+// here so the Oracle never depends on a skill directory.)
+// ---------------------------------------------------------------------------
+
+export type FailureClass = "empty" | "usage_limit" | "too_long" | "prose" | "malformed" | "auth" | "crash";
+
+function extractJsonObjects(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") { if (depth === 0) start = i; depth++; }
+    else if (c === "}") { depth--; if (depth === 0 && start >= 0) { out.push(text.slice(start, i + 1)); start = -1; } if (depth < 0) depth = 0; }
+  }
+  return out;
+}
+
+export function repairJson(s: string): string {
+  return s.replace(/```(?:json)?/g, "").replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1").replace(/'([^'\\]*)'\s*:/g, '"$1":').replace(/:\s*'([^'\\]*)'/g, ': "$1"')
+    .replace(/\bTrue\b/g, "true").replace(/\bFalse\b/g, "false").replace(/\bNone\b/g, "null");
+}
+
+export function classifyFailure(stdout: string, stderr: string, exitCode: number | null): FailureClass {
+  const all = `${stdout}\n${stderr}`;
+  if (/E2BIG|argument list too long|prompt is too long|too many tokens|exceeds the (maximum|context)|context window/i.test(all)) return "too_long";
+  if (/usage limit|rate limit|rate_limit|quota|429|overloaded|too many requests|limit reached|You've reached/i.test(all)) return "usage_limit";
+  if (/not logged in|unauthori[sz]ed|invalid api key|authentication|please run \/login|OAuth/i.test(all)) return "auth";
+  if (!stdout.trim()) return exitCode === 0 ? "empty" : "crash";
+  if (extractJsonObjects(stdout).some((x) => /"decision"/.test(x))) return "malformed";
+  return "prose";
+}
+
+export type RecoveryAction = "retry_direct" | "retry_backoff" | "shrink_to_file" | "json_only_reask" | "extract_from_prose" | "repair_json" | "alternate_account" | "wait_then_retry";
+
+export function recoveryPlan(cls: FailureClass): RecoveryAction[] {
+  switch (cls) {
+    case "empty": case "crash": return ["retry_direct", "retry_backoff", "shrink_to_file"];
+    case "usage_limit": return ["wait_then_retry", "alternate_account"];
+    case "too_long": return ["shrink_to_file", "retry_direct"];
+    case "prose": return ["extract_from_prose", "json_only_reask"];
+    case "malformed": return ["repair_json", "json_only_reask"];
+    case "auth": return ["alternate_account", "retry_backoff"];
+  }
+}
+
+function extractionPrompt(prose: string): string {
+  return `A permission judge answered in prose instead of JSON. Convert it FAITHFULLY into the required JSON and output ONLY the JSON. If the prose says the action is acceptable/ordinary/safe, the decision is "allow". If it says the action would do real, lasting damage and should not run, the decision is "deny". Do not add judgement of your own.\n\nRequired shape: {"decision":"allow"|"deny","reason":"<short>"}\n\n--- THE PROSE ---\n${prose.slice(0, 20000)}\n--- END ---`;
 }
 
 function ensureHome(): void {
@@ -178,7 +248,7 @@ function logVerdict(req: JudgeRequest, v: Verdict): void {
     decision: v.decision,
     reason: v.reason,
     elapsed_ms: v.elapsed_ms,
-    fallback: v.fallback ?? false,
+    cause: v.cause, recovery: v.recovery,
   });
   appendFileSync(LOG, line + "\n", { encoding: "utf8" });
 }
@@ -187,63 +257,73 @@ function logVerdict(req: JudgeRequest, v: Verdict): void {
 export function parseVerdict(raw: string): { decision: "allow" | "deny"; reason: string } | null {
   const text = (raw ?? "").trim();
   if (!text) return null;
-  // Last JSON object wins: a thinking-aloud reply ends with its answer.
-  const matches = [...text.matchAll(/\{[^{}]*"decision"\s*:\s*"(allow|deny)"[^{}]*\}/g)];
-  const chosen = matches.length ? matches[matches.length - 1]![0] : null;
-  if (chosen) {
-    try {
-      const o = JSON.parse(chosen) as { decision: string; reason?: string };
-      if (o.decision === "allow" || o.decision === "deny") {
-        return { decision: o.decision, reason: String(o.reason ?? "").slice(0, 500) };
-      }
-    } catch {
-      /* fall through */
+  // Last JSON object carrying a decision wins: a thinking-aloud reply ends with its answer.
+  const cands = extractJsonObjects(text).filter((x) => /"decision"\s*:/.test(x));
+  for (let i = cands.length - 1; i >= 0; i--) {
+    for (const attempt of [cands[i]!, repairJson(cands[i]!)]) {
+      try {
+        const o = JSON.parse(attempt) as { decision: string; reason?: string };
+        if (o.decision === "allow" || o.decision === "deny") return { decision: o.decision, reason: String(o.reason ?? "").slice(0, 500) };
+      } catch { /* next */ }
     }
   }
   return null;
+}
+
+function spawnJudge(prompt: string, token: string, model: string, extraEnv: Record<string, string> = {}): { stdout: string; stderr: string; status: number | null } {
+  const env: Record<string, string | undefined> = { ...process.env, ACOS_ORACLE_JUDGE: token, ...extraEnv };
+  delete env.ANTHROPIC_API_KEY; // standing rule: subscription only, never an API key
+  // The prompt travels on STDIN: no argument-length cliff (a big Write used to hit E2BIG and
+  // come back unreadable), no shell quoting.
+  const proc = Bun.spawnSync([claudeBin(), "-p", "--model", model], { stdin: Buffer.from(prompt), stdout: "pipe", stderr: "pipe", env: env as Record<string, string> });
+  return { stdout: proc.stdout.toString(), stderr: proc.stderr.toString(), status: proc.exitCode };
 }
 
 async function judge(req: JudgeRequest, token: string, model: string): Promise<Verdict> {
   const started = Date.now();
   // NO TIMEOUT — Zee, 2026-08-15: "Think as long as needed." A slow verdict is
   // a stuck tool call, which he accepted; a rushed verdict is a wrong one.
-  try {
-    const proc = Bun.spawn([claudeBin(), "-p", buildPrompt(req), "--model", model], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: {
-        ...process.env,
-        // The child IS the Oracle. Without this it would ask itself, forever.
-        ACOS_ORACLE_JUDGE: token,
-        // Standing rule: subscription only, never an API key.
-        ANTHROPIC_API_KEY: undefined as unknown as string,
-      },
-    });
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    const parsed = parseVerdict(out);
-    if (!parsed) {
-      // Unreadable answer is NOT a denial. Falling back to deny would make every
-      // parser hiccup look like the Oracle refusing ordinary work, which is the
-      // failure mode Zee cares most about avoiding.
-      return {
-        decision: "allow",
-        reason: "oracle reply unparseable — allowed (fallback is YOLO, which is where this started)",
-        elapsed_ms: Date.now() - started,
-        model,
-        fallback: true,
-      };
-    }
-    return { ...parsed, elapsed_ms: Date.now() - started, model };
-  } catch (e) {
-    return {
-      decision: "allow",
-      reason: `oracle unreachable (${String(e).slice(0, 120)}) — allowed`,
-      elapsed_ms: Date.now() - started,
-      model,
-      fallback: true,
-    };
+  const tried: string[] = [];
+  let prompt = buildPrompt(req);
+  let r: { stdout: string; stderr: string; status: number | null };
+  try { r = spawnJudge(prompt, token, model); } catch (e) { r = { stdout: "", stderr: String(e), status: null }; }
+  let parsed = parseVerdict(r.stdout);
+  if (parsed) return { ...parsed, elapsed_ms: Date.now() - started, model };
+  let cls = classifyFailure(r.stdout, r.stderr, r.status);
+  let lastErr = (r.stderr || r.stdout).slice(0, 300) || `exit ${r.status}`;
+  console.log(`[${new Date().toISOString()}] unreadable reply: class=${cls} status=${r.status} stderr=${r.stderr.slice(0, 200).replace(/\n/g, " ")}`);
+  for (const action of recoveryPlan(cls)) {
+    tried.push(action);
+    console.log(`[${new Date().toISOString()}] recovery: ${action}`);
+    try {
+      switch (action) {
+        case "retry_direct": r = spawnJudge(prompt, token, model); break;
+        case "retry_backoff": await Bun.sleep(3000); r = spawnJudge(prompt, token, model); if (!parseVerdict(r.stdout)) { await Bun.sleep(10000); r = spawnJudge(prompt, token, model); } break;
+        case "wait_then_retry": { let got = false; for (const w of [30000, 120000, 300000]) { await Bun.sleep(w); r = spawnJudge(prompt, token, model); if (parseVerdict(r.stdout)) { got = true; break; } } if (!got) continue; break; }
+        case "alternate_account": if (!process.env.ORACLE_ALT_CONFIG_DIR) continue; r = spawnJudge(prompt, token, model, { CLAUDE_CONFIG_DIR: process.env.ORACLE_ALT_CONFIG_DIR }); break;
+        case "shrink_to_file": {
+          const dir = join(ORACLE_HOME, "tmp"); mkdirSync(dir, { recursive: true });
+          const f = join(dir, `prompt-${Date.now()}.txt`); writeFileSync(f, prompt, { mode: 0o600 });
+          prompt = `Your full instructions and the request to judge are in the file ${f}. Read it with the Read tool, then answer exactly as its final section says: ONE line of JSON and nothing else.`;
+          r = spawnJudge(prompt, token, model); break;
+        }
+        case "repair_json": { const rv = parseVerdict(repairJson(r.stdout)); if (rv) return { ...rv, elapsed_ms: Date.now() - started, model, cause: cls, recovery: tried }; continue; }
+        case "extract_from_prose": r = spawnJudge(extractionPrompt(r.stdout), token, model); break;
+        case "json_only_reask": r = spawnJudge(prompt + "\n\nREMINDER: output ONLY the single-line JSON object. No prose, no code fences.", token, model); break;
+      }
+    } catch (e) { r = { stdout: "", stderr: String(e), status: null }; }
+    parsed = parseVerdict(r.stdout) ?? parseVerdict(repairJson(r.stdout));
+    if (parsed) return { ...parsed, elapsed_ms: Date.now() - started, model, cause: cls, recovery: tried };
+    const c2 = classifyFailure(r.stdout, r.stderr, r.status);
+    lastErr = (r.stderr || r.stdout).slice(0, 300) || `exit ${r.status}`;
+    if (c2 !== cls) { console.log(`[${new Date().toISOString()}] class changed ${cls} → ${c2}`); cls = c2; }
   }
+  // Every recovery failed. This is a DENY that names the cause — never an allow (D-14).
+  return {
+    decision: "deny",
+    reason: `The Oracle could not obtain a readable verdict. Cause class: ${cls}. Last error: ${lastErr}. Recovery tried: ${tried.join(" → ") || "(none)"}. Oracle mode allows nothing it has not judged; fix the cause (see ~/.acos/oracle/daemon-out.log) and retry.`,
+    elapsed_ms: Date.now() - started, model, cause: cls, recovery: tried,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -262,27 +342,53 @@ async function serve(model: string): Promise<void> {
   }
   writeFileSync(PID_FILE, String(process.pid) + "\n", { mode: 0o600 });
 
-  Bun.listen({
+  // One request per connection, but the bytes arrive in CHUNKS (about 8 KB each).
+  // Until 2026-10-12 every chunk was parsed as a whole document, so any request
+  // over ~8 KB — a Write of a real file, a big heredoc — was "bad request" and,
+  // once that stopped being fail-open, denied. RequestFramer collects the chunks
+  // and says "complete" only when the whole object has arrived (see framing.ts).
+  Bun.listen<{ framer: RequestFramer; settled: boolean }>({
     unix: SOCK,
     socket: {
-      data: async (socket, data) => {
-        let req: JudgeRequest;
-        try {
-          req = JSON.parse(new TextDecoder().decode(data)) as JudgeRequest;
-        } catch {
-          socket.write(JSON.stringify({ decision: "allow", reason: "bad request — allowed" }) + "\n");
+      open: (socket) => {
+        socket.data = { framer: new RequestFramer(), settled: false };
+      },
+      data: async (socket, chunk) => {
+        const st = socket.data;
+        if (st.settled) return;
+        const r = st.framer.feed(chunk);
+        if (r.kind === "incomplete") return;
+        st.settled = true;
+        if (r.kind !== "complete" || !isJudgeRequest(r.value)) {
+          const why =
+            r.kind === "overflow" ? `request too large (${r.bytes} bytes)` :
+            r.kind === "malformed" ? r.why :
+            "request is missing tool_name, tool_input or cwd";
+          socket.write(JSON.stringify({ decision: "deny", reason: `bad request to the Oracle daemon (${why}) — nothing was judged, so nothing is allowed` }) + "\n");
           socket.end();
           return;
         }
+        const req = r.value;
         const v = await judge(req, token, model);
         logVerdict(req, v);
         const mark = v.decision === "deny" ? "DENY " : "allow";
         console.log(
           `[${new Date().toISOString()}] ${mark} ${req.tool_name} (${v.elapsed_ms}ms)` +
-            `${v.fallback ? " [fallback]" : ""}\n    ${v.reason}`,
+            `${v.cause ? ` [recovered from ${v.cause}: ${(v.recovery ?? []).join("→")}]` : ""}\n    ${v.reason}`,
         );
         socket.write(JSON.stringify(v) + "\n");
         socket.end();
+      },
+      close: (socket) => {
+        // The hook hung up before its request was complete (it crashed or timed
+        // out). Nothing was judged and there is nobody left to answer.
+        const st = socket.data;
+        if (st && !st.settled && st.framer.bytes > 0) {
+          console.log(`[${new Date().toISOString()}] dropped: client closed after ${st.framer.bytes} bytes of an incomplete request`);
+        }
+      },
+      error: (_socket, err) => {
+        console.log(`[${new Date().toISOString()}] socket error: ${String(err)}`);
       },
     },
   });

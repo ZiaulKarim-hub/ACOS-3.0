@@ -165,19 +165,52 @@ function auditCtl(event: string, detail: Record<string, unknown>): void {
 
 // ---------------------------------------------------------------------------
 
+/** Path to autopilot-activate.py — the ONLY writer of the loop sentinel. */
+const ACTIVATE = join(ROOT, ".claude", "scripts", "autopilot-activate.py");
+
+/**
+ * Start the keep-going loop for THIS session. We delegate to autopilot-activate.py
+ * exactly as the autopilot setting does — it scopes the sentinel to the running
+ * session id, writes the paired loop-state, and audits. The loop is a SEPARATE
+ * axis from permission: the per-session sentinel only tells the Stop hook to keep
+ * going. Oracle's own judging still governs every action, because the permission
+ * hook checks oracle mode BEFORE the autopilot branch. Output is inherited so the
+ * user sees the sentinel path and the stop conditions. Returns true on success.
+ */
+function loopStart(goal: string): boolean {
+  const r = Bun.spawnSync(["python3", ACTIVATE, "on", goal], { cwd: ROOT, stdout: "inherit", stderr: "inherit" });
+  return r.exitCode === 0;
+}
+/** Stop the keep-going loop (idempotent). announce=false for silent cleanup. */
+function loopStop(announce: boolean): void {
+  const off = Bun.spawnSync(["python3", ACTIVATE, "off"], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+  const said = new TextDecoder().decode(off.stdout);
+  if (announce && said.includes("DEACTIVATED")) console.log("  keep-going loop stopped");
+}
+
 async function cmdStart(goal: string, typedAs = "oracle"): Promise<void> {
   const g = requireGoal(goal, typedAs);
   ensureState();
   const prev = currentThreshold();
+  // Oracle mode now ALSO runs the keep-going loop (Zee, 2026-09-30). Clear any
+  // loop already running first (idempotent) so starting ours cannot hit the
+  // "sentinel exists" refusal, and the loop always carries THIS oracle goal.
+  loopStop(false);
+  const loopOk = loopStart(g);
   writeFileSync(
     MODE_FILE,
     JSON.stringify({ active: true, goal: g, started_at: new Date().toISOString(), prev_threshold: prev }, null, 2),
   );
   const up = await wakeDaemon();
-  auditCtl("start", { goal: g, prev_threshold: prev, daemon: up });
+  auditCtl("start", { goal: g, prev_threshold: prev, daemon: up, loop: loopOk });
   console.log("THE ORACLE IS WATCHING.");
   console.log(`  goal:    ${g}`);
   console.log(`  judge:   opus, on every gated call — you are never asked`);
+  console.log(
+    `  loop:    ${loopOk
+      ? "ON — keeps going toward the goal (stops on the marker, 150 iterations, or 5 idle turns)"
+      : "did NOT start (see the message above); oracle judging is on WITHOUT the loop"}`,
+  );
   console.log(`  daemon:  ${up ? "awake" : "NOT awake yet — the hook will start it on first use"}`);
   console.log(`  next:    picking 1-10, autopilot or yolo leaves oracle mode (back to ${prev})`);
   console.log(`\n  watch it:  /acos-oracle-protocol follow`);
@@ -190,6 +223,9 @@ function cmdStop(): void {
     return;
   }
   rmSync(MODE_FILE, { force: true });
+  // Oracle mode ran the keep-going loop, so leaving it must STOP that loop too —
+  // otherwise Claude keeps going after the judge is gone. Idempotent.
+  loopStop(true);
   // Restore the exact number he was on. Guessing, or dropping to the config
   // default, would quietly change his setup every time he toggled.
   const prev = st.prev_threshold;
@@ -257,6 +293,10 @@ async function cmdSet(nameRaw: string, goal: string): Promise<void> {
   const wasOracle = modeState();
   if (wasOracle?.active) {
     rmSync(MODE_FILE, { force: true });
+    // Oracle's keep-going loop must come down BEFORE the chosen setting (maybe
+    // autopilot) starts its own, or autopilot-activate.py would refuse on the
+    // lingering sentinel. Idempotent; the branch below prints its own status.
+    loopStop(false);
     console.log("  oracle mode off");
   }
 
