@@ -1,0 +1,1340 @@
+#!/usr/bin/env bun
+/**
+ * nemesis.ts — the acos-nemesis-protocol command line. Thin SKILL.md, thick CLI (D-24).
+ * Run `bun nemesis.ts help` for the command list. Every command that changes state writes
+ * an artifact and a record; hooks check those files, never the model's word.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  SKILL_DIR, BUN, P, nemesisDir, readConfig, readActive, writeActive, writeJson, readJson, appendRecord, nowIso, sha256,
+  createTask, readTask, writeTask, listTasks, currentTask, readChecklists, writeChecklists, checklistGaps, CHECKLIST_IDS,
+  listIssues, readIssue, writeIssue, isOpen, closureCheck, recordFindings, writeGreenSnapshot, restoreFromSnapshot, installHooks, countInstalledHooks, refreshTreeIndex, diffIndex,
+  projectRootFrom, type Config, type Issue, type Finding, type ChecklistEntry,
+} from "./lib/state";
+import { isInScope } from "./lib/scope";
+import { STEP_IDS, markStep, resetStep, stepsStatus, unfinishedSteps, readSteps } from "./lib/steps";
+import { detectToolchain, runScan, listScans, scanSummary, scanFindings, isClean } from "./lib/scan";
+import { requestGeneric, startDaemon, buildRequest, requestVerdict, SOCK } from "./lib/judge";
+import { buildReviewCharter, buildReleaseCharter, buildHoldoutAuthorCharter } from "./lib/charter";
+import { laneOf, admitToRung8, repairInstruction, ladderExhausted, isSecurityFinding, hasConfirmedProductQuestion } from "./lib/lane";
+import { listPolicies, readPolicy, proposePolicy, reviewPolicy, vetoPolicy, applyPolicies, policyShapeProblems, naReasonUses, DEFAULT_NA_REASON_CAP, POLICY_RUNGS, type Policy } from "./lib/policy";
+import { parseVerdict, classifyFailure, recoveryPlan, repairJson, finalDenial } from "./lib/verdict";
+import { rungInstruction, setPositionRung, retryFromRung3, RUNGS, rung, ackRung, readBrake, BRAKE_AT, ACK_LIMIT, ACK_ACTIONS, type AckAction } from "./lib/ladder";
+import { writeReport } from "./lib/report";
+import { rulebookIsFresh } from "./build-rulebook";
+
+const HOLDOUT = path.join(process.env.HOME ?? "", ".claude", "skills", "acos-holdout-test", "scripts", "holdout.ts");
+const ACOS_SCRIPTS = (root: string) => path.join(root, ".claude", "scripts");
+
+function die(msg: string, code = 1): never { console.error(`nemesis: ${msg}`); process.exit(code); }
+function ok(msg: string): void { console.log(msg); }
+function rootOrDie(explicit?: string): string {
+  const r = projectRootFrom(explicit ?? process.cwd());
+  if (!r) die(`not an enrolled project (no .nemesis/config.json above ${explicit ?? process.cwd()}). Run: nemesis enroll <dir>`);
+  return r;
+}
+function flag(args: string[], name: string): string | undefined { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; }
+function positional(args: string[]): string[] { const out: string[] = []; for (let i = 0; i < args.length; i++) { if (args[i]!.startsWith("--")) { i++; continue; } out.push(args[i]!); } return out; }
+
+// ── enroll / scope ──────────────────────────────────────────────────────────
+
+export function cmdEnroll(dirArg?: string, opts: { prd?: string } = {}): void {
+  const root = path.resolve(dirArg ?? process.cwd());
+  if (!fs.existsSync(root)) die(`no such directory: ${root}`);
+  const existing = readJson<Config | null>(P.config(root), null);
+  const cfg: Config = existing ?? { schema: "nemesis-config/1", enrolled_at: nowIso(), skill_dir: SKILL_DIR };
+  cfg.skill_dir = SKILL_DIR;
+  if (opts.prd) cfg.prd = opts.prd;
+  // R-002: the scope rules are visible and editable in config.json (defaults from templates/config.json)
+  if (!Array.isArray(cfg.source_globs) || !cfg.source_globs.length) cfg.source_globs = ["**"];
+  if (!Array.isArray(cfg.exclude_globs)) cfg.exclude_globs = [];
+  // `enroll` NEVER writes test_mode (R-051).
+  delete (cfg as { test_mode?: boolean }).test_mode;
+  cfg.toolchain = { detected: detectToolchain(root, cfg).map((c) => `${c.id}:${c.cmd ? [c.cmd, ...(c.args ?? [])].join(" ") : c.builtin ? "built-in" : "skipped (" + c.note + ")"}`) };
+  for (const d of ["state", "tasks", "issues", "records/scans", "snapshots", "holdout", "reports"]) fs.mkdirSync(path.join(nemesisDir(root), d), { recursive: true });
+  writeJson(P.config(root), cfg);
+  const gi = path.join(nemesisDir(root), ".gitignore");
+  fs.writeFileSync(gi, ["state/", "snapshots/", "holdout/*/pack/", "holdout/*/pack", "reports/", "records/scans/", "*.tmp", ""].join("\n"));
+  const { settings, installed } = installHooks(root, SKILL_DIR);
+  appendRecord(root, "enroll", { event: "enrolled", skill_dir: SKILL_DIR, hooks: installed });
+  ok(`enrolled: ${root}\n  config: ${P.config(root)}\n  hooks (${installed.join(", ")}) installed once each in ${settings}\n  toolchain: ${(cfg.toolchain.detected as string[]).join(" | ")}\nNext: nemesis on "<goal>" [--prd <file>]`);
+}
+
+export function cmdScope(target: string, dirArg?: string): void {
+  const root = rootOrDie(dirArg);
+  const cfg = readConfig(root);
+  const r = isInScope(root, target, cfg);
+  ok(r.inScope ? `in-scope: ${r.rel}` : `excluded (${r.rule}): ${r.rel}`);
+}
+
+// ── on / off / status ───────────────────────────────────────────────────────
+
+/** Mirrors oracle-ctl.ts: under four words, or placeholder shapes, is not a goal. */
+export function looksVague(goal: string): boolean {
+  const g = goal.trim().toLowerCase();
+  if (g.split(/\s+/).filter(Boolean).length < 4) return true;
+  return /^(finish|complete|do|continue|resume|keep going|keep working|carry on)\b.*\b(the )?(work|task|job|project|it|this|whatever)\b/.test(g) || /^continue whatever/.test(g);
+}
+
+export function cmdOn(goal: string, opts: { prd?: string; dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  if (!goal || looksVague(goal)) die(`NEEDS_GOAL: "${goal}" is too vague. Name the subject and the outcome in at least four words (the judge weighs every chunk against it).`, 3);
+  if (opts.prd && !fs.existsSync(path.resolve(root, opts.prd))) die(`PRD not found: ${opts.prd}`);
+  const rb = rulebookIsFresh(); if (!rb.fresh) die(`rulebook is stale (${rb.why}); run: bun ${path.join(SKILL_DIR, "scripts", "build-rulebook.ts")}`);
+  if (!fs.existsSync(SOCK) && !cfg.test_mode) startDaemon();
+  // Keep-going loop (D-20): start autopilot only if no sentinel exists for this session.
+  let startedLoop = false;
+  const sid = process.env.CLAUDE_CODE_SESSION_ID?.trim();
+  const activate = path.join(ACOS_SCRIPTS(root), "autopilot-activate.py");
+  if (fs.existsSync(activate) && sid) {
+    const sentinel = path.join(root, ".acos", "state", `autopilot-active-${sid}`);
+    if (!fs.existsSync(sentinel)) {
+      const r = spawnSync("python3", [activate, "on", "--session", sid, goal], { cwd: root, encoding: "utf8" });
+      startedLoop = r.status === 0;
+      ok(`keep-going loop: ${startedLoop ? "started by Nemesis" : "not started (" + (r.stderr || r.stdout).trim().split("\n").pop() + ")"}`);
+    } else ok("keep-going loop: already running (Oracle or autopilot started it) — left as is");
+  } else ok(`keep-going loop: ${sid ? "autopilot-activate.py not found in this project; Nemesis judges but cannot keep the session going by itself" : "no CLAUDE_CODE_SESSION_ID in the environment; run this from inside the Claude session to start the loop"}`);
+  writeActive(root, { goal, prd: opts.prd ?? cfg.prd, started_at: nowIso(), session: sid, started_loop: startedLoop });
+  appendRecord(root, "activation", { event: "on", goal, prd: opts.prd ?? cfg.prd, session: sid, started_loop: startedLoop });
+  ok(`NEMESIS ON — goal: ${goal}\n  prd: ${opts.prd ?? cfg.prd ?? "(none — drift is judged against the goal and the design review)"}\n  every in-scope edit is now judged; every change is scanned; nothing completes while the ledger is open.`);
+}
+
+export function cmdOff(opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const a = readActive(root);
+  if (!a) { ok("NEMESIS already off"); return; }
+  if (a.started_loop && a.session) {
+    const activate = path.join(ACOS_SCRIPTS(root), "autopilot-activate.py");
+    if (fs.existsSync(activate)) spawnSync("python3", [activate, "off", "--session", a.session], { cwd: root, encoding: "utf8" });
+  }
+  writeActive(root, null);
+  appendRecord(root, "activation", { event: "off", open_issues: listIssues(root, true).length });
+  ok(`NEMESIS OFF${a.started_loop ? " (loop stopped too)" : ""}. Open issues remain on record: ${listIssues(root, true).length}.`);
+}
+
+export function cmdStatus(opts: { dir?: string; json?: boolean }): void {
+  const root = rootOrDie(opts.dir);
+  const a = readActive(root);
+  const open = listIssues(root, true);
+  const tasks = listTasks(root);
+  const scans = listScans(root);
+  const last = scans[scans.length - 1];
+  const rb = rulebookIsFresh();
+  if (opts.json) { console.log(JSON.stringify({ active: a, open_issues: open.map((i) => ({ id: i.id, severity: i.severity, lens: i.lens, rung: i.rung, status: i.status })), tasks: tasks.map((t) => ({ id: t.id, status: t.status, steps: stepsStatus(root, t.id).steps })), last_scan: last ? scanSummary(last) : null, hooks: countInstalledHooks(root), rulebook: rb }, null, 2)); return; }
+  ok(`NEMESIS ${a ? "ON" : "OFF"}${a ? ` — goal: ${a.goal}` : ""}\nproject: ${root}\nrulebook: ${rb.fresh ? "fresh" : "STALE — " + rb.why}\nhooks installed: ${Object.entries(countInstalledHooks(root)).map(([k, v]) => `${k}=${v}`).join(" ") || "none"}\nopen issues: ${open.length}${open.length ? "\n" + open.map((i) => `  ${i.id} [${i.severity}/${i.lens}/${i.checklist}] ${i.status} rung ${i.rung} — ${i.what}`).join("\n") : ""}\nlast S3: ${last ? scanSummary(last) + " at " + last.at : "none"}`);
+  for (const t of tasks) {
+    // D-53: a killed re-author leaves no commitment and no record, so status is where it must
+    // surface - and the recovery is done here rather than merely reported, because a reported
+    // defect nobody is obliged to act on is how this one survived unnoticed in the first place.
+    const healed = recoverInterruptedReauthor(root, t.id);
+    if (healed) ok(`  ${healed}`);
+    const st = stepsStatus(root, t.id);
+    ok(`task ${t.id} (${t.status}) — ${t.title}${st.sealOk ? "" : "  [steps.json TAMPERED: seal mismatch]"}`);
+    ok("  " + st.steps.map((s) => `${s.id}:${s.tampered ? "TAMPERED" : s.done ? (s.count !== undefined ? `done×${s.count}` : "done") : "—"}`).join(" "));
+  }
+  if (!tasks.length) ok("tasks: none (nemesis task start <id> --title \"…\")");
+}
+
+// ── tasks: start / sketch / design / checklist / end / redesign ─────────────
+
+function requireKeys(text: string, keys: string[]): string[] { return keys.filter((k) => !new RegExp(`^\\s*${k.replace(".", "\\.")}\\s*:`, "m").test(text)); }
+
+export function validateSketch(text: string): string[] {
+  const problems = requireKeys(text, ["task", "data_touched", "actors", "stride", "abuse_case", "checklists"]).map((k) => `missing field: ${k}`);
+  for (const s of ["spoofing", "tampering", "repudiation", "information_disclosure", "denial_of_service", "elevation_of_privilege"]) {
+    const m = text.match(new RegExp(`^[ \\t]+${s}[ \\t]*:[ \\t]*(.*)$`, "m"));
+    if (!m || !m[1]!.trim() || /^<.*>$/.test(m[1]!.trim())) problems.push(`stride.${s} is empty or still a placeholder`);
+  }
+  const dt = text.match(/data_touched\s*:\s*\[([^\]]*)\]/)?.[1] ?? text.match(/data_touched\s*:\s*\n((?:\s+-.*\n?)+)/)?.[1] ?? "";
+  if (!dt.trim()) problems.push("data_touched is empty");
+  else if (!/(public|internal|confidential|sensitive)/.test(dt)) problems.push("data_touched entries must carry a class: public|internal|confidential|sensitive");
+  const ab = text.match(/abuse_case\s*:\s*(.*)$/m)?.[1] ?? "";
+  if ((ab.match(/[.!?](\s|$)/g) ?? []).length < 2) problems.push("abuse_case must be at least two sentences from the attacker's view");
+  const cl = (text.match(/checklists\s*:\s*\[([^\]]*)\]/)?.[1] ?? "").split(",").map((s) => s.trim().replace(/['"]/g, "")).filter(Boolean);
+  if (!cl.length) problems.push("checklists is empty");
+  for (const c of cl) if (!(CHECKLIST_IDS as readonly string[]).includes(c)) problems.push(`checklist id "${c}" is not one of ${CHECKLIST_IDS.join(", ")}`);
+  if (/<[^>]*>/.test(text.replace(/->/g, ""))) problems.push("template placeholders (<…>) still present");
+  return problems;
+}
+
+export function validateDesign(text: string): string[] {
+  const problems = requireKeys(text, ["data_flow", "authorization_matrix", "rls_rules", "typed_errors", "logging", "ai_use", "reviewer"]).map((k) => `missing field: ${k}`);
+  if (!/PERMISSION_DENIED/.test(text) || !/NOT_FOUND/.test(text)) problems.push("typed_errors must include at least PERMISSION_DENIED and NOT_FOUND");
+  if (!/never_log\s*:\s*\[[^\]]+\]/.test(text) && !/never_log\s*:\s*\n\s+-/.test(text)) problems.push("logging.never_log must be non-empty");
+  if (!/authorization_matrix\s*:\s*\n\s+-\s*action/.test(text)) problems.push("authorization_matrix must list at least one action row (- action: …)");
+  if (/<[^>]*>/.test(text.replace(/->/g, ""))) problems.push("template placeholders (<…>) still present");
+  return problems;
+}
+
+export function cmdTaskStart(id: string, opts: { title?: string; prdRefs?: string[]; dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  if (!opts.title) die("--title is required");
+  const t = createTask(root, id, opts.title, opts.prdRefs ?? []);
+  readSteps(root, id); // creates the ledger
+  writeChecklists(root, id, {});
+  appendRecord(root, "tasks", { event: "start", id, title: opts.title });
+  ok(`task ${id} opened — ${opts.title}\n  next: write .nemesis/tasks/${id}/threat-sketch.yaml (template: ${path.join(SKILL_DIR, "templates", "threat-sketch.yaml")}) then: nemesis task sketch ${id} <file>`);
+  ok(`  S7 holdout: authored by the daemon from the PRD and S1 when you record the design review (nemesis task design ${id} <file>)`);
+}
+
+/** R-033: the daemon (never the writer) authors and seals the task's acceptance holdout. */
+/**
+ * Does the grader have the key it will look for, on every case? (R-059)
+ *
+ * The pack is authored by a language model, and `lib/charter.ts` tells it the exact shape with a
+ * worked example. An instruction is not a guarantee. Measured on website-design-okoa/v2,
+ * 2026-11-03: of 9 sealed packs, 5 were well shaped and FOUR were not — R-045 (9 of 9 entries),
+ * R-050 (20 of 20), R-052 (26 of 26) and R-056 (9 of 9, four of them writing `exit_code` where
+ * the grader reads `exit`). All four have `reveal: null`: they were never graded at all, so
+ * their task can never prove its acceptance, can never close, and the release gate stays shut
+ * for good. That is not a check failing; it is a check that cannot run.
+ *
+ * The keys below mirror `acos-holdout-test/scripts/lib/runner.ts` exactly:
+ *   grade.on "exit-code"   -> reads exp.exit      (missing -> INCONCLUSIVE)
+ *   grade.on "stdout-json" -> reads exp.stdout    (missing -> INCONCLUSIVE)
+ *   grade.on "stdout-text" -> reads exp.stdout as a string
+ * INCONCLUSIVE blocks and is never a pass, so a pack that cannot grade itself is worse than a
+ * failing one: it reports nothing while looking like a refusal. Refusing at SEAL time turns a
+ * silent dead end into one message the machine can act on immediately.
+ */
+export function packShapeProblems(cases: unknown[], expected: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const ids = new Set<string>();
+  for (const raw of cases) {
+    const c = raw as { id?: string; grade?: { on?: string } };
+    const id = c.id;
+    if (!id) { out.push("a case has no id, so no expectation can be matched to it"); continue; }
+    ids.add(id);
+    const on = c.grade?.on;
+    const e = expected[id] as Record<string, unknown> | undefined;
+    if (!e) { out.push(`${id}: no entry in expected.json`); continue; }
+    if ("exit_code" in e && !("exit" in e)) { out.push(`${id}: writes "exit_code"; the grader reads "exit"`); continue; }
+    if (on === "exit-code" && e.exit === undefined) out.push(`${id}: grade.on is exit-code but the entry has no "exit"`);
+    else if (on === "stdout-json" && e.stdout === undefined) out.push(`${id}: grade.on is stdout-json but the entry has no "stdout"`);
+    else if (on === "stdout-text" && typeof e.stdout !== "string") out.push(`${id}: grade.on is stdout-text but the entry has no "stdout" string`);
+    else if (!on) out.push(`${id}: the case names no grade.on, so nothing says how to grade it`);
+  }
+  for (const k of Object.keys(expected)) if (!ids.has(k)) out.push(`expected.json has an entry "${k}" with no such case`);
+  return out;
+}
+
+/**
+ * Re-author a task's holdout pack WITHOUT losing the old commitment if authoring fails (D-51).
+ *
+ * THE DEFECT THIS FIXES, found 2026-11-04 by watching the `v2-ee` session work around it by
+ * hand. Both re-author paths - `nemesis task holdout <id> --new` and `nemesis task redesign` -
+ * renamed `manifest.json` to `.spent-<ts>.json` BEFORE calling `authorTaskHoldout`. That call
+ * never throws; it RETURNS a string, and several of its exits are refusals ("NOT authored",
+ * "NOT sealed"). On any of those the project was left with a pack directory and NO manifest, so
+ * the graded verdict of the pack that was actually committed to became unreachable. It is the
+ * same defect D-47 fixed one layer down - a destructive step taken before a step that can fail -
+ * and I fixed it inside the sealer while leaving it in both callers.
+ *
+ * The tell that it was real: the peer wrote "I copied the graded manifest and pack aside first,
+ * per the rule that --new spends the manifest before it authors." A workaround a careful operator
+ * has to remember is a defect, not a rule.
+ *
+ * So: spend the manifest, author, and if no new manifest exists afterwards, put the old one back.
+ */
+/**
+ * D-53: recover a re-author that was KILLED rather than refused.
+ *
+ * D-51 put the restore in a `catch` and in a post-return existence check. Both of those run
+ * IN-PROCESS, so neither survives a SIGKILL: the manifest has already been renamed to
+ * `.spent-<ms>.json` and the task is left with a pack directory and NO commitment, with nothing
+ * in the records either, because `appendRecord` never ran. That is not hypothetical - R-019 on
+ * website-design-okoa/v2 is in exactly that state, and its holdout directory holds NINETEEN
+ * `.spent-*.json` files, so nothing downstream can tell which one was the live commitment.
+ *
+ * The fix is a marker written BEFORE the destructive rename, naming the exact file to put back.
+ * Ordering is the whole guarantee: killed between the marker and the rename, the manifest is
+ * still there and recovery is a no-op; killed after the rename, the marker names the one file to
+ * restore. Recovery only ever renames a spent file back when there is no `manifest.json` at all,
+ * so it can never overwrite a live commitment.
+ *
+ * WHY RECOVERY MUST NOT RUN WHILE AN AUTHOR IS ALIVE, which is the trap worth recording: the
+ * sealer refuses outright when a manifest is present - `acos-holdout-test/scripts/holdout.ts:106`
+ * throws "manifest already exists at <path> - re-sealing changes the commitment. Pass --force
+ * only to fix an UNSPENT pack you authored." - and `authorTaskHoldout` passes no `--force`. So
+ * putting the manifest back under a still-running author turns a run that was about to succeed
+ * into one that refuses. Recovery is therefore gated on the marker's pid being gone.
+ */
+export function recoverInterruptedReauthor(root: string, taskId: string): string | null {
+  const dir = path.join(P.holdout(root), taskId);
+  const marker = path.join(dir, "reauthor.inflight.json");
+  if (!fs.existsSync(marker)) return null;
+  const m = readJson<{ spent?: string; at?: string; pid?: number }>(marker, {});
+  const manifest = path.join(dir, "manifest.json");
+  if (fs.existsSync(manifest)) { fs.rmSync(marker, { force: true }); return null; }
+  if (m.pid && processAlive(m.pid)) return `a re-author of ${taskId} is still RUNNING (pid ${m.pid}); not restoring the manifest under it, because the sealer refuses when one is present (holdout.ts:106). If you kill it, kill FIRST and let the next nemesis command restore.`;
+  const spent = m.spent ? path.join(dir, m.spent) : "";
+  if (!spent || !fs.existsSync(spent)) {
+    appendRecord(root, "holdout", { event: "reauthor-unrecoverable", task: taskId, named: m.spent ?? null });
+    fs.rmSync(marker, { force: true });
+    return `a re-author of ${taskId} was interrupted and its previous manifest cannot be put back: the marker named ${m.spent ?? "(nothing)"}, which is not there. The task has NO commitment — author one: nemesis task holdout ${taskId}`;
+  }
+  fs.renameSync(spent, manifest);
+  appendRecord(root, "holdout", { event: "reauthor-recovered", task: taskId, restored_from: m.spent, interrupted_at: m.at ?? null });
+  fs.rmSync(marker, { force: true });
+  return `a re-author of ${taskId} was interrupted (not refused — killed), so the previous sealed manifest was put back from ${m.spent} (D-53). The task has the commitment it had before.`;
+}
+
+function processAlive(pid: number): boolean {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+
+export function reauthorHoldout(root: string, cfg: Config, taskId: string): string {
+  const dir = path.join(P.holdout(root), taskId);
+  // Heal an earlier kill before spending anything, so a retry does not strand a second manifest.
+  const healed = recoverInterruptedReauthor(root, taskId);
+  const manifest = path.join(dir, "manifest.json");
+  const spent = manifest.replace(/\.json$/, `.spent-${Date.now()}.json`);
+  const marker = path.join(dir, "reauthor.inflight.json");
+  const had = fs.existsSync(manifest);
+  const prefix = healed ? `${healed}\n` : "";
+  if (had) {
+    // The marker goes down BEFORE the rename. That order is what makes a kill recoverable.
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(marker, JSON.stringify({ task: taskId, spent: path.basename(spent), at: new Date().toISOString(), pid: process.pid }, null, 2));
+    fs.renameSync(manifest, spent);
+  }
+  let out: string;
+  try { out = authorTaskHoldout(root, cfg, taskId); }
+  catch (e) {
+    if (had && !fs.existsSync(manifest)) fs.renameSync(spent, manifest);
+    fs.rmSync(marker, { force: true });
+    appendRecord(root, "holdout", { event: "reauthor-threw", task: taskId, restored: had, error: String(e).slice(0, 300) });
+    throw e;
+  }
+  if (!fs.existsSync(manifest)) {
+    // Authoring refused. Restore the commitment rather than leaving the task with none.
+    if (had) fs.renameSync(spent, manifest);
+    fs.rmSync(marker, { force: true });
+    appendRecord(root, "holdout", { event: "reauthor-refused", task: taskId, restored_previous_manifest: had, result: out.slice(0, 300) });
+    return `${prefix}${out}\n  The PREVIOUS sealed manifest was put back${had ? "" : " (there was none to put back)"}, so the task still has the commitment it had before (D-51).`;
+  }
+  fs.rmSync(marker, { force: true });
+  /* D-57: a NEW pack is now sealed, so any S7 verdict on record was earned
+     against a pack that is spent and gone. Leaving S7 marked done keeps a PASS
+     the live pack never earned. It also locks the task out of its own exit:
+     `task end` is the only thing that re-grades, its S4 gate needs two clean
+     S3 scans, and a suite that audits these records goes red on exactly this
+     stale mark - so the scan can never be clean and the reveal can never run.
+     Measured on website-design-okoa/v2, 2026-11-09: R-007 sat in that state
+     after two re-authors, S7 reading done/PASS with the digest of a manifest
+     that no longer existed. resetStep keeps the old mark in `versions`, so the
+     history survives and only the CLAIM is withdrawn. This runs ONLY here, on
+     the sealed path: when authoring is refused above, the previous manifest is
+     put back and its verdict still stands, which is why this is not up with
+     the rename. */
+  resetStep(root, taskId, "S7", "holdout re-author (new pack sealed)");
+  appendRecord(root, "holdout", { event: "reauthored", task: taskId, previous_manifest_kept_as: had ? path.basename(spent) : null, s7_reset: true });
+  return `${prefix}${out}`;
+}
+
+export function authorTaskHoldout(root: string, cfg: Config, taskId: string): string {
+  const task = readTask(root, taskId)!;
+  const a = readActive(root);
+  const { contractFor } = require("./lib/judge") as typeof import("./lib/judge");
+  const c = contractFor(root, taskId, cfg);
+  const hint = (cfg.toolchain?.detected as string[] | undefined)?.join("; ") ?? "unknown";
+  const prompt = buildHoldoutAuthorCharter({ task_id: taskId, task_title: task.title, prd_excerpt: c.prd_excerpt, design_review: c.design_review || "(S1 not written yet — derive from the PRD and goal; the pack may be re-authored at task design time)", goal: a?.goal ?? "(inactive)", project_hint: hint });
+  const res = requestGeneric(root, cfg, "holdout-author", prompt, "NEMESIS_HOLDOUT_STUB");
+  const dir = path.join(P.holdout(root), taskId);
+  if (!res.result) { appendRecord(root, "holdout", { event: "author-failed", task: taskId, cause: res.cause, error: res.error }); return `NOT authored (${res.cause ?? "unavailable"}: ${res.error ?? "no result"}) — task end will refuse until a pack exists; rerun: nemesis task holdout ${taskId}`; }
+  const r = res.result as { pack_id?: string; target?: string; deciding_case?: string; cases?: unknown[]; expected?: Record<string, unknown>; readme?: string };
+  if (!Array.isArray(r.cases) || !r.cases.length || !r.expected) return "NOT authored (model returned no cases)";
+  // R-059, first half: refuse a pack the grader could not read, before anything is written.
+  // `acos-holdout-test/scripts/lib/pack.ts` `assertCasesCoverExpected` ALREADY enforces this at
+  // seal time and was verified to do so, so this is a second, earlier line of defence rather
+  // than the guarantee: it keeps a hopeless pack from ever reaching the disk, which is what the
+  // staging step below is about.
+  const shape = packShapeProblems(r.cases, r.expected as Record<string, unknown>);
+  if (shape.length) {
+    appendRecord(root, "holdout", { event: "author-refused-shape", task: taskId, problems: shape.slice(0, 20), cases: r.cases.length });
+    return `NOT authored \u2014 the pack could not grade itself, so it was refused before sealing (R-059). ${shape.length} problem(s):\n  - ${shape.slice(0, 8).join("\n  - ")}${shape.length > 8 ? `\n  \u2026and ${shape.length - 8} more` : ""}\n  Every expectation must carry the key the grader reads: "exit" for grade.on exit-code, "stdout" for stdout-json/stdout-text. Rerun: nemesis task holdout ${taskId}`;
+  }
+  // R-059, second half and the REAL defect. The pack used to be written straight into `pack/`
+  // and only then sealed. A seal can refuse for several reasons, and the records show it did:
+  // five `seal-failed` events on website-design-okoa/v2, one for a bad `status` value and four
+  // for "manifest already exists — re-sealing changes the commitment". On every one of those the
+  // NEW files had already overwritten the previously sealed pack, while `manifest.json` still
+  // committed to the OLD hashes. The directory was then out of step with its own manifest, so a
+  // later reveal could not be trusted to be grading the pack that was actually committed to.
+  // So: stage, seal FROM the staging copy, and move it into place only when the seal succeeded.
+  // On refusal the staging copy is deleted and the previously sealed pack is left exactly as it
+  // was. The manifest path handed to the sealer is the real one, so its own protections — not
+  // re-sealing over a live commitment, the shape checks — all still fire unchanged.
+  const pack = path.join(dir, "pack");
+  const staging = path.join(dir, `pack.staging-${Date.now()}`);
+  fs.mkdirSync(staging, { recursive: true });
+  fs.writeFileSync(path.join(staging, "cases.json"), JSON.stringify({ pack_id: r.pack_id ?? `HLD-${taskId}-0001`, target: r.target ?? task.title, candidate: { root: fs.existsSync(path.join(root, "src")) ? "src" : ".", files: ["**/*"] }, cases: r.cases }, null, 2));
+  fs.writeFileSync(path.join(staging, "expected.json"), JSON.stringify(r.expected, null, 2));
+  fs.writeFileSync(path.join(staging, "README.md"), r.readme ?? `Holdout for task ${taskId}\n`);
+  const manifest = path.join(dir, "manifest.json");
+  const seal = spawnSync(BUN, [HOLDOUT, "seal", staging, "--manifest", manifest, "--custodian", "nemesis daemon", ...(r.deciding_case ? ["--deciding", r.deciding_case] : [])], { encoding: "utf8" });
+  if (seal.status !== 0) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    appendRecord(root, "holdout", { event: "seal-failed", task: taskId, kept_previous_pack: fs.existsSync(pack), out: (seal.stderr || seal.stdout).slice(0, 500) });
+    return `NOT sealed, and the previously sealed pack was left untouched: ${(seal.stderr || seal.stdout).trim().split("\n").pop()}`;
+  }
+  fs.rmSync(pack, { recursive: true, force: true });
+  fs.renameSync(staging, pack);
+  appendRecord(root, "holdout", { event: "sealed", task: taskId, manifest: path.relative(root, manifest), cases: r.cases.length, deciding: r.deciding_case });
+  return `sealed — ${r.cases.length} case(s), manifest .nemesis/holdout/${taskId}/manifest.json (pack withheld)`;
+}
+
+export function cmdTaskSketch(id: string, file: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (!readTask(root, id)) die(`no task ${id}`);
+  const text = fs.readFileSync(path.resolve(file), "utf8");
+  const problems = validateSketch(text);
+  if (problems.length) die(`threat sketch refused:\n  - ${problems.join("\n  - ")}`);
+  const dst = path.join(P.task(root, id), "threat-sketch.yaml");
+  fs.writeFileSync(dst, text);
+  markStep(root, id, "S0", dst, "nemesis task sketch");
+  const selected = (text.match(/checklists\s*:\s*\[([^\]]*)\]/)?.[1] ?? "").split(",").map((s) => s.trim().replace(/['"]/g, "")).filter(Boolean);
+  const cl = readChecklists(root, id);
+  for (const c of selected) cl[c] = { applies: true };
+  writeChecklists(root, id, cl);
+  appendRecord(root, "tasks", { event: "sketch", id, checklists: selected });
+  ok(`S0 recorded for ${id} (checklists: ${selected.join(", ")}). Every other checklist needs: nemesis task checklist ${id} <3.x> na "<why>"\n  next: design review → nemesis task design ${id} <file>`);
+}
+
+export function cmdTaskDesign(id: string, file: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  if (!readTask(root, id)) die(`no task ${id}`);
+  const text = fs.readFileSync(path.resolve(file), "utf8");
+  const problems = validateDesign(text);
+  if (problems.length) die(`design review refused:\n  - ${problems.join("\n  - ")}`);
+  const dst = path.join(P.task(root, id), "design-review.yaml");
+  fs.writeFileSync(dst, text);
+  markStep(root, id, "S1", dst, "nemesis task design");
+  appendRecord(root, "tasks", { event: "design", id });
+  // R-033: S1 exists now → the daemon authors and seals the task holdout from the PRD and S1
+  const manifest = path.join(P.holdout(root), id, "manifest.json");
+  const h = fs.existsSync(manifest) ? "already sealed (re-record the design with: nemesis task redesign <task> <issue> <file> for a new pack version)" : authorTaskHoldout(root, cfg, id);
+  ok(`S1 recorded for ${id}. Edits to in-scope files are now allowed (and judged).\n  S7 holdout: ${h}`);
+}
+
+export function cmdTaskChecklist(id: string, cid: string, mode: string, why: string | undefined, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (!readTask(root, id)) die(`no task ${id}`);
+  if (!(CHECKLIST_IDS as readonly string[]).includes(cid)) die(`unknown checklist ${cid}`);
+  const cl = readChecklists(root, id);
+  let entry: ChecklistEntry;
+  if (mode === "applies") entry = { applies: true };
+  else if (mode === "na") { if (!why || why.trim().length < 8) die("n/a needs a real reason (8+ chars)"); entry = { applies: false, na_reason: why.trim() }; }
+  else die("mode must be applies | na");
+  cl[cid] = entry;
+  writeChecklists(root, id, cl);
+  ok(`checklist ${cid}: ${mode}${why ? " — " + why : ""}. Gaps left: ${checklistGaps(root, id).join(", ") || "none"}`);
+}
+
+function taskDiff(root: string, taskId: string): { diff: string; files: string[] } {
+  const s2 = readSteps(root, taskId).entries.S2 as { items: { artifact?: string }[] };
+  const files = new Set<string>();
+  for (const it of s2.items) { try { files.add((JSON.parse(fs.readFileSync(path.resolve(root, it.artifact ?? ""), "utf8")) as { path: string }).path); } catch { /* skip */ } }
+  for (const i of listIssues(root).filter((x) => x.task === taskId)) for (const f of i.files) files.add(f);
+  const list = [...files];
+  const git = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: root, encoding: "utf8" }).status === 0;
+  let diff = "";
+  if (git && list.length) {
+    const d = spawnSync("git", ["diff", "HEAD", "--", ...list], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    diff = d.stdout ?? "";
+    const untracked = spawnSync("git", ["ls-files", "--others", "--exclude-standard", "--", ...list], { cwd: root, encoding: "utf8" }).stdout.split("\n").filter(Boolean);
+    for (const u of untracked) diff += `\n=== new file ${u} ===\n${fs.existsSync(path.join(root, u)) ? fs.readFileSync(path.join(root, u), "utf8") : ""}`;
+  }
+  if (!diff) diff = list.map((f) => `=== ${f} ===\n${fs.existsSync(path.join(root, f)) ? fs.readFileSync(path.join(root, f), "utf8") : "(deleted)"}`).join("\n\n");
+  return { diff, files: list };
+}
+
+function runReview(root: string, cfg: Config, taskId: string, focus?: Issue): { confirmed: boolean; findings: Finding[]; summary: string; failed?: string } {
+  const task = readTask(root, taskId)!;
+  const a = readActive(root);
+  const { contractFor } = require("./lib/judge") as typeof import("./lib/judge");
+  const c = contractFor(root, taskId, cfg);
+  const { diff } = taskDiff(root, taskId);
+  const prompt = buildReviewCharter({ task_id: taskId, task_title: task.title, threat_sketch: c.threat_sketch, design_review: c.design_review, diff, issues: listIssues(root).filter((i) => i.task === taskId), focus_issue: focus, contract_goal: a?.goal ?? "" });
+  const res = requestGeneric(root, cfg, "review", prompt, "NEMESIS_REVIEW_STUB");
+  const rec = path.join(P.records(root), taskId, focus ? `review-${focus.id}-${Date.now()}.json` : `review-${Date.now()}.json`);
+  writeJson(rec, { at: nowIso(), task: taskId, focus: focus?.id, result: res.result, cause: res.cause, error: res.error, recovery: res.recovery });
+  if (!res.result) return { confirmed: false, findings: [], summary: "", failed: `independent review unavailable (${res.cause ?? "no result"}: ${res.error ?? ""}) — not a pass` };
+  const r = res.result as { confirmed_fixed?: boolean; focus_fixed?: boolean; focus_why?: string; already_filed?: string[]; findings?: Finding[]; summary?: string };
+  const findings = (r.findings ?? []).map((f) => ({ ...f, lens: f.lens === "PFC" ? "PFC" : "PSC" } as Finding)).filter((f) => f.what);
+  if (!focus) markStep(root, taskId, "S6", rec, "nemesis task end (independent review)", r.summary);
+  /**
+   * D-58 — A FOCUSED REVIEW JUDGES ITS FOCUS, NOT ITS NEIGHBOURHOOD.
+   *
+   * This line used to read `confirmed: !!r.confirmed_fixed && findings.length === 0`. The
+   * `&& findings.length === 0` made a focused review MATHEMATICALLY unable to confirm on any
+   * project with a non-trivial ledger: the reviewer reads the whole task diff with the twelve
+   * questions and the PFC lens, so it finds SOMETHING somewhere, and that something vetoed the
+   * focus verdict it had just given. Measured on website-design-okoa/v2, 2026-11-09: ten
+   * `nemesis review` runs, ZERO confirmed, and of 156 findings created that day 87 (56%) were
+   * opened BY a review. SEC-10's third review said in its own words that "SEC-10's own
+   * complaints are resolved on disk" and still did not confirm - one of its two stated reasons
+   * was a stale sentence ALREADY FILED as SEC-97 and FUN-951. Since all 117 closes on that
+   * ledger carried a confirmed review, a review that cannot confirm is a ledger that cannot
+   * shrink, and every attempt to shrink it added one or two more.
+   *
+   * With a FOCUS the verdict is the focus verdict, full stop. Other findings are filed as
+   * findings - they are real and they still have to be fixed - but they are not a veto on a
+   * different finding's fix. WITHOUT a focus (task end, S6) the review IS about the whole task,
+   * so there the no-findings rule is exactly right and is unchanged.
+   */
+  const focusVerdict = r.focus_fixed ?? r.confirmed_fixed;   // either field, old replies still parse
+  return { confirmed: focus ? !!focusVerdict : !!r.confirmed_fixed && findings.length === 0, findings, summary: `${r.summary ?? ""}${r.focus_why ? ` FOCUS: ${r.focus_why}` : ""}${r.already_filed?.length ? ` Already filed, not re-opened: ${r.already_filed.join(", ")}.` : ""}` };
+}
+
+export function retryOpenIssuesAtTaskEnd(root: string, taskId: string): Issue[] {
+  const open = listIssues(root, true).filter((i) => i.task === taskId);
+  for (const i of open) { setPositionRung(root, i, 7, "task end with the issue open"); retryFromRung3(root, i); }
+  return open;
+}
+
+export function cmdTaskEnd(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const task = readTask(root, id); if (!task) die(`no task ${id}`);
+  if (task.status === "closed") { ok(`task ${id} already closed`); return; }
+  const refuse = (why: string) => { appendRecord(root, "tasks", { event: "end-refused", id, why }); die(`task end refused — ${why}`); };
+  // (1) S4: the latest two S3 scans clean
+  const scans = listScans(root, id);
+  const lastTwo = scans.slice(-2);
+  if (lastTwo.length < 2 || !lastTwo.every((s) => s.clean)) refuse(`S4 needs the latest two S3 scans clean; have ${lastTwo.map((s) => (s.clean ? "clean" : "NOT clean (" + s.checks.filter((c) => c.status !== "pass").map((c) => c.id + ":" + c.status).join(",") + ")")).join(", ") || "none"}. Run: nemesis scan`);
+  const s4 = path.join(P.records(root), id, `s4-${Date.now()}.json`);
+  writeJson(s4, { at: nowIso(), task: id, clean_scans: lastTwo.map((s) => s.id) });
+  markStep(root, id, "S4", s4, "nemesis task end");
+  // (4) checklists
+  const gaps = checklistGaps(root, id);
+  if (gaps.length) refuse(`checklists neither ticked nor n/a'd: ${gaps.join(", ")}. Use: nemesis task checklist ${id} <3.x> na "<why>"`);
+  // (2) S6 independent adversarial review
+  const rev = runReview(root, cfg, id);
+  if (rev.failed) refuse(rev.failed);
+  if (rev.findings.length) {
+    const issues = recordFindings(root, id, rev.findings, { verdict_id: "S6", files: rev.findings.map((f) => f.where.split(":")[0]!), outcome: "S6 review finding" });
+    ok(`S6 review found ${rev.findings.length} issue(s): ${issues.map((i) => i.id).join(", ")}`);
+  }
+  // confirm fixes for issues awaiting review
+  for (const i of listIssues(root, true).filter((x) => x.task === id && !x.review?.confirmed_fixed && x.repro)) {
+    const fr = runReview(root, cfg, id, i);
+    i.review = { at: nowIso(), by: "nemesis S6 (daemon)", confirmed_fixed: fr.confirmed, findings: fr.findings.map((f) => f.what) };
+    i.history.push({ at: nowIso(), event: "reviewed", detail: fr.confirmed ? "confirmed fixed" : "NOT confirmed: " + (fr.failed ?? fr.summary) });
+    writeIssue(root, i);
+  }
+  // (3) S7 holdout reveal in QA context
+  const manifest = path.join(P.holdout(root), id, "manifest.json");
+  if (!fs.existsSync(manifest)) refuse(`no sealed holdout for task ${id}; run: nemesis task holdout ${id}`);
+  const already = readJson<{ reveal?: { verdict?: string } }>(manifest, {}).reveal?.verdict;
+  if (!already) {
+    const r = spawnSync(BUN, [HOLDOUT, "reveal", manifest, "--pack", path.join(P.holdout(root), id, "pack"), "--candidate", root, "--evidence", path.join(P.holdout(root), id, "evidence")], { cwd: root, encoding: "utf8", env: { ...process.env, HOLDOUT_QA_CONTEXT: "1" } });
+    appendRecord(root, "holdout", { event: "reveal", task: id, status: r.status, out: (r.stdout + r.stderr).slice(-1500) });
+    ok(r.stdout.trim().split("\n").slice(-6).join("\n"));
+  }
+  const verdict = readJson<{ reveal?: { verdict?: string } }>(manifest, {}).reveal?.verdict;
+  markStep(root, id, "S7", manifest, "nemesis task end (holdout reveal)", verdict);
+  if (verdict !== "PASS") {
+    // R-059: "could not grade itself" and "graded, and blocked" are different facts, and this
+    // used to report them with the same sentence. Measured on website-design-okoa/v2,
+    // 2026-11-03: R-045, R-050, R-052 and R-056 all had `reveal: null` because every expectation
+    // lacked the key the grader reads, so the reveal never produced a verdict at all. The finding
+    // said "verdict none — acceptance behavior not proven", which is true and useless: it names
+    // no cause, so the ladder had nothing to act on and the task could never close.
+    let why = `holdout verdict ${verdict ?? "none"} — acceptance behavior not proven`;
+    let hint = `read .nemesis/holdout/${id}/evidence, fix, then author a NEW pack version: nemesis task holdout ${id} --new`;
+    if (!verdict) {
+      const pk = path.join(P.holdout(root), id, "pack");
+      const cs = readJson<{ cases?: unknown[] }>(path.join(pk, "cases.json"), {}).cases ?? [];
+      const ex = readJson<Record<string, unknown>>(path.join(pk, "expected.json"), {});
+      const shape = packShapeProblems(cs, ex);
+      if (shape.length) {
+        // Case ids and key NAMES only — never an expected value, so the wall still holds.
+        why = `the sealed holdout pack CANNOT GRADE ITSELF, so no verdict exists and nothing about the work was tested: ${shape.length} of its expectations lack the key the grader reads (e.g. ${shape.slice(0, 2).join("; ")})`;
+        hint = `this is a PACK defect, not a code defect: author a NEW pack version with "exit" for grade.on exit-code and "stdout" for stdout-json/stdout-text — nemesis task holdout ${id} --new`;
+      }
+    }
+    recordFindings(root, id, [{ severity: "high", lens: "PFC", checklist: "S7", where: `holdout ${id}`, what: why, fix_hint: hint }], { verdict_id: "S7", files: [], outcome: "holdout" });
+  }
+  // (5) S5 record
+  const open = listIssues(root, true).filter((i) => i.task === id);
+  const all = listIssues(root).filter((i) => i.task === id);
+  const record = [
+    `task: ${id}`, `title: ${task.title}`, `threat_sketch: .nemesis/tasks/${id}/threat-sketch.yaml`, `design_review: .nemesis/tasks/${id}/design-review.yaml`,
+    `issues: [${all.map((i) => `${i.id}:${i.status}`).join(", ")}]`,
+    `scans: {${lastTwo[lastTwo.length - 1]!.checks.map((c) => `${c.id}: ${c.status}`).join(", ")}}`,
+    `tests_added: {repro: ${all.filter((i) => i.repro).length}}`, `loop_passes: ${scans.length}`,
+    `independent_review: {by: nemesis S6 daemon, findings: ${rev.findings.length}, summary: "${rev.summary.replace(/"/g, "'")}"}`,
+    `holdout: {pack: .nemesis/holdout/${id}/manifest.json, verdict: ${verdict ?? "none"}}`,
+    `residual_risks: [${open.map((i) => `{risk: "${i.what.replace(/"/g, "'")}", id: ${i.id}, rung: ${i.rung}}`).join(", ")}]`,
+    `recorded_at: ${nowIso()}`,
+  ].join("\n") + "\n";
+  const rec = path.join(P.records(root), id, "check-record.yaml");
+  fs.mkdirSync(path.dirname(rec), { recursive: true });
+  fs.writeFileSync(rec, record);
+  markStep(root, id, "S5", rec, "nemesis task end");
+  // (6) close or rung 7
+  const stillOpen = listIssues(root, true).filter((i) => i.task === id);
+  if (stillOpen.length) {
+    retryOpenIssuesAtTaskEnd(root, id);
+    appendRecord(root, "tasks", { event: "end-open", id, open: stillOpen.map((i) => i.id) });
+    ok(`task ${id} stays OPEN — ${stillOpen.length} issue(s) set to rung 7 → retry from rung 3 with full history:\n${stillOpen.map((i) => `  ${i.id}: ${rungInstruction(root, i)}`).join("\n")}`);
+    process.exit(1);
+  }
+  const un = unfinishedSteps(root, id).filter((s) => !s.startsWith("S8"));
+  if (un.length) refuse(`steps unfinished: ${un.join(", ")}`);
+  task.status = "closed"; task.closed_at = nowIso(); writeTask(root, task);
+  appendRecord(root, "tasks", { event: "closed", id });
+  ok(`task ${id} CLOSED — record: ${path.relative(root, rec)}. S8 runs at goal end: nemesis release-gate`);
+}
+
+export function cmdTaskRedesign(taskId: string, issueId: string, file: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (!readTask(root, taskId)) die(`no task ${taskId}`);
+  const issue = readIssue(root, issueId); if (!issue) die(`no issue ${issueId}`);
+  const text = fs.readFileSync(path.resolve(file), "utf8");
+  const problems = validateDesign(text);
+  if (problems.length) die(`design review refused:\n  - ${problems.join("\n  - ")}`);
+  const dir = P.task(root, taskId);
+  const prev = path.join(dir, "design-review.yaml");
+  // D-52: the archive number comes from the HIGHEST number already used, never from the COUNT
+  // of files. Counting is wrong twice over. (1) It silently OVERWRITES a stored prior design the
+  // moment any archive is removed or renamed: with v1..v15 present, count+1 is 16 and that is
+  // safe, but delete v3 and count+1 becomes 15, which already exists and would be copied over.
+  // `copyFileSync` does not refuse. A stored prior design is a permanent record - `steps.json`
+  // holds the sha256 of the S1 artifact that was actually installed - so losing one is not
+  // recoverable. (2) Counting ignores any sibling that does not match the pattern, and one
+  // already exists in the wild: `design-review.v5-namespace.yaml` on website-design-okoa/v2.
+  const archives = fs.readdirSync(dir).map((f) => /^design-review\.v(\d+)\.yaml$/.exec(f)?.[1]).filter((x): x is string => !!x).map(Number);
+  const versions = (archives.length ? Math.max(...archives) : 0) + 1;
+  const archive = path.join(dir, `design-review.v${versions}.yaml`);
+  if (fs.existsSync(prev)) {
+    if (fs.existsSync(archive)) die(`refusing to overwrite a stored prior design: ${path.basename(archive)} already exists. A stored design is a permanent record and steps.json holds its hash. Move or rename it deliberately, then re-run.`);
+    fs.copyFileSync(prev, archive);
+  }
+  fs.writeFileSync(prev, text);
+  markStep(root, taskId, "S1", prev, `nemesis task redesign (issue ${issueId})`, `live design installed; previous kept as design-review.v${versions}.yaml`);
+  // D-52: a version number HAND-TYPED inside a design goes stale the moment the file is archived
+  // under a different number, and the live ledger proves it: on website-design-okoa/v2 six of the
+  // sixteen archived R-019 designs carry a header naming the wrong version (five say "S1 v4",
+  // one says "S1 v14" inside design-review.v15.yaml). The archive name and steps.json carry the
+  // version; the file should not restate it. This WARNS and never blocks - an archived header is
+  // never edited, because that would make the stored record disagree with what was installed.
+  const claimed = /^[^\n]{0,200}?\bv(\d+)\b/.exec(text.slice(0, 200))?.[1];
+  const warn = claimed ? `\n  NOTE: this design's opening line hand-types a version ("v${claimed}"). It will be archived under whatever number is next, so that line goes stale - the live ledger already has six such headers. Leave the version out; the archive name and steps.json carry it.` : "";
+  resetStep(root, taskId, "S2", "redesign"); resetStep(root, taskId, "S3", "redesign");
+  // R-033: a new design → a new holdout pack version derived from it; the old manifest is kept as
+  // spent. D-51: via reauthorHoldout, so a refused authoring puts the old manifest BACK instead
+  // of leaving the task with none.
+  const h = reauthorHoldout(root, readConfig(root), taskId);
+  appendRecord(root, "holdout", { event: "reauthored-on-redesign", task: taskId, result: h });
+  issue.history.push({ at: nowIso(), event: "redesign", detail: `S1 v${versions + 1} recorded; S2/S3 reopened` });
+  writeIssue(root, issue);
+  appendRecord(root, "tasks", { event: "redesign", id: taskId, issue: issueId, version: versions + 1 });
+  ok(`S1 recorded for ${taskId}: the new design is live at design-review.yaml, and the previous one is kept as design-review.v${versions}.yaml. S2/S3 reopened — rebuild the feature from the new design.${warn}\n  S7 holdout (new version): ${h}`);
+}
+
+// ── issues ──────────────────────────────────────────────────────────────────
+
+export function cmdIssue(sub: string, args: string[], raw: string[], opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (sub === "list") {
+    const open = raw.includes("--open");
+    const list = listIssues(root, open);
+    if (!list.length) { ok(open ? "no open issues" : "no issues"); return; }
+    for (const i of list) ok(`${i.id} [${i.severity}/${i.lens}/${i.checklist}] ${i.status} rung ${i.rung} task ${i.task} — ${i.what}`);
+    return;
+  }
+  const id = args[0]; if (!id) die(`usage: issue ${sub} <id> …`);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  if (sub === "show") { console.log(JSON.stringify(i, null, 2)); return; }
+  if (sub === "product-question") { cmdIssueProductQuestion(id, flag(raw, "--kind") ?? "", flag(raw, "--why") ?? "", opts); return; }
+  if (sub === "history") { for (const h of i.history) ok(`${h.at} ${h.event}${h.detail ? ": " + h.detail : ""}`); return; }
+  if (sub === "repro") {
+    const [, file, ...nameParts] = args; const name = nameParts.join(" ");
+    if (!file || !name) die("usage: issue repro <id> <testFile> <testName>");
+    if (!fs.existsSync(path.resolve(root, file))) die(`test file not found: ${file}`);
+    i.repro = { file, name, registered_at: nowIso() }; i.status = "verifying";
+    i.history.push({ at: nowIso(), event: "repro", detail: `${file} :: ${name}` }); writeIssue(root, i);
+    ok(`reproduction test registered on ${id}: ${file} :: ${name}. It is run with every S3 scan and must pass before close.`); return;
+  }
+  if (sub === "close") return cmdIssueClose(id, opts);
+  if (sub === "decide") return cmdIssueDecide(id, raw, opts);
+  die(`unknown issue command "${sub}" (list | show | history | repro | close | decide)`);
+}
+
+export function cmdIssueClose(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  if (!isOpen(i)) { ok(`${id} is already ${i.status}`); return; }
+  const scans = listScans(root).map((s) => ({ clean: s.clean, tests_pass: s.tests_pass, repro_results: s.repro_results, repro_reasons: s.repro_reasons }));
+  const missing = closureCheck(root, i, scans);
+  if (missing.length) { appendRecord(root, "issues", { event: "close-refused", id, missing }); die(`close refused for ${id} — not yet proven fixed:\n  ${missing.join("\n  ")}`); }
+  i.status = "closed"; i.closed_at = nowIso(); i.history.push({ at: nowIso(), event: "closed", detail: "repro test passing, suite passing, two clean scans, independent review confirmed" });
+  writeIssue(root, i); appendRecord(root, "issues", { event: "closed", id });
+  ok(`${id} CLOSED — proven: reproduction test passes, full suite passes, two clean S3 scans, independent review confirmed. The reproduction test stays.`);
+}
+
+/**
+ * D-50 — claim that a finding is a FUNCTIONALITY or DESIGN question, and have that confirmed.
+ *
+ * Zee, 2026-11-04: "no coding decision should come to me unless I specifically want some change
+ * be made... Only questions about any change in functionality and design should come to me,
+ * nothing else. It is the systems job to code to ensure the functionality and the security."
+ *
+ * So reaching him needs a POSITIVE claim, not merely an exhausted ladder. The confirmer's job is
+ * the mirror of the rung-N/A confirmer's: that one defends the ladder, this one defends ZEE. Its
+ * default answer is "this is the machine's work", and it is told that a bug, a contradiction
+ * between two documents, a stale note or a comment disagreeing with its code are all machine work
+ * however many times they recur. A security finding never gets this far — `admission` refuses it
+ * before the claim is even considered.
+ */
+export function cmdIssueProductQuestion(id: string, kind: string, why: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  if (isSecurityFinding(i)) die(`${id} is a SECURITY finding (${i.checklist}). Zee has already answered every one of those - no lapse, in any way - and coding the security is the system's job (D-50). It can never be a question for him. Fix it.`);
+  if (laneOf(i) === "record") die(`${id} is one of NEMESIS'S OWN RECORDS, never a product question (D-42): ${repairInstruction(root, i)}`);
+  const k = kind === "design" ? "design" : kind === "functionality" ? "functionality" : die('--kind must be "functionality" or "design"');
+  if (why.trim().length < 20) die('--why "<reason>" is required (20+ chars): say why NO code change can clear this, and what about the product would have to change instead');
+
+  i.product_question = { at: nowIso(), why: why.trim(), kind: k };
+  writeIssue(root, i);
+
+  const prompt = `You decide whether ONE finding in a software project is a question for its owner, or work for the machine. The owner is NOT a programmer. His standing instruction, verbatim: "no coding decision should come to me unless I specifically want some change be made. I care about functionality and security. As long as a system functions the way I want and there is no security laps in any way, I am good. Only questions about any change in functionality and design should come to me, nothing else. It is the systems job to code to ensure the functionality and the security."
+
+THE CLAIM BEING MADE (by the judge, which you have not spoken to):
+  this finding is a ${k.toUpperCase()} question, and no code change can clear it.
+  stated reason: ${why.trim()}
+
+THE FINDING
+  id: ${i.id}   severity: ${i.severity}   lens: ${i.lens}   rule: ${i.checklist}
+  where: ${i.where}
+  what: ${i.what}
+  files: ${i.files.join(", ") || "(none recorded)"}
+  attempts so far: ${i.attempts.length}
+  history: ${i.history.slice(-10).map((h) => `${h.event}: ${h.detail ?? ""}`).join(" | ")}
+
+YOUR JOB IS TO DEFEND THE OWNER'S ATTENTION. Your default answer is NO - this is the machine's
+work. Answer yes ONLY if both of these hold:
+  (a) no change to the CODE could clear this finding, so the only way out is that what the product
+      DOES changes, or how it LOOKS changes; and
+  (b) the remaining question is one a non-programmer owner could actually answer by choosing
+      between "drop this feature" and "change this requirement".
+
+ANSWER NO, these are all the machine's work however often they recur:
+  - a bug, a crash, a wrong result, a missing check, a performance problem;
+  - a document, note, comment or test description that contradicts the code or another document,
+    including a stale count, a stale date or a superseded sentence - the machine edits the text;
+  - a test that disagrees with its own comment, or a record that is out of date;
+  - anything whose fix is "write the code correctly" or "correct the sentence";
+  - anything where you are unsure. Unsure means NO.
+
+Reply with JSON only: {"agreed": true|false, "why": "<one or two sentences>"}`;
+
+  const res = requestGeneric(root, cfg, "review", prompt, "NEMESIS_PQ_REVIEW_STUB");
+  if (!res.result) {
+    appendRecord(root, "issues", { event: "product-question-unconfirmed", id, cause: res.cause ?? "no result" });
+    die(`${id}: the claim is recorded but NOT confirmed - the independent reader could not be reached (${res.cause ?? "no result"}${res.error ? `: ${res.error}` : ""}). An unconfirmed claim never reaches Zee (D-50). Fix the reader and re-run, or treat the finding as the machine's.`);
+  }
+  const agreed = res.result.agreed === true;
+  const cwhy = String(res.result.why ?? "").trim() || "(no reason given)";
+  i.product_question.confirmed = { at: nowIso(), by: "nemesis independent reader", agreed, why: cwhy };
+  i.history.push({ at: nowIso(), event: agreed ? "product-question" : "product-question-refused", detail: `${k}: ${why.trim()} [reader: ${cwhy}]` });
+  writeIssue(root, i);
+  appendRecord(root, "issues", { event: agreed ? "product-question" : "product-question-refused", id, kind: k, why: why.trim(), reader: cwhy });
+  if (!agreed) die(`${id} is NOT a question for Zee. The independent reader says: "${cwhy}"\n  It is the machine's to fix (D-50). Current step: ${rungInstruction(root, i)}`);
+  const a = admitToRung8(root, i);
+  ok(`${id} is confirmed a ${k} question for Zee. Reader: "${cwhy}"\n  ${a.ok ? `It is now admissible: nemesis report --product, then nemesis issue decide ${id} --choice <drop|change> --owner <who>` : `Still not admissible for another reason:\n    - ${a.why.join("\n    - ")}`}`);
+}
+
+export function cmdIssueDecide(id: string, args: string[], opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const choice = flag(args, "--choice") as "drop" | "change" | "accept" | undefined; const owner = flag(args, "--owner"); const note = flag(args, "--note"); const due = flag(args, "--due");
+  // D-50: there is no "accept the risk". Zee: "there is no security laps in any way" - he has
+  // ruled he will never sign one off, so the choice that existed to let him do that is gone.
+  // Measured before removing it: of 88 decisions ever recorded on the live ledger, 88 were
+  // `drop` and 0 were `accept`, so nothing historical depended on it.
+  if (choice === "accept") die(`--choice accept no longer exists (D-50). Zee's ruling: "As long as a system functions the way I want and there is no security laps in any way, I am good." He does not sign off a lapse, so there is nothing for "accept" to mean. The two choices are drop (the feature goes) and change (the requirement changes). If neither fits, the finding is the machine's to fix.`);
+  if (!choice || !["drop", "change"].includes(choice)) die("--choice drop|change is required");
+  if (!owner) die("--owner <who> is required");
+  // D-45: one decision may cover a whole group, so several ids are accepted at once.
+  const ids = id.split(",").map((x) => x.trim()).filter(Boolean);
+  if (!ids.length) die("at least one issue id is required");
+  const done: string[] = [];
+  for (const one of ids) {
+    const i = readIssue(root, one); if (!i) die(`no issue ${one}`);
+    // D-42: Nemesis's own record is never a product decision, whatever rung it sits at.
+    if (laneOf(i) === "record") die(`${one} is one of NEMESIS'S OWN RECORDS, not a product decision — Zee is never asked to sign this off (D-42). The machine clears it: ${repairInstruction(root, i)}`);
+    // D-50 before the rung check: being a SECURITY finding is decisive and permanent, while
+    // "not at rung 8 yet" is a position that will change. Naming the position would send the
+    // machine to the release gate to promote something that can never be promoted.
+    if (isSecurityFinding(i)) die(`${one} is a SECURITY finding (${i.checklist}) and can never be a decision for Zee at any rung (D-50). His standing answer covers every one of them: no lapse, in any way, and coding the security is the system's job. Fix it: ${rungInstruction(root, i)}`);
+    if (i.rung < 8) die(`${one} is at rung ${i.rung}; a product decision is only asked at rung 8 (goal end). Run: nemesis release-gate`);
+    // The full admission test runs HERE too, not only at promotion time. Issues promoted by
+    // the old blanket sweep are already sitting at rung 8, and they must not become
+    // decidable just because they got there before the gate existed (D-43, D-44).
+    const a = admitToRung8(root, i);
+    if (!a.ok) die(`${one} is NOT a product decision yet — Zee is not asked this (D-08):\n  ${a.why.join("\n  ")}`);
+    i.decision = { at: nowIso(), choice, owner, note, due }; i.status = "decided";
+    i.history.push({ at: nowIso(), event: "decided", detail: `${choice} by ${owner}${note ? ": " + note : ""}` });
+    writeIssue(root, i); appendRecord(root, "issues", { event: "decided", id: one, choice, owner });
+    done.push(one);
+  }
+  ok(`${done.length === 1 ? done[0] : done.join(", ")} DECIDED: ${choice} by ${owner}. Recorded; the ledger no longer counts ${done.length === 1 ? "it" : "them"} as open.`);
+}
+
+/**
+ * R-056 / D-43 — record which PRD requirement a task is built to meet.
+ *
+ * This is the anchor that makes "change the requirement" a real option. Without it, Zee's
+ * three choices collapse into two, and the honest version of the third is "change something,
+ * I cannot tell you what". Supplying it is MACHINE work, which is why it is a command and not
+ * a question: `nemesis task start` records it, and this repairs a task that lacks it.
+ */
+export function cmdTaskPrdRefs(id: string, csv: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const t = readTask(root, id); if (!t) die(`no task ${id}`);
+  const refs = csv.split(",").map((x) => x.trim()).filter(Boolean);
+  if (!refs.length) die("at least one requirement id is required");
+  t.prd_refs = refs; writeJson(path.join(P.task(root, t.id), "task.json"), t);
+  appendRecord(root, "tasks", { event: "prd-refs", id: t.id, prd_refs: refs });
+  ok(`task ${t.id} now records requirement(s): ${refs.join(", ")}. Findings on it can now state which requirement Zee would be changing (D-43).`);
+}
+
+/**
+ * D-44's escape, now with checks and balances on it (D-49).
+ *
+ * THREE things changed on 2026-11-04, each because the live ledger showed the old form failing:
+ *   1. A ruling lands as `rung-na-proposed` and counts for NOTHING until a SECOND reader, which
+ *      never saw this judge's reasoning, agrees the rung is IMPOSSIBLE here — not merely
+ *      unpromising. The confirmer's job is to defend the ladder, so its default answer is "a
+ *      rung CAN be attempted".
+ *   2. A reason already used `na_reason_cap` times (default 3) is REFUSED. The same judgement
+ *      re-derived a fourth time is a standing rule, and a standing rule belongs in a reviewed
+ *      policy that Zee can read and veto in one line — not in a 497th history entry nobody
+ *      will ever audit. Counting is over the normalized reason, so re-wording does not reset it.
+ *   3. The floor in `ladderExhausted` means these rulings can never empty the whole ladder.
+ */
+export function cmdLadderNA(id: string, n: number, why: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  if (!Number.isInteger(n) || n < 2 || n > 6) die("--na <n> must be a rung 2-6 (the automatic rungs)");
+  if (!why.trim()) die('--why "<reason>" is required: a rung is only skipped on a stated reason, never silently');
+
+  // (2) the reuse cap — a recurring reason must become a reviewed policy
+  const cap = cfg.na_reason_cap ?? DEFAULT_NA_REASON_CAP;
+  const uses = naReasonUses(root, why);
+  if (uses.count >= cap) {
+    die(`this reason has already ruled a rung inapplicable on ${uses.count} finding(s) (cap ${cap}): ${uses.issues.slice(0, 8).join(", ")}${uses.issues.length > 8 ? ", …" : ""}
+A judgement you have now made ${uses.count} times is a STANDING RULE, not a per-finding ruling (D-49).
+Write it once, have it reviewed once, and it applies to every matching finding with an audit trail Zee can veto in one line:
+  nemesis policy propose <draft.json>     # rule, when, then_rung (2-6), why, evidence, test.fires_on, test.not_on
+  nemesis policy review <POL-n>           # independent reader; activates only on approval
+  nemesis policy apply --all
+Run \`nemesis policy template\` to print a draft to fill in.`);
+  }
+
+  // (1) propose, then have an INDEPENDENT reader confirm the rung is genuinely impossible
+  const r = rung(n);
+  i.history.push({ at: nowIso(), event: "rung-na-proposed", detail: `rung ${n} ruled inapplicable: ${why.trim()}` });
+  writeIssue(root, i);
+  appendRecord(root, "ladder", { issue: i.id, na_proposed: n, why: why.trim() });
+
+  const prompt = `A finding in a software project is stuck on an escalation ladder. One judge has ruled that rung ${n} cannot apply to it. You have NOT been shown that judge's reasoning, on purpose. Decide independently.
+
+RUNG ${n} IS: ${r.name} (${r.who}) — ${r.instruction(i, root)}
+
+THE FINDING
+  id: ${i.id}   severity: ${i.severity}   lens: ${i.lens}   rule: ${i.checklist}
+  where: ${i.where}
+  what: ${i.what}
+  root cause so far: ${i.root_cause ?? "(unknown)"}
+  files: ${i.files.join(", ") || "(none recorded)"}
+  attempts so far: ${i.attempts.length}
+  history: ${i.history.slice(-12).map((h) => `${h.event}: ${h.detail ?? ""}`).join(" | ")}
+
+YOUR JOB IS TO DEFEND THE LADDER. Every rung ruled out is a rung the machine never spends, and
+a finding that clears the whole ladder goes to a non-coder product owner for a decision he has
+said he cannot make. So the bar is IMPOSSIBILITY, not difficulty:
+  - answer possible:true if a person or an agent COULD carry rung ${n} out here, even if it looks
+    unlikely to help, even if it is expensive, even if something similar was already tried;
+  - answer possible:false ONLY if the rung cannot be carried out at all on this finding.
+
+Reply with JSON only, nothing else: {"possible": true|false, "why": "<one sentence>"}`;
+
+  const res = requestGeneric(root, cfg, "review", prompt, "NEMESIS_NA_REVIEW_STUB");
+  if (!res.result) {
+    appendRecord(root, "ladder", { issue: i.id, na_unconfirmed: n, cause: res.cause ?? "no result", error: res.error });
+    die(`rung ${n} ruling on ${id} is RECORDED BUT NOT COUNTED: the independent confirmation could not be obtained (${res.cause ?? "no result"}${res.error ? `: ${res.error}` : ""}). An unreviewed ruling never shortens the ladder (D-49). Fix the confirmer and re-run, or spend the rung for real.`);
+  }
+  const possible = res.result.possible !== false;
+  const confirmWhy = String(res.result.why ?? "").trim() || "(no reason given)";
+  if (possible) {
+    i.history.push({ at: nowIso(), event: "rung-na-refused", detail: `rung ${n} ruling REFUSED by independent reader: ${confirmWhy}` });
+    writeIssue(root, i);
+    appendRecord(root, "ladder", { issue: i.id, na_refused: n, why: confirmWhy });
+    die(`rung ${n} ruling on ${id} was REFUSED. The independent reader says the rung can be attempted here: "${confirmWhy}"
+So spend it:
+  ${rungInstruction(root, { ...i, rung: n })}`);
+  }
+  i.history.push({ at: nowIso(), event: "rung-na-confirmed", detail: `rung ${n} ruled inapplicable: ${why.trim()} [confirmed independently: ${confirmWhy}]` });
+  writeIssue(root, i);
+  appendRecord(root, "ladder", { issue: i.id, na_confirmed: n, why: why.trim(), confirmed_why: confirmWhy });
+  const l = ladderExhausted(i);
+  const tail = l.ok ? "The ladder is now exhausted; this finding may reach rung 8."
+    : l.floor ? `NOT exhausted: every required rung is ruled out and none was actually attempted. Spend at least one for real (D-49): nemesis second-opinion ${i.id}`
+    : `Still owed: rung ${l.owed.join(", ")}.`;
+  ok(`${id}: rung ${n} recorded as inapplicable and CONFIRMED independently — "${why.trim()}"\n  confirmer: ${confirmWhy}\n  ${tail}`);
+}
+
+// ── policy: standing rules the machine applies to itself (D-49) ──────────────
+
+const POLICY_TEMPLATE = {
+  rule: "Write the standing rule as one sentence a product owner can read and veto.",
+  when: { checklist: "^3\\.11$", where: "", what: "", lens: "PFC" },
+  then_rung: 5,
+  why: "State the reasoning: why this whole class of finding takes that rung.",
+  evidence: "Name the measurement that justified it — a count, a file, a verdict id.",
+  origin: "machine-proposed",
+  proposed_by: "nemesis (judge)",
+  test: {
+    fires_on: { checklist: "3.11", where: "src/a.ts:10", what: "a finding this rule MUST catch", lens: "PFC" },
+    not_on: { checklist: "3.12", where: "src/a.ts:10", what: "a near-miss this rule must NOT catch", lens: "PFC" },
+  },
+};
+
+export function cmdPolicyTemplate(): void {
+  ok(JSON.stringify(POLICY_TEMPLATE, null, 2));
+  ok(`\n# Fill it in, drop the empty \`when\` fields, save it, then:\n#   nemesis policy propose <draft.json>\n# then_rung must be one of ${POLICY_RUNGS.join(", ")} — a policy can never close, accept, drop or N/A a finding.`);
+}
+
+export function cmdPolicyPropose(file: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (!fs.existsSync(file)) die(`no such draft: ${file} — run: nemesis policy template`);
+  let draft: Record<string, unknown>;
+  try { draft = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>; }
+  catch (e) { die(`draft is not valid JSON: ${String(e)}`); }
+  const when = (draft.when ?? {}) as Record<string, string>;
+  for (const k of Object.keys(when)) if (!String(when[k] ?? "").trim()) delete when[k];
+  const r = proposePolicy(root, {
+    rule: String(draft.rule ?? ""), when: when as Policy["when"],
+    then_rung: Number(draft.then_rung) as Policy["then_rung"],
+    why: String(draft.why ?? ""), evidence: String(draft.evidence ?? ""),
+    test: draft.test as Policy["test"],
+    origin: draft.origin === "zee-confirmed" ? "zee-confirmed" : "machine-proposed",
+    proposed_by: String(draft.proposed_by ?? "nemesis"),
+  });
+  if (!r.policy) die(`policy refused:\n  - ${r.problems.join("\n  - ")}`);
+  ok(`${r.policy.id} proposed (status: proposed — it applies to nothing yet).\n  rule: ${r.policy.rule}\n  sends matching findings to rung ${r.policy.then_rung}\n  next: nemesis policy review ${r.policy.id}   # an independent reader must approve before it is live`);
+}
+
+/** The BALANCE: a separate reader that never saw the proposer's reasoning (D-15, D-49). */
+export function cmdPolicyReview(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const p = readPolicy(root, id); if (!p) die(`no policy ${id}`);
+  if (p.status === "vetoed") die(`${id} was vetoed by Zee; propose a new policy instead of reviving it`);
+  const shape = policyShapeProblems(p);
+  if (shape.length) die(`${id} is malformed and cannot be reviewed:\n  - ${shape.join("\n  - ")}`);
+  const r = rung(p.then_rung);
+  const prompt = `You are reviewing a proposed STANDING RULE for an automated code-quality system. You did not write it and you have not seen its author's reasoning. Approve it only if it is genuinely safe and correct.
+
+THE PROPOSED RULE
+  rule: ${p.rule}
+  matches findings where: ${JSON.stringify(p.when)}
+  and sends them to: rung ${p.then_rung} — ${r.name} (${r.who})
+  stated reasoning: ${p.why}
+  stated evidence: ${p.evidence}
+  must fire on: ${JSON.stringify(p.test.fires_on)}
+  must NOT fire on: ${JSON.stringify(p.test.not_on)}
+
+WHAT THIS RULE CAN AND CANNOT DO. Rungs 2-6 are steps the machine performs on itself: fix the
+root cause, hand to a fresh agent, get a second opinion from another model family, redo the
+design, revert to the last good state. A policy can ONLY choose among those. It can never close
+a finding, accept a risk, drop a feature or rule anything not-applicable — closing still needs a
+passing reproduction test, a green suite, two clean scans and an independent reviewer, every
+time. So the only harm a bad policy can do is send a class of findings to the WRONG machine step.
+
+REJECT IT IF ANY OF THESE HOLD
+  - the matcher is wider than the reasoning justifies, so it would capture unrelated findings;
+  - the evidence does not actually support the rule (vague, or about something else);
+  - the rung is wrong for this class — for example sending a one-line bug to a full redesign,
+    or sending a genuine design fault to a mere revert that leaves the fault in place;
+  - the rule is a way to make work disappear rather than a way to do the right work faster.
+
+Reply with JSON only: {"approved": true|false, "why": "<one or two sentences>"}`;
+  const res = requestGeneric(root, cfg, "review", prompt, "NEMESIS_POLICY_REVIEW_STUB");
+  if (!res.result) die(`independent policy review unavailable (${res.cause ?? "no result"}${res.error ? `: ${res.error}` : ""}) — ${id} stays PROPOSED and applies to nothing. An unreviewed policy is never active (D-49).`);
+  const approved = res.result.approved === true;
+  const why = String(res.result.why ?? "").trim() || "(no reason given)";
+  const rr = reviewPolicy(root, id, "nemesis independent reader", approved, why);
+  if (rr.problems.length) die(rr.problems.join("\n"));
+  ok(approved
+    ? `${id} is ACTIVE. Reviewer: "${why}"\n  It now applies to matching findings. Apply it: nemesis policy apply --all\n  Zee can veto it any time: nemesis policy veto ${id} --why "<reason>"`
+    : `${id} was NOT approved and stays proposed. Reviewer: "${why}"\n  Fix the draft and propose a new one, or spend the rungs per finding.`);
+}
+
+export function cmdPolicyList(opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const all = listPolicies(root);
+  if (!all.length) return ok("no policies. A recurring judgement becomes one: nemesis policy template");
+  const lines = all.map((p) => {
+    const n = p.applications.length;
+    const mark = p.status === "active" ? "ACTIVE " : p.status === "vetoed" ? "VETOED " : "proposed";
+    return `  ${mark} ${p.id}  → rung ${p.then_rung}  applied to ${n} finding(s)${p.origin === "zee-confirmed" ? "  [Zee's own]" : ""}\n      ${p.rule}\n      why: ${p.why}\n      evidence: ${p.evidence}${p.review ? `\n      reviewed: ${p.review.approved ? "approved" : "rejected"} — ${p.review.note}` : "\n      reviewed: NOT YET — applies to nothing"}${p.vetoed ? `\n      vetoed: ${p.vetoed.why}` : ""}`;
+  });
+  ok(`${all.length} policy/policies (standing rules the machine applies to itself; veto any with: nemesis policy veto <id> --why "<reason>"):\n${lines.join("\n")}`);
+}
+
+export function cmdPolicyVeto(id: string, why: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const r = vetoPolicy(root, id, why);
+  if (r.problems.length) die(r.problems.join("\n"));
+  ok(`${id} VETOED. It applies to nothing from now on.${r.reopened.length ? `\n  walked back ${r.reopened.length} finding(s) to the rung they were on before it fired: ${r.reopened.join(", ")}` : "\n  no finding needed walking back."}`);
+}
+
+export function cmdPolicyApply(target: string | undefined, opts: { dir?: string; all?: boolean }): void {
+  const root = rootOrDie(opts.dir);
+  const issues = opts.all ? listIssues(root, true) : [readIssue(root, target ?? die("policy apply <issue> | --all")) ?? die(`no issue ${target}`)];
+  const fired: string[] = [];
+  for (const i of issues) {
+    const r = applyPolicies(root, i);
+    if (r) fired.push(`${i.id}: rung ${r.from} → ${r.to} by ${r.policy.id} (${r.policy.rule})`);
+  }
+  ok(fired.length
+    ? `${fired.length} finding(s) moved by standing rules:\n  ${fired.join("\n  ")}`
+    : `no active policy matched any of the ${issues.length} finding(s) checked. List them: nemesis policy list`);
+}
+
+export function cmdLadder(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  ok(`${id} — ${i.what}\nattempts: ${i.attempts.length}; current ${rungInstruction(root, i)}\n\nAll rungs:\n${RUNGS.map((r) => `  ${r.n === i.rung ? "→" : " "} ${r.n}. ${r.name} (${r.who})`).join("\n")}`);
+}
+
+export function cmdSecondOpinion(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  const provider = cfg.second_opinion_provider;
+  const runner = path.join(ACOS_SCRIPTS(root), "run-external-agent.py");
+  if (!provider || !fs.existsSync(runner)) {
+    i.second_opinion = { at: nowIso(), provider: provider ?? "(none)", status: "unavailable" };
+    i.history.push({ at: nowIso(), event: "second-opinion", detail: `rung4: unavailable (${provider ? "run-external-agent.py missing" : "no provider configured: set second_opinion_provider in .nemesis/config.json"})` });
+    if (i.rung < 5) { i.rung = 5; i.history.push({ at: nowIso(), event: "rung", detail: "4 → 5 (second opinion unavailable; never silently skipped)" }); }
+    writeIssue(root, i); appendRecord(root, "ladder", { issue: id, rung4: "unavailable" });
+    ok(`rung 4 unavailable (${provider ? "runner missing" : "no provider configured"}) — recorded on ${id}; ladder proceeds to rung 5:\n  ${rungInstruction(root, i)}`); return;
+  }
+  const task = `Issue ${i.id} (${i.severity}, ${i.lens}, rule ${i.checklist}) at ${i.where}: ${i.what}\nRoot cause so far: ${i.root_cause ?? "unknown"}\nAttempts: ${i.attempts.map((a) => a.outcome).join(" | ")}\nGive (1) your independent analysis of the real cause, (2) a concrete patch as a unified diff, (3) the negative test that proves it. Output markdown.`;
+  const r = spawnSync("python3", [runner, "--agent", "security-reviewer", "--model", provider, "--task", task, "--context", ...i.files.map((f) => path.join(root, f)).filter((f) => fs.existsSync(f))], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  if (r.status !== 0) { i.second_opinion = { at: nowIso(), provider, status: "unavailable", analysis: (r.stderr || r.stdout).slice(0, 2000) }; i.history.push({ at: nowIso(), event: "second-opinion", detail: `provider ${provider} failed (exit ${r.status}); proceeding to rung 5` }); if (i.rung < 5) i.rung = 5; writeIssue(root, i); ok(`second opinion failed (exit ${r.status}); recorded; ladder proceeds to rung 5`); return; }
+  const out = r.stdout;
+  i.second_opinion = { at: nowIso(), provider, status: "received", analysis: out.slice(0, 20000), patch: out.match(/```diff\n([\s\S]*?)```/)?.[1] };
+  i.history.push({ at: nowIso(), event: "second-opinion", detail: `received from ${provider}` }); writeIssue(root, i);
+  appendRecord(root, "ladder", { issue: id, rung4: "received", provider });
+  ok(`second opinion from ${provider} stored on ${id}${i.second_opinion.patch ? " (patch included)" : ""}. Have a Claude agent apply it; the edit is judged as any other.`);
+}
+
+/**
+ * D-56 / R-074 — `nemesis rung ack`. The ONE way a braked file is freed without a redesign or a
+ * revert. It exists because a rung-3 fresh agent's edit is indistinguishable from the stuck
+ * writer's next try, so the ladder step has to be said out loud and recorded. The record is what
+ * the next judge reads, which is what makes a false ack visible instead of free.
+ */
+export function cmdRungAck(id: string, action: string, why: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  if (!(ACK_ACTIONS as readonly string[]).includes(action)) die(`--action must be one of ${ACK_ACTIONS.join("|")} (got "${action || "nothing"}")`);
+  if (why.trim().length < 12) die(`--why "<what you actually changed>" is required, and one or two words is not an answer. An ack with no account of the work is the thing this command exists to prevent.`);
+  ok(ackRung(root, i, action as AckAction, why.trim()));
+}
+
+/** What is braked right now, and what each file is waiting for. */
+export function cmdRungBrakes(opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const b = readBrake(root);
+  const rows = Object.entries(b);
+  if (!rows.length) return ok("no file is braked (D-56).");
+  for (const [rel, e] of rows.sort((x, y) => y[1].denials - x[1].denials)) {
+    const held = e.denials >= BRAKE_AT;
+    ok(`${held ? "BRAKED " : "warming"} ${rel} — ${e.denials}/${BRAKE_AT} consecutive stuck denials, ${e.acks}/${ACK_LIMIT} acks spent, rung ${e.rung} (${rung(e.rung).name}) since ${e.since}`);
+    ok(`    judge: ${e.why || "(none recorded)"}`);
+    ok(`    findings: ${e.issues.join(", ") || "(none recorded)"}`);
+  }
+}
+
+export function cmdRevert(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  const files = i.files.length ? i.files : [i.where.split(":")[0]!];
+  const r = restoreFromSnapshot(root, files);
+  if (!r.restored.length) die(`nothing restored — no green snapshot holds ${files.join(", ")} (missing: ${r.missing.join(", ")})`);
+  i.revert = { at: nowIso(), snapshot: r.restored[0]!.snapshot, files: r.restored.map((x) => x.file) };
+  i.status = "reverted-open"; i.history.push({ at: nowIso(), event: "reverted", detail: `restored ${r.restored.map((x) => x.file).join(", ")} from ${r.restored[0]!.snapshot}` });
+  writeIssue(root, i); appendRecord(root, "ladder", { issue: id, rung6: "reverted", files: i.revert.files });
+  ok(`reverted ${r.restored.map((x) => x.file).join(", ")} to green snapshot ${r.restored[0]!.snapshot}. ${id} stays OPEN (reverted-open); it is retried at task end.${r.missing.length ? ` Not in any snapshot: ${r.missing.join(", ")}` : ""}`);
+}
+
+export function cmdReview(id: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const i = readIssue(root, id); if (!i) die(`no issue ${id}`);
+  const fr = runReview(root, cfg, i.task, i);
+  i.review = { at: nowIso(), by: "nemesis S6 (daemon)", confirmed_fixed: fr.confirmed, findings: fr.findings.map((f) => f.what) };
+  i.history.push({ at: nowIso(), event: "reviewed", detail: fr.confirmed ? "confirmed fixed" : "NOT confirmed: " + (fr.failed ?? fr.summary) });
+  writeIssue(root, i);
+  if (fr.findings.length) recordFindings(root, i.task, fr.findings, { verdict_id: "review", files: i.files, outcome: "review finding" });
+  ok(`review of ${id}: ${fr.confirmed ? "CONFIRMED fixed" : "NOT confirmed"} — ${fr.failed ?? fr.summary}`);
+}
+
+// ── release gate (S8) ───────────────────────────────────────────────────────
+
+export function cmdReleaseGate(opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const a = readActive(root);
+  const open = listIssues(root, true);
+  const refuse = (why: string) => { appendRecord(root, "release", { event: "refused", why }); die(`release gate CLOSED — ${why}`); };
+  if (open.length) {
+    // R-024 AS AMENDED 2026-11-02 (D-42/D-43/D-44). This used to promote EVERY open issue to
+    // rung 8 and hand the lot to Zee. That sweep sent him 356 findings, 104 of them about
+    // Nemesis's own paperwork, none of which the judge had ever moved up a rung. A finding now
+    // reaches him ONLY if it passes all three admission tests. Everything else stays open and
+    // BELOW rung 8, so the gate is still shut — no check is weakened (D-06/D-07/D-29) — but the
+    // work is named as the MACHINE's, with the command, which is what D-08 promised.
+    const admitted: typeof open = [];
+    const machine: { i: (typeof open)[number]; why: string }[] = [];
+    for (const i of open) {
+      const a = admitToRung8(root, i);
+      if (a.ok) { if (i.rung < 8) setPositionRung(root, i, 8, "goal end with the issue open"); admitted.push(i); }
+      else machine.push({ i, why: laneOf(i) === "record" ? repairInstruction(root, i) : a.why.join("; ") });
+    }
+    const rep = writeReport(root, "product");
+    appendRecord(root, "release", { event: "product-report", admitted: admitted.map((i) => i.id), machine: machine.map((m) => m.i.id), report: rep.md });
+    const head = `${open.length} open issue(s) at any severity (Low counts).`;
+    const zeeLine = admitted.length
+      ? `${admitted.length} are product decisions for Zee, at rung 8. Grouped report: ${rep.html}. Record a pick: nemesis issue decide <id>[,<id>...] --choice drop|change --owner <who>`
+      : `NONE of them is a product decision yet — Zee is not asked anything (D-08).`;
+    const owed = machine.slice(0, 5).map((m) => `\n  • ${m.i.id}: ${m.why}`).join("");
+    const machineLine = machine.length
+      ? `${machine.length} are still the MACHINE's work:${owed}${machine.length > 5 ? `\n  …and ${machine.length - 5} more — see: nemesis report --product` : ""}`
+      : `Nothing is left owed by the machine.`;
+    refuse(`${head}\n${machineLine}\n${zeeLine}`);
+  }
+  // R-034: ANY secret found during the work, at any severity and under any checklist, must have a rotation entry
+  const SECRET_WORDS = /secret|credential|token|password|passwd|api[ _-]?key|private key|\.env\b|connection string/i;
+  const secrets = listIssues(root).filter((i) => i.checklist.startsWith("3.4") || SECRET_WORDS.test(i.what));
+  const rotations = readJson<Record<string, string>>(path.join(P.records(root), "secret-rotations.json"), {});
+  const unrotated = secrets.filter((i) => !rotations[i.id]);
+  if (unrotated.length) refuse(`secret(s) found during the work with no rotation recorded: ${unrotated.map((i) => i.id).join(", ")} — run: nemesis secret rotated <id> "<how>"`);
+  const tasks = listTasks(root);
+  const openTasks = tasks.filter((t) => t.status !== "closed");
+  if (openTasks.length) refuse(`task(s) not closed: ${openTasks.map((t) => t.id).join(", ")}`);
+  const holdouts = tasks.map((t) => readJson<{ reveal?: { verdict?: string } }>(path.join(P.holdout(root), t.id, "manifest.json"), {}).reveal?.verdict ?? "none");
+  if (holdouts.some((h) => h !== "PASS")) refuse(`holdout verdicts not all PASS: ${holdouts.join(", ")}`);
+  const checklist = readJson<Record<string, { status: string; note?: string }>>(P.releaseChecklist(root), {});
+  const required = ["backups_restore_tested", "monitoring_alerts", "incident_contact", "secrets_rotated_if_exposed", "branch_protection"];
+  const missing = required.filter((k) => !checklist[k] || !["done", "n/a"].includes(checklist[k]!.status) || (checklist[k]!.status === "n/a" && !(checklist[k]!.note ?? "").trim()));
+  if (missing.length) refuse(`release checklist entries missing or without a note: ${missing.join(", ")} — write .nemesis/records/release-checklist.json {"<item>":{"status":"done"|"n/a","note":"…"}}`);
+  const res = requestGeneric(root, cfg, "release", buildReleaseCharter({ goal: a?.goal ?? "", checklist, open_issues: 0, tasks_closed: true, holdouts }), "NEMESIS_RELEASE_STUB");
+  if (!res.result) refuse(`S8 judgment unavailable (${res.cause ?? "no result"}) — not a pass`);
+  const r = res.result as { gate?: string; findings?: Finding[]; summary?: string };
+  if (r.gate !== "open" || (r.findings ?? []).length) {
+    if (r.findings?.length) recordFindings(root, tasks[tasks.length - 1]?.id ?? "release", r.findings.map((f) => ({ ...f, lens: "PSC" as const })), { verdict_id: "S8", files: [], outcome: "release gate finding" });
+    refuse(`S8 judge: ${r.summary ?? "gate closed"}${r.findings?.length ? " — " + r.findings.map((f) => f.what).join("; ") : ""}`);
+  }
+  writeJson(P.releaseGate(root), { at: nowIso(), gate: "open", goal: a?.goal, tasks: tasks.map((t) => t.id), holdouts, summary: r.summary });
+  for (const t of tasks) markStep(root, t.id, "S8", P.releaseGate(root), "nemesis release-gate", r.summary);
+  appendRecord(root, "release", { event: "open", summary: r.summary });
+  ok(`release gate OPEN — ${r.summary ?? ""}\nAUTOPILOT_GOAL_COMPLETE is now accepted by the Stop hook (until the next change).`);
+}
+
+export function cmdSecretRotated(id: string, how: string, opts: { dir?: string }): void {
+  const root = rootOrDie(opts.dir);
+  if (!readIssue(root, id)) die(`no issue ${id}`);
+  const p = path.join(P.records(root), "secret-rotations.json");
+  const r = readJson<Record<string, string>>(p, {}); r[id] = `${nowIso()} ${how}`; writeJson(p, r);
+  appendRecord(root, "release", { event: "secret-rotated", id, how });
+  ok(`rotation recorded for ${id}`);
+}
+
+// ── scan / report / daemon / verdict-parse ──────────────────────────────────
+
+export function cmdScan(opts: { dir?: string; judge?: string }): void {
+  const root = rootOrDie(opts.dir);
+  const cfg = readConfig(root);
+  const task = currentTask(root);
+  if (opts.judge) {
+    const rel = isInScope(root, opts.judge, cfg).rel;
+    const abs = path.join(root, rel); if (!fs.existsSync(abs)) die(`no such file ${rel}`);
+    if (!task) die("no open task");
+    const content = fs.readFileSync(abs, "utf8");
+    const req = buildRequest(root, cfg, { rel, diff: `(manual judgment of the whole file ${rel})`, candidate: content, before_exists: true, source: "edit", taskId: task.id });
+    requestVerdict(root, cfg, req).then((reply) => {
+      if (reply.verdict.decision === "deny") { const issues = recordFindings(root, task.id, reply.verdict.findings, { verdict_id: req.id, files: [rel], outcome: "manual judge" }); ok(`DENY — ${issues.map((i) => i.id).join(", ")}\n${reply.verdict.findings.map((f) => `  ${f.checklist} ${f.where}: ${f.what}`).join("\n")}`); process.exit(1); }
+      markStep(root, task.id, "S2", { inline: JSON.stringify({ path: rel, candidate_sha256: sha256(content), verdict_id: req.id, manual: true }), name: `s2-${req.id}.json` }, "nemesis scan --judge");
+      ok(`ALLOW (${reply.layer}, ${reply.elapsed_ms}ms) — S2 recorded for ${rel}`);
+    });
+    return;
+  }
+  const repro = listIssues(root, true).filter((i) => i.repro).map((i) => i.repro!);
+  const s = runScan(root, cfg, { trigger: "nemesis scan", changed: [], task: task?.id, repro });
+  if (task) { markStep(root, task.id, "S3", path.relative(root, path.join(P.scans(root), `${s.id}.json`)), "nemesis scan", scanSummary(s)); if (s.clean) markStep(root, task.id, "PFC-c", path.relative(root, path.join(P.scans(root), `${s.id}.json`)), "nemesis scan (clean)"); }
+  const f = scanFindings(s);
+  if (task && f.length) recordFindings(root, task.id, f as Finding[], { verdict_id: s.id, files: [], outcome: "S3 scan finding" });
+  for (const c of s.checks) ok(`${c.id.padEnd(10)} ${c.status.padEnd(8)} ${c.ms}ms${c.status !== "pass" ? "  " + c.output.split("\n").filter(Boolean).slice(-2).join(" | ").slice(0, 200) : ""}`);
+  ok(isClean(s) ? "S3 clean" : `S3 NOT clean — ${f.length} finding(s) recorded`);
+  if (!isClean(s)) process.exit(1);
+  // R-022: every clean S3 advances the green state — snapshot what changed since the last index
+  const t = refreshTreeIndex(root, cfg);
+  const d = diffIndex(t.before, t.index);
+  const files = [...d.changed, ...d.added];
+  const snap = files.length ? writeGreenSnapshot(root, files, "clean S3 (nemesis scan)") : null;
+  if (snap) ok(`green snapshot ${snap.id} — ${files.length} file(s)`);
+}
+
+export function cmdReport(opts: { dir?: string; product?: boolean; task?: string; open?: boolean }): void {
+  const root = rootOrDie(opts.dir);
+  const r = writeReport(root, opts.product ? "product" : "ledger", opts.task);
+  ok(`report written:\n  ${r.md}\n  ${r.html}`);
+  if (opts.open !== false) spawnSync("open", [r.html]);
+}
+
+export function cmdVerdictParse(file: string): void {
+  const raw = file === "-" ? fs.readFileSync(0, "utf8") : fs.readFileSync(file, "utf8");
+  const v = parseVerdict(raw) ?? parseVerdict(repairJson(raw));
+  if (v) { ok(`readable: ${v.decision}, ${v.findings.length} finding(s)${v === parseVerdict(raw) ? "" : " (after repair_json)"}`); return; }
+  const cls = classifyFailure(raw, "", 0);
+  const plan = recoveryPlan(cls);
+  ok(`unreadable — class: ${cls}\nrecovery plan: ${plan.map((p) => p.action).join(" → ")}\nif every step failed the daemon returns: ${finalDenial(cls, "(last error)", plan.map((p) => p.action)).reason}`);
+}
+
+// ── help ────────────────────────────────────────────────────────────────────
+
+function help(): void {
+  console.log(`nemesis — acos-nemesis-protocol (the rulebook's judge, riding along while code is written)
+
+  enroll [dir] [--prd <file>]            install hooks + .nemesis/ in a project (idempotent)
+  on "<goal>" [--prd <file>]             activate: judge every edit, scan every change, keep going
+  off                                    deactivate (stops the loop only if Nemesis started it)
+  status [--json]                        what is on, open issues, every task's 13 steps
+  scope <path>                           in-scope or excluded (and why)
+
+  task start <id> --title "…" [--prd-refs R-001,R-002]
+  task sketch <id> <threat-sketch.yaml>  validate + record S0
+  task design <id> <design-review.yaml>  validate + record S1 (edits become allowed)
+  task checklist <id> <3.x> applies|na "<why>"
+  task holdout <id> [--new]              (re)author + seal the acceptance holdout (daemon authors it)
+  task end <id>                          S4 twice clean → S6 review → S7 reveal → S5 record → close or rung 7
+  task redesign <id> <issue> <file>      rung 5: new S1 version, S2/S3 reopen
+
+  issue list [--open] | show <id> | history <id>
+  issue repro <id> <testFile> <testName> register the reproduction test
+  issue close <id>                       only when proven (repro passes, suite passes, 2 clean scans, review)
+  issue product-question <id> --kind functionality|design --why "<why no code can clear it>"
+                                         D-50: claim a finding is Zee's; an INDEPENDENT reader must agree.
+                                         A security finding can never be claimed. Without a confirmed
+                                         claim, nothing reaches him however exhausted the ladder is.
+  issue decide <id> --choice drop|change --owner <who> [--note …]   rung 8 product decision (two choices only)
+  ladder <id>                            current rung + instruction
+  ladder <id> --na <n> --why "<reason>"  rule a rung inapplicable; needs an INDEPENDENT confirmation, and a
+                                         reason used 3x must become a policy instead (D-49)
+  policy list                            the standing rules the machine applies to itself
+  policy template                        print a draft to fill in
+  policy propose <draft.json>            propose one (applies to nothing until reviewed)
+  policy review <POL-n>                  independent reader; activates ONLY on approval
+  policy apply <issue> | --all           move matching findings to the rung their class takes
+  policy veto <POL-n> --why "<reason>"   Zee's veto; walks back every finding it moved
+  second-opinion <id>                    rung 4 via run-external-agent.py (records unavailable if no provider)
+  rung ack <id> --action root-cause|fresh-agent|second-opinion|redesign|revert --why "<what you changed>"
+                                         D-56: say which rung advice you followed. This is the ONE way a
+                                         file braked after 3 stuck denials becomes editable again, and it
+                                         is capped at 2 per file until a clean edit lands there.
+  rung brakes                            which files are braked, by how many denials, and what each waits for
+  revert <id>                            rung 6: restore files from the last green snapshot; issue stays open
+  review <id>                            independent review of a fix (S6, daemon)
+
+  release-gate                           S8; writes the record the Stop hook needs for goal-complete
+  secret rotated <id> "<how>"            record a rotation for a found secret
+  scan [--judge <file>]                  run S3 now (or judge one file by hand)
+  report [--product] [--task <id>]       plain-language ledger (md + local html, opened)
+  daemon status|start|stop|install       the judge daemon
+  verdict-parse <file|->                 show how an unreadable reply is classified and recovered
+  selftest                               attack every guarantee; exit non-zero on any failure
+`);
+}
+
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  const [cmd, ...rest] = argv;
+  const dir = flag(rest, "--dir");
+  try {
+    switch (cmd) {
+      case "enroll": cmdEnroll(positional(rest)[0], { prd: flag(rest, "--prd") }); break;
+      case "scope": cmdScope(positional(rest)[0] ?? die("usage: scope <path>"), dir); break;
+      case "on": cmdOn(positional(rest).join(" "), { prd: flag(rest, "--prd"), dir }); break;
+      case "off": cmdOff({ dir }); break;
+      case "status": cmdStatus({ dir, json: rest.includes("--json") }); break;
+      case "task": {
+        const [sub, id, ...more] = positional(rest);
+        if (sub === "start") cmdTaskStart(id ?? die("task start <id>"), { title: flag(rest, "--title"), prdRefs: flag(rest, "--prd-refs")?.split(","), dir });
+        else if (sub === "sketch") cmdTaskSketch(id!, more[0] ?? die("task sketch <id> <file>"), { dir });
+        else if (sub === "design") cmdTaskDesign(id!, more[0] ?? die("task design <id> <file>"), { dir });
+        else if (sub === "checklist") cmdTaskChecklist(id!, more[0]!, more[1]!, more.slice(2).join(" "), { dir });
+        else if (sub === "holdout") { const root = rootOrDie(dir); ok(rest.includes("--new") ? reauthorHoldout(root, readConfig(root), id!) : authorTaskHoldout(root, readConfig(root), id!)); }
+        else if (sub === "end") cmdTaskEnd(id ?? die("task end <id>"), { dir });
+        else if (sub === "redesign") cmdTaskRedesign(id!, more[0]!, more[1] ?? die("task redesign <task> <issue> <file>"), { dir });
+        else if (sub === "prd-refs") cmdTaskPrdRefs(id ?? die('task prd-refs <id> "<R-001,R-002>"'), more[0] ?? die('task prd-refs <id> "<R-001,R-002>"'), { dir });
+        else die("task start|sketch|design|checklist|holdout|end|redesign|prd-refs");
+        break;
+      }
+      case "issue": { const [sub, ...a] = positional(rest); cmdIssue(sub ?? "list", a, rest, { dir }); break; }
+      case "ladder": {
+        const lid = positional(rest)[0] ?? die("ladder <issue>");
+        const na = flag(rest, "--na");
+        if (na !== undefined) cmdLadderNA(lid, Number(na), flag(rest, "--why") ?? "", { dir });
+        else cmdLadder(lid, { dir });
+        break;
+      }
+      case "second-opinion": cmdSecondOpinion(positional(rest)[0] ?? die("second-opinion <issue>"), { dir }); break;
+      case "policy": {
+        const [sub, ...a] = positional(rest);
+        switch (sub ?? "list") {
+          case "list": cmdPolicyList({ dir }); break;
+          case "template": cmdPolicyTemplate(); break;
+          case "propose": cmdPolicyPropose(a[0] ?? die("policy propose <draft.json>"), { dir }); break;
+          case "review": cmdPolicyReview(a[0] ?? die("policy review <POL-n>"), { dir }); break;
+          case "veto": cmdPolicyVeto(a[0] ?? die("policy veto <POL-n> --why \"<reason>\""), flag(rest, "--why") ?? "", { dir }); break;
+          case "apply": cmdPolicyApply(a[0], { dir, all: rest.includes("--all") }); break;
+          default: die("policy list|template|propose|review|apply|veto");
+        }
+        break;
+      }
+      case "rung": {
+        const [sub, rid] = positional(rest);
+        if (sub === "ack") cmdRungAck(rid ?? die(`rung ack <issue> --action <${ACK_ACTIONS.join("|")}> --why "<what you changed>"`), flag(rest, "--action") ?? "", flag(rest, "--why") ?? "", { dir });
+        else if (sub === "brakes") cmdRungBrakes({ dir });
+        else die(`rung ack <issue> --action <${ACK_ACTIONS.join("|")}> --why "<what you changed>"  |  rung brakes`);
+        break;
+      }
+      case "revert": cmdRevert(positional(rest)[0] ?? die("revert <issue>"), { dir }); break;
+      case "review": cmdReview(positional(rest)[0] ?? die("review <issue>"), { dir }); break;
+      case "release-gate": cmdReleaseGate({ dir }); break;
+      case "secret": { const [sub, id, ...how] = positional(rest); if (sub !== "rotated") die("secret rotated <id> \"<how>\""); cmdSecretRotated(id!, how.join(" "), { dir }); break; }
+      case "scan": cmdScan({ dir, judge: flag(rest, "--judge") }); break;
+      case "report": cmdReport({ dir, product: rest.includes("--product"), task: flag(rest, "--task"), open: !rest.includes("--no-open") }); break;
+      case "daemon": { const sub = positional(rest)[0] ?? "status"; if (sub === "start") { startDaemon(); ok("daemon starting (see ~/.acos/nemesis/daemon.log)"); } else { const r = spawnSync(BUN, [path.join(SKILL_DIR, "scripts", "nemesis-daemon.ts"), sub], { encoding: "utf8", stdio: "inherit" }); process.exit(r.status ?? 1); } break; }
+      case "verdict-parse": cmdVerdictParse(positional(rest)[0] ?? "-"); break;
+      case "selftest": { const { runSelftest } = await import("./lib/selftest"); process.exit(await runSelftest(rest.includes("--verbose"))); }
+      case "help": case undefined: case "--help": case "-h": help(); break;
+      default: die(`unknown command "${cmd}" (nemesis help)`, 2);
+    }
+  } catch (e) { die(e instanceof Error ? e.message : String(e)); }
+}

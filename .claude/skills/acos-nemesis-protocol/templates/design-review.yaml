@@ -1,0 +1,11 @@
+# S1 — Design review (before code). Validated by: nemesis task design <task> <this file>
+# Rules: typed_errors must include PERMISSION_DENIED and NOT_FOUND; logging.never_log non-empty;
+# authorization_matrix has at least one "- action:" row; ai_use is a block or "none".
+data_flow: <entry -> storage -> exit; trust boundaries named>
+authorization_matrix:
+  - action: <...>; staff: allow; investor: own_rows; anonymous: deny
+rls_rules: [<table>: <policy in words>, ...]
+typed_errors: [PERMISSION_DENIED, NOT_FOUND, VALIDATION_FAILED]
+logging: {log: [<...>], never_log: [<secrets>, <full tax ids>, <session tokens>, <raw request bodies>]}
+ai_use: none   # or {inputs: [...], never_inputs: [...], approver: <role>}
+reviewer: <who>

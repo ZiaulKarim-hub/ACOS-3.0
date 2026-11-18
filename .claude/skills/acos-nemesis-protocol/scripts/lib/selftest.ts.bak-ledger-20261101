@@ -1,0 +1,614 @@
+/**
+ * selftest.ts — attack every guarantee (R-053). One `ok` line per guarantee; exit non-zero on
+ * any failure. Runs hooks and the CLI as REAL subprocesses against a temp fixture project in
+ * test mode (stub judge), with NEMESIS_HOME_OVERRIDE so no real daemon or token is touched.
+ *
+ * Test names are the strings `prd/TRACE.json` cites — change one and the trace gate fails.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import { spawnSync, spawn } from "node:child_process";
+import { SKILL_DIR, BUN, P, readJson, writeJson, appendRecord, readRecords, listIssues, readIssue, writeActive, writeIdle, sha256 } from "./state";
+import { isInScope, DEFAULT_EXCLUDES } from "./scope";
+import { STEP_IDS, readSteps } from "./steps";
+import { detectToolchain, runScan, isClean } from "./scan";
+import { parseVerdict, classifyFailure, recoveryPlan, finalDenial } from "./verdict";
+import { buildCharter, JSON_SCHEMA_LINE } from "./charter";
+import { buildRequest, retryWaits } from "./judge";
+import { rulebookIsFresh } from "../build-rulebook";
+
+const CLI = path.join(SKILL_DIR, "scripts", "nemesis.ts");
+const HOOKS = path.join(SKILL_DIR, "scripts", "hooks");
+
+interface Ctx { root: string; home: string; stub: string; env: Record<string, string> }
+let verbose = false;
+let failures = 0;
+let passes = 0;
+
+function okLine(name: string, pass: boolean, detail?: string): void {
+  if (pass) { passes++; console.log(`ok   ${name}`); }
+  else { failures++; console.log(`FAIL ${name}${detail ? `\n      ${detail.split("\n").slice(0, 8).join("\n      ")}` : ""}`); }
+}
+function test(name: string, fn: () => boolean | string): void {
+  try { const r = fn(); if (r === true) okLine(name, true); else okLine(name, false, typeof r === "string" ? r : "assertion false"); }
+  catch (e) { okLine(name, false, e instanceof Error ? e.stack ?? e.message : String(e)); }
+}
+
+const SKETCH = `task: fx — fixture login
+data_touched: [users: sensitive, sessions: confidential]
+actors: [staff: manage users, investor: own rows only, anonymous: nothing]
+stride:
+  spoofing: an attacker reuses a stolen session cookie
+  tampering: a client-supplied user id on the profile update
+  repudiation: no audit row on login
+  information_disclosure: error text reveals whether an email exists
+  denial_of_service: unbounded login attempts
+  elevation_of_privilege: role read from the request body
+abuse_case: An investor changes the user id in the request to read another investor's profile. The endpoint trusts the id and returns the row.
+checklists: [3.1, 3.2, 3.3]
+`;
+const DESIGN = `data_flow: browser -> api (auth) -> db (RLS) -> api -> browser; trust boundary at api
+authorization_matrix:
+  - action: read profile; staff: allow; investor: own_rows; anonymous: deny
+rls_rules: [users: owner_id = auth.uid() or staff role]
+typed_errors: [PERMISSION_DENIED, NOT_FOUND, VALIDATION_FAILED]
+logging: {log: [login, denial], never_log: [password, session token, tax id]}
+ai_use: none
+reviewer: nemesis selftest
+`;
+const HOLDOUT_STUB = { pack_id: "HLD-fixture-0001", target: "fixture", deciding_case: "always-pass", cases: [{ id: "always-pass", intent: "fixture case runs through the real reveal path", why_not_a_dev_test: "it exercises the shipped reveal binary end to end in the fixture, not a unit function", run: { cmd: "sh", args: ["-c", "true"] }, grade: { on: "exit-code" } }], expected: { "always-pass": { status: "pass", exit: 0 } }, readme: "fixture holdout authored by the stub author" };
+const REVIEW_STUB = { confirmed_fixed: true, findings: [], summary: "fixture review: nothing to break" };
+const RELEASE_STUB = { gate: "open", findings: [], summary: "fixture release judged acceptable" };
+
+function allowV(): string { return JSON.stringify({ decision: "allow", findings: [], history_assessment: { stuck: false, recommended_rung: 1, why: "clean" } }); }
+function denyV(extra: Partial<{ severity: string; lens: string; checklist: string; where: string; what: string; stuck: boolean; rung: number }> = {}): string {
+  return JSON.stringify({ decision: "deny", findings: [{ severity: extra.severity ?? "high", lens: extra.lens ?? "PSC", checklist: extra.checklist ?? "Q3", where: extra.where ?? "src/app.ts:3", what: extra.what ?? "trusts a client-supplied user id", root_cause: "the handler reads userId from the body", fix_hint: "take the id from the session, check the row" }], history_assessment: { stuck: extra.stuck ?? false, recommended_rung: extra.rung ?? 1, why: extra.stuck ? "the same symptom keeps returning; a fresh agent should take over" : "first attempt" } });
+}
+
+function mkFixture(opts: { testRunner?: boolean; testMode?: boolean } = {}): Ctx {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "nemesis-selftest-"));
+  const root = path.join(base, "proj"); const home = path.join(base, "home");
+  fs.mkdirSync(path.join(root, "src"), { recursive: true }); fs.mkdirSync(home, { recursive: true });
+  const scripts: Record<string, string> = opts.testRunner === false ? {} : { typecheck: "true", lint: "true", test: "bun test", audit: "true" };
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "fixture", private: true, scripts }));
+  fs.writeFileSync(path.join(root, "bun.lock"), "");
+  fs.writeFileSync(path.join(root, "src", "app.ts"), "export function app(userId: string) { return userId; }\n");
+  if (opts.testRunner !== false) fs.writeFileSync(path.join(root, "app.test.ts"), 'import { test, expect } from "bun:test";\ntest("app returns id", () => { expect(1).toBe(1); });\n');
+  const stub = path.join(base, "stub.json");
+  fs.writeFileSync(path.join(base, "holdout-stub.json"), JSON.stringify(HOLDOUT_STUB));
+  fs.writeFileSync(path.join(base, "review-stub.json"), JSON.stringify(REVIEW_STUB));
+  fs.writeFileSync(path.join(base, "release-stub.json"), JSON.stringify(RELEASE_STUB));
+  const env: Record<string, string> = { ...process.env as Record<string, string>, NEMESIS_HOME_OVERRIDE: home, NEMESIS_NO_AUTOSTART: "1", NEMESIS_CLAUDE_BIN: "/nonexistent/claude", NEMESIS_JUDGE_STUB: stub, NEMESIS_HOLDOUT_STUB: path.join(base, "holdout-stub.json"), NEMESIS_REVIEW_STUB: path.join(base, "review-stub.json"), NEMESIS_RELEASE_STUB: path.join(base, "release-stub.json") };
+  delete env.CLAUDE_CODE_SESSION_ID;
+  const ctx: Ctx = { root, home, stub, env };
+  cli(ctx, ["enroll", root]);
+  if (opts.testMode !== false) { const cfg = readJson<Record<string, unknown>>(P.config(root), {}); cfg.test_mode = true; writeJson(P.config(root), cfg); }
+  return ctx;
+}
+
+function cli(ctx: Ctx, args: string[], env: Record<string, string> = {}): { status: number | null; out: string } {
+  const r = spawnSync(BUN, [CLI, ...args], { cwd: ctx.root, encoding: "utf8", env: { ...ctx.env, ...env } });
+  const out = `${r.stdout}\n${r.stderr}`;
+  if (verbose) console.log(`  $ nemesis ${args.join(" ")} → ${r.status}\n${out.trim().split("\n").map((l) => "    " + l).join("\n")}`);
+  return { status: r.status, out };
+}
+function hook(ctx: Ctx, name: "pre-tool" | "post-tool" | "stop" | "prompt", input: Record<string, unknown>, env: Record<string, string> = {}): { status: number | null; json: Record<string, unknown>; raw: string } {
+  const r = spawnSync(BUN, [path.join(HOOKS, `${name}.ts`)], { cwd: ctx.root, encoding: "utf8", input: JSON.stringify({ cwd: ctx.root, ...input }), env: { ...ctx.env, ...env } });
+  let json: Record<string, unknown> = {};
+  try { json = JSON.parse(r.stdout.trim() || "{}") as Record<string, unknown>; } catch { json = { _raw: r.stdout }; }
+  if (verbose) console.log(`  hook ${name} ${String(input.tool_name ?? "")} → ${r.status} ${r.stdout.slice(0, 300)}${r.stderr ? "\n    stderr: " + r.stderr.slice(0, 300) : ""}`);
+  return { status: r.status, json, raw: r.stdout + r.stderr };
+}
+const pre = (j: Record<string, unknown>) => (j.hookSpecificOutput as { permissionDecision?: string; permissionDecisionReason?: string } | undefined) ?? {};
+function activate(ctx: Ctx, goal = "build the fixture login flow securely"): void { writeActive(ctx.root, { goal, started_at: new Date().toISOString(), started_loop: false }); }
+function setStub(ctx: Ctx, text: string): void { fs.writeFileSync(ctx.stub, text); }
+function openTask(ctx: Ctx, id = "fx"): void {
+  const t = cli(ctx, ["task", "start", id, "--title", "fixture login"]); if (t.status !== 0) throw new Error("task start failed: " + t.out);
+  const sk = path.join(ctx.root, "sketch.yaml"); fs.writeFileSync(sk, SKETCH);
+  const s = cli(ctx, ["task", "sketch", id, sk]); if (s.status !== 0) throw new Error("task sketch failed: " + s.out);
+  const dr = path.join(ctx.root, "design.yaml"); fs.writeFileSync(dr, DESIGN);
+  const d = cli(ctx, ["task", "design", id, dr]); if (d.status !== 0) throw new Error("task design failed: " + d.out);
+}
+function editInput(ctx: Ctx, rel = "src/app.ts", content = "export function app(userId: string) { return db.get(userId); }\n"): Record<string, unknown> {
+  return { tool_name: "Write", tool_input: { file_path: path.join(ctx.root, rel), content } };
+}
+function transcript(ctx: Ctx, lines: Record<string, unknown>[]): string {
+  const p = path.join(path.dirname(ctx.root), "transcript.jsonl");
+  fs.writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  return p;
+}
+function denyIssueOn(ctx: Ctx, where = "src/app.ts:3", extra: Record<string, unknown> = {}): { reason: string; issues: ReturnType<typeof listIssues> } {
+  setStub(ctx, denyV({ where, ...(extra as object) }));
+  const r = hook(ctx, "pre-tool", editInput(ctx));
+  return { reason: pre(r.json).permissionDecisionReason ?? "", issues: listIssues(ctx.root, true) };
+}
+
+export async function runSelftest(v = false): Promise<number> {
+  verbose = v;
+  const t0 = Date.now();
+
+  // ── rulebook, scope, trace-independent checks ───────────────────────────
+  test("rulebook matches source", () => { const r = rulebookIsFresh(); const rb = readJson<{ twelve_questions: string[]; checklists: unknown[]; steps: unknown[]; severity: unknown[]; principles: unknown[] }>(path.join(SKILL_DIR, "rulebook", "rulebook.json"), { twelve_questions: [], checklists: [], steps: [], severity: [], principles: [] }); return (r.fresh && rb.twelve_questions.length === 12 && rb.checklists.length === 14 && rb.steps.length === 9 && rb.severity.length === 4 && rb.principles.length === 12) || `${r.why}; q=${rb.twelve_questions.length} c=${rb.checklists.length}`; });
+  test("a path through a symlinked parent still resolves inside the project", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "nemesis-link-"));
+    const real = path.join(base, "real"); fs.mkdirSync(path.join(real, "src"), { recursive: true });
+    fs.writeFileSync(path.join(real, "src", "a.ts"), "export const a = 1;\n");
+    const link = path.join(base, "link"); fs.symlinkSync(real, link);
+    const viaLink = isInScope(real, path.join(link, "src", "a.ts"));
+    const newFile = isInScope(link, path.join(real, "src", "new.ts"));
+    const outside = isInScope(real, path.join(base, "elsewhere.ts"));
+    return (viaLink.inScope && viaLink.rel === "src/a.ts" && newFile.inScope && newFile.rel === "src/new.ts" && !outside.inScope && outside.rule === "outside project") || JSON.stringify({ viaLink, newFile, outside });
+  });
+  test("default exclusions resolve as excluded", () => {
+    const root = "/tmp/x";
+    const samples = [".nemesis/state/active.json", ".worktree/sandboxes/a/f.ts", "node_modules/pkg/i.js", ".git/HEAD", "memory/handoffs/h.md", "Library/Application Support/acos-token-monitor/state/m", ".claude/scripts/eternity-resume-prepend.sh", ".claude/scripts/_autopilot_eternity.py", "review-rules/qa.yaml", ".claude/agents/developer.md"];
+    const bad = samples.filter((s) => isInScope(root, path.join(root, s)).inScope);
+    const good = isInScope(root, path.join(root, "src/app.ts")).inScope && isInScope(root, path.join(root, "db/migrations/001.sql")).inScope;
+    return (bad.length === 0 && good && DEFAULT_EXCLUDES.length >= 10) || `still in scope: ${bad.join(", ")}`;
+  });
+  test("charter carries the twelve questions, severity table, checklists and schema", () => {
+    const p = buildCharter({ path: "src/a.ts", diff: "+x", candidate: "x", before_exists: true, open_issues: [], prior_verdicts: [], source: "edit", contract: { goal: "g", prd_excerpt: "", threat_sketch: "", design_review: "", checklists_selected: ["3.2"], task_id: "t", task_title: "T" } });
+    const qs = Array.from({ length: 12 }, (_, i) => `Q${i + 1}  `).every((q) => p.includes(q));
+    return (qs && p.includes("Critical:") && p.includes("Low:") && p.includes("3.2.3") && p.includes(JSON_SCHEMA_LINE) && p.includes("DEFAULT IS DENY")) || "charter missing a part";
+  });
+  test("every unreadable verdict class ends in recovery or a named deny, never allow", () => {
+    const cases: [string, string, number][] = [["", "", 0], ["I believe this change is fine and safe.", "", 0], ["{decision: allow,}", "", 0], ["", "E2BIG argument list too long", 1], ["", "You've reached your usage limit", 1], ["", "not logged in", 1], ["", "segfault", 139]];
+    for (const [out, err, code] of cases) {
+      if (parseVerdict(out)) return `parsed something from ${JSON.stringify(out)}`;
+      const cls = classifyFailure(out, err, code);
+      if (!recoveryPlan(cls).length) return `no recovery plan for ${cls}`;
+      const fd = finalDenial(cls, "x", ["a"]);
+      if (fd.decision !== "deny" || !fd.reason?.includes(`Cause class: ${cls}`)) return `final for ${cls} is not a named deny`;
+    }
+    const prose = parseVerdict('Looks good. {"decision":"allow","findings":[],"history_assessment":{"stuck":false,"recommended_rung":1,"why":""}}');
+    const allowWithFindings = parseVerdict('{"decision":"allow","findings":[{"severity":"low","lens":"PSC","checklist":"3.4.1","where":"a","what":"x"}],"history_assessment":{"stuck":false,"recommended_rung":1,"why":""}}');
+    return (prose?.decision === "allow" && allowWithFindings?.decision === "deny") || "parse semantics wrong (allow+findings must be deny)";
+  });
+  test("oracle daemon has no fallback allow path", () => {
+    const d = fs.readFileSync(path.resolve(SKILL_DIR, "..", "..", "scripts", "oracle", "oracle-daemon.ts"), "utf8");
+    const py = fs.readFileSync(path.resolve(SKILL_DIR, "..", "..", "scripts", "_oracle_judge.py"), "utf8");
+    return (!d.includes('reason: "oracle reply unparseable') && !d.includes("fallback: true") && d.includes("classifyFailure") && d.includes("stdin: Buffer.from(prompt)") && py.includes("def classify_failure") && py.includes("Cause class")) || "oracle patch incomplete";
+  });
+  test("daemon spawn argv restricts tools and has no skip-permissions", () => {
+    const j = fs.readFileSync(path.join(SKILL_DIR, "scripts", "lib", "judge.ts"), "utf8");
+    const d = fs.readFileSync(path.join(SKILL_DIR, "scripts", "nemesis-daemon.ts"), "utf8");
+    return (j.includes('"--tools", JUDGE_TOOLS.join(",")') && j.includes('"--allowedTools", ...JUDGE_TOOLS') && !j.includes("dangerously-skip-permissions") && !d.includes("dangerously-skip-permissions") && d.includes("NO TIMEOUT") && j.includes("input: prompt")) || "argv shape wrong";
+  });
+  test("no bypass flag exists", () => {
+    const pre = fs.readFileSync(path.join(HOOKS, "pre-tool.ts"), "utf8");
+    const judge = fs.readFileSync(path.join(SKILL_DIR, "scripts", "lib", "judge.ts"), "utf8");
+    const envReads = [...(pre + judge).matchAll(/process\.env\.([A-Z_]+)|env\.([A-Z_]+)|env\[([A-Z_"']+)\]/g)].map((m) => (m[1] ?? m[2] ?? m[3] ?? "").replace(/["']/g, "")).filter(Boolean);
+    const allowed = new Set(["ACOS_NEMESIS_JUDGE", "NEMESIS_JUDGE_STUB", "NEMESIS_CLAUDE_BIN", "NEMESIS_NO_AUTOSTART", "NEMESIS_ALT_CONFIG_DIR", "HOME", "ANTHROPIC_API_KEY", "NEMESIS_HOME_OVERRIDE", "CLAUDE_CONFIG_DIR"]);
+    const bad = envReads.filter((e) => !allowed.has(e));
+    return (pre.includes("export const NO_BYPASS = true") && !/skip|bypass|NEMESIS_OFF|NEMESIS_DISABLE/i.test(pre.replace(/NO_BYPASS|\/\*\*[\s\S]*?\*\/|\/\/.*$/gm, "")) && bad.length === 0) || `unexpected env reads: ${bad.join(", ")}`;
+  });
+
+  // ── fixture-based: enrollment, activation, start phase ──────────────────
+  const ctx = mkFixture();
+  test("enroll installs hooks once", () => {
+    const first = readJson<{ hooks: Record<string, unknown[]> }>(path.join(ctx.root, ".claude", "settings.local.json"), { hooks: {} });
+    const r = cli(ctx, ["enroll", ctx.root]);
+    const second = readJson<{ hooks: Record<string, { hooks: { command: string }[] }[]> }>(path.join(ctx.root, ".claude", "settings.local.json"), { hooks: {} });
+    const counts = Object.fromEntries(Object.entries(second.hooks).map(([k, v]) => [k, v.filter((e) => e.hooks.some((h) => h.command.includes("acos-nemesis-protocol"))).length]));
+    const ok = ["PreToolUse", "PostToolUse", "Stop", "UserPromptSubmit"].every((k) => counts[k] === 1);
+    const cfg = readJson<Record<string, unknown>>(P.config(ctx.root), {});
+    const enrollWipedTestMode = !("test_mode" in cfg); // enroll never writes test_mode (R-051)
+    cfg.test_mode = true; writeJson(P.config(ctx.root), cfg); // restore for the rest of the suite
+    return (r.status === 0 && ok && Object.keys(first.hooks).length > 0 && cfg.schema === "nemesis-config/1" && enrollWipedTestMode) || `counts=${JSON.stringify(counts)} status=${r.status} wiped=${enrollWipedTestMode}`;
+  });
+  test("hook inert when off", () => {
+    const t = Date.now();
+    const r = hook(ctx, "pre-tool", editInput(ctx));
+    const ms = Date.now() - t;
+    const p = pre(r.json);
+    const r2 = hook(ctx, "post-tool", editInput(ctx)); const r3 = hook(ctx, "prompt", { prompt: "hi" });
+    return (p.permissionDecision === "allow" && /inactive/.test(p.permissionDecisionReason ?? "") && !fs.existsSync(path.join(ctx.home, "nemesis.sock")) && JSON.stringify(r2.json) === "{}" && JSON.stringify(r3.json) === "{}" && ms < 5000) || `${JSON.stringify(r.json)} in ${ms}ms`;
+  });
+  test("on/off toggles active state and refuses a vague goal", () => {
+    const vague = cli(ctx, ["on", "finish", "the", "work"]);
+    const on = cli(ctx, ["on", "build", "the", "fixture", "login", "flow", "securely"]);
+    const active = fs.existsSync(P.active(ctx.root));
+    const off = cli(ctx, ["off"]);
+    return (vague.status === 3 && on.status === 0 && active && off.status === 0 && !fs.existsSync(P.active(ctx.root))) || `vague=${vague.status} on=${on.status} active=${active} off=${off.status}\n${on.out}`;
+  });
+  activate(ctx);
+  test("deny without S0/S1 names the next command", () => {
+    setStub(ctx, allowV());
+    const a = pre(hook(ctx, "pre-tool", editInput(ctx)).json);
+    const t = cli(ctx, ["task", "start", "fx", "--title", "fixture login"]);
+    const b = pre(hook(ctx, "pre-tool", editInput(ctx)).json);
+    const sk = path.join(ctx.root, "sketch.yaml"); fs.writeFileSync(sk, SKETCH.replace("elevation_of_privilege: role read from the request body", "elevation_of_privilege: "));
+    const badSketch = cli(ctx, ["task", "sketch", "fx", sk]);
+    fs.writeFileSync(sk, SKETCH); const goodSketch = cli(ctx, ["task", "sketch", "fx", sk]);
+    const c = pre(hook(ctx, "pre-tool", editInput(ctx)).json);
+    const dr = path.join(ctx.root, "design.yaml"); fs.writeFileSync(dr, DESIGN); const design = cli(ctx, ["task", "design", "fx", dr]);
+    const d = pre(hook(ctx, "pre-tool", editInput(ctx)).json);
+    return (a.permissionDecision === "deny" && /nemesis task start/.test(a.permissionDecisionReason ?? "") && t.status === 0 && b.permissionDecision === "deny" && /task sketch/.test(b.permissionDecisionReason ?? "") && badSketch.status !== 0 && /elevation_of_privilege/.test(badSketch.out) && goodSketch.status === 0 && c.permissionDecision === "deny" && /task design/.test(c.permissionDecisionReason ?? "") && design.status === 0 && d.permissionDecision === "allow") || `a=${JSON.stringify(a)} b=${JSON.stringify(b)} bad=${badSketch.status} c=${JSON.stringify(c)} d=${JSON.stringify(d)} design=${design.out}`;
+  });
+  test("task design seals a holdout manifest from the stub author", () => {
+    const c8 = mkFixture(); activate(c8);
+    const mp = path.join(P.holdout(c8.root), "fx", "manifest.json");
+    cli(c8, ["task", "start", "fx", "--title", "fixture login"]);
+    const afterStart = fs.existsSync(mp);
+    const sk = path.join(c8.root, "sketch.yaml"); fs.writeFileSync(sk, SKETCH); cli(c8, ["task", "sketch", "fx", sk]);
+    const afterSketch = fs.existsSync(mp);
+    const dr = path.join(c8.root, "design.yaml"); fs.writeFileSync(dr, DESIGN); const d = cli(c8, ["task", "design", "fx", dr]);
+    const m = readJson<{ case_ids?: string[]; deciding_case?: string }>(mp, {});
+    const gi = fs.readFileSync(path.join(c8.root, ".nemesis", ".gitignore"), "utf8");
+    const dr2 = path.join(c8.root, "design2.yaml"); fs.writeFileSync(dr2, DESIGN.replace("reviewer: nemesis selftest", "reviewer: nemesis selftest v2"));
+    denyIssueOn(c8, "src/app.ts:3");
+    const rd = cli(c8, ["task", "redesign", "fx", listIssues(c8.root, true)[0]!.id, dr2]);
+    const spent = fs.readdirSync(path.join(P.holdout(c8.root), "fx")).filter((f) => /^manifest\.spent-/.test(f)).length;
+    return (!afterStart && !afterSketch && d.status === 0 && /sealed/.test(d.out) && (m.case_ids?.length ?? 0) > 0 && m.deciding_case === "always-pass" && /holdout\/\*\/pack/.test(gi) && rd.status === 0 && /S7 holdout \(new version\): sealed/.test(rd.out) && spent === 1 && fs.existsSync(mp)) || `start=${afterStart} sketch=${afterSketch} design=${d.out.slice(-200)} m=${JSON.stringify(m)} redesign=${rd.out.slice(-200)} spent=${spent}`;
+  });
+  test("judge request carries the contract and no transcript", () => {
+    const cfg = readJson<import("./state").Config>(P.config(ctx.root), {} as import("./state").Config);
+    const req = buildRequest(ctx.root, cfg, { rel: "src/app.ts", diff: "+ x", candidate: "x", before_exists: true, source: "edit", taskId: "fx" });
+    const keys = Object.keys(req);
+    const checks: Record<string, boolean> = {
+      goal: req.prompt.includes("build the fixture login flow securely"),
+      sketch: /an investor changes the user id/i.test(req.prompt),
+      twelve: req.prompt.includes("Q12  "),
+      checklist: req.prompt.includes("3.2.3"),
+      noContext: !keys.includes("context") && !keys.includes("transcript"),
+      noChat: !req.prompt.toLowerCase().includes("recent conversation"),
+      meta: req.meta.path === "src/app.ts" && req.meta.task === "fx",
+      contract: !!req.contract && ["goal", "prd_excerpt", "threat_sketch", "design_review", "rulebook_sha256", "open_issues", "prior_verdicts", "pfc_lens"].every((k) => k in req.contract!) && req.contract.goal === "build the fixture login flow securely" && /an investor changes the user id/i.test(req.contract.threat_sketch),
+      requestRecord: (() => { const rs = readRecords<{ contract?: { goal?: string } }>(ctx.root, "requests"); const last = rs[rs.length - 1]; return rs.length > 0 && !!last?.contract && last.contract.goal === "build the fixture login flow securely"; })(),
+    };
+    const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    return bad.length === 0 || `failed: ${bad.join(",")} keys=${keys.join(",")}`;
+  });
+
+  // ── per-edit gate ───────────────────────────────────────────────────────
+  test("allowed edit leaves an S2 record", () => {
+    setStub(ctx, allowV());
+    const content = "export function app(userId: string) { return ok(userId); }\n";
+    const r = pre(hook(ctx, "pre-tool", editInput(ctx, "src/app.ts", content)).json);
+    const s2 = readSteps(ctx.root, "fx").entries.S2 as { items: { artifact?: string }[] };
+    const last = s2.items[s2.items.length - 1];
+    const art = last?.artifact ? JSON.parse(fs.readFileSync(path.join(ctx.root, last.artifact), "utf8")) as { candidate_sha256: string; path: string } : null;
+    const pfc = readSteps(ctx.root, "fx").entries["PFC-a"] as { done?: boolean };
+    return (r.permissionDecision === "allow" && !!art && art.candidate_sha256 === sha256(content) && art.path === "src/app.ts" && pfc.done === true) || JSON.stringify({ r, art });
+  });
+  test("stub deny opens an issue and the reason carries finding and rung", () => {
+    const { reason, issues } = denyIssueOn(ctx);
+    const i = issues.find((x) => x.where === "src/app.ts:3");
+    return (!!i && i.id.startsWith("SEC-") && /trusts a client-supplied user id/.test(reason) && /take the id from the session/.test(reason) && /rung 1/.test(reason) && /NEMESIS DENIED/.test(reason)) || `reason=${reason.slice(0, 200)} issues=${issues.map((x) => x.id).join(",")}`;
+  });
+  test("same finding twice yields one issue with two attempts", () => {
+    denyIssueOn(ctx);
+    const same = listIssues(ctx.root).filter((x) => x.where === "src/app.ts:3" && x.checklist === "Q3");
+    return (same.length === 1 && same[0]!.attempts.length === 2) || `issues=${same.length} attempts=${same[0]?.attempts.length}`;
+  });
+  test("ladder rung advances only by judge assessment", () => {
+    denyIssueOn(ctx); // third deny, stuck:false
+    const before = listIssues(ctx.root).find((x) => x.where === "src/app.ts:3")!;
+    denyIssueOn(ctx, "src/app.ts:3", { stuck: true, rung: 3 });
+    const after = readIssue(ctx.root, before.id)!;
+    const why = after.history.find((h) => h.event === "rung")?.detail ?? "";
+    return (before.rung === 1 && before.attempts.length === 3 && after.rung === 3 && /fresh agent/.test(why)) || `before=${before.rung}/${before.attempts.length} after=${after.rung} why=${why}`;
+  });
+  test("rung 3 instruction names the issue file and forbids passing the conversation", () => {
+    const i = listIssues(ctx.root).find((x) => x.where === "src/app.ts:3")!;
+    const r = cli(ctx, ["ladder", i.id]);
+    return (r.status === 0 && r.out.includes(`.nemesis/issues/${i.id}.json`) && /do not pass the conversation/i.test(r.out) && r.out.includes("Task(developer)")) || r.out;
+  });
+  test("a judged-clean edit on an issue's file marks it fixing until proven", () => {
+    const before = listIssues(ctx.root, true).find((x) => x.where === "src/app.ts:3")!;
+    setStub(ctx, allowV());
+    const r = pre(hook(ctx, "pre-tool", editInput(ctx)).json);
+    const after = readIssue(ctx.root, before.id)!;
+    const stillOpen = listIssues(ctx.root, true).some((x) => x.id === before.id);
+    const close = cli(ctx, ["issue", "close", before.id]);
+    return (before.status === "open" && r.permissionDecision === "allow" && after.status === "fixing" && after.history.some((h) => h.event === "fix-landed") && stillOpen && close.status !== 0) || `before=${before.status} decision=${r.permissionDecision} after=${after.status} open=${stillOpen} close=${close.status}`;
+  });
+  test("PFC-d finding opens a FUN issue", () => {
+    const { issues } = denyIssueOn(ctx, "src/app.ts:9", { lens: "PFC", checklist: "PFC-d", what: "adds an export endpoint the PRD never asked for" });
+    const i = issues.find((x) => x.where === "src/app.ts:9");
+    return (!!i && i.id.startsWith("FUN-") && i.checklist === "PFC-d" && i.lens === "PFC") || JSON.stringify(issues.map((x) => [x.id, x.checklist]));
+  });
+  test("issue list shows open issues with severity and rung", () => {
+    const r = cli(ctx, ["issue", "list", "--open"]);
+    return (r.status === 0 && /SEC-1 \[high\/PSC\/Q3\]/.test(r.out) && /rung 3/.test(r.out) && /FUN-1/.test(r.out)) || r.out;
+  });
+  test("prompt hook re-injects open issues and rung", () => {
+    const r = hook(ctx, "prompt", { prompt: "continue" });
+    const ctxText = String((r.json.hookSpecificOutput as { additionalContext?: string } | undefined)?.additionalContext ?? "");
+    return (/NEMESIS ACTIVE/.test(ctxText) && /SEC-1/.test(ctxText) && /rung 3/.test(ctxText) && /current task: fx/.test(ctxText)) || ctxText.slice(0, 300);
+  });
+  test("second opinion without a provider records unavailable and moves to rung 5", () => {
+    const i = listIssues(ctx.root).find((x) => x.id === "SEC-1")!;
+    const r = cli(ctx, ["second-opinion", i.id]);
+    const after = readIssue(ctx.root, i.id)!;
+    return (r.status === 0 && after.second_opinion?.status === "unavailable" && after.rung === 5 && /rung 5/.test(r.out)) || `${r.out} rung=${after.rung}`;
+  });
+  test("redesign keeps S1 v1 and resets S2", () => {
+    const dr = path.join(ctx.root, "design2.yaml"); fs.writeFileSync(dr, DESIGN.replace("reviewer: nemesis selftest", "reviewer: nemesis selftest v2"));
+    const r = cli(ctx, ["task", "redesign", "fx", "SEC-1", dr]);
+    const l = readSteps(ctx.root, "fx");
+    const s1 = l.entries.S1 as { done: boolean; versions?: unknown[] };
+    const s2 = l.entries.S2 as { items: unknown[] };
+    return (r.status === 0 && s1.done && (s1.versions?.length ?? 0) >= 1 && s2.items.length === 0 && fs.existsSync(path.join(P.task(ctx.root, "fx"), "design-review.v1.yaml"))) || `${r.out} versions=${s1.versions?.length} s2=${s2.items.length}`;
+  });
+
+  // ── S3 scan, Bash, snapshots, revert ────────────────────────────────────
+  test("toolchain detection and additive extra checks", () => {
+    const cfg = readJson<import("./state").Config>(P.config(ctx.root), {} as import("./state").Config);
+    const base = detectToolchain(ctx.root, cfg).map((c) => c.id);
+    const withExtra = detectToolchain(ctx.root, { ...cfg, extra_checks: [{ id: "custom", cmd: "true", args: [] }, { id: "test", cmd: "false", args: [] }] });
+    const t = withExtra.find((c) => c.id === "test")!;
+    return (base.includes("test") && base.includes("secrets") && base.includes("policy") && base.includes("data") && withExtra.map((c) => c.id).includes("custom") && t.cmd !== "false") || `base=${base.join(",")}`;
+  });
+  test("skipped is not clean", () => {
+    const c2 = mkFixture({ testRunner: false });
+    const cfg = readJson<import("./state").Config>(P.config(c2.root), {} as import("./state").Config);
+    const s = runScan(c2.root, cfg, { trigger: "selftest", changed: [] });
+    const test = s.checks.find((c) => c.id === "test");
+    activate(c2); openTask(c2);
+    const st = cli(c2, ["status"]);
+    const end = cli(c2, ["task", "end", "fx"]);
+    return (test?.status === "skipped" && !isClean(s) && /NOT clean/.test(st.out) && end.status !== 0 && /task end refused/.test(end.out)) || `test=${test?.status} clean=${isClean(s)}\n${end.out}`;
+  });
+  test("bash-written file is detected and judged", () => {
+    setStub(ctx, allowV());
+    const snap = pre(hook(ctx, "pre-tool", { tool_name: "Bash", tool_input: { command: "cat > src/new.ts" } }).json);
+    fs.writeFileSync(path.join(ctx.root, "src", "new.ts"), "export const leak = (b: any) => db.query('select * from users where id = ' + b.id);\n");
+    setStub(ctx, denyV({ where: "src/new.ts:1", checklist: "Q2", what: "string-built SQL from input" }));
+    const post = hook(ctx, "post-tool", { tool_name: "Bash", tool_input: { command: "cat > src/new.ts" }, tool_response: {} });
+    const i = listIssues(ctx.root).find((x) => x.where === "src/new.ts:1");
+    return (snap.permissionDecision === "allow" && post.json.decision === "block" && /string-built SQL/.test(String(post.json.reason)) && !!i && i.files.includes("src/new.ts")) || `${JSON.stringify(post.json).slice(0, 300)}`;
+  });
+  test("revert restores green and keeps the issue open", () => {
+    setStub(ctx, allowV());
+    const good = "export const fine = 1;\n";
+    fs.writeFileSync(path.join(ctx.root, "src", "new.ts"), good);
+    const post = hook(ctx, "post-tool", { tool_name: "Write", tool_input: { file_path: path.join(ctx.root, "src", "new.ts"), content: good }, tool_response: {} });
+    const snaps = fs.existsSync(P.snapshots(ctx.root)) ? fs.readdirSync(P.snapshots(ctx.root)).length : 0;
+    fs.writeFileSync(path.join(ctx.root, "src", "new.ts"), "export const broken = 2;\n");
+    const i = listIssues(ctx.root).find((x) => x.where === "src/new.ts:1")!;
+    const r = cli(ctx, ["revert", i.id]);
+    const after = readIssue(ctx.root, i.id)!;
+    return (snaps >= 1 && r.status === 0 && fs.readFileSync(path.join(ctx.root, "src", "new.ts"), "utf8") === good && after.status === "reverted-open" && !!after.revert) || `snaps=${snaps} post=${JSON.stringify(post.json).slice(0, 200)}\n${r.out}`;
+  });
+
+  test("tree index is cached and refreshed incrementally", () => {
+    const bash = { tool_name: "Bash", tool_input: { command: "echo probe" } };
+    type Idx = { reused: number; hashed: number; cache: Record<string, unknown> };
+    hook(ctx, "pre-tool", bash);
+    const first = readJson<Idx>(P.treeIndex(ctx.root), { reused: -1, hashed: -1, cache: {} });
+    hook(ctx, "pre-tool", bash);
+    const second = readJson<Idx>(P.treeIndex(ctx.root), { reused: -1, hashed: -1, cache: {} });
+    const probe = path.join(ctx.root, "src", "cache-probe.ts"); fs.writeFileSync(probe, "export const probe = 1;\n");
+    hook(ctx, "pre-tool", bash);
+    const third = readJson<Idx>(P.treeIndex(ctx.root), { reused: -1, hashed: -1, cache: {} });
+    fs.unlinkSync(probe); hook(ctx, "pre-tool", bash);
+    const n = Object.keys(second.cache).length;
+    return (n > 0 && first.reused + first.hashed === n && second.hashed === 0 && second.reused === n && third.hashed === 1 && third.reused === n) || `n=${n} first=${first.reused}/${first.hashed} second=${second.reused}/${second.hashed} third=${third.reused}/${third.hashed}`;
+  });
+  test("retry waits are config-bound", () => {
+    const d = retryWaits(null); const total = d.reduce((a, b) => a + b, 0);
+    const o = retryWaits({ judge_retry_waits_ms: [1, 2] });
+    const viaMeta = retryWaits(null, { retry_waits_ms: [5] });
+    const plan = recoveryPlan("usage_limit").map((s) => s.action);
+    const tpl = readJson<{ judge_retry_waits_ms?: number[] }>(path.join(SKILL_DIR, "templates", "config.json"), {});
+    return (d.length === 3 && total === 600000 && o.join() === "1,2" && viaMeta.join() === "5" && plan[0] === "wait_then_retry" && (tpl.judge_retry_waits_ms ?? []).join() === d.join()) || `d=${d.join()} total=${total} o=${o.join()} meta=${viaMeta.join()} plan=${plan.join()}`;
+  });
+  test("daemon serves a request over its socket and status shows it", () => {
+    const home = fs.mkdtempSync("/tmp/nemd-");
+    const c7 = mkFixture(); activate(c7); openTask(c7);
+    const cfg = readJson<Record<string, unknown>>(P.config(c7.root), {}); delete cfg.test_mode; writeJson(P.config(c7.root), cfg);
+    const env: Record<string, string> = { ...c7.env, NEMESIS_HOME_OVERRIDE: home }; delete env.NEMESIS_JUDGE_STUB;
+    const out = fs.openSync(path.join(home, "daemon.out"), "a");
+    const proc = spawn(BUN, [path.join(SKILL_DIR, "scripts", "nemesis-daemon.ts"), "serve"], { env, stdio: ["ignore", out, out] });
+    try {
+      const sock = path.join(home, "nemesis.sock");
+      const t0 = Date.now(); while (!fs.existsSync(sock) && Date.now() - t0 < 15000) Bun.sleepSync(100);
+      const st = cli(c7, ["daemon", "status"], env);
+      const p = pre(hook(c7, "pre-tool", editInput(c7), env).json);
+      const vlog = fs.existsSync(path.join(home, "verdicts.log")) ? fs.readFileSync(path.join(home, "verdicts.log"), "utf8").trim().split("\n").filter(Boolean) : [];
+      const rlogRaw = fs.existsSync(path.join(home, "requests.log")) ? fs.readFileSync(path.join(home, "requests.log"), "utf8").trim().split("\n").pop() ?? "{}" : "{}";
+      const rlog = JSON.parse(rlogRaw) as { contract?: { goal?: string; threat_sketch?: string } };
+      const rec = readRecords<{ layer?: string }>(c7.root, "verdicts").pop();
+      const checks: Record<string, boolean> = {
+        socket: fs.existsSync(sock), status: st.out.includes(sock) && /alive/.test(st.out),
+        denied: p.permissionDecision === "deny" && /claude binary not found/.test(p.permissionDecisionReason ?? ""),
+        verdictLog: vlog.length === 1, requestLog: rlog.contract?.goal === "build the fixture login flow securely" && /investor/i.test(rlog.contract?.threat_sketch ?? ""),
+        layer: /socket/.test(rec?.layer ?? ""),
+      };
+      const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+      return bad.length === 0 || `failed: ${bad.join(",")}\nstatus: ${st.out.slice(0, 200)}\nreason: ${(p.permissionDecisionReason ?? "").slice(0, 200)}\nlayer=${rec?.layer}`;
+    } finally { proc.kill("SIGTERM"); try { fs.closeSync(out); } catch { /* closed */ } }
+  });
+  test("green path: task closes, release gate opens and goal-complete is accepted", () => {
+    const c6 = mkFixture(); activate(c6); openTask(c6);
+    for (const id of ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]) cli(c6, ["task", "checklist", "fx", id, "na", "fixture has no such surface"]);
+    setStub(c6, allowV());
+    const content = "export function app(userId: string) { return userId.trim(); }\n";
+    const e1 = pre(hook(c6, "pre-tool", editInput(c6, "src/app.ts", content)).json);
+    fs.writeFileSync(path.join(c6.root, "src", "app.ts"), content);
+    const p1 = hook(c6, "post-tool", { tool_name: "Write", tool_input: { file_path: path.join(c6.root, "src", "app.ts"), content } });
+    const s2 = cli(c6, ["scan"]);
+    const end = cli(c6, ["task", "end", "fx"]);
+    const task = readJson<{ status: string }>(path.join(P.task(c6.root, "fx"), "task.json"), { status: "?" });
+    writeJson(P.releaseChecklist(c6.root), Object.fromEntries(["backups_restore_tested", "monitoring_alerts", "incident_contact", "secrets_rotated_if_exposed", "branch_protection"].map((k) => [k, { status: "n/a", note: "fixture project has no production surface" }])));
+    const gate = cli(c6, ["release-gate"]);
+    const rec = fs.existsSync(P.releaseGate(c6.root));
+    const tp = transcript(c6, [
+      { timestamp: "2026-10-08T00:00:00.000Z", message: { role: "user", content: "go" } },
+      { timestamp: "2026-10-08T00:00:01.000Z", message: { role: "assistant", content: [{ type: "tool_use", name: "Read", input: { file_path: "x" } }, { type: "text", text: "All done. AUTOPILOT_GOAL_COMPLETE" }] } },
+    ]);
+    const stop = hook(c6, "stop", { transcript_path: tp });
+    const checks: Record<string, boolean> = {
+      edit: e1.permissionDecision === "allow", post: p1.json.decision !== "block", scan: s2.status === 0, end: end.status === 0 && /CLOSED/.test(end.out), closed: task.status === "closed",
+      gate: gate.status === 0 && /release gate OPEN/.test(gate.out), record: rec, stop: stop.json.decision !== "block" && !/refuses/.test(String(stop.json.reason ?? "")),
+    };
+    const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    return bad.length === 0 || `failed: ${bad.join(",")}\npost: ${JSON.stringify(p1.json).slice(0, 300)}\nscan: ${s2.out.slice(-300)}\nend: ${end.out.slice(-600)}\ngate: ${gate.out.slice(-400)}\nstop: ${JSON.stringify(stop.json).slice(0, 300)}`;
+  });
+
+  // ── Stop hook: watchdog, goal-complete, sub-agents, stalled ─────────────
+  test("watchdog catches an unrecorded edit", () => {
+    const tp = transcript(ctx, [
+      { timestamp: "2026-10-08T00:00:00.000Z", message: { role: "user", content: "go" } },
+      { timestamp: "2026-10-08T00:00:01.000Z", message: { role: "assistant", content: [{ type: "tool_use", name: "Write", input: { file_path: path.join(ctx.root, "src", "ghost.ts"), content: "x" } }, { type: "text", text: "done" }] } },
+    ]);
+    const r = hook(ctx, "stop", { transcript_path: tp });
+    const i = listIssues(ctx.root).find((x) => /unrecorded edit: src\/ghost\.ts/.test(x.what));
+    return (r.json.decision === "block" && /Watchdog/.test(String(r.json.reason)) && !!i && i.id.startsWith("FUN-")) || JSON.stringify(r.json).slice(0, 300);
+  });
+  test("goal complete blocked while ledger open", () => {
+    const tp = transcript(ctx, [
+      { timestamp: "2026-10-08T00:00:00.000Z", message: { role: "user", content: "go" } },
+      { timestamp: "2026-10-08T00:00:01.000Z", message: { role: "assistant", content: [{ type: "tool_use", name: "Read", input: { file_path: "x" } }, { type: "text", text: "All done. AUTOPILOT_GOAL_COMPLETE" }] } },
+    ]);
+    const r = hook(ctx, "stop", { transcript_path: tp });
+    return (r.json.decision === "block" && /refuses AUTOPILOT_GOAL_COMPLETE/.test(String(r.json.reason)) && /SEC-1/.test(String(r.json.reason))) || JSON.stringify(r.json).slice(0, 300);
+  });
+  test("sub-agent transcript records against the project ledger", () => {
+    const sub = path.join(ctx.root, "src"); // a sub-agent's cwd inside the project
+    const tp = transcript(ctx, [{ timestamp: "2026-10-08T00:00:00.000Z", message: { role: "user", content: "go" } }, { timestamp: "2026-10-08T00:00:01.000Z", message: { role: "assistant", content: [{ type: "tool_use", name: "Read", input: {} }, { type: "text", text: "ok" }] } }]);
+    const before = readRecords(ctx.root, "stop").length;
+    const r = spawnSync(BUN, [path.join(HOOKS, "stop.ts")], { cwd: sub, encoding: "utf8", input: JSON.stringify({ cwd: sub, transcript_path: tp }), env: ctx.env });
+    const after = readRecords(ctx.root, "stop").length;
+    return (after === before + 1 && r.status === 0) || `before=${before} after=${after} ${r.stderr}`;
+  });
+  test("eternity marker does not stand nemesis down", () => {
+    const markerDir = path.join(ctx.root, "Library", "Application Support", "acos-token-monitor", "state"); fs.mkdirSync(markerDir, { recursive: true });
+    fs.writeFileSync(path.join(markerDir, "pending-resume-abc.txt"), "x");
+    const { reason } = denyIssueOn(ctx, "src/app.ts:5", { what: "widens CORS to *" });
+    const src = fs.readFileSync(path.join(HOOKS, "pre-tool.ts"), "utf8") + fs.readFileSync(path.join(HOOKS, "post-tool.ts"), "utf8") + fs.readFileSync(path.join(HOOKS, "stop.ts"), "utf8");
+    const marker = isInScope(ctx.root, path.join(markerDir, "pending-resume-abc.txt"));
+    return (/widens CORS/.test(reason) && !src.includes("is_eternity_protocol_active") && !marker.inScope) || `reason=${reason.slice(0, 120)} markerInScope=${marker.inScope}`;
+  });
+  test("step ledger lists 13 steps and detects tampering", () => {
+    const before = cli(ctx, ["status"]).out;
+    const idsShown = STEP_IDS.filter((id) => new RegExp(`\\b${id.replace("-", "\\-")}:`).test(before));
+    const p = path.join(P.task(ctx.root, "fx"), "steps.json");
+    const l = readJson<{ entries: Record<string, unknown> }>(p, { entries: {} });
+    (l.entries.S5 as Record<string, unknown>) = { done: true, artifact: "nope.yaml", sha256: "0", at: "x", by: "hand" };
+    writeJson(p, l);
+    const after = cli(ctx, ["status"]).out;
+    return (idsShown.length === 13 && STEP_IDS.length === 13 && !/TAMPERED/.test(before) && /steps\.json TAMPERED: seal mismatch/.test(after) && /S5:TAMPERED/.test(after)) || `ids=${idsShown.length}\n${after.slice(0, 400)}`;
+  });
+  test("records are append-only", () => {
+    appendRecord(ctx.root, "selftest", { n: 1 }); appendRecord(ctx.root, "selftest", { n: 2 });
+    const state = fs.readFileSync(path.join(SKILL_DIR, "scripts", "lib", "state.ts"), "utf8");
+    const recordsSection = state.slice(state.indexOf("// ── Records"), state.indexOf("// ── Tasks"));
+    return (readRecords(ctx.root, "selftest").length === 2 && !/unlinkSync|rmSync|truncate/.test(recordsSection)) || "records not append-only";
+  });
+
+  // ── closure, task end, release gate, reports ────────────────────────────
+  const c3 = mkFixture();
+  activate(c3); openTask(c3);
+  for (const id of ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]) cli(c3, ["task", "checklist", "fx", id, "na", "fixture has no such surface"]);
+  test("task end refuses while a checklist is neither ticked nor n/a", () => {
+    const c4 = mkFixture(); activate(c4); openTask(c4);
+    cli(c4, ["scan"]); cli(c4, ["scan"]);
+    const r = cli(c4, ["task", "end", "fx"]);
+    return (r.status !== 0 && /neither ticked nor n\/a/.test(r.out) && /3\.9/.test(r.out)) || r.out;
+  });
+  test("task end runs S6 and refuses while not clean twice", () => {
+    const r1 = cli(c3, ["task", "end", "fx"]);
+    cli(c3, ["scan"]);
+    const r2 = cli(c3, ["task", "end", "fx"]);
+    return (r1.status !== 0 && /S4 needs the latest two S3 scans clean/.test(r1.out) && r2.status !== 0 && /S4 needs/.test(r2.out)) || `${r1.out}\n${r2.out}`;
+  });
+  test("close refused without repro test", () => {
+    const { issues } = denyIssueOn(c3, "src/app.ts:3");
+    const i = issues[0]!;
+    const r = cli(c3, ["issue", "close", i.id]);
+    return (r.status !== 0 && /\(1\) no reproduction test/.test(r.out) && readIssue(c3.root, i.id)!.status !== "closed") || r.out;
+  });
+  test("task end with open issue sets rung 3 and stays open", () => {
+    cli(c3, ["scan"]); cli(c3, ["scan"]);
+    const r = cli(c3, ["task", "end", "fx"]);
+    const i = listIssues(c3.root, true)[0]!;
+    const task = readJson<{ status: string }>(path.join(P.task(c3.root, "fx"), "task.json"), { status: "?" });
+    const s6 = (readSteps(c3.root, "fx").entries.S6 as { done?: boolean }).done;
+    const rec = fs.existsSync(path.join(P.records(c3.root), "fx", "check-record.yaml"));
+    return (r.status === 1 && /stays OPEN/.test(r.out) && i.rung === 3 && i.history.some((h) => /→ 7/.test(h.detail ?? "")) && task.status === "open" && s6 === true && rec) || `${r.out}\nrung=${i.rung} status=${task.status} s6=${s6} rec=${rec}`;
+  });
+  test("low issue blocks the release gate", () => {
+    const c5 = mkFixture(); activate(c5); openTask(c5);
+    denyIssueOn(c5, "src/app.ts:7", { severity: "low", checklist: "3.10.1", what: "missing Referrer-Policy header" });
+    const r = cli(c5, ["release-gate"]);
+    const help = cli(c5, ["help"]);
+    return (r.status !== 0 && /release gate CLOSED/.test(r.out) && /SEC-1\[low\]/.test(r.out) && !/defer|snooze/.test(help.out)) || r.out;
+  });
+  test("release gate demands rotation for any secret finding at any severity", () => {
+    const c9 = mkFixture(); activate(c9); openTask(c9);
+    denyIssueOn(c9, "src/app.ts:1", { severity: "high", checklist: "3.4.1", what: ".env file inside the project tree" });
+    const g1 = cli(c9, ["release-gate"]);
+    const id = listIssues(c9.root, true)[0]!.id;
+    const dec = cli(c9, ["issue", "decide", id, "--choice", "accept", "--owner", "Zee"]);
+    const g2 = cli(c9, ["release-gate"]);
+    const rot = cli(c9, ["secret", "rotated", id, "moved to the environment and rotated"]);
+    const g3 = cli(c9, ["release-gate"]);
+    return (g1.status !== 0 && dec.status === 0 && g2.status !== 0 && /no rotation recorded/.test(g2.out) && new RegExp(id).test(g2.out) && rot.status === 0 && g3.status !== 0 && !/no rotation recorded/.test(g3.out)) || `g1=${g1.status} dec=${dec.out.slice(-120)} g2=${g2.out.slice(-200)} rot=${rot.out.slice(-100)} g3=${g3.out.slice(-200)}`;
+  });
+  test("stalled writer gets the product report and the loop ends without completion", () => {
+    const tp = transcript(ctx, [
+      { timestamp: "2026-10-08T00:00:00.000Z", message: { role: "user", content: "go" } },
+      { timestamp: "2026-10-08T00:00:01.000Z", message: { role: "assistant", content: [{ type: "text", text: "I am still thinking about the fix." }] } },
+    ]);
+    writeIdle(ctx.root, { streak: 0, last_turn_tool_calls: 0, updated_at: new Date().toISOString() });
+    const n = Number(readJson<Record<string, unknown>>(P.config(ctx.root), {}).stalled_turns ?? 6);
+    const results: Record<string, unknown>[] = [];
+    for (let k = 0; k < n; k++) results.push(hook(ctx, "stop", { transcript_path: tp }).json);
+    const blockedBefore = results.slice(0, n - 1).every((r) => r.decision === "block");
+    const last = results[n - 1]!;
+    const ctxText = String((last.hookSpecificOutput as Record<string, unknown> | undefined)?.additionalContext ?? "");
+    const reports = fs.existsSync(P.reports(ctx.root)) ? fs.readdirSync(P.reports(ctx.root)).filter((f) => /-product\.html$/.test(f)) : [];
+    const open = listIssues(ctx.root, true);
+    const stalledEvents = open.filter((i) => i.history.some((h) => h.event === "stalled")).length;
+    return (blockedBefore && last.decision !== "block" && /NOT complete/.test(ctxText) && reports.length > 0 && open.length > 0 && stalledEvents === open.length) || `blockedBefore=${blockedBefore} last=${JSON.stringify(last).slice(0, 200)} reports=${reports.length} open=${open.length} stalled=${stalledEvents}`;
+  });
+  test("product report has no code and decide records the choice", () => {
+    const r = cli(c3, ["report", "--product", "--no-open"]);
+    const mdPath = r.out.match(/(\S+-product\S*\.md)/)?.[1] ?? "";
+    const md = mdPath ? fs.readFileSync(mdPath, "utf8") : "";
+    const early = cli(c3, ["issue", "decide", listIssues(c3.root, true)[0]!.id, "--choice", "drop", "--owner", "Zee"]);
+    const gate = cli(c3, ["release-gate"]);
+    const i = listIssues(c3.root, true)[0]!;
+    const d = cli(c3, ["issue", "decide", i.id, "--choice", "drop", "--owner", "Zee"]);
+    const after = readIssue(c3.root, i.id)!;
+    return (r.status === 0 && md.length > 0 && !md.includes("```") && md.includes(i.id) && md.includes("Drop the feature") && early.status !== 0 && /rung 8/.test(early.out) && gate.status !== 0 && /rung 8 now/.test(gate.out) && /Product report for Zee/.test(gate.out) && i.rung === 8 && d.status === 0 && after.status === "decided" && after.decision?.choice === "drop" && after.decision.owner === "Zee") || `${r.out}\n${d.out}`;
+  });
+  test("report lists every issue and contains no code", () => {
+    const r = cli(c3, ["report", "--no-open"]);
+    const mdPath = r.out.match(/(\S+-ledger\S*\.md)/)?.[1] ?? "";
+    const md = mdPath ? fs.readFileSync(mdPath, "utf8") : "";
+    const ids = listIssues(c3.root).map((i) => i.id);
+    const html = mdPath ? fs.readFileSync(mdPath.replace(/\.md$/, ".html"), "utf8") : "";
+    return (ids.length > 0 && ids.every((id) => md.includes(id)) && !md.includes("```") && /fonts\.googleapis\.com/.test(html) && !/<script/.test(html)) || `${r.out} ids=${ids.join(",")}`;
+  });
+
+  // ── reachability and test-mode guard (non-test-mode fixture) ────────────
+  const c6 = mkFixture({ testMode: false });
+  activate(c6); openTask(c6);
+  test("unreachable judge denies naming what broke", () => {
+    const r = pre(hook(c6, "pre-tool", editInput(c6), { NEMESIS_JUDGE_STUB: "" }).json);
+    return (r.permissionDecision === "deny" && /claude binary not found/.test(r.permissionDecisionReason ?? "") && /Cause class: crash/.test(r.permissionDecisionReason ?? "")) || JSON.stringify(r);
+  });
+  test("stub judge ignored without test_mode", () => {
+    setStub(c6, allowV());
+    const r = pre(hook(c6, "pre-tool", editInput(c6)).json);
+    const rec = readRecords<{ summary?: string }>(c6.root, "verdicts").some((v) => /stub ignored/.test(v.summary ?? ""));
+    return (r.permissionDecision === "deny" && /claude binary not found/.test(r.permissionDecisionReason ?? "") && rec) || `${JSON.stringify(r)} rec=${rec}`;
+  });
+  test("judge token exempts the child and a wrong token does not", () => {
+    fs.writeFileSync(path.join(c6.home, "token"), "secret-token-123\n", { mode: 0o600 });
+    const good = pre(hook(c6, "pre-tool", editInput(c6), { ACOS_NEMESIS_JUDGE: "secret-token-123" }).json);
+    const bad = pre(hook(c6, "pre-tool", editInput(c6), { ACOS_NEMESIS_JUDGE: "wrong" }).json);
+    return (good.permissionDecision === "allow" && good.permissionDecisionReason === "nemesis_judge_session" && bad.permissionDecision === "deny") || JSON.stringify({ good, bad });
+  });
+
+  const ms = Date.now() - t0;
+  if (failures) { console.log(`selftest: ${failures} FAILED, ${passes} ok (${ms}ms)`); return 1; }
+  console.log(`selftest: all guarantees hold (${passes} ok, ${ms}ms)`);
+  return 0;
+}
+
+if (import.meta.main) process.exit(await runSelftest(process.argv.includes("--verbose")));

@@ -1,0 +1,211 @@
+#!/usr/bin/env bun
+/**
+ * pre-tool.ts — PreToolUse hook (Write|Edit|NotebookEdit|Bash).
+ *
+ *  R-005  inert when Nemesis is off or the path is out of scope
+ *  R-006  startPhaseGate: no edit before S0 + S1 exist as files
+ *  R-008  computeCandidate → judge BEFORE the write; the transcript is never read
+ *  R-009  denyReason: findings + the rung instruction
+ *  R-010  findings → issues with history;  R-018 rung only by the judge
+ *  R-011  recordS2 on allow (+ PFC-a/d/e marks carried by the verdict)
+ *  R-012  NO_BYPASS: the only skip conditions are the judge token and test_mode (R-051)
+ *  R-013  snapshotTree before every Bash call (post-tool diffs it)
+ *  R-079  a Bash command that NAMES a braked file is refused too — the brake has two doors
+ *         and D-56 watched only this one (D-61)
+ *  R-074  brakeRefusal BEFORE the judge call: a file denied BRAKE_AT times in a row while the
+ *         judge says stuck is refused until the rung is acked (D-56). Advice is enforced, not labelled.
+ *  R-078  markFixing: `fixing` is claimed per finding from the diff own changed lines, never
+ *         file-wide. One clean edit once flipped 334 findings on one file (D-60).
+ *  R-031  NO_ETERNITY_STANDDOWN: eternity markers are never consulted
+ *  R-040  the judge child (token) is allowed instantly
+ *
+ * Fails CLOSED: the shell fallback registered by `enroll` denies if this file crashes.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { readStdinJson, resolveRoot, preAllow, preDeny, toolFilePath, scopeOf, applyEdit, unifiedDiff, changedOldLines, lineIsInChange, logErr } from "./common";
+import { isJudgeChild, buildRequest, requestVerdict } from "../lib/judge";
+import { currentTask, recordFindings, indexTree, P, writeJson, sha256, nowIso, appendRecord, type Issue, refreshTreeIndex, listIssues, writeIssue } from "../lib/state";
+import { readSteps, markStep } from "../lib/steps";
+import { applyAssessment, rungInstruction, brakeRefusal, brakedPaths, noteDenial, clearBrakeOnClean } from "../lib/ladder";
+import type { Finding } from "../lib/state";
+
+/** R-012: there is no flag, env var, or marker that skips judgment in a real project. */
+export const NO_BYPASS = true;
+/** R-031: Nemesis never consults the eternity helper or any resume marker; it does not stand down. */
+export const NO_ETERNITY_STANDDOWN = true;
+
+export function fastExit(reason: string): void { preAllow(reason); }
+
+export function startPhaseGate(root: string): { ok: true; task: string } | { ok: false; reason: string } {
+  const task = currentTask(root);
+  if (!task) return { ok: false, reason: "no open task. Before the first edit run: nemesis task start <id> --title \"<what this task builds>\"  then write the threat sketch (S0) and design review (S1)." };
+  const steps = readSteps(root, task.id).entries;
+  const s0 = steps.S0 as { done?: boolean }, s1 = steps.S1 as { done?: boolean };
+  if (!s0?.done) return { ok: false, reason: `task ${task.id} has no threat sketch (S0). Write it (template: templates/threat-sketch.yaml) and run: nemesis task sketch ${task.id} <file>` };
+  if (!s1?.done) return { ok: false, reason: `task ${task.id} has no design review (S1). Write it (template: templates/design-review.yaml) and run: nemesis task design ${task.id} <file>` };
+  return { ok: true, task: task.id };
+}
+
+export function computeCandidate(root: string, rel: string, toolName: string, ti: Record<string, unknown>): { before: string; after: string; beforeExists: boolean; diff: string } | null {
+  const abs = path.join(root, rel);
+  const beforeExists = fs.existsSync(abs);
+  const before = beforeExists ? fs.readFileSync(abs, "utf8") : "";
+  const after = applyEdit(before, toolName, ti);
+  if (after === null) return null;
+  return { before, after, beforeExists, diff: unifiedDiff(before, after, rel) };
+}
+
+export function denyReason(findings: Finding[], issues: Issue[], root: string): string {
+  const lines: string[] = [`NEMESIS DENIED this edit — ${findings.length} finding(s). Fix and resubmit; the edit is judged again.`];
+  findings.forEach((f, i) => {
+    const issue = issues.find((x) => x.where === f.where && x.checklist === f.checklist);
+    lines.push(`${i + 1}. [${f.severity}/${f.lens}/${f.checklist}] ${f.where}: ${f.what}${f.root_cause ? ` Root cause: ${f.root_cause}` : ""}${f.fix_hint ? ` Fix: ${f.fix_hint}` : ""}${issue ? ` (issue ${issue.id})` : ""}`);
+    if (issue) lines.push(`   → ${rungInstruction(root, issue)}`);
+  });
+  return lines.join("\n");
+}
+
+export function snapshotTree(root: string, cfg: Parameters<typeof indexTree>[1]): void {
+  refreshTreeIndex(root, cfg); // cached: unchanged files (mtime+size) are not re-hashed (R-013)
+}
+
+/**
+ * D-60 / R-078 — A FILE-WIDE MATCH CANNOT SUPPORT A PER-FINDING CLAIM.
+ *
+ * R-017 marked EVERY open finding on a file `fixing` the moment a judged-clean edit landed
+ * anywhere in that file. On 2026-11-09 one clean edit (v-1794258005426-e8bb1abf, 21:00:50) on
+ * `_build/headings.test.ts` flipped 334 findings at once, and 1801 of the 1945 `fix-landed`
+ * events ever recorded sit on that one file. `fixing` is a progress CLAIM — "an edit that
+ * plausibly addresses this has landed, closure proof still owed" — so 334 claims out of one
+ * edit are 333 that nothing supports. It cost a real reporting error: the inflated count was
+ * relayed to Zee as evidence of closes about to arrive.
+ *
+ * The status weakens no gate (isOpen counts `fixing` as open, and nothing else reads it), so
+ * the fix is free to be strict; the honest answer when evidence is missing is to claim nothing.
+ *
+ * WHAT COUNTS AS EVIDENCE. The edit own diff names the OLD lines it touched, and a finding
+ * `where` is a line against the file as it was — so a finding whose line sits inside a changed
+ * hunk has evidence about ITSELF. A finding with no line recorded has only "same file", which
+ * is weaker. Either way a cap applies, sized to how strong the evidence is: an edit whose hunks
+ * sprawl across the file hits many recorded lines without addressing any of them, and past the
+ * cap the truthful report is one file-wide edit rather than N per-finding claims. Measured
+ * against the live case: of those 334, only 70 carried a line at all, so the line test alone
+ * rules out 264 of them before the cap is even consulted.
+ */
+export const LINE_CLAIM_CAP = 8;
+export const FILE_CLAIM_CAP = 2;
+
+export function fixClaims(cands: Issue[], diff: string): { mark: Issue[]; declined: number; basis: string } {
+  const ranges = changedOldLines(diff);
+  const aimed = cands.filter((i) => lineIsInChange(i.where, ranges));
+  if (aimed.length > 0) {
+    if (aimed.length <= LINE_CLAIM_CAP)
+      return { mark: aimed, declined: cands.length - aimed.length, basis: `edit touched the recorded line of ${aimed.length} of ${cands.length} open finding(s)` };
+    return { mark: [], declined: cands.length, basis: `the edit hunks reach the recorded line of ${aimed.length} open findings (cap ${LINE_CLAIM_CAP}); an edit that broad says nothing about any one of them` };
+  }
+  if (cands.length > 0 && cands.length <= FILE_CLAIM_CAP)
+    return { mark: cands, declined: 0, basis: `no line recorded, so the file is the only pointer — allowed because just ${cands.length} finding(s) are open on it` };
+  return { mark: [], declined: cands.length, basis: cands.length ? `${cands.length} open findings on this file and not one has a recorded line inside a changed hunk — nothing singles any of them out` : "no open finding on this file" };
+}
+
+/** Applies fixClaims. When nothing is claimable the file-wide edit is recorded ONCE, not N times. */
+export function markFixing(root: string, rel: string, diff: string, verdictId: string): void {
+  const cands = listIssues(root, true).filter((i) =>
+    (i.status === "open" || i.status === "reverted-open") && (i.files.includes(rel) || i.where.startsWith(rel)));
+  const { mark, declined, basis } = fixClaims(cands, diff);
+  for (const i of mark) {
+    i.status = "fixing";
+    i.history.push({ at: nowIso(), event: "fix-landed", detail: `judged-clean edit ${verdictId} on ${rel}; ${basis}; closure proof pending` });
+    writeIssue(root, i);
+  }
+  if (mark.length === 0 && cands.length > 0)
+    appendRecord(root, "issues", { event: "fix-claim-declined", path: rel, verdict: verdictId, open_on_file: cands.length, declined, basis });
+}
+
+export function recordS2(root: string, task: string, rel: string, candidateSha: string, verdictId: string, summary: string): void {
+  const artifact = JSON.stringify({ path: rel, candidate_sha256: candidateSha, verdict_id: verdictId, at: nowIso(), summary });
+  markStep(root, task, "S2", { inline: artifact, name: `s2-${verdictId}.json` }, "pre-tool hook");
+  // The PFC lenses are judged inside the same verdict; record that they ran.
+  for (const id of ["PFC-a", "PFC-d", "PFC-e"] as const) markStep(root, task, id, { inline: artifact, name: `${id.toLowerCase()}-${verdictId}.json` }, "pre-tool hook (verdict)");
+}
+
+async function main(): Promise<void> {
+  const input = await readStdinJson();
+  if (isJudgeChild()) return preAllow("nemesis_judge_session");
+  const r = resolveRoot(input);
+  if (!r) return fastExit("nemesis inactive");
+  const { root, cfg } = r;
+  const tool = input.tool_name ?? "";
+  const ti = input.tool_input ?? {};
+
+  if (tool === "Bash") {
+    /**
+     * D-61 / R-079 — THE BRAKE HAS TWO DOORS AND D-56 ONLY WATCHED ONE.
+     *
+     * D-56 put the brake in this hook, which judges Write/Edit/NotebookEdit. Code written through
+     * a shell command is judged by post-tool.ts instead (D-16), and that hook never touched the
+     * brake: it neither counted a denial nor consulted one. Measured on website-design-okoa/v2
+     * 2026-11-10T02:21Z: 9 of the last 10 denials came through the shell door, the judge said
+     * `stuck` on 9 of 11 verdicts and asked for rungs 2, 3 and 5 — and `brake.json` had not been
+     * written for 3 hours 22 minutes. The exact loop D-56 exists to stop, running through the door
+     * D-56 did not cover. 61 of today's 212 judged edits came through it, so it is no corner case.
+     *
+     * A shell command cannot be matched to a file BEFORE it runs — that is why post-tool diffs the
+     * tree afterwards. But the ordinary way this writer edits is `cat >> path`, `sed -i '' path`,
+     * a heredoc naming the path: the braked path is right there in the command text. That much is
+     * refusable, and refusing it is the same bar as the git guard next door — it stops the
+     * accident and the loop, not a determined bypass, and it says so rather than implying more.
+     */
+    const cmd = String((input.tool_input ?? {}).command ?? "");
+    for (const rel of brakedPaths(root)) {
+      if (!cmd.includes(rel)) continue;
+      const b = brakeRefusal(root, rel, listIssues(root, true));
+      if (b) return preDeny(`${b}\n\nThis arrived as a SHELL command naming ${rel}. A file does not stop being braked because the edit comes by heredoc or sed (R-079).`);
+    }
+    snapshotTree(root, cfg);
+    return preAllow("nemesis: tree snapshot taken; changes are judged after the command");
+  }
+  if (tool !== "Write" && tool !== "Edit" && tool !== "NotebookEdit") return fastExit("nemesis: tool not judged");
+
+  const fp = toolFilePath(ti);
+  if (!fp) return fastExit("nemesis: no file path");
+  const sc = scopeOf(root, cfg, fp);
+  if (!sc.inScope) return fastExit(`nemesis: out of scope (${sc.rule})`);
+
+  const gate = startPhaseGate(root);
+  if (!gate.ok) return preDeny(`NEMESIS: ${gate.reason}`);
+
+  const cand = computeCandidate(root, sc.rel, tool, ti);
+  if (!cand) return preAllow("nemesis: edit cannot apply (old_string not found) — the tool will fail by itself; nothing lands");
+
+  // D-56 / R-074: BEFORE spending a judge call. A file the judge has denied BRAKE_AT times in a
+  // row while calling the writer stuck is refused until the rung it asked for is acked. The
+  // measured pass rate for such an edit is 4%, and each denial opens 2.0 more findings, so the
+  // cheapest correct answer is not to judge it at all.
+  const brake = brakeRefusal(root, sc.rel, listIssues(root, true));
+  if (brake) return preDeny(brake);
+
+  const req = buildRequest(root, cfg, { rel: sc.rel, diff: cand.diff, candidate: cand.after, before_exists: cand.beforeExists, source: "edit", taskId: gate.task });
+  const reply = await requestVerdict(root, cfg, req);
+  const v = reply.verdict;
+  if (v.decision === "deny") {
+    const issues = recordFindings(root, gate.task, v.findings, { verdict_id: req.id, diff_sha256: sha256(cand.diff), files: [sc.rel], outcome: `denied: ${v.findings.map((f) => f.checklist).join(",") || v.reason?.slice(0, 80) || "no findings"}` });
+    for (const i of issues) applyAssessment(root, i, v.history_assessment, req.id);
+    noteDenial(root, sc.rel, v.history_assessment, issues); // D-56: counts only while the judge says stuck
+    const reason = v.findings.length ? denyReason(v.findings, issues, root) : `NEMESIS DENIED: ${v.reason ?? "verdict unreadable"}`;
+    return preDeny(reason);
+  }
+  recordS2(root, gate.task, sc.rel, sha256(cand.after), req.id, `allow via ${reply.layer} in ${reply.elapsed_ms}ms`);
+  clearBrakeOnClean(root, sc.rel); // D-56: a clean edit is the one unfakeable proof of movement — both budgets return
+  // R-017 + R-078: a judged-clean edit landed on a file with an open issue → that issue is
+  // `fixing` (its proof — repro test, clean scans, independent review — is still owed; R-025),
+  // but only when the edit carries evidence about THAT finding. See fixClaims.
+  markFixing(root, sc.rel, cand.diff, req.id);
+  return preAllow(`nemesis: judged clean (${reply.layer}, ${reply.elapsed_ms}ms)`);
+}
+
+if (import.meta.main) {
+  if (process.argv.includes("--health")) { console.log("pre-tool hook loads; libs resolve"); process.exit(0); }
+  main().catch((e) => { logErr("pre-tool", e); preDeny(`NEMESIS: hook error (${e instanceof Error ? e.message : String(e)}) — Nemesis allows nothing it has not judged; see /tmp/nemesis-hook.err`); });
+}

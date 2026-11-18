@@ -1,0 +1,189 @@
+/**
+ * report.ts — the plain-language ledger report for Zee (R-042, R-024, D-28, D-08).
+ * No code, no diffs. Markdown plus a local standalone HTML page (Google Fonts only).
+ * Never a claude.ai artifact.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { P, listIssues, listTasks, type Issue, nowIso } from "./state";
+import { listScans } from "./scan";
+import { rung } from "./ladder";
+import { laneOf, admitToRung8, admission, ladderExhausted, repairInstruction } from "./lane";
+import { severityCensus, rankIssues } from "./digest";
+
+function plain(s: string | undefined): string { return (s ?? "").replace(/`/g, "'").replace(/```[\s\S]*?```/g, "[code omitted]"); }
+
+function issueParagraph(i: Issue): string {
+  const lines: string[] = [];
+  lines.push(`### ${i.id} — ${i.severity} ${i.lens === "PSC" ? "security" : "functionality"} issue (${i.status})`);
+  lines.push(`What was found: ${plain(i.what)} (rule ${i.checklist}, at ${plain(i.where)}).`);
+  if (i.root_cause) lines.push(`The real cause: ${plain(i.root_cause)}.`);
+  const tries = i.attempts.length;
+  lines.push(`Attempts so far: ${tries}. Current rung: ${i.rung} (${rung(i.rung).name}).`);
+  if (i.repro) lines.push(`How we know when it is fixed: a test named "${i.repro.name}" reproduces the bug and must pass.`);
+  if (i.review) lines.push(`Independent review: ${i.review.confirmed_fixed ? "confirmed the fix" : "did NOT confirm the fix"} (${i.review.by}).`);
+  if (i.second_opinion) lines.push(`Second opinion from another model: ${i.second_opinion.status === "received" ? `received from ${i.second_opinion.provider}` : "not available (no provider configured)"}.`);
+  if (i.revert) lines.push(`Reverted on ${i.revert.at.slice(0, 10)} to the last good state, files: ${i.revert.files.join(", ")}. The issue stayed open.`);
+  if (i.decision) lines.push(`Product decision recorded: ${i.decision.choice} by ${i.decision.owner}${i.decision.note ? ` — ${plain(i.decision.note)}` : ""}.`);
+  if (i.status === "closed") lines.push(`Closed on ${i.closed_at?.slice(0, 10)} after the reproduction test passed, the whole suite passed, two clean scans, and an independent review.`);
+  return lines.join("\n");
+}
+
+export function buildReport(root: string, taskId?: string): string {
+  const issues = listIssues(root).filter((i) => !taskId || i.task === taskId);
+  const tasks = listTasks(root).filter((t) => !taskId || t.id === taskId);
+  const scans = listScans(root, taskId);
+  const last = scans[scans.length - 1];
+  const open = issues.filter((i) => i.status !== "closed" && i.status !== "decided");
+  const out: string[] = [];
+  out.push(`# Nemesis report — ${nowIso().slice(0, 16).replace("T", " ")}`);
+  out.push("");
+  out.push(`## In one paragraph`);
+  out.push(`${tasks.length} task(s): ${tasks.filter((t) => t.status === "closed").length} closed, ${tasks.filter((t) => t.status === "open").length} open. ${issues.length} issue(s) found in total: ${issues.filter((i) => i.status === "closed").length} fixed and proven, ${issues.filter((i) => i.status === "decided").length} settled by a product decision, ${open.length} still open. Last scan: ${last ? (last.clean ? "clean" : "not clean") + " at " + last.at.slice(0, 16).replace("T", " ") : "none yet"}.`);
+  out.push("");
+  if (open.length) {
+    out.push(`## Still open (${open.length})`);
+    for (const i of open) out.push(issueParagraph(i), "");
+  }
+  const fixed = issues.filter((i) => i.status === "closed");
+  if (fixed.length) {
+    out.push(`## Fixed and proven (${fixed.length})`);
+    for (const i of fixed) out.push(issueParagraph(i), "");
+  }
+  const decided = issues.filter((i) => i.status === "decided");
+  if (decided.length) {
+    out.push(`## Settled by a product decision (${decided.length})`);
+    for (const i of decided) out.push(issueParagraph(i), "");
+  }
+  out.push(`## Tasks`);
+  for (const t of tasks) out.push(`- ${t.id} — ${t.title}: ${t.status}${t.closed_at ? ` (closed ${t.closed_at.slice(0, 10)})` : ""}`);
+  if (!tasks.length) out.push("- (none)");
+  return out.join("\n") + "\n";
+}
+
+/**
+ * Rung 8: the product report (R-024 as amended 2026-11-02, D-45).
+ *
+ * It used to print one `##` section per open finding. On website-design-okoa/v2 that was
+ * 356 sections across 16 regenerated reports totalling 8.9 MB, and Zee's honest reaction was
+ * "I don't even know what i need to decide." A list of 356 rows is not a decision; it is a
+ * refusal to decide, handed over.
+ *
+ * So the report is now GROUPED, and it is SPLIT by owner (D-42):
+ *   - what needs YOUR decision     — only findings that pass `admitToRung8`, grouped by the
+ *                                    feature you could drop, each group ONE answerable question
+ *   - what the machine still owes   — COUNTED, never enumerated; the machine reads this, not Zee
+ *
+ * A finding that cannot pass admission never appears as a question, because asking it would
+ * be asking Zee to decide something he has not been given the means to decide (D-43, D-44).
+ */
+const GROUP_SAMPLE = 5;
+
+interface Group { feature: string; requirements: string[]; issues: Issue[] }
+
+function groupByFeature(root: string, admitted: Issue[]): Group[] {
+  const byFeature = new Map<string, Group>();
+  for (const i of admitted) {
+    const a = admission(root, i);
+    const feature = a.feature ?? "(unnamed feature)";
+    const g = byFeature.get(feature) ?? { feature, requirements: [], issues: [] };
+    for (const r of a.requirements ?? []) if (!g.requirements.includes(r)) g.requirements.push(r);
+    g.issues.push(i);
+    byFeature.set(feature, g);
+  }
+  // Worst severity first (rankIssues orders within a group); then the biggest group first,
+  // so the question that settles the most findings is the first thing read.
+  return [...byFeature.values()]
+    .map((g) => ({ ...g, issues: rankIssues(g.issues) }))
+    .sort((a, b) => b.issues.length - a.issues.length);
+}
+
+export function buildProductReport(root: string): string {
+  const open = listIssues(root, true);
+  const admitted: Issue[] = [];
+  const machine: Issue[] = [];
+  for (const i of open) (admitToRung8(root, i).ok ? admitted : machine).push(i);
+
+  const out: string[] = [];
+  out.push(`# Decisions needed — ${nowIso().slice(0, 10)}`);
+  out.push("");
+  out.push(`${open.length} finding(s) are open. ${admitted.length} need a decision from you. ${machine.length} are the machine's own work and are NOT yours — they are counted at the end of this page, not listed, because reading them would not help you decide anything.`);
+  out.push("");
+
+  if (!open.length) { out.push("Nothing is open. No decision is needed."); return out.join("\n") + "\n"; }
+
+  if (!admitted.length) {
+    out.push(`## Nothing is waiting on you`);
+    out.push(`Every open finding still has machine work owed on it, so none of them is a product question yet. Nothing here needs an answer from you today.`);
+  } else {
+    out.push(`## What needs your decision (${admitted.length} finding(s) in ${groupByFeature(root, admitted).length} group(s))`);
+    out.push(`Each group below is ONE question. Answering it settles every finding in the group — you do not answer them one at a time.`);
+    out.push("");
+    for (const g of groupByFeature(root, admitted)) {
+      out.push(`### ${g.feature} — ${g.issues.length} finding(s) (${severityCensus(g.issues)})`);
+      out.push(`The question: the rule(s) below and this feature cannot both hold as written. Which gives way?`);
+      out.push(`Requirement(s) this feature is built to meet: ${g.requirements.join(", ")}.`);
+      const kinds = [...new Set(g.issues.map((i) => `${i.lens === "PSC" ? "security rule" : "functionality check"} ${i.checklist}`))];
+      out.push(`What keeps failing: ${kinds.slice(0, 4).join("; ")}${kinds.length > 4 ? `; and ${kinds.length - 4} more kind(s)` : ""}.`);
+      for (const i of g.issues.slice(0, GROUP_SAMPLE)) out.push(`- ${i.id} (${i.severity}): ${plain(i.what)}`);
+      if (g.issues.length > GROUP_SAMPLE) out.push(`- … and ${g.issues.length - GROUP_SAMPLE} more of the same kind in this group.`);
+      out.push(`Your three choices:`);
+      out.push(`1. Drop ${g.feature}.`);
+      out.push(`2. Change ${g.requirements.join(" / ")} so the rule and the feature can both hold (say how in one sentence).`);
+      out.push(`3. Accept the risk, with an owner and a date to revisit.`);
+      out.push(`To record it for the whole group: \`nemesis issue decide ${g.issues.map((i) => i.id).join(",")} --choice <drop|change|accept> --owner <who>\``);
+      out.push("");
+    }
+  }
+
+  if (machine.length) {
+    out.push(`## What the machine still owes (${machine.length} finding(s)) — not your decision`);
+    out.push(`These are counted, not listed, on purpose (D-45). Nothing here is waiting on you.`);
+    const buckets = new Map<string, number>();
+    for (const i of machine) {
+      const key = laneOf(i) === "record"
+        ? "Nemesis's own records need repairing (D-42)"
+        : (() => {
+            const l = ladderExhausted(i);
+            if (!l.ok) return `automatic fix rung(s) ${l.owed.join(", ")} not tried yet (D-44)`;
+            const miss = admission(root, i).missing;
+            return miss[0] ? miss[0].replace(/ — run:[\s\S]*$/, "").replace(/ — nemesis[\s\S]*$/, "") : "admission incomplete";
+          })();
+      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+    for (const [why, n] of [...buckets.entries()].sort((a, b) => b[1] - a[1])) out.push(`- ${n} finding(s): ${why}`);
+    const first = machine[0]!;
+    out.push("");
+    out.push(`Where the machine starts: ${first.id} — ${laneOf(first) === "record" ? plain(repairInstruction(root, first)) : plain(admitToRung8(root, first).why.join("; "))}`);
+  }
+  return out.join("\n") + "\n";
+}
+
+/** Minimal markdown → HTML (headings, paragraphs, lists, inline code). Local page, Google Fonts only. */
+export function renderHtml(md: string, title: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const body = md.split("\n").map((l) => {
+    if (/^### /.test(l)) return `<h3>${esc(l.slice(4))}</h3>`;
+    if (/^## /.test(l)) return `<h2>${esc(l.slice(3))}</h2>`;
+    if (/^# /.test(l)) return `<h1>${esc(l.slice(2))}</h1>`;
+    if (/^- /.test(l)) return `<li>${esc(l.slice(2))}</li>`;
+    if (/^\d+\. /.test(l)) return `<li class="n">${esc(l.replace(/^\d+\. /, ""))}</li>`;
+    if (!l.trim()) return "";
+    return `<p>${esc(l).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>`;
+  }).join("\n").replace(/(<li>[\s\S]*?<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`).replace(/(<li class="n">[\s\S]*?<\/li>\n?)+/g, (m) => `<ol>${m}</ol>`);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#f6f7f4;--ink:#1d2321;--muted:#5d6a64;--line:#d5dbd6;--accent:#2f6b55}@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14181a;--ink:#e8ece9;--muted:#9aa6a0;--line:#2b3335;--accent:#7fc2a3}}:root[data-theme=dark]{--bg:#14181a;--ink:#e8ece9;--muted:#9aa6a0;--line:#2b3335;--accent:#7fc2a3}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;line-height:1.55}main{max-width:760px;margin:0 auto;padding:32px 16px}h1,h2,h3{font-family:Newsreader,Georgia,serif;font-weight:600;line-height:1.2}h1{font-size:2rem;margin:.2em 0}h2{font-size:1.4rem;margin:1.6em 0 .4em;border-bottom:1px solid var(--line);padding-bottom:.2em}h3{font-size:1.1rem;margin:1.2em 0 .3em;color:var(--accent)}p{margin:.4em 0}code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:color-mix(in srgb,var(--line) 50%,transparent);padding:1px 4px;border-radius:3px}ul,ol{padding-left:1.3em}li{margin:.25em 0}</style></head>
+<body><main>${body}</main></body></html>`;
+}
+
+export function writeReport(root: string, kind: "ledger" | "product", taskId?: string): { md: string; html: string } {
+  fs.mkdirSync(P.reports(root), { recursive: true });
+  const md = kind === "product" ? buildProductReport(root) : buildReport(root, taskId);
+  const stamp = nowIso().slice(0, 19).replace(/[:T]/g, "-");
+  const base = path.join(P.reports(root), `${stamp}-${kind}${taskId ? "-" + taskId : ""}`);
+  fs.writeFileSync(`${base}.md`, md);
+  fs.writeFileSync(`${base}.html`, renderHtml(md, kind === "product" ? "Nemesis decisions" : "Nemesis report"));
+  return { md: `${base}.md`, html: `${base}.html` };
+}

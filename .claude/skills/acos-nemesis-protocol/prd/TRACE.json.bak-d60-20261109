@@ -1,0 +1,2275 @@
+{
+  "schema": "acos-trace/1",
+  "skill": "acos-nemesis-protocol",
+  "root": "..",
+  "decisions_file": "prd/DECISIONS.md",
+  "prd_file": "prd/PRD.md",
+  "holdout_manifest": "holdout/manifest.json",
+  "requirements": [
+    {
+      "id": "R-001",
+      "title": "Enroll a project and install the hooks",
+      "decisions": [
+        "D-02",
+        "D-18",
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdEnroll"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "installHooks"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "enroll installs hooks once"
+        },
+        {
+          "kind": "holdout",
+          "case": "enroll-installs-hooks-once"
+        }
+      ]
+    },
+    {
+      "id": "R-002",
+      "title": "Scope: what is judged and what is never touched",
+      "decisions": [
+        "D-17",
+        "D-36"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scope.ts",
+          "symbol": "isInScope"
+        },
+        {
+          "file": "scripts/lib/scope.ts",
+          "symbol": "DEFAULT_EXCLUDES"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "source_globs"
+        },
+        {
+          "file": "scripts/lib/scope.ts",
+          "symbol": "canonical"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "default exclusions resolve as excluded"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "a path through a symlinked parent still resolves inside the project"
+        }
+      ]
+    },
+    {
+      "id": "R-003",
+      "title": "Rulebook has one source",
+      "decisions": [
+        "D-30",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/build-rulebook.ts",
+          "symbol": "buildRulebook"
+        },
+        {
+          "file": "rulebook/rulebook.json",
+          "symbol": "source_sha256"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "rulebook matches source"
+        },
+        {
+          "kind": "holdout",
+          "case": "rulebook-matches-source"
+        }
+      ]
+    },
+    {
+      "id": "R-004",
+      "title": "Activate, deactivate, and run the keep-going loop",
+      "decisions": [
+        "D-05",
+        "D-19",
+        "D-20",
+        "D-21"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdOn"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdOff"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "looksVague"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "on/off toggles active state and refuses a vague goal"
+        }
+      ]
+    },
+    {
+      "id": "R-005",
+      "title": "Hooks are inert when Nemesis is off or the path is out of scope",
+      "decisions": [
+        "D-01",
+        "D-02"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "fastExit"
+        },
+        {
+          "file": "scripts/hooks/post-tool.ts",
+          "symbol": "fastExit"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "hook inert when off"
+        },
+        {
+          "kind": "holdout",
+          "case": "hooks-inert-when-off"
+        }
+      ]
+    },
+    {
+      "id": "R-006",
+      "title": "No edit before the threat sketch and the design review",
+      "decisions": [
+        "D-21",
+        "D-24",
+        "D-40"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskSketch"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskDesign"
+        },
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "startPhaseGate"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "deny without S0/S1 names the next command"
+        },
+        {
+          "kind": "holdout",
+          "case": "edit-without-sketch-refused"
+        }
+      ]
+    },
+    {
+      "id": "R-007",
+      "title": "The contract travels with every verdict",
+      "decisions": [
+        "D-21",
+        "D-23",
+        "D-07"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "buildRequest"
+        },
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "RequestContract"
+        },
+        {
+          "file": "scripts/nemesis-daemon.ts",
+          "symbol": "logContract"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "judge request carries the contract and no transcript"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "daemon serves a request over its socket and status shows it"
+        }
+      ]
+    },
+    {
+      "id": "R-008",
+      "title": "Every in-scope edit is judged before it lands",
+      "decisions": [
+        "D-03",
+        "D-13",
+        "D-15",
+        "D-01"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "computeCandidate"
+        },
+        {
+          "file": "scripts/nemesis-daemon.ts",
+          "symbol": "allowedTools"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "judge request carries the contract and no transcript"
+        },
+        {
+          "kind": "holdout",
+          "case": "rule-breaking-edit-refused-until-fixed"
+        }
+      ]
+    },
+    {
+      "id": "R-009",
+      "title": "Verdict shape and what the writer is told",
+      "decisions": [
+        "D-04",
+        "D-09",
+        "D-07"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/verdict.ts",
+          "symbol": "parseVerdict"
+        },
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "denyReason"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "stub deny opens an issue and the reason carries finding and rung"
+        },
+        {
+          "kind": "holdout",
+          "case": "insecure-line-deny-carries-finding-and-rung"
+        }
+      ]
+    },
+    {
+      "id": "R-010",
+      "title": "Findings become issues with history",
+      "decisions": [
+        "D-10",
+        "D-11",
+        "D-37"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "recordFindings"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "same finding twice yields one issue with two attempts"
+        }
+      ]
+    },
+    {
+      "id": "R-011",
+      "title": "Allowed edits leave an S2 record",
+      "decisions": [
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "recordS2"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "allowed edit leaves an S2 record"
+        }
+      ]
+    },
+    {
+      "id": "R-012",
+      "title": "Fixes are judged like any edit; there is no bypass input",
+      "decisions": [
+        "D-35"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "NO_BYPASS"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "no bypass flag exists"
+        }
+      ]
+    },
+    {
+      "id": "R-013",
+      "title": "Code written through Bash is caught",
+      "decisions": [
+        "D-16",
+        "D-03"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "snapshotTree"
+        },
+        {
+          "file": "scripts/hooks/post-tool.ts",
+          "symbol": "diffTree"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "refreshTreeIndex"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "bash-written file is detected and judged"
+        },
+        {
+          "kind": "holdout",
+          "case": "bash-heredoc-write-caught"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "tree index is cached and refreshed incrementally"
+        }
+      ]
+    },
+    {
+      "id": "R-014",
+      "title": "The S3 mechanical scan after every change",
+      "decisions": [
+        "D-07",
+        "D-13",
+        "D-24",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "runScan"
+        },
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "isClean"
+        },
+        {
+          "file": "scripts/hooks/post-tool.ts",
+          "symbol": "runS3"
+        },
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "ERROR_LINE"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "skipped is not clean"
+        },
+        {
+          "kind": "holdout",
+          "case": "skipped-scan-is-not-clean"
+        }
+      ]
+    },
+    {
+      "id": "R-015",
+      "title": "Toolchain detection and additive configuration",
+      "decisions": [
+        "D-13",
+        "D-02"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "detectToolchain"
+        },
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "gitleaks"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "toolchain detection and additive extra checks"
+        }
+      ]
+    },
+    {
+      "id": "R-016",
+      "title": "The PFC lens inside every verdict",
+      "decisions": [
+        "D-07",
+        "D-23"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "PFC_LENS"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "issuePrefixFor"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "PFC-d finding opens a FUN issue"
+        },
+        {
+          "kind": "holdout",
+          "case": "drift-finding-opens-fun-issue"
+        }
+      ]
+    },
+    {
+      "id": "R-017",
+      "title": "The issue ledger commands",
+      "decisions": [
+        "D-10",
+        "D-37"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssue"
+        },
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "fix-landed"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "issue list shows open issues with severity and rung"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "a judged-clean edit on an issue's file marks it fixing until proven"
+        }
+      ]
+    },
+    {
+      "id": "R-018",
+      "title": "The escalation ladder, driven by the judge, not a counter",
+      "decisions": [
+        "D-04",
+        "D-09",
+        "D-08"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "applyAssessment"
+        },
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "RUNGS"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdLadder"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "ladder rung advances only by judge assessment"
+        },
+        {
+          "kind": "holdout",
+          "case": "ladder-rung-only-by-judge"
+        }
+      ]
+    },
+    {
+      "id": "R-019",
+      "title": "Rung 3: a fresh-context fixer",
+      "decisions": [
+        "D-12",
+        "D-09"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "Do not pass the conversation"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "rung 3 instruction names the issue file and forbids passing the conversation"
+        }
+      ]
+    },
+    {
+      "id": "R-020",
+      "title": "Rung 4: a different model family",
+      "decisions": [
+        "D-09"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdSecondOpinion"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "second opinion without a provider records unavailable and moves to rung 5"
+        }
+      ]
+    },
+    {
+      "id": "R-021",
+      "title": "Rung 5: redo the design",
+      "decisions": [
+        "D-09"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskRedesign"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "redesign keeps S1 v1 and resets S2"
+        }
+      ]
+    },
+    {
+      "id": "R-022",
+      "title": "Rung 6: revert to green, keep the issue open",
+      "decisions": [
+        "D-09",
+        "D-39"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "writeGreenSnapshot"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdRevert"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdScan"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "revert restores green and keeps the issue open"
+        },
+        {
+          "kind": "holdout",
+          "case": "revert-restores-green-keeps-open"
+        }
+      ]
+    },
+    {
+      "id": "R-023",
+      "title": "Rung 7: every open issue is retried at task end",
+      "decisions": [
+        "D-09",
+        "D-10"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "retryOpenIssuesAtTaskEnd"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "task end with open issue sets rung 3 and stays open"
+        }
+      ]
+    },
+    {
+      "id": "R-024",
+      "title": "Rung 8: the goal is not complete; Zee gets a GROUPED product report",
+      "decisions": [
+        "D-08",
+        "D-09",
+        "D-28",
+        "D-42",
+        "D-43",
+        "D-44",
+        "D-45"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "buildProductReport"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueDecide"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdReleaseGate"
+        },
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "groupByFeature"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "admitToRung8"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "product report has no code and decide records the choice"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-024 the product report groups decisions and only counts machine work"
+        }
+      ]
+    },
+    {
+      "id": "R-025",
+      "title": "An issue closes only when it is proven fixed",
+      "decisions": [
+        "D-11"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "closureCheck"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueClose"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "close refused without repro test"
+        },
+        {
+          "kind": "holdout",
+          "case": "close-refused-without-repro-test"
+        }
+      ]
+    },
+    {
+      "id": "R-026",
+      "title": "The watchdog: work with no record behind it is a defect",
+      "decisions": [
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "watchdog"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "watchdog catches an unrecorded edit"
+        },
+        {
+          "kind": "holdout",
+          "case": "unrecorded-edit-is-defect"
+        }
+      ]
+    },
+    {
+      "id": "R-027",
+      "title": "Nothing stops while the ledger is open; goal-complete is refused by the hook",
+      "decisions": [
+        "D-10",
+        "D-24",
+        "D-22"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "buildDirective"
+        },
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "AUTOPILOT_GOAL_COMPLETE"
+        },
+        {
+          "file": "scripts/lib/digest.ts",
+          "symbol": "issueDigest"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "goal complete blocked while ledger open"
+        },
+        {
+          "kind": "holdout",
+          "case": "goal-complete-blocked-while-open"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "green path: task closes, release gate opens and goal-complete is accepted"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "stop directive stays inside its budget with a large ledger"
+        }
+      ]
+    },
+    {
+      "id": "R-028",
+      "title": "The open ledger is re-injected every prompt",
+      "decisions": [
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/prompt.ts",
+          "symbol": "additionalContext"
+        },
+        {
+          "file": "scripts/lib/digest.ts",
+          "symbol": "rankIssues"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "prompt hook re-injects open issues and rung"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "ledger digest ranks worst-first and counts every severity it hides"
+        }
+      ]
+    },
+    {
+      "id": "R-029",
+      "title": "The step ledger is written only by the CLI, with artifact hashes",
+      "decisions": [
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/steps.ts",
+          "symbol": "STEP_IDS"
+        },
+        {
+          "file": "scripts/lib/steps.ts",
+          "symbol": "markStep"
+        },
+        {
+          "file": "scripts/lib/steps.ts",
+          "symbol": "tampered"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "step ledger lists 13 steps and detects tampering"
+        }
+      ]
+    },
+    {
+      "id": "R-030",
+      "title": "Sub-agents are covered",
+      "decisions": [
+        "D-24",
+        "D-02"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "transcript_path"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "projectRootFrom"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "sub-agent transcript records against the project ledger"
+        }
+      ]
+    },
+    {
+      "id": "R-031",
+      "title": "Nemesis does not stand down for the eternity protocol",
+      "decisions": [
+        "D-17"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scope.ts",
+          "symbol": "acos-token-monitor"
+        },
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "NO_ETERNITY_STANDDOWN"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "eternity marker does not stand nemesis down"
+        },
+        {
+          "kind": "holdout",
+          "case": "eternity-marker-still-judged"
+        }
+      ]
+    },
+    {
+      "id": "R-032",
+      "title": "Task end: S4 twice clean, S6 independent review, S7 holdout, S5 record",
+      "decisions": [
+        "D-22",
+        "D-11",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskEnd"
+        },
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildReviewCharter"
+        },
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "askSocketSync"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "task end runs S6 and refuses while not clean twice"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "green path: task closes, release gate opens and goal-complete is accepted"
+        }
+      ]
+    },
+    {
+      "id": "R-033",
+      "title": "Acceptance holdouts authored by the judge, not the writer",
+      "decisions": [
+        "D-23",
+        "D-26"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "authorTaskHoldout"
+        },
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildHoldoutAuthorCharter"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskDesign"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "task design seals a holdout manifest from the stub author"
+        }
+      ]
+    },
+    {
+      "id": "R-034",
+      "title": "Goal end: the S8 release gate",
+      "decisions": [
+        "D-22",
+        "D-29",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdReleaseGate"
+        },
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildReleaseCharter"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "SECRET_WORDS"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "low issue blocks the release gate"
+        },
+        {
+          "kind": "holdout",
+          "case": "low-blocks-release-gate"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "green path: task closes, release gate opens and goal-complete is accepted"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "release gate demands rotation for any secret finding at any severity"
+        }
+      ]
+    },
+    {
+      "id": "R-035",
+      "title": "The Nemesis daemon",
+      "decisions": [
+        "D-19",
+        "D-33",
+        "D-15",
+        "D-13"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis-daemon.ts",
+          "symbol": "serve"
+        },
+        {
+          "file": "scripts/nemesis-daemon.ts",
+          "symbol": "NO TIMEOUT"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "daemon spawn argv restricts tools and has no skip-permissions"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "daemon serves a request over its socket and status shows it"
+        }
+      ]
+    },
+    {
+      "id": "R-036",
+      "title": "The charter: deny by default against the rulebook",
+      "decisions": [
+        "D-06",
+        "D-07",
+        "D-04",
+        "D-13"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildCharter"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "charter carries the twelve questions, severity table, checklists and schema"
+        }
+      ]
+    },
+    {
+      "id": "R-037",
+      "title": "Verdict recovery: find the reason, get a readable answer, then decide",
+      "decisions": [
+        "D-14"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/verdict.ts",
+          "symbol": "classifyFailure"
+        },
+        {
+          "file": "scripts/lib/verdict.ts",
+          "symbol": "recover"
+        },
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "retryWaits"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "every unreadable verdict class ends in recovery or a named deny, never allow"
+        },
+        {
+          "kind": "holdout",
+          "case": "unreadable-verdict-never-allows"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "retry waits are config-bound"
+        }
+      ]
+    },
+    {
+      "id": "R-038",
+      "title": "The same recovery in the Oracle daemon and direct layer",
+      "decisions": [
+        "D-14",
+        "D-31"
+      ],
+      "implementation": [
+        {
+          "file": "../../scripts/oracle/oracle-daemon.ts",
+          "symbol": "classifyFailure"
+        },
+        {
+          "file": "../../scripts/_oracle_judge.py",
+          "symbol": "classify_failure"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "oracle daemon has no fallback allow path"
+        }
+      ]
+    },
+    {
+      "id": "R-039",
+      "title": "Nemesis is never unreachable without saying why",
+      "decisions": [
+        "D-06",
+        "D-19"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "requestVerdict"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "unreachable judge denies naming what broke"
+        }
+      ]
+    },
+    {
+      "id": "R-040",
+      "title": "The judge child is exempt from Nemesis hooks and needs no Oracle verdict",
+      "decisions": [
+        "D-19"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "isJudgeChild"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "judge token exempts the child and a wrong token does not"
+        },
+        {
+          "kind": "holdout",
+          "case": "judge-token-exempts-child"
+        }
+      ]
+    },
+    {
+      "id": "R-041",
+      "title": "Everything on record, append-only",
+      "decisions": [
+        "D-37",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "appendRecord"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "records are append-only"
+        }
+      ]
+    },
+    {
+      "id": "R-042",
+      "title": "The plain-language report for Zee",
+      "decisions": [
+        "D-28",
+        "D-08"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "buildReport"
+        },
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "renderHtml"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "report lists every issue and contains no code"
+        }
+      ]
+    },
+    {
+      "id": "R-043",
+      "title": "Zero open at every severity; Low is not deferrable",
+      "decisions": [
+        "D-29",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "SEVERITIES"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "low issue blocks the release gate"
+        }
+      ]
+    },
+    {
+      "id": "R-044",
+      "title": "Restricted ACOS files stay restricted",
+      "decisions": [
+        "D-36"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scope.ts",
+          "symbol": "RESTRICTED"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "default exclusions resolve as excluded"
+        }
+      ]
+    },
+    {
+      "id": "R-045",
+      "title": "TypeScript under bun; Python only where the existing chain demands it",
+      "decisions": [
+        "D-31"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "#!/usr/bin/env bun"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "intent",
+          "file": "scripts/intent.sh",
+          "name": "no python under nemesis scripts"
+        }
+      ]
+    },
+    {
+      "id": "R-046",
+      "title": "A thin SKILL.md that routes to the CLI",
+      "decisions": [
+        "D-24"
+      ],
+      "implementation": [
+        {
+          "file": "SKILL.md",
+          "symbol": "## Enforcement"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "intent",
+          "file": "scripts/intent.sh",
+          "name": "skill md names enforcement"
+        }
+      ]
+    },
+    {
+      "id": "R-047",
+      "title": "Nemesis is holdout-tested by a pack it never saw",
+      "decisions": [
+        "D-26"
+      ],
+      "implementation": [
+        {
+          "file": "holdout/manifest.json",
+          "symbol": "deciding_case"
+        },
+        {
+          "file": ".gitignore",
+          "symbol": "holdout/pack"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "holdout",
+          "case": "rule-breaking-edit-refused-until-fixed"
+        }
+      ]
+    },
+    {
+      "id": "R-048",
+      "title": "This PRD is traced and independently audited",
+      "decisions": [
+        "D-25"
+      ],
+      "implementation": [
+        {
+          "file": "prd/TRACE.json",
+          "symbol": "acos-trace/1"
+        },
+        {
+          "file": "prd/AUDIT.md",
+          "symbol": "Audit verdict: zero findings"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "intent",
+          "file": "scripts/intent.sh",
+          "name": "trace gate clean"
+        }
+      ]
+    },
+    {
+      "id": "R-049",
+      "title": "The skill-maker was updated",
+      "decisions": [
+        "D-27"
+      ],
+      "implementation": [
+        {
+          "file": "../acos-skill-maker/SKILL.md",
+          "symbol": "Phase 3.6: Anti-Skip Architecture Review"
+        },
+        {
+          "file": "../acos-skill-maker/scripts/trace.ts",
+          "symbol": "export function check"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "../acos-skill-maker/scripts/trace.ts",
+          "name": "selftest: all gate checks hold"
+        }
+      ]
+    },
+    {
+      "id": "R-050",
+      "title": "Built in the worktree sandbox, with intent tests",
+      "decisions": [
+        "D-32"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/intent.sh",
+          "symbol": "WORKTREE_INTENT"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "intent",
+          "file": "scripts/intent.sh",
+          "name": "trace gate clean"
+        }
+      ]
+    },
+    {
+      "id": "R-051",
+      "title": "Test mode cannot become a bypass",
+      "decisions": [
+        "D-38"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/judge.ts",
+          "symbol": "stubAllowed"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "stub judge ignored without test_mode"
+        },
+        {
+          "kind": "holdout",
+          "case": "test-mode-guard"
+        }
+      ]
+    },
+    {
+      "id": "R-052",
+      "title": "Untouched checklists need an n/a + why",
+      "decisions": [
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "checklistGaps"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "task end refuses while a checklist is neither ticked nor n/a"
+        }
+      ]
+    },
+    {
+      "id": "R-053",
+      "title": "Self-tests for every guarantee",
+      "decisions": [
+        "D-24",
+        "D-06"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "symbol": "runSelftest"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "selftest: all guarantees hold"
+        }
+      ]
+    },
+    {
+      "id": "R-054",
+      "title": "A stalled writer ends the loop with the product report, never with completion",
+      "decisions": [
+        "D-41",
+        "D-08",
+        "D-28",
+        "D-46"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "stalledAfter"
+        },
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "buildProductReport"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "stalled writer gets the product report and the loop ends without completion"
+        }
+      ]
+    },
+    {
+      "id": "R-055",
+      "title": "Lanes: a finding about Nemesis's own records never reaches Zee",
+      "decisions": [
+        "D-42",
+        "D-08"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "laneOf"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "repairInstruction"
+        },
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "rungInstruction"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueDecide"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "pointsAtNemesisOwnRecord"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-055 a finding about nemesis's own records is machine work, not a decision"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-055/R-057 the three ways the live ledger walked through this gate are all shut"
+        }
+      ]
+    },
+    {
+      "id": "R-056",
+      "title": "Admission: rung 8 requires an answerable question",
+      "decisions": [
+        "D-43",
+        "D-09"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "admission"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskPrdRefs"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueDecide"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-056 rung 8 is refused when zee has no feature or requirement to decide about"
+        }
+      ]
+    },
+    {
+      "id": "R-057",
+      "title": "Admission: rung 8 requires an exhausted ladder",
+      "decisions": [
+        "D-44",
+        "D-08",
+        "D-04"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "ladderExhausted"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "rungRuledNA"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdLadderNA"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdReleaseGate"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "REQUIRED_RUNGS"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "rungAttempted"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-057 rung 8 is refused until the machine has spent its own rungs"
+        },
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-055/R-057 the three ways the live ledger walked through this gate are all shut"
+        }
+      ]
+    },
+    {
+      "id": "R-058",
+      "title": "The Stop hook releases the turn before Claude Code overrides it",
+      "decisions": [
+        "D-46",
+        "D-41",
+        "D-10"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "main"
+        },
+        {
+          "file": "scripts/lib/digest.ts",
+          "symbol": "DEFAULT_MAX_IDENTICAL_BLOCKS"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "IdleState"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-058 the stop hook releases the turn before claude code overrides it"
+        }
+      ]
+    },
+    {
+      "id": "R-059",
+      "title": "A holdout pack must be able to grade itself",
+      "decisions": [
+        "D-47",
+        "D-33",
+        "D-29"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "packShapeProblems"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "authorTaskHoldout"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskEnd"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-059 a holdout pack that cannot grade itself is refused before it is sealed"
+        }
+      ]
+    },
+    {
+      "id": "R-060",
+      "title": "A reproduction test must be proved to have run",
+      "decisions": [
+        "D-48",
+        "D-25",
+        "D-29"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "runScan"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "closureCheck"
+        },
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "findDynamicDeclaration"
+        }
+      ],
+      "tests": [
+        {
+          "kind": "selftest",
+          "file": "scripts/lib/selftest.ts",
+          "name": "R-060 a reproduction test that no runner ever saw is not credited"
+        }
+      ]
+    },
+    {
+      "id": "R-061",
+      "title": "A rung ruled inapplicable needs an independent confirmation",
+      "decisions": [
+        "D-49",
+        "D-44",
+        "D-15",
+        "D-08"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "rungRuledNA"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdLadderNA"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-061 a rung ruled inapplicable counts for nothing until a second reader confirms it"
+        }
+      ]
+    },
+    {
+      "id": "R-062",
+      "title": "A ladder is exhausted only when the machine spent a real idea",
+      "decisions": [
+        "D-49",
+        "D-44",
+        "D-08"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "ladderExhausted"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "rungSpentOnRealWork"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "MIN_RUNGS_SPENT"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "admitToRung8"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "workRungFor"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "payableRungs"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-062 an all-N/A ladder is not an exhausted ladder"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-062 work recorded while a finding is PARKED pays a real rung, not a position"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-062 a refusal never names a rung the ledger could not credit"
+        }
+      ]
+    },
+    {
+      "id": "R-063",
+      "title": "A recurring reason must become a reviewed policy",
+      "decisions": [
+        "D-49",
+        "D-25",
+        "D-37"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "naReasonUses"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "normalizeReason"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdLadderNA"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-063 a reason used again and again must become a reviewed policy"
+        }
+      ]
+    },
+    {
+      "id": "R-064",
+      "title": "A policy may only pick a rung the machine owns",
+      "decisions": [
+        "D-49",
+        "D-06",
+        "D-07",
+        "D-11"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "policyShapeProblems"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "POLICY_RUNGS"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "matches"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-064 a policy can only pick a machine rung, and a mis-aimed matcher is refused"
+        }
+      ]
+    },
+    {
+      "id": "R-065",
+      "title": "A policy is inert until independently approved, and Zee's veto walks it back",
+      "decisions": [
+        "D-49",
+        "D-15",
+        "D-25",
+        "D-28",
+        "D-37"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "proposePolicy"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "reviewPolicy"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "vetoPolicy"
+        },
+        {
+          "file": "scripts/lib/policy.ts",
+          "symbol": "applyPolicies"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdPolicyReview"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-065 a policy applies to nothing until approved, and Zee's veto walks it back"
+        }
+      ]
+    },
+    {
+      "id": "R-066",
+      "title": "A security finding is never a question for Zee",
+      "decisions": [
+        "D-50",
+        "D-06",
+        "D-08",
+        "D-28"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "isSecurityFinding"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "admission"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueProductQuestion"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueDecide"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-066 a security finding is never a question for Zee, at any rung"
+        }
+      ]
+    },
+    {
+      "id": "R-067",
+      "title": "Nothing reaches Zee without a confirmed functionality or design question",
+      "decisions": [
+        "D-50",
+        "D-08",
+        "D-15",
+        "D-43",
+        "D-44"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "hasConfirmedProductQuestion"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "productQuestionRefusal"
+        },
+        {
+          "file": "scripts/lib/lane.ts",
+          "symbol": "admitToRung8"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueProductQuestion"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-067 nothing reaches Zee without a confirmed functionality or design question"
+        }
+      ]
+    },
+    {
+      "id": "R-068",
+      "title": "Rung 8 offers two choices, and accept-the-risk does not exist",
+      "decisions": [
+        "D-50",
+        "D-06",
+        "D-29",
+        "D-45"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdIssueDecide"
+        },
+        {
+          "file": "scripts/lib/report.ts",
+          "symbol": "buildProductReport"
+        },
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "RUNGS"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-068 accept-the-risk does not exist, in the CLI or on the page"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "release gate demands rotation for any secret finding at any severity"
+        }
+      ]
+    },
+    {
+      "id": "R-069",
+      "title": "A refused re-author puts the previous sealed manifest back",
+      "decisions": [
+        "D-51",
+        "D-47",
+        "D-26",
+        "D-33"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "reauthorHoldout"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskRedesign"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-069 a refused re-author puts the previous sealed manifest back"
+        }
+      ]
+    },
+    {
+      "id": "R-070",
+      "title": "A kept prior design is numbered from the highest, and never overwritten",
+      "decisions": [
+        "D-52",
+        "D-26",
+        "D-18"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdTaskRedesign"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "redesign numbers the archive from the HIGHEST version, never the count (D-52)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "redesign warns when a design hand-types its own version number (D-52)"
+        }
+      ]
+    },
+    {
+      "id": "R-071",
+      "title": "A killed re-author is recovered, not only a refused one",
+      "decisions": [
+        "D-53",
+        "D-51",
+        "D-47",
+        "D-33"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "recoverInterruptedReauthor"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "reauthorHoldout"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdStatus"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-071 a KILLED re-author is recovered, not just a refused one (D-53)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-071 the in-flight marker is cleared on success and on refusal (D-53)"
+        }
+      ]
+    },
+    {
+      "id": "R-072",
+      "title": "A release stays released for the rest of the host's Stop chain",
+      "decisions": [
+        "D-54",
+        "D-46",
+        "D-42"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "main"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-072 a release stays released for the rest of the host's chain (D-54)"
+        }
+      ]
+    },
+    {
+      "id": "R-073",
+      "title": "A comment-wording finding is recorded but never denies",
+      "decisions": [
+        "D-55",
+        "D-50",
+        "D-44"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildCharter"
+        },
+        {
+          "file": "scripts/lib/verdict.ts",
+          "symbol": "parseVerdict"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "Finding"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-073 a comment-wording finding is recorded but never denies (D-55)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-073 the judge is told comments are judged on understanding only (D-55)"
+        }
+      ]
+    },
+    {
+      "id": "R-074",
+      "title": "The judge's advice is enforced before a judge call is spent",
+      "decisions": [
+        "D-56",
+        "D-04",
+        "D-49"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "brakeRefusal"
+        },
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "noteDenial"
+        },
+        {
+          "file": "scripts/lib/ladder.ts",
+          "symbol": "ackRung"
+        },
+        {
+          "file": "scripts/hooks/pre-tool.ts",
+          "symbol": "main"
+        },
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdRungAck"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-074 a file denied 3x while stuck is refused BEFORE the judge is asked (D-56)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-074 only a STUCK denial brakes, and an ack or a clean edit always clears it (D-56)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-074 the ack is capped, so it can never become tape over the problem (D-56)"
+        }
+      ]
+    },
+    {
+      "id": "R-075",
+      "title": "Every stop record says whether the writer worked, and the progress write drops no field",
+      "decisions": [
+        "D-57",
+        "D-54",
+        "D-46"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/hooks/stop.ts",
+          "symbol": "main"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-075 a non-blocking stop record says whether the writer worked, and no idle field is dropped (D-57)"
+        }
+      ]
+    },
+    {
+      "id": "R-076",
+      "title": "A focused review judges its focus; a drifted line is the same finding",
+      "decisions": [
+        "D-58",
+        "D-52",
+        "D-11"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "runReview"
+        },
+        {
+          "file": "scripts/lib/charter.ts",
+          "symbol": "buildReviewCharter"
+        },
+        {
+          "file": "scripts/lib/state.ts",
+          "symbol": "recordFindings"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-076 a focused review judges its focus, not its neighbourhood (D-58)"
+        },
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-076 a line number that merely drifted is the SAME finding (D-58)"
+        }
+      ]
+    },
+    {
+      "id": "R-077",
+      "title": "A closed finding's proof is re-verified at the release gate",
+      "decisions": [
+        "D-59",
+        "D-11",
+        "D-57"
+      ],
+      "implementation": [
+        {
+          "file": "scripts/nemesis.ts",
+          "symbol": "cmdReleaseGate"
+        },
+        {
+          "file": "scripts/lib/scan.ts",
+          "symbol": "reproEvidence"
+        }
+      ],
+      "tests": [
+        {
+          "file": "scripts/lib/selftest.ts",
+          "kind": "selftest",
+          "name": "R-077 a closed finding's proof is re-verified at the gate, not trusted from memory (D-59)"
+        }
+      ]
+    }
+  ]
+}

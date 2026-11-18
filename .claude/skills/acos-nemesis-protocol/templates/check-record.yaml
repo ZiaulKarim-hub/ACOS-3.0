@@ -1,0 +1,12 @@
+# 4.4 — Security check record (S5), one per task. Assembled by: nemesis task end <task>
+# from the ledger — never written by hand.
+task: <id>
+threat_sketch: .nemesis/tasks/<id>/threat-sketch.yaml
+design_review: .nemesis/tasks/<id>/design-review.yaml
+issues: [SEC-1:closed, FUN-1:closed]      # all closed, or the task is not done
+scans: {typecheck: pass, lint: pass, test: pass, secrets: pass, deps: pass, policy: pass, data: pass}
+tests_added: {repro: <n>}
+loop_passes: <n>                           # S3 runs; the last two must be clean
+independent_review: {by: nemesis S6 daemon, findings: 0, summary: "..."}
+holdout: {pack: .nemesis/holdout/<id>/manifest.json, verdict: PASS}
+residual_risks: []                         # empty is the goal

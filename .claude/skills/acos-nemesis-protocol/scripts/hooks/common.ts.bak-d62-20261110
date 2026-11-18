@@ -1,0 +1,166 @@
+/**
+ * common.ts — shared plumbing for the four Nemesis hooks. Reads the hook JSON from stdin,
+ * resolves the enrolled project, and emits the exact JSON shapes Claude Code expects.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { spawnSync } from "node:child_process";
+import { projectRootFrom, readConfig, readActive, type Config, type Active } from "../lib/state";
+import { isInScope } from "../lib/scope";
+
+export interface HookInput {
+  session_id?: string;
+  transcript_path?: string;
+  cwd?: string;
+  hook_event_name?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+  tool_response?: unknown;
+  stop_hook_active?: boolean;
+  prompt?: string;
+}
+
+export async function readStdinJson(): Promise<HookInput> {
+  const chunks: Buffer[] = [];
+  for await (const c of process.stdin) chunks.push(c as Buffer);
+  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  if (!raw) return {};
+  try { return JSON.parse(raw) as HookInput; } catch { return {}; }
+}
+
+export interface Resolved { root: string; cfg: Config; active: Active }
+
+/** The enrolled, ACTIVE project for this call — or null, which means "be inert". */
+export function resolveRoot(input: HookInput): Resolved | null {
+  const root = projectRootFrom(input.cwd ?? process.cwd());
+  if (!root) return null;
+  let cfg: Config;
+  try { cfg = readConfig(root); } catch { return null; }
+  const active = readActive(root);
+  if (!active) return null;
+  return { root, cfg, active };
+}
+
+export function emit(obj: unknown): void { process.stdout.write(JSON.stringify(obj)); }
+export function preAllow(reason?: string): void {
+  emit({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", ...(reason ? { permissionDecisionReason: reason } : {}) } });
+}
+export function preDeny(reason: string): void {
+  emit({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } });
+}
+export function postBlock(reason: string): void { emit({ decision: "block", reason }); }
+export function stopBlock(reason: string): void { emit({ decision: "block", reason }); }
+
+export function toolFilePath(toolInput: Record<string, unknown> | undefined): string | undefined {
+  if (!toolInput) return undefined;
+  const p = (toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path) as string | undefined;
+  return typeof p === "string" && p ? p : undefined;
+}
+
+export function scopeOf(root: string, cfg: Config, filePath: string): { inScope: boolean; rel: string; rule?: string } {
+  return isInScope(root, filePath, cfg);
+}
+
+/** Apply the proposed edit in memory. Returns null when the edit cannot apply (the tool itself will fail). */
+export function applyEdit(before: string, toolName: string, ti: Record<string, unknown>): string | null {
+  if (toolName === "Write") return String(ti.content ?? "");
+  if (toolName === "Edit") {
+    const oldS = String(ti.old_string ?? ""), newS = String(ti.new_string ?? "");
+    if (!oldS) return before + newS;
+    if (!before.includes(oldS)) return null;
+    return ti.replace_all ? before.split(oldS).join(newS) : before.replace(oldS, () => newS);
+  }
+  if (toolName === "NotebookEdit") {
+    const src = String(ti.new_source ?? "");
+    const mode = String(ti.edit_mode ?? "replace");
+    return `${before}\n# --- notebook ${mode} cell ${String(ti.cell_id ?? "?")} ---\n${src}\n`;
+  }
+  return null;
+}
+
+/** Unified diff via the system `diff`; falls back to a whole-file marker. */
+/**
+ * D-60 — WHICH ORIGINAL LINES DID THIS EDIT ACTUALLY TOUCH?
+ *
+ * Returns the OLD-side line ranges a `diff -u` actually changed. A finding `where` is a line
+ * against the file AS IT WAS, so these are the ranges to test one against (see R-078).
+ *
+ * The `@@ -a,b +c,d @@` header is NOT the answer on its own: `b` counts the three lines of
+ * surrounding CONTEXT that diff prints either side, so a one-line change reports a seven-line
+ * range and a finding six lines away would look touched. So the hunk BODY is walked instead,
+ * advancing the old-line counter on context and `-` lines only. A hunk that removes nothing
+ * (a pure insertion) still gets a range: the old line the new text lands before, because that
+ * is the only place in the old file the insertion can be said to be about.
+ */
+export function changedOldLines(diff: string): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  let old = 0, inHunk = false, run: number | null = null, last = 0;
+  const flush = (): void => { if (run !== null) { out.push({ start: run, end: last }); run = null; } };
+  for (const l of diff.split("\n")) {
+    const m = /^@@ -(\d+)(?:,\d+)? \+/.exec(l);
+    if (m) { flush(); old = Number(m[1]); inHunk = true; continue; }
+    if (!inHunk) continue;                       // the ---/+++ file headers live here
+    if (l.startsWith("-")) { if (run === null) run = old; last = old; old++; continue; }
+    if (l.startsWith("+")) { if (run === null) { run = old; last = old; } continue; }
+    if (l.startsWith(" ") || l === "") { flush(); old++; continue; }
+    flush();                                     // "\ No newline at end of file", or anything else
+  }
+  flush();
+  return out;
+}
+
+/** Is the finding recorded line inside (or within `slack` of) a line this edit changed? */
+export function lineIsInChange(where: string, ranges: { start: number; end: number }[], slack = 3): boolean {
+  const n = Number(where.split(":")[1]);
+  if (!Number.isFinite(n)) return false;              // no line recorded -> no per-line evidence
+  return ranges.some((r) => n >= r.start - slack && n <= r.end + slack);
+}
+
+export function unifiedDiff(before: string, after: string, rel: string): string {
+  const tmp = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "nemesis-diff-"));
+  try {
+    const a = path.join(tmp, "a"), b = path.join(tmp, "b");
+    fs.writeFileSync(a, before); fs.writeFileSync(b, after);
+    const r = spawnSync("diff", ["-u", "--label", `a/${rel}`, "--label", `b/${rel}`, a, b], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+    if (r.stdout) return r.stdout;
+    if (r.status === 0) return `(no textual change in ${rel})`;
+    return `(diff unavailable: ${r.stderr}) — full candidate follows`;
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+export function logErr(where: string, e: unknown): void {
+  try { fs.appendFileSync("/tmp/nemesis-hook.err", `[${new Date().toISOString()}] ${where}: ${e instanceof Error ? e.stack ?? e.message : String(e)}\n`); } catch { /* best effort */ }
+}
+
+// ── Transcript reading (Stop watchdog, R-026; sub-agents too, R-030) ────────
+
+export interface ToolUse { name: string; input: Record<string, unknown>; ts: string }
+
+/** Tool uses in the last assistant turn chain (walking back to the last HUMAN message). */
+export function lastTurnToolUses(transcriptPath: string | undefined, maxLines = 400): { uses: ToolUse[]; lastAssistantText: string; turnStart: string } {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return { uses: [], lastAssistantText: "", turnStart: "" };
+  const lines = fs.readFileSync(transcriptPath, "utf8").split("\n").filter(Boolean).slice(-maxLines);
+  const events = lines.map((l) => { try { return JSON.parse(l) as Record<string, unknown>; } catch { return null; } }).filter((e): e is Record<string, unknown> => !!e);
+  const uses: ToolUse[] = [];
+  let lastAssistantText = "";
+  let turnStart = "";
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i]!;
+    const msg = ev.message as { role?: string; content?: unknown } | undefined;
+    if (!msg) continue;
+    const ts = String(ev.timestamp ?? "");
+    if (msg.role === "user") {
+      const content = msg.content;
+      const onlyToolResults = Array.isArray(content) && content.length > 0 && content.every((b) => b && typeof b === "object" && (b as { type?: string }).type === "tool_result");
+      if (!onlyToolResults) { turnStart = ts; break; } // a real human message ends the walk
+      continue;
+    }
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      for (const b of msg.content as { type?: string; name?: string; input?: Record<string, unknown>; text?: string }[]) {
+        if (b.type === "tool_use" && b.name) uses.unshift({ name: b.name, input: b.input ?? {}, ts });
+        if (b.type === "text" && b.text && !lastAssistantText) lastAssistantText = b.text;
+      }
+    }
+  }
+  return { uses, lastAssistantText, turnStart };
+}

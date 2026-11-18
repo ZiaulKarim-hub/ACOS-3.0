@@ -1,0 +1,912 @@
+# acos-nemesis-protocol — Product Requirements Document
+
+Version 1.0 · 2026-10-08 · Decision ledger: `prd/DECISIONS.md` · Trace: `prd/TRACE.json`
+
+## 1. Purpose
+
+Nemesis is the companion that rides along while code is being written. Every code chunk —
+each `Write`, `Edit`, `NotebookEdit`, and every file a `Bash` command changes — is judged
+against the WHOLE Ten-Star Security Protocol (the **Prime Security Checks, PSC**: S0–S8,
+every checklist, every record) and against the **Prime Functionality Checks (PFC)**: (a) bug
+detection reading the code base, (b) fixing what is found, (c) proving the fix breaks nothing,
+(d) no drift from the PRD or the goal, (e) no new bug introduced. Findings are fixed by an
+automatic ladder that never hands code to Zee. Nothing is marked done while anything is open.
+It runs beside Oracle mode (Oracle judges harm to the machine; Nemesis judges the rulebook
+and the plan), through hooks that fire on every tool call, so every builder skill and agent
+Zee has is covered without knowing Nemesis exists.
+
+## 2. Non-goals
+
+- Nemesis is not a post-build audit. (`acos-robust-code-review` and `security-audit` remain
+  for that.)
+- Nemesis never asks Zee to fix code. It may hand him a product decision in plain language.
+- Nemesis does not replace the Oracle, autopilot, or the eternity protocol. It coexists.
+- Nemesis does not read the restricted reviewer-rules directory or modify `.claude/agents/`.
+
+## 3. Vocabulary
+
+- **Task**: a unit of work (feature, slice, ticket) with its own S0–S8 records.
+- **Chunk / edit**: one `Write`/`Edit`/`NotebookEdit` call, or one file changed by `Bash`.
+- **Judge**: the Nemesis daemon's Opus session, read-only, no chat transcript.
+- **Ledger**: the on-disk, append-only issue and step records under `.nemesis/`.
+- **Rung**: a position on the escalation ladder (1–8).
+- **Green**: the last state where the full S3 scan was clean.
+
+## 4. Requirements
+
+### 4.A Enrollment and scope
+
+### R-001 — Enroll a project and install the hooks
+Decisions: D-02, D-18, D-24.
+`nemesis enroll [<projectDir>]` creates `.nemesis/` (`config.json`, `state/`, `tasks/`,
+`issues/`, `records/`, `snapshots/`, `holdout/`, `reports/`), detects the toolchain, writes
+`.gitignore` entries for `state/`, `snapshots/`, `holdout/*/pack`, and installs four hooks into
+the project's `.claude/settings.local.json` — `PreToolUse` (Write|Edit|NotebookEdit|Bash),
+`PostToolUse` (Write|Edit|NotebookEdit|Bash), `Stop`, `UserPromptSubmit` — idempotently
+(running twice adds nothing). Each hook is invoked by the absolute bun path with a shell
+fallback that FAILS CLOSED for PreToolUse (deny on crash) and fails open for the others.
+Acceptance: after enroll, the settings file contains exactly one copy of each Nemesis hook;
+`.nemesis/config.json` exists; a project with no `.claude/` directory (the OKOA Investor
+Portal) is enrolled successfully.
+
+### R-002 — Scope: what is judged and what is never touched
+Decisions: D-17, D-36.
+`config.json` lists `source_globs` (default: everything under the project) and
+`exclude_globs` (always: `.nemesis/**`, `.worktree/**`, `node_modules/**`, `.git/**`,
+`memory/handoffs/**`, `**/acos-token-monitor/**`, `.claude/scripts/eternity*`,
+`.claude/scripts/_autopilot_eternity.py`, the restricted reviewer-rules directory,
+`.claude/agents/**`). Excluded paths are never sent to the judge, never scanned, never
+snapshotted. The reviewer-rules directory is never read by any Nemesis component;
+`.claude/agents/` is never written.
+Acceptance: `nemesis scope <path>` prints `in-scope` or `excluded (<rule>)`; every default
+exclusion resolves as excluded.
+
+### R-003 — Rulebook has one source
+Decisions: D-30, D-06.
+`rulebook/SECURITY-PROTOCOL.md` is a byte copy of the OKOA Investor Portal's
+`design/security/SECURITY-PROTOCOL.md`. `scripts/build-rulebook.ts` parses it into
+`rulebook/rulebook.json` (principles, S0–S8 with their bullet points, the twelve questions,
+the severity table, checklists 3.1–3.14 with item ids like `3.2.3`, the four record
+templates, Part 6) and records `source_sha256`. `rulebook.json` is never hand-edited;
+`nemesis selftest` fails if its `source_sha256` does not match the markdown.
+Acceptance: rulebook.json has 12 principles, 9 steps, 12 questions, 4 severity rows, 14
+checklists, 4 templates; `source_sha256` equals `sha256(SECURITY-PROTOCOL.md)`.
+
+### 4.B Activation and loop
+
+### R-004 — Activate, deactivate, and run the keep-going loop
+Decisions: D-05, D-19, D-20, D-21.
+`nemesis on "<goal>" [--prd <file>]` writes `.nemesis/state/active.json` (goal, PRD path,
+started_at, session), starts the Nemesis daemon, and — if no autopilot continuation loop is
+active for this session — starts one via `python3 .claude/scripts/autopilot-activate.py on`
+with the same goal. `nemesis off` stops the daemon's use for this project, clears the active
+state, and stops the loop only if Nemesis started it. A vague goal (`looksVague` rule:
+under four words or placeholder shapes) is refused with exit 3. Oracle mode may be on or
+off; Nemesis never changes Oracle's state.
+Acceptance: `on` then `status` shows active with the goal; `off` then `status` shows
+inactive; `on "finish the work"` exits 3.
+
+### R-005 — Hooks are inert when Nemesis is off or the path is out of scope
+Decisions: D-01, D-02.
+Every hook exits with `allow` (or no output) in well under 100 ms when `active.json` is
+absent, or the file is excluded, or the tool is not one of the four. No daemon call is made.
+Acceptance: hook invoked with no active state prints an allow decision and makes no socket
+connection.
+
+### 4.C Start phase (S0, S1, the contract)
+
+### R-006 — No edit before the threat sketch and the design review
+Decisions: D-21, D-24, D-40.
+`nemesis task start <id> --title "<t>"` opens a task. `nemesis task sketch <id> <file>`
+validates a Part-4.1 threat sketch (task, data_touched non-empty with class in
+public|internal|confidential|sensitive, actors, six STRIDE lines each non-empty, abuse_case
+of at least two sentences, checklists non-empty and each a valid 3.x id) and records S0 with
+the artifact hash. `nemesis task design <id> <file>` validates a Part-4.2 design review
+(data_flow, authorization_matrix non-empty, rls_rules, typed_errors containing at least
+PERMISSION_DENIED and NOT_FOUND, logging with `never_log` non-empty, ai_use present or
+"none", reviewer) and records S1. The PreToolUse hook DENIES any in-scope edit while no task
+is open or S0/S1 is missing; the deny reason names the exact command to run next.
+Acceptance: edit with no task → deny naming `nemesis task start`; with task but no sketch →
+deny naming `task sketch`; with both → proceeds to judgment. A sketch missing one STRIDE
+line is refused with the field named.
+
+### R-007 — The contract travels with every verdict
+Decisions: D-21, D-23, D-07.
+Every judge request carries: the goal, the PRD excerpt relevant to the task (the task's
+`prd_refs` section ids, or the whole PRD if under 20k chars), the threat sketch, the design
+review, the rulebook (twelve questions, severity table, the S0-selected checklists in full,
+the ids and titles of all others), the open issues for the file, the prior verdicts for the
+file, and the PFC lens definition.
+Acceptance: the daemon's request log for a verdict contains all of these fields.
+
+### 4.D Per-edit gate (S2 — the line rule)
+
+### R-008 — Every in-scope edit is judged before it lands
+Decisions: D-03, D-13, D-15, D-01.
+The PreToolUse hook, for `Write`/`Edit`/`NotebookEdit` on an in-scope file, computes the
+candidate file (applies `old_string→new_string`, or the full `content`) in memory, derives a
+unified diff against the file on disk, and sends diff + full candidate + the contract
+(R-007) to the daemon. The chat transcript is never read and never sent. The judge may read
+the repository (read-only tools) to inspect callers, tests, tables, and policies.
+Acceptance: the daemon request contains `diff`, `candidate`, `path`, and no `context` or
+`transcript` field; the judge session is spawned with only Read, Grep, Glob tools.
+
+### R-009 — Verdict shape and what the writer is told
+Decisions: D-04, D-09, D-07.
+A verdict is JSON: `{"decision":"allow"|"deny","findings":[{"id","severity":"critical|high|medium|low","lens":"PSC"|"PFC","checklist":"3.2.3"|"Q7"|"PFC-d","where","what","root_cause","fix_hint"}],"history_assessment":{"stuck":bool,"recommended_rung":1..6,"why"}}`.
+On deny, the hook returns the findings and the current rung instruction as the reason, so the
+writer can act without reading anything else. On allow with zero findings, the edit proceeds.
+Acceptance: a stubbed deny verdict produces a hook reason containing each finding's `what`
+and `fix_hint` and the words `rung <n>`.
+
+### R-010 — Findings become issues with history
+Decisions: D-10, D-11, D-37.
+Each finding opens (or re-attaches to) an issue `SEC-<n>` (PSC) or `FUN-<n>` (PFC) in
+`.nemesis/issues/<id>.json` with: severity, lens, checklist, where, what, root_cause, the
+task id, status, `rung`, and `attempts[]` (timestamp, diff hash, verdict id, outcome). A
+re-denied finding on the same `where`+`checklist` appends an attempt rather than opening a
+duplicate. Issue files are append-only in their history arrays.
+Acceptance: two denials of the same finding yield one issue with two attempts.
+
+### R-011 — Allowed edits leave an S2 record
+Decisions: D-24.
+On allow, the hook records `{edit_id, path, candidate_sha256, verdict_id}` in the task's
+`steps.json` under S2 via the CLI library, and the PostToolUse hook later matches the written
+file's hash to it.
+Acceptance: after an allowed Write, `steps.json` S2 contains the file's sha256.
+
+### R-012 — Fixes are judged like any edit; there is no bypass input
+Decisions: D-35.
+The hook accepts no flag, env var, or marker that skips judgment in a non-test-mode project.
+A fix for an issue is an ordinary edit and is judged with the issue's history attached.
+Acceptance: grep of the hook code shows the only skip conditions are the judge-child token
+(R-040) and `test_mode` (R-051).
+
+### 4.E Post-edit (S3) and Bash-written code
+
+### R-013 — Code written through Bash is caught
+Decisions: D-16, D-03.
+PreToolUse on `Bash` snapshots the in-scope tree (path → sha256 index, cached and refreshed
+incrementally). PostToolUse on `Bash` diffs the tree; every changed in-scope file is judged
+(R-008 payload, with the whole file as the candidate and the diff from the snapshot) and
+scanned (R-014). Findings are returned as a PostToolUse `block` with reason and become
+issues.
+Acceptance: a Bash heredoc that writes an in-scope file produces a judge call and, with a
+stubbed deny, a block containing the finding.
+
+### R-014 — The S3 mechanical scan after every change
+Decisions: D-07, D-13, D-24, D-06.
+PostToolUse on `Write`/`Edit`/`NotebookEdit`/`Bash` runs the whole-repo scan: type-check,
+lint (security rules where the linter has them), tests (the suite; positive and negative),
+secret scan (diff and repository), dependency audit, policy check (for SQL/migration files:
+new table without `enable row level security`, new view without `security_invoker`), and
+data tests (sensitive-value patterns — SSN/TIN, full card/bank numbers, bearer tokens — in
+log statements, error messages, fixtures). Each check records `pass|fail|skipped` with
+captured output in `.nemesis/records/scans/<n>.json` and in the task's `steps.json` S3.
+`skipped` is NEVER clean. Failures open issues (`FUN-` for test/type/lint, `SEC-` for
+secret/policy/data/dependency) and are returned as a `block` reason.
+Acceptance: in a fixture with a failing test, PostToolUse returns block naming the test; in a
+fixture with no test runner, S3 records `tests: skipped` and `nemesis status` shows the task
+as not clean.
+
+### R-015 — Toolchain detection and additive configuration
+Decisions: D-13, D-02.
+Detection order: `package.json` scripts (`typecheck`, `lint`, `test`) → `tsconfig.json`
+(`tsc --noEmit`) → biome/eslint → vitest/jest/`bun test`; `Cargo.toml` → `cargo check`,
+`cargo clippy`, `cargo test`; `pyproject.toml` → `ruff`, `pytest`. Secret scan: built-in
+patterns always, plus `gitleaks` if installed. Dependency audit: `bun audit` / `npm audit` /
+`cargo audit` / `pip-audit` when available, else `skipped`. `config.json` may ADD commands
+(`extra_checks`) but cannot remove or replace the built-ins.
+Acceptance: detection on a bun+tsconfig fixture yields tsc + bun test; `extra_checks` run
+after the built-ins; a config attempting to disable a built-in is ignored with a warning.
+
+### R-016 — The PFC lens inside every verdict
+Decisions: D-07, D-23.
+The judge evaluates, for every chunk: (a) correctness against the task's design and the
+PRD acceptance criteria; (c) impact on callers and tests (reading them); (d) drift — any
+behavior, endpoint, field, or dependency the PRD/goal did not ask for is a `PFC-d`
+finding; (e) new defects introduced by the chunk compared to the file before it. (b) fixing
+is the ladder (R-018).
+Acceptance: a stubbed verdict with `lens: PFC`, `checklist: PFC-d` opens a `FUN-` issue
+with that checklist.
+
+### 4.F Issues, the ladder, closure
+
+### R-017 — The issue ledger commands
+Decisions: D-10, D-37.
+`nemesis issue list [--open]`, `issue show <id>`, `issue close <id>` (R-025), and
+`issue history <id>`. Statuses: `open`, `fixing` (a judged-clean edit landed on the issue's
+file; closure proof still owed), `verifying` (reproduction test registered), `reverted-open`,
+`closed`, `decided`. No command deletes an issue; no command sets `closed` except `issue close`
+passing R-025; `decided` is set only by `issue decide` (R-024).
+Acceptance: `issue list --open` after two findings prints both ids with severity and rung.
+
+### R-018 — The escalation ladder, driven by the judge, not a counter
+Decisions: D-04, D-09, D-08.
+Rungs: (1) writer rewrites from the deny reason; (2) root cause named by the judge, writer
+fixes the cause; (3) fresh-context fixer agent; (4) different model family second opinion;
+(5) design redo (S1 re-derived); (6) revert to green, keep open, continue; (7) task-end
+retry from rung 3 with full history; (8) goal-end product report. Rungs 1→6 advance ONLY
+when the judge's `history_assessment.stuck` is true with a `recommended_rung`; the CLI
+records the judge's `why`. No attempt counter advances a rung. Rungs 7 and 8 are position
+rungs triggered by task end and goal end. `nemesis ladder <issue>` prints the current rung
+and its exact instruction.
+Acceptance: three denials with `stuck:false` leave the rung at 1; one denial with
+`stuck:true, recommended_rung:3` sets rung 3 and records the why.
+
+### R-019 — Rung 3: a fresh-context fixer
+Decisions: D-12, D-09.
+The rung-3 instruction (in the Stop/Prompt directive) tells the writer to spawn
+`Task(developer)` with ONLY: the issue file (which carries every attempt and the judge's
+reasons), the task records, and the repository path — no conversation history. Its edits are
+judged like any other.
+Acceptance: `nemesis ladder <issue>` at rung 3 prints the Task instruction with the issue
+file path and the sentence "do not pass the conversation".
+
+### R-020 — Rung 4: a different model family
+Decisions: D-09.
+`nemesis second-opinion <issue>` calls `.claude/scripts/run-external-agent.py` with the
+provider from `config.json` (`second_opinion_provider`, resolved through
+`.acos/config/providers.yaml`), the issue file, and the relevant files, and stores the
+returned analysis and proposed patch in the issue. A Claude agent applies the patch (judged
+as any edit). If no provider is configured, the issue records `rung4: unavailable (no
+provider)` and the ladder proceeds to rung 5 — never silently skipped.
+Acceptance: with no provider, `second-opinion` exits 0, records `unavailable`, and `ladder`
+shows rung 5 next.
+
+### R-021 — Rung 5: redo the design
+Decisions: D-09.
+`nemesis task redesign <task> <issue> <file>` marks the current S1 artifact as superseded
+(kept), accepts a new design review file (validated as in R-006), records it as S1 v2, and
+re-opens the task's S2/S3 steps for the affected files.
+Acceptance: after redesign, `steps.json` shows S1 with two versions and S2 reset.
+
+### R-022 — Rung 6: revert to green, keep the issue open
+Decisions: D-09, D-39.
+After every clean S3 the CLI writes a green snapshot (changed in-scope files since the last
+snapshot, with hashes). `nemesis revert <issue>` restores the files named in the issue from
+the latest green snapshot, records the revert in the issue (status `reverted-open`), and
+leaves the issue open. Nemesis never rewrites git history or makes commits.
+Acceptance: modify a file, run `revert`, file content equals the snapshot; issue status is
+`reverted-open`.
+
+### R-023 — Rung 7: every open issue is retried at task end
+Decisions: D-09, D-10.
+`nemesis task end` (R-032) with open issues does not close the task; it sets each open
+issue to rung 3 with its full history and emits the directive to retry. Nothing is parked
+silently.
+Acceptance: `task end` with one open issue prints the retry directive and the task stays
+open.
+
+### R-024 — Rung 8: the goal is not complete; Zee gets a product report
+Decisions: D-08, D-09, D-28, D-42, D-43, D-44, D-45.
+When the goal-end gate (R-034) finds open issues, `nemesis report --product` writes a
+plain-language report, GROUPED by feature and requirement (D-45), of only those findings
+ADMITTED to rung 8: what the group is, what was tried at each rung, and three choices
+only — drop the feature, change the requirement, accept the risk with a named owner and
+date. It never asks Zee to fix code. The goal remains incomplete until he picks and the
+pick is recorded (`nemesis issue decide <id>[,<id>...] --choice <drop|change|accept>
+--owner <who>`), which closes those issues as `decided` with the record.
+`issue decide` is accepted only at rung 8 and only for an ADMITTED finding.
+
+**AMENDED 2026-11-02.** This requirement previously read "The release gate itself moves
+every open issue to rung 8". That blanket sweep was the defect: it sent Zee 356 findings in
+a 517,926-byte report, 104 of which were about Nemesis's own paperwork, and 0 of which had
+ever been moved up a rung by the judge. The gate now promotes a finding to rung 8 only when
+ALL THREE admission tests pass — R-055 (lane), R-056 (answerable), R-057 (ladder
+exhausted). Everything that fails an admission test stays BELOW rung 8 and stays OPEN, so
+the gate remains shut and no check is weakened (D-06, D-07, D-29); what changes is that the
+work is named as the MACHINE's, with the exact command, instead of being signed off by Zee.
+Acceptance: the product report contains no code and no diff; `issue decide` records the
+choice and owner; before rung 8, and for any finding that failed admission, it refuses.
+
+### R-025 — An issue closes only when it is proven fixed
+Decisions: D-11.
+`nemesis issue close <id>` succeeds only if ALL hold: (1) a reproduction test is registered
+on the issue (`issue repro <id> <testFile> <testName>`), exists, and the test runner
+reports it passing; (2) the full suite passes in the latest S3; (3) the latest two S3
+records are clean (no fail, no skipped); (4) an independent review record (R-032's S6, or
+`nemesis review <issue>` which runs the daemon's attacker review of the fix) reports
+`confirmed_fixed: true`. Otherwise it refuses and lists exactly which of the four are
+missing. The reproduction test is never removed by Nemesis.
+Acceptance: `close` without a repro test refuses naming (1); with all four, closes.
+
+### 4.G Stop hook, anti-skip, completion
+
+### R-026 — The watchdog: work with no record behind it is a defect
+Decisions: D-24.
+The Stop hook reads the session transcript's last turn(s), lists every `Write`/`Edit`/
+`NotebookEdit`/`Bash` tool_use on in-scope paths, and checks each has an S2 verdict record
+(edits) and an S3 scan record after it. Any unrecorded work opens a `FUN-` issue
+("unrecorded edit: <path>") and the hook blocks with the list.
+Acceptance: a transcript fixture with one in-scope Write and no records → block naming the
+path and a new open issue.
+
+### R-027 — Nothing stops while the ledger is open; goal-complete is refused by the hook
+Decisions: D-10, D-24, D-22.
+The Stop hook returns `{"decision":"block","reason":<directive>}` while any issue is open,
+any task has unfinished steps, or the release gate record (R-034) is missing when the
+transcript's last assistant text contains `AUTOPILOT_GOAL_COMPLETE`. The directive lists
+open issues (id, severity, rung, next instruction), unfinished steps per task, and the
+command to run next. The hook decides from the ledger files, never from the transcript's
+claims.
+Acceptance: transcript ending with `AUTOPILOT_GOAL_COMPLETE` and one open issue → block;
+with a clean ledger and a release-gate record → no block.
+
+### R-028 — The open ledger is re-injected every prompt
+Decisions: D-24.
+The UserPromptSubmit hook adds context: active goal, current task and its next unfinished
+step, open issues with rung instructions, and the last S3 summary. This survives compaction
+because it is read from disk each time.
+Acceptance: with one open issue, the hook's additionalContext contains the issue id and its
+rung instruction.
+
+### R-029 — The step ledger is written only by the CLI, with artifact hashes
+Decisions: D-24.
+`.nemesis/tasks/<id>/steps.json` has entries S0, S1, S2 (list), S3 (list), S4, S5, S6, S7,
+S8 and PFC-a, PFC-c, PFC-d, PFC-e (PFC-b is the ladder) — each `{done, artifact,
+sha256, at, by}`. Only `nemesis` CLI commands and hooks (which call the same library) write
+it. `nemesis status` prints every task's steps with done/undone.
+Acceptance: `status` output lists all 13 step ids per task; editing steps.json by hand to
+mark S5 done without an artifact is detected by `status` (hash mismatch → shown as
+`tampered`).
+
+### R-030 — Sub-agents are covered
+Decisions: D-24, D-02.
+Hooks are project-level, so a `developer` agent spawned by `Task()` runs the same hooks on
+its edits; the Stop hook's watchdog and the PostToolUse scan use the `transcript_path` /
+`cwd` each hook receives, whichever session made the call.
+Acceptance: a hook invoked with a sub-agent transcript path still records against the
+project's `.nemesis/`.
+
+### R-031 — Nemesis does not stand down for the eternity protocol
+Decisions: D-17.
+No Nemesis hook consults `_autopilot_eternity.is_eternity_protocol_active` or any eternity
+marker. Eternity's own files (R-002 exclusions) are out of scope, so a handoff is never
+blocked. Edits to in-scope code during the marker window are judged exactly as at any other
+time.
+Acceptance: with a live marker fixture present, an in-scope edit still produces a judge
+call; a write to `memory/handoffs/x.md` is allowed without a judge call.
+
+### R-054 — A stalled writer ends the loop with the product report, never with completion
+Decisions: D-41, D-08, D-28.
+The Stop hook counts consecutive turns with zero tool calls (`.nemesis/state/idle.json`).
+When the count reaches `stalled_turns` (config, default 6) while the ledger is open, the
+hook writes `nemesis report --product` (R-024), appends a `stalled` history event to every
+open issue, records a `stop` record with `stalled: true`, resets the count and allows the
+stop with an `additionalContext` that says the goal is NOT complete and names the report.
+Every earlier turn in the streak is blocked as in R-027. Issues stay open; `on` resumes them.
+**AMENDED 2026-11-02 (D-46).** The escape must LATCH. Previously it reset the count and
+re-armed, so the whole cycle repeated: 5 cycles, 1780 `stalled` history events and 16
+duplicate product reports totalling 8.9 MB, and when the writer made any tool call the
+streak reset before reaching the escape, so the hook blocked 9 consecutive turns and Claude
+Code's own cap (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP ?? 8`) had to override it. See R-058.
+Acceptance: with one open issue and a text-only transcript, the first `stalled_turns - 1`
+Stop calls block and the next one allows with the report written.
+
+### R-055 — Lanes: a finding about Nemesis's own records never reaches Zee
+Decisions: D-42, D-08.
+`lib/lane.ts` `laneOf(issue)` returns `record` when the finding is about one of Nemesis's
+own records and `product` otherwise, testing in this order: a finding whose text says a check
+was `SKIPPED` is `record` (the project needs the check to EXIST, which is work, even for a
+skipped secrets scan); a finding under checklist `3.4` is `product` wherever its files live,
+because a hard-coded credential inside `.nemesis/` is a real credential; otherwise the place the judge
+POINTS AT decides: if `where` names a path under `.nemesis/` the finding is `record`, as it is
+when every path it lists is under `.nemesis/`, and as checklist `S0`–`S8` is.
+**AMENDED 2026-11-02, measured.** The first version let ANY code rule (`3.x`, `Qn`,
+`PFC-a..e`) beat the path test. Against the real ledger that sent Zee 17 findings whose only
+files live under `.nemesis/`, because the judge had cited rules 3.14, 3.11 and 3.7 while
+describing a stale holdout pack and an S1 summary saying "SEVENTEEN tests". None was a
+secret. The safety worry behind the wide version does not hold either: `record` does not drop
+a finding — it stays OPEN, the gate stays SHUT, and R-034's rotation gate is independent of
+lanes. The lane decides WHO, never WHETHER. A `record` finding is never promoted to rung 8 and
+`issue decide` refuses it; `repairInstruction()` names the machine command that clears it.
+**SHARPENED 2026-11-02, hours later, by the live ledger.** "Every path under `.nemesis/`"
+was false for a finding that points at a record AND names a code file, so FUN-180 - pointing
+at `.nemesis/holdout/R-019/manifest.json:35`, also naming `_build/headings.test.ts` - came
+back `product` and reached Zee. Its own ruling had already said why that was wrong: "one of
+Nemesis's own records, not shipping code. There is no code root cause to fix."
+Acceptance: an `S2` "unrecorded edit" finding is `record` and `issue decide` refuses it; a
+`3.4.2` credential finding inside `.nemesis/` is `product`; a `3.14` finding about a stale
+holdout pack inside `.nemesis/` is `record`; a `3.9` finding whose text says `SKIPPED` is
+`record`; a finding whose `where` is under `.nemesis/` is `record` even when it also names a
+shipping file, and one whose `where` is a shipping file stays `product` even when it also
+names a record.
+
+### R-056 — Admission: rung 8 requires an answerable question
+Decisions: D-43, D-09.
+`lib/lane.ts` `admission(root, issue)` passes only when the issue's task is on record, has a
+non-empty title (the FEATURE Zee could drop) and at least one `prd_refs` entry (the
+REQUIREMENT he could change). A failure returns the exact missing anchor and the command
+that supplies it (`nemesis task prd-refs <task> <R-00x,...>`), because supplying it is
+machine work, not a decision.
+Acceptance: an issue on a task with no `prd_refs` fails admission and the message names
+`task prd-refs`; adding the refs makes the same issue admissible.
+
+### R-057 — Admission: rung 8 requires an exhausted ladder
+Decisions: D-44, D-08, D-04.
+A finding may be promoted to rung 8 only when its history records, for EACH rung in
+`REQUIRED_RUNGS`, either a real attempt at that rung or a judge ruling naming why it cannot
+apply (`ladderExhausted()`). The position rungs may not skip the machine's own options. A
+failure names the first rung still owed and its instruction. This closes the measured hole:
+0 of 356 findings had been moved by the judge, none had reached rung 4, 5 or 6, and 83 went
+from rung 1 to Zee in one hop.
+**WIDENED AND NARROWED 2026-11-02, hours later, by the live ledger.** Two further holes, both
+measured between 20:35:08.936Z and 22:06:15.614Z, after which 356 of 396 open findings had
+reached Zee:
+1. `REQUIRED_RUNGS` was `[2, 3, 4]`, so the escape SHORTENED the ladder instead of moving
+   along it. The machine ruled rung 2 inapplicable 345 times and rung 3 inapplicable 151
+   times, with 123 distinct written reasons - sound reasoning, not boilerplate - and its own
+   reasons named the route it should have taken: "the sanctioned route is `nemesis task
+   redesign R-019 <issue-id> <design-file>` (rung 5)". It is now `[2, 3, 4, 5, 6]`: every rung
+   the machine owns, which is what "every automatic rung was tried" says.
+2. `rungAttempted` accepted a history line matching "→ n", meaning the issue was MOVED to
+   rung n. Task end parks an open finding at rung 3 and writes "7 → 3 (task-end retry with
+   full history)", so 345 of 396 findings counted rung 3 as spent with no work done at it.
+   Being parked somewhere is not work. Only a real attempt the judge saw counts, plus the
+   three rungs the CLI spends itself and records: rung 4 (`second-opinion`, including the
+   honest `unavailable` when no provider is configured, without which a project with no
+   `second_opinion_provider` could never clear rung 4 at all), rung 5 (`task redesign`) and
+   rung 6 (`revert`).
+Acceptance: a fresh issue at rung 1 is refused promotion to rung 8 and the refusal names
+rung 2; after real attempts are recorded at every rung in `REQUIRED_RUNGS` the same issue is
+admitted; a finding parked at rung 3 by task end still owes rung 3; ruling rungs 2, 3 and 4
+inapplicable leaves rungs 5 and 6 owed, never Zee.
+
+### R-058 — The Stop hook may not loop
+Decisions: D-46, D-41, D-10.
+**AMENDED 2026-11-02, same day it was written.** The first version of this requirement said
+the hook allows the stop when the directive is byte-identical to the last blocking one and
+the writer made no tool call. Both halves were wrong, and the selftest is what showed it:
+
+1. *Byte-identical* would not have caught the real failure. On website-design-okoa/v2 the
+   watchdog opened a fresh finding almost every turn, so the directive CHANGED every turn.
+   A counter keyed on the text resets on each change and climbs to the host's cap anyway.
+2. *No tool call* is R-054's territory. Releasing there at the second block would have
+   pre-empted the stalled escape, so the product report would never have been written.
+
+So the hook keeps TWO counters in `.nemesis/state/idle.json` and releases on either:
+`same_block_streak` (identical directive repeats — repeating it cannot help) and
+`block_chain` (consecutive blocks in ONE Stop chain, driven by `stop_hook_active`, whatever
+the text says). Both are capped by `max_identical_blocks` (default 6), which must stay below
+Claude Code's own `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP ?? 8`: being overridden by the host ends
+the turn with none of the hook's own record of why, which is how the two overrides at
+2026-11-01T08:00:00.431Z and 2026-11-02T06:16:08.457Z left nothing behind but a warning.
+A release is never a pass — it carries an `additionalContext` saying the goal is NOT complete
+and the ledger is NOT cleared, with the count owed by the machine and the count with Zee —
+and "goal complete" is still refused while the ledger is open (R-027). Changing the ledger
+re-arms the block. The stalled escape (R-054) still fires first for an idle writer, and it
+LATCHES on the ledger's own fingerprint instead of re-arming, so an unchanged ledger does not
+get a 17th duplicate report.
+Acceptance: eight consecutive Stop calls, each with a NEW finding on the ledger so the
+directive differs every time, never produce eight consecutive blocks, and the release names
+what is owed and by whom; the same holds with an unchanged ledger and `stop_hook_active`
+false; an idle writer still reaches R-054's report first.
+
+### R-059 — Sealing a holdout pack never destroys the pack it replaces
+Decisions: D-47, D-33, D-29.
+`authorTaskHoldout` writes the new pack into `pack.staging-<ts>/`, runs `holdout seal` against
+that staging copy with the REAL manifest path (so every protection the sealer already has still
+fires), and only then removes `pack/` and renames the staging copy into place. On a refusal the
+staging copy is deleted and `pack/` plus `manifest.json` are left byte-for-byte as they were.
+It also pre-checks, before writing anything, that every expectation carries the key its own grade
+mode is read for: `exit` for `grade.on` `exit-code`, `stdout` for `stdout-json`/`stdout-text`,
+with `exit_code` named as the near-miss it is. At task end, a reveal that produced NO verdict is
+re-diagnosed against the same test and reported as a PACK defect naming the missing keys, printing
+only case ids and key NAMES, never an expected value, so the wall holds (D-33).
+**Why it exists.** Measured in that project's own `holdout.jsonl`: five `seal-failed` events, one
+for a bad `status` value and four for "manifest already exists — re-sealing changes the
+commitment". On every one of them the new files had already overwritten the previously sealed pack
+while the manifest still committed to the old hashes, leaving the directory out of step with its
+own commitment.
+**CORRECTION, 2026-11-04.** The first version of this requirement said four sealed packs on
+website-design-okoa/v2 could not grade themselves, with per-pack counts. That was wrong. The
+measurement was taken while the window was re-authoring those packs, so `cases.json` and
+`expected.json` momentarily held different generations and no id lined up. All four carry real
+verdicts (R-045 PASS, R-050 BLOCK, R-052 BLOCK, R-056 BLOCK). An ungradable pack has in fact been
+unsealable since 2026-10-31T05:53:55Z, when `acos-holdout-test/scripts/lib/pack.ts`
+`assertCasesCoverExpected` gained the per-grade-mode key checks and the unrecognised-key refusal;
+verified by sealing a deliberately flat pack, which was refused with no manifest written. The
+guarantee named here is the one that was genuinely missing: a refusal must not damage what it
+could not replace.
+Acceptance: with a pack already sealed and a manifest in place, an author run whose seal is
+refused leaves `cases.json`, `expected.json` and `manifest.json` unchanged and leaves no
+`pack.staging-*` directory behind; a pack whose expectation lacks its graded key, or writes
+`exit_code`, or omits an entry, or carries an orphan entry, is refused before anything is written;
+and a sealed pack with no verdict makes task end report a pack defect naming the missing keys.
+
+### R-060 — A reproduction test must be proved to have run
+Decisions: D-48, D-25, D-29.
+`runScan` credits a registered reproduction (`repro_results[file::name] === true`) only when the
+file exists, the name is DECLARED there on a line that declares a test, that line is not
+`.skip`/`.todo`/`.failing`/`xit`/`xtest`, the suite passed, and the suite output does not mark it
+failed. A DYNAMICALLY named test has no literal name in the source, so `findDynamicDeclaration`
+also accepts a declaration whose name PATTERN can produce the registered name: a template literal
+title with `${...}` holes, or an `.each` title with printf-style placeholders
+(`%s %d %i %f %j %o %p %#`). The static parts are anchored and the holes become wildcards, so a
+pattern that cannot produce the name is still refused — and refused with its own message, naming
+the dynamic case rather than claiming the test is absent. Raised by the v2-ee session on
+2026-11-04: none existed on that project, but a literal-only rule would eventually refuse a real
+reproduction, which is the same class of false refusal as the `bun test` output version below. Every refusal records its cause in `repro_reasons`, which `closureCheck` appends to
+criterion (1), so a refusal is actionable rather than a dead end.
+**Why the evidence comes from the FILE, not the suite output.** Measured 2026-11-04: `bun test`
+prints only `1 pass` / `0 fail` on success and names a test only when it fails. Requiring a pass
+marker beside the name in the output would therefore block closure on every project using it. A
+declared, unskipped test in a file, with the whole suite green, did run and did pass.
+**Why it exists.** Found by the v2-ee session on 2026-11-04 in this skill's own `lib/scan.ts`. The
+rule had been: the file exists, the suite passed, and no failure line mentions the test name. A
+name present nowhere produces no failure line either, so it was credited. FUN-93 on
+website-design-okoa/v2 carried a reproduction pointing at an unrelated test and still satisfied
+closure criterion (1) — the one check that proves the bug is actually fixed.
+Acceptance: a reproduction naming a test that exists in no file is refused and the refusal says
+the file contains no such test; a reproduction naming a `test.skip` is refused as never having
+run; a reproduction naming a real declared test in a passing suite is credited; a missing file is
+refused and named as missing; a name produced by a template-literal title or an `.each` title is
+credited; and a name no pattern in the file could produce is refused with the dynamic-name
+message.
+**Audited on the live project, 2026-11-04 (by the v2-ee session, at this session's request):** all
+94 issues carrying a `repro` field pass the new rule — 81 closed, 4 decided, 10 open. So no closure
+there was bought by the old loose rule and nothing needed reopening; the fix costs nothing
+retroactively and shuts the hole going forward.
+
+### 4.H Task end and goal end
+
+### R-032 — Task end: S4 twice clean, S6 independent review, S7 holdout, S5 record
+Decisions: D-22, D-11, D-06.
+`nemesis task end <id>`: (1) requires the latest two S3 records clean (else refuses naming
+the failing check); (2) runs S6 — the daemon's independent adversarial review (reached over the daemon socket,
+auto-started if needed; a direct call with the same charter and tools is the fallback) of the whole
+task diff with the attacker charter (reads S0, S1, the diff, the repo; never the chat) and
+records findings → issues; (3) runs S7 — reveals the task's holdout pack (R-033) in QA
+context via `holdout.ts reveal` and records the verdict; a BLOCK opens issues; (4) checks
+every checklist the sketch did NOT tick has an `n/a + why` entry in the task's
+`checklists.json` (else refuses); (5) assembles the S5 security check record (Part 4.4) from
+the ledger into `.nemesis/records/<task>/check-record.yaml`; (6) marks the task closed only
+if zero open issues and all steps done. Otherwise sets rung 7 (R-023).
+Acceptance: with a stubbed S6 finding, `task end` opens an issue and leaves the task open;
+with everything clean and a PASS holdout, the task closes and the record file exists.
+
+### R-033 — Acceptance holdouts authored by the judge, not the writer
+Decisions: D-23, D-26.
+When S1 is recorded (`task design`; again as a new pack version on `task redesign`), the
+daemon (Opus, separate from the writer) authors a holdout pack from the task's PRD acceptance
+criteria and S1 (cases with `intent`, `why_not_a_dev_test`, `run`,
+`grade`, `expected`), writes it to `.nemesis/holdout/<task>/pack/` (gitignored), and seals it
+with `holdout.ts seal` to `.nemesis/holdout/<task>/manifest.json`. The writer's context is told
+only the manifest path. If the PRD has no acceptance criteria for the task, the daemon
+derives them from the goal and S1 and the pack says so in its README.
+Acceptance: after `task start` no manifest exists; after `task design` in a fixture (test-mode
+author) the manifest exists with `case_ids` non-empty and the pack directory is gitignored;
+`task redesign` keeps the old manifest as spent and seals a new one.
+
+### R-034 — Goal end: the S8 release gate
+Decisions: D-22, D-29, D-06.
+`nemesis release-gate` writes `.nemesis/records/release-gate.json` only when: zero open
+issues at every severity; every task closed; every task holdout PASS; any secret found
+during the work — any severity, checklist 3.4.x or a finding that names a secret — has a
+rotation entry (`nemesis secret rotated <id>`); backups/restore,
+monitoring/alerts, and incident contact recorded as done or `n/a + why` in
+`.nemesis/records/release-checklist.json` and judged acceptable by the daemon (S8 charter).
+The Stop hook (R-027) accepts `AUTOPILOT_GOAL_COMPLETE` only when this record exists and
+is newer than the last edit.
+Acceptance: with one open Low issue, `release-gate` refuses naming it; with all green, the
+record is written.
+
+### 4.I Daemon, charter, independence, recovery
+
+### R-035 — The Nemesis daemon
+Decisions: D-19, D-33, D-15, D-13.
+`scripts/nemesis-daemon.ts` serves `~/.acos/nemesis/nemesis.sock` (0600), writes
+`~/.acos/nemesis/verdicts.log` (JSONL, append-only) and `requests.log`, keeps a 0600 token,
+and for each request spawns `claude -p --model opus` with `--allowedTools Read,Grep,Glob`
+(no Bash, no Write, no Task), the prompt on stdin, and the judge-child token in the
+environment. There is NO timeout on a verdict. A keep-alive LaunchAgent plist is installed by
+`nemesis daemon install`.
+Acceptance: `nemesis daemon status` shows the socket and pid; a request round-trips in test
+mode; the spawned argv contains the allowed-tools restriction and no `--dangerously-skip-permissions`.
+
+### R-036 — The charter: deny by default against the rulebook
+Decisions: D-06, D-07, D-04, D-13.
+`scripts/lib/charter.ts` builds the judge prompt: role (Nemesis, the rulebook's judge, not
+the machine-harm judge); the twelve questions verbatim; the severity table; principles; the
+S0-selected checklists in full and the others by id; the PFC lens definition; the contract
+(R-007); the file's open issues and prior verdicts; the duty to assess stuckness from the
+history and recommend a rung with a reason; the instruction to read callers/tests/policies
+before answering; the exact JSON output shape (R-009) and nothing else. Default is DENY on
+any finding of any severity.
+Acceptance: the built prompt contains all twelve questions, the four severity rows, the
+selected checklist items, and the JSON schema line.
+
+### R-037 — Verdict recovery: find the reason, get a readable answer, then decide
+Decisions: D-14.
+`scripts/lib/verdict.ts` classifies a judge reply when no JSON verdict parses: `empty`
+(no stdout; stderr captured and inspected), `usage_limit` (stderr/stdout matches
+limit/quota/rate patterns), `too_long` (E2BIG or the CLI's prompt-length error),
+`prose` (text without a JSON object), `malformed` (JSON-like but invalid). Recovery per
+class: `empty`/crash → retry via the direct layer, then again with backoff; `usage_limit` →
+wait and retry with backoff (bounded by config `judge_retry_waits_ms`, default 3 tries over 10 minutes), then try
+the alternate account config dir if configured; `too_long` → write the candidate and
+records to a temp file the judge reads and resend a short prompt; `prose` → a second
+JSON-only call that extracts the decision from the prose; `malformed` → repair common
+faults (trailing commas, fences) then re-parse. Every step is logged with its cause. Only
+when all recovery fails does the daemon return `deny` with `reason` naming the class and
+the last error. The string "unparseable — allowed" never appears.
+Acceptance: `nemesis verdict-parse` fed each fixture class reports the class and the
+recovery taken; none yields `allow`.
+
+### R-038 — The same recovery in the Oracle daemon and direct layer
+Decisions: D-14, D-31.
+`.claude/scripts/oracle/oracle-daemon.ts`: the prompt is passed on stdin; stderr is captured
+and logged; the unparseable fallback-to-allow is removed and replaced by the R-037 recovery
+(shared logic reimplemented in the daemon file, since the Oracle must not depend on the
+Nemesis skill directory); the final failure is a deny that names the class. `_oracle_judge.py`
+(the direct layer): same classification and the `prose` and `malformed` recoveries; a final
+deny naming the cause.
+Acceptance: `oracle-daemon.ts` contains no `fallback: true` allow path; `parseVerdict`
+failures route to recovery; the Python direct layer's deny message contains the class name.
+
+### R-039 — Nemesis is never unreachable without saying why
+Decisions: D-06, D-19.
+Reachability layers mirror the Oracle: socket → auto-start the daemon → direct `claude -p`
+call from the hook → retry with backoff → deny naming what broke. Fail closed.
+Acceptance: with no daemon and `claude` absent (fixture PATH), the hook denies with a
+reason naming the missing binary.
+
+### R-040 — The judge child is exempt from Nemesis hooks and needs no Oracle verdict
+Decisions: D-19.
+The daemon passes `ACOS_NEMESIS_JUDGE=<token>` to the child; hooks compare it to
+`~/.acos/nemesis/token` (0600) and allow instantly on match. The child has no Bash/Write, so
+the Oracle hook (which evaluates only Bash/Write/Edit/NotebookEdit/Task) never fires for it.
+Acceptance: hook invoked with a matching token env allows with reason
+`nemesis_judge_session`; a wrong token does not.
+
+### 4.J Records and reports
+
+### R-041 — Everything on record, append-only
+Decisions: D-37, D-06.
+Verdicts, scan results, step marks, issue history, reviews, holdout reveals, and gate
+records are JSON/JSONL files under `.nemesis/records/` and `~/.acos/nemesis/`. No Nemesis
+command deletes or rewrites a record; corrections are new entries.
+Acceptance: the records library exposes no delete function and `selftest` verifies a record
+written twice yields two entries.
+
+### R-042 — The plain-language report for Zee
+Decisions: D-28, D-08.
+`nemesis report [--task <id>]` writes `.nemesis/reports/<date>-report.md` and a local
+standalone `.html` (Google Fonts only, no external scripts) listing per issue: what was
+found, what was fixed, how it is known to be fixed (the repro test, the scans, the review),
+what was reverted and why, and what is still open with its rung. No code, no diffs. It opens
+the HTML locally; it never publishes a claude.ai artifact.
+Acceptance: the report file contains no fenced code blocks and lists every issue id in the
+ledger.
+
+### 4.K Severity, restricted files, language
+
+### R-043 — Zero open at every severity; Low is not deferrable
+Decisions: D-29, D-06.
+Severities are exactly `critical|high|medium|low`. There is no `defer`, `snooze`, or
+`accept-without-decision` command. The release gate and task end count Low as open.
+Acceptance: `nemesis help` lists no defer command; a Low issue blocks `release-gate`.
+
+### R-044 — Restricted ACOS files stay restricted
+Decisions: D-36.
+Nemesis never reads the restricted reviewer-rules directory (not in scans, not in judge
+payloads, not in snapshots) and never writes under `.claude/agents/`.
+Acceptance: `nemesis scope` on a path in that directory prints excluded; code grep shows no
+write under `.claude/agents`.
+
+### R-045 — TypeScript under bun; Python only where the existing chain demands it
+Decisions: D-31.
+All Nemesis scripts and hooks are TypeScript run by `/Users/zee/.bun/bin/bun`, zero
+`node_modules`. The only Python touched is `_oracle_judge.py` (R-038).
+Acceptance: `find scripts -name "*.py"` is empty; `bunx tsc --noEmit` passes.
+
+### 4.L The skill itself: thin, proven, holdout-tested
+
+### R-046 — A thin SKILL.md that routes to the CLI
+Decisions: D-24.
+`SKILL.md` lists the commands and the enforcement model; it contains no step that the hooks
+or CLI do not enforce, and it says which steps rely on the model (composing S0/S1, writing
+fixes, spawning the rung-3 agent).
+Acceptance: every protocol step in SKILL.md names its artifact and its enforcing hook/CLI.
+
+### R-047 — Nemesis is holdout-tested by a pack it never saw
+Decisions: D-26.
+A separate `Task(developer)` agent authors `holdout/pack/` from §6 of this PRD; the pack
+dir is gitignored; the manifest is sealed with the deciding case; the reveal runs once in
+QA context by a non-builder; `trace.ts check --reveal` is clean.
+Acceptance: `holdout/manifest.json` exists with the §6 case ids and `reveal.verdict: PASS`.
+
+### R-048 — This PRD is traced and independently audited
+Decisions: D-25.
+`prd/TRACE.json` maps every active decision; `trace.ts check --phase build` is clean; a
+`Task(qa-reviewer)` audit of PRD vs implementation reports zero findings in `prd/AUDIT.md`.
+Acceptance: the three gate outputs are pasted verbatim in `prd/AUDIT.md`.
+
+### R-049 — The skill-maker was updated
+Decisions: D-27.
+`acos-skill-maker/SKILL.md` carries Phase 1.5 (decision ledger), Phase 3.5 (PRD +
+trace), Phase 3.6 (anti-skip review), Phase 5.5 (holdout), Phase 5.6 (independent audit),
+the standing rules, and ships `scripts/trace.ts` with a selftest.
+Acceptance: the phases exist by name; `trace.ts selftest` passes.
+
+### R-050 — Built in the worktree sandbox, with intent tests
+Decisions: D-32.
+All files are written through sandbox `side`; `.worktree/sandboxes/side/intent-tests/`
+contains runnable intent tests (rulebook generation, trace gate, selftests) so the primary
+tab's merge can verify the intent.
+Acceptance: `intent-tests/run.sh` exits 0 against the sandbox files.
+
+### R-051 — Test mode cannot become a bypass
+Decisions: D-38.
+The stub judge (`NEMESIS_JUDGE_STUB=<json file>`) and stub holdout author are honored only
+when `config.json` has `"test_mode": true` AND the env var is set. `enroll` never writes
+`test_mode`. In a project without `test_mode`, the env var is ignored and logged.
+Acceptance: env set + `test_mode` absent → real judge path (fails closed in a fixture with
+no daemon); env set + `test_mode: true` → stub verdict used.
+
+### R-052 — Untouched checklists need an "n/a + why"
+Decisions: D-06.
+Every task has `checklists.json`: for each of the 14 checklists, either `applies: true` (from
+the sketch) or `n/a` with a reason. `task end` refuses while any entry is missing; the judge
+sees the file and may dispute an `n/a` (a finding).
+Acceptance: `task end` with 3.9 neither ticked nor n/a'd refuses naming 3.9.
+
+### R-053 — Self-tests for every guarantee
+Decisions: D-24, D-06.
+`nemesis selftest` attacks: hook inert when off; deny without S0/S1; stub deny → issue +
+reason; S2 record on allow; Bash diff detection; `skipped` is not clean; close refused
+without repro; goal-complete blocked; watchdog catches unrecorded edit; ladder rung only by
+judge; revert restores; eternity marker ignored; judge token exemption; verdict classes
+never allow; rulebook hash; test-mode guard; exclusions. Exit non-zero on any failure.
+Acceptance: `nemesis selftest` prints one `ok` line per guarantee and exits 0.
+
+## 5. Enforcement model (the anti-skip map)
+
+| Step | Artifact | Enforced by | Relies on the model for |
+|---|---|---|---|
+| S0 threat sketch | `tasks/<id>/threat-sketch.yaml` + steps.json S0 hash | PreToolUse denies edits until present; CLI validates fields | composing the sketch honestly (judge checks it against the diff) |
+| S1 design review | `tasks/<id>/design-review.yaml` + S1 | same | composing the design |
+| S2 line rule | verdict record per edit + S2 entry | PreToolUse judge; deny blocks the write | nothing (judge is a separate model) |
+| S3 post-change scan | `records/scans/<n>.json` + S3 entry | PostToolUse runs it mechanically; block on failure | nothing |
+| S4 fix loop | issue files with attempts and rungs | Stop hook blocks while open; judge advances rungs | writing the fix |
+| S5 record | `records/<task>/check-record.yaml` | `task end` assembles from ledger; refuses if incomplete | nothing |
+| S6 independent review | `records/<task>/review.json` | `task end` runs the daemon attacker review | nothing |
+| S7 holdout | `holdout/<task>/manifest.json` + reveal | `task design` authors+seals (daemon; new version on `task redesign`); `task end` reveals | nothing |
+| S8 release gate | `records/release-gate.json` | `release-gate` command; Stop hook requires it for goal-complete | recording n/a reasons |
+| PFC a,c,d,e | inside each verdict + scans | PreToolUse judge + PostToolUse scan | nothing |
+| PFC b (fix) | the ladder | Stop hook + judge | writing the fix; spawning rung-3 agent |
+| Watchdog | `FUN-` issues | Stop hook compares transcript to records | nothing |
+| Rung 3 agent | its edits are judged | hooks | spawning the agent as instructed |
+| Rung 4 | `second-opinion` record | CLI | applying the returned patch |
+| Rung 8 decision | `issue decide` record | CLI; gate stays shut until recorded | Zee's product decision |
+| Stalled writer | product report + `stop` record `stalled: true` | Stop hook after `stalled_turns` no-tool turns (R-054) | — |
+
+## 6. Holdout design (for the separate pack author — the builder does not see the pack)
+
+Fixture: a temp project enrolled with `test_mode: true`, a stub judge file per case, hooks
+invoked directly with hook-JSON on stdin (as Claude Code would). Grade on `stdout-json`
+where the hook emits JSON, else `exit-code`.
+
+| Case id | Intent | Why not a dev test |
+|---|---|---|
+| `rule-breaking-edit-refused-until-fixed` (**deciding**) | with S0/S1 present and a stub deny, the PreToolUse hook denies; the issue is open; the Stop hook blocks; after repro test + clean scans + review the close succeeds and Stop no longer blocks | exercises the whole chain through the real hook entry points and real files; a builder cannot satisfy it by making one library function right |
+| `edit-without-sketch-refused` | PreToolUse denies an in-scope edit when no task/S0/S1 exists and names the command | the deny must live in the hook entry point, not a helper |
+| `insecure-line-deny-carries-finding-and-rung` | deny reason contains each finding's `what`, `fix_hint`, and `rung n` | checks the writer-facing contract, not internals |
+| `close-refused-without-repro-test` | `issue close` refuses and names criterion (1) | the refusal must be in the shipped CLI |
+| `goal-complete-blocked-while-open` | Stop hook blocks on `AUTOPILOT_GOAL_COMPLETE` with an open issue | reads ledger files, not transcript claims |
+| `eternity-marker-still-judged` | with a live marker fixture, the hook still calls the (stub) judge | proves no stand-down path exists |
+| `bash-heredoc-write-caught` | PostToolUse on Bash detects a changed in-scope file and blocks with the stub finding | end-to-end tree diff through the hook |
+| `unreadable-verdict-never-allows` | each verdict class (empty, prose, malformed, too_long, usage_limit) ends in a recovery or a named deny, never allow | the recovery must be wired into the real parse path |
+| `drift-finding-opens-fun-issue` | stub PFC-d finding → `FUN-` issue with `checklist: PFC-d` | lens routing is observable only in the ledger |
+| `unrecorded-edit-is-defect` | transcript with an in-scope Write and no records → Stop blocks and a FUN issue exists | watchdog runs against real transcript JSONL |
+| `skipped-scan-is-not-clean` | fixture without a test runner: S3 shows `skipped`, status not clean, task end refuses | the "skip ≠ pass" rule must survive into status and task end |
+| `hooks-inert-when-off` | no active state → allow, no socket | measures the fast path through the real entry |
+| `enroll-installs-hooks-once` | enroll twice → exactly one copy of each hook, `.nemesis` present | idempotency at the file level |
+| `rulebook-matches-source` | `source_sha256` equals hash of the markdown; counts as in R-003 | generation, not hand-editing |
+| `low-blocks-release-gate` | one Low issue → release-gate refuses | severity floor at the gate |
+| `revert-restores-green-keeps-open` | snapshot, modify, revert → bytes equal; status `reverted-open` | rung 6 contract at the file level |
+| `ladder-rung-only-by-judge` | three `stuck:false` denies → rung 1; one `stuck:true, rung 3` → rung 3 | proves no counter |
+| `judge-token-exempts-child` | matching token → allow `nemesis_judge_session`; wrong token → not | exemption correctness |
+| `test-mode-guard` | env set, no `test_mode` → stub ignored (fails closed with no daemon) | proves the stub cannot bypass a real project |
+
+## 7. Traceability matrix
+
+Generated by `bun ../acos-skill-maker/scripts/trace.ts matrix prd/TRACE.json` — see
+`prd/MATRIX.md` (regenerated at every build gate run).
+
+### R-061 — A rung ruled inapplicable needs an independent confirmation
+Decisions: D-49, D-44, D-15, D-08.
+`nemesis ladder <id> --na <n> --why "<reason>"` writes `rung-na-proposed`, which counts for
+NOTHING. `rungRuledNA` in `lib/lane.ts` honours only `rung-na-confirmed`, written after a second
+reader — given the finding and the rung but never the first judge's reasoning (D-15) — answers
+`{"possible": false}`. The confirmer's charter states that its job is to DEFEND the ladder, and
+that the bar is impossibility rather than difficulty: it must answer `possible: true` if the rung
+COULD be carried out, even if that looks unlikely to help, is expensive, or resembles something
+already tried. A refusal is recorded as `rung-na-refused` and names the rung's own instruction, so
+the machine's next move is stated. If the confirmation cannot be obtained at all, the ruling stays
+recorded and uncounted and the command exits non-zero — an unreviewed ruling never shortens the
+ladder. The legacy `rung-na` event is still honoured so an existing ledger is not retroactively
+broken.
+**Why it exists.** Measured on website-design-okoa/v2: 496 rulings, reviewed by nobody.
+
+### R-062 — A ladder is exhausted only when the machine spent a real idea
+Decisions: D-49, D-44, D-08.
+`ladderExhausted` returns `{ ok: false, floor: true }` when nothing is owed but fewer than
+`MIN_RUNGS_SPENT` (1) of `REQUIRED_RUNGS` was spent on REAL WORK. `rungSpentOnRealWork` counts
+only an attempt the judge actually saw, a second opinion genuinely `received`, a redesign, or a
+revert. `admitToRung8` refuses with that reason and names rung 3 — handing the finding with its
+written history to a fresh agent — because that is available on any finding. The OWED list still
+accepts an `unavailable` second opinion, so rung 4 never deadlocks on a project with no external
+provider; only the FLOOR is strict. Nothing deadlocks overall either: rung 3 is always possible,
+and ruling it out now needs an independent confirmation that it is impossible (R-061).
+**Why it exists.** An escape hatch that can empty the whole list is not an escape, it is the front
+door.
+**Measured, in two rounds, and the second round matters more.** The first version counted rung 4
+as spent the moment `second_opinion` existed, including `status: "unavailable"`. Measured on
+website-design-okoa/v2 the same day, with the cut stated exactly because a bare "338" was not
+reproducible by a second session: of 447 open findings **400** carry `unavailable`, **338** of the
+**376** in the PRODUCT lane carry it, **47** carry no `second_opinion` key, and **ZERO** anywhere
+carry `received`, because no external model is configured on that project at all. The 243 and 266
+below are both on the product-lane basis. So one auto-recorded
+non-event — "we have no second model" — was the entire ladder for **243** of the **266** findings
+the gate was admitting. With the floor counting real work only, **admitted to Zee went 266 → 23**,
+and all 23 carry genuine work: 12 redesigns, 6 fresh-agent attempts, 3 root-cause fixes, 2 both.
+**And it caught this skill's own tests twice.** Round one refused three fixtures that reached Zee
+with nothing spent; round two refused four more that had been cleared by the same non-event the
+live ledger was using. Both times the fixtures were amended and the floor was not loosened.
+**An attempt records the rung the WORK was done at, never a position.** `workRungFor` maps a
+finding sitting at 7 or 8 to rung 3, because those are POSITIONS and rung 7's own instruction is
+"Retry from rung 3 with the FULL attempt history". Before this, an edit re-judged while a finding
+was parked at 8 was stamped `rung: 8` and paid for no required rung — real work credited to a step
+that is not work. Three such stamps exist on the measured ledger and all 130 floor-refused
+findings on the task in hand sit at position 8.
+**A refusal never names a rung the ledger could not credit.** `recordFindings` appends an attempt
+only when the finding's task matches the task being worked, so rungs 2 and 3 cannot be paid on a
+finding belonging to another task — 117 of the 247 floor-refused on the measured ledger. That is
+not a deadlock, because `cmdTaskRedesign(taskId, issueId, file)` and `cmdRevert(id)` take the
+target explicitly and carry no rung gate and no current-task gate, so rungs 5 and 6 are payable on
+anything. `payableRungs` names the creditable route for the finding in front of it, says plainly
+when rungs 2 and 3 would not count, and says how to make rung 3 payable.
+**Both of these were found by the `v2-ee` session**, which measured that the refusal text written
+minutes earlier named a move its ledger could never record.
+
+### R-063 — A recurring reason must become a reviewed policy
+Decisions: D-49, D-25, D-37.
+`naReasonUses` counts, across the whole ledger, how many FINDINGS a normalized reason has already
+ruled a rung inapplicable on. At `na_reason_cap` (default 3) `cmdLadderNA` refuses and names the
+policy commands. `normalizeReason` lower-cases, replaces issue ids, requirement ids and digits
+with placeholders and keeps the first 14 words, so re-wording does not reset the count —
+re-wording is how 123 "distinct" reasons covered 496 rulings on the measured ledger.
+**Why it exists.** A judgement made three times is a standing rule. A standing rule belongs in one
+reviewed, vetoable record, not in a 497th history entry nobody will ever audit.
+
+### R-064 — A policy may only pick a rung the machine owns
+Decisions: D-49, D-06, D-07, D-11.
+`policyShapeProblems` in `lib/policy.ts` refuses any policy whose `then_rung` is not one of
+`POLICY_RUNGS` (2, 3, 4, 5, 6), and the `Policy` type carries NO field that could close, decide,
+drop, accept or rule a finding N/A — so the guarantee is structural, not a check that can be
+forgotten. The same function also refuses a policy with no written rule, reasoning or EVIDENCE
+(20 characters each), a matcher that would select everything, a pattern that is not a valid
+regular expression, a matcher too NARROW to catch the case it says motivated it, and a matcher too
+WIDE — one that also catches the near-miss the policy itself states it must not. D-11's four
+closure criteria are untouched: a reproduction test that passes, a green suite, two clean scans,
+an independent reviewer, for every finding, every time.
+**Why the too-wide check exists.** On 2026-11-02 my own lane fix was written one step too wide and
+reclassified 17 findings it was never meant to touch. A rule is only as good as the near-miss it
+declines.
+
+### R-065 — A policy is inert until independently approved, and Zee's veto walks it back
+Decisions: D-49, D-15, D-25, D-28, D-37.
+A proposed policy has `status: "proposed"` and `applyPolicies` ignores it entirely.
+`nemesis policy review <POL-n>` asks a separate reader — which did not write the policy and has
+not seen its author's reasoning — to approve or reject it, and is told to reject a matcher wider
+than its evidence justifies, evidence that does not support the rule, a rung wrong for the class,
+or a rule that makes work disappear instead of doing the right work faster. Only approval sets
+`status: "active"`. Every application appends `{at, issue, from_rung, to_rung}` to the policy and
+a line to the issue's history and to `records/policy.jsonl`. `nemesis policy veto <POL-n> --why`
+sets `vetoed` permanently and restores every still-open finding the policy moved to the rung it
+was on before — so Zee's veto is a real undo, not just a stop. A policy only ever moves a finding
+UP the ladder, so two policies can never fight over one finding.
+**Why it exists.** Zee, 2026-11-04: "it has to be best judgement with checks and balances." An
+unreviewed standing rule is one model's opinion applied at scale.

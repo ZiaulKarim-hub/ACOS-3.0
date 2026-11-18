@@ -1,0 +1,123 @@
+---
+name: acos-nemesis-protocol
+description: The rulebook's judge that rides along WHILE code is written. Every Write/Edit/NotebookEdit and every file a Bash command changes is judged by Opus against the whole Ten-Star Security Protocol (S0–S8, all 14 checklists, the records — the Prime Security Checks) and the Prime Functionality Checks (bug detection reading the code base, nothing broke, no drift from the PRD or goal, no new bug), BEFORE the edit lands; every change is then scanned (type-check, lint, tests, secrets, dependency audit, policy, data). Findings become issues fixed by an 8-rung automatic ladder that never hands code to Zee; nothing completes while the ledger is open. Runs beside Oracle mode (Oracle = harm to the machine; Nemesis = the rulebook and the plan) through hooks, so every builder skill and agent is covered without knowing it. Trigger phrases - "nemesis", "nemesis protocol", "turn on nemesis", "judge every edit", "/acos-nemesis-protocol".
+disable-model-invocation: false
+user-invocable: true
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+argument-hint: "on \"<goal>\" [--prd <file>] | off | status | enroll [dir] | task … | issue … | report"
+---
+
+# ACOS Nemesis Protocol
+
+Thin by design (D-24): the rules live in the engine, the hooks and the judge's charter, not
+in this file. Everything below routes to the CLI:
+
+```bash
+N="/Users/zee/.bun/bin/bun /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-nemesis-protocol/scripts/nemesis.ts"
+```
+
+PRD: `prd/PRD.md` · decisions: `prd/DECISIONS.md` · trace: `prd/TRACE.json` · rulebook:
+`rulebook/SECURITY-PROTOCOL.md` (byte copy of the portal's) → `rulebook/rulebook.json` (generated).
+
+## Routing (what to do when invoked)
+
+| Invocation | Do |
+|---|---|
+| `/acos-nemesis-protocol enroll [dir] [--prd <file>]` | `$N enroll …` — installs the four hooks (once) and `.nemesis/`. Relay the output verbatim. |
+| `/acos-nemesis-protocol on "<goal>" [--prd <file>]` | If the goal is missing or vague, ask DERIVE or PROVIDE exactly as `acos-oracle-protocol` does (same `looksVague` rule). Then `$N on "<goal>" …`. Relay verbatim. Oracle may already be on; Nemesis never changes Oracle's state. |
+| `/acos-nemesis-protocol off` | `$N off` |
+| `/acos-nemesis-protocol status` | `$N status` — show whole. |
+| anything else / no argument | `$N status`, then the short menu: on / off / enroll / task start / report. |
+
+## The loop as the hooks enforce it (every step has an artifact; none relies on memory)
+
+1. **Start a task** — `$N task start <id> --title "…" [--prd-refs R-001,R-002]`.
+2. **S0 threat sketch** — write `.nemesis/tasks/<id>/threat-sketch.yaml` from
+   `templates/threat-sketch.yaml`, then `$N task sketch <id> <file>`. The CLI validates it
+   (six STRIDE lines, data classes, two-sentence abuse case, valid checklist ids).
+3. **S1 design review** — `templates/design-review.yaml` → `$N task design <id> <file>`. The
+   daemon then authors and seals the task's acceptance holdout (S7) from the PRD and S1; the
+   writer never sees it (a redesign seals a new version).
+   Every checklist not ticked in the sketch needs `$N task checklist <id> <3.x> na "<why>"`.
+   **Until S0 and S1 exist as files, the PreToolUse hook denies every in-scope edit** and
+   names the command to run.
+4. **S2, every edit** — the PreToolUse hook computes the candidate file, sends diff + file +
+   the contract (goal, PRD excerpt, S0, S1, the twelve questions, the selected checklists,
+   open issues and prior verdicts for the file — never the chat) to the Nemesis daemon. Opus
+   reads callers/tests/policies (read-only) and answers JSON. A finding = deny; the reason
+   carries each finding and the current rung instruction. Fixes are edits and are judged too.
+5. **S3, every change** — the PostToolUse hook runs the whole-repo scan (type-check, lint,
+   tests, secrets, dependency audit, RLS/security_invoker policy check, sensitive-data check).
+   `skipped` is never clean. Failures open issues and come back as a block. Files changed by
+   Bash are diffed against the pre-command snapshot and judged after the fact.
+6. **S4, the ladder** — issues climb only when the JUDGE says stuck (no counter): rewrite →
+   root cause → fresh-context agent (`Task(developer)` with the issue file only) →
+   `$N second-opinion <id>` → `$N task redesign …` → `$N revert <id>` (last green snapshot,
+   issue stays open) → task-end retry from rung 3 → goal-end product report. Print the
+   current instruction with `$N ladder <id>`.
+7. **Close an issue** — `$N issue repro <id> <testFile> <testName>` then `$N issue close <id>`.
+   Close succeeds only when the reproduction test passes, the suite passes, the last two
+   scans are clean, and the independent review (`$N review <id>` or task end) confirms.
+8. **Task end** — `$N task end <id>`: last two scans clean (S4) → independent adversarial
+   review by the daemon (S6) → holdout reveal in QA context (S7) → S5 record assembled from
+   the ledger → task closes, or every open issue goes to rung 7 → 3 with its full history.
+9. **Goal end** — write `.nemesis/records/release-checklist.json` (backups restore tested,
+   monitoring/alerts, incident contact, secrets rotated if exposed, branch protection — each
+   `done` or `n/a` + note), then `$N release-gate` (S8). If issues are still open, the gate
+   moves every one to rung 8 and writes the product report for Zee. Only when the gate is OPEN
+   does the Stop hook accept `AUTOPILOT_GOAL_COMPLETE`.
+10. **Report for Zee** — `$N report` (ledger) or `$N report --product` (rung 8: the three
+    product choices). Plain language, local HTML, no code. Record his pick with
+    `$N issue decide <id> --choice drop|change|accept --owner <who>`.
+
+## Enforcement (what the hooks and CLI check — mirrors `prd/PRD.md` §5)
+
+| Step | Artifact | Enforced by | Relies on the model for |
+|---|---|---|---|
+| S0 | `tasks/<id>/threat-sketch.yaml` + S0 hash | PreToolUse denies edits until present; CLI validates | composing it honestly (the judge checks it against the diff) |
+| S1 | `tasks/<id>/design-review.yaml` + S1 hash | same | composing the design |
+| S2 | verdict record + S2 entry per edit | PreToolUse judge; deny blocks the write | nothing |
+| S3 | `records/scans/<n>.json` + S3 entry | PostToolUse runs it; block on failure | nothing |
+| S4 | issue files, rungs | Stop hook blocks while open; judge advances rungs | writing the fix |
+| S5 | `records/<task>/check-record.yaml` | `task end` assembles; refuses if incomplete | nothing |
+| S6 | `records/<task>/review-*.json` | `task end` / `review` run the daemon attacker | nothing |
+| S7 | `holdout/<task>/manifest.json` + reveal | daemon authors+seals at `task design` (new version on `task redesign`); `task end` reveals | nothing |
+| S8 | `records/release-gate.json` | `release-gate`; Stop hook requires it | writing n/a reasons |
+| PFC a,c,d,e | inside each verdict + scans | PreToolUse judge + PostToolUse scan | nothing |
+| PFC b | the ladder | Stop hook + judge | writing the fix; spawning the rung-3 agent |
+| Watchdog | `FUN-` issues | Stop hook: transcript vs records | nothing |
+| Stalled writer | product report, stop allowed | Stop hook after `stalled_turns` (default 6) no-tool turns | — |
+
+Honest limits: composing S0/S1, writing fixes, spawning the rung-3 agent, and applying a
+rung-4 patch are the model's work. Everything else is a file a hook checks.
+
+## Hard rules
+
+- **Never claim what the CLI did not print.** Relay `DENIED` / `clean` / `CLOSED` / `refused` lines verbatim.
+- **No bypass exists.** The only skips are the judge child's token and `test_mode` (never written by `enroll`).
+- **Nemesis never stands down for the eternity window** (D-17); eternity's own files are out of scope.
+- **Two judges, two charters.** Oracle leans allow (harm). Nemesis leans deny (rulebook). Never merge them.
+- **Zee is never asked to fix code.** Rung 8 asks for a product decision only.
+- **Hook text is BUDGETED, and the block is the enforcement — not the prose.** The Stop and
+  UserPromptSubmit hooks name the worst-severity issues, state the true open count, say how
+  many they did not name and at what severities, and point at `nemesis issue list --open`.
+  They never enumerate the ledger: that text lands in the writer's conversation every turn,
+  and on 2026-11-01 an unbounded Stop reason over 436 open issues measured 336,897 chars
+  (~84,224 tokens) per turn and compacted a 500,000-token context 73 times. Limits live in
+  `.nemesis/config.json` (`stop_issue_detail`, `stop_directive_max_chars`,
+  `prompt_issue_detail`, `prompt_context_max_chars`); the reasoning is in `scripts/lib/digest.ts`.
+- **Zero open at every severity.** There is no defer command; Low blocks the release gate.
+
+## Files
+
+- `scripts/nemesis.ts` (CLI) · `scripts/nemesis-daemon.ts` (judge) · `scripts/hooks/{pre-tool,post-tool,stop,prompt}.ts`
+- `scripts/lib/{scope,state,steps,scan,verdict,charter,judge,ladder,report,digest,selftest}.ts`
+- `scripts/build-rulebook.ts` → `rulebook/rulebook.json` (`--check` verifies the source hash)
+- `templates/` (threat-sketch, design-review, issue, check-record, config)
+- Per project: `.nemesis/` (config, state, tasks, issues, records, snapshots, holdout, reports)
+- Machine-wide: `~/.acos/nemesis/` (socket, token, verdicts.log, daemon.log)
+- Self-tests: `$N selftest` (one `ok` line per guarantee) · holdout: `holdout/manifest.json` (pack withheld)
+- Oracle fixes shipped with this skill: `.claude/scripts/oracle/oracle-daemon.ts`, `.claude/scripts/_oracle_judge.py` — unreadable verdicts are classified and recovered, never allowed.
+
+---
+*acos-nemesis-protocol — the rulebook's judge, riding along while the code is written.*

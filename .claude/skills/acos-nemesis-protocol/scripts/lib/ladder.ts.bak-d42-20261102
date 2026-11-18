@@ -1,0 +1,75 @@
+/**
+ * ladder.ts — the escalation ladder (R-018..R-024, D-04, D-08, D-09, D-12).
+ *
+ * Rungs 1→6 move ONLY on the judge's history assessment (stuck + recommended rung). There
+ * is no attempt counter anywhere in this file, on purpose. Rungs 7 and 8 are POSITIONS
+ * (task end, goal end), not escalations the judge decides. No rung asks Zee to fix code.
+ */
+import * as path from "node:path";
+import { P, type Issue, writeIssue, nowIso, appendRecord } from "./state";
+import type { HistoryAssessment } from "./verdict";
+
+export interface Rung { n: number; name: string; who: string; instruction: (i: Issue, root: string) => string }
+
+export const RUNGS: readonly Rung[] = [
+  { n: 1, name: "rewrite from the deny reason", who: "writer",
+    instruction: (i) => `Rewrite the chunk so the finding no longer holds. Finding: ${i.what}${i.fix_hint ? ` Hint: ${i.fix_hint}` : ""} Re-submit the edit; it will be judged again.` },
+  { n: 2, name: "fix the root cause, not the line", who: "writer",
+    instruction: (i) => `The judge says the problem is upstream of this line. Root cause: ${i.root_cause ?? "(see the issue history)"}. Fix THAT cause (a missing policy, a function returning too much, a library default), then re-submit. Do not write around it.` },
+  { n: 3, name: "fresh-context fixer", who: "a new agent",
+    instruction: (i, root) => `Spawn a fresh agent: Task(developer) with ONLY these inputs — the issue file ${path.relative(root, P.issue(root, i.id))} (it carries every attempt and the judge's reasons), the task records under .nemesis/tasks/${i.task}/, and the repository path. Do not pass the conversation. Its edits are judged like any other.` },
+  { n: 4, name: "second opinion from a different model family", who: "external model + agent",
+    instruction: (i) => `Run: nemesis second-opinion ${i.id}  — it asks the configured external model (via run-external-agent.py) for an analysis and a patch and stores both in the issue. Then have a Claude agent apply the patch (it is judged as any edit).` },
+  { n: 5, name: "redo the design (S1)", who: "writer",
+    instruction: (i) => `The design itself is judged wrong for this feature. Write a new design review for task ${i.task} and run: nemesis task redesign ${i.task} ${i.id} <design-file>  — the old S1 is kept as v1; S2/S3 reopen; rebuild the feature from the new design.` },
+  { n: 6, name: "revert to green and continue", who: "CLI",
+    instruction: (i) => `Run: nemesis revert ${i.id}  — restores this issue's files from the last green snapshot. The issue stays open (status reverted-open). Continue with other work; it is retried at task end.` },
+  { n: 7, name: "task-end retry with full history", who: "writer",
+    instruction: (i) => `Task end reached with this issue open. Retry from rung 3 with the FULL attempt history in the issue file. Nothing is parked silently: the task cannot close until this is fixed and proven.` },
+  { n: 8, name: "goal end — product decision", who: "Zee (product only)",
+    instruction: (i) => `Every automatic rung was tried. Run: nemesis report --product  — Zee gets a plain-language report with three choices only (drop the feature / change the requirement / accept the risk with an owner). Record his pick with: nemesis issue decide ${i.id} --choice <drop|change|accept> --owner <who>. No code fix is asked of him.` },
+];
+
+export function rung(n: number): Rung { return RUNGS[Math.max(1, Math.min(8, n)) - 1]!; }
+
+/**
+ * Apply the judge's assessment. Advances ONLY when the judge says stuck and recommends a
+ * HIGHER rung (capped at 6; 7/8 are positions). Records the judge's why. Returns the rung.
+ */
+export function applyAssessment(root: string, issue: Issue, ha: HistoryAssessment, verdictId: string): number {
+  const rec = Math.max(1, Math.min(6, Math.floor(ha.recommended_rung || 1)));
+  if (ha.stuck && rec > issue.rung) {
+    const from = issue.rung;
+    issue.rung = rec;
+    issue.history.push({ at: nowIso(), event: "rung", detail: `${from} → ${rec} by judge ${verdictId}: ${ha.why}` });
+    writeIssue(root, issue);
+    appendRecord(root, "ladder", { issue: issue.id, from, to: rec, verdict: verdictId, why: ha.why });
+  } else if (ha.why) {
+    issue.history.push({ at: nowIso(), event: "assessed", detail: `judge ${verdictId}: not stuck — ${ha.why}` });
+    writeIssue(root, issue);
+  }
+  return issue.rung;
+}
+
+/** Position rungs: set by task end (7) and goal end (8). */
+export function setPositionRung(root: string, issue: Issue, n: 7 | 8, why: string): void {
+  if (issue.rung !== n) {
+    issue.history.push({ at: nowIso(), event: "rung", detail: `${issue.rung} → ${n} (${why})` });
+    issue.rung = n;
+    writeIssue(root, issue);
+    appendRecord(root, "ladder", { issue: issue.id, to: n, why });
+  }
+}
+
+/** Rung 7 then retries from rung 3 with the full history (R-023). */
+export function retryFromRung3(root: string, issue: Issue): void {
+  issue.history.push({ at: nowIso(), event: "rung", detail: `${issue.rung} → 3 (task-end retry with full history)` });
+  issue.rung = 3;
+  issue.status = issue.status === "reverted-open" ? "reverted-open" : "open";
+  writeIssue(root, issue);
+}
+
+export function rungInstruction(root: string, issue: Issue): string {
+  const r = rung(issue.rung);
+  return `rung ${r.n} — ${r.name} (${r.who}): ${r.instruction(issue, root)}`;
+}

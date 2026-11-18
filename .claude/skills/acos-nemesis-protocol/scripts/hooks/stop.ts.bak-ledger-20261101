@@ -1,0 +1,129 @@
+#!/usr/bin/env bun
+/**
+ * stop.ts — Stop hook.
+ *
+ *  R-026  watchdog: edits/commands in the turn with no S2/S3/bash record behind them are defects
+ *  R-027  block while any issue is open or any task step is unfinished; AUTOPILOT_GOAL_COMPLETE
+ *         is accepted only with a release-gate record newer than the last edit
+ *  R-023  task-end retry is driven by `nemesis task end`; here we only keep the loop alive
+ *  R-024  a STALLED writer (no tool calls for `stalled_turns` turns, default 6) gets the product
+ *         report written and the stop is then allowed — the goal is NOT complete, Zee gets the
+ *         report, and no code fix is asked of him (D-08). This is the only way out while open.
+ *  R-030  reads whichever transcript (main or sub-agent) this hook was given
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { readStdinJson, resolveRoot, stopBlock, emit, lastTurnToolUses, toolFilePath, scopeOf, logErr } from "./common";
+import { isJudgeChild } from "../lib/judge";
+import { listIssues, listTasks, currentTask, recordFindings, readRecords, readIdle, writeIdle, P, readJson, appendRecord, nowIso, type Config, type Finding } from "../lib/state";
+import { readSteps, unfinishedSteps } from "../lib/steps";
+import { rungInstruction } from "../lib/ladder";
+import { listScans, scanSummary } from "../lib/scan";
+import { writeReport } from "../lib/report";
+
+export const AUTOPILOT_GOAL_COMPLETE = "AUTOPILOT_GOAL_COMPLETE";
+
+/** R-026: every in-scope edit needs an S2 record and an S3 scan after it; every Bash needs a bash record. */
+export function watchdog(root: string, cfg: Config, uses: ReturnType<typeof lastTurnToolUses>["uses"], turnStart: string): Finding[] {
+  const findings: Finding[] = [];
+  const task = currentTask(root);
+  const scans = listScans(root);
+  const bash = readRecords<{ at: string }>(root, "bash");
+  const s2Items = task ? (readSteps(root, task.id).entries.S2 as { items: { artifact?: string; at?: string }[] }).items : [];
+  const s2For = (rel: string, since: string) => s2Items.some((it) => {
+    try { const a = JSON.parse(fs.readFileSync(path.resolve(root, it.artifact ?? ""), "utf8")) as { path: string }; return a.path === rel && (it.at ?? "") >= since; } catch { return false; }
+  });
+  const scanAfter = (ts: string) => scans.some((s) => s.at >= ts);
+  for (const u of uses) {
+    const since = turnStart || u.ts;
+    if (u.name === "Write" || u.name === "Edit" || u.name === "NotebookEdit") {
+      const fp = toolFilePath(u.input); if (!fp) continue;
+      const sc = scopeOf(root, cfg, fp); if (!sc.inScope) continue;
+      if (!s2For(sc.rel, since)) findings.push({ severity: "high", lens: "PFC", checklist: "S2", where: sc.rel, what: `unrecorded edit: ${sc.rel} was changed in this turn with no S2 verdict record`, fix_hint: "the pre-tool hook did not run or was bypassed; run: nemesis scan --judge " + sc.rel });
+      else if (!scanAfter(u.ts || since)) findings.push({ severity: "high", lens: "PFC", checklist: "S3", where: sc.rel, what: `no S3 scan recorded after the edit to ${sc.rel}`, fix_hint: "run: nemesis scan" });
+    } else if (u.name === "Bash") {
+      if (!bash.some((b) => b.at >= (u.ts || since))) findings.push({ severity: "medium", lens: "PFC", checklist: "S3", where: "Bash", what: `a shell command ran in this turn with no post-command tree check recorded`, fix_hint: "the post-tool hook did not run; run: nemesis scan" });
+    }
+  }
+  return findings;
+}
+
+export function buildDirective(root: string): { open: boolean; text: string } {
+  const open = listIssues(root, true);
+  const tasks = listTasks(root).filter((t) => t.status === "open");
+  const lines: string[] = [];
+  if (open.length) {
+    lines.push(`NEMESIS — ${open.length} open issue(s). Nothing is done while any is open (every severity counts; Low is not deferrable).`);
+    for (const i of open) lines.push(`• ${i.id} [${i.severity}/${i.lens}/${i.checklist}] ${i.status} — ${i.what}\n    → ${rungInstruction(root, i)}`);
+  }
+  for (const t of tasks) {
+    const un = unfinishedSteps(root, t.id);
+    if (un.length) lines.push(`Task ${t.id} — unfinished steps: ${un.join(", ")}. (S5/S6/S7 run via: nemesis task end ${t.id}; S8 via: nemesis release-gate)`);
+  }
+  const scans = listScans(root);
+  const last = scans[scans.length - 1];
+  if (last) lines.push(`Last S3: ${scanSummary(last)}`);
+  const isOpen = open.length > 0 || tasks.some((t) => unfinishedSteps(root, t.id).length > 0);
+  return { open: isOpen, text: lines.join("\n") };
+}
+
+function releaseGateFresh(root: string): { ok: boolean; why: string } {
+  const g = readJson<{ at?: string; gate?: string } | null>(P.releaseGate(root), null);
+  if (!g || g.gate !== "open") return { ok: false, why: "no release-gate record (run: nemesis release-gate)" };
+  const scans = listScans(root);
+  const lastEdit = scans[scans.length - 1]?.at ?? "";
+  if (g.at && lastEdit && g.at < lastEdit) return { ok: false, why: `release-gate record (${g.at}) is older than the last change (${lastEdit}); rerun: nemesis release-gate` };
+  return { ok: true, why: "release gate open" };
+}
+
+async function main(): Promise<void> {
+  const input = await readStdinJson();
+  if (isJudgeChild()) return emit({});
+  const r = resolveRoot(input);
+  if (!r) return emit({});
+  const { root, cfg } = r;
+
+  const turn = lastTurnToolUses(input.transcript_path);
+  // idle / stalled tracking (R-024)
+  const idle = readIdle(root);
+  const streak = turn.uses.length === 0 ? idle.streak + 1 : 0;
+  writeIdle(root, { streak, last_turn_tool_calls: turn.uses.length, updated_at: nowIso() });
+
+  // watchdog (R-026)
+  const task = currentTask(root);
+  const wd = watchdog(root, cfg, turn.uses, turn.turnStart);
+  if (wd.length && task) recordFindings(root, task.id, wd, { verdict_id: "watchdog", files: wd.map((f) => f.where), outcome: "watchdog" });
+
+  const d = buildDirective(root);
+  const wantsComplete = turn.lastAssistantText.includes(AUTOPILOT_GOAL_COMPLETE);
+  const gate = releaseGateFresh(root);
+
+  if (!d.open && (!wantsComplete || gate.ok)) {
+    appendRecord(root, "stop", { blocked: false, wantsComplete, gate: gate.why });
+    return emit({});
+  }
+
+  const stalledAfter = cfg.stalled_turns ?? 6;
+  if (streak >= stalledAfter) {
+    // The writer has done nothing for `stalledAfter` turns. Keeping it in a loop burns tokens and
+    // fixes nothing. Write the product report (rung 8) and let the stop happen. Goal NOT complete.
+    const rep = writeReport(root, "product");
+    for (const i of listIssues(root, true)) { i.history.push({ at: nowIso(), event: "stalled", detail: `writer idle ${streak} turns; product report ${path.basename(rep.md)}` }); const { writeIssue } = await import("../lib/state"); writeIssue(root, i); }
+    appendRecord(root, "stop", { blocked: false, stalled: true, streak, report: rep.md });
+    writeIdle(root, { streak: 0, last_turn_tool_calls: 0, updated_at: nowIso() });
+    return emit({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: `NEMESIS: the writer made no tool calls for ${streak} turns with the ledger open. The goal is NOT complete. A product report for Zee was written: ${rep.html}` } });
+  }
+
+  const parts: string[] = [];
+  if (wantsComplete) parts.push(`NEMESIS refuses ${AUTOPILOT_GOAL_COMPLETE}: ${gate.ok ? "" : gate.why + "; "}${d.open ? "the ledger is open." : ""}`);
+  if (wd.length) parts.push(`Watchdog: ${wd.length} unrecorded action(s) this turn → opened as issues.`);
+  parts.push(d.text || "Unfinished steps remain.");
+  parts.push(`Keep working. Do not emit ${AUTOPILOT_GOAL_COMPLETE} until nemesis status shows zero open issues, every task closed, and the release gate open.`);
+  appendRecord(root, "stop", { blocked: true, wantsComplete, open_issues: listIssues(root, true).length, streak });
+  return stopBlock(parts.join("\n"));
+}
+
+if (import.meta.main) {
+  if (process.argv.includes("--health")) { console.log("stop hook loads; libs resolve"); process.exit(0); }
+  main().catch((e) => { logErr("stop", e); emit({}); });
+}

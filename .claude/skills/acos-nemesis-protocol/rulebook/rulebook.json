@@ -1,0 +1,596 @@
+{
+  "schema": "nemesis-rulebook/1",
+  "source": "OKOA Investor Portal design/security/SECURITY-PROTOCOL.md (byte copy in rulebook/)",
+  "source_sha256": "1e6175c14fcd475808254d57546b5a08d790c1fee534937eaa99020dca7f0f9a",
+  "generated_at": "2026-10-08T21:59:11.055Z",
+  "rule_zero": "Security is the most important property of anything built under this protocol. There is no trade-off that buys a loophole. If a feature cannot be built securely in the time available, the feature waits; the loophole never ships.",
+  "principles": [
+    {
+      "n": 1,
+      "title": "Deny by default.",
+      "text": "Nothing is readable, writable or callable until a rule explicitly allows it for that person, that row, that action. Row-level security on every table; a table without a policy shows nothing. Every endpoint starts closed."
+    },
+    {
+      "n": 2,
+      "title": "Least privilege, everywhere.",
+      "text": "People, services, database roles, API keys and build agents each get the smallest set of rights that lets them do their one job. Staff bypass is a named role, never the default connection."
+    },
+    {
+      "n": 3,
+      "title": "Defense in depth.",
+      "text": "The application checks, the database checks again, the audit log records it, and a test proves it. One layer failing must not expose data."
+    },
+    {
+      "n": 4,
+      "title": "Never trust input.",
+      "text": "Every value that crosses a boundary (browser, file, e-mail, API, another skill, an AI model) is validated against an allow-list and encoded on output."
+    },
+    {
+      "n": 5,
+      "title": "Data minimization.",
+      "text": "Collect, store, show, log and send only what the feature needs. Mask by default (last-4). Encrypt sensitive values before they reach storage."
+    },
+    {
+      "n": 6,
+      "title": "Fail closed.",
+      "text": "When unsure, refuse with a typed error and log it. Never guess, never fall back to \"show everything\", never swallow an error."
+    },
+    {
+      "n": 7,
+      "title": "Separation of duties.",
+      "text": "The person who writes a thing is not the person who approves it: code review, report approval, campaign send, payment-like actions."
+    },
+    {
+      "n": 8,
+      "title": "Everything on record.",
+      "text": "Every change, login, denial, export and impersonation is in an append-only audit trail that the actor cannot edit."
+    },
+    {
+      "n": 9,
+      "title": "No secrets in code, prompts, logs or tickets.",
+      "text": "Secrets live in a secrets manager or environment injection; the repository, the transcript and the model never see them."
+    },
+    {
+      "n": 10,
+      "title": "Reproducible and reviewed.",
+      "text": "Pinned dependencies, lockfiles, signed releases, branch protection, and an independent adversarial review before anything reaches people."
+    },
+    {
+      "n": 11,
+      "title": "No fabricated security.",
+      "text": "A claim like \"this is safe\" without a test, a record and a reviewer is not a claim; it is a guess. Say \"unverified\" when it is unverified."
+    },
+    {
+      "n": 12,
+      "title": "Humans approve the irreversible.",
+      "text": "Deletes of real data, sends to real people, and any money-like action need a second person and a confirmation step."
+    }
+  ],
+  "steps": [
+    {
+      "id": "S0",
+      "title": "Pre-task security check — before anything else",
+      "body": [
+        "Before the first file is opened, write the task's threat sketch (template in Part 4):",
+        "Gate: no threat sketch → the task does not start."
+      ],
+      "bullets": [
+        "What data does this touch? Classify it (Part 3.6): public / internal / confidential / sensitive (PII, financial, secrets).",
+        "Who may see or change it? Name the roles and the row-level rule.",
+        "What could go wrong? Walk STRIDE: Spoofing (fake identity), Tampering (changed data), Repudiation (no record), Information disclosure (leak), Denial of service, Elevation of privilege. One line each, \"none\" allowed only with a reason.",
+        "Which checklists apply (Part 3)? Tick them.",
+        "What is the abuse case? Write the attacker's story in two sentences."
+      ]
+    },
+    {
+      "id": "S1",
+      "title": "Design review — before code",
+      "body": [
+        "Gate: design review recorded (Part 4) → coding may start."
+      ],
+      "bullets": [
+        "Draw the data flow: where the data enters, where it is stored, where it leaves, and every trust boundary it crosses.",
+        "Write the authorization matrix for the feature: rows = actions, columns = roles, cells = allowed / denied / own-rows-only. The row-level-security rule for each table is written here.",
+        "Decide the typed errors the feature returns (PERMISSION_DENIED, NOT_FOUND, VALIDATION_FAILED, …) and that they never leak existence of other people's data.",
+        "Decide what is logged and what must never be logged (secrets, full tax ids, full bank numbers, session tokens, raw request bodies with PII).",
+        "If an AI model is involved: what exactly goes into the prompt, what must never go in, and who approves the output before anyone else sees it."
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "The line rule — while writing",
+      "body": [
+        "Before every line of code (or SQL, or config) is committed to the file, answer the twelve",
+        "questions silently; if any answer is \"yes\", write the line differently or stop and fix the cause:",
+        "1. Does this line read or write data without the caller's authorization being checked on this",
+        "2. Does it build a query, a command, HTML, a URL or an e-mail from input without",
+        "3. Does it trust a client-supplied id, role, price, amount, profile or user id?",
+        "4. Does it log, print, return or store a secret, a full sensitive value, or more fields than needed?",
+        "5. Does it catch an error and continue as if nothing happened?",
+        "6. Does it widen a permission, a CORS rule, a role, a policy, or disable a check \"for now\"?",
+        "7. Does it use randomness, hashing or encryption from a hand-rolled or non-approved source?",
+        "8. Does it accept a file, a path, a redirect target, an HTML fragment or a template from input",
+        "9. Does it send data to a third party, a model, a webhook or an e-mail that the design review",
+        "10. Does it depend on a package, version or script that is not pinned and reviewed?",
+        "11. Does it make an irreversible or money-like action without the second-person step?",
+        "12. Could this line behave differently under concurrency, retries or a replayed request",
+        "If the problem comes from somewhere else (a missing policy, an upstream function that",
+        "returns too much, a library default), the line is not the place to patch it: open the real cause",
+        "as a security issue (Part 4) and fix it there, now, before continuing. Do not \"write around\" an",
+        "upstream hole."
+      ],
+      "bullets": []
+    },
+    {
+      "id": "S3",
+      "title": "Post-change scan — after every change",
+      "body": [
+        "Run all of these; record the results:"
+      ],
+      "bullets": [
+        "Static checks: type-check, lint with security rules, secret scanner over the diff and the repository, dependency audit (known vulnerabilities), license and provenance check for new packages.",
+        "Policy check: every new table has row-level security enabled; every new view runs as the caller; every new endpoint has an authorization test; every new write path has a typed error path.",
+        "Tests: the feature's positive tests and its negative tests: wrong user, wrong row, wrong role, missing field, oversized input, replay, concurrent duplicate. A feature with no negative test is not done.",
+        "Data tests: no sensitive value appears in logs, error messages, exports or test fixtures that leave the machine.",
+        "Review the diff as an attacker: read every changed line asking the twelve questions again."
+      ]
+    },
+    {
+      "id": "S4",
+      "title": "The iterative fix loop — until zero",
+      "body": [
+        "Every finding from S3 (or from a reviewer, a scanner, a holdout, or production) enters the",
+        "issue list with a severity (Part 2, \"Severity\"). Then:",
+        "repeat",
+        "until the list has zero open issues",
+        "then run S3 once more; it must be clean twice in a row",
+        "The loop has no step budget. Stopping with an open issue is a defect, whatever its severity.",
+        "A finding may be closed only by a fix plus a passing re-check, or by a written decision from",
+        "the owner that the finding is a false positive, with the reason."
+      ],
+      "bullets": []
+    },
+    {
+      "id": "S5",
+      "title": "The security check record — written evidence",
+      "body": [
+        "Each task ends with a record (template in Part 4) that lists: the threat sketch, the design",
+        "review, the issues found and how each was closed, the scans run and their results, the tests",
+        "added, the reviewer, and the leftover risks with owners and dates. No record → not done."
+      ],
+      "bullets": []
+    },
+    {
+      "id": "S6",
+      "title": "Independent adversarial review",
+      "body": [
+        "A second reviewer who did not write the code (a person, or a separate Claude agent with no",
+        "shared context) reads the change and the record with one goal: break it. The reviewer reports",
+        "findings in the same severity scale; the loop in S4 runs again on them."
+      ],
+      "bullets": []
+    },
+    {
+      "id": "S7",
+      "title": "Holdout proof",
+      "body": [
+        "For every security-relevant behavior, a holdout test written before the code and hidden from",
+        "the builder (see `acos-holdout-test`) proves the behavior at reveal time: cross-user reads are",
+        "denied, soft-deleted rows never render, exports are logged, drafts are invisible, approvals need",
+        "a second person. A holdout that blocks is a security issue."
+      ],
+      "bullets": []
+    },
+    {
+      "id": "S8",
+      "title": "Release gate and watch",
+      "body": [
+        "Before release: zero open security issues at any severity, S6 complete, holdouts passed, secrets",
+        "rotated if any were exposed during the work, backups and restore tested, monitoring and alerts",
+        "in place for failed logins, permission denials, rate limits and unusual exports. After release:",
+        "the alerts are read, and every incident re-enters the loop at S0."
+      ],
+      "bullets": []
+    }
+  ],
+  "twelve_questions": [
+    "Does this line read or write data without the caller's authorization being checked on this row?",
+    "Does it build a query, a command, HTML, a URL or an e-mail from input without parameterization or encoding?",
+    "Does it trust a client-supplied id, role, price, amount, profile or user id?",
+    "Does it log, print, return or store a secret, a full sensitive value, or more fields than needed?",
+    "Does it catch an error and continue as if nothing happened?",
+    "Does it widen a permission, a CORS rule, a role, a policy, or disable a check \"for now\"?",
+    "Does it use randomness, hashing or encryption from a hand-rolled or non-approved source?",
+    "Does it accept a file, a path, a redirect target, an HTML fragment or a template from input without an allow-list?",
+    "Does it send data to a third party, a model, a webhook or an e-mail that the design review did not list?",
+    "Does it depend on a package, version or script that is not pinned and reviewed?",
+    "Does it make an irreversible or money-like action without the second-person step?",
+    "Could this line behave differently under concurrency, retries or a replayed request (double payout, double send)?"
+  ],
+  "severity": [
+    {
+      "level": "Critical",
+      "meaning": "Data of another person readable or changeable; secrets exposed; money-like action without control",
+      "rule": "Stop all other work. Fix now."
+    },
+    {
+      "level": "High",
+      "meaning": "A control missing that one more mistake would turn into Critical (no RLS on a table, no negative test, no audit)",
+      "rule": "Fix before the change is merged."
+    },
+    {
+      "level": "Medium",
+      "meaning": "Weakens a layer (verbose error, missing rate limit, loose validation)",
+      "rule": "Fix before the feature is called done."
+    },
+    {
+      "level": "Low",
+      "meaning": "Hygiene (header missing, stale dependency without known exploit)",
+      "rule": "Fix in the same task; may not be deferred past release."
+    }
+  ],
+  "checklists": [
+    {
+      "id": "3.1",
+      "title": "Identity and login",
+      "items": [
+        {
+          "id": "3.1.1",
+          "text": "Login is delegated to a proven provider (e.g. Clerk) or a reviewed library; no home-made password storage."
+        },
+        {
+          "id": "3.1.2",
+          "text": "Multi-factor is available and required for staff."
+        },
+        {
+          "id": "3.1.3",
+          "text": "Sessions expire; logout invalidates server-side; tokens are not in localStorage; cookies are HttpOnly, Secure, SameSite."
+        },
+        {
+          "id": "3.1.4",
+          "text": "Invitations are single-use, expire, and bind to the invited e-mail."
+        },
+        {
+          "id": "3.1.5",
+          "text": "Sign-up or activation that needs staff approval stays in a pending state that can read nothing."
+        },
+        {
+          "id": "3.1.6",
+          "text": "Failed logins and lockouts are logged and rate-limited."
+        }
+      ]
+    },
+    {
+      "id": "3.2",
+      "title": "Authorization",
+      "items": [
+        {
+          "id": "3.2.1",
+          "text": "Every table has row-level security enabled; staff bypass is a named role."
+        },
+        {
+          "id": "3.2.2",
+          "text": "Every view runs as the caller (security_invoker)."
+        },
+        {
+          "id": "3.2.3",
+          "text": "Every endpoint checks authorization on the object, not only on the role (no IDOR)."
+        },
+        {
+          "id": "3.2.4",
+          "text": "Investors (or end users) can write only their own rows in a short, listed set of tables."
+        },
+        {
+          "id": "3.2.5",
+          "text": "Impersonation (\"view as\") is a logged, time-boxed, read-only mode."
+        },
+        {
+          "id": "3.2.6",
+          "text": "Permission denials return the same shape as \"not found\" where existence must not leak."
+        }
+      ]
+    },
+    {
+      "id": "3.3",
+      "title": "Input, output and injection",
+      "items": [
+        {
+          "id": "3.3.1",
+          "text": "Parameterized queries only; no string-built SQL, shell, LDAP or template code."
+        },
+        {
+          "id": "3.3.2",
+          "text": "HTML from users or AI is sanitized with an allow-list; rendered content never executes scripts."
+        },
+        {
+          "id": "3.3.3",
+          "text": "Output is encoded for its context (HTML, attribute, URL, JSON, CSV formula injection)."
+        },
+        {
+          "id": "3.3.4",
+          "text": "File uploads: allow-listed types, size limit, content sniffed, stored outside the web root under a generated name, served through signed, expiring URLs, scanned where possible."
+        },
+        {
+          "id": "3.3.5",
+          "text": "Redirects and links only to allow-listed destinations."
+        },
+        {
+          "id": "3.3.6",
+          "text": "Numbers for money are decimal, never float; parsing rejects anything but digits, sign and point."
+        }
+      ]
+    },
+    {
+      "id": "3.4",
+      "title": "Secrets and configuration",
+      "items": [
+        {
+          "id": "3.4.1",
+          "text": "Secrets come from the environment or a secrets manager; .env files are ignored by git."
+        },
+        {
+          "id": "3.4.2",
+          "text": "A secret scanner runs on every commit; a found secret is rotated, not just removed."
+        },
+        {
+          "id": "3.4.3",
+          "text": "Production, staging and development have separate secrets and separate data."
+        },
+        {
+          "id": "3.4.4",
+          "text": "Debug modes, verbose errors and sample accounts are off in production."
+        }
+      ]
+    },
+    {
+      "id": "3.5",
+      "title": "Cryptography",
+      "items": [
+        {
+          "id": "3.5.1",
+          "text": "TLS everywhere; HSTS on."
+        },
+        {
+          "id": "3.5.2",
+          "text": "Sensitive fields are encrypted by the application with a managed key before storage; only a last-4 is kept in clear."
+        },
+        {
+          "id": "3.5.3",
+          "text": "Keys are rotated on a schedule and on any suspicion; old keys can still decrypt."
+        },
+        {
+          "id": "3.5.4",
+          "text": "Only well-known libraries; no custom algorithms; strong randomness for ids, tokens, invites."
+        }
+      ]
+    },
+    {
+      "id": "3.6",
+      "title": "Data classification and privacy",
+      "items": [
+        {
+          "id": "3.6.1",
+          "text": "Public / internal / confidential / sensitive, decided in S0 and written on the schema (sensitive flag) and the API."
+        },
+        {
+          "id": "3.6.2",
+          "text": "Sensitive data is masked in every list and export unless the viewer has an explicit right."
+        },
+        {
+          "id": "3.6.3",
+          "text": "Exports (PDF, CSV, Excel, images) are logged with who, what, filters and size."
+        },
+        {
+          "id": "3.6.4",
+          "text": "Retention: what is kept how long, and how it is deleted (soft delete first, purge on schedule)."
+        },
+        {
+          "id": "3.6.5",
+          "text": "The person's own rights: view, correct, export, erase where the law applies."
+        }
+      ]
+    },
+    {
+      "id": "3.7",
+      "title": "Logging and audit",
+      "items": [
+        {
+          "id": "3.7.1",
+          "text": "Append-only audit table for inserts, updates, deletes, logins, failed logins, denials, rate limits, exports, downloads, impersonation, invites."
+        },
+        {
+          "id": "3.7.2",
+          "text": "Logs never contain secrets, full sensitive values, session tokens or full request bodies."
+        },
+        {
+          "id": "3.7.3",
+          "text": "Audit rows record the acting user and any \"acting as\" identity."
+        },
+        {
+          "id": "3.7.4",
+          "text": "Logs are time-synchronized, retained, and alert on patterns (many denials, mass export)."
+        }
+      ]
+    },
+    {
+      "id": "3.8",
+      "title": "E-mail and messaging",
+      "items": [
+        {
+          "id": "3.8.1",
+          "text": "Sending domain has SPF, DKIM and DMARC; the sender is a fixed list."
+        },
+        {
+          "id": "3.8.2",
+          "text": "Templates are allow-listed merge fields; no raw HTML from input."
+        },
+        {
+          "id": "3.8.3",
+          "text": "Links are to our domain, expire where they grant access, and never carry secrets in the URL."
+        },
+        {
+          "id": "3.8.4",
+          "text": "Bulk sends need a second-person approval and a test send first."
+        },
+        {
+          "id": "3.8.5",
+          "text": "Unsubscribe and bounce handling exist and are honored."
+        }
+      ]
+    },
+    {
+      "id": "3.9",
+      "title": "AI and language models",
+      "items": [
+        {
+          "id": "3.9.1",
+          "text": "The model sees the minimum: one person's data for one output; never secrets; never other people's rows."
+        },
+        {
+          "id": "3.9.2",
+          "text": "Prompts are templates with validated slots; user text is marked as data, never as instruction (prompt injection defense); tool access is allow-listed."
+        },
+        {
+          "id": "3.9.3",
+          "text": "Model output is treated as untrusted input: sanitized, validated, and approved by a person before anyone else sees it."
+        },
+        {
+          "id": "3.9.4",
+          "text": "Every generation is recorded (model, instruction hash, input hash), without storing the raw prompt that contained personal data."
+        },
+        {
+          "id": "3.9.5",
+          "text": "No external model endpoint receives confidential data unless the contract and the data-flow review allow it; subscription-bound agents preferred where available."
+        }
+      ]
+    },
+    {
+      "id": "3.10",
+      "title": "API, web and rate limits",
+      "items": [
+        {
+          "id": "3.10.1",
+          "text": "CSRF protection on state-changing requests; CORS allow-list; security headers (Content-Security-Policy, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, frame-ancestors)."
+        },
+        {
+          "id": "3.10.2",
+          "text": "Rate limits per user and per IP on login, requests, exports, searches; limits are logged."
+        },
+        {
+          "id": "3.10.3",
+          "text": "Pagination caps; no unbounded list endpoints."
+        },
+        {
+          "id": "3.10.4",
+          "text": "Idempotency keys on anything that could be replayed (sends, postings, approvals)."
+        }
+      ]
+    },
+    {
+      "id": "3.11",
+      "title": "Dependencies, build and supply chain",
+      "items": [
+        {
+          "id": "3.11.1",
+          "text": "Lockfile committed; versions pinned; new packages reviewed (purpose, maintainer, size, install scripts)."
+        },
+        {
+          "id": "3.11.2",
+          "text": "Automated vulnerability audit in CI; a known exploitable vulnerability blocks."
+        },
+        {
+          "id": "3.11.3",
+          "text": "Builds are reproducible from a clean checkout; no network fetches at runtime from unpinned sources; CDN scripts pinned to exact versions and allow-listed by CSP."
+        },
+        {
+          "id": "3.11.4",
+          "text": "Branch protection: review required, CI green required, no force-push to main."
+        }
+      ]
+    },
+    {
+      "id": "3.12",
+      "title": "Database",
+      "items": [
+        {
+          "id": "3.12.1",
+          "text": "RLS on every table; policies tested with a negative test per table."
+        },
+        {
+          "id": "3.12.2",
+          "text": "Soft delete and audit on business tables; immutable (append-only) tables for ledgers and events."
+        },
+        {
+          "id": "3.12.3",
+          "text": "Constraints carry the invariants (checks, uniques, foreign keys) so bad data cannot be stored."
+        },
+        {
+          "id": "3.12.4",
+          "text": "Migrations are reviewed with the twelve questions; destructive migrations need a backup first."
+        },
+        {
+          "id": "3.12.5",
+          "text": "Backups encrypted, tested by an actual restore, and access-logged."
+        }
+      ]
+    },
+    {
+      "id": "3.13",
+      "title": "Infrastructure and operations",
+      "items": [
+        {
+          "id": "3.13.1",
+          "text": "Private network for the database; least-privilege roles; no shared admin accounts."
+        },
+        {
+          "id": "3.13.2",
+          "text": "Encryption at rest; key management by the provider or a KMS."
+        },
+        {
+          "id": "3.13.3",
+          "text": "Monitoring and alerts; an incident runbook; a contact for security reports."
+        },
+        {
+          "id": "3.13.4",
+          "text": "Access to production data is logged and needs a reason."
+        }
+      ]
+    },
+    {
+      "id": "3.14",
+      "title": "Front end",
+      "items": [
+        {
+          "id": "3.14.1",
+          "text": "No sensitive data in localStorage or in URLs; only per-viewer conveniences."
+        },
+        {
+          "id": "3.14.2",
+          "text": "Strict CSP; no inline event handlers; dependencies pinned; subresource integrity where used."
+        },
+        {
+          "id": "3.14.3",
+          "text": "Clickjacking protection; forms with CSRF tokens; file downloads via signed URLs."
+        },
+        {
+          "id": "3.14.4",
+          "text": "Accessibility of security flows (every action possible without a mouse)."
+        }
+      ]
+    }
+  ],
+  "templates": {
+    "threat_sketch": "task: <id / title>\ndata_touched: [<table or object>: <public|internal|confidential|sensitive>, ...]\nactors: [<role>: <what they may do>, ...]\nstride:\n  spoofing: <one line or \"none because ...\">\n  tampering: <...>\n  repudiation: <...>\n  information_disclosure: <...>\n  denial_of_service: <...>\n  elevation_of_privilege: <...>\nabuse_case: <two sentences from the attacker's view>\nchecklists: [3.1, 3.2, 3.3, ...]",
+    "design_review": "data_flow: <entry -> storage -> exit; trust boundaries named>\nauthorization_matrix:\n  - action: <...>; staff: allow; investor: own_rows; anonymous: deny\nrls_rules: [<table>: <policy in words>, ...]\ntyped_errors: [PERMISSION_DENIED, NOT_FOUND, VALIDATION_FAILED, ...]\nlogging: {log: [...], never_log: [...]}\nai_use: {inputs: [...], never_inputs: [...], approver: <role>}  # or \"none\"\nreviewer: <who>",
+    "security_issue": "id: SEC-<n>\nseverity: critical|high|medium|low\nfound_by: scan|test|review|holdout|production\nwhere: <file:line or table/policy or endpoint>\nwhat: <one sentence>\nroot_cause: <one sentence — the real cause, not the symptom>\nfix: <what changed>\nre_check: <scan/test run after the fix, and its result>\nclosed_at: <date>   # only after a clean re-check",
+    "check_record": "task: <id>\nthreat_sketch: <link or inline>\ndesign_review: <link or inline>\nissues: [SEC-1, SEC-2, ...]      # all closed, or the task is not done\nscans: {typecheck: pass, lint_security: pass, secrets: clean, deps_audit: clean}\ntests_added: {positive: <n>, negative: <n>}\nloop_passes: <n>                  # S3 runs; the last two must be clean\nindependent_review: {by: <who>, findings: [...], closed: true}\nholdout: {pack: <manifest>, verdict: PASS}\nresidual_risks: [{risk: ..., owner: ..., due: ...}]   # empty is the goal"
+  },
+  "short_version": [
+    "Nothing starts without a threat sketch.",
+    "Deny by default; every table has row-level security; every view runs as the caller.",
+    "Ask the twelve questions before every line; fix causes, not symptoms.",
+    "Scan, test (negative tests too), and re-scan after every fix, until clean twice.",
+    "Write the record; get the adversarial review; pass the holdout.",
+    "Zero open issues at release — at every severity. No loophole, ever."
+  ]
+}

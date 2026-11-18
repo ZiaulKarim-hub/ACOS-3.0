@@ -1,0 +1,385 @@
+/**
+ * judge.ts — the client side of the Nemesis judge (R-007, R-008, R-039, R-040, R-051).
+ *
+ * Reaching the judge, in layers (fail CLOSED): stub (test mode only) → live socket →
+ * auto-start the daemon → direct `claude -p` call → retry → DENY naming what broke.
+ * The chat transcript is never read here and never sent (D-15).
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as net from "node:net";
+import { spawn, spawnSync } from "node:child_process";
+import { NEMESIS_HOME, SKILL_DIR, BUN, P, type Config, type Issue, readActive, readTask, listIssues, readRecords, appendRecord, nowIso, sha256  } from "./state";
+import { buildCharter, type JudgeContext, type ContractParts, rulebook } from "./charter";
+import { parseVerdict, classifyFailure, recoveryPlan, extractionPrompt, finalDenial, repairJson, type Verdict, type FailureClass } from "./verdict";
+
+export const SOCK = path.join(NEMESIS_HOME, "nemesis.sock");
+export const TOKEN_FILE = path.join(NEMESIS_HOME, "token");
+export const PID_FILE = path.join(NEMESIS_HOME, "nemesis.pid");
+export const VERDICT_LOG = path.join(NEMESIS_HOME, "verdicts.log");
+export const DAEMON_LOG = path.join(NEMESIS_HOME, "daemon.log");
+export const DAEMON = path.join(SKILL_DIR, "scripts", "nemesis-daemon.ts");
+
+export const CLAUDE_CANDIDATES = ["/opt/homebrew/bin/claude", path.join(process.env.HOME ?? "", ".claude", "local", "claude"), "/usr/local/bin/claude"];
+export function claudeBin(): string | null {
+  if (process.env.NEMESIS_CLAUDE_BIN) { try { fs.accessSync(process.env.NEMESIS_CLAUDE_BIN, fs.constants.X_OK); return process.env.NEMESIS_CLAUDE_BIN; } catch { return null; } }
+  return CLAUDE_CANDIDATES.find((c) => { try { fs.accessSync(c, fs.constants.X_OK); return true; } catch { return false; } }) ?? null; }
+
+/** The judge child carries this token; hooks allow it instantly (R-040). A wrong token is nothing. */
+export function readToken(): string | null { try { return fs.readFileSync(TOKEN_FILE, "utf8").trim() || null; } catch { return null; } }
+export function isJudgeChild(env: NodeJS.ProcessEnv = process.env): boolean {
+  const t = env.ACOS_NEMESIS_JUDGE;
+  if (!t) return false;
+  const want = readToken();
+  return !!want && t === want;
+}
+
+/** R-051: the stub is honored ONLY with config.test_mode === true AND the env var set. */
+export function stubAllowed(cfg: Config, env: NodeJS.ProcessEnv = process.env): { allowed: boolean; file?: string; why: string } {
+  const f = env.NEMESIS_JUDGE_STUB;
+  if (!f) return { allowed: false, why: "no stub env" };
+  if (cfg.test_mode !== true) return { allowed: false, why: "NEMESIS_JUDGE_STUB set but config.test_mode is not true — ignored (a stub cannot bypass a real project)" };
+  return { allowed: true, file: f, why: "test_mode" };
+}
+
+/** R-007: the contract that travels with every verdict and is logged with the request. */
+export interface RequestContract {
+  goal: string; prd_excerpt: string; prd_excerpt_sha256: string; threat_sketch: string; design_review: string;
+  rulebook_sha256: string; checklists: string[]; open_issues: string[]; prior_verdicts: string[]; pfc_lens: string;
+}
+
+export interface JudgeRequest {
+  kind: "verdict" | "review" | "release" | "holdout-author";
+  id: string;
+  at: string;
+  project: string;
+  prompt: string;
+  /** for the record: what the prompt was built from (never the transcript) */
+  meta: Record<string, unknown>;
+  /** verdicts only: the contract the prompt was built from (R-007) */
+  contract?: RequestContract;
+}
+
+/** What goes into the request logs: the whole contract, with the PRD excerpt capped. */
+export function logContract(req: JudgeRequest): RequestContract | undefined {
+  if (!req.contract) return undefined;
+  const c = req.contract;
+  return { ...c, prd_excerpt: c.prd_excerpt.length > 4000 ? c.prd_excerpt.slice(0, 4000) + `…(${c.prd_excerpt.length} chars; sha256 ${c.prd_excerpt_sha256})` : c.prd_excerpt };
+}
+
+/** R-037: waits between usage-limit retries — config `judge_retry_waits_ms`, else the request's meta, else the default (3 tries over 10 minutes). */
+export const DEFAULT_RETRY_WAITS_MS = [60_000, 180_000, 360_000];
+export function retryWaits(cfg?: { judge_retry_waits_ms?: number[] } | null, meta?: Record<string, unknown>): number[] {
+  const fromCfg = cfg?.judge_retry_waits_ms;
+  if (Array.isArray(fromCfg) && fromCfg.length && fromCfg.every((n) => Number.isFinite(n) && n >= 0)) return fromCfg.map(Number);
+  const fromMeta = meta?.retry_waits_ms;
+  if (Array.isArray(fromMeta) && fromMeta.length && fromMeta.every((n) => Number.isFinite(n) && n >= 0)) return fromMeta.map(Number);
+  return DEFAULT_RETRY_WAITS_MS;
+}
+
+export interface JudgeReply { verdict: Verdict; layer: string; elapsed_ms: number; model?: string; raw?: string; recovery?: string[]; cause?: FailureClass }
+
+// ── Building the request: the contract travels with every verdict (R-007) ──
+
+export function contractFor(root: string, taskId: string | null, cfg: Config): ContractParts {
+  const active = readActive(root);
+  const task = taskId ? readTask(root, taskId) : null;
+  const readOpt = (p: string) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } };
+  const sketch = taskId ? readOpt(path.join(P.task(root, taskId), "threat-sketch.yaml")) : "";
+  const design = taskId ? readOpt(path.join(P.task(root, taskId), "design-review.yaml")) : "";
+  const prdPath = active?.prd ?? cfg.prd;
+  let prd = "";
+  if (prdPath) {
+    const full = readOpt(path.resolve(root, prdPath));
+    const refs = task?.prd_refs ?? [];
+    if (refs.length && full) {
+      // pull the sections whose heading contains a ref id (R-xxx or any token)
+      const secs = full.split(/\n(?=#{1,6}\s)/);
+      prd = secs.filter((s) => refs.some((r) => s.split("\n")[0]!.includes(r))).join("\n\n");
+    }
+    if (!prd) prd = full.length <= 20000 ? full : full.slice(0, 20000) + "\n…(PRD truncated at 20k chars; task has no prd_refs to narrow it)";
+  }
+  const selected = (sketch.match(/checklists:\s*\[([^\]]*)\]/)?.[1] ?? "").split(",").map((s) => s.trim().replace(/['"]/g, "")).filter(Boolean);
+  return { goal: active?.goal ?? "(nemesis not active)", prd_excerpt: prd, threat_sketch: sketch, design_review: design, checklists_selected: selected, task_id: taskId ?? "(none)", task_title: task?.title ?? "" };
+}
+
+export function priorVerdictsFor(root: string, rel: string): JudgeContext["prior_verdicts"] {
+  return readRecords<{ id: string; at: string; path: string; decision: string; findings: number; summary: string }>(root, "verdicts")
+    .filter((v) => v.path === rel).map((v) => ({ id: v.id, at: v.at, decision: v.decision, findings: v.findings, summary: v.summary }));
+}
+
+export function buildRequest(root: string, cfg: Config, args: { rel: string; diff: string; candidate: string; before_exists: boolean; source: "edit" | "bash"; taskId: string | null }): JudgeRequest {
+  const open: Issue[] = listIssues(root, true).filter((i) => i.files.includes(args.rel) || i.where.startsWith(args.rel));
+  const ctx: JudgeContext = {
+    path: args.rel, diff: args.diff, candidate: args.candidate, before_exists: args.before_exists, source: args.source,
+    open_issues: open, prior_verdicts: priorVerdictsFor(root, args.rel), contract: contractFor(root, args.taskId, cfg),
+  };
+  const prompt = buildCharter(ctx);
+  const c = ctx.contract;
+  const contract: RequestContract = {
+    goal: c.goal, prd_excerpt: c.prd_excerpt, prd_excerpt_sha256: sha256(c.prd_excerpt), threat_sketch: c.threat_sketch, design_review: c.design_review,
+    rulebook_sha256: String((rulebook() as unknown as { source_sha256?: string }).source_sha256 ?? ""), checklists: c.checklists_selected,
+    open_issues: open.map((i) => i.id), prior_verdicts: ctx.prior_verdicts.map((v) => v.id), pfc_lens: "PFC a–e: bugs read against the code base, nothing broke, no drift from PRD/goal, no new bug",
+  };
+  return {
+    kind: "verdict", id: `v-${Date.now()}-${sha256(prompt).slice(0, 8)}`, at: nowIso(), project: root, prompt,
+    // NOTE: no `context`, no `transcript` — the judge never sees the writer's chat (D-15).
+    meta: { path: args.rel, source: args.source, task: args.taskId, diff_sha256: sha256(args.diff), candidate_sha256: sha256(args.candidate), open_issues: open.map((i) => i.id), checklists: ctx.contract.checklists_selected, retry_waits_ms: retryWaits(cfg) },
+    contract,
+  };
+}
+
+// ── Layer 0: the stub (test mode) ───────────────────────────────────────────
+
+function stubReply(file: string, req: JudgeRequest): JudgeReply | null {
+  try {
+    const raw = fs.readFileSync(file, "utf8");
+    // A stub file may be a single verdict, or a queue (array) consumed front-to-back, or raw text to exercise the parser.
+    let text = raw;
+    try {
+      const j = JSON.parse(raw) as unknown;
+      if (Array.isArray(j)) {
+        const next = j.shift();
+        fs.writeFileSync(file, JSON.stringify(j));
+        text = typeof next === "string" ? next : JSON.stringify(next ?? {});
+      }
+    } catch { /* raw text */ }
+    if (/^__RAW__:/.test(text)) text = text.slice(8);
+    const v = parseVerdict(text);
+    if (v) return { verdict: v, layer: "stub", elapsed_ms: 0, raw: text };
+    const cls = classifyFailure(text, "", 0);
+    const plan = recoveryPlan(cls).map((s) => s.action);
+    // In test mode the only recovery we can perform offline is JSON repair / prose extraction heuristics.
+    const repaired = parseVerdict(repairJson(text));
+    if (repaired) return { verdict: repaired, layer: "stub+repair_json", elapsed_ms: 0, raw: text, recovery: ["repair_json"], cause: cls };
+    return { verdict: finalDenial(cls, "stub produced an unreadable reply and offline recovery could not read it", plan), layer: "stub+recovery-failed", elapsed_ms: 0, raw: text, recovery: plan, cause: cls };
+  } catch (e) { return { verdict: finalDenial("crash", `stub file unreadable: ${String(e)}`, []), layer: "stub-error", elapsed_ms: 0 }; }
+}
+
+// ── Layer 1: the socket ─────────────────────────────────────────────────────
+
+function askSocket(req: JudgeRequest, connectTimeoutMs = 3000): Promise<JudgeReply | null> {
+  return new Promise((resolve) => {
+    if (!fs.existsSync(SOCK)) return resolve(null);
+    const t0 = Date.now();
+    const sock = net.createConnection(SOCK);
+    let buf = "";
+    const timer = setTimeout(() => { sock.destroy(); resolve(null); }, connectTimeoutMs);
+    sock.on("connect", () => { clearTimeout(timer); sock.write(JSON.stringify(req) + "\n"); });
+    sock.on("data", (d) => { buf += d.toString("utf8"); });
+    sock.on("end", () => {
+      try {
+        const line = buf.trim().split("\n").pop() ?? "";
+        const r = JSON.parse(line) as JudgeReply;
+        resolve({ ...r, elapsed_ms: r.elapsed_ms ?? Date.now() - t0, layer: r.layer ?? "socket" });
+      } catch { resolve(null); }
+    });
+    sock.on("error", () => { clearTimeout(timer); resolve(null); });
+  });
+}
+
+// ── Layer 2: auto-start the daemon ──────────────────────────────────────────
+
+/** R-081: the file that says "a daemon is already being started". */
+export const START_LOCK = path.join(NEMESIS_HOME, "daemon.start.lock");
+/** How long a start may take before the lock is assumed abandoned. A daemon that binds clears the
+    lock itself, so this only matters when one dies before binding. */
+export const START_LOCK_STALE_MS = 60_000;
+
+/**
+ * D-63: ONLY ONE PROCESS MAY BE STARTING A DAEMON AT A TIME.
+ *
+ * This used to spawn unconditionally, and every caller reached it the same way: see no socket,
+ * start one. Two hooks stopping in the same second therefore started two daemons, and `serve`
+ * unlinked whatever socket it found - so the second one took the path and left the first listening
+ * on a socket with no name: alive forever, reachable by nobody. Measured 2026-11-10T07:07Z on this
+ * machine: 104 daemons started over seven days, 44 still alive, exactly 1 reachable,
+ * 287,424 KB held. `wx` fails when the file exists, which is the whole lock.
+ */
+export function startDaemon(): boolean {
+  try {
+    fs.mkdirSync(NEMESIS_HOME, { recursive: true });
+    try {
+      const st = fs.statSync(START_LOCK);
+      if (Date.now() - st.mtimeMs < START_LOCK_STALE_MS) return true;   // someone else is starting one: wait for the socket, do not add another
+      fs.unlinkSync(START_LOCK);                                        // abandoned by a start that died before binding
+    } catch { /* no lock */ }
+    try { const fd = fs.openSync(START_LOCK, "wx"); fs.writeSync(fd, String(process.pid) + "\n"); fs.closeSync(fd); }
+    catch { return true; }                                             // lost the race; the winner's daemon is coming
+    const out = fs.openSync(DAEMON_LOG, "a");
+    const child = spawn(BUN, [DAEMON, "serve"], { detached: true, stdio: ["ignore", out, out], env: { ...process.env } });
+    child.unref();
+    return true;
+  } catch { return false; }
+}
+async function waitForSocket(ms: number): Promise<boolean> {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (fs.existsSync(SOCK)) return true; await new Promise((r) => setTimeout(r, 250)); }
+  return fs.existsSync(SOCK);
+}
+
+function waitForSocketSync(ms: number): boolean {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (fs.existsSync(SOCK)) return true; Bun.sleepSync(250); }
+  return fs.existsSync(SOCK);
+}
+/** One synchronous socket round trip (a tiny child does the async I/O) for the CLI's generic requests. */
+function askSocketSync(req: JudgeRequest): Record<string, unknown> | null {
+  if (!fs.existsSync(SOCK)) return null;
+  const r = spawnSync(BUN, [path.join(SKILL_DIR, "scripts", "lib", "sock-ask.ts")], { input: JSON.stringify(req), encoding: "utf8", env: process.env, maxBuffer: 64 * 1024 * 1024 });
+  if (r.status !== 0) return null;
+  try { return JSON.parse((r.stdout ?? "").trim().split("\n").pop() ?? "") as Record<string, unknown>; } catch { return null; }
+}
+
+// ── Layer 3: direct call (no daemon) — same model, same charter, same recovery ─
+
+export const JUDGE_TOOLS = ["Read", "Grep", "Glob"] as const;
+
+export function spawnJudgeSync(prompt: string, model = "opus", extraEnv: Record<string, string> = {}): { stdout: string; stderr: string; status: number | null } {
+  const bin = claudeBin();
+  if (!bin) return { stdout: "", stderr: "claude binary not found in " + CLAUDE_CANDIDATES.join(", "), status: 127 };
+  const token = readToken() ?? "";
+  const args = ["-p", "--model", model, "--tools", JUDGE_TOOLS.join(","), "--allowedTools", ...JUDGE_TOOLS, "--output-format", "text"];
+  const env: NodeJS.ProcessEnv = { ...process.env, ACOS_NEMESIS_JUDGE: token, ...extraEnv };
+  delete env.ANTHROPIC_API_KEY; // subscription only, never an API key
+  delete env.NEMESIS_JUDGE_STUB;
+  // The prompt goes on STDIN: no E2BIG, no shell quoting, no argument-length cliff (R-037 too_long).
+  const r = spawnSync(bin, args, { input: prompt, encoding: "utf8", env, maxBuffer: 64 * 1024 * 1024 });
+  return { stdout: r.stdout ?? "", stderr: (r.stderr ?? "") + (r.error ? `\n${String(r.error)}` : ""), status: r.status };
+}
+
+/** Run the full classify → recover loop around a spawn function. Shared by daemon and direct layer. */
+export async function judgeWithRecovery(prompt: string, spawnFn: (p: string, env?: Record<string, string>) => { stdout: string; stderr: string; status: number | null }, opts: { model?: string; log?: (s: string) => void; altConfigDir?: string; waits?: number[] } = {}): Promise<JudgeReply> {
+  const log = opts.log ?? (() => {});
+  const t0 = Date.now();
+  const tried: string[] = [];
+  if (!claudeBin()) return { verdict: finalDenial("crash", "claude binary not found (" + (process.env.NEMESIS_CLAUDE_BIN ?? CLAUDE_CANDIDATES.join(", ")) + ")", ["locate-claude"]), layer: "direct+no-claude", elapsed_ms: Date.now() - t0, cause: "crash" };
+  let r = spawnFn(prompt);
+  let v = parseVerdict(r.stdout);
+  if (v) return { verdict: v, layer: "direct", elapsed_ms: Date.now() - t0, raw: r.stdout };
+  let cls = classifyFailure(r.stdout, r.stderr, r.status);
+  log(`unreadable verdict: class=${cls} status=${r.status} stderr=${r.stderr.slice(0, 300).replace(/\n/g, " ")}`);
+  let lastErr = r.stderr.slice(0, 300) || r.stdout.slice(0, 300) || `exit ${r.status}`;
+  let currentPrompt = prompt;
+  for (const step of recoveryPlan(cls)) {
+    tried.push(step.action);
+    log(`recovery: ${step.action} — ${step.note}`);
+    switch (step.action) {
+      case "retry_direct": r = spawnFn(currentPrompt); break;
+      case "retry_backoff": await sleep(3000); r = spawnFn(currentPrompt); if (!parseVerdict(r.stdout)) { await sleep(10000); r = spawnFn(currentPrompt); } break;
+      case "wait_then_retry": { let ok = false; for (const w of opts.waits ?? DEFAULT_RETRY_WAITS_MS) { await sleep(w); r = spawnFn(currentPrompt); if (parseVerdict(r.stdout)) { ok = true; break; } } if (!ok) {/* fall through to next step */} break; }
+      case "alternate_account": if (opts.altConfigDir) r = spawnFn(currentPrompt, { CLAUDE_CONFIG_DIR: opts.altConfigDir }); else { log("no alternate config dir configured"); continue; } break;
+      case "shrink_to_file": {
+        const tmp = path.join(NEMESIS_HOME, "tmp"); fs.mkdirSync(tmp, { recursive: true });
+        const f = path.join(tmp, `prompt-${Date.now()}.txt`); fs.writeFileSync(f, currentPrompt, { mode: 0o600 });
+        currentPrompt = `Your full instructions and the change to judge are in the file ${f}. Read it with the Read tool (it may be long; read it all), then answer exactly as that file's final section says: ONE line of JSON and nothing else.`;
+        r = spawnFn(currentPrompt); break;
+      }
+      case "repair_json": { const rv = parseVerdict(repairJson(r.stdout)); if (rv) return { verdict: rv, layer: "direct+repair_json", elapsed_ms: Date.now() - t0, raw: r.stdout, recovery: tried, cause: cls }; continue; }
+      case "extract_from_prose": r = spawnFn(extractionPrompt(r.stdout)); break;
+      case "json_only_reask": r = spawnFn(currentPrompt + "\n\nREMINDER: output ONLY the single-line JSON object. No prose, no code fences."); break;
+    }
+    v = parseVerdict(r.stdout) ?? parseVerdict(repairJson(r.stdout));
+    if (v) return { verdict: v, layer: `direct+${step.action}`, elapsed_ms: Date.now() - t0, raw: r.stdout, recovery: tried, cause: cls };
+    const cls2 = classifyFailure(r.stdout, r.stderr, r.status);
+    lastErr = r.stderr.slice(0, 300) || r.stdout.slice(0, 300) || `exit ${r.status}`;
+    if (cls2 !== cls) { log(`class changed ${cls} → ${cls2}`); cls = cls2; }
+  }
+  return { verdict: finalDenial(cls, lastErr, tried), layer: "direct+recovery-failed", elapsed_ms: Date.now() - t0, raw: r.stdout, recovery: tried, cause: cls };
+}
+
+function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
+
+// ── Generic JSON requests from the CLI (review / release / holdout-author) ──
+//
+// Synchronous on purpose: the CLI runs these inline. Stub (test mode) → direct spawn with the
+// same classify → recover discipline (sync backoff). The daemon serves the hooks' verdicts;
+// the CLI's reviews and authoring go straight to the model with the same tools restriction.
+
+export interface GenericReply { result: Record<string, unknown> | null; raw: string; recovery: string[]; cause?: FailureClass; error?: string; layer: string }
+
+function parseGeneric(s: string): Record<string, unknown> | null {
+  const { extractJsonObjects } = require("./verdict") as typeof import("./verdict");
+  for (const cand of extractJsonObjects(s).reverse()) {
+    try { return JSON.parse(cand) as Record<string, unknown>; } catch { try { return JSON.parse(repairJson(cand)) as Record<string, unknown>; } catch { /* next */ } }
+  }
+  return null;
+}
+
+export function requestGeneric(root: string, cfg: Config, kind: JudgeRequest["kind"], prompt: string, stubEnvVar: string): GenericReply {
+  appendRecord(root, "requests", { kind, prompt_sha256: sha256(prompt), prompt_chars: prompt.length });
+  const stubFile = process.env[stubEnvVar];
+  if (stubFile) {
+    if (cfg.test_mode !== true) appendRecord(root, "requests", { kind, note: `${stubEnvVar} set but config.test_mode is not true — ignored` });
+    else {
+      try {
+        const raw = fs.readFileSync(stubFile, "utf8");
+        const obj = parseGeneric(raw);
+        if (obj) return { result: obj, raw, recovery: [], layer: "stub" };
+        const cls = classifyFailure(raw, "", 0);
+        return { result: null, raw, recovery: recoveryPlan(cls).map((s) => s.action), cause: cls, error: "stub unreadable", layer: "stub+recovery-failed" };
+      } catch (e) { return { result: null, raw: "", recovery: [], cause: "crash", error: String(e), layer: "stub-error" }; }
+    }
+  }
+  const req: JudgeRequest = { kind, id: `${kind}-${Date.now()}-${sha256(prompt).slice(0, 8)}`, at: nowIso(), project: root, prompt, meta: { retry_waits_ms: retryWaits(cfg) } };
+  appendRecord(root, "requests", { id: req.id, at: req.at, kind, prompt_sha256: sha256(prompt), prompt_chars: prompt.length });
+  // Layer 1/2: the daemon (R-032: S6/S7/S8 run through the same judge process as the verdicts)
+  let sock = askSocketSync(req);
+  if (!sock && !process.env.NEMESIS_NO_AUTOSTART && startDaemon() && waitForSocketSync(20000)) sock = askSocketSync(req);
+  if (sock) {
+    const res = (sock.result ?? null) as Record<string, unknown> | null;
+    return { result: res, raw: String(sock.raw ?? ""), recovery: (sock.recovery as string[] | undefined) ?? [], cause: sock.cause as FailureClass | undefined, error: sock.error as string | undefined, layer: res ? "socket" : "socket+recovery-failed" };
+  }
+  // Layer 3: direct, same recovery discipline
+  const waits = retryWaits(cfg);
+  const tried: string[] = [];
+  let r = spawnJudgeSync(prompt, "opus");
+  let obj = parseGeneric(r.stdout);
+  if (obj) return { result: obj, raw: r.stdout, recovery: tried, layer: "direct" };
+  let cls = classifyFailure(r.stdout, r.stderr, r.status);
+  let cur = prompt;
+  for (const step of recoveryPlan(cls)) {
+    tried.push(step.action);
+    if (step.action === "shrink_to_file") {
+      const tmp = path.join(NEMESIS_HOME, "tmp"); fs.mkdirSync(tmp, { recursive: true });
+      const f = path.join(tmp, `prompt-${Date.now()}.txt`); fs.writeFileSync(f, cur, { mode: 0o600 });
+      cur = `Your full instructions are in the file ${f}. Read it entirely with the Read tool, then answer exactly as its final section says: ONE JSON object and nothing else.`;
+      r = spawnJudgeSync(cur, "opus");
+    } else if (step.action === "retry_backoff") { Bun.sleepSync(3000); r = spawnJudgeSync(cur, "opus"); }
+    else if (step.action === "wait_then_retry") { for (const w of waits) { Bun.sleepSync(w); r = spawnJudgeSync(cur, "opus"); if (parseGeneric(r.stdout)) break; } }
+    else if (step.action === "alternate_account") { if (!process.env.NEMESIS_ALT_CONFIG_DIR) continue; r = spawnJudgeSync(cur, "opus", { CLAUDE_CONFIG_DIR: process.env.NEMESIS_ALT_CONFIG_DIR }); }
+    else if (step.action === "repair_json") { obj = parseGeneric(repairJson(r.stdout)); if (obj) return { result: obj, raw: r.stdout, recovery: tried, cause: cls, layer: "direct+repair_json" }; continue; }
+    else if (step.action === "extract_from_prose" || step.action === "json_only_reask") r = spawnJudgeSync(cur + "\n\nREMINDER: output ONLY one JSON object, no prose, no fences.", "opus");
+    else r = spawnJudgeSync(cur, "opus");
+    obj = parseGeneric(r.stdout);
+    if (obj) return { result: obj, raw: r.stdout, recovery: tried, cause: cls, layer: `direct+${step.action}` };
+    const c2 = classifyFailure(r.stdout, r.stderr, r.status); if (c2 !== cls) cls = c2;
+  }
+  return { result: null, raw: r.stdout, recovery: tried, cause: cls, error: (r.stderr || r.stdout).slice(0, 300), layer: "direct+recovery-failed" };
+}
+
+// ── The public entry: reach the judge, in layers, fail closed ───────────────
+
+export async function requestVerdict(root: string, cfg: Config, req: JudgeRequest): Promise<JudgeReply> {
+  const stub = stubAllowed(cfg);
+  appendRecord(root, "requests", { id: req.id, at: req.at, kind: req.kind, meta: req.meta, contract: logContract(req) });
+  if (process.env.NEMESIS_JUDGE_STUB && !stub.allowed) appendRecord(root, "verdicts", { id: req.id, path: req.meta.path, decision: "n/a", findings: 0, summary: `stub ignored: ${stub.why}` });
+  let reply: JudgeReply | null = null;
+  if (stub.allowed && stub.file) reply = stubReply(stub.file, req);
+  if (!reply) reply = await askSocket(req);
+  if (!reply && !stub.allowed && !process.env.NEMESIS_NO_AUTOSTART) {
+    if (startDaemon() && (await waitForSocket(20000))) reply = await askSocket(req);
+  }
+  if (!reply && !stub.allowed) {
+    const log = (s: string) => { try { fs.appendFileSync(DAEMON_LOG, `[${nowIso()}] hook-direct ${req.id}: ${s}\n`); } catch { /* best effort */ } };
+    reply = await judgeWithRecovery(req.prompt, (p, env) => spawnJudgeSync(p, "opus", env), { log, altConfigDir: process.env.NEMESIS_ALT_CONFIG_DIR, waits: retryWaits(cfg) });
+  }
+  if (!reply) reply = { verdict: finalDenial("crash", "no layer could reach the judge (stub not allowed, socket absent, daemon would not start, direct call impossible)", ["socket", "autostart", "direct"]), layer: "unreachable", elapsed_ms: 0 };
+  const v = reply.verdict;
+  appendRecord(root, "verdicts", {
+    id: req.id, path: req.meta.path, task: req.meta.task, source: req.meta.source, decision: v.decision, findings: v.findings.length,
+    summary: v.findings.map((f) => `${f.checklist}: ${f.what}`).join("; ").slice(0, 500) || v.reason?.slice(0, 300) || "clean",
+    layer: reply.layer, elapsed_ms: reply.elapsed_ms, cause: reply.cause, recovery: reply.recovery, stuck: v.history_assessment.stuck, recommended_rung: v.history_assessment.recommended_rung,
+  });
+  return reply;
+}

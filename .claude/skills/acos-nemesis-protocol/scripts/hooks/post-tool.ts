@@ -1,0 +1,129 @@
+#!/usr/bin/env bun
+/**
+ * post-tool.ts — PostToolUse hook (Write|Edit|NotebookEdit|Bash).
+ *
+ *  R-013  diffTree after Bash: changed in-scope files are judged after the fact
+ *  R-014  runS3: the whole-repo mechanical scan after EVERY change; skipped ≠ clean
+ *  R-022  green snapshot after a clean scan
+ *  R-029  S3 / PFC-c marks with the scan file as the artifact
+ *  An edit that reaches here WITHOUT a matching S2 record is judged post-hoc (fail-safe).
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { readStdinJson, resolveRoot, postBlock, emit, toolFilePath, scopeOf, logErr } from "./common";
+import { isJudgeChild, buildRequest, requestVerdict } from "../lib/judge";
+import { currentTask, recordFindings, refreshTreeIndex, diffIndex, readJson, P, appendRecord, sha256, writeGreenSnapshot, listIssues, type Finding, type Config } from "../lib/state";
+import { readSteps, markStep } from "../lib/steps";
+import { runScan, scanFindings, scanSummary, type ScanResult } from "../lib/scan";
+import { applyAssessment, rungInstruction, noteDenial, clearBrakeOnClean } from "../lib/ladder";
+import { listSnapshots } from "../lib/state";
+
+export function fastExit(): void { emit({}); }
+
+export function diffTree(root: string, cfg: Config): { changed: string[]; added: string[]; removed: string[] } {
+  const t = refreshTreeIndex(root, cfg); // incremental; also leaves the index at the post-command state
+  return diffIndex(t.before, t.index);
+}
+
+function hasS2For(root: string, task: string, rel: string, fileSha: string): boolean {
+  const s2 = readSteps(root, task).entries.S2 as { items: { artifact?: string }[] };
+  for (const it of s2.items.slice().reverse()) {
+    try {
+      const a = JSON.parse(fs.readFileSync(path.resolve(root, it.artifact ?? ""), "utf8")) as { path: string; candidate_sha256: string };
+      if (a.path === rel && a.candidate_sha256 === fileSha) return true;
+    } catch { /* skip */ }
+  }
+  return false;
+}
+
+/** Judge a file that already landed (Bash-written, or an edit with no S2 match). */
+async function judgePostHoc(root: string, cfg: Config, task: string, rel: string, source: "bash" | "edit"): Promise<{ findings: Finding[]; verdictId: string }> {
+  const abs = path.join(root, rel);
+  const after = fs.existsSync(abs) ? fs.readFileSync(abs, "utf8") : "";
+  // best "before": the latest green snapshot holding the file
+  const snap = listSnapshots(root).reverse().find((m) => m.files[rel]);
+  const before = snap ? fs.readFileSync(path.join(P.snapshots(root), snap.id, "files", rel), "utf8") : "";
+  const { unifiedDiff } = await import("./common");
+  const diff = before ? unifiedDiff(before, after, rel) : `(no earlier green copy of ${rel}; whole file is new to Nemesis)`;
+  const req = buildRequest(root, cfg, { rel, diff, candidate: after, before_exists: !!snap, source, taskId: task });
+  const reply = await requestVerdict(root, cfg, req);
+  if (reply.verdict.decision === "deny") {
+    const issues = recordFindings(root, task, reply.verdict.findings, { verdict_id: req.id, diff_sha256: sha256(diff), files: [rel], outcome: `denied post-hoc (${source})` });
+    for (const i of issues) applyAssessment(root, i, reply.verdict.history_assessment, req.id);
+    // D-61 / R-079: the brake counts BOTH doors. This hook judges everything a shell command
+    // changed, and D-56 left it unable to count a denial or clear one — so a doomed loop driven
+    // by heredocs raised the brake not at all. Same call, same rule, same file key as pre-tool.
+    noteDenial(root, rel, reply.verdict.history_assessment, issues);
+    const fs2 = reply.verdict.findings.length ? reply.verdict.findings : [{ severity: "high", lens: "PSC", checklist: "S2", where: rel, what: reply.verdict.reason ?? "verdict unreadable", fix_hint: "see ~/.acos/nemesis/daemon.log" } as Finding];
+    return { findings: fs2, verdictId: req.id };
+  }
+  clearBrakeOnClean(root, rel);   // a judged-clean landing is proof of movement, whichever door it came through
+  markStep(root, task, "S2", { inline: JSON.stringify({ path: rel, candidate_sha256: sha256(after), verdict_id: req.id, source, post_hoc: true }), name: `s2-${req.id}.json` }, `post-tool hook (${source})`);
+  return { findings: [], verdictId: req.id };
+}
+
+export function runS3(root: string, cfg: Config, task: string | undefined, changed: string[], trigger: string): { scan: ScanResult; findings: Finding[] } {
+  const repro = listIssues(root, true).filter((i) => i.repro).map((i) => i.repro!);
+  const scan = runScan(root, cfg, { trigger, changed, task, repro });
+  const rel = path.relative(root, path.join(P.scans(root), `${scan.id}.json`));
+  if (task) {
+    markStep(root, task, "S3", rel, "post-tool hook", scanSummary(scan));
+    if (scan.clean) markStep(root, task, "PFC-c", rel, "post-tool hook (clean scan)");
+  }
+  const findings = scanFindings(scan) as Finding[];
+  if (scan.clean && changed.length) writeGreenSnapshot(root, changed, `clean S3 after ${trigger}`);
+  return { scan, findings };
+}
+
+async function main(): Promise<void> {
+  const input = await readStdinJson();
+  if (isJudgeChild()) return fastExit();
+  const r = resolveRoot(input);
+  if (!r) return fastExit();
+  const { root, cfg } = r;
+  const tool = input.tool_name ?? "";
+  const task = currentTask(root)?.id;
+  const allFindings: Finding[] = [];
+  let changed: string[] = [];
+
+  if (tool === "Bash") {
+    const d = diffTree(root, cfg);
+    changed = [...d.changed, ...d.added];
+    appendRecord(root, "bash", { changed, removed: d.removed, command: String((input.tool_input ?? {}).command ?? "").slice(0, 200) });
+    if (!changed.length && !d.removed.length) return fastExit();
+    if (!task) { allFindings.push({ severity: "high", lens: "PFC", checklist: "S0", where: changed.join(", "), what: "files changed by a shell command with no open task — no threat sketch covers them", fix_hint: "run nemesis task start / sketch / design, then redo the change" }); }
+    else for (const rel of changed) { const j = await judgePostHoc(root, cfg, task, rel, "bash"); allFindings.push(...j.findings); }
+  } else if (tool === "Write" || tool === "Edit" || tool === "NotebookEdit") {
+    const fp = toolFilePath(input.tool_input);
+    if (!fp) return fastExit();
+    const sc = scopeOf(root, cfg, fp);
+    if (!sc.inScope) return fastExit();
+    changed = [sc.rel];
+    const abs = path.join(root, sc.rel);
+    if (fs.existsSync(abs) && task) {
+      const fileSha = sha256(fs.readFileSync(abs));
+      if (!hasS2For(root, task, sc.rel, fileSha)) { const j = await judgePostHoc(root, cfg, task, sc.rel, "edit"); allFindings.push(...j.findings); }
+    }
+  } else return fastExit();
+
+  const s3 = runS3(root, cfg, task, changed, `${tool} ${changed.join(",")}`.slice(0, 120));
+  allFindings.push(...s3.findings);
+  if (task && s3.findings.length) {
+    const issues = recordFindings(root, task, s3.findings, { verdict_id: s3.scan.id, files: changed, outcome: "S3 scan finding" });
+    const lines = [`NEMESIS: S3 scan after ${tool} is NOT clean (${scanSummary(s3.scan)}). ${allFindings.length} finding(s):`];
+    allFindings.forEach((f, i) => { const issue = issues.find((x) => x.where === f.where && x.checklist === f.checklist); lines.push(`${i + 1}. [${f.severity}/${f.lens}/${f.checklist}] ${f.where}: ${f.what}${f.fix_hint ? ` Fix: ${f.fix_hint}` : ""}${issue ? ` (${issue.id}) → ${rungInstruction(root, issue)}` : ""}`); });
+    lines.push(`Scan record: .nemesis/records/scans/${s3.scan.id}.json`);
+    return postBlock(lines.join("\n"));
+  }
+  if (allFindings.length) {
+    const lines = [`NEMESIS: ${allFindings.length} finding(s) on files changed by ${tool}:`];
+    allFindings.forEach((f, i) => lines.push(`${i + 1}. [${f.severity}/${f.lens}/${f.checklist}] ${f.where}: ${f.what}${f.fix_hint ? ` Fix: ${f.fix_hint}` : ""}`));
+    return postBlock(lines.join("\n"));
+  }
+  emit({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `nemesis: S3 clean (${scanSummary(s3.scan)})` } });
+}
+
+if (import.meta.main) {
+  if (process.argv.includes("--health")) { console.log("post-tool hook loads; libs resolve"); process.exit(0); }
+  main().catch((e) => { logErr("post-tool", e); postBlock(`NEMESIS: post-tool hook error (${e instanceof Error ? e.message : String(e)}) — the change is unverified; see /tmp/nemesis-hook.err and rerun the scan with: nemesis scan`); });
+}

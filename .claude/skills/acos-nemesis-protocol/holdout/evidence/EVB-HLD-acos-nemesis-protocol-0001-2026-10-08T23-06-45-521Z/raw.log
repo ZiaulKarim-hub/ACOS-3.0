@@ -1,0 +1,189 @@
+===== case rule-breaking-edit-refused-until-fixed — PASS =====
+intent: With S0 and S1 on disk and the judge returning a deny, the PreToolUse hook refuses the edit, the finding becomes an open issue, and the Stop hook blocks the turn; once a reproduction test is registered, two S3 scans come back clean and the independent review confirms the fix, `issue close` succeeds, `task end` closes the task, and the Stop hook stops blocking.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"deny_decision":"deny","deny_names_finding":true,"deny_names_fix_hint":true,"deny_names_rung":true,"open_issues_after_deny":1,"issue_is_sec":true,"stop_blocks_while_open":"block","stop_refuses_goal_complete":true,"stop_blocks_without_any_claim":"block","stop_without_claim_names_issue":true,"fixed_edit_decision":"allow","post_tool_scan_clean":true,"repro_registered":true,"review_confirmed":true,"close_exit":0,"close_says_closed":true,"open_issues_after_close":0,"task_end_exit":0,"task_end_closed_task":true,"stop_after_close":"none"}
+--- stderr ---
+
+
+===== case edit-without-sketch-refused — PASS =====
+intent: With Nemesis active but no task, no threat sketch and no design review on disk, the PreToolUse hook denies an in-scope edit and names the exact next command (task start, then task sketch, then task design) at each stage.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"no_task_decision":"deny","no_task_names_command":true,"after_start_decision":"deny","after_start_names_command":true,"after_sketch_decision":"deny","after_sketch_names_command":true,"after_design_decision":"allow","start_exit":0,"sketch_exit":0,"design_exit":0}
+--- stderr ---
+
+
+===== case insecure-line-deny-carries-finding-and-rung — PASS =====
+intent: The deny reason handed back to the writer carries, for every finding, its severity/lens/checklist, where, what, root cause, fix hint, the issue id it opened, and the current rung instruction.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"decision":"deny","header_counts_findings":true,"has_severity_lens_checklist":true,"has_where":true,"has_what":true,"has_root_cause":true,"has_fix_hint":true,"has_issue_ref":true,"has_rung_instruction":true,"open_issues":1,"issue_checklist":"3.2.1"}
+--- stderr ---
+
+
+===== case close-refused-without-repro-test — PASS =====
+intent: `nemesis issue close` refuses an issue that has no registered reproduction test, exits non-zero, names closure criterion (1) together with the command that registers the test, and leaves the issue open.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"close_exit_nonzero":true,"names_criterion_1":true,"names_repro_command":true,"says_not_proven":true,"issue_status":"open","still_open":1,"refusal_recorded":1}
+--- stderr ---
+
+
+===== case goal-complete-blocked-while-open — PASS =====
+intent: When the last assistant turn emits AUTOPILOT_GOAL_COMPLETE while an issue is open, the Stop hook blocks, says it refuses the marker, names the missing release-gate record and the open issue, and tells the writer to keep working.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"decision":"block","refuses_marker":true,"names_missing_release_gate":true,"names_open_issue":true,"says_ledger_open":true,"says_keep_working":true,"stop_record_blocked":true}
+--- stderr ---
+
+
+===== case eternity-marker-still-judged — PASS =====
+intent: With a live eternity-protocol resume marker present in the tree, the PreToolUse hook still calls the judge and still denies: the marker buys no stand-down, while the marker file itself is reported out of scope.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"marker_present":true,"decision":"deny","names_finding":true,"judge_was_called":1,"verdict_decision":"deny","marker_out_of_scope":true,"open_issues":1}
+--- stderr ---
+
+
+===== case bash-heredoc-write-caught — PASS =====
+intent: A file created by a shell heredoc (never by Write or Edit) is detected by the PostToolUse hook from the pre-command tree snapshot, judged after the fact, and blocked with the judge's finding; the issue records the file.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"snapshot_decision":"allow","snapshot_reason":true,"shell_wrote_file":true,"post_decision":"block","post_names_finding":true,"bash_record_lists_file":true,"issue_opened":true,"issue_files_include_new":true,"issue_checklist":"Q2"}
+--- stderr ---
+
+
+===== case unreadable-verdict-never-allows — PASS =====
+intent: Every class of unreadable judge reply — empty, prose, malformed JSON, too-long, usage-limit — ends in a deny that names its cause class, while a reply that only needs JSON repair is recovered and decided instead of refused; no class ever yields an unjudged allow.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"empty":"deny:empty","prose":"deny:prose","malformed":"deny:malformed","too_long":"deny:too_long","usage_limit":"deny:usage_limit","any_allow_without_a_verdict":false,"repairable_decision":"allow","repairable_layer":"stub+repair_json","open_issues":0}
+--- stderr ---
+
+
+===== case drift-finding-opens-fun-issue — PASS =====
+intent: A finding returned under the functionality lens with checklist PFC-d (drift from the PRD or the goal) opens a FUN- issue carrying that lens and checklist, not a SEC- issue.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"decision":"deny","issue_count":1,"issue_id":"FUN-1","issue_lens":"PFC","issue_checklist":"PFC-d","issue_where":"src/app.ts:9","deny_names_drift":true,"record_lens":"PFC"}
+--- stderr ---
+
+
+===== case unrecorded-edit-is-defect — PASS =====
+intent: Given a real transcript whose last turn contains an in-scope Write with no matching S2 verdict record behind it, the Stop hook blocks, reports the watchdog, and opens a FUN- issue naming the unrecorded file and the command that would judge it.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"decision":"block","reason_reports_watchdog":true,"issue_found":true,"issue_is_fun":true,"issue_lens":"PFC","issue_checklist":"S2","issue_where":"src/ghost.ts","fix_hint_names_judge_command":true}
+--- stderr ---
+
+
+===== case skipped-scan-is-not-clean — PASS =====
+intent: In a project with no test runner the S3 test check is `skipped`, the scan is not clean and exits non-zero, `status` reports it as not clean, and `task end` refuses because the latest two scans are not clean — a skip is never a pass.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"test_status":"skipped","scan_clean":false,"scan_exit_nonzero":true,"scan_says_not_clean":true,"scan_prints_test_skipped":true,"issue_says_skip_is_not_a_pass":true,"status_says_not_clean":true,"task_end_exit_nonzero":true,"task_end_names_s4":true,"task_end_names_skipped_test":true}
+--- stderr ---
+
+
+===== case hooks-inert-when-off — PASS =====
+intent: In an enrolled project with Nemesis not active, the PreToolUse hook allows and says so, the PostToolUse and UserPromptSubmit hooks emit an empty object, and no judge socket is created.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"pre_decision":"allow","pre_reason":"nemesis inactive","post_payload":"{}","prompt_payload":"{}","stop_payload":"{}","socket_created":false,"no_scan_ran":0,"no_issues":0}
+--- stderr ---
+
+
+===== case enroll-installs-hooks-once — PASS =====
+intent: Running `nemesis enroll` twice over the same project leaves exactly one Nemesis entry for each of the four hook events in settings.local.json, with `.nemesis/` and its subdirectories present, and never writes test_mode into the config.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"second_enroll_exit":0,"first_counts":"{\"PreToolUse\":1,\"PostToolUse\":1,\"Stop\":1,\"UserPromptSubmit\":1}","second_counts":"{\"PreToolUse\":1,\"PostToolUse\":1,\"Stop\":1,\"UserPromptSubmit\":1}","nemesis_dir_present":true,"subdirs_present":true,"config_schema":"nemesis-config/1","test_mode_not_written":true,"gitignore_withholds_pack":true}
+--- stderr ---
+
+
+===== case rulebook-matches-source — PASS =====
+intent: rulebook.json is generated from rulebook/SECURITY-PROTOCOL.md: its source_sha256 equals the hash of that markdown, `build-rulebook.ts --check` reports it fresh, and the parsed counts are the rulebook's own — twelve questions, fourteen checklists, nine steps, four severity rows, twelve principles, four record templates.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"source_sha256_matches_markdown":true,"check_exit":0,"check_says_fresh":true,"schema":"nemesis-rulebook/1","twelve_questions":12,"checklists":14,"steps":9,"severity_rows":4,"principles":12,"templates":4,"rule_zero_present":true}
+--- stderr ---
+
+
+===== case low-blocks-release-gate — PASS =====
+intent: A single Low-severity open issue closes the release gate: `nemesis release-gate` exits non-zero, says the gate is CLOSED, names the Low issue, states that every severity counts, and the CLI offers no defer or snooze command.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"issue_severity":"low","gate_exit_nonzero":true,"gate_closed":true,"names_low_issue":true,"says_every_severity_counts":true,"no_defer_or_snooze_command":true,"refusal_recorded":1,"gate_record_written":false}
+--- stderr ---
+
+
+===== case revert-restores-green-keeps-open — PASS =====
+intent: After a clean S3 scan takes a green snapshot, a later modification of the same file is undone byte for byte by `nemesis revert`, which records the snapshot on the issue and leaves it open with status `reverted-open`.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"first_edit_allowed":"allow","post_scan_clean":true,"green_snapshot_taken":true,"revert_exit":0,"revert_says_restored":true,"bytes_equal_green":true,"issue_status":"reverted-open","revert_recorded_on_issue":true,"issue_still_open":true,"says_stays_open":true}
+--- stderr ---
+
+
+===== case ladder-rung-only-by-judge — PASS =====
+intent: Three denies carrying `stuck: false` leave the issue on rung 1 with three recorded attempts; a single deny carrying `stuck: true` with recommended rung 3 moves it to rung 3 and credits the judge in the history.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"issue_count":1,"rung_after_three_not_stuck":1,"attempts_after_three":3,"rung_events_before":0,"rung_after_judge_says_stuck":3,"attempts_after_four":4,"rung_event_credits_judge":true,"ladder_shows_rung_3":true}
+--- stderr ---
+
+
+===== case judge-token-exempts-child — PASS =====
+intent: A process carrying the machine's Nemesis judge token is allowed instantly with the reason `nemesis_judge_session`, while the same edit carrying a wrong token, or no token at all, is not exempt and is denied.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"token_file_present":true,"good_decision":"allow","good_reason":"nemesis_judge_session","wrong_token_decision":"deny","wrong_token_reason_is_exemption":false,"no_token_decision":"deny","empty_token_decision":"deny","no_verdict_for_exempt_child":0}
+--- stderr ---
+
+
+===== case test-mode-guard — PASS =====
+intent: With NEMESIS_JUDGE_STUB pointing at a perfectly readable allow verdict but `test_mode` absent from the project config, the stub is ignored and recorded as ignored, the edit is denied because no real judge could be reached, and no daemon socket is created.
+exit=0 signal=-
+check: exit: got 0, want 0 — ok
+check: stdout(json): deep-equality — ok
+--- stdout ---
+{"config_has_test_mode":false,"stub_file_is_a_valid_allow":true,"decision":"deny","names_missing_claude":true,"names_cause_class":true,"says_nothing_unjudged_is_allowed":true,"stub_ignored_recorded":1,"ignored_reason_names_test_mode":true,"socket_created":false,"no_issue_opened_for_unreadable":0}
+--- stderr ---
+

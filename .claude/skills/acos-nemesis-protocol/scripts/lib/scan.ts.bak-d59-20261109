@@ -1,0 +1,304 @@
+/**
+ * scan.ts — the S3 post-change scan (R-014, R-015). Mechanical, whole-repo, after EVERY
+ * change. Each check is pass | fail | skipped, and `skipped` is NEVER clean (a `skip` is
+ * not a `pass`). Built-ins cannot be removed by config; `extra_checks` only add.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { spawnSync } from "node:child_process";
+import { type Config, P, writeJson, nowIso, sha256 } from "./state";
+import { looksLikeCode, isInScope } from "./scope";
+
+export type CheckKind = "typecheck" | "lint" | "test" | "secrets" | "deps" | "policy" | "data" | "extra";
+export type CheckStatus = "pass" | "fail" | "skipped";
+export interface Check { id: string; kind: CheckKind; cmd?: string; args?: string[]; builtin?: "secrets" | "policy" | "data"; note?: string }
+export interface CheckResult { id: string; kind: CheckKind; status: CheckStatus; ms: number; output: string; findings?: ScanFinding[] }
+export interface ScanFinding { severity: "critical" | "high" | "medium" | "low"; lens: "PSC" | "PFC"; checklist: string; where: string; what: string; fix_hint?: string }
+export interface ScanResult {
+  id: string; at: string; task?: string; trigger: string; changed: string[];
+  checks: CheckResult[]; clean: boolean; tests_pass: boolean; repro_results: Record<string, boolean>;
+  /** R-060: why each reproduction test was or was not credited, so a refusal is actionable. */
+  repro_reasons?: Record<string, string>;
+}
+
+const CHECK_TIMEOUT_MS = 20 * 60 * 1000; // generous: a slow suite is accepted, a skipped one is not
+
+function has(root: string, rel: string): boolean { return fs.existsSync(path.join(root, rel)); }
+function which(bin: string): boolean { return spawnSync("sh", ["-lc", `command -v ${bin}`], { encoding: "utf8" }).status === 0; }
+
+/** R-015: detect the project's own checks. Order: package.json scripts → tsconfig → linters → runners → cargo → python. */
+export function detectToolchain(root: string, cfg?: Config): Check[] {
+  const checks: Check[] = [];
+  const pkg = has(root, "package.json") ? JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as { scripts?: Record<string, string> } : null;
+  const scripts = pkg?.scripts ?? {};
+  const runner = has(root, "bun.lock") || has(root, "bun.lockb") ? "bun" : has(root, "pnpm-lock.yaml") ? "pnpm" : has(root, "yarn.lock") ? "yarn" : "npm";
+  const runScript = (name: string) => (runner === "npm" ? ["npm", ["run", name, "--silent"]] : [runner, ["run", name]]) as [string, string[]];
+
+  // type-check
+  if (scripts.typecheck) { const [c, a] = runScript("typecheck"); checks.push({ id: "typecheck", kind: "typecheck", cmd: c, args: a }); }
+  else if (has(root, "tsconfig.json")) checks.push({ id: "typecheck", kind: "typecheck", cmd: runner === "bun" ? "bunx" : "npx", args: ["tsc", "--noEmit", "-p", "tsconfig.json"] });
+  else if (has(root, "Cargo.toml")) checks.push({ id: "typecheck", kind: "typecheck", cmd: "cargo", args: ["check", "--quiet"] });
+  else checks.push({ id: "typecheck", kind: "typecheck", note: "no tsconfig/Cargo.toml/typecheck script" });
+
+  // lint
+  if (scripts.lint) { const [c, a] = runScript("lint"); checks.push({ id: "lint", kind: "lint", cmd: c, args: a }); }
+  else if (has(root, "biome.json") || has(root, "biome.jsonc")) checks.push({ id: "lint", kind: "lint", cmd: runner === "bun" ? "bunx" : "npx", args: ["biome", "check", "."] });
+  else if (fs.readdirSync(root).some((f) => /^(\.eslintrc|eslint\.config\.)/.test(f))) checks.push({ id: "lint", kind: "lint", cmd: runner === "bun" ? "bunx" : "npx", args: ["eslint", "."] });
+  else if (has(root, "Cargo.toml")) checks.push({ id: "lint", kind: "lint", cmd: "cargo", args: ["clippy", "--quiet", "--", "-D", "warnings"] });
+  else if (has(root, "pyproject.toml") && which("ruff")) checks.push({ id: "lint", kind: "lint", cmd: "ruff", args: ["check", "."] });
+  else checks.push({ id: "lint", kind: "lint", note: "no linter detected" });
+
+  // tests
+  if (scripts.test && !/no test specified/.test(scripts.test)) { const [c, a] = runScript("test"); checks.push({ id: "test", kind: "test", cmd: c, args: a }); }
+  else if (has(root, "vitest.config.ts") || has(root, "vitest.config.js")) checks.push({ id: "test", kind: "test", cmd: runner === "bun" ? "bunx" : "npx", args: ["vitest", "run"] });
+  else if (has(root, "jest.config.js") || has(root, "jest.config.ts")) checks.push({ id: "test", kind: "test", cmd: "npx", args: ["jest", "--ci"] });
+  else if (runner === "bun" && hasTestFiles(root)) checks.push({ id: "test", kind: "test", cmd: "bun", args: ["test"] });
+  else if (has(root, "Cargo.toml")) checks.push({ id: "test", kind: "test", cmd: "cargo", args: ["test", "--quiet"] });
+  else if (has(root, "pyproject.toml") && which("pytest")) checks.push({ id: "test", kind: "test", cmd: "pytest", args: ["-q"] });
+  else checks.push({ id: "test", kind: "test", note: "no test runner detected — a project with no tests cannot be clean" });
+
+  // dependency audit (a project may name its own: scripts.audit)
+  if (scripts.audit) { const [c, a] = runScript("audit"); checks.push({ id: "deps", kind: "deps", cmd: c, args: a }); }
+  else if (pkg) checks.push({ id: "deps", kind: "deps", cmd: runner === "bun" ? "bun" : "npm", args: runner === "bun" ? ["audit"] : ["audit", "--audit-level=high"] });
+  else if (has(root, "Cargo.toml")) checks.push(which("cargo-audit") ? { id: "deps", kind: "deps", cmd: "cargo", args: ["audit", "-q"] } : { id: "deps", kind: "deps", note: "cargo-audit not installed" });
+  else if (has(root, "pyproject.toml") || has(root, "requirements.txt")) checks.push(which("pip-audit") ? { id: "deps", kind: "deps", cmd: "pip-audit", args: ["-q"] } : { id: "deps", kind: "deps", note: "pip-audit not installed" });
+  else checks.push({ id: "deps", kind: "deps", note: "no dependency manifest" });
+
+  // built-ins (always)
+  checks.push({ id: "secrets", kind: "secrets", builtin: "secrets" });
+  if (which("gitleaks")) checks.push({ id: "gitleaks", kind: "secrets", cmd: "gitleaks", args: ["detect", "--no-git", "--source", ".", "--no-banner", "--redact", "--exit-code", "1"] });
+  checks.push({ id: "policy", kind: "policy", builtin: "policy" });
+  checks.push({ id: "data", kind: "data", builtin: "data" });
+
+  // additive extras — a config can only ADD
+  for (const e of cfg?.extra_checks ?? []) {
+    if (checks.some((c) => c.id === e.id)) { console.error(`nemesis: extra_check "${e.id}" collides with a built-in and is ignored (built-ins cannot be replaced)`); continue; }
+    checks.push({ id: e.id, kind: "extra", cmd: e.cmd, args: e.args });
+  }
+  return checks;
+}
+
+function hasTestFiles(root: string): boolean {
+  const out = spawnSync("sh", ["-lc", `find . -path ./node_modules -prune -o -path ./.git -prune -o \\( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.js" -o -name "*_test.ts" \\) -print -quit`], { cwd: root, encoding: "utf8" });
+  return out.stdout.trim().length > 0;
+}
+
+// ── Built-in scanners ───────────────────────────────────────────────────────
+
+const SECRET_PATTERNS: { re: RegExp; what: string }[] = [
+  { re: /AKIA[0-9A-Z]{16}/, what: "AWS access key id" },
+  { re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/, what: "private key block" },
+  { re: /sk-(?:live|test|proj)-[A-Za-z0-9_-]{16,}/, what: "secret API key (sk-…)" },
+  { re: /ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}/, what: "GitHub token" },
+  { re: /xox[baprs]-[A-Za-z0-9-]{10,}/, what: "Slack token" },
+  { re: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, what: "JWT literal" },
+  { re: /(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*["'][^"'\s]{8,}["']/i, what: "hard-coded credential assignment" },
+  { re: /postgres(?:ql)?:\/\/[^:\s]+:[^@\s]+@/, what: "database URL with embedded password" },
+];
+
+const SENSITIVE_DATA_PATTERNS: { re: RegExp; what: string }[] = [
+  { re: /\b\d{3}-\d{2}-\d{4}\b/, what: "SSN-shaped value" },
+  { re: /\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6011)[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b/, what: "card-number-shaped value" },
+  { re: /\bBearer\s+[A-Za-z0-9._-]{20,}/, what: "bearer token literal" },
+  { re: /\b\d{2}-\d{7}\b/, what: "TIN/EIN-shaped value" },
+  { re: /\b(?:routing|aba|account|acct|iban)[\s_-]*(?:number|no|num|#)?\s*[:=]\s*["']?\d{8,17}\b/i, what: "bank account/routing-shaped value" },
+  { re: /\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}[A-Z0-9]{1,16}\b/, what: "IBAN-shaped value" },
+];
+/** Error-message constructs: a sensitive value inside one leaks through the response or the log. */
+const ERROR_LINE = /\b(throw\s+new\s+\w*Error|new\s+\w*Error\s*\(|raise\s+\w+(Error|Exception)|panic!\(|errorMessage|error_message|err(?:or)?_?msg|message\s*[:=]\s*[`"'])/;
+const LOG_LINE = /\b(console\.(log|error|warn|info|debug)|logger\.|log\.(info|error|warn|debug)|print\(|println!|eprintln!|tracing::)/;
+
+function listScanFiles(root: string, cfg: Config, changed: string[]): string[] {
+  const files = new Set<string>(changed.filter((f) => fs.existsSync(path.join(root, f))));
+  const walk = (dir: string, depth: number) => {
+    if (depth > 12) return;
+    let ents: fs.Dirent[]; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (e.name === "node_modules" || e.name === ".git" || e.name === ".nemesis" || e.name === ".worktree") continue;
+      const abs = path.join(dir, e.name);
+      const rel = path.relative(root, abs).split(path.sep).join("/");
+      if (e.isDirectory()) walk(abs, depth + 1);
+      else if (e.isFile() && looksLikeCode(rel) && isInScope(root, rel, cfg).inScope) {
+        try { if (fs.statSync(abs).size <= 1_000_000) files.add(rel); } catch { /* skip */ }
+      }
+    }
+  };
+  walk(root, 0);
+  return [...files];
+}
+
+function runBuiltin(kind: "secrets" | "policy" | "data", root: string, cfg: Config, changed: string[]): CheckResult {
+  const t0 = Date.now();
+  const findings: ScanFinding[] = [];
+  const files = listScanFiles(root, cfg, changed);
+  for (const rel of files) {
+    let text: string; try { text = fs.readFileSync(path.join(root, rel), "utf8"); } catch { continue; }
+    const lines = text.split("\n");
+    if (kind === "secrets") {
+      if (/(^|\/)\.env(\.|$)/.test(rel) && rel !== ".env.example") findings.push({ severity: "high", lens: "PSC", checklist: "3.4.1", where: rel, what: ".env file inside the project tree — must be gitignored and never committed", fix_hint: "add to .gitignore; move values to environment injection" });
+      lines.forEach((l, i) => { for (const p of SECRET_PATTERNS) if (p.re.test(l) && !/example|placeholder|dummy|xxxx|<.*>/i.test(l)) findings.push({ severity: "critical", lens: "PSC", checklist: "3.4.2", where: `${rel}:${i + 1}`, what: `${p.what} in source`, fix_hint: "remove, rotate the secret, load from environment" }); });
+    } else if (kind === "policy") {
+      if (!/\.sql$|migrations?\//i.test(rel)) continue;
+      const lower = text.toLowerCase();
+      for (const m of text.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?([\w."]+)/gi)) {
+        const t = m[1]!.replace(/"/g, "").split(".").pop()!;
+        if (!new RegExp(`alter\\s+table\\s+(?:[\\w".]*\\.)?"?${t}"?\\s+enable\\s+row\\s+level\\s+security`, "i").test(lower)) findings.push({ severity: "high", lens: "PSC", checklist: "3.2.1", where: `${rel}: table ${t}`, what: `table ${t} created without ENABLE ROW LEVEL SECURITY in the same migration`, fix_hint: `ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY; and add policies + a negative test` });
+      }
+      for (const m of text.matchAll(/create\s+(?:or\s+replace\s+)?view\s+([\w."]+)/gi)) {
+        const v = m[1]!.replace(/"/g, "").split(".").pop()!;
+        if (!new RegExp(`view\\s+(?:[\\w".]*\\.)?"?${v}"?[\\s\\S]{0,400}security_invoker`, "i").test(text)) findings.push({ severity: "high", lens: "PSC", checklist: "3.2.2", where: `${rel}: view ${v}`, what: `view ${v} does not set security_invoker`, fix_hint: `WITH (security_invoker = true)` });
+      }
+      if (/\bdisable\s+row\s+level\s+security\b/i.test(text)) findings.push({ severity: "critical", lens: "PSC", checklist: "3.2.1", where: rel, what: "DISABLE ROW LEVEL SECURITY present", fix_hint: "remove; RLS stays on every table" });
+    } else {
+      lines.forEach((l, i) => {
+        const isLog = LOG_LINE.test(l);
+        const isError = !isLog && ERROR_LINE.test(l);
+        const isFixture = /fixtures?\/|seed|\.test\.|\.spec\./i.test(rel);
+        if (!isLog && !isError && !isFixture) return;
+        for (const p of SENSITIVE_DATA_PATTERNS) if (p.re.test(l)) findings.push({ severity: "high", lens: "PSC", checklist: isLog ? "3.7.2" : isError ? "3.3.6" : "3.6.2", where: `${rel}:${i + 1}`, what: `${p.what} in ${isLog ? "a log statement" : isError ? "an error message" : "a fixture"}`, fix_hint: "mask to last-4 or remove" });
+        if (isLog && /(req\.body|request\.body|JSON\.stringify\(req)/.test(l)) findings.push({ severity: "medium", lens: "PSC", checklist: "3.7.2", where: `${rel}:${i + 1}`, what: "full request body logged", fix_hint: "log only the fields needed, never the raw body" });
+      });
+    }
+  }
+  return { id: kind, kind, status: findings.length ? "fail" : "pass", ms: Date.now() - t0, output: findings.map((f) => `${f.where}: ${f.what}`).join("\n").slice(0, 8000), findings };
+}
+
+function runCommand(root: string, c: Check): CheckResult {
+  const t0 = Date.now();
+  if (!c.cmd) return { id: c.id, kind: c.kind, status: "skipped", ms: 0, output: c.note ?? "not configured" };
+  const r = spawnSync(c.cmd, c.args ?? [], { cwd: root, encoding: "utf8", timeout: CHECK_TIMEOUT_MS, env: { ...process.env, CI: "1", FORCE_COLOR: "0" }, maxBuffer: 64 * 1024 * 1024 });
+  const out = `${r.stdout ?? ""}\n${r.stderr ?? ""}`.trim();
+  if (r.error && (r.error as NodeJS.ErrnoException).code === "ENOENT") return { id: c.id, kind: c.kind, status: "skipped", ms: Date.now() - t0, output: `${c.cmd} not found` };
+  if (r.error && /ETIMEDOUT/.test(String((r.error as NodeJS.ErrnoException).code))) return { id: c.id, kind: c.kind, status: "fail", ms: Date.now() - t0, output: `timed out after ${CHECK_TIMEOUT_MS / 1000}s\n${out}`.slice(0, 8000) };
+  return { id: c.id, kind: c.kind, status: r.status === 0 ? "pass" : "fail", ms: Date.now() - t0, output: out.slice(-8000) };
+}
+
+export function isClean(r: Pick<ScanResult, "checks">): boolean { return r.checks.every((c) => c.status === "pass"); }
+
+/**
+ * Run the whole S3 scan, record it, and return it. `repro` lists the registered reproduction
+ * tests so their individual results can be recorded for closure (R-025).
+ */
+/**
+ * R-060 — can any DYNAMIC test title in this file actually produce `name`?
+ *
+ * Two shapes cover what test runners offer: a template literal title with `${...}` holes, and an
+ * `.each` title carrying printf-style placeholders (`%s`, `%d`, `%i`, `%f`, `%j`, `%o`, `%p`,
+ * `%#`). Each becomes a regex with the static parts anchored and the holes as wildcards, then the
+ * registered name is matched against it. A pattern that cannot produce the name is no evidence,
+ * so this narrows the refusal rather than removing it.
+ */
+function findDynamicDeclaration(src: string, name: string): { matched: boolean; anyDynamic: boolean; lines: string[] } {
+  const decl = src.split("\n").filter((l) => /\b(test|it|describe|bench)\b/.test(l));
+  const lines: string[] = [];
+  let anyDynamic = false;
+  const statics = (tpl: string, splitter: RegExp): RegExp =>
+    new RegExp("^" + tpl.split(splitter).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[\\s\\S]*") + "$");
+  for (const l of decl) {
+    // a template literal title with at least one ${...}
+    for (const m of l.matchAll(/`([^`]*)`/g)) {
+      const tpl = m[1] ?? "";
+      if (!tpl.includes("${")) continue;
+      anyDynamic = true;
+      if (statics(tpl, /\$\{[^}]*\}/).test(name)) { lines.push(l); }
+    }
+    // an .each title with printf-style placeholders
+    if (/\.each\b/.test(l)) {
+      for (const m of l.matchAll(/["'\`]([^"'\`]*)["'\`]/g)) {
+        const tpl = m[1] ?? "";
+        if (!/%[sdifjop#]/.test(tpl)) continue;
+        anyDynamic = true;
+        if (statics(tpl, /%[sdifjop#]/).test(name)) { lines.push(l); }
+      }
+    }
+  }
+  return { matched: lines.length > 0, anyDynamic, lines };
+}
+
+export function runScan(root: string, cfg: Config, args: { trigger: string; changed: string[]; task?: string; repro?: { file: string; name: string }[] }): ScanResult {
+  const checks = detectToolchain(root, cfg);
+  const results: CheckResult[] = checks.map((c) => (c.builtin ? runBuiltin(c.builtin, root, cfg, args.changed) : runCommand(root, c)));
+  const testRes = results.find((r) => r.kind === "test");
+  const repro_results: Record<string, boolean> = {};
+  const repro_reasons: Record<string, string> = {};
+  for (const rp of args.repro ?? []) {
+    // R-060. The old rule was: the file exists, the suite passed, and the suite output does not
+    // mark this test failed. That credits a test name that is PRESENT NOWHERE, because a name no
+    // runner ever saw produces no failure line either. Found by the v2-ee session on 2026-11-04:
+    // FUN-93 carried a reproduction pointing at an unrelated test and still satisfied closure
+    // criterion (1). "Nothing said it failed" is not evidence that anything ran.
+    //
+    // The fix cannot lean on the suite OUTPUT naming the test: `bun test` prints only
+    // "1 pass / 0 fail" on success and names a test only when it fails, so demanding a pass
+    // marker would block closure on every project using it. Measured, not assumed.
+    //
+    // So the evidence comes from the file instead, which is runner-agnostic: the named test must
+    // be DECLARED in the file the reproduction points at, and must not be skipped or todo. With
+    // the whole suite green, a declared and unskipped test in that file did run and did pass.
+    const key = `${rp.file}::${rp.name}`;
+    const abs = path.resolve(root, rp.file);
+    const esc = rp.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const out = testRes?.output ?? "";
+    const exists = fs.existsSync(abs);
+    const src = exists ? fs.readFileSync(abs, "utf8") : "";
+    // the name, as a quoted string, on a line that declares a test
+    const lines = src.split("\n").filter((l) => new RegExp(`["'\`]${esc}["'\`]`).test(l));
+    const literal = lines.some((l) => /\b(test|it|describe|bench)\b/.test(l));
+    // A DYNAMICALLY NAMED test never has its literal name in the source, so a literal-only rule
+    // would refuse a perfectly real reproduction. Raised by the v2-ee session on 2026-11-04:
+    // none existed on that project, but the rule will meet one. So also accept a declaration
+    // whose name PATTERN can produce the registered name: a template literal with `${...}`
+    // holes, or an `.each` title with printf-style placeholders. The pattern must actually be
+    // able to produce that name, so this is evidence, not a waiver.
+    const dyn = findDynamicDeclaration(src, rp.name);
+    const declared = literal || dyn.matched;
+    const declLines = literal ? lines : dyn.lines;
+    const skipped = declLines.some((l) => /\.(skip|todo|failing)\b|\bxit\b|\bxtest\b/.test(l));
+    const failed = new RegExp(`(\u2717|\u2715|\u00d7|FAIL|fail)[^\\n]*${esc}|${esc}[^\\n]*(\u2717|\u2715|\u00d7|FAIL|fail)`).test(out);
+    let why = "";
+    if (!exists) why = `the file ${rp.file} does not exist`;
+    else if (!lines.length && !dyn.matched && dyn.anyDynamic) why = `${rp.file} declares its test names dynamically and none of those patterns can produce "${rp.name}" \u2014 register a name one of them really produces, or add a statically named test for this bug: nemesis issue repro <id> <file> "<name>"`;
+    else if (!lines.length && !dyn.matched) why = `${rp.file} contains no test named "${rp.name}" \u2014 the reproduction points at a test that is not there, so nothing proves this bug is fixed; register the real name: nemesis issue repro <id> <file> "<name>"`;
+    else if (!declared) why = `"${rp.name}" appears in ${rp.file} but not as a test declaration`;
+    else if (skipped) why = `"${rp.name}" is declared in ${rp.file} but skipped, so it never ran`;
+    else if (!testRes) why = "no test runner ran in this scan";
+    else if (testRes.status !== "pass") why = `the suite did not pass (${testRes.status})`;
+    else if (failed) why = `the suite output marks "${rp.name}" failed`;
+    repro_results[key] = exists && declared && !skipped && testRes?.status === "pass" && !failed;
+    repro_reasons[key] = why || `${literal ? "declared" : "declared by a name pattern that produces it"} and unskipped in ${rp.file}, and the whole suite passed`;
+  }
+  const result: ScanResult = {
+    id: `scan-${Date.now()}-${sha256(String(Math.random())).slice(0, 6)}`, at: nowIso(), task: args.task, trigger: args.trigger, changed: args.changed,
+    checks: results, clean: results.every((c) => c.status === "pass"), tests_pass: testRes?.status === "pass", repro_results, repro_reasons,
+  };
+  writeJson(path.join(P.scans(root), `${result.id}.json`), result);
+  return result;
+}
+
+export function listScans(root: string, task?: string): ScanResult[] {
+  if (!fs.existsSync(P.scans(root))) return [];
+  return fs.readdirSync(P.scans(root)).filter((f) => f.endsWith(".json")).sort()
+    .map((f) => { try { return JSON.parse(fs.readFileSync(path.join(P.scans(root), f), "utf8")) as ScanResult; } catch { return null; } })
+    .filter((s): s is ScanResult => !!s && (!task || s.task === task));
+}
+
+export function scanSummary(s: ScanResult): string {
+  return s.checks.map((c) => `${c.id}:${c.status}`).join(" ") + (s.clean ? "  → clean" : "  → NOT clean");
+}
+
+/** Turn scan failures into judge-shaped findings (R-014): FUN for test/type/lint, SEC for the rest. */
+export function scanFindings(s: ScanResult): ScanFinding[] {
+  const out: ScanFinding[] = [];
+  for (const c of s.checks) {
+    if (c.status === "pass") continue;
+    if (c.findings?.length) { out.push(...c.findings); continue; }
+    const lens: "PSC" | "PFC" = c.kind === "typecheck" || c.kind === "lint" || c.kind === "test" || c.kind === "extra" ? "PFC" : "PSC";
+    const checklist = c.kind === "test" ? "PFC-c" : c.kind === "typecheck" ? "PFC-e" : c.kind === "lint" ? "PFC-e" : c.kind === "deps" ? "3.11.2" : "S3";
+    out.push({
+      severity: c.status === "skipped" ? "high" : c.kind === "deps" ? "high" : "high", lens, checklist, where: `S3 ${c.id}`,
+      what: c.status === "skipped" ? `${c.id} check SKIPPED (${c.output}) — a skip is not a pass; the project needs this check to exist` : `${c.id} check FAILED: ${c.output.split("\n").filter(Boolean).slice(-6).join(" | ").slice(0, 400)}`,
+      fix_hint: c.status === "skipped" ? `add a ${c.id} step to the project (or an extra_check) so S3 can run it` : `make ${c.id} pass; the output is in .nemesis/records/scans/`,
+    });
+  }
+  return out;
+}

@@ -1,0 +1,498 @@
+/**
+ * state.ts — the on-disk ledger: config, active state, tasks, issues, records, snapshots,
+ * checklists, hook installation. Everything Nemesis knows lives under <project>/.nemesis/
+ * so it survives compaction, reaches sub-agents, and can be checked by hooks that trust
+ * FILES, never claims (D-24).
+ *
+ * Append-only discipline (R-041): records are JSONL appends; issue histories only grow;
+ * nothing here deletes a record.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import { createHash, randomBytes } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { DEFAULT_EXCLUDES, isInScope, looksLikeCode, type ScopeConfig } from "./scope";
+
+// ── Paths ───────────────────────────────────────────────────────────────────
+
+export const NEMESIS_HOME = process.env.NEMESIS_HOME_OVERRIDE || path.join(os.homedir(), ".acos", "nemesis");
+export const SKILL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+export const BUN = fs.existsSync("/Users/zee/.bun/bin/bun") ? "/Users/zee/.bun/bin/bun" : "bun";
+
+export function nemesisDir(root: string): string { return path.join(root, ".nemesis"); }
+export const P = {
+  config: (r: string) => path.join(nemesisDir(r), "config.json"),
+  state: (r: string) => path.join(nemesisDir(r), "state"),
+  active: (r: string) => path.join(nemesisDir(r), "state", "active.json"),
+  treeIndex: (r: string) => path.join(nemesisDir(r), "state", "tree-index.json"),
+  idle: (r: string) => path.join(nemesisDir(r), "state", "idle.json"),
+  tasks: (r: string) => path.join(nemesisDir(r), "tasks"),
+  task: (r: string, t: string) => path.join(nemesisDir(r), "tasks", t),
+  issues: (r: string) => path.join(nemesisDir(r), "issues"),
+  issue: (r: string, id: string) => path.join(nemesisDir(r), "issues", `${id}.json`),
+  counter: (r: string) => path.join(nemesisDir(r), "issues", "_counter.json"),
+  records: (r: string) => path.join(nemesisDir(r), "records"),
+  scans: (r: string) => path.join(nemesisDir(r), "records", "scans"),
+  snapshots: (r: string) => path.join(nemesisDir(r), "snapshots"),
+  holdout: (r: string) => path.join(nemesisDir(r), "holdout"),
+  reports: (r: string) => path.join(nemesisDir(r), "reports"),
+  releaseGate: (r: string) => path.join(nemesisDir(r), "records", "release-gate.json"),
+  releaseChecklist: (r: string) => path.join(nemesisDir(r), "records", "release-checklist.json"),
+};
+
+export function sha256(s: string | Buffer): string { return createHash("sha256").update(s).digest("hex"); }
+export function nowIso(): string { return new Date().toISOString(); }
+export function readJson<T>(p: string, fallback: T): T {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")) as T; } catch { return fallback; }
+}
+export function writeJson(p: string, v: unknown): void {
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  const tmp = `${p}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(v, null, 2) + "\n");
+  fs.renameSync(tmp, p);
+}
+
+/** Walk up from cwd to the nearest directory holding `.nemesis/config.json`. */
+export function projectRootFrom(cwd: string): string | null {
+  let d = path.resolve(cwd);
+  for (let i = 0; i < 40; i++) {
+    if (fs.existsSync(P.config(d))) return d;
+    const up = path.dirname(d);
+    if (up === d) break;
+    d = up;
+  }
+  return null;
+}
+
+// ── Config ──────────────────────────────────────────────────────────────────
+
+export interface Config extends ScopeConfig {
+  schema: "nemesis-config/1";
+  enrolled_at: string;
+  skill_dir: string;
+  prd?: string;
+  toolchain?: Record<string, unknown>;
+  extra_checks?: { id: string; cmd: string; args: string[] }[];
+  second_opinion_provider?: string;
+  /** Honored ONLY together with NEMESIS_JUDGE_STUB (R-051). `enroll` never writes it. */
+  test_mode?: boolean;
+  /** Stop-hook: consecutive no-tool turns before the product report is written and the stop allowed. */
+  stalled_turns?: number;
+  /** R-037: waits (ms) between retries on a usage/rate limit; default 3 tries over 10 minutes. */
+  judge_retry_waits_ms?: number[];
+  /**
+   * How the open ledger is PRESENTED to the writer (2026-11-01; the reasons are in
+   * lib/digest.ts). These bound only the TEXT the hooks inject into the conversation —
+   * they never change what blocks, never defer a severity, and the true open count is
+   * always stated. Raising them costs context on every turn; lowering them costs the
+   * writer nothing it cannot read back with `nemesis issue list --open`.
+   */
+  /** D-46: identical Stop blocks tolerated before the hook releases the turn (default 3). */
+  max_identical_blocks?: number;
+  /**
+   * D-49: how many findings one reason may rule a rung inapplicable on before it must be
+   * written as a reviewed policy instead (default 3). Counting is over the NORMALIZED reason,
+   * so re-wording does not reset it — re-wording is how 123 "distinct" reasons covered 496
+   * rulings on the measured ledger.
+   */
+  na_reason_cap?: number;
+  stop_issue_detail?: number;
+  stop_directive_max_chars?: number;
+  prompt_issue_detail?: number;
+  prompt_context_max_chars?: number;
+}
+
+export function readConfig(root: string): Config {
+  const c = readJson<Config | null>(P.config(root), null);
+  if (!c) throw new Error(`not enrolled: ${P.config(root)} missing — run: nemesis enroll ${root}`);
+  return c;
+}
+
+// ── Active state ────────────────────────────────────────────────────────────
+
+export interface Active { goal: string; prd?: string; started_at: string; session?: string; started_loop: boolean }
+export function readActive(root: string): Active | null { return readJson<Active | null>(P.active(root), null); }
+export function writeActive(root: string, a: Active | null): void {
+  if (!a) { try { fs.unlinkSync(P.active(root)); } catch { /* already off */ } return; }
+  writeJson(P.active(root), a);
+}
+
+// ── Records (append-only JSONL) ─────────────────────────────────────────────
+
+export function appendRecord(root: string, name: string, entry: Record<string, unknown>): void {
+  const p = path.join(P.records(root), `${name}.jsonl`);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.appendFileSync(p, JSON.stringify({ at: nowIso(), ...entry }) + "\n");
+}
+export function readRecords<T = Record<string, unknown>>(root: string, name: string): T[] {
+  const p = path.join(P.records(root), `${name}.jsonl`);
+  if (!fs.existsSync(p)) return [];
+  return fs.readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l) as T; } catch { return null; } }).filter((x): x is T => x !== null);
+}
+
+// ── Tasks ───────────────────────────────────────────────────────────────────
+
+export interface Task {
+  id: string; title: string; status: "open" | "closed"; created_at: string; closed_at?: string;
+  prd_refs?: string[]; rung7_retries?: number;
+}
+export function createTask(root: string, id: string, title: string, prdRefs: string[] = []): Task {
+  if (!/^[a-z0-9][a-z0-9-]{0,60}$/i.test(id)) throw new Error(`task id "${id}" must be letters, digits, hyphens`);
+  const dir = P.task(root, id);
+  if (fs.existsSync(path.join(dir, "task.json"))) throw new Error(`task ${id} already exists`);
+  fs.mkdirSync(dir, { recursive: true });
+  const t: Task = { id, title, status: "open", created_at: nowIso(), prd_refs: prdRefs };
+  writeJson(path.join(dir, "task.json"), t);
+  return t;
+}
+export function readTask(root: string, id: string): Task | null { return readJson<Task | null>(path.join(P.task(root, id), "task.json"), null); }
+export function writeTask(root: string, t: Task): void { writeJson(path.join(P.task(root, t.id), "task.json"), t); }
+export function listTasks(root: string): Task[] {
+  if (!fs.existsSync(P.tasks(root))) return [];
+  return fs.readdirSync(P.tasks(root)).map((d) => readTask(root, d)).filter((t): t is Task => !!t)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+/** The task edits are attributed to: the most recently created OPEN task. */
+export function currentTask(root: string): Task | null {
+  const open = listTasks(root).filter((t) => t.status === "open");
+  return open.length ? open[open.length - 1]! : null;
+}
+
+// ── Checklists per task (R-052) ─────────────────────────────────────────────
+
+export const CHECKLIST_IDS = ["3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"] as const;
+export type ChecklistEntry = { applies: true } | { applies: false; na_reason: string };
+export function readChecklists(root: string, task: string): Record<string, ChecklistEntry> {
+  return readJson<Record<string, ChecklistEntry>>(path.join(P.task(root, task), "checklists.json"), {});
+}
+export function writeChecklists(root: string, task: string, c: Record<string, ChecklistEntry>): void {
+  writeJson(path.join(P.task(root, task), "checklists.json"), c);
+}
+/** Checklists that are neither ticked (applies) nor explained (n/a + why). */
+export function checklistGaps(root: string, task: string): string[] {
+  const c = readChecklists(root, task);
+  return CHECKLIST_IDS.filter((id) => {
+    const e = c[id];
+    if (!e) return true;
+    if (e.applies === true) return false;
+    return !(typeof e.na_reason === "string" && e.na_reason.trim().length >= 8);
+  });
+}
+
+// ── Issues ──────────────────────────────────────────────────────────────────
+
+export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+export type Severity = (typeof SEVERITIES)[number];
+export type Lens = "PSC" | "PFC";
+export type IssueStatus = "open" | "fixing" | "verifying" | "reverted-open" | "closed" | "decided";
+
+export interface Finding {
+  id?: string; severity: Severity; lens: Lens; checklist: string; where: string; what: string;
+  root_cause?: string; fix_hint?: string;
+  /** D-55: the finding is ONLY about the wording of a comment, and the code behaves correctly.
+   *  Zee, 2026-11-09: "No need to correct the grammar and prose of comments at all, for
+   *  comments, only the understanding is important." Such a finding is RECORDED but never
+   *  denies an edit. It is set by the judge and defaults to false. */
+  comment_only?: boolean;
+}
+export interface Attempt { at: string; diff_sha256?: string; verdict_id?: string; outcome: string; rung: number }
+export interface Issue extends Finding {
+  id: string; task: string; status: IssueStatus; rung: number; created_at: string; updated_at: string;
+  attempts: Attempt[];
+  history: { at: string; event: string; detail?: string }[];
+  files: string[];
+  repro?: { file: string; name: string; registered_at: string };
+  review?: { at: string; by: string; confirmed_fixed: boolean; findings: string[] };
+  second_opinion?: { at: string; provider: string; status: "received" | "unavailable"; analysis?: string; patch?: string };
+  revert?: { at: string; snapshot: string; files: string[] };
+  /**
+   * D-50: the ONE thing that makes a finding Zee's. A claim by the judge, confirmed by an
+   * independent reader, that no code change can clear this and the remaining question is about
+   * what the product DOES or how it LOOKS. Without a CONFIRMED one, a finding is machine work
+   * however exhausted its ladder is.
+   */
+  product_question?: {
+    at: string; why: string; kind: "functionality" | "design";
+    confirmed?: { at: string; by: string; agreed: boolean; why: string };
+  };
+  /** `accept` is kept for READING old records only; D-50 refuses it on any new decision. */
+  decision?: { at: string; choice: "drop" | "change" | "accept"; owner: string; due?: string; note?: string };
+  closed_at?: string;
+}
+
+export function issuePrefixFor(lens: Lens): "SEC" | "FUN" { return lens === "PSC" ? "SEC" : "FUN"; }
+
+/**
+ * Which LADDER RUNG does work on this finding count as? (D-49, 2026-11-04)
+ *
+ * An attempt used to be stamped with `issue.rung` directly, which is wrong whenever the finding
+ * is sitting on a POSITION rather than a rung. `lib/ladder.ts` says it in its own header: rungs
+ * 7 and 8 are POSITIONS (task end, goal end), not escalations. So an edit re-judged while a
+ * finding is parked at 8 was stamped `rung: 8`, and since REQUIRED_RUNGS is [2,3,4,5,6] that
+ * attempt paid for nothing — real work recorded against a step that does not exist as work.
+ * Measured on website-design-okoa/v2: 3 attempts on open findings carry the stamp 8, and all 130
+ * floor-refused findings on the current task sit at position 8, so every future re-judge on them
+ * would have been stamped 8 too.
+ *
+ * The conversion is not invented: rung 7's own instruction is "Retry from rung 3 with the FULL
+ * attempt history", so work on a parked finding IS rung-3 work — a fresh pass carrying the whole
+ * record. Found by the `v2-ee` session, which measured that the refusal text I had just written
+ * named a move the ledger could never credit.
+ */
+export function workRungFor(issue: Issue): number {
+  return issue.rung >= 1 && issue.rung <= 6 ? issue.rung : 3;
+}
+
+function nextIssueId(root: string, lens: Lens): string {
+  const c = readJson<{ SEC: number; FUN: number }>(P.counter(root), { SEC: 0, FUN: 0 });
+  const pre = issuePrefixFor(lens);
+  c[pre] += 1;
+  writeJson(P.counter(root), c);
+  return `${pre}-${c[pre]}`;
+}
+
+export function readIssue(root: string, id: string): Issue | null { return readJson<Issue | null>(P.issue(root, id), null); }
+export function writeIssue(root: string, i: Issue): void { i.updated_at = nowIso(); writeJson(P.issue(root, i.id), i); }
+export function listIssues(root: string, onlyOpen = false): Issue[] {
+  if (!fs.existsSync(P.issues(root))) return [];
+  return fs.readdirSync(P.issues(root)).filter((f) => f.endsWith(".json") && !f.startsWith("_"))
+    .map((f) => readIssue(root, f.replace(/\.json$/, ""))).filter((i): i is Issue => !!i)
+    .filter((i) => !onlyOpen || isOpen(i))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+export function isOpen(i: Issue): boolean { return i.status !== "closed" && i.status !== "decided"; }
+
+/**
+ * Turn a verdict's findings into issues (R-010). A finding on the same where+checklist as
+ * an open issue APPENDS an attempt; otherwise a new issue opens. Returns the touched issues.
+ */
+export function recordFindings(root: string, task: string, findings: Finding[], ctx: { verdict_id: string; diff_sha256?: string; files: string[]; outcome: string }): Issue[] {
+  const open = listIssues(root, true);
+  const touched: Issue[] = [];
+  /**
+   * D-58 — A LINE NUMBER IS NOT AN IDENTITY, so it is not part of the de-duplication key.
+   *
+   * The key was `i.where === f.where`, and `where` is `file:line`. A line that merely DRIFTS as
+   * the file is edited therefore opened a brand-new finding for a defect already on record.
+   * Measured on website-design-okoa/v2, 2026-11-09: SEC-10's third review refused the close over
+   * a sketch citation of `_build/worker.ts:488` that should read `:489` - a one-line drift, filed
+   * as new, blocking a finding whose own defect that review said was "resolved on disk". 87 of
+   * the 156 findings created that day (56%) were opened by reviews re-filing in this shape.
+   *
+   * This is D-52's lesson a second time (`a count is not an identity`, there a filename, here a
+   * line). Nothing is lost by the wider key: the new text and the new line both land in the
+   * issue's history as `re-found`, and the close still needs a review that confirms the fix, so
+   * a genuinely different defect in the same file under the same checklist cannot slip through
+   * on the back of this - it would refuse the review.
+   */
+  const fileOf = (w: string) => (w.split(":")[0] ?? w).trim();
+  for (const f of findings) {
+    const sev = SEVERITIES.includes(f.severity) ? f.severity : "high";
+    const existing = open.find((i) => fileOf(i.where) === fileOf(f.where) && i.checklist === f.checklist && i.task === task);
+    if (existing) {
+      existing.attempts.push({ at: nowIso(), diff_sha256: ctx.diff_sha256, verdict_id: ctx.verdict_id, outcome: ctx.outcome, rung: workRungFor(existing) });
+      existing.history.push({ at: nowIso(), event: "re-found", detail: `${f.what}${f.where !== existing.where ? ` [now at ${f.where}, was ${existing.where}]` : ""}` });
+      existing.status = existing.status === "reverted-open" ? "reverted-open" : "open";
+      for (const fp of ctx.files) if (!existing.files.includes(fp)) existing.files.push(fp);
+      writeIssue(root, existing);
+      touched.push(existing);
+      continue;
+    }
+    const id = nextIssueId(root, f.lens === "PFC" ? "PFC" : "PSC");
+    const issue: Issue = {
+      ...f, id, severity: sev, lens: f.lens === "PFC" ? "PFC" : "PSC", task, status: "open", rung: 1,
+      created_at: nowIso(), updated_at: nowIso(),
+      attempts: [{ at: nowIso(), diff_sha256: ctx.diff_sha256, verdict_id: ctx.verdict_id, outcome: ctx.outcome, rung: 1 }],
+      history: [{ at: nowIso(), event: "opened", detail: f.what }],
+      files: [...ctx.files],
+    };
+    writeIssue(root, issue);
+    appendRecord(root, "issues", { event: "opened", id, severity: sev, lens: issue.lens, checklist: f.checklist, where: f.where, task });
+    touched.push(issue);
+  }
+  return touched;
+}
+
+/** The four closure criteria (R-025). Returns what is missing; empty = may close. */
+export function closureCheck(root: string, issue: Issue, lastScans: { clean: boolean; tests_pass: boolean; repro_results?: Record<string, boolean>; repro_reasons?: Record<string, string> }[]): string[] {
+  const missing: string[] = [];
+  if (!issue.repro) missing.push("(1) no reproduction test registered — run: nemesis issue repro <id> <testFile> <testName>");
+  else {
+    if (!fs.existsSync(path.resolve(root, issue.repro.file))) missing.push(`(1) reproduction test file missing: ${issue.repro.file}`);
+    const latest = lastScans[lastScans.length - 1];
+    const key = `${issue.repro.file}::${issue.repro.name}`;
+    if (!latest?.repro_results || latest.repro_results[key] !== true) missing.push(`(1) reproduction test "${issue.repro.name}" not recorded as passing in the latest scan${latest?.repro_reasons?.[key] ? `: ${latest.repro_reasons[key]}` : ""}`);
+  }
+  const latest = lastScans[lastScans.length - 1];
+  if (!latest?.tests_pass) missing.push("(2) full test suite not passing in the latest S3 scan");
+  const lastTwo = lastScans.slice(-2);
+  if (lastTwo.length < 2 || !lastTwo.every((s) => s.clean)) missing.push("(3) the latest two S3 scans are not both clean (fail or skipped present)");
+  if (!issue.review || !issue.review.confirmed_fixed) missing.push("(4) no independent review confirming the fix — run: nemesis review <id> (or task end)");
+  return missing;
+}
+
+// ── Green snapshots (R-022, D-39) ───────────────────────────────────────────
+
+export interface SnapshotManifest { id: string; at: string; files: Record<string, string>; reason: string }
+
+export function listSnapshots(root: string): SnapshotManifest[] {
+  if (!fs.existsSync(P.snapshots(root))) return [];
+  return fs.readdirSync(P.snapshots(root)).sort().map((d) => readJson<SnapshotManifest | null>(path.join(P.snapshots(root), d, "manifest.json"), null)).filter((m): m is SnapshotManifest => !!m);
+}
+
+/** Snapshot the given in-scope files (relative paths). Called after a clean S3. */
+export function writeGreenSnapshot(root: string, relFiles: string[], reason: string): SnapshotManifest | null {
+  const files = relFiles.filter((f) => fs.existsSync(path.join(root, f)) && fs.statSync(path.join(root, f)).isFile());
+  if (!files.length) return null;
+  const id = `${Date.now()}-${randomBytes(3).toString("hex")}`;
+  const dir = path.join(P.snapshots(root), id);
+  const manifest: SnapshotManifest = { id, at: nowIso(), files: {}, reason };
+  for (const f of files) {
+    const src = path.join(root, f);
+    const dst = path.join(dir, "files", f);
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.copyFileSync(src, dst);
+    manifest.files[f] = sha256(fs.readFileSync(src));
+  }
+  writeJson(path.join(dir, "manifest.json"), manifest);
+  appendRecord(root, "snapshots", { event: "green", id, files: files.length, reason });
+  return manifest;
+}
+
+/** Restore each path from the LATEST snapshot that holds it. Returns restored and missing. */
+export function restoreFromSnapshot(root: string, relFiles: string[]): { restored: { file: string; snapshot: string }[]; missing: string[] } {
+  const snaps = listSnapshots(root).reverse();
+  const restored: { file: string; snapshot: string }[] = [];
+  const missing: string[] = [];
+  for (const f of relFiles) {
+    const s = snaps.find((m) => m.files[f]);
+    if (!s) { missing.push(f); continue; }
+    const src = path.join(P.snapshots(root), s.id, "files", f);
+    const dst = path.join(root, f);
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.copyFileSync(src, dst);
+    restored.push({ file: f, snapshot: s.id });
+  }
+  return { restored, missing };
+}
+
+// ── Tree index (for Bash diffing, R-013) ───────────────────────────────────
+
+export interface TreeCacheEntry { m: number; s: number; h: string }
+export interface TreeStats { reused: number; hashed: number }
+
+/**
+ * Index every in-scope code file → sha256. `prev` is the cache from the last index (mtime + size
+ * + hash): a file whose mtime and size are unchanged is not re-read, so the walk is incremental
+ * (R-013). `next` receives the refreshed cache; `stats` counts what was reused vs re-hashed.
+ */
+export function indexTree(root: string, cfg: ScopeConfig, prev: Record<string, TreeCacheEntry> = {}, next: Record<string, TreeCacheEntry> = {}, stats: TreeStats = { reused: 0, hashed: 0 }): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (dir: string) => {
+    let ents: fs.Dirent[];
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const abs = path.join(dir, e.name);
+      const rel = path.relative(root, abs).split(path.sep).join("/");
+      if (e.isDirectory()) {
+        // prune excluded directories early (cheap)
+        if (DEFAULT_EXCLUDES.some((g) => g.endsWith("/**") && (rel === g.slice(0, -3) || rel.startsWith(g.slice(0, -3) + "/")))) continue;
+        if (e.name === "node_modules" || e.name === ".git") continue;
+        walk(abs);
+      } else if (e.isFile()) {
+        if (!looksLikeCode(rel)) continue;
+        const sc = isInScope(root, rel, cfg);
+        if (!sc.inScope) continue;
+        try {
+          const st = fs.statSync(abs); if (st.size > 2_000_000) continue;
+          const c = prev[rel];
+          if (c && c.m === st.mtimeMs && c.s === st.size) { out[rel] = c.h; stats.reused++; }
+          else { out[rel] = sha256(fs.readFileSync(abs)); stats.hashed++; }
+          next[rel] = { m: st.mtimeMs, s: st.size, h: out[rel]! };
+        } catch { /* skip */ }
+      }
+    }
+  };
+  walk(root);
+  return out;
+}
+
+/** Refresh `.nemesis/state/tree-index.json` incrementally; returns the previous and new index. */
+export function refreshTreeIndex(root: string, cfg: ScopeConfig): { before: Record<string, string>; index: Record<string, string>; reused: number; hashed: number } {
+  const prevFile = readJson<{ index?: Record<string, string>; cache?: Record<string, TreeCacheEntry> }>(P.treeIndex(root), {});
+  const next: Record<string, TreeCacheEntry> = {};
+  const stats: TreeStats = { reused: 0, hashed: 0 };
+  const index = indexTree(root, cfg, prevFile.cache ?? {}, next, stats);
+  writeJson(P.treeIndex(root), { at: nowIso(), index, cache: next, reused: stats.reused, hashed: stats.hashed });
+  return { before: prevFile.index ?? {}, index, ...stats };
+}
+
+export function diffIndex(before: Record<string, string>, after: Record<string, string>): { changed: string[]; added: string[]; removed: string[] } {
+  const changed: string[] = [], added: string[] = [], removed: string[] = [];
+  for (const [k, v] of Object.entries(after)) { if (!(k in before)) added.push(k); else if (before[k] !== v) changed.push(k); }
+  for (const k of Object.keys(before)) if (!(k in after)) removed.push(k);
+  return { changed, added, removed };
+}
+
+// ── Hook installation (R-001) ───────────────────────────────────────────────
+
+export const HOOK_MARK = "acos-nemesis-protocol";
+
+export function hookCommands(skillDir: string): Record<string, { matcher: string; command: string; timeout?: number }> {
+  const h = (f: string) => path.join(skillDir, "scripts", "hooks", f);
+  const q = (s: string) => `"${s.replace(/"/g, '\\"')}"`;
+  // PreToolUse fails CLOSED: if the hook itself crashes, the edit is denied with a reason.
+  const preFallback = `printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"${HOOK_MARK}: pre-tool hook crashed — Nemesis allows nothing it has not judged. Run: bun ${h("pre-tool.ts").replace(/"/g, "")} --health"}}'`;
+  return {
+    PreToolUse: { matcher: "Write|Edit|NotebookEdit|Bash", command: `${q(BUN)} ${q(h("pre-tool.ts"))} 2>>/tmp/nemesis-hook.err || ${preFallback}  # ${HOOK_MARK}` },
+    PostToolUse: { matcher: "Write|Edit|NotebookEdit|Bash", command: `${q(BUN)} ${q(h("post-tool.ts"))} 2>>/tmp/nemesis-hook.err || true  # ${HOOK_MARK}` },
+    Stop: { matcher: "", command: `${q(BUN)} ${q(h("stop.ts"))} 2>>/tmp/nemesis-hook.err || true  # ${HOOK_MARK}` },
+    UserPromptSubmit: { matcher: "", command: `${q(BUN)} ${q(h("prompt.ts"))} 2>>/tmp/nemesis-hook.err || true  # ${HOOK_MARK}` },
+  };
+}
+
+interface HookEntry { matcher?: string; hooks: { type: string; command: string; timeout?: number }[] }
+
+/** Idempotent: removes any prior Nemesis entries for each event, then adds exactly one. */
+export function installHooks(root: string, skillDir: string): { settings: string; installed: string[] } {
+  const settingsPath = path.join(root, ".claude", "settings.local.json");
+  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+  const settings = readJson<Record<string, unknown>>(settingsPath, {});
+  const hooks = (settings.hooks ?? {}) as Record<string, HookEntry[]>;
+  const cmds = hookCommands(skillDir);
+  const installed: string[] = [];
+  for (const [event, def] of Object.entries(cmds)) {
+    const list = (hooks[event] ?? []).filter((e) => !e.hooks?.some((h) => h.command.includes(HOOK_MARK)));
+    const entry: HookEntry = { hooks: [{ type: "command", command: def.command }] };
+    if (def.matcher) entry.matcher = def.matcher;
+    // Nemesis goes FIRST so its deny is never shadowed by a later allow-only hook.
+    hooks[event] = [entry, ...list];
+    installed.push(event);
+  }
+  settings.hooks = hooks;
+  writeJson(settingsPath, settings);
+  return { settings: settingsPath, installed };
+}
+
+export function countInstalledHooks(root: string): Record<string, number> {
+  const settings = readJson<{ hooks?: Record<string, HookEntry[]> }>(path.join(root, ".claude", "settings.local.json"), {});
+  const out: Record<string, number> = {};
+  for (const [ev, list] of Object.entries(settings.hooks ?? {})) out[ev] = list.filter((e) => e.hooks?.some((h) => h.command.includes(HOOK_MARK))).length;
+  return out;
+}
+
+// ── Idle / stalled tracking for the Stop hook ──────────────────────────────
+
+/**
+ * D-46: the two extra fields are what stop the hook looping. `last_block_sha` fingerprints
+ * the directive the hook last BLOCKED with; `latched_sha` fingerprints the ledger the hook
+ * has already handed to Zee. A block whose directive is unchanged, in a turn where nothing
+ * happened, cannot achieve anything, so it is released instead.
+ */
+export interface IdleState {
+  streak: number; last_turn_tool_calls: number; updated_at: string;
+  last_block_sha?: string; latched_sha?: string; same_block_streak?: number; block_chain?: number;
+}
+export function readIdle(root: string): IdleState { return readJson<IdleState>(P.idle(root), { streak: 0, last_turn_tool_calls: 0, updated_at: nowIso() }); }
+export function writeIdle(root: string, s: IdleState): void { writeJson(P.idle(root), s); }

@@ -1,0 +1,553 @@
+---
+name: acos-nemesis-protocol
+description: The rulebook's judge that rides along WHILE code is written. Every Write/Edit/NotebookEdit and every file a Bash command changes is judged by Opus against the whole Ten-Star Security Protocol (S0–S8, all 14 checklists, the records — the Prime Security Checks) and the Prime Functionality Checks (bug detection reading the code base, nothing broke, no drift from the PRD or goal, no new bug), BEFORE the edit lands; every change is then scanned (type-check, lint, tests, secrets, dependency audit, policy, data). Findings become issues fixed by an 8-rung automatic ladder that never hands code to Zee; nothing completes while the ledger is open. Runs beside Oracle mode (Oracle = harm to the machine; Nemesis = the rulebook and the plan) through hooks, so every builder skill and agent is covered without knowing it. Trigger phrases - "nemesis", "nemesis protocol", "turn on nemesis", "judge every edit", "/acos-nemesis-protocol".
+disable-model-invocation: false
+user-invocable: true
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+argument-hint: "on \"<goal>\" [--prd <file>] | off | status | enroll [dir] | task … | issue … | report"
+---
+
+# ACOS Nemesis Protocol
+
+Thin by design (D-24): the rules live in the engine, the hooks and the judge's charter, not
+in this file. Everything below routes to the CLI:
+
+```bash
+N="/Users/zee/.bun/bin/bun /Users/zee/Documents/Vibe Coding/ACOS 3.0/.claude/skills/acos-nemesis-protocol/scripts/nemesis.ts"
+```
+
+PRD: `prd/PRD.md` · decisions: `prd/DECISIONS.md` · trace: `prd/TRACE.json` · rulebook:
+`rulebook/SECURITY-PROTOCOL.md` (byte copy of the portal's) → `rulebook/rulebook.json` (generated).
+
+## Routing (what to do when invoked)
+
+| Invocation | Do |
+|---|---|
+| `/acos-nemesis-protocol enroll [dir] [--prd <file>]` | `$N enroll …` — installs the four hooks (once) and `.nemesis/`. Relay the output verbatim. |
+| `/acos-nemesis-protocol on "<goal>" [--prd <file>]` | If the goal is missing or vague, ask DERIVE or PROVIDE exactly as `acos-oracle-protocol` does (same `looksVague` rule). Then `$N on "<goal>" …`. Relay verbatim. Oracle may already be on; Nemesis never changes Oracle's state. |
+| `/acos-nemesis-protocol off` | `$N off` |
+| `/acos-nemesis-protocol status` | `$N status` — show whole. |
+| anything else / no argument | `$N status`, then the short menu: on / off / enroll / task start / report. |
+
+## The loop as the hooks enforce it (every step has an artifact; none relies on memory)
+
+1. **Start a task** — `$N task start <id> --title "…" [--prd-refs R-001,R-002]`.
+2. **S0 threat sketch** — write `.nemesis/tasks/<id>/threat-sketch.yaml` from
+   `templates/threat-sketch.yaml`, then `$N task sketch <id> <file>`. The CLI validates it
+   (six STRIDE lines, data classes, two-sentence abuse case, valid checklist ids).
+3. **S1 design review** — `templates/design-review.yaml` → `$N task design <id> <file>`. The
+   daemon then authors and seals the task's acceptance holdout (S7) from the PRD and S1; the
+   writer never sees it (a redesign seals a new version).
+   Every checklist not ticked in the sketch needs `$N task checklist <id> <3.x> na "<why>"`.
+   **Until S0 and S1 exist as files, the PreToolUse hook denies every in-scope edit** and
+   names the command to run.
+4. **S2, every edit** — the PreToolUse hook computes the candidate file, sends diff + file +
+   the contract (goal, PRD excerpt, S0, S1, the twelve questions, the selected checklists,
+   open issues and prior verdicts for the file — never the chat) to the Nemesis daemon. Opus
+   reads callers/tests/policies (read-only) and answers JSON. A finding = deny; the reason
+   carries each finding and the current rung instruction. Fixes are edits and are judged too.
+5. **S3, every change** — the PostToolUse hook runs the whole-repo scan (type-check, lint,
+   tests, secrets, dependency audit, RLS/security_invoker policy check, sensitive-data check).
+   `skipped` is never clean. Failures open issues and come back as a block. Files changed by
+   Bash are diffed against the pre-command snapshot and judged after the fact.
+6. **S4, the ladder** — issues climb only when the JUDGE says stuck (no counter): rewrite →
+   root cause → fresh-context agent (`Task(developer)` with the issue file only) →
+   `$N second-opinion <id>` → `$N task redesign …` → `$N revert <id>` (last green snapshot,
+   issue stays open) → task-end retry from rung 3 → goal-end product report. Print the
+   current instruction with `$N ladder <id>`.
+   **The advice is ENFORCED, not merely printed (D-56, R-074).** After three consecutive
+   denials on one file in which the judge said STUCK and asked for rung 2 or higher, the next
+   edit to THAT file is refused BEFORE a judge call is spent, quoting the rung instruction and
+   the judge's reason. Every other file stays editable — rung 2's root cause usually lives in
+   one of them. The way out is `$N rung ack <id> --action <root-cause|fresh-agent|second-opinion|redesign|revert> --why "<what you changed>"`,
+   capped at two per file until a judged-clean edit lands there; after that only `$N task
+   redesign` (rung 5) and `$N revert` (rung 6) clear it. `$N rung brakes` shows what is held.
+7. **Close an issue** — `$N issue repro <id> <testFile> <testName>` then `$N issue close <id>`.
+   Close succeeds only when the reproduction test passes, the suite passes, the last two
+   scans are clean, and the independent review (`$N review <id>` or task end) confirms.
+8. **Task end** — `$N task end <id>`: last two scans clean (S4) → independent adversarial
+   review by the daemon (S6) → holdout reveal in QA context (S7) → S5 record assembled from
+   the ledger → task closes, or every open issue goes to rung 7 → 3 with its full history.
+9. **Goal end** — write `.nemesis/records/release-checklist.json` (backups restore tested,
+   monitoring/alerts, incident contact, secrets rotated if exposed, branch protection — each
+   `done` or `n/a` + note), then `$N release-gate` (S8). If issues are still open, the gate
+   splits them by OWNER (amended 2026-11-02): a finding goes to rung 8 only if it passes all
+   three admission tests, and everything else is named as the machine's own work with the
+   command that clears it. Only when the gate is OPEN does the Stop hook accept
+   `AUTOPILOT_GOAL_COMPLETE`.
+10. **Report for Zee** — `$N report` (ledger) or `$N report --product` (rung 8). The product
+    report is GROUPED by the feature he could drop — one question per group, not one section
+    per finding — and machine work is counted, never listed. Plain language, local HTML, no
+    code. Record his pick for a whole group with
+    `$N issue decide <id>[,<id>...] --choice drop|change|accept --owner <who>`.
+
+## Enforcement (what the hooks and CLI check — mirrors `prd/PRD.md` §5)
+
+| Step | Artifact | Enforced by | Relies on the model for |
+|---|---|---|---|
+| S0 | `tasks/<id>/threat-sketch.yaml` + S0 hash | PreToolUse denies edits until present; CLI validates | composing it honestly (the judge checks it against the diff) |
+| S1 | `tasks/<id>/design-review.yaml` + S1 hash | same | composing the design |
+| S2 | verdict record + S2 entry per edit | PreToolUse judge; deny blocks the write | nothing |
+| S3 | `records/scans/<n>.json` + S3 entry | PostToolUse runs it; block on failure | nothing |
+| S4 | issue files, rungs | Stop hook blocks while open; judge advances rungs | writing the fix |
+| S5 | `records/<task>/check-record.yaml` | `task end` assembles; refuses if incomplete | nothing |
+| S6 | `records/<task>/review-*.json` | `task end` / `review` run the daemon attacker | nothing |
+| S7 | `holdout/<task>/manifest.json` + reveal | daemon authors+seals at `task design` (new version on `task redesign`); `task end` reveals | nothing |
+| S8 | `records/release-gate.json` | `release-gate`; Stop hook requires it | writing n/a reasons |
+| PFC a,c,d,e | inside each verdict + scans | PreToolUse judge + PostToolUse scan | nothing |
+| PFC b | the ladder | Stop hook + judge | writing the fix; spawning the rung-3 agent |
+| Watchdog | `FUN-` issues | Stop hook: transcript vs records | nothing |
+| Stalled writer | product report, stop allowed | Stop hook after `stalled_turns` (default 6) no-tool turns | — |
+
+Honest limits: composing S0/S1, writing fixes, spawning the rung-3 agent, and applying a
+rung-4 patch are the model's work. Everything else is a file a hook checks.
+
+## Hard rules
+
+- **Never claim what the CLI did not print.** Relay `DENIED` / `clean` / `CLOSED` / `refused` lines verbatim.
+- **No bypass exists.** The only skips are the judge child's token and `test_mode` (never written by `enroll`).
+- **Nemesis never stands down for the eternity window** (D-17); eternity's own files are out of scope.
+- **Two judges, two charters.** Oracle leans allow (harm). Nemesis leans deny (rulebook). Never merge them.
+- **Zee is never asked to fix code.** Rung 8 asks for a product decision only.
+- **ONLY A FUNCTIONALITY OR DESIGN CHANGE REACHES ZEE (D-50, R-066..R-068, 2026-11-04).** This is
+  the test that actually holds the door, because it is about the KIND of question and not the
+  count. Zee: *"Now it is 23, if I do a large enough job, it could become 230… Other than when it
+  comes to design, that I can see with my own eyes, no coding decision should come to me unless I
+  specifically want some change be made… It is the systems job to code to ensure the functionality
+  and the security."*
+  - **A SECURITY finding (lens PSC) can never be his, at any rung.** His answer covers all of them
+    — no lapse, in any way — so none has a question left in it. It cannot be decided and cannot
+    even be CLAIMED as his. The decide refusal comes BEFORE the rung check, because being a
+    security finding is permanent while "not at rung 8 yet" is a position.
+  - **Everything else needs a confirmed claim:** `$N issue product-question <id> --kind
+    <functionality|design> --why "<why no code change can clear it>"`, agreed by a reader that
+    never spoke to the claiming judge. That reader is told to DEFEND HIS ATTENTION; its default
+    answer is "machine work"; and a bug, a crash, a wrong result, two documents disagreeing, a
+    stale count or date, a comment that contradicts its code, or any uncertainty are all machine
+    work however often they recur. **A refused claim is permanent.** An exhausted ladder is no
+    longer a reason to ask him.
+  - **"Accept the risk with an owner" is DELETED.** It existed only so he could sign off a lapse he
+    has ruled he will never sign off. Rung 8 offers TWO choices: drop the feature, or change the
+    requirement. Measured before removing it: of 88 decisions ever recorded on the live ledger, 88
+    were `drop` and 0 were `accept`. The release gate is strictly TIGHTER as a result — a secret
+    finding used to be acceptable, which took it off the open list; now it must actually be fixed,
+    and R-034 still blocks the release until a rotation is recorded.
+  - **The KIND test runs LAST**, after the five below, so a refusal always names the machine's next
+    MOVE instead of a claim to make. Putting it first made every refusal read "claim it if you
+    think it is Zee's", which is the wrong instruction when it is not.
+  - **Measured on website-design-okoa/v2:** of 464 open findings, **0** reach Zee — 74 Nemesis's
+    own paperwork, 46 security, 221 with nothing yet tried, 102 still owing a rung, and 21 that
+    cleared every other gate and are refused precisely because they are not functionality or
+    design questions. Of the 23 that the previous amendment had left, 2 were security and about
+    twelve were one document contradicting another; **none was a functionality or design change.**
+
+- **A finding reaches Zee only through THREE admission tests (D-42/D-43/D-44, amended
+  2026-11-02).** Rung 8 used to be a blanket sweep: `release-gate` moved every open finding
+  there and handed Zee the lot. On website-design-okoa/v2 that was 356 findings — 104 of them
+  about Nemesis's own paperwork, 0 ever moved up a rung by the judge, 83 jumped from rung 1 to
+  Zee in one hop — and his answer was *"I don't even know what i need to decide."* A finding
+  is now admitted only when:
+  1. **it is in the PRODUCT lane** (`lib/lane.ts` `laneOf`): a stale sketch, a missing verdict
+     or a skipped check is Nemesis's OWN record and the machine repairs it. The place the judge
+     POINTS AT decides — a `where` under `.nemesis/` is a record even when the finding also
+     names a shipping file, and a `where` on a shipping file stays product even when it also
+     names a record. Checklist `3.4` (secrets) is the one rule that is product lane wherever
+     its files live, because a hard-coded credential inside `.nemesis/` is a real credential.
+     `record` never drops a finding: it stays OPEN and the gate stays SHUT, so the lane decides
+     WHO, never WHETHER;
+  2. **the question is answerable** (`admission`): the task is on record with a title (the
+     FEATURE he could drop) and at least one `prd_refs` entry (the REQUIREMENT he could
+     change). Missing refs are machine work, so they have a command:
+     `$N task prd-refs <task> "<R-001,R-002>"`;
+  3. **the machine has spent its own ladder** (`ladderExhausted`): rungs **2, 3, 4, 5 and 6**
+     — every rung the machine owns — each have a REAL attempt, or a judge ruling naming why
+     they cannot apply: `$N ladder <id> --na <n> --why "<reason>"`. `--why` is mandatory and a
+     position rung (7, 8) can never be ruled out this way. Three rungs the CLI spends itself
+     count once they record a result: rung 4 (`$N second-opinion <id>`, including the honest
+     `unavailable` when no external model is configured), rung 5 (`$N task redesign`) and
+     rung 6 (`$N revert`).
+     **Being PARKED at a rung is not an attempt at it.** Task end parks an open finding at
+     rung 3 and writes `7 → 3`; that is a position, not work.
+     **An N/A ruling moves along the ladder, it never shortens it.** Measured on
+     website-design-okoa/v2 on 2026-11-02: with only rungs 2, 3 and 4 required, the machine
+     ruled rung 2 out 345 times and rung 3 out 151 times — with 123 distinct, well-argued
+     reasons — and 356 findings reached Zee anyway, while its own reasons named rung 5 as the
+     route it should have taken.
+  **THREE CHECKS AND BALANCES ON THAT ESCAPE (D-49, R-061..R-065, 2026-11-04).** The escape
+  itself had no check on it, and it became the new front door: 496 rulings, 123 distinct
+  reasons, reviewed by nobody, 356 findings through anyway, 83 of them from rung 1 in one hop.
+  Zee: *"Just using the judgement is not enough, it has to be best judgement with checks and
+  balances. The codes writed needs to be invincible."* So:
+  - **THE FLOOR.** At least ONE required rung must be spent on REAL WORK — an attempt the judge
+    saw, a second opinion genuinely `received`, a redesign, or a revert. An all-N/A ladder is not
+    an exhausted ladder, and neither is one cleared by a recorded NON-EVENT. Measured
+    2026-11-04: an `unavailable` second opinion used to count, and since that project has no
+    external model configured (**400** of 447 open carry `unavailable`, **338** of the 376 in the
+    product lane, and **0** anywhere carry `received`) that single non-event was the whole ladder
+    for 243 of the 266 product-lane findings being admitted. Counting real work only took
+    **admitted to Zee from 266 to 23**. The OWED list still accepts `unavailable`, so rung 4
+    never deadlocks; only the floor is strict.
+    **Which rung you can actually PAY depends on the task in hand.** Rungs 2 and 3 are paid by an
+    edit being re-judged, and `recordFindings` appends an attempt only when the finding's task
+    matches the task being worked — so on a finding belonging to another task (117 of 247
+    floor-refused on the measured ledger) a fresh agent can do real work and nothing records it.
+    No deadlock: `$N task redesign <task> <issue> <file>` (rung 5) and `$N revert <issue>`
+    (rung 6) take the target explicitly with no rung gate and no current-task gate, so they are
+    payable on anything. The refusal names the creditable route and says how to make rung 3
+    payable. **And an attempt records the rung the WORK was done at, never a position:**
+    `workRungFor` maps a finding parked at 7 or 8 to rung 3, per rung 7's own "retry from rung 3"
+    instruction, because an attempt stamped 8 paid for no required rung at all.
+  - **INDEPENDENT CONFIRMATION.** `$N ladder <id> --na <n> --why` writes `rung-na-proposed`,
+    which counts for nothing. Only `rung-na-confirmed` counts, written after a second reader
+    that never saw the first judge's reasoning agrees the rung is IMPOSSIBLE rather than merely
+    unpromising. That reader is told its job is to DEFEND the ladder, so its default answer is
+    that a rung can be attempted. No confirmation obtainable → the ruling is recorded and
+    uncounted, and the command exits non-zero.
+  - **A RECURRING REASON BECOMES A POLICY.** A reason already used on `na_reason_cap` findings
+    (default 3) is refused; it must be written once as a standing rule instead. Counting is
+    over the NORMALIZED reason, so re-wording does not reset it.
+
+- **KNOWN LIMIT: `validateDesign` is a field check, not a parser.** Raised by the `v2-ee` session
+  2026-11-04 and verified: there is NO YAML parser anywhere in `scripts/`, and every
+  `design-review*.yaml` on that project fails `Bun.YAML.parse` with `Unexpected token` — including
+  the accepted R-001, R-045, R-052 and R-056 designs. The files carry a `.yaml` extension but are
+  read as a line-oriented format by regex. So **"validateDesign passed" is not evidence that a
+  design file is well-formed YAML**, and it never checked the SUBSTANCE of a rule either — only
+  that seven named fields are present, that `typed_errors` names `PERMISSION_DENIED` and
+  `NOT_FOUND`, that `logging.never_log` is non-empty, that `authorization_matrix` lists an
+  `- action:` row, and that no `<…>` placeholder survives.
+  **What it DOES still guarantee, measured:** a commented-out field does NOT satisfy it — the key
+  regex is anchored `^\s*key\s*:`, so `# data_flow:` is refused. `v2-ee` reported that a `#`
+  comment "satisfies every check it makes"; that is not so, and it was checked by running
+  `validateDesign` over a real design and over the same text fully commented out (0 problems vs
+  8). Stripping comments before the check would change the verdict on NONE of the 30 design files
+  on that project, so the regexes are reading real fields today.
+  **Deliberately NOT fixed:** adding a hard YAML gate would refuse all 30 of those files at once,
+  including live accepted designs, which would be a destructive change dressed as a correction.
+  The real design review is the JUDGE reading the file whole (`lib/judge.ts` passes
+  `fs.readFileSync(p, "utf8")`), not this shape check.
+
+- **A RE-AUTHOR NEVER LOSES THE OLD COMMITMENT (D-51, R-069).** `$N task holdout <id> --new` and
+  `$N task redesign` both go through `reauthorHoldout`, which puts the previous `manifest.json`
+  back if authoring refuses — `authorTaskHoldout` never throws, it RETURNS a refusal string, so
+  spending the manifest first used to leave a task with a pack and no manifest. Same defect as
+  D-47, one layer up. **When a defect is "destructive step before fallible step", fix every
+  caller, not just the layer where it surfaced.**
+
+- **A RESTORE THAT ONLY RUNS IN-PROCESS DOES NOT COVER A KILL (D-53, R-071).** D-51's restore sits
+  in a `catch` and a post-return check, so a SIGKILL reaches neither and leaves a pack with no
+  commitment and no record. `reauthorHoldout` now writes `reauthor.inflight.json`, naming the exact
+  `.spent-<ms>.json` to put back, BEFORE the rename; `recoverInterruptedReauthor` puts it back on
+  the next command and in `nemesis status`. **The trap:** restoring BEFORE the kill is destructive —
+  the sealer throws when a manifest exists (`acos-holdout-test/scripts/holdout.ts:106`) and nemesis
+  passes no `--force`, so a manifest put back under a living author turns a success into a refusal.
+  **Kill first, then restore**; spent files are never deleted. Recovery only ever acts when there is
+  no `manifest.json` and the marker's pid is dead, so it cannot overwrite a live commitment. It
+  prevents the next occurrence and **cannot repair a task killed before any marker existed** — a
+  commitment is never guessed.
+
+- **A COUNT IS NOT AN IDENTITY (D-52, R-070).** `$N task redesign` keeps the outgoing design as
+  `design-review.v<N>.yaml`, and `N` is the HIGHEST number already used plus one — never the count
+  of matching files. Counting collides the instant anything is removed or renamed (v1..v15 present,
+  delete v3, and count+1 is 15, which exists), and `copyFileSync` overwrites a stored prior design
+  without complaint. That design is a permanent record: `steps.json` pins the sha256 of the S1
+  artifact actually installed. The copy now REFUSES if the target name exists, and a design whose
+  opening line hand-types a version draws a NOTE, because a derived name and a typed header have
+  nothing tying them together — six of sixteen archived R-019 designs name the wrong version, and
+  **an already-archived design is never edited to fix it.** Third instance of this substitution:
+  D-44/D-49 counted findings for the admission gate, D-50 replaced the count with the KIND.
+
+- **A SECRET IS NOT EXCUSED BY ITS NEIGHBOURS ON THE LINE (D-65, R-083).** The secret scan skipped
+  any line matching `/example|placeholder|dummy|xxxx|<.*>/i`. That last alternative exempts every
+  line holding a `<` before a `>` — **every TypeScript generic** — so a live credential sharing a
+  line with `Map<string, string>` was invisible to the scan. Measured by reading the real table and
+  the real excuse out of the file: a bare `AKIA…` was reported, the same literal beside a generic
+  was not. The judgement now sits where it belongs: a line that ANNOUNCES itself as fake excuses
+  the line, an angle-bracket template is judged on the MATCHED TEXT. Same substitution as D-60, in
+  the security path, **where a false negative is silent by construction** — a scan that reports
+  nothing looks exactly like a clean repo. **It was found from outside:** no alarm, test or review
+  of mine caught it in ten days. It surfaced because a supervised workspace pushed back on a
+  finding I had accepted as stale, and the thing under the stale text was real. Treating a
+  `decided` ruling as a resolved fact is D-59's lesson arriving again, and the correction came only
+  because the writer measured instead of agreeing.
+
+- **ORDERING ATTENTION IS NOT DEFERRING A RULE (D-64, R-082).** Zee's instruction, 2026-11-10:
+  "Have the high issues be tackled first, and then the medium issues, and then finally the low
+  issues." The directive ranked worst-first but told the writer nothing was deferrable, so **538
+  low findings competed for attention with 85 high ones** and the hardest low cases absorbed turns.
+  It now names ONE band — **security, then high, then medium, then low** — and the security lens
+  leads whatever its severity, because a low security finding waiting behind 205 medium ones is a
+  lapse on a timer. **The finish line did not move**: a deferred finding is still open, still
+  censused, and still blocks completion. The first version of the change blurred exactly that and
+  lost the 2026-11-01 accounting by accident — a small band left the "…and N more" census covering
+  only the band's overflow, so the writer saw "305 open" and no account of the other 302. **The
+  existing budget test caught it**, and that is the second lesson: when a test fails because
+  behaviour changed, ask which of the two is wrong before touching the test. Here the code was
+  wrong about the census and the test was merely specific about a bullet count, so the census was
+  fixed and the test now derives the number from the bullets actually shown.
+
+- **TAKING A NAME IS NOT TAKING A PLACE (D-63, R-081).** The judge daemon's `serve` unlinked
+  whatever socket it found and bound its own at the same path. Unlinking removes the NAME, not the
+  listener: the previous daemon kept running, reachable by nobody, forever. And `startDaemon`
+  spawned whenever no socket file was visible, so two hooks stopping in the same second made two
+  daemons and the second orphaned the first. Measured 2026-11-10T07:07Z: **104 daemons started over
+  seven days, 44 still alive holding 287,424 KB, exactly 1 reachable** (a connect answered in 4 ms).
+  The check before a takeover must ask whether anyone ANSWERS, not whether a file exists — testing
+  the file is testing the container again (D-60). **And `stop` read only the pid file, so it would
+  have killed 1 of 44 and printed success**: a cleanup command that cannot see the whole fleet
+  reports success while failing, which is D-62's defect wearing different clothes — a number with no
+  way to say "there is more here than I can see."
+  **The watcher held the same defect and was fixed the same way:** its judge alarm asked whether
+  the socket FILE existed, so a crashed judge that left its socket behind raised nothing while no
+  edit could be judged. It knocks now. A guard that tests the container is the D-60 substitution,
+  and finding it inside the tool that was supposed to catch this class is the D-61 pattern again —
+  the lesson turning on its own author.
+
+- **A STALE POSITIVE HIDES A REAL FAILURE; AN ABSENT VALUE ONLY RAISES A FALSE ONE (D-62, R-080).**
+  The Stop hook counted a turn's tool calls by walking back to "a real human message" — and a turn
+  the hook restarts itself has none. Verified on website-design-okoa/v2 at 2026-11-10T06:40Z: the
+  nearest such message was **1,933 events back**, so the walk ran off the end of its 400-line window
+  and counted an EARLIER turn's work. The records read **45, 43, 42, 41, 40, 38, 37, 36, 35, 34, 33,
+  32** tool calls for turns whose own text was *"Holding. Twenty-second identical firing. 1. No tool
+  calls."* — the decay is only old lines leaving the window — and the spin alarm, which needs a count
+  of zero, could not fire while the writer sat idle. **This is D-57's substitution running the other
+  way**, and the other way is worse: D-57's absent field was read as idle and cried wolf, which a
+  reader notices; a stale positive reads as busy and hides the stall, which nobody notices. Sixth
+  member of the family (D-52, D-53, D-57, D-59, D-60). The turn is now measured from the previous
+  turn's own end, every record says WHICH rule fixed its boundary, and **a measurement that cannot
+  see must say so** rather than return a zero — hence `turn_counted_from: "window"` and the watcher's
+  `reachedBack`. The alarm also gained a second signal that never touches the hook's count, ORed with
+  the first because this failure was a false negative where the quiet alarm's was a false positive —
+  **opposite failures take opposite combinations.**
+
+- **A GUARD INSTALLED ON ONE ENTRANCE IS NOT A GUARD ON THE ROOM (D-61, R-079).** D-56's brake
+  went into `pre-tool.ts`, which judges Write/Edit/NotebookEdit. Shell-written code is judged by
+  `post-tool.ts` (D-16), and that hook touched the brake nowhere — it could not count a denial,
+  clear one, or refuse. Measured on website-design-okoa/v2 at 2026-11-10T02:21Z: **10 of the last
+  11 judged edits denied, the judge calling the writer stuck on 9 and asking rungs 2, 3 and 5, and
+  `brake.json` unwritten for 3 hours 22 minutes** — because 9 of those 10 denials carried
+  `source: bash`. **61 of that day's 212 judged edits came through that door, so the brake was
+  enforcing on 71% of the traffic and silent on the rest.** `judgePostHoc` now counts and clears,
+  and the Bash branch refuses a command whose text NAMES a braked path (`cat >> path`, `sed -i ''
+  path`), which is how this writer edits; a path built from a variable or a glob is not seen, and
+  the code says so rather than implying more reach than it has. **This is D-56's own lesson turned
+  on D-56: enforcement is counted per DOOR, and the doors are listed in the design.** It was found
+  by distrusting a QUIET alarm — three had already cried wolf that evening, so what I acted on was
+  `closed` sitting unchanged at 239 for an hour in an ordinary progress line. Every alarm was
+  silent and every one was correct; none of them watches the brake's own write.
+
+- **ONE PIECE OF EVIDENCE CANNOT SUPPORT N CLAIMS (D-60, R-078).** `fixing` means "an edit that
+  plausibly addresses THIS finding has landed, closure proof still owed" — a claim about one
+  finding. R-017 set it on every open finding in the file the edit touched, which manufactures a
+  claim per finding out of a single edit. Measured on website-design-okoa/v2: **one clean edit
+  (v-1794258005426-e8bb1abf, 21:00:50) flipped 334 findings at once, and 1801 of the 1945
+  `fix-landed` events ever written sit on `_build/headings.test.ts` alone** — a file carrying 207
+  open findings. Of those 334, **only 70 even had a line number**, so 264 could never have had
+  evidence about themselves. `markFixing` now asks the diff which OLD lines the edit changed
+  (walking the hunk BODY, because the `@@ -a,b` header counts the three context lines `diff -u`
+  prints either side) and claims only findings whose recorded line falls inside one, within 3
+  lines of drift, up to `LINE_CLAIM_CAP = 8`. "Same file" with no line recorded is weaker
+  evidence, so it is claimable only below `FILE_CLAIM_CAP = 2`. Past either cap the truthful
+  report is ONE `fix-claim-declined` record, not N claims. **The status weakens no gate — `isOpen`
+  counts it as open and nothing else reads it — and it was still a real defect, because I passed
+  the inflated count to Zee twice as evidence that closes were about to arrive.** A signal nothing
+  else reads is still read by me. **Fifth member of one family: D-52 a count for an identity,
+  D-53 state left behind for a run record, D-57 an absent field for a zero, D-59 a past
+  verification for a present fact, D-60 a file-level fact for a finding-level one.**
+
+- **A CONDITION CHECKED ONCE AND RECORDED IS A CLAIM, NOT A GUARANTEE (D-59, R-077).** Closure
+  criterion (1) is a reproduction test that exists, is declared, is unskipped and passed. It was
+  verified on the day of the close and never again, because every live `runScan` caller passes
+  `listIssues(root, true)` — open findings only. So a closed finding's proof fell out of every
+  check in the system while `lib/report.ts` kept saying it "was Closed after the reproduction test
+  passed", in the present tense. Measured on website-design-okoa/v2: **177 closed findings rest on
+  13 proof files, and `_build/headers.test.ts` alone carries 34** — deleting that one file would
+  un-prove 34 closed findings and the release gate would have opened anyway. `cmdReleaseGate` now
+  re-asks the question of every closed finding, refusing with the id, the close date and the
+  reason, and the rule is SHARED (`reproEvidence`) rather than copied, so the gate and the scan
+  cannot drift. It sits at the gate, not in the scan: a proof cannot rot between two turns of one
+  session, it rots between a close in October and a release in November. **Fourth member of one
+  family: D-52 a count for an identity, D-53 state left behind for a run record, D-57 an absent
+  field for a zero, D-59 a past verification for a present fact.**
+
+- **A GATE THAT CANNOT PASS IS NOT STRICT, IT IS A DEADLOCK (D-58, R-076).** `runReview` returned
+  `confirmed: !!r.confirmed_fixed && findings.length === 0`. The reviewer reads the WHOLE task diff
+  under the twelve questions and the PFC lens, so on any real ledger it finds something somewhere —
+  and that something vetoed the focus verdict it had just given. Measured on website-design-okoa/v2:
+  ten `nemesis review` runs, **zero confirmed**; **87 of 156** findings created that day (56%) were
+  opened BY a review; and **117 of 117** closes the ledger ever had required a confirmed review. So
+  the only action that could shrink the pile was the action that grew it fastest — D-55's multiplier
+  arithmetic at the closing end of the pipe. SEC-10 had a passing reproduction and its third review
+  said *"SEC-10's own complaints are resolved on disk"* while refusing over a one-line citation drift
+  and a sentence it said itself was already filed as SEC-97 and FUN-951. **With a focus the verdict is
+  the focus verdict**; other findings are filed, because they are real, but they do not veto a
+  different finding's fix. Without a focus (task end) the review IS the whole task and the
+  zero-findings rule stands. The charter now asks for `focus_fixed`, `focus_why` and `already_filed`,
+  and says the separation HIGH UP instead of in one line under "your one goal: BREAK IT". **And the
+  de-duplication key dropped the line number** — `where` is `file:line`, so a drifted line opened a
+  new finding for a defect already on record; it keys on the FILE now and writes the move into the
+  history. That is D-52 a second time: a line number is not an identity.
+  **When a verdict about one thing is vetoed by facts about another thing, the gate measures the
+  neighbourhood, not the subject.**
+
+- **AN ABSENT FIELD AND A ZERO FIELD ARE THE SAME BYTES AND OPPOSITE FACTS (D-57, R-075).** All four
+  Stop records now carry `streak` and `last_turn_tool_calls`. The release branch carried neither,
+  and that is the one branch where "was the writer working or spinning?" is the question — reading
+  the absence as a zero produced a confident, wrong diagnosis on 2026-11-09 (8 releases reported as
+  turns with no tool calls, while `idle.json` held `last_turn_tool_calls: 4` and every blocked
+  record in the window carried `streak: 0`). **When a record omits a field on one branch only, that
+  branch will be misdiagnosed, and the first reader to do it will be confident.** Separately, the
+  per-turn progress write passed three fields to `writeIdle`, which is a FULL overwrite, so
+  `last_block_sha`, `latched_sha`, `same_block_streak` and `block_chain` were deleted from disk every
+  turn; the later branches wrote them back from memory, which hid it, but the `!d.open` early return
+  does not, so one such turn wiped the host-chain count and D-46's report latch. It now spreads
+  `...idle`. That is the THIRD door into D-54 — a write that drops a field something else is still
+  counting — and it is fixed at the source this time, not one branch at a time.
+
+- **A RECOMMENDATION THAT NOTHING REFUSES IS A COMMENT (D-56, R-074).** `applyAssessment` raised
+  a finding's rung whenever the judge said the writer was stuck, and that was all it did: write a
+  label. Measured on website-design-okoa/v2 over 553 judged edits — **227 (41%) were attempted
+  after the judge had already flagged `stuck`, and 9 passed.** A 4% pass rate against 61% when not
+  stuck; 124 of the 227 on ONE file; the judge asked for rung 2 166 times and rung 5 48 times
+  while the writer kept editing the same file. At 2.0 findings per denial those ~218 doomed edits
+  manufactured ~436 findings, about 44% of every finding the project ever had. The diagnosis was
+  right all along and walking past it cost nothing. **The brake refuses BEFORE the judge call**,
+  because the judge call is most of the cost and a brake that still pays for the verdict saves
+  nothing. **The ack exists because rung 3 is "a fresh agent takes over" and a fresh agent edits
+  the SAME file through the same tool** — nothing in the edit distinguishes it, so the ladder step
+  has to be said out loud and recorded, and the next judge reads the claim. **The ack is capped at
+  two per file** because an unlimited one is tape: say the words, edit the same way, repeat. It
+  cannot deadlock — `rung ack`, `task redesign` and `revert` all run through the CLI, which this
+  hook allows unjudged, and each takes its target explicitly with no rung gate. This is D-49 seen
+  from the other side: there, an escape with no check on it became the front door; here, an
+  instruction with no check on it was ignored.
+  **AND THAT LAST SENTENCE WAS TRUE OF THIS RULE ITSELF, which is D-68.** "It cannot deadlock" was
+  written here and in the refusal text, and nothing implemented it: for a file with both acks
+  spent, neither exit touched `brake.json`. The claim is kept above as what D-56 intended; what it
+  actually did until 2026-11-15 is the bullet below.
+
+- **A DEFAULT THAT CANNOT BE OVERRIDDEN IS A CONSTRAINT (D-69, R-087).** `currentTask` was only
+  "the most recently created OPEN task", and `recordFindings` credits an attempt to an existing
+  finding ONLY when `existing.task === task`. Each half is correct alone; together they meant that
+  with many tasks open, **work on any other task's finding credited no rung and OPENED A NEW
+  FINDING** under whichever task sorted last. Rungs 2 and 3 are paid by an edit being RE-JUDGED, so
+  for most findings they were structurally unpayable. Measured on website-design-okoa/v2 at
+  2026-11-15: **58 tasks open**, `currentTask` answering **R-056E** whose editable queue was empty
+  by measurement, while **R-019 held 495 of 880 open findings — 56%** of a release gate that reads
+  every open finding project-wide. The largest single block on every task's S8 could not be worked
+  at all. It is also how the `insights-server` brake was earned, and that brake's own reason says so
+  without naming it: "the cause is the task the work is being filed under, not any line in the
+  edit." **`nemesis task work [<id>|--clear]`** now chooses it, and with no argument reports what
+  the work is filed under and how to change it. The choice lives in `state/chosen-task.json`, never
+  in `active.json`, because `writeActive` is a full overwrite and D-54 records what that does. A
+  choice on a task that is missing or closed is IGNORED, so it can never strand the writer with no
+  task; setting an invalid one is refused outright, because a choice that silently does nothing is
+  this defect one layer up. **It weakens no gate — only attribution moves:** closure still needs all
+  four criteria, and an edit outside the CHOSEN task's design is still refused for scope, more
+  strictly than before. **The note this pairs with:** the wall was already in this file as a
+  measured number (117 of 247 floor-refused findings belonged to another task) and was read as a
+  fact to route around rather than as a bug. That is the tell for this whole class.
+
+- **AN EXIT THAT NOTHING IMPLEMENTS IS A COMMENT (D-68, R-086).** Since D-56 the brake's refusal
+  has told every braked writer that once the ack budget is spent "the two exits left" are
+  `nemesis task redesign` (rung 5) and `nemesis revert` (rung 6). **Neither touched
+  `brake.json`.** `clearBrakeOnClean` was the only function that removed an entry, both of its
+  callers fire on a JUDGED-CLEAN edit, and `brakeRefusal` runs BEFORE the judge call — so a braked
+  file's edit can never reach a judge to be called clean. Measured on website-design-okoa/v2 at
+  2026-11-15: the braked toolchain audit suite carried **5 recorded redesigns** (one on SEC-237,
+  four on SEC-240) and **7 archived design versions**, while `brake.json` stayed byte-identical
+  throughout — 3 denials, 2 acks, rung 5, `since` 2026-11-14T15:01:08.998Z. Seven findings,
+  SEC-237 to SEC-244, had no exit of any kind, and R-001AF design point 12am had already recorded
+  a fix it could not write because of it. Both commands now call `clearBrakeForIssue`, on
+  `ackRung`'s matcher so all three ladder exits agree about which files an issue holds. **The entry
+  is DELETED, not zeroed**, because a redesign replaces the design those denials were judged
+  against and a revert removes the edits themselves — carrying a spent ack count forward would
+  re-brake the file on its first fresh denial and make the exit cosmetic a second time. **It grants
+  no pass:** a redesign reopens S2/S3, a revert leaves the finding `reverted-open`, the next edit is
+  judged as before, and a brake held for a different issue is left standing. **The generalisable
+  rule: a promise printed in a refusal is a requirement, and an escape hatch nothing exercises is
+  an unverified one** — only an already-stuck writer ever needed this one, so nothing routine
+  found it. The selftest therefore drives BOTH commands through the real CLI, because a source
+  regex would not have caught the original bug either: every comment was already correct.
+
+- **POLICIES — standing rules the machine applies to itself (D-49).** A judgement made three
+  times is a standing rule, and a standing rule belongs in one reviewed, vetoable record
+  rather than a 497th history line nobody will audit.
+  ```
+  $N policy template                     # print a draft to fill in
+  $N policy propose <draft.json>         # refused unless rule, why, EVIDENCE and both test cases are present
+  $N policy review <POL-n>               # independent reader; activates ONLY on approval
+  $N policy apply <issue> | --all         # move matching findings to the rung their class takes
+  $N policy list                          # what the machine has decided for itself, and how often it fired
+  $N policy veto <POL-n> --why "<reason>" # Zee's veto: stops it AND walks back every finding it moved
+  ```
+  **THE INVINCIBILITY LINE.** A policy may choose only among rungs **2-6**, the ones the
+  machine owns. It can never close, decide, drop, accept or rule a finding N/A — and the
+  `Policy` type has no field that could express any of those, so the guarantee is structural,
+  not a check that can be forgotten. D-11's four closure criteria still hold for every finding,
+  every time: a reproduction test that passes, a green suite, two clean scans, an independent
+  reviewer. **A policy makes the machine faster at spending its own options. It can never make
+  the gate laxer.**
+  A draft is also refused when its matcher is too NARROW to catch the case it says motivated it,
+  or too WIDE — catching the near-miss the policy itself declares it must not. That second check
+  exists because my own lane fix on 2026-11-02 was one step too wide and reclassified 17
+  findings it was never meant to touch.
+
+  `issue decide` re-runs all three, so a finding parked at rung 8 before the gate existed is
+  still not decidable. Nothing is weakened: an unadmitted finding stays OPEN and the release
+  gate stays SHUT — it is named as the machine's work rather than as Zee's question.
+- **The Stop hook releases before Claude Code overrides it (D-46).** A blocking Stop hook that
+  the host has to override loses control of its own contract and ends the turn with no record
+  of why; that happened twice (2026-11-01T08:00, 2026-11-02T06:16, "blocked the turn from
+  ending 9 consecutive times"). The hook therefore reads `stop_hook_active` and keeps two
+  counters in `.nemesis/state/idle.json`: identical directives repeated, and consecutive
+  blocks in one Stop chain. Either exceeding `max_identical_blocks` (default 6, below the
+  host's 8) releases the turn with an honest note — the goal is NOT complete, the ledger is
+  NOT cleared, and here is what is owed and by whom. The chain counter is the one that
+  matters: the watchdog opened a new finding almost every turn, so the directive changed every
+  turn and a text-keyed counter would have reset each time. The stalled escape (R-054) now
+  LATCHES on the ledger's fingerprint instead of re-arming — it had written 16 duplicate
+  reports totalling 8.9 MB.
+- **Hook text is BUDGETED, and the block is the enforcement — not the prose.** The Stop and
+  UserPromptSubmit hooks name the worst-severity issues, state the true open count, say how
+  many they did not name and at what severities, and point at `nemesis issue list --open`.
+  They never enumerate the ledger: that text lands in the writer's conversation every turn,
+  and on 2026-11-01 an unbounded Stop reason over 436 open issues measured 336,897 chars
+  (~84,224 tokens) per turn and compacted a 500,000-token context 73 times. Limits live in
+  `.nemesis/config.json` (`stop_issue_detail`, `stop_directive_max_chars`,
+  `prompt_issue_detail`, `prompt_context_max_chars`); the reasoning is in `scripts/lib/digest.ts`.
+- **Sealing a holdout pack never destroys the pack it replaces (D-47 / R-059).** The new pack is
+  written to `pack.staging-<ts>/`, sealed FROM there, and moved into place only when the seal
+  succeeds; a refusal deletes the staging copy and leaves the previously sealed pack and its
+  manifest byte-for-byte as they were. Measured in one project's own `holdout.jsonl`: five
+  `seal-failed` events (one bad `status` value, four "manifest already exists"), and on every one
+  the new files had already overwritten the sealed pack while the manifest still committed to the
+  old hashes. Nemesis also pre-checks that every expectation carries the key its grade mode is
+  read for — `exit` for `exit-code`, `stdout` for `stdout-json`/`stdout-text` — which is a second
+  line of defence, not the guarantee: `acos-holdout-test/.../lib/pack.ts` has refused ungradable
+  and unknown-key packs at seal time since 2026-10-31. A reveal with NO verdict is reported as a
+  PACK defect naming the missing keys, printing only case ids and key names, never an expected
+  value.
+- **A reproduction test is credited only on positive evidence (D-48 / R-060).** "Nothing said it
+  failed" is not evidence that anything ran. The named test must be DECLARED in the file the
+  reproduction points at, not skipped or todo, with the suite green; every refusal records its
+  cause and `closureCheck` prints it beside criterion (1). The evidence is read from the FILE, not
+  the suite output, because `bun test` prints only `1 pass` / `0 fail` on success and names a test
+  only when it fails — measured, so demanding a pass marker would have blocked every project
+  using it. The hole it closes: a name present nowhere produced no failure line, so it was
+  credited, and one finding closed on a reproduction pointing at an unrelated test.
+- **Zero open at every severity.** There is no defer command; Low blocks the release gate.
+
+## Files
+
+- `scripts/nemesis.ts` (CLI) · `scripts/nemesis-daemon.ts` (judge) · `scripts/hooks/{pre-tool,post-tool,stop,prompt}.ts`
+- `scripts/lib/{scope,state,steps,scan,verdict,charter,judge,ladder,lane,report,digest,selftest}.ts`
+- `scripts/build-rulebook.ts` → `rulebook/rulebook.json` (`--check` verifies the source hash)
+- `templates/` (threat-sketch, design-review, issue, check-record, config)
+- Per project: `.nemesis/` (config, state, tasks, issues, records, snapshots, holdout, reports)
+- Machine-wide: `~/.acos/nemesis/` (socket, token, verdicts.log, daemon.log)
+- Self-tests: `$N selftest` (one `ok` line per guarantee) · holdout: `holdout/manifest.json` (pack withheld)
+- Oracle fixes shipped with this skill: `.claude/scripts/oracle/oracle-daemon.ts`, `.claude/scripts/_oracle_judge.py` — unreadable verdicts are classified and recovered, never allowed.
+
+---
+*acos-nemesis-protocol — the rulebook's judge, riding along while the code is written.*

@@ -1,0 +1,372 @@
+#!/usr/bin/env bun
+/**
+ * okoa-watch.ts — watches the okoacapital.com workspace for STUCKNESS, not idleness.
+ *
+ * Zee, 2026-11-09: "Keep the window under observation. if it gets stuck again, you need to
+ * immediately start an investigation and suggest fix."
+ *
+ * WHY A SEPARATE WATCHER AT ALL. A `notify_when_idle` subscription fires when the session goes
+ * QUIET. A stuck session can stay BUSY: spinning turns, blocked in a chain, or opening findings
+ * without closing any. On 2026-11-09 a run of 8 stop-hook releases 2 seconds apart looked exactly
+ * like a spin and the idle signal never fired. So this watches the RUN RECORD instead of the
+ * session's liveness, and the two signals together cover both halves.
+ *
+ * SILENCE MUST NOT LOOK LIKE SUCCESS (the Monitor tool's own warning, and it is the mistake this
+ * file is built around). Every emitted line is a condition I would act on. A condition that fires
+ * is re-armed only after it CLEARS, or after COOLDOWN_MS, so one stall is one notification rather
+ * than one a minute. The watcher also emits its own failure: if the project, the records or the
+ * daemon go missing, that is a line, not a quiet poll.
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+// The project under watch. The env override exists so both directions of every alarm can be
+// controlled against a throwaway tree — a clean negative needs a positive control, and an
+// alarm proven silent on healthy work is worthless until it is also proven to FIRE.
+const ROOT = process.env.OKOA_WATCH_ROOT ?? "/Users/zee/Documents/Vibe Coding/website-design-okoa/v2";
+const N = path.join(ROOT, ".nemesis");
+const POLL_MS = 60_000;
+const COOLDOWN_MS = 25 * 60_000;      // the same condition does not re-notify inside this window
+const QUIET_MIN = 20;                 // "gone quiet" threshold, in minutes
+const WRITER_QUIET_MIN = 10;          // ...and the writer's own transcript must be silent this long too
+const SPIN_RUN = 4;                   // consecutive no-tool-call turns that count as a spin
+/**
+ * THE CHAIN CAP IS READ FROM THE PROJECT, NOT GUESSED. The hook releases when
+ * `block_chain > max_identical_blocks` (default 6 in lib/digest.ts), so a hardcoded 7 here sat
+ * exactly ON the designed release point and the alarm was guaranteed to fire on healthy work.
+ * Reading the same number the hook reads is the D-59 lesson: share the rule, never copy it.
+ */
+function chainCap(): number {
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(N, "config.json"), "utf8")) as { max_identical_blocks?: number };
+    return Math.max(1, c.max_identical_blocks ?? 6);
+  } catch { return 6; }
+}
+const BRAKE_STUCK_MIN = 15;            // a braked file with nobody acking it
+const GROWTH_MIN = 15;                 // findings opened before growth is even a candidate signal
+/**
+ * THE WATCH ENDS ITSELF, AND SAYS SO. The host kills a monitor at 30 minutes, and on
+ * 2026-11-09 window b8ob2ymlh came back "expired after 30m with no events delivered" while the
+ * heartbeat file was 19.4 minutes stale: the watcher had stopped ticking at 21:20:06 and the
+ * kill came at 21:36. Nothing in the window said so, because the only thing that would have
+ * spoken was an alarm, and a dead watcher raises none. ZERO EVENTS MEANT TWO OPPOSITE THINGS
+ * AT ONCE — "nothing is wrong" and "nobody was looking" — and only a separate file read by
+ * hand could tell them apart. So the watch now ends one minute before the host would kill it
+ * and prints a closing line with its own counts. Every window then ends with exactly ONE
+ * event, and a window that ends with none is unambiguous: the watcher died.
+ */
+const MAX_RUN_MS = 29 * 60_000;
+const STARTED = Date.now();
+
+type Rec = Record<string, unknown>;
+const lastFired = new Map<string, number>();
+
+/** Returns whether the line actually went out, so a caller can hold its state back when it did not. */
+function emit(key: string, line: string): boolean {
+  const now = Date.now();
+  const prev = lastFired.get(key);
+  if (prev && now - prev < COOLDOWN_MS) return false;
+  lastFired.set(key, now);
+  console.log(line);
+  return true;
+}
+function clear(key: string): void { lastFired.delete(key); }
+
+function jsonl<T = Rec>(file: string): T[] {
+  try {
+    return fs.readFileSync(file, "utf8").split("\n").filter((l) => l.trim())
+      .map((l) => { try { return JSON.parse(l) as T; } catch { return null; } })
+      .filter((x): x is T => x !== null);
+  } catch { return []; }
+}
+function minsSince(iso: unknown): number {
+  const t = typeof iso === "string" ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? Infinity : (Date.now() - t) / 60_000;
+}
+function openCount(): { open: number; closed: number } {
+  let open = 0, closed = 0;
+  try {
+    for (const f of fs.readdirSync(path.join(N, "issues"))) {
+      if (!f.endsWith(".json") || f.startsWith("_")) continue;
+      const i = JSON.parse(fs.readFileSync(path.join(N, "issues", f), "utf8")) as { status: string };
+      if (i.status === "closed") closed++;
+      else if (i.status !== "decided") open++;
+    }
+  } catch { /* reported by the records check below */ }
+  return { open, closed };
+}
+
+
+/**
+ * (A2) THE SECOND SIGNAL FOR THE QUIET ALARM — and the first version of (A) was a false alarm.
+ *
+ * At 2026-11-09T22:05Z it fired: "no verdict for 25min and no stop record for 21min, with 836
+ * findings still open." The writer was working the whole time. Its transcript had been written
+ * to that very minute, and the rhythm measured over the day says a quiet stretch is NORMAL here:
+ * 169 judged edits, median gap 1.3 min, but NINE gaps over 20 minutes (373, 300, 53, 52, 32, 31,
+ * 27, 26, 20) and turns that run about an hour with ~45 tool calls each. Nemesis only records a
+ * verdict when an edit is JUDGED, so reading, grepping, running tests and thinking all look like
+ * silence to it.
+ *
+ * AN ALARM THAT FIRES ON HEALTHY WORK TRAINS ITS READER TO IGNORE IT — the same lesson the
+ * growth alarm (E) already carries, arriving by a different door. And as there, raising the
+ * threshold would only DELAY the false alarm, so the fix is a second signal that means something
+ * different: the writer session's own transcript file, which Claude Code appends to on every tool
+ * call. If that file moved in the last few minutes the session is alive and the silence is
+ * honest, whatever Nemesis has or has not been asked to judge.
+ *
+ * WHICH transcript matters, because the peer session lives in the same project folder and its
+ * liveness would wrongly vouch for a dead writer. So R-075 now records `transcript` on every stop
+ * record, and that exact path is preferred. The folder-wide fallback is used only when no record
+ * names one, and it SAYS SO in the alarm text, because then a quiet alarm may have been
+ * suppressed by the wrong session.
+ */
+const SLUG = "-Users-zee-Documents-Vibe-Coding-website-design-okoa-v2";
+const TRANSCRIPT_DIRS = ["/Users/zee/.claude/projects/" + SLUG, "/Users/zee/.claude-jason/projects/" + SLUG];
+
+function writerSilentMins(lastStop: Rec | undefined): { mins: number; from: string } {
+  const named = typeof lastStop?.transcript === "string" ? (lastStop.transcript as string) : "";
+  if (named) {
+    try { return { mins: (Date.now() - fs.statSync(named).mtimeMs) / 60_000, from: "the transcript the last stop record names" }; }
+    catch { /* the path may be gone after a resume; fall through to the folder */ }
+  }
+  let newest = -1;
+  for (const d of TRANSCRIPT_DIRS) {
+    try {
+      for (const f of fs.readdirSync(d)) {
+        if (!f.endsWith(".jsonl")) continue;
+        const m = fs.statSync(path.join(d, f)).mtimeMs;
+        if (m > newest) newest = m;
+      }
+    } catch { /* that config dir has no folder for this project */ }
+  }
+  if (newest < 0) return { mins: Infinity, from: "NO transcript file found at all, so liveness is UNKNOWN and this alarm rests on the records alone" };
+  return { mins: (Date.now() - newest) / 60_000, from: "the newest transcript in the project folder — ANY session there, possibly the peer rather than the writer, so a real stall could be hidden by the peer being busy" };
+}
+
+/**
+ * (B2) THE SECOND SIGNAL FOR THE SPIN ALARM, AND WHY IT IS AN `OR` RATHER THAN AN `AND`.
+ *
+ * At 2026-11-10T06:36Z the writer had ended TWENTY-TWO turns in a row doing nothing - its own
+ * text was "Holding. Twenty-second identical firing. 1. No tool calls." - and this alarm did not
+ * fire, because the records it reads claimed 45, 43, 42, 41, 40, 38, 37, 36, 35, 34, 33, 32 tool
+ * calls for those turns. The hook's counter had no turn boundary on a turn it had itself
+ * restarted, so it was counting an earlier turn's work (D-62; fixed in hooks/common.ts).
+ *
+ * The quiet alarm (A2) needed a second signal because it CRIED WOLF, so there the two readings
+ * are ANDed. This one was BLIND - a false negative - so the readings are ORed: either saying
+ * "nothing happened" is enough to speak. The failures are opposite, so the combinations are too.
+ *
+ * AND A ZERO IS ONLY REPORTABLE WHEN A NON-ZERO COULD HAVE BEEN SEEN. The transcript is read as a
+ * bounded tail, so a run of enormous turns can push the window past the moment being asked about.
+ * `reachedBack` is that check: unless the tail actually contains an event at or before the first
+ * record's time, its count of nothing means "I could not see", not "nothing happened".
+ */
+function toolCallsSince(lastStop: Rec | undefined, sinceIso: string): { n: number; reachedBack: boolean; from: string } {
+  const named = typeof lastStop?.transcript === "string" ? (lastStop.transcript as string) : "";
+  if (!named || !sinceIso) return { n: 0, reachedBack: false, from: "no stop record names a transcript" };
+  let text: string;
+  try {
+    const fd = fs.openSync(named, "r");
+    try {
+      const size = fs.fstatSync(fd).size;
+      const want = Math.min(size, 8 * 1024 * 1024);
+      const buf = Buffer.alloc(want);
+      fs.readSync(fd, buf, 0, want, size - want);
+      text = buf.toString("utf8");
+    } finally { fs.closeSync(fd); }
+  } catch (e) { return { n: 0, reachedBack: false, from: `the transcript could not be read (${e instanceof Error ? e.message : String(e)})` }; }
+  const lines = text.split("\n").filter(Boolean);
+  lines.shift();                                  // a byte-offset read starts mid-line
+  let n = 0, reachedBack = false;
+  for (const l of lines) {
+    let ev: Record<string, unknown>;
+    try { ev = JSON.parse(l) as Record<string, unknown>; } catch { continue; }
+    const ts = String(ev.timestamp ?? "");
+    if (ts && ts <= sinceIso) { reachedBack = true; continue; }
+    const msg = ev.message as { role?: string; content?: unknown } | undefined;
+    if (msg?.role !== "assistant" || !Array.isArray(msg.content)) continue;
+    for (const b of msg.content as { type?: string }[]) if (b?.type === "tool_use") n++;
+  }
+  return { n, reachedBack, from: `the writer's own transcript since ${sinceIso}` };
+}
+
+let baseline: { open: number; closed: number } | null = null;
+
+function tick(): void {
+  // (0) the watcher's own preconditions. A missing project is a LINE, never a quiet poll.
+  // `emit` returns whether it spoke (added for the progress rate limit), so returning it from a
+  // `void` function is a type error — and the live watcher runs under bun, which does not
+  // typecheck, so it ran fine while breaking the skill's `tsc --noEmit` gate.
+  if (!fs.existsSync(N)) { emit("no-project", `WATCH ERROR: ${N} is gone — nothing can be observed. Investigate before trusting any silence from this watcher.`); return; }
+
+  const stop = jsonl(path.join(N, "records", "stop.jsonl"));
+  const verdicts = jsonl(path.join(N, "records", "verdicts.jsonl"));
+  const { open, closed } = openCount();
+  if (baseline === null) baseline = { open, closed };
+
+  const lastStop = stop[stop.length - 1];
+  const lastVerdict = verdicts[verdicts.length - 1];
+  const quietStop = minsSince(lastStop?.at);
+  const quietVerdict = minsSince(lastVerdict?.at);
+  const quiet = Math.min(quietStop, quietVerdict);
+
+  // (A) gone quiet while the ledger is open — the plain stall. Needs BOTH signals: see (A2).
+  const writer = writerSilentMins(lastStop);
+  if (open > 0 && quiet > QUIET_MIN && writer.mins > WRITER_QUIET_MIN) {
+    emit("quiet", `STALL (quiet): no verdict for ${quietVerdict.toFixed(0)}min, no stop record for ${quietStop.toFixed(0)}min, AND the writer's transcript has not been written for ${writer.mins === Infinity ? "an unknown time" : writer.mins.toFixed(0) + "min"} (${writer.from}) — with ${open} findings still open. Last stop at ${String(lastStop?.at ?? "never")}. Investigate: why did it stop working?`);
+  } else clear("quiet");
+
+  // (B) spinning: turns ending with no tool calls. Readable only since D-57 put
+  //     `streak` and `last_turn_tool_calls` on EVERY stop record, including releases.
+  const tail = stop.slice(-SPIN_RUN);
+  const full = tail.length === SPIN_RUN;
+  const byRecord = full && tail.every((r) => r.last_turn_tool_calls === 0);
+  const own = toolCallsSince(lastStop, String(tail[0]?.at ?? ""));
+  const byTranscript = full && own.reachedBack && own.n === 0;
+  if (byRecord || byTranscript) {
+    const which = byRecord && byTranscript ? "both the records and the writer's own transcript agree"
+      : byRecord ? `the records say so; the transcript ${own.reachedBack ? `counted ${own.n} tool call(s)` : `could not be read back that far (${own.from})`}`
+      : `the writer's own transcript shows NONE, while the records claim ${tail.map((r) => String(r.last_turn_tool_calls ?? "?")).join(",")} — a disagreement that means the hook's own counter is wrong, as it was in D-62`;
+    emit("spin", `STALL (spin): the last ${SPIN_RUN} turns each ended with ZERO tool calls (streaks ${tail.map((r) => String(r.streak ?? "?")).join(",")}), ${open} open — ${which}. The writer is taking turns without doing anything. Investigate the directive it is being given.`);
+  } else clear("spin");
+
+  /**
+   * (C) THE HOST'S SILENT OVERRIDE — and the first version of this was a false alarm too.
+   *
+   * At enough consecutive blocks Claude Code overrides the Stop hook and ends the turn with no
+   * record of why, which is the D-54 failure. But D-46 already handles the ordinary case: when
+   * `block_chain` passes the cap the hook RELEASES the turn ITSELF and writes a record saying so
+   * (`released: "block-chain"`, with the open and owed counts). That is the designed outcome, not
+   * the danger — the danger is losing the record, and a release IS the record.
+   *
+   * At 2026-11-09T23:52:45Z this fired on exactly that designed release: chain 7, cap 6,
+   * `released=block-chain`, 41 tool calls that turn, the writer still working. THIRD false alarm
+   * of the same family in one evening (growth, quiet, now this), and the same remedy each time:
+   * not a higher number, but a condition that means something different. Here the second signal
+   * is already in the record — whether the hook BLOCKED. A chain past the cap that still shows
+   * `blocked: true` means the release did not happen and the host is about to override in
+   * silence. That is worth waking someone for; a recorded release is not.
+   */
+  const cap = chainCap();
+  const chain = Number(lastStop?.block_chain ?? 0);
+  if (chain > cap && lastStop?.blocked === true) {
+    emit("chain", `STALL RISK (block chain ${chain} > cap ${cap} and the hook BLOCKED ANYWAY): D-46 should have released this turn and did not, so Claude Code is about to override the Stop hook and end a turn with no record of why. Last stop ${String(lastStop?.at ?? "?")}, released=${String(lastStop?.released ?? "no")}, stop_hook_active=${String(lastStop?.stop_hook_active)}. Investigate the release branch in hooks/stop.ts before the override.`);
+  } else clear("chain");
+
+  // (D) D-56's brake holding a file with nobody acking the rung
+  try {
+    const brake = JSON.parse(fs.readFileSync(path.join(N, "state", "brake.json"), "utf8")) as Record<string, { denials: number; acks: number; rung: number; since: string; why: string }>;
+    for (const [rel, e] of Object.entries(brake)) {
+      if (e.denials >= 3 && minsSince(e.since) > BRAKE_STUCK_MIN) {
+        emit(`brake:${rel}`, `STALL (braked ${minsSince(e.since).toFixed(0)}min): ${rel} is held by D-56 after ${e.denials} stuck denials, rung ${e.rung}, ${e.acks}/2 acks spent. Judge: ${e.why}. Nobody has run \`nemesis rung ack\`. Investigate whether the rung work is actually possible.`);
+      } else clear(`brake:${rel}`);
+    }
+  } catch { /* no brake file yet is the normal case */ }
+
+  /**
+   * (E) GROWING WITHOUT PROGRESS. The first version fired on growth alone, and that was wrong:
+   * it fired at 17:59Z on 2026-11-09 over +10 findings that were HEALTHY WORK. The session was
+   * writing `_build/headers.test.ts` for R-008; four denials, a typecheck error, a test failure
+   * and a lint failure opened in fourteen minutes, and then the 17:59:47Z scan came back CLEAN
+   * on all three. Findings opening while a writer breaks things on the way to a fix is what
+   * active development looks like. Closes arrive later, after a reproduction and a review.
+   *
+   * AN ALARM THAT FIRES ON HEALTHY WORK TRAINS ITS READER TO IGNORE IT, which costs the real
+   * alarm. So growth is no longer sufficient on its own; it needs corroboration that nothing is
+   * actually MOVING. A scan going clean is the cheapest honest proof of movement available — it
+   * means the tree compiles, the tests pass and the linter is quiet, which a stuck writer cannot
+   * produce. Note the asymmetry on purpose: raising the threshold alone would only DELAY the
+   * false alarm, while requiring a second, independent signal changes what the alarm means.
+   */
+  const scansClean = (() => {
+    try {
+      const dir = path.join(N, "records", "scans");
+      const files = fs.readdirSync(dir).sort().slice(-12);
+      return files.some((f) => {
+        try {
+          const s = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as { clean?: boolean; at?: string };
+          return s.clean === true && minsSince(s.at) <= COOLDOWN_MS / 60_000;
+        } catch { return false; }
+      });
+    } catch { return false; }
+  })();
+  if (open - baseline.open >= GROWTH_MIN && closed === baseline.closed && !scansClean) {
+    if (emit("growth", `STALL (growing, nothing moving): open went ${baseline.open} to ${open} (+${open - baseline.open}), ZERO closes, and NO scan has come back clean in the window. That is growth with no evidence of progress. Investigate what is opening them and whether the writer can still get a clean scan.`)) baseline = { open, closed };
+  } else if (open - baseline.open >= GROWTH_MIN && closed === baseline.closed && scansClean) {
+    // deliberately silent: growth plus a clean scan is a writer breaking things en route to a fix
+    baseline = { open, closed };
+  }
+  /**
+   * (G) THE GOOD NEWS, RATE-LIMITED ON PURPOSE — and the first version of this was a defect.
+   *
+   * The key was `closed:${closed}`, which is a NEW key on every single close, so the cooldown
+   * never applied and every batch of closes became its own notification. That is not merely
+   * chatty: the Monitor tool stops a monitor that produces too many events, so a good run of
+   * closes would have silently killed the STALL alarms this watcher exists for. Good news is
+   * worth saying, and it is never worth the alarm.
+   *
+   * One constant key, so at most one progress line per cooldown window, and the delta is measured
+   * against the last line that actually WENT OUT rather than against the last poll — so a
+   * suppressed report is not a lost one, it is folded into the next.
+   */
+  if (closed > baseline.closed) {
+    if (emit("progress", `PROGRESS: ${closed - baseline.closed} finding(s) CLOSED since the last report. Open is now ${open} (was ${baseline.open}), closed total ${closed}. This is the number that had never fallen before today.`)) baseline = { open, closed };
+  }
+
+  // (F) the judge daemon. Without it every edit is denied and nothing can proceed.
+  const sock = "/Users/zee/.acos/nemesis/nemesis.sock";
+  if (!fs.existsSync(sock)) {
+    emit("daemon", `STALL (judge gone): ${sock} does not exist, so no edit can be judged and every edit will be denied. Investigate and restart: nemesis daemon start`);
+  } else clear("daemon");
+}
+
+/**
+ * THE HEARTBEAT. This watcher lives inside one Claude session, so when that session ends the
+ * watch stops — and a stopped watch is indistinguishable from a quiet project. That is the same
+ * trap as D-57's absent field read as a zero, one level up: silence means "all well" only if
+ * something proves the watcher was alive to say otherwise. So every tick stamps its own
+ * liveness and the numbers it saw. Anyone — a later session, or Zee — can read this file and
+ * tell the difference between "watched and quiet" and "nobody has been watching since 18:36".
+ */
+const BEAT = path.join(N, "state", "watch-heartbeat.json");
+function beat(): void {
+  try {
+    const { open, closed } = openCount();
+    fs.mkdirSync(path.dirname(BEAT), { recursive: true });
+    fs.writeFileSync(BEAT, JSON.stringify({
+      last_tick: new Date().toISOString(),
+      watcher: "okoa-watch.ts",
+      poll_seconds: POLL_MS / 1000,
+      open, closed,
+      writer_silent_minutes: Number(writerSilentMins(jsonl(path.join(N, "records", "stop.jsonl")).slice(-1)[0]).mins.toFixed(1)),
+      conditions_watched: ["quiet>20min AND writer transcript silent>10min", "4 turns with no tool calls", "block_chain past the cap while the hook still blocked", "braked>15min unacked", "growth>=15 with no clean scan", "judge socket gone"],
+      note: "If last_tick is older than a few minutes, NOBODY IS WATCHING. Stale silence is not health.",
+    }, null, 2));
+  } catch (e) {
+    // It must not stop the watch — but it must not be swallowed either. If this file stops
+    // advancing, the next reader concludes "nobody is watching" and starts an investigation
+    // into a watcher that was in fact fine. Say which one it is.
+    emit("beat-failed", `WATCH ERROR: the heartbeat file could not be written (${e instanceof Error ? e.message : String(e)}). The watch is still running; ${BEAT} is now STALE and must not be read as nobody watching.`);
+  }
+}
+
+/**
+ * ONE POLL, AND IT CANNOT DIE QUIETLY. An exception thrown out of a setInterval callback ends
+ * the process, and a watcher that ends is indistinguishable from a project that is calm. The
+ * throw is therefore caught and SPOKEN: a broken watcher is a condition worth acting on, which
+ * is the same bar every other line here has to clear.
+ */
+function poll(): void {
+  try { tick(); } catch (e) { emit("watcher-threw", `WATCH ERROR: the watcher itself threw (${e instanceof Error ? e.message : String(e)}). It is still running, but this tick saw nothing. Investigate before reading any later silence as health.`); }
+  beat();
+  if (Date.now() - STARTED >= MAX_RUN_MS) {
+    const { open, closed } = openCount();
+    console.log(`WATCH WINDOW CLOSED after ${((Date.now() - STARTED) / 60_000).toFixed(0)}min: still alive, open=${open}, closed=${closed}. Nothing above this line fired. Re-arm the watch.`);
+    process.exit(0);
+  }
+}
+
+if (process.argv.includes("--once")) { poll(); process.exit(0); }
+poll();
+setInterval(poll, POLL_MS);
