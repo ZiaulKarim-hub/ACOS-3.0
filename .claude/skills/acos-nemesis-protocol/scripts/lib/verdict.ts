@@ -119,7 +119,31 @@ export function classifyFailure(stdout: string, stderr: string, exitCode: number
   return "prose";
 }
 
-export interface RecoveryStep { action: "retry_direct" | "retry_backoff" | "shrink_to_file" | "json_only_reask" | "extract_from_prose" | "repair_json" | "alternate_account" | "wait_then_retry"; note: string }
+/**
+ * The steps a recovery may take. `alternate_account` IS DELIBERATELY ABSENT (SEC-63).
+ *
+ * It used to re-run the judge child with `CLAUDE_CONFIG_DIR=$NEMESIS_ALT_CONFIG_DIR` when a
+ * usage limit or an auth error hit — no arm record, no window, no meter reading. So an
+ * unattended daemon reached for a second account at exactly the moment the first was
+ * exhausted, which is the measured 2026-11-16 drain: a borrowed `CLAUDE_CONFIG_DIR`
+ * inherited by automation nobody was watching. BG-001's actor table is flat: daemons "may
+ * never touch Jason at all, armed or not".
+ *
+ * REMOVED, NOT GUARDED, and the attempt to guard it is why. A deny-list naming
+ * `~/.claude-jason` was written first and refused on three counts, each correct:
+ * `os.homedir()` reads `$HOME`, so a daemon started with `HOME=/tmp` computes the wrong
+ * forbidden path and the real one sails through; `fs.realpathSync` keeps the caller's letter
+ * case while macOS APFS ignores it, so `.CLAUDE-JASON` walks around a string compare; and a
+ * path checked against one forbidden NAME still accepts any copy of those credentials
+ * somewhere else. A guard needs an allow-list, and there is nothing to allow — the accounts
+ * here are `.claude`, `.claude-account`, `.claude-jason` and `.claude-personal`, and the only
+ * one a judge would switch TO is the borrowed one. Deleting the mechanism has none of those
+ * holes, because there is no path left to resolve.
+ *
+ * The replacement is the protocol's own rule: a check it could not run is never clean. A
+ * usage limit waits, retries within a bound, and then denies.
+ */
+export interface RecoveryStep { action: "retry_direct" | "retry_backoff" | "shrink_to_file" | "json_only_reask" | "extract_from_prose" | "repair_json" | "wait_then_retry"; note: string }
 
 /** The ordered plan for each class. The daemon executes it; every step is logged. */
 export function recoveryPlan(cls: FailureClass): RecoveryStep[] {
@@ -134,7 +158,7 @@ export function recoveryPlan(cls: FailureClass): RecoveryStep[] {
     case "usage_limit":
       return [
         { action: "wait_then_retry", note: "usage/rate limit — wait and retry with backoff (bounded)" },
-        { action: "alternate_account", note: "try the alternate Claude config dir if configured" },
+        { action: "retry_backoff", note: "one last bounded retry, then the caller denies — a judge that could not run never allows (SEC-63)" },
       ];
     case "too_long":
       return [
@@ -153,8 +177,8 @@ export function recoveryPlan(cls: FailureClass): RecoveryStep[] {
       ];
     case "auth":
       return [
-        { action: "alternate_account", note: "authentication problem — try the alternate Claude config dir if configured" },
-        { action: "retry_backoff", note: "retry after backoff in case the login was mid-refresh" },
+        { action: "retry_backoff", note: "authentication problem — retry after backoff in case the login was mid-refresh" },
+        { action: "retry_direct", note: "one direct retry; if the login is genuinely broken the caller denies rather than borrowing another account (SEC-63)" },
       ];
   }
 }

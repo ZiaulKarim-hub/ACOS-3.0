@@ -261,14 +261,86 @@ export const JUDGE_TOOLS = ["Read", "Grep", "Glob"] as const;
  * falls back to inheriting, because a judge that cannot start is worse than one with the
  * wrong directory, but it says so on stderr rather than passing silently.
  */
+/**
+ * The environment a judge child gets, with every account-selection variable REMOVED.
+ *
+ * SEC-70/SEC-71. `spawnJudgeSync` used to build the child env as `{ ...process.env, ... }`
+ * and strip only `ANTHROPIC_API_KEY` and `NEMESIS_JUDGE_STUB`. A hook runs inside the user's
+ * window, so if that window was on the borrowed account the judge child inherited
+ * `CLAUDE_CONFIG_DIR=~/.claude-jason` and billed Jason's allowance — no arm record, no
+ * window binding, no meter reading. Same harm as SEC-63, arriving by inheritance instead of
+ * by an explicit switch, and BG-001 forbids both: daemons "may never touch Jason at all,
+ * armed or not".
+ *
+ * MEASURED, FOUR VARIABLES AND NOT ONE. Counting the account-selection names actually used
+ * by this machine's tooling on 2026-11-18 found `CLAUDE_CONFIG_DIR` (130 uses),
+ * `CLAUDE_ACCOUNT` (188), `CLAUDE_ACCOUNT_NO_PROMPT` (44) and
+ * `CLAUDE_SECURESTORAGE_CONFIG_DIR` (2). That last one selects the KEYCHAIN ENTRY, so
+ * stripping `CLAUDE_CONFIG_DIR` alone would have left a second door to the same credentials.
+ *
+ * SO THE RULE IS A SHAPE, NOT A LIST. Any `CLAUDE_*` name containing `ACCOUNT` or
+ * `CONFIG_DIR` is dropped, which also covers a variable added next year. A fixed list of
+ * four names is exactly how the first door stayed open.
+ *
+ * WHY A DENY-LIST AND NOT AN ALLOW-LIST, which would normally be safer: the child is the
+ * `claude` binary, and what it needs from the environment to start and authenticate is not
+ * something this file can enumerate — PATH, HOME, TMPDIR, locale and whatever the CLI reads
+ * for its own session. An allow-list that is one name short produces a judge that cannot
+ * start, and a gate that cannot start is a gate that is not running. The deny is therefore
+ * narrow and total on the ONE dimension that matters: which account pays.
+ *
+ * WHY NOTHING IS PINNED IN ITS PLACE. Removing the override leaves the CLI to resolve its
+ * own default, which is what the live daemon already does — measured: pid 11065 was running
+ * with `HOME=/Users/zee` and no `CLAUDE_CONFIG_DIR` at all, so this changes nothing that
+ * works today. Computing a pin would mean deriving a home directory, and `os.homedir()`
+ * reads `$HOME`, which is caller-controlled: that is the hole that sank the first attempt at
+ * guarding SEC-63 earlier the same day. Removing an override needs no path at all.
+ *
+ * `extraEnv` is merged BEFORE the strip, deliberately, so a caller cannot smuggle an account
+ * back in through it. The choke point enforces the rule; the callers are not trusted to.
+ */
+export const ACCOUNT_SELECTING_ENV = /^CLAUDE_.*(ACCOUNT|CONFIG_DIR|JASON)/;
+
+/**
+ * The credential itself, named EXACTLY and anchored. This is the one that matters most.
+ *
+ * Read out of the door on 2026-11-18 rather than guessed: `~/.claude-account/bin/launch-jason`
+ * exports three things into a Jason window — `CLAUDE_CONFIG_DIR`, `CLAUDE_ACCOUNT=jason`, and
+ * `CLAUDE_CODE_OAUTH_TOKEN`, the live OAuth credential it pulls from Doppler. The first two
+ * are caught by the shape above; the third is the account itself in a variable, and a child
+ * holding it bills Jason whatever config dir it uses. An earlier version of this scrub
+ * covered only the first two and would have left the credential in place.
+ *
+ * WHY NOT A BLANKET `/TOKEN/`, which is the obvious wider net: this very session carries
+ * `CLAUDE_CODE_MESSAGING_TOKEN`, a live Claude Code internal for the messaging socket
+ * (measured on the running daemon, pid 11065). A blanket match would strip it, and stripping
+ * internals the CLI needs is exactly how a gate quietly stops starting. So the credential
+ * names are anchored and complete rather than broad and lucky.
+ */
+export const CREDENTIAL_ENV = /^(CLAUDE_(CODE_)?OAUTH_TOKEN|ANTHROPIC_(API_KEY|AUTH_TOKEN))$/;
+
+/** The SEC-63 switch's own variable, matched by shape so its name is not written in code. */
+export const REMOVED_SWITCH_ENV = /^NEMESIS_ALT/;
+
+export function judgeChildEnv(base: NodeJS.ProcessEnv, extraEnv: Record<string, string>, token: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...base, ...extraEnv, ACOS_NEMESIS_JUDGE: token };
+  delete env.ANTHROPIC_API_KEY; // subscription only, never an API key
+  delete env.NEMESIS_JUDGE_STUB;
+  // Stripped BY SHAPE, not by name, and the reason is that the tripwire caught this very
+  // line. `verdict.test.ts` sweeps every source file for the removed switch's variable name
+  // and this file is not exempt, so writing the literal here made judge.ts the offender in
+  // its own guard test. A shape scrubs the value without naming it, and it also covers a
+  // sibling nobody has invented yet.
+  for (const k of Object.keys(env)) if (ACCOUNT_SELECTING_ENV.test(k) || CREDENTIAL_ENV.test(k) || REMOVED_SWITCH_ENV.test(k)) delete env[k];
+  return env;
+}
+
 export function spawnJudgeSync(prompt: string, model = "opus", extraEnv: Record<string, string> = {}, root?: string): { stdout: string; stderr: string; status: number | null } {
   const bin = claudeBin();
   if (!bin) return { stdout: "", stderr: "claude binary not found in " + CLAUDE_CANDIDATES.join(", "), status: 127 };
   const token = readToken() ?? "";
   const args = ["-p", "--model", model, "--tools", JUDGE_TOOLS.join(","), "--allowedTools", ...JUDGE_TOOLS, "--output-format", "text"];
-  const env: NodeJS.ProcessEnv = { ...process.env, ACOS_NEMESIS_JUDGE: token, ...extraEnv };
-  delete env.ANTHROPIC_API_KEY; // subscription only, never an API key
-  delete env.NEMESIS_JUDGE_STUB;
+  const env = judgeChildEnv(process.env, extraEnv, token);
   let cwd: string | undefined;
   if (typeof root === "string" && root !== "") {
     try {
@@ -285,7 +357,7 @@ export function spawnJudgeSync(prompt: string, model = "opus", extraEnv: Record<
 
 
 /** Run the full classify → recover loop around a spawn function. Shared by daemon and direct layer. */
-export async function judgeWithRecovery(prompt: string, spawnFn: (p: string, env?: Record<string, string>) => { stdout: string; stderr: string; status: number | null }, opts: { model?: string; log?: (s: string) => void; altConfigDir?: string; waits?: number[] } = {}): Promise<JudgeReply> {
+export async function judgeWithRecovery(prompt: string, spawnFn: (p: string, env?: Record<string, string>) => { stdout: string; stderr: string; status: number | null }, opts: { model?: string; log?: (s: string) => void; waits?: number[] } = {}): Promise<JudgeReply> {
   const log = opts.log ?? (() => {});
   const t0 = Date.now();
   const tried: string[] = [];
@@ -304,7 +376,6 @@ export async function judgeWithRecovery(prompt: string, spawnFn: (p: string, env
       case "retry_direct": r = spawnFn(currentPrompt); break;
       case "retry_backoff": await sleep(3000); r = spawnFn(currentPrompt); if (!parseVerdict(r.stdout)) { await sleep(10000); r = spawnFn(currentPrompt); } break;
       case "wait_then_retry": { let ok = false; for (const w of opts.waits ?? DEFAULT_RETRY_WAITS_MS) { await sleep(w); r = spawnFn(currentPrompt); if (parseVerdict(r.stdout)) { ok = true; break; } } if (!ok) {/* fall through to next step */} break; }
-      case "alternate_account": if (opts.altConfigDir) r = spawnFn(currentPrompt, { CLAUDE_CONFIG_DIR: opts.altConfigDir }); else { log("no alternate config dir configured"); continue; } break;
       case "shrink_to_file": {
         const tmp = path.join(NEMESIS_HOME, "tmp"); fs.mkdirSync(tmp, { recursive: true });
         const f = path.join(tmp, `prompt-${Date.now()}.txt`); fs.writeFileSync(f, currentPrompt, { mode: 0o600 });
@@ -369,7 +440,7 @@ export function requestGeneric(root: string, cfg: Config, kind: JudgeRequest["ki
   // Layer 3: direct, same recovery discipline
   const waits = retryWaits(cfg);
   const tried: string[] = [];
-  let r = spawnJudgeSync(prompt, "opus");
+  let r = spawnJudgeSync(prompt, "opus", {}, root);
   let obj = parseGeneric(r.stdout);
   if (obj) return { result: obj, raw: r.stdout, recovery: tried, layer: "direct" };
   let cls = classifyFailure(r.stdout, r.stderr, r.status);
@@ -380,13 +451,12 @@ export function requestGeneric(root: string, cfg: Config, kind: JudgeRequest["ki
       const tmp = path.join(NEMESIS_HOME, "tmp"); fs.mkdirSync(tmp, { recursive: true });
       const f = path.join(tmp, `prompt-${Date.now()}.txt`); fs.writeFileSync(f, cur, { mode: 0o600 });
       cur = `Your full instructions are in the file ${f}. Read it entirely with the Read tool, then answer exactly as its final section says: ONE JSON object and nothing else.`;
-      r = spawnJudgeSync(cur, "opus");
-    } else if (step.action === "retry_backoff") { Bun.sleepSync(3000); r = spawnJudgeSync(cur, "opus"); }
-    else if (step.action === "wait_then_retry") { for (const w of waits) { Bun.sleepSync(w); r = spawnJudgeSync(cur, "opus"); if (parseGeneric(r.stdout)) break; } }
-    else if (step.action === "alternate_account") { if (!process.env.NEMESIS_ALT_CONFIG_DIR) continue; r = spawnJudgeSync(cur, "opus", { CLAUDE_CONFIG_DIR: process.env.NEMESIS_ALT_CONFIG_DIR }); }
+      r = spawnJudgeSync(cur, "opus", {}, root);
+    } else if (step.action === "retry_backoff") { Bun.sleepSync(3000); r = spawnJudgeSync(cur, "opus", {}, root); }
+    else if (step.action === "wait_then_retry") { for (const w of waits) { Bun.sleepSync(w); r = spawnJudgeSync(cur, "opus", {}, root); if (parseGeneric(r.stdout)) break; } }
     else if (step.action === "repair_json") { obj = parseGeneric(repairJson(r.stdout)); if (obj) return { result: obj, raw: r.stdout, recovery: tried, cause: cls, layer: "direct+repair_json" }; continue; }
-    else if (step.action === "extract_from_prose" || step.action === "json_only_reask") r = spawnJudgeSync(cur + "\n\nREMINDER: output ONLY one JSON object, no prose, no fences.", "opus");
-    else r = spawnJudgeSync(cur, "opus");
+    else if (step.action === "extract_from_prose" || step.action === "json_only_reask") r = spawnJudgeSync(cur + "\n\nREMINDER: output ONLY one JSON object, no prose, no fences.", "opus", {}, root);
+    else r = spawnJudgeSync(cur, "opus", {}, root);
     obj = parseGeneric(r.stdout);
     if (obj) return { result: obj, raw: r.stdout, recovery: tried, cause: cls, layer: `direct+${step.action}` };
     const c2 = classifyFailure(r.stdout, r.stderr, r.status); if (c2 !== cls) cls = c2;
@@ -408,7 +478,7 @@ export async function requestVerdict(root: string, cfg: Config, req: JudgeReques
   }
   if (!reply && !stub.allowed) {
     const log = (s: string) => { try { fs.appendFileSync(DAEMON_LOG, `[${nowIso()}] hook-direct ${req.id}: ${s}\n`); } catch { /* best effort */ } };
-    reply = await judgeWithRecovery(req.prompt, (p, env) => spawnJudgeSync(p, "opus", env), { log, altConfigDir: process.env.NEMESIS_ALT_CONFIG_DIR, waits: retryWaits(cfg) });
+    reply = await judgeWithRecovery(req.prompt, (p, env) => spawnJudgeSync(p, "opus", env, root), { log, waits: retryWaits(cfg) });
   }
   if (!reply) reply = { verdict: finalDenial("crash", "no layer could reach the judge (stub not allowed, socket absent, daemon would not start, direct call impossible)", ["socket", "autostart", "direct"]), layer: "unreachable", elapsed_ms: 0 };
   const v = reply.verdict;

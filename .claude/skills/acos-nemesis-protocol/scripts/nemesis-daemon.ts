@@ -63,7 +63,6 @@ async function judgeGeneric(prompt: string, model: string, waits: number[] = DEF
       r = spawnJudgeSync(cur, model, {}, root);
     } else if (step.action === "retry_backoff") { await new Promise((x) => setTimeout(x, 3000)); r = spawnJudgeSync(cur, model, {}, root); }
     else if (step.action === "wait_then_retry") { for (const w of waits) { await new Promise((x) => setTimeout(x, w)); r = spawnJudgeSync(cur, model, {}, root); if (parse(r.stdout)) break; } }
-    else if (step.action === "alternate_account") { if (!process.env.NEMESIS_ALT_CONFIG_DIR) continue; r = spawnJudgeSync(cur, model, { CLAUDE_CONFIG_DIR: process.env.NEMESIS_ALT_CONFIG_DIR }, root); }
     else if (step.action === "extract_from_prose" || step.action === "json_only_reask") r = spawnJudgeSync(cur + "\n\nREMINDER: output ONLY one JSON object, no prose, no fences.", model, {}, root);
     else if (step.action === "repair_json") { obj = parse(repairJson(r.stdout)); if (obj) return { result: obj, raw: r.stdout, recovery: tried, cause: cls, elapsed_ms: Date.now() - t0 }; continue; }
     else r = spawnJudgeSync(cur, model, {}, root);
@@ -79,7 +78,7 @@ async function handle(req: JudgeRequest, model: string): Promise<Record<string, 
   try { fs.appendFileSync(path.join(NEMESIS_HOME, "requests.log"), JSON.stringify({ at: nowIso(), id: req.id, kind: req.kind, project: req.project, meta: req.meta, contract: logContract(req), prompt_sha256: Bun.hash(req.prompt).toString(16), prompt_chars: req.prompt.length }) + "\n"); } catch { /* best effort */ }
   if (req.kind === "verdict") {
     // NO TIMEOUT: the judge may take as long as it needs.
-    const reply: JudgeReply = await judgeWithRecovery(req.prompt, (p, env) => spawnJudgeSync(p, model, env, req.project), { model, log, altConfigDir: process.env.NEMESIS_ALT_CONFIG_DIR, waits: retryWaits(null, req.meta) });
+    const reply: JudgeReply = await judgeWithRecovery(req.prompt, (p, env) => spawnJudgeSync(p, model, env, req.project), { model, log, waits: retryWaits(null, req.meta) });
     const out = { ...reply, model, layer: reply.layer.replace(/^direct/, "socket") };
     try { fs.appendFileSync(VERDICT_LOG, JSON.stringify({ ts: nowIso(), id: req.id, project: req.project, path: req.meta.path, decision: reply.verdict.decision, findings: reply.verdict.findings.length, stuck: reply.verdict.history_assessment.stuck, rung: reply.verdict.history_assessment.recommended_rung, elapsed_ms: reply.elapsed_ms, layer: out.layer, cause: reply.cause, recovery: reply.recovery, reason: reply.verdict.reason }) + "\n"); } catch { /* best effort */ }
     log(`${reply.verdict.decision.toUpperCase()} ${String(req.meta.path ?? "")} (${reply.elapsed_ms}ms, ${out.layer}) findings=${reply.verdict.findings.length}${reply.cause ? ` cause=${reply.cause}` : ""}`);

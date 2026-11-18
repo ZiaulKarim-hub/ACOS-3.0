@@ -299,7 +299,14 @@ export async function runSelftest(v = false): Promise<number> {
     const pre = fs.readFileSync(path.join(HOOKS, "pre-tool.ts"), "utf8");
     const judge = fs.readFileSync(path.join(SKILL_DIR, "scripts", "lib", "judge.ts"), "utf8");
     const envReads = [...(pre + judge).matchAll(/process\.env\.([A-Z_]+)|env\.([A-Z_]+)|env\[([A-Z_"']+)\]/g)].map((m) => (m[1] ?? m[2] ?? m[3] ?? "").replace(/["']/g, "")).filter(Boolean);
-    const allowed = new Set(["ACOS_NEMESIS_JUDGE", "NEMESIS_JUDGE_STUB", "NEMESIS_CLAUDE_BIN", "NEMESIS_NO_AUTOSTART", "NEMESIS_ALT_CONFIG_DIR", "HOME", "ANTHROPIC_API_KEY", "NEMESIS_HOME_OVERRIDE", "CLAUDE_CONFIG_DIR"]);
+    // CLAUDE_CONFIG_DIR IS NO LONGER PERMITTED (SEC-72). It used to sit in this list, so a
+    // future `process.env.CLAUDE_CONFIG_DIR` read in pre-tool.ts or judge.ts would have kept
+    // this guard green — while judgeChildEnv now exists precisely to strip that variable
+    // before a judge child can see it. Allowing the read and stripping the value are
+    // contradictory positions; the strip is the one that holds, so the read is forbidden.
+    // judgeChildEnv deletes by `env[k]` inside a loop, which this guard's regexes do not
+    // match, so removing the name costs nothing today and turns a re-added read red.
+    const allowed = new Set(["ACOS_NEMESIS_JUDGE", "NEMESIS_JUDGE_STUB", "NEMESIS_CLAUDE_BIN", "NEMESIS_NO_AUTOSTART", "HOME", "ANTHROPIC_API_KEY", "NEMESIS_HOME_OVERRIDE"]);
     const bad = envReads.filter((e) => !allowed.has(e));
     return (pre.includes("export const NO_BYPASS = true") && !/skip|bypass|NEMESIS_OFF|NEMESIS_DISABLE/i.test(pre.replace(/NO_BYPASS|\/\*\*[\s\S]*?\*\/|\/\/.*$/gm, "")) && bad.length === 0) || `unexpected env reads: ${bad.join(", ")}`;
   });
