@@ -47,6 +47,15 @@ const PID_FILE = join(ORACLE_HOME, "oracle.pid");
  * does not exist in a non-interactive shell — calling it there dies with
  * "command not found: _acos_cli". The daemon must therefore never rely on the
  * name alone.
+ *
+ * TWO COPIES, AND THEY DISAGREE (2026-10-26). This Mac carries Homebrew's copy
+ * and a pinned npm copy under ~/.claude/local, and `real-claude` in the account
+ * door prefers the OPPOSITE one to this list. Measured that day with --version:
+ * Homebrew 2.1.292, ~/.claude/local 2.1.273 — so the order below already picks
+ * the NEWER one and must not be flipped. A reading of the shell setup file led
+ * one session to conclude the reverse and propose flipping it; the version check
+ * is the thing that settles it, not the path. ORACLE_CLAUDE_BIN overrides both,
+ * so the choice can be pinned without editing code.
  */
 const CLAUDE_CANDIDATES = [
   "/opt/homebrew/bin/claude",
@@ -55,8 +64,79 @@ const CLAUDE_CANDIDATES = [
 ];
 
 function claudeBin(): string {
+  const pinned = process.env.ORACLE_CLAUDE_BIN;
+  if (pinned) {
+    if (existsSync(pinned)) return pinned;
+    throw new Error(`ORACLE_CLAUDE_BIN=${pinned} does not exist`);
+  }
   for (const c of CLAUDE_CANDIDATES) if (existsSync(c)) return c;
   throw new Error(`no claude binary found; looked in: ${CLAUDE_CANDIDATES.join(", ")}`);
+}
+
+/**
+ * Is the judging sign-in actually usable? Local check, no quota spent.
+ *
+ * WHY THIS EXISTS. On 2026-10-26 the daemon's config dir (~/.claude by default)
+ * was simply signed out, and so was ~/.claude-personal; only ~/.claude-jason was
+ * logged in. Every gated call in every window was denied for hours, and the
+ * denial said only "OAuth session expired and could not be refreshed" — it never
+ * named WHICH folder, so three separate sessions guessed at the cause. Naming
+ * the folder and its login state turns that into a one-line read.
+ */
+function signInState(dir: string | undefined): string {
+  const shown = dir ?? join(homedir(), ".claude") + " (default)";
+  try {
+    // `claude auth status` is a local read and spends no quota, but it must
+    // report the FOLDER's sign-in — so an inherited credential or account
+    // variable is stripped first, or the banner would describe whichever
+    // account the environment carried and call it this folder's.
+    const env = judgingEnv(process.env);
+    if (dir) env.CLAUDE_CONFIG_DIR = dir;
+    const r = Bun.spawnSync([claudeBin(), "auth", "status"],
+                            { stdout: "pipe", stderr: "pipe", env: env as Record<string, string> });
+    const out = r.stdout.toString();
+    const loggedIn = /"loggedIn"\s*:\s*true/.test(out);
+    const email = out.match(/"email"\s*:\s*"([^"]+)"/)?.[1];
+    return `${shown} — loggedIn=${loggedIn}${email ? ` as ${email}` : ""}`;
+  } catch (e) {
+    return `${shown} — could not be checked (${(e as Error).message})`;
+  }
+}
+
+function authNote(): string {
+  return `judging sign-in: ${signInState(process.env.CLAUDE_CONFIG_DIR)}`;
+}
+
+/**
+ * The FALLBACK's health, checked at startup rather than discovered mid-outage.
+ *
+ * `alternate_account` is the recovery for both an expired sign-in and a usage
+ * cut-off, so a fallback that is itself signed out means the Oracle has no
+ * recovery at all — which is exactly the state it was in on 2026-10-26, and
+ * nothing said so until every tool call had been refused for hours.
+ */
+/**
+ * The fallback folder, and whether it may be used at all.
+ *
+ * `ORACLE_ALT_CONFIG_DIR` used to point at the BORROWED account's folder, which
+ * made this daemon — a service with no session, no window key and no watcher —
+ * able to judge on that account indefinitely. Zee removed it from the plist on
+ * 2026-11-16 and accepted the consequence in his own words: "even if it means all
+ * the AI works stop and I have to manually log back in". So the borrowed folder
+ * is refused here by SHAPE, not merely left unset, and the only route to that
+ * account is a human arming one window through /acos-jason-breakglass.
+ */
+export function altConfigDir(env: NodeJS.ProcessEnv = process.env): { usable: boolean; dir?: string; why: string } {
+  const dir = env.ORACLE_ALT_CONFIG_DIR;
+  if (!dir) return { usable: false, why: "no ORACLE_ALT_CONFIG_DIR is set, so an auth or usage failure has no fallback. That is deliberate (Zee's ruling, 2026-11-16): the fallback it replaced spent the borrowed account" };
+  if (/jason/i.test(dir)) return { usable: false, why: `ORACLE_ALT_CONFIG_DIR=${dir} is the borrowed account's folder, which this daemon may never judge on (Zee's ruling, 2026-11-16). Arm one window with /acos-jason-breakglass instead` };
+  return { usable: true, dir, why: "set" };
+}
+
+function altNote(): string {
+  const alt = altConfigDir();
+  if (!alt.usable) return `fallback:       NONE — ${alt.why}`;
+  return `fallback:       ${signInState(alt.dir)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,7 +262,12 @@ export function repairJson(s: string): string {
 export function classifyFailure(stdout: string, stderr: string, exitCode: number | null): FailureClass {
   const all = `${stdout}\n${stderr}`;
   if (/E2BIG|argument list too long|prompt is too long|too many tokens|exceeds the (maximum|context)|context window/i.test(all)) return "too_long";
-  if (/usage limit|rate limit|rate_limit|quota|429|overloaded|too many requests|limit reached|You've reached/i.test(all)) return "usage_limit";
+  // "session limit" and "you've hit" were MISSING until 2026-10-26. The real
+  // message Claude Code prints is "You've hit your session limit · resets 1:30pm
+  // (America/Denver)", which matched none of the words here, so a plain quota
+  // cut-off was classed `prose` and got extract_from_prose → json_only_reask —
+  // two more doomed calls — instead of wait_then_retry → alternate_account.
+  if (/usage limit|rate limit|rate_limit|session limit|quota|429|overloaded|too many requests|limit reached|you've (reached|hit)/i.test(all)) return "usage_limit";
   if (/not logged in|unauthori[sz]ed|invalid api key|authentication|please run \/login|OAuth/i.test(all)) return "auth";
   if (!stdout.trim()) return exitCode === 0 ? "empty" : "crash";
   if (extractJsonObjects(stdout).some((x) => /"decision"/.test(x))) return "malformed";
@@ -270,8 +355,40 @@ export function parseVerdict(raw: string): { decision: "allow" | "deny"; reason:
   return null;
 }
 
+/**
+ * Which account a judge child may spend: this process's, minus anything INHERITED
+ * that could pick one.
+ *
+ * The launchd service starts with a clean plist, but a daemon auto-started by the
+ * PreToolUse hook inherits the window that made the tool call — and in a
+ * borrowed-account window that environment carries the account-selecting
+ * variables and the live OAuth credential the account door exports. Because this
+ * daemon is detached and long-lived, inheriting them once would mean spending the
+ * borrowed allowance for the daemon's whole life, with no arm record and no
+ * ceiling. The hook end is stripped too (`_oracle_judge.py`, `judging_env`); this
+ * is the second of the two, and neither trusts the other.
+ *
+ * Matched by SHAPE, mirroring `acos-nemesis-protocol/scripts/lib/judge.ts`, so
+ * the two judges cannot drift apart and so a sibling variable nobody has invented
+ * yet is covered. `ORACLE_CLAUDE_BIN` is deliberately NOT matched: it pins which
+ * binary runs, not which account it signs in as.
+ *
+ * INHERITED, not every source: an `extraEnv` passed by a caller here is applied
+ * AFTER the strip, so the one deliberate, logged pin (`alternate_account`) still
+ * works. Making it a silent no-op would be worse than leaving it — a recovery
+ * step that reports success while doing nothing is a lie in the log.
+ */
+export const ACCOUNT_SELECTING_ENV = /^CLAUDE_.*(ACCOUNT|CONFIG_DIR|JASON)/;
+export const CREDENTIAL_ENV = /^(CLAUDE_(CODE_)?OAUTH_TOKEN|ANTHROPIC_(API_KEY|AUTH_TOKEN))$/;
+
+export function judgingEnv(base: NodeJS.ProcessEnv, extraEnv: Record<string, string> = {}): Record<string, string | undefined> {
+  const env: Record<string, string | undefined> = { ...base };
+  for (const k of Object.keys(env)) if (ACCOUNT_SELECTING_ENV.test(k) || CREDENTIAL_ENV.test(k)) delete env[k];
+  return { ...env, ...extraEnv };
+}
+
 function spawnJudge(prompt: string, token: string, model: string, extraEnv: Record<string, string> = {}): { stdout: string; stderr: string; status: number | null } {
-  const env: Record<string, string | undefined> = { ...process.env, ACOS_ORACLE_JUDGE: token, ...extraEnv };
+  const env = judgingEnv(process.env, { ACOS_ORACLE_JUDGE: token, ...extraEnv });
   delete env.ANTHROPIC_API_KEY; // standing rule: subscription only, never an API key
   // The prompt travels on STDIN: no argument-length cliff (a big Write used to hit E2BIG and
   // come back unreadable), no shell quoting.
@@ -300,7 +417,11 @@ async function judge(req: JudgeRequest, token: string, model: string): Promise<V
         case "retry_direct": r = spawnJudge(prompt, token, model); break;
         case "retry_backoff": await Bun.sleep(3000); r = spawnJudge(prompt, token, model); if (!parseVerdict(r.stdout)) { await Bun.sleep(10000); r = spawnJudge(prompt, token, model); } break;
         case "wait_then_retry": { let got = false; for (const w of [30000, 120000, 300000]) { await Bun.sleep(w); r = spawnJudge(prompt, token, model); if (parseVerdict(r.stdout)) { got = true; break; } } if (!got) continue; break; }
-        case "alternate_account": if (!process.env.ORACLE_ALT_CONFIG_DIR) continue; r = spawnJudge(prompt, token, model, { CLAUDE_CONFIG_DIR: process.env.ORACLE_ALT_CONFIG_DIR }); break;
+        case "alternate_account": {
+          const alt = altConfigDir();
+          if (!alt.usable) { console.log(`[${new Date().toISOString()}] recovery: alternate_account SKIPPED — ${alt.why}`); continue; }
+          r = spawnJudge(prompt, token, model, { CLAUDE_CONFIG_DIR: alt.dir! }); break;
+        }
         case "shrink_to_file": {
           const dir = join(ORACLE_HOME, "tmp"); mkdirSync(dir, { recursive: true });
           const f = join(dir, `prompt-${Date.now()}.txt`); writeFileSync(f, prompt, { mode: 0o600 });
@@ -321,7 +442,10 @@ async function judge(req: JudgeRequest, token: string, model: string): Promise<V
   // Every recovery failed. This is a DENY that names the cause — never an allow (D-14).
   return {
     decision: "deny",
-    reason: `The Oracle could not obtain a readable verdict. Cause class: ${cls}. Last error: ${lastErr}. Recovery tried: ${tried.join(" → ") || "(none)"}. Oracle mode allows nothing it has not judged; fix the cause (see ~/.acos/oracle/daemon-out.log) and retry.`,
+    // On an auth failure, NAME the folder and its login state. Without this the
+    // message says only that a sign-in expired, which is true of three different
+    // folders and tells nobody which one to repair (2026-10-26).
+    reason: `The Oracle could not obtain a readable verdict. Cause class: ${cls}. Last error: ${lastErr}. Recovery tried: ${tried.join(" → ") || "(none)"}.${cls === "auth" ? ` ${authNote()}. Repair that sign-in, or point CLAUDE_CONFIG_DIR in ~/Library/LaunchAgents/com.acos.oracle.plist at a folder that is logged in.` : ""} Oracle mode allows nothing it has not judged; fix the cause (see ~/.acos/oracle/daemon-out.log) and retry.`,
     elapsed_ms: Date.now() - started, model, cause: cls, recovery: tried,
   };
 }
@@ -396,6 +520,12 @@ async function serve(model: string): Promise<void> {
   chmodSync(SOCK, 0o600);
   console.log(`The Oracle is awake.`);
   console.log(`  model:  ${model}`);
+  // A judge that cannot sign in judges nothing, and oracle mode then denies
+  // EVERY gated call. That state was invisible for hours on 2026-10-26, so it
+  // is now the second line of the log every time the daemon starts.
+  console.log(`  ${authNote()}`);
+  console.log(`  ${altNote()}`);
+  console.log(`  binary: ${(() => { try { return claudeBin(); } catch (e) { return `NONE (${(e as Error).message})`; } })()}`);
   console.log(`  socket: ${SOCK}`);
   console.log(`  log:    ${LOG}`);
   console.log(`  pid:    ${process.pid}`);

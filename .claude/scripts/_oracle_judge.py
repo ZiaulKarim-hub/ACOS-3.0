@@ -34,6 +34,7 @@ existing 1050-line Python hook — the "extending existing Python" exception.
 
 import json
 import os
+import re
 import socket
 import subprocess
 import time
@@ -59,6 +60,57 @@ CLAUDE_CANDIDATES = [
 DAEMON_BOOT_WAIT_S = 20.0
 RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_S = [1.0, 3.0, 6.0]
+
+# ---------------------------------------------------------------------------
+# Which account the judge spends — the one chokepoint
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. This module runs INSIDE the window that made the tool call,
+# so layers 3 and 4 inherit that window's environment. In a borrowed-account
+# window that environment carries the account-selecting variables and the live
+# OAuth credential the account door exports, so the judge used to spend the
+# BORROWED allowance — with no arm record, no window key, no ceiling and no
+# audit line. Stripping only ANTHROPIC_API_KEY, which is all this module did
+# before, left that door wide open. The same defect was found and closed on the
+# Nemesis judge first (`lib/judge.ts`, `judgeChildEnv`); these shapes are a
+# deliberate mirror of that one so the two cannot drift apart silently.
+#
+# Layer 2 needs it just as much, and worse: the daemon it starts is detached and
+# long-lived, so a daemon first started from a borrowed-account window would go
+# on judging on that account until something killed it. The launchd service is
+# clean (its plist sets no account variable), but a hook-started daemon never
+# reads that plist.
+#
+# MATCHED BY SHAPE, NOT BY NAME, for the reason the account door records: a
+# sweep of this machine on 2026-11-18 found CLAUDE_CONFIG_DIR, CLAUDE_ACCOUNT,
+# CLAUDE_ACCOUNT_NO_PROMPT and CLAUDE_CODE_OAUTH_TOKEN all in live use, so a
+# list of names is a list of the doors someone has already thought of.
+ACCOUNT_SELECTING_ENV = re.compile(r"^CLAUDE_.*(ACCOUNT|CONFIG_DIR|JASON)")
+CREDENTIAL_ENV = re.compile(r"^(CLAUDE_(CODE_)?OAUTH_TOKEN|ANTHROPIC_(API_KEY|AUTH_TOKEN))$")
+# The daemon's own alternate-account recovery switch. Zee removed it from the
+# plist on 2026-11-16 because it pointed at the borrowed folder; removing it
+# here too means a daemon started from a hook cannot be handed it either.
+ALT_ACCOUNT_SWITCH_ENV = re.compile(r"^ORACLE_ALT")
+
+# NOT stripped, and on purpose: ORACLE_CLAUDE_BIN pins WHICH BINARY runs, not
+# which account it signs in as, and this Mac carries two copies of the CLI.
+
+
+def judging_env(base=None):
+    """The environment a judge child may have: this one, minus any way to pick an account.
+
+    The consequence is accepted rather than worked around (Zee, 2026-11-16): with
+    no account variable the judge uses the default folder ~/.claude, so if that
+    sign-in lapses, Oracle mode denies gated calls until he logs back in —
+    "even if it means all the AI works stop and I have to manually log back in".
+    """
+    env = dict(os.environ if base is None else base)
+    for k in [k for k in env
+              if ACCOUNT_SELECTING_ENV.match(k)
+              or CREDENTIAL_ENV.match(k)
+              or ALT_ACCOUNT_SWITCH_ENV.match(k)]:
+        del env[k]
+    return env
 
 
 def _claude_bin():
@@ -193,6 +245,10 @@ def _start_daemon(scripts_dir):
             [bun, str(daemon_path), "--model", "opus"],
             stdout=out, stderr=out, stdin=subprocess.DEVNULL,
             start_new_session=True,  # survives this hook process exiting
+            # ...which is exactly why the account is stripped here. A detached
+            # daemon outlives the window that started it, so an inherited
+            # account variable would outlive it too.
+            env=judging_env(),
         )
     except OSError:
         return False
@@ -262,9 +318,9 @@ def _ask_direct(payload, charter):
     if bin_ is None:
         LAST_FAILURE.update({"class": "crash", "error": "claude binary not found", "tried": []})
         return None
-    env = dict(os.environ)
+    # subscription only, never an API key — and never a borrowed account either.
+    env = judging_env()
     env["ACOS_ORACLE_JUDGE"] = read_token() or "direct"
-    env.pop("ANTHROPIC_API_KEY", None)  # standing rule: subscription, never a key
     out, err, code = _spawn_judge(bin_, charter, env)
     v = parse_verdict(out)
     if v:
